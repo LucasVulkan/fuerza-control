@@ -8,10 +8,12 @@ const DAY_COLORS = {
 
 export default function SessionCard({ session, onDelete }) {
   const [open, setOpen] = useState(false);
-  const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
+  const customExercises = useStore((s) => s.customExercises);
+  const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const template = sessionTemplates[session.sessionTemplateId];
+  const template = getEffectiveTemplate(session.sessionTemplateId);
   const label = template?.label ?? '?';
   const name = template?.name ?? session.sessionTemplateId;
   const color = template?.color ?? DAY_COLORS[label] ?? 'var(--accent)';
@@ -69,7 +71,7 @@ export default function SessionCard({ session, onDelete }) {
       {open && (
         <div>
           {session.exercises.map((ex) => {
-            const def = exerciseLibrary[ex.exerciseId];
+            const def = allExercises[ex.exerciseId];
             const doneSets = ex.sets.filter((s) => s.done || s.weight || s.reps || s.time);
             if (!doneSets.length) return null;
 

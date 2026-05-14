@@ -18,7 +18,7 @@ import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { SESSION_TEMPLATES, PROGRAMS } from '../data/programs';
 import { getProgression } from '../utils/progression';
 import { generateId } from '../utils/formatters';
-import { exportToJSON, downloadJSON, importFromJSON } from '../utils/storage';
+import { exportFullBackup, exportProgramOnly, downloadJSON, parseImportFile, readFileAsText } from '../utils/storage';
 
 // ─── Estado inicial ───────────────────────────────────────────────────────────
 
@@ -30,6 +30,7 @@ const INITIAL_PROFILE = {
   onboardingCompleted: false,
   goals: [],
   bodyWeight: null,
+  theme: 'dark',
 };
 
 const INITIAL_ACTIVE_SESSION = {
@@ -446,6 +447,96 @@ export const useStore = create(
         });
       },
 
+      renameProgram: (programId, newName) => {
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: { ...s.programs[programId], name: newName },
+          },
+        }));
+      },
+
+      // Renombra una sesión (template)
+      renameSession: (templateId, newName) => {
+        const template = get().getEffectiveTemplate(templateId);
+        if (!template) return;
+        set((s) => ({
+          userPrograms: {
+            ...s.userPrograms,
+            [templateId]: { ...template, name: newName },
+          },
+        }));
+      },
+
+      // Crea un programa vacío con N sesiones y va al editor
+      createEmptyProgram: (numSessions, programName = 'Mi programa') => {
+        const programId = generateId('prog');
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+        const newTemplates = {};
+        const programDays = [];
+
+        for (let i = 0; i < numSessions; i++) {
+          const templateId = generateId('tpl');
+          const label = labels[i] ?? String(i + 1);
+          newTemplates[templateId] = {
+            id: templateId, programId,
+            label, name: `Sesión ${label}`,
+            emphasis: '', color: colors[i] ?? '#e8ff47',
+            exercises: [],
+          };
+          programDays.push({ sessionTemplateId: templateId, label });
+        }
+
+        const program = {
+          id: programId, name: programName,
+          type: 'primary', status: 'active',
+          createdAt: new Date().toISOString().split('T')[0],
+          currentWeek: 1,
+          onboardingSnapshot: { mode: 'manual' },
+          days: programDays,
+        };
+
+        set((s) => ({
+          programs: { ...s.programs, [programId]: program },
+          sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
+          profile: { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
+          ui: { ...s.ui, view: 'programEditor' },
+        }));
+      },
+
+      // Añade una sesión vacía al programa activo
+      addSessionToProgram: (programId) => {
+        const { programs, sessionTemplates } = get();
+        const program = programs[programId];
+        if (!program) return;
+
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+        const i = program.days.length;
+        const label = labels[i] ?? String(i + 1);
+        const color = colors[i] ?? '#888';
+        const templateId = generateId('tpl');
+
+        const newTemplate = {
+          id: templateId, programId,
+          label, name: `Sesión ${label}`,
+          emphasis: '', color,
+          exercises: [],
+        };
+
+        set((s) => ({
+          sessionTemplates: { ...s.sessionTemplates, [templateId]: newTemplate },
+          programs: {
+            ...s.programs,
+            [programId]: {
+              ...program,
+              days: [...program.days, { sessionTemplateId: templateId, label }],
+            },
+          },
+        }));
+      },
+
       // ══════════════════════════════════════════════════════════════════════
       // ACCIONES — SESIÓN ACTIVA
       // ══════════════════════════════════════════════════════════════════════
@@ -533,7 +624,14 @@ export const useStore = create(
         if (!exConfig) return null;
 
         const exDef = exerciseLibrary[exerciseId];
-        if (!exDef) return null;
+        const customExercises = get().customExercises;
+        const baseDef = exDef ?? customExercises[exerciseId];
+        if (!baseDef) return null;
+
+        // El exConfig puede sobreescribir el progressionModel (custom exercises)
+        const effectiveDef = exConfig.progressionModel
+          ? { ...baseDef, progressionModel: exConfig.progressionModel }
+          : baseDef;
 
         const lastSession = getLastSession(templateId);
         if (!lastSession) return null;
@@ -541,7 +639,7 @@ export const useStore = create(
         const lastExercise = lastSession.exercises?.find((e) => e.exerciseId === exerciseId);
         if (!lastExercise) return null;
 
-        return getProgression(exConfig, lastExercise.sets, exConfig.sets);
+        return getProgression(effectiveDef, lastExercise.sets, exConfig.sets);
       },
 
       /**
@@ -727,31 +825,101 @@ export const useStore = create(
       // ACCIONES — EXPORTAR / IMPORTAR
       // ══════════════════════════════════════════════════════════════════════
 
-      exportData: () => {
-        const state = get();
-        const json = exportToJSON({ profile: state.profile, workoutLog: state.workoutLog });
-        downloadJSON(json);
+      // Exportar backup completo
+      exportFullBackup: () => {
+        const s = get();
+        const json = exportFullBackup(s);
+        const name = s.programs[s.profile.activeProgramId]?.name ?? 'backup';
+        downloadJSON(json, name);
       },
 
-      importData: async (file) => {
-        const { readFileAsText } = await import('../utils/storage');
+      // Exportar solo el programa (sin historial)
+      exportProgramOnly: () => {
+        const s = get();
+        const json = exportProgramOnly(s);
+        const name = s.programs[s.profile.activeProgramId]?.name ?? 'programa';
+        downloadJSON(json, `programa-${name}`);
+      },
+
+      /**
+       * Importa un archivo JSON exportado por la app.
+       * @param {File} file
+       * @param {'replace'|'merge_log'|'add_program'} mode
+       *   - replace: reemplaza todo (backup completo)
+       *   - merge_log: fusiona solo el historial (el cliente manda sus sesiones al entrenador)
+       *   - add_program: importa el programa como nuevo programa activo, sin tocar el historial
+       */
+      importData: async (file, mode = 'replace') => {
         try {
           const text = await readFileAsText(file);
-          const result = importFromJSON(text);
+          const result = parseImportFile(text);
+
           if (!result.ok) {
             get().showToast('⚠️ ' + result.error);
-            return { ok: false };
+            return { ok: false, error: result.error };
           }
-          // Reemplazo completo (estrategia inicial)
-          set({
-            profile: result.data.profile ?? get().profile,
-            workoutLog: result.data.workoutLog ?? [],
-          });
-          get().showToast('✓ Datos importados correctamente');
-          return { ok: true };
+
+          const data = result.data;
+
+          if (mode === 'replace') {
+            const importedTemplateIds = new Set([
+              ...Object.keys(data.sessionTemplates ?? {}),
+              ...Object.keys(data.userPrograms ?? {}),
+            ]);
+            set((s) => {
+              const keptUserPrograms = Object.fromEntries(
+                Object.entries(s.userPrograms).filter(([id]) => !importedTemplateIds.has(id))
+              );
+              return {
+                profile: {
+                  ...(data.profile ?? s.profile),
+                  activeProgramId: data.program?.id ?? s.profile.activeProgramId,
+                  theme: s.profile.theme,
+                  onboardingCompleted: data.program ? true : (data.profile?.onboardingCompleted ?? s.profile.onboardingCompleted),
+                },
+                programs: data.program
+                  ? { ...s.programs, [data.program.id]: data.program }
+                  : s.programs,
+                sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+                userPrograms: { ...keptUserPrograms, ...data.userPrograms },
+                customExercises: { ...s.customExercises, ...data.customExercises },
+                workoutLog: data.workoutLog ?? [],
+              };
+            });
+            get().showToast('✓ Importado correctamente');
+          }
+
+          if (mode === 'merge_log') {
+            // Solo añade sesiones nuevas al historial actual (evita duplicados por id)
+            const currentIds = new Set(get().workoutLog.map((e) => e.id));
+            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
+            set((s) => ({ workoutLog: [...s.workoutLog, ...newEntries] }));
+            get().showToast(`✓ ${newEntries.length} sesiones añadidas al historial`);
+          }
+
+          if (mode === 'add_program') {
+            if (!data.program) {
+              get().showToast('⚠️ El archivo no contiene un programa');
+              return { ok: false, error: 'Sin programa' };
+            }
+            set((s) => ({
+              programs: { ...s.programs, [data.program.id]: data.program },
+              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+              userPrograms: { ...s.userPrograms, ...data.userPrograms },
+              customExercises: { ...s.customExercises, ...data.customExercises },
+              profile: {
+                ...s.profile,
+                activeProgramId: data.program.id,
+                onboardingCompleted: true,
+              },
+            }));
+            get().showToast('✓ Programa importado correctamente');
+          }
+
+          return { ok: true, data };
         } catch (e) {
           get().showToast('⚠️ Error al leer el archivo');
-          return { ok: false };
+          return { ok: false, error: e.message };
         }
       },
     }),
@@ -768,11 +936,14 @@ export const useStore = create(
         activeSession: state.activeSession,
         userPrograms: state.userPrograms,
         customExercises: state.customExercises,
+        programs: state.programs,
+        sessionTemplates: state.sessionTemplates,
       }),
       // Al rehidratar: si hay sesión en progreso, navegar a workout automáticamente
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        if (!state.profile?.onboardingCompleted) {
+        const hasProgram = state.profile?.activeProgramId && state.programs?.[state.profile.activeProgramId];
+        if (!state.profile?.onboardingCompleted && !hasProgram) {
           state.ui = { ...INITIAL_UI, view: 'onboarding' };
         } else if (state.activeSession?.templateId) {
           state.ui = { ...state.ui, view: 'workout' };

@@ -141,6 +141,7 @@ export default function DayEditor({ templateId }) {
   const reorderExercise = useStore((s) => s.reorderExercise);
   const showToast = useStore((s) => s.showToast);
   const userPrograms = useStore((s) => s.userPrograms);
+  const renameSession = useStore((s) => s.renameSession);
 
   const template = getEffectiveTemplate(templateId);
   const isEdited = !!userPrograms[templateId];
@@ -149,7 +150,9 @@ export default function DayEditor({ templateId }) {
   const [editingExId, setEditingExId] = useState(null);
   const [showAddSelector, setShowAddSelector] = useState(false);
   const [draggingId, setDraggingId] = useState(null);
-  const [swipeProgress, setSwipeProgress] = useState(0); // 0 = nada, 1 = listo para eliminar
+  const [swipeProgress, setSwipeProgress] = useState(0);
+  const [editingSessionName, setEditingSessionName] = useState(false);
+  const [sessionNameValue, setSessionNameValue] = useState('');
 
   const SWIPE_START = 40;  // px donde empieza a ponerse rojo
   const SWIPE_END   = 160; // px donde está listo para eliminar
@@ -239,26 +242,59 @@ export default function DayEditor({ templateId }) {
     }}>
       {/* Header del día */}
       <div
-        onClick={() => { setOpen((o) => !o); setEditingExId(null); }}
         style={{
           padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          cursor: 'pointer',
-          userSelect: 'none',
         }}
       >
-        <div>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, color }}>
-            DÍA {template.label} · {template.name.toUpperCase()}
-          </div>
+        <div style={{ flex: 1, minWidth: 0 }} onClick={() => { if (!editingSessionName) { setOpen((o) => !o); setEditingExId(null); } }}>
+          {editingSessionName ? (
+            <input
+              autoFocus
+              value={sessionNameValue}
+              onChange={(e) => setSessionNameValue(e.target.value)}
+              onBlur={() => {
+                const trimmed = sessionNameValue.trim();
+                if (trimmed && trimmed !== template.name) renameSession(templateId, trimmed);
+                setEditingSessionName(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.target.blur();
+                if (e.key === 'Escape') setEditingSessionName(false);
+                e.stopPropagation();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%', background: 'var(--surface2)',
+                border: '1px solid var(--accent)', borderRadius: 6,
+                color: color, fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 16, letterSpacing: 1, padding: '3px 8px', outline: 'none',
+              }}
+            />
+          ) : (
+            <div
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, color, cursor: 'pointer', userSelect: 'none' }}
+            >
+              DÍA {template.label} · {template.name.toUpperCase()}
+            </div>
+          )}
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
             {template.exercises.length} ejercicios
             {isEdited && <span style={{ color: 'var(--accent)', marginLeft: 8 }}>· Editado</span>}
           </div>
         </div>
-        <div style={{ color: 'var(--muted)', fontSize: 16, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setSessionNameValue(template.name); setEditingSessionName(true); }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '2px 4px' }}
+          >✎</button>
+          <div
+            onClick={() => { setOpen((o) => !o); setEditingExId(null); setEditingSessionName(false); }}
+            style={{ color: 'var(--muted)', fontSize: 16, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', cursor: 'pointer' }}
+          >▾</div>
+        </div>
       </div>
 
       {/* Lista sortable */}

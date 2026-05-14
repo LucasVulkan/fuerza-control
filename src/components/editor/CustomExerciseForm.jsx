@@ -125,10 +125,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
   return (
     <div style={{
       background: 'var(--bg)',
-      borderTop: '1px solid var(--border)',
-      borderRadius: '16px 16px 0 0',
-      marginTop: 'auto',
-      maxHeight: '92vh',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
     }}>

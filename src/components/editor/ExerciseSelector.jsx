@@ -101,7 +101,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
-      background: 'rgba(0,0,0,0.7)',
+      background: 'var(--bg)',
       display: 'flex', flexDirection: 'column',
     }}>
       {showCreate ? (
@@ -112,12 +112,9 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
       ) : (
       <div style={{
         background: 'var(--bg)',
-        borderTop: '1px solid var(--border)',
-        borderRadius: '16px 16px 0 0',
-        marginTop: 'auto',
-        maxHeight: '90vh',
         display: 'flex',
         flexDirection: 'column',
+        height: '100%',
       }}>
         {/* Header */}
         <div style={{

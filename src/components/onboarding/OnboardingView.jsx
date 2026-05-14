@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useStore } from '../../store/useStore';
 import OnboardingProgress from './OnboardingProgress';
 import OnboardingStep from './OnboardingStep';
 import OptionCard from './OptionCard';
+import ImportModal from '../ui/ImportModal';
 
 // ─── Definición de pasos ──────────────────────────────────────────────────────
 
@@ -123,9 +124,17 @@ function goalIsAvailable(goal, level) {
 
 export default function OnboardingView() {
   const generateAndActivateProgram = useStore((s) => s.generateAndActivateProgram);
+  const createEmptyProgram = useStore((s) => s.createEmptyProgram);
+  const importData = useStore((s) => s.importData);
+  const navigate   = useStore((s) => s.navigate);
 
+  const [mode, setMode] = useState(null); // null | 'auto' | 'manual'
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [manualSessions, setManualSessions] = useState(3);
+  const [manualName, setManualName] = useState('Mi programa');
+  const fileInputRef = useRef(null);
   const [answers, setAnswers] = useState({
     level: null,
     discipline: null,
@@ -161,6 +170,25 @@ export default function OnboardingView() {
     setLoading(false);
   }
 
+  function handleManualCreate() {
+    createEmptyProgram(manualSessions, manualName);
+  }
+
+  async function handleImport(file, mode) {
+    setImportFile(null);
+    setLoading(true);
+    await importData(file, mode);
+    setLoading(false);
+    navigate('home');
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImportFile(file);
+  }
+
   function nextStep() {
     if (step === 6 && answers.level !== 'advanced') {
       handleFinish();
@@ -190,8 +218,164 @@ export default function OnboardingView() {
     );
   }
 
+  // ── Pantalla de selección de modo (sin barra de progreso) ──────────────────
+  if (mode === null) {
+    return (
+      <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '40px 20px 32px' }}>
+        <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
+
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 8 }}>
+          FUERZA & CONTROL
+        </div>
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 1, lineHeight: 1.1, marginBottom: 8 }}>
+          NUEVO PROGRAMA
+        </h2>
+        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 32 }}>
+          ¿Cómo quieres crear tu programa?
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+          <ModeCard
+            icon="🤖"
+            title="Generar automáticamente"
+            desc="Responde unas preguntas y el sistema crea el programa. Puedes editarlo después."
+            onClick={() => setMode('auto')}
+            accent
+          />
+          <ModeCard
+            icon="✏️"
+            title="Construir manualmente"
+            desc="Elige cuántas sesiones quieres y añade tus propios ejercicios."
+            onClick={() => setMode('manual')}
+          />
+          <ModeCard
+            icon="📥"
+            title="Importar programa"
+            desc="Abre un archivo exportado desde esta app."
+            onClick={() => fileInputRef.current?.click()}
+          />
+        </div>
+
+        {importFile && (
+          <ImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />
+        )}
+      </div>
+    );
+  }
+
+  // ── Modo manual ─────────────────────────────────────────────────────────────
+  if (mode === 'manual') {
+    return (
+      <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px 20px 16px' }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 4 }}>
+            FUERZA & CONTROL
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1 }}>PROGRAMA MANUAL</div>
+        </div>
+
+        <div style={{ flex: 1, padding: '8px 20px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Nombre */}
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Nombre del programa
+            </div>
+            <input
+              type="text"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="Ej: Lucas - Full Body"
+              style={{
+                width: '100%', background: 'var(--surface2)',
+                border: '1px solid var(--border)', borderRadius: 8,
+                color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
+                fontSize: 14, padding: '10px 14px', outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+
+          {/* Número de sesiones */}
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+              Número de sesiones
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setManualSessions(n)}
+                  style={{
+                    flex: 1, height: 56,
+                    borderRadius: 8, border: '1px solid',
+                    borderColor: manualSessions === n ? 'var(--accent)' : 'var(--border)',
+                    background: manualSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface)',
+                    color: manualSessions === n ? 'var(--accent)' : 'var(--text)',
+                    fontFamily: "'Bebas Neue', sans-serif", fontSize: 26,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+              Podrás añadir más sesiones desde el editor.
+            </p>
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', borderRadius: 8, padding: '12px 14px', border: '1px solid var(--border)' }}>
+            Se crearán {manualSessions} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.
+          </p>
+        </div>
+
+        {/* Botones */}
+        <div style={{ padding: '12px 20px 28px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setMode(null)}
+            style={{
+              flex: 1, background: 'transparent',
+              border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 10,
+              color: '#fff', fontFamily: "'DM Sans', sans-serif",
+              fontSize: 13, padding: 13, cursor: 'pointer',
+            }}
+          >
+            ‹ Atrás
+          </button>
+          <button
+            onClick={handleManualCreate}
+            disabled={!manualName.trim()}
+            style={{
+              flex: 2,
+              background: manualName.trim() ? 'var(--accent)' : 'var(--surface2)',
+              border: 'none', borderRadius: 10,
+              color: manualName.trim() ? '#0d0d0d' : 'var(--muted)',
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 20, letterSpacing: 1.5,
+              padding: 13, cursor: manualName.trim() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            CREAR Y EDITAR ›
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Modo automático ─────────────────────────────────────────────────────────
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Input de archivo oculto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
       {/* Header */}
       <div style={{ padding: '20px 20px 16px' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 12 }}>
@@ -227,6 +411,15 @@ export default function OnboardingView() {
       )}
       {step === 7 && answers.level === 'advanced' && (
         <StepProgression answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} isLast />
+      )}
+
+      {/* Modal de importación */}
+      {importFile && (
+        <ImportModal
+          file={importFile}
+          onImport={handleImport}
+          onClose={() => setImportFile(null)}
+        />
       )}
     </div>
   );
@@ -512,5 +705,44 @@ function StepProgression({ answers, set_, onNext, onBack, isLast }) {
         />
       ))}
     </OnboardingStep>
+  );
+}
+
+function ModeCard({ icon, title, desc, onClick, accent }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)',
+        border: '1px solid',
+        borderColor: accent ? 'rgba(232,255,71,0.25)' : 'var(--border)',
+        borderRadius: 12,
+        padding: '18px 20px',
+        cursor: 'pointer',
+        textAlign: 'left',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        transition: 'background 0.15s',
+      }}
+      onPointerDown={(e) => e.currentTarget.style.background = 'var(--surface2)'}
+      onPointerUp={(e) => e.currentTarget.style.background = accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)'}
+      onPointerLeave={(e) => e.currentTarget.style.background = accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)'}
+    >
+      <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{icon}</span>
+      <div>
+        <div style={{
+          fontSize: 14, fontWeight: 500,
+          color: accent ? 'var(--accent)' : 'var(--text)',
+          fontFamily: "'DM Sans', sans-serif",
+          marginBottom: 3,
+        }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{desc}</div>
+      </div>
+      <span style={{ color: 'var(--muted)', fontSize: 18, marginLeft: 'auto', flexShrink: 0 }}>›</span>
+    </button>
   );
 }

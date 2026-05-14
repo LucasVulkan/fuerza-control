@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap');
 
-:root {
+/* ── Theme: Dark (default) ─────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
   --bg: #0d0d0d;
   --surface: #161616;
   --surface2: #1f1f1f;
@@ -10,8 +13,8 @@
   --accent2: #ff6b35;
   --accent3: #7eb8ff;
   --text: #f0f0f0;
-  --muted: #666;
-  --muted2: #444;
+  --muted: #888;
+  --muted2: #666;
   --green: #4ade80;
   --orange: #fb923c;
   --red: #f87171;
@@ -21,6 +24,107 @@
   --day4: #a78bfa;
   --day5: #34d399;
   --day6: #f472b6;
+
+  /* Layout */
+  --radius-card: 10px;
+  --radius-btn: 10px;
+  --radius-input: 6px;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --border-width: 1px;
+}
+
+/* ── Theme: Midnight ───────────────────────────────────────────── */
+[data-theme="midnight"] {
+  --bg: #060b18;
+  --surface: #0d1526;
+  --surface2: #152035;
+  --surface3: #1c2a44;
+  --border: #1e3050;
+  --accent: #60a5fa;
+  --accent2: #a78bfa;
+  --accent3: #34d399;
+  --text: #e8f0fe;
+  --muted: #7090b0;
+  --muted2: #506080;
+  --green: #34d399;
+  --orange: #fb923c;
+  --red: #f87171;
+  --day1: #60a5fa;
+  --day2: #a78bfa;
+  --day3: #34d399;
+  --day4: #f472b6;
+  --day5: #fb923c;
+  --day6: #e8ff47;
+
+  --radius-card: 10px;
+  --radius-btn: 10px;
+  --radius-input: 6px;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --border-width: 1px;
+}
+
+/* ── Theme: Forest ─────────────────────────────────────────────── */
+[data-theme="forest"] {
+  --bg: #080f0a;
+  --surface: #101a12;
+  --surface2: #172419;
+  --surface3: #1f3022;
+  --border: #253d28;
+  --accent: #4ade80;
+  --accent2: #86efac;
+  --accent3: #a3e635;
+  --text: #ecfdf5;
+  --muted: #6b9e78;
+  --muted2: #4a7055;
+  --green: #4ade80;
+  --orange: #fb923c;
+  --red: #f87171;
+  --day1: #4ade80;
+  --day2: #a3e635;
+  --day3: #86efac;
+  --day4: #34d399;
+  --day5: #6ee7b7;
+  --day6: #d9f99d;
+
+  --radius-card: 10px;
+  --radius-btn: 10px;
+  --radius-input: 6px;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --border-width: 1px;
+}
+
+/* ── Theme: Sharp (sin redondeos, tipografía diferente) ────────── */
+[data-theme="sharp"] {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1e1e1e;
+  --surface3: #282828;
+  --border: #333;
+  --accent: #ffffff;
+  --accent2: #cccccc;
+  --accent3: #888888;
+  --text: #ffffff;
+  --muted: #888;
+  --muted2: #666;
+  --green: #4ade80;
+  --orange: #fb923c;
+  --red: #f87171;
+  --day1: #fff;
+  --day2: #ccc;
+  --day3: #888;
+  --day4: #aaa;
+  --day5: #ddd;
+  --day6: #bbb;
+
+  --radius-card: 2px;
+  --radius-btn: 2px;
+  --radius-input: 2px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --border-width: 1px;
 }
 
 *, *::before, *::after {
