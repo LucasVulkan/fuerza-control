@@ -1,25 +1,51 @@
-// PRO FEATURE — Vista de gestión de clientes/programas managed
+// PRO FEATURE — Gestión de clientes
 
-import { useState } from 'react';
-import { useStore, selectManagedPrograms } from '../../store/useStore';
+import { useState, useMemo } from 'react';
+import { useStore } from '../../store/useStore';
 import ImportModal from '../ui/ImportModal';
 
 export default function ClientsView() {
-  const navigate           = useStore((s) => s.navigate);
-  const managed            = useStore(selectManagedPrograms);
-  const createEmptyProgram = useStore((s) => s.createEmptyProgram);
-  const deleteProgram      = useStore((s) => s.deleteProgram);
-  const exportProgramOnly  = useStore((s) => s.exportProgramOnly);
-  const importData         = useStore((s) => s.importData);
-  const workoutLog         = useStore((s) => s.workoutLog);
-  const profile            = useStore((s) => s.profile);
-  const setProfile         = useStore((s) => s.setProfile);
-  const programs           = useStore((s) => s.programs);
+  const clients                = useStore((s) => s.clients);
+  const programs               = useStore((s) => s.programs);
+  const workoutLog             = useStore((s) => s.workoutLog);
+  const createClient           = useStore((s) => s.createClient);
+  const deleteClient           = useStore((s) => s.deleteClient);
+  const renameClient           = useStore((s) => s.renameClient);
+  const createProgramForClient = useStore((s) => s.createProgramForClient);
+  const deleteProgram          = useStore((s) => s.deleteProgram);
+  const setEditingProgram      = useStore((s) => s.setEditingProgram);
+  const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
+  const importData             = useStore((s) => s.importData);
 
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [showNewProgram, setShowNewProgram] = useState(false);
+  const [newProgramName, setNewProgramName] = useState('');
+  const [newProgramSessions, setNewProgramSessions] = useState(3);
   const [importFile, setImportFile] = useState(null);
-  const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newSessions, setNewSessions] = useState(3);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [editingClientName, setEditingClientName] = useState('');
+
+  const clientList = useMemo(
+    () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
+    [clients]
+  );
+
+  const selectedClient = selectedClientId ? clients[selectedClientId] : null;
+
+  const clientPrograms = useMemo(() => {
+    if (!selectedClient) return [];
+    return (selectedClient.programIds ?? [])
+      .map((id) => programs[id])
+      .filter(Boolean)
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  }, [selectedClient, programs]);
+
+  function getSessionCount(program) {
+    const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+    return workoutLog.filter((e) => templateIds.has(e.sessionTemplateId)).length;
+  }
 
   function getLastActivity(program) {
     const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
@@ -28,227 +54,184 @@ export default function ClientsView() {
     return Math.max(...sessions.map((e) => e.timestamp));
   }
 
-  function getSessionCount(program) {
-    const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
-    return workoutLog.filter((e) => templateIds.has(e.sessionTemplateId)).length;
+  function handleCreateClient() {
+    if (!newClientName.trim()) return;
+    createClient(newClientName);
+    setNewClientName('');
+    setShowNewClient(false);
   }
 
-  function handleCreate() {
-    if (!newName.trim()) return;
-    createEmptyProgram(newSessions, newName.trim(), 'managed');
-    setShowNew(false);
-    setNewName('');
+  function handleCreateProgram() {
+    if (!newProgramName.trim() || !selectedClientId) return;
+    createProgramForClient(selectedClientId, newProgramSessions, newProgramName);
+    setNewProgramName('');
+    setShowNewProgram(false);
+  }
+
+  function handleDeleteClient(clientId) {
+    if (window.confirm('¿Eliminar cliente y todos sus programas e historial?')) {
+      deleteClient(clientId, true);
+      if (selectedClientId === clientId) setSelectedClientId(null);
+    }
+  }
+
+  function handleDeleteProgram(programId) {
+    if (window.confirm('¿Eliminar este programa?')) {
+      deleteProgram(programId, false);
+    }
   }
 
   async function handleImport(file, mode) {
     setImportFile(null);
-    await importData(file, mode === 'replace' ? 'add_program' : mode);
+    await importData(file, mode === 'replace' ? 'merge_log' : mode);
   }
 
-  function handleEditProgram(programId) {
-    // Temporalmente set activeProgramId para el editor, luego restaurar
-    setProfile({ _editingProgramId: programId });
-    navigate('programEditor');
-  }
-
-  function handleExport(program) {
-    // Exportar solo este programa
-    const state = { profile: { activeProgramId: program.id }, programs, sessionTemplates: {}, userPrograms: {}, customExercises: {} };
-    // Reutilizar exportProgramOnly pero pasando el ID correcto
-    exportProgramOnly();
-  }
-
-  return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto' }}>
-
-      {/* Header */}
-      <div
-        onClick={() => navigate('home')}
-        style={{
-          padding: '14px 20px', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          cursor: 'pointer', userSelect: 'none',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: 'var(--muted)', fontSize: 22 }}>‹</span>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>CLIENTES</div>
+  // ── Lista de clientes ──────────────────────────────────────────────────────
+  if (!selectedClientId) {
+    return (
+      <div>
+        <div style={{ padding: '12px 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Clientes</p>
+          <button onClick={() => setShowNewClient(true)} style={accentBtnStyle}>＋ NUEVO</button>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowNew(true); }}
-          style={{
-            background: 'var(--accent)', border: 'none', borderRadius: 6,
-            color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 14, letterSpacing: 1, padding: '6px 14px', cursor: 'pointer',
-          }}
-        >
-          ＋ NUEVO
-        </button>
-      </div>
 
-      {/* Input de archivo oculto */}
-      <input
-        type="file" accept=".json" style={{ display: 'none' }}
-        id="clients-file-input"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) { setImportFile(file); e.target.value = ''; }
-        }}
-      />
-
-      <div style={{ padding: '14px 20px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-        {/* Botón importar */}
-        <button
-          onClick={() => document.getElementById('clients-file-input')?.click()}
-          style={{
-            background: 'transparent', border: '1px dashed rgba(232,255,71,0.25)',
-            borderRadius: 10, padding: '12px 16px', cursor: 'pointer',
-            color: 'var(--accent)', fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12, textAlign: 'center',
-          }}
-        >
-          ↓ Importar historial de cliente
-        </button>
-
-        {managed.length === 0 && !showNew ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
-            <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>👥</span>
-            Sin programas de clientes todavía.<br />
-            Crea uno nuevo o importa un programa.
-          </div>
-        ) : (
-          managed.map((program) => {
-            const lastActivity = getLastActivity(program);
-            const sessions = getSessionCount(program);
+        <div style={{ padding: '0 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {clientList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
+              <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>👥</span>
+              Sin clientes todavía.
+            </div>
+          ) : clientList.map((client) => {
+            const progCount = (client.programIds ?? []).filter((id) => programs[id]).length;
             return (
-              <div key={program.id} style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 10, overflow: 'hidden',
-              }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{program.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
-                    {sessions} sesiones
-                    {lastActivity ? ` · Última: ${new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ' · Sin sesiones'}
+              <div key={client.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div onClick={() => setSelectedClientId(client.id)} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                  <div>
+                    {editingClientId === client.id ? (
+                      <input
+                        autoFocus value={editingClientName}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setEditingClientName(e.target.value)}
+                        onBlur={() => { if (editingClientName.trim()) renameClient(client.id, editingClientName); setEditingClientId(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingClientId(null); e.stopPropagation(); }}
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 6, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, padding: '4px 8px', outline: 'none' }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{client.name}</div>
+                    )}
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{progCount} programa{progCount !== 1 ? 's' : ''}</div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-                  <ActionBtn label="Editar" onClick={() => handleEditProgram(program.id)} />
-                  <div style={{ width: 1, background: 'var(--border)' }} />
-                  <ActionBtn label="Exportar" onClick={() => handleExport(program)} />
-                  <div style={{ width: 1, background: 'var(--border)' }} />
-                  <ActionBtn label="Eliminar" onClick={() => { if (window.confirm('¿Eliminar este programa?')) deleteProgram(program.id, false); }} danger />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={(e) => { e.stopPropagation(); setEditingClientId(client.id); setEditingClientName(client.name); }} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>✎</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }} style={{ background: 'none', border: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>✕</button>
+                    <span style={{ color: 'var(--muted)', fontSize: 16 }}>›</span>
+                  </div>
                 </div>
               </div>
             );
-          })
+          })}
+        </div>
+
+        {showNewClient && (
+          <SimpleModal title="NUEVO CLIENTE" onClose={() => setShowNewClient(false)} onConfirm={handleCreateClient} confirmLabel="CREAR" confirmDisabled={!newClientName.trim()}>
+            <input autoFocus type="text" placeholder="Nombre del cliente" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateClient()} style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
+          </SimpleModal>
         )}
       </div>
+    );
+  }
 
-      {/* Modal nuevo programa */}
-      {showNew && (
-        <>
-          <div onClick={() => setShowNew(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
-          <div style={{
-            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)', zIndex: 50,
-            width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px',
-          }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, marginBottom: 16 }}>
-              NUEVO PROGRAMA
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Nombre del cliente</div>
-                <input
-                  autoFocus
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                  placeholder="Ej: Lucas - Full Body"
-                  style={{
-                    width: '100%', background: 'var(--surface2)',
-                    border: '1px solid var(--border)', borderRadius: 8,
-                    color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box',
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[2, 3, 4, 5, 6].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setNewSessions(n)}
-                      style={{
-                        flex: 1, height: 44, borderRadius: 6, border: '1px solid',
-                        borderColor: newSessions === n ? 'var(--accent)' : 'var(--border)',
-                        background: newSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)',
-                        color: newSessions === n ? 'var(--accent)' : 'var(--text)',
-                        fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, cursor: 'pointer',
-                      }}
-                    >{n}</button>
-                  ))}
+  // ── Detalle de cliente ─────────────────────────────────────────────────────
+  return (
+    <div>
+      <div style={{ padding: '12px 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setSelectedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 22, cursor: 'pointer', padding: '2px 0' }}>‹</button>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{selectedClient.name}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}>Programas</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => document.getElementById('client-import-input')?.click()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '5px 10px', cursor: 'pointer' }}>↓ Importar</button>
+          <button onClick={() => setShowNewProgram(true)} style={accentBtnStyle}>＋ PROGRAMA</button>
+        </div>
+      </div>
+
+      <input type="file" accept=".json" style={{ display: 'none' }} id="client-import-input"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) { setImportFile(f); e.target.value = ''; } }} />
+
+      <div style={{ padding: '4px 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {clientPrograms.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>Sin programas. Crea uno o importa el historial del cliente.</div>
+        ) : clientPrograms.map((program) => {
+          const sessions = getSessionCount(program);
+          const lastActivity = getLastActivity(program);
+          return (
+            <div key={program.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{program.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                  {sessions} sesiones
+                  {lastActivity ? ` · Última: ${new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ' · Sin actividad'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button
-                  onClick={() => setShowNew(false)}
-                  style={{
-                    flex: 1, background: 'none', border: '1px solid var(--border)',
-                    borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13, padding: '12px', cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={!newName.trim()}
-                  style={{
-                    flex: 2, background: newName.trim() ? 'var(--accent)' : 'var(--surface2)',
-                    border: 'none', borderRadius: 8,
-                    color: newName.trim() ? '#0d0d0d' : 'var(--muted)',
-                    fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1,
-                    padding: '12px', cursor: newName.trim() ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  CREAR Y EDITAR
-                </button>
+              <div style={{ display: 'flex' }}>
+                <ActionBtn label="Editar" onClick={() => setEditingProgram(program.id)} />
+                <div style={{ width: 1, background: 'var(--border)' }} />
+                <ActionBtn label="Exportar" onClick={() => exportSpecificProgram(program.id)} />
+                <div style={{ width: 1, background: 'var(--border)' }} />
+                <ActionBtn label="Eliminar" onClick={() => handleDeleteProgram(program.id)} danger />
               </div>
             </div>
+          );
+        })}
+      </div>
+
+      {showNewProgram && (
+        <SimpleModal title="NUEVO PROGRAMA" onClose={() => setShowNewProgram(false)} onConfirm={handleCreateProgram} confirmLabel="CREAR Y EDITAR" confirmDisabled={!newProgramName.trim()}>
+          <input autoFocus type="text" placeholder="Nombre del programa" value={newProgramName} onChange={(e) => setNewProgramName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateProgram()} style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[2, 3, 4, 5, 6].map((n) => (
+                <button key={n} onClick={() => setNewProgramSessions(n)} style={{ flex: 1, height: 40, borderRadius: 6, border: '1px solid', borderColor: newProgramSessions === n ? 'var(--accent)' : 'var(--border)', background: newProgramSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
+              ))}
+            </div>
           </div>
-        </>
+        </SimpleModal>
       )}
 
-      {importFile && (
-        <ImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />
-      )}
+      {importFile && <ImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />}
     </div>
   );
 }
 
 function ActionBtn({ label, onClick, danger }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: 1, background: 'none', border: 'none',
-        color: danger ? 'var(--red)' : 'var(--muted)',
-        fontFamily: "'DM Sans', sans-serif", fontSize: 12,
-        padding: '10px', cursor: 'pointer', transition: 'background 0.15s',
-      }}
+    <button onClick={onClick} style={{ flex: 1, background: 'none', border: 'none', color: danger ? 'var(--red)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '10px', cursor: 'pointer', transition: 'background 0.15s' }}
       onPointerDown={(e) => e.currentTarget.style.background = 'var(--surface2)'}
       onPointerUp={(e) => e.currentTarget.style.background = 'none'}
       onPointerLeave={(e) => e.currentTarget.style.background = 'none'}
-    >
-      {label}
-    </button>
+    >{label}</button>
   );
 }
+
+function SimpleModal({ title, children, onClose, onConfirm, confirmLabel, confirmDisabled }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>{title}</div>
+        {children}
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button onClick={onClose} style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onConfirm} disabled={confirmDisabled} style={{ flex: 2, background: confirmDisabled ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: confirmDisabled ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: confirmDisabled ? 'not-allowed' : 'pointer' }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const accentBtnStyle = { background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' };
+const inputStyle = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box' };

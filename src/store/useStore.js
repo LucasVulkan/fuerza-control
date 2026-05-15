@@ -43,15 +43,16 @@ const INITIAL_ACTIVE_SESSION = {
 };
 
 const INITIAL_UI = {
-  /** 'home' | 'workout' | 'history' | 'stats' */
   view: 'home',
-  toast: null,          // { msg, id }
+  toast: null,
   restTimer: {
     active: false,
     remaining: 0,
     total: 0,
     exerciseName: '',
   },
+  _editingProgramId: null,
+  homeTab: 'session',  // tab activo al volver a home
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -65,14 +66,17 @@ export const useStore = create(
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
+      // Clientes (contenedores de programas managed) — PRO FEATURE
+      clients: {},            // { [clientId]: { id, name, createdAt, programIds[] } }
+
       // Programas y templates editados por el usuario (sobreescriben los defaults del código)
-      userPrograms: {},       // { [templateId]: sessionTemplate editado }
+      userPrograms: {},
 
       // Ejercicios creados por el usuario
-      customExercises: {},    // { [exerciseId]: exerciseDef }
+      customExercises: {},
 
       // Snapshot para cancelar ediciones en el editor de programa
-      _editSnapshot: null,    // { [templateId]: sessionTemplate } | null
+      _editSnapshot: null,
 
       // ── Referencias estáticas (no se persisten, vienen del código) ──────────
       exerciseLibrary: EXERCISE_LIBRARY,
@@ -133,10 +137,11 @@ export const useStore = create(
        */
       // Archivar programa (con opción de limpiar historial)
       archiveProgram: (programId, clearHistory = false) => {
-        const { programs } = get();
+        const { programs, profile } = get();
         const program = programs[programId];
         if (!program) return;
         const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+        const wasActive = profile.activeProgramId === programId;
 
         set((s) => ({
           programs: {
@@ -150,12 +155,10 @@ export const useStore = create(
           workoutLog: clearHistory
             ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
             : s.workoutLog,
-          profile: s.profile.activeProgramId === programId
-            ? { ...s.profile, activeProgramId: null, onboardingCompleted: false }
+          profile: wasActive
+            ? { ...s.profile, activeProgramId: null }
             : s.profile,
-          ui: s.profile.activeProgramId === programId
-            ? { ...s.ui, view: 'onboarding' }
-            : s.ui,
+          // No navegamos a onboarding — el usuario se queda en home
         }));
       },
 
@@ -201,13 +204,154 @@ export const useStore = create(
         set((s) => {
           const next = { ...s.programs };
           delete next[programId];
+          // Limpiar programId de cualquier cliente
+          const nextClients = { ...s.clients };
+          Object.keys(nextClients).forEach((cid) => {
+            nextClients[cid] = {
+              ...nextClients[cid],
+              programIds: nextClients[cid].programIds.filter((id) => id !== programId),
+            };
+          });
           return {
             programs: next,
+            clients: nextClients,
             workoutLog: deleteHistory
               ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
               : s.workoutLog,
           };
         });
+      },
+
+      // ══════════════════════════════════════════════════════════════════════
+      // ACCIONES — CLIENTES (PRO FEATURE)
+      // ══════════════════════════════════════════════════════════════════════
+
+      createClient: (name) => {
+        const id = generateId('client');
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [id]: { id, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], programIds: [] },
+          },
+        }));
+        return id;
+      },
+
+      renameClient: (clientId, name) => {
+        set((s) => ({
+          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], name: name.trim() } },
+        }));
+      },
+
+      deleteClient: (clientId, withPrograms = false) => {
+        const { clients, programs } = get();
+        const client = clients[clientId];
+        if (!client) return;
+
+        set((s) => {
+          const nextClients = { ...s.clients };
+          delete nextClients[clientId];
+
+          if (!withPrograms) return { clients: nextClients };
+
+          // Borrar también programas e historial del cliente
+          const nextPrograms = { ...s.programs };
+          const templateIds = new Set();
+          (client.programIds ?? []).forEach((pid) => {
+            const prog = programs[pid];
+            prog?.days.forEach((d) => templateIds.add(d.sessionTemplateId));
+            delete nextPrograms[pid];
+          });
+          return {
+            clients: nextClients,
+            programs: nextPrograms,
+            workoutLog: s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId)),
+          };
+        });
+      },
+
+      createProgramForClient: (clientId, numSessions, programName) => {
+        const programId = generateId('prog');
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+        const newTemplates = {};
+        const programDays = [];
+
+        for (let i = 0; i < numSessions; i++) {
+          const templateId = generateId('tpl');
+          const label = labels[i] ?? String(i + 1);
+          newTemplates[templateId] = {
+            id: templateId, programId,
+            label, name: `Sesión ${label}`,
+            emphasis: '', color: colors[i] ?? '#e8ff47',
+            exercises: [],
+          };
+          programDays.push({ sessionTemplateId: templateId, label });
+        }
+
+        const program = {
+          id: programId, name: programName.trim(), mode: 'managed', clientId,
+          type: 'primary', status: 'active',
+          createdAt: new Date().toISOString().split('T')[0],
+          currentWeek: 1, days: programDays,
+        };
+
+        set((s) => ({
+          programs: { ...s.programs, [programId]: program },
+          sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              programIds: [programId, ...(s.clients[clientId]?.programIds ?? [])],
+            },
+          },
+          ui: { ...s.ui, _editingProgramId: programId, view: 'programEditor' },
+        }));
+      },
+
+      // Abre el editor para un programa managed específico
+      setEditingProgram: (programId) => {
+        set((s) => ({ ui: { ...s.ui, _editingProgramId: programId, view: 'programEditor' } }));
+      },
+
+      // Exporta un programa managed específico (no el activo)
+      exportSpecificProgram: (programId) => {
+        const s = get();
+        const { programs, sessionTemplates, userPrograms, customExercises } = s;
+        const program = programs[programId];
+        if (!program) return;
+
+        const templateIds = program.days.map((d) => d.sessionTemplateId);
+        const relevantTemplates = {};
+        const relevantUserPrograms = {};
+        templateIds.forEach((id) => {
+          if (sessionTemplates[id]) relevantTemplates[id] = sessionTemplates[id];
+          if (userPrograms[id]) relevantUserPrograms[id] = userPrograms[id];
+        });
+
+        const allExerciseIds = new Set(
+          templateIds.flatMap((tplId) => {
+            const tpl = userPrograms[tplId] ?? sessionTemplates[tplId];
+            return tpl?.exercises.map((e) => e.exerciseId) ?? [];
+          })
+        );
+        const referencedCustom = {};
+        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
+          if (allExerciseIds.has(id)) referencedCustom[id] = def;
+        });
+
+        const json = JSON.stringify({
+          version: '2', exportDate: new Date().toISOString().split('T')[0],
+          exportType: 'program', appName: 'Fuerza & Control',
+          program: { ...program, mode: 'personal', status: 'active' },
+          sessionTemplates: relevantTemplates,
+          userPrograms: relevantUserPrograms,
+          customExercises: referencedCustom,
+          workoutLog: [],
+        }, null, 2);
+
+        downloadJSON(json, program.name);
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -266,19 +410,17 @@ export const useStore = create(
        * Restaura userPrograms al snapshot guardado y navega a home.
        * Si no había snapshot (nunca se llamó beginEditSession), no hace nada.
        */
-      cancelEditSession: (destination = 'home') => {
+      cancelEditSession: (destination = 'home', homeTab = 'session') => {
         const { _editSnapshot } = get();
         if (_editSnapshot !== null) {
           set({ userPrograms: _editSnapshot, _editSnapshot: null });
         }
+        set((s) => ({ ui: { ...s.ui, _editingProgramId: null, homeTab } }));
         get().navigate(destination);
       },
 
-      /**
-       * Confirma los cambios del editor (descarta el snapshot) y navega a home.
-       */
-      confirmEditSession: (destination = 'home') => {
-        set({ _editSnapshot: null });
+      confirmEditSession: (destination = 'home', homeTab = 'session') => {
+        set((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null, homeTab } }));
         get().navigate(destination);
       },
 
@@ -565,13 +707,12 @@ export const useStore = create(
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
           profile: isManaged ? s.profile : { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
-          ui: { ...s.ui, view: 'programEditor' },
+          ui: {
+            ...s.ui,
+            view: 'programEditor',
+            _editingProgramId: isManaged ? programId : null,
+          },
         }));
-
-        // Para managed, guardar el programId activo en el editor como contexto
-        if (isManaged) {
-          set((s) => ({ _editingProgramId: programId }));
-        }
       },
 
       // Añade una sesión vacía al programa activo
@@ -1007,6 +1148,7 @@ export const useStore = create(
         customExercises: state.customExercises,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
+        clients: state.clients,
       }),
       // Al rehidratar: si hay sesión en progreso, navegar a workout automáticamente
       onRehydrateStorage: () => (state) => {

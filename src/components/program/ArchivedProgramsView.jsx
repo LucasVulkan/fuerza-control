@@ -1,16 +1,23 @@
-import { useState } from 'react';
-import { useStore, selectArchivedPrograms } from '../../store/useStore';
-import { formatDate } from '../../utils/formatters';
+import { useState, useMemo } from 'react';
+import { useStore } from '../../store/useStore';
 
 export default function ArchivedProgramsView() {
-  const navigate        = useStore((s) => s.navigate);
-  const archived        = useStore(selectArchivedPrograms);
-  const restoreProgram  = useStore((s) => s.restoreProgram);
-  const deleteProgram   = useStore((s) => s.deleteProgram);
+  const navigate         = useStore((s) => s.navigate);
+  const programs         = useStore((s) => s.programs);
+  const restoreProgram   = useStore((s) => s.restoreProgram);
+  const deleteProgram    = useStore((s) => s.deleteProgram);
   const exportFullBackup = useStore((s) => s.exportFullBackup);
-  const workoutLog      = useStore((s) => s.workoutLog);
+  const workoutLog       = useStore((s) => s.workoutLog);
 
-  const [deleteModal, setDeleteModal] = useState(null); // programId
+  // useMemo evita el infinite loop — filter/sort crean nueva referencia cada render
+  const archived = useMemo(
+    () => Object.values(programs ?? {})
+      .filter((p) => p.status === 'archived')
+      .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '')),
+    [programs]
+  );
+
+  const [deleteModal, setDeleteModal] = useState(null);
 
   function getSessionCount(program) {
     const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));

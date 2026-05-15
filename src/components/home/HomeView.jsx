@@ -3,6 +3,7 @@ import { useStore, selectActiveProgram } from '../../store/useStore';
 import DayCard from './DayCard';
 import HistoryView from '../history/HistoryView';
 import StatsView from '../stats/StatsView';
+import ClientsView from '../program/ClientsView';
 
 const TABS = [
   { id: 'session',  label: 'Sesión',    icon: '🏋️' },
@@ -14,7 +15,8 @@ const TABS = [
 const BOTTOM_BAR_HEIGHT = 64;
 
 export default function HomeView() {
-  const [activeTab, setActiveTab] = useState('session');
+  const ui = useStore((s) => s.ui);
+  const [activeTab, setActiveTab] = useState(ui.homeTab ?? 'session');
   const [archiveModal, setArchiveModal] = useState(false);
 
   const activeProgram    = useStore(selectActiveProgram);
@@ -49,7 +51,7 @@ export default function HomeView() {
       )}
       {activeTab === 'history'  && <HistoryView embedded />}
       {activeTab === 'progress' && <StatsView embedded />}
-      {activeTab === 'clients'  && <ClientsTab navigate={navigate} />}
+      {activeTab === 'clients'  && <ClientsView />}
 
       {/* Bottom bar */}
       <div style={{
@@ -107,17 +109,19 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
         <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>🏋️</span>
-        No hay programa activo.<br />
-        <button
-          onClick={() => navigate('onboarding')}
-          style={{
-            marginTop: 16, background: 'var(--accent)', border: 'none', borderRadius: 8,
-            color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 16, letterSpacing: 1, padding: '10px 24px', cursor: 'pointer',
-          }}
-        >
-          CREAR PROGRAMA
-        </button>
+        No hay programa activo.
+        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 240, margin: '20px auto 0' }}>
+          <button
+            onClick={() => navigate('onboarding')}
+            style={{
+              background: 'var(--accent)', border: 'none', borderRadius: 10,
+              color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 18, letterSpacing: 1, padding: '13px 24px', cursor: 'pointer',
+            }}
+          >
+            ＋ NUEVO PROGRAMA
+          </button>
+        </div>
       </div>
     );
   }
@@ -157,27 +161,6 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
           <ProgramBtn label="Archivar" onClick={onArchive} danger />
         </div>
       </div>
-    </div>
-  );
-}
-
-// PRO FEATURE — tab de clientes en la home (enlaza a ClientsView)
-function ClientsTab({ navigate }) {
-  return (
-    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Clientes</p>
-      <button
-        onClick={() => navigate('clients')}
-        style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '16px 18px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13,
-        }}
-      >
-        <span>👥 Ver todos los clientes</span>
-        <span style={{ color: 'var(--muted)' }}>›</span>
-      </button>
     </div>
   );
 }
