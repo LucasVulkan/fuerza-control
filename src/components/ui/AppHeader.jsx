@@ -91,6 +91,7 @@ export default function AppHeader({ onImportFile }) {
             boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
           }}>
             <MenuItem label="＋ Nuevo programa" onClick={() => { setMenuOpen(false); navigate('onboarding'); }} />
+            <MenuItem label="🗂 Programas archivados" onClick={() => { setMenuOpen(false); navigate('archivedPrograms'); }} />
 
             <div style={{ padding: '8px 16px 4px', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
               Exportar

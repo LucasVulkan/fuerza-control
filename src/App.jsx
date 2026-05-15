@@ -20,6 +20,8 @@ import OnboardingView from './components/onboarding/OnboardingView';
 import ProgramSummaryView from './components/onboarding/ProgramSummaryView';
 import ProgramPrintView from './components/program/ProgramPrintView';
 import ImportModal from './components/ui/ImportModal';
+import ArchivedProgramsView from './components/program/ArchivedProgramsView';
+import ClientsView from './components/program/ClientsView';
 
 export default function App() {
   const view       = useStore(selectView);
@@ -69,8 +71,10 @@ export default function App() {
       {view === 'workout'        && <WorkoutView />}
       {view === 'history'        && <HistoryView />}
       {view === 'stats'          && <StatsView />}
-      {view === 'programEditor'  && <ProgramEditorView />}
-      {view === 'programPrint'   && <ProgramPrintView />}
+      {view === 'programEditor'      && <ProgramEditorView />}
+      {view === 'programPrint'       && <ProgramPrintView />}
+      {view === 'archivedPrograms'   && <ArchivedProgramsView />}
+      {view === 'clients'            && <ClientsView />}
 
       <Toast />
       {!isOnboarding && !isPrint && <RestTimerBar />}

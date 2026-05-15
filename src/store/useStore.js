@@ -131,20 +131,83 @@ export const useStore = create(
       /**
        * Archiva el programa activo (no lo elimina, lo marca como archivado).
        */
-      archiveActiveProgram: () => {
-        const { profile, programs } = get();
-        if (!profile.activeProgramId) return;
+      // Archivar programa (con opción de limpiar historial)
+      archiveProgram: (programId, clearHistory = false) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program) return;
+        const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+
         set((s) => ({
           programs: {
             ...s.programs,
-            [profile.activeProgramId]: {
-              ...programs[profile.activeProgramId],
+            [programId]: {
+              ...program,
               status: 'archived',
+              archivedAt: new Date().toISOString().split('T')[0],
             },
           },
-          profile: { ...s.profile, activeProgramId: null },
-          ui: { ...s.ui, view: 'onboarding' },
+          workoutLog: clearHistory
+            ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
+            : s.workoutLog,
+          profile: s.profile.activeProgramId === programId
+            ? { ...s.profile, activeProgramId: null, onboardingCompleted: false }
+            : s.profile,
+          ui: s.profile.activeProgramId === programId
+            ? { ...s.ui, view: 'onboarding' }
+            : s.ui,
         }));
+      },
+
+      // Alias para compatibilidad
+      archiveActiveProgram: () => {
+        const { profile } = get();
+        if (!profile.activeProgramId) return;
+        get().archiveProgram(profile.activeProgramId, false);
+      },
+
+      // Restaurar un programa archivado como activo personal
+      restoreProgram: (programId) => {
+        const { programs, profile } = get();
+        const program = programs[programId];
+        if (!program) return;
+
+        // Archivar el actual si hay uno
+        const updated = { ...programs };
+        if (profile.activeProgramId && profile.activeProgramId !== programId) {
+          updated[profile.activeProgramId] = {
+            ...updated[profile.activeProgramId],
+            status: 'archived',
+            archivedAt: new Date().toISOString().split('T')[0],
+          };
+        }
+        updated[programId] = {
+          ...program, status: 'active', archivedAt: null, mode: 'personal',
+        };
+
+        set((s) => ({
+          programs: updated,
+          profile: { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
+          ui: { ...s.ui, view: 'home' },
+        }));
+      },
+
+      // Eliminar programa definitivamente
+      deleteProgram: (programId, deleteHistory = false) => {
+        const { programs } = get();
+        const program = programs[programId];
+        const templateIds = new Set(program?.days.map((d) => d.sessionTemplateId) ?? []);
+
+        set((s) => {
+          const next = { ...s.programs };
+          delete next[programId];
+          return {
+            programs: next,
+            workoutLog: deleteHistory
+              ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
+              : s.workoutLog,
+          };
+        });
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -469,7 +532,7 @@ export const useStore = create(
       },
 
       // Crea un programa vacío con N sesiones y va al editor
-      createEmptyProgram: (numSessions, programName = 'Mi programa') => {
+      createEmptyProgram: (numSessions, programName = 'Mi programa', mode = 'personal') => {
         const programId = generateId('prog');
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
@@ -489,7 +552,7 @@ export const useStore = create(
         }
 
         const program = {
-          id: programId, name: programName,
+          id: programId, name: programName, mode,
           type: 'primary', status: 'active',
           createdAt: new Date().toISOString().split('T')[0],
           currentWeek: 1,
@@ -497,12 +560,18 @@ export const useStore = create(
           days: programDays,
         };
 
+        const isManaged = mode === 'managed';
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
-          profile: { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
+          profile: isManaged ? s.profile : { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
           ui: { ...s.ui, view: 'programEditor' },
         }));
+
+        // Para managed, guardar el programId activo en el editor como contexto
+        if (isManaged) {
+          set((s) => ({ _editingProgramId: programId }));
+        }
       },
 
       // Añade una sesión vacía al programa activo
@@ -878,7 +947,7 @@ export const useStore = create(
                   onboardingCompleted: data.program ? true : (data.profile?.onboardingCompleted ?? s.profile.onboardingCompleted),
                 },
                 programs: data.program
-                  ? { ...s.programs, [data.program.id]: data.program }
+                  ? { ...s.programs, [data.program.id]: { ...data.program, mode: 'personal', status: 'active' } }
                   : s.programs,
                 sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
                 userPrograms: { ...keptUserPrograms, ...data.userPrograms },
@@ -903,7 +972,7 @@ export const useStore = create(
               return { ok: false, error: 'Sin programa' };
             }
             set((s) => ({
-              programs: { ...s.programs, [data.program.id]: data.program },
+              programs: { ...s.programs, [data.program.id]: { ...data.program, mode: 'personal', status: 'active' } },
               sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
               userPrograms: { ...s.userPrograms, ...data.userPrograms },
               customExercises: { ...s.customExercises, ...data.customExercises },
@@ -980,3 +1049,15 @@ export const selectProfile = (s) => s.profile;
 
 /** Programa activo */
 export const selectActiveProgram = (s) => s.programs[s.profile.activeProgramId];
+
+/** Programas archivados */
+export const selectArchivedPrograms = (s) =>
+  Object.values(s.programs ?? {})
+    .filter((p) => p.status === 'archived')
+    .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''));
+
+/** Programas de clientes (managed) — PRO FEATURE */
+export const selectManagedPrograms = (s) =>
+  Object.values(s.programs ?? {})
+    .filter((p) => p.mode === 'managed' && p.status !== 'archived')
+    .sort((a, b) => a.name.localeCompare(b.name));
