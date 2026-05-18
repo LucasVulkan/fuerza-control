@@ -15,29 +15,28 @@ import ProgramPrintView from './components/program/ProgramPrintView';
 import ImportModal from './components/ui/ImportModal';
 
 export default function App() {
-  const view        = useStore(selectView);
-  const importData  = useStore((s) => s.importData);
+  const view       = useStore(selectView);
+  const importData = useStore((s) => s.importData);
   const isOnboarding = view === 'onboarding';
   const isPrint      = view === 'programPrint';
 
   const [importFile, setImportFile] = useState(null);
 
-  // File Handling API — procesa archivos .json abiertos desde el sistema
+  // File Handling API — abre archivos .fcdata desde el sistema de archivos
   useEffect(() => {
     if (!('launchQueue' in window)) return;
     window.launchQueue.setConsumer(async (launchParams) => {
       if (!launchParams.files?.length) return;
       try {
-        const fileHandle = launchParams.files[0];
-        const file = await fileHandle.getFile();
+        const file = await launchParams.files[0].getFile();
         setImportFile(file);
       } catch (e) {
-        console.warn('Error al leer archivo de lanzamiento:', e);
+        console.warn('launchQueue error:', e);
       }
     });
   }, []);
 
-  async function handleImportFile(file, mode) {
+  async function handleImport(file, mode) {
     setImportFile(null);
     await importData(file, mode);
   }
@@ -58,11 +57,10 @@ export default function App() {
       <Toast />
       {!isOnboarding && !isPrint && <RestTimerBar />}
 
-      {/* Modal de importación global — se activa desde AppHeader o al abrir un .json */}
       {importFile && (
         <ImportModal
           file={importFile}
-          onImport={handleImportFile}
+          onImport={handleImport}
           onClose={() => setImportFile(null)}
         />
       )}

@@ -4,7 +4,7 @@ export function downloadJSON(jsonString, name = 'fc-backup') {
     .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
     .replace(/\s+/g, '-')
     .toLowerCase();
-  const blob = new Blob([jsonString], { type: 'application/json' });
+  const blob = new Blob([jsonString], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
