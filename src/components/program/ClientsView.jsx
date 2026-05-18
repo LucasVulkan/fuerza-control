@@ -206,20 +206,23 @@ export default function ClientsView() {
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
     const fileName = `${safeName}.json`;
+    const file = new File([json], fileName, { type: 'text/plain' });
 
-    if (navigator.share) {
-      const file = new File([json], fileName, { type: 'text/plain' });
-      navigator.share({ files: [file], title: program.name, text: 'Programa — Fuerza & Control' })
-        .catch((e) => {
-          if (e.name === 'AbortError') return;
-          // Fallback si share falla
-          downloadBlob(json, fileName);
-          showToast('↓ Archivo descargado');
-        });
+    const hasShare = !!navigator.share;
+    const canFiles = navigator.canShare?.({ files: [file] }) ?? false;
+    showToast(`share:${hasShare} files:${canFiles}`);
+
+    if (hasShare && canFiles) {
+      navigator.share({ files: [file], title: program.name, text: 'Programa — F&C' })
+        .catch((e) => { if (e.name !== 'AbortError') { downloadBlob(json, fileName); } });
+      return;
+    }
+    if (hasShare) {
+      navigator.share({ title: program.name, text: `Programa: ${program.name}` }).catch(() => {});
+      setTimeout(() => downloadBlob(json, fileName), 300);
       return;
     }
     downloadBlob(json, fileName);
-    showToast('↓ Archivo descargado');
   }
 
   function downloadBlob(content, fileName) {
