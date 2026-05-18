@@ -186,7 +186,7 @@ export default function ClientsView() {
     }
   }
 
-  async function handleShare(program) {
+  function handleShare(program) {
     const relevantTemplates = {};
     const relevantUserPrograms = {};
     program.days.forEach(({ sessionTemplateId }) => {
@@ -206,13 +206,20 @@ export default function ClientsView() {
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
     const fileName = `${safeName}.json`;
-    const file = new File([json], fileName, { type: 'text/plain' });
 
-    try {
-      await navigator.share({ files: [file], title: program.name, text: 'Programa — F&C' });
-    } catch (e) {
-      showToast(`Error: ${e.name} — ${e.message}`);
-      if (e.name !== 'AbortError') downloadBlob(json, fileName);
+    // Descargar el archivo
+    downloadBlob(json, fileName);
+
+    // Abrir selector nativo de compartir (sin archivo — evita el bug de Chrome PWA)
+    if (navigator.share) {
+      setTimeout(() => {
+        navigator.share({
+          title: program.name,
+          text: `Te envío el programa "${program.name}". Importa el archivo .json que acaba de descargarse en la app Fuerza & Control.`,
+        }).catch(() => {});
+      }, 500); // pequeño delay para que la descarga se inicie primero
+    } else {
+      showToast('↓ Archivo descargado');
     }
   }
 
