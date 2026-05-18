@@ -475,7 +475,7 @@ export const useStore = create(
       // PRO FEATURE — Compartir programa por Web Share API
       shareProgram: async (programId) => {
         const s = get();
-        const { programs, sessionTemplates, userPrograms, customExercises } = s;
+        const { programs, sessionTemplates, userPrograms } = s;
         const program = programs[programId];
         if (!program) return;
 
@@ -497,18 +497,38 @@ export const useStore = create(
           workoutLog: [],
         }, null, 2);
 
-        const fileName = `${program.name.replace(/\s+/g, '-').toLowerCase()}.json`;
-        const file = new File([json], fileName, { type: 'application/json' });
+        const fileName = `${program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase()}.json`;
 
-        if (navigator.canShare?.({ files: [file] })) {
+        // Intentar Web Share API con archivo (requiere HTTPS + navegador compatible)
+        if (navigator.share) {
           try {
-            await navigator.share({ files: [file], title: program.name, text: 'Programa de entrenamiento — Fuerza & Control' });
+            const file = new File([json], fileName, { type: 'application/json' });
+            await navigator.share({
+              files: [file],
+              title: program.name,
+              text: 'Programa de entrenamiento — Fuerza & Control',
+            });
             return;
           } catch (e) {
-            if (e.name === 'AbortError') return; // usuario canceló
+            if (e.name === 'AbortError') return; // usuario canceló — no hacer nada más
+            // Si falla por archivos no soportados, intentar sin archivo
+            try {
+              const blob = new Blob([json], { type: 'text/plain' });
+              const textFile = new File([blob], fileName, { type: 'text/plain' });
+              await navigator.share({
+                files: [textFile],
+                title: program.name,
+                text: 'Programa de entrenamiento — Fuerza & Control',
+              });
+              return;
+            } catch (e2) {
+              if (e2.name === 'AbortError') return;
+              // Ambos fallaron — caer al fallback de descarga
+            }
           }
         }
-        // Fallback: descargar
+
+        // Fallback: descarga directa
         downloadJSON(json, program.name);
         get().showToast('↓ Archivo descargado');
       },
