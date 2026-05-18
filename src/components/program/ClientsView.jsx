@@ -33,7 +33,9 @@ export default function ClientsView() {
   const setEditingProgram      = useStore((s) => s.setEditingProgram);
   const setPrintingProgram     = useStore((s) => s.setPrintingProgram);
   const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
-  const shareProgram           = useStore((s) => s.shareProgram);
+  const sessionTemplates       = useStore((s) => s.sessionTemplates);
+  const userPrograms           = useStore((s) => s.userPrograms);
+  const showToast              = useStore((s) => s.showToast);
   const importForClient       = useStore((s) => s.importForClient);
   const setClientActiveProgram = useStore((s) => s.setClientActiveProgram);
   const updateClientInfo          = useStore((s) => s.updateClientInfo);
@@ -182,6 +184,51 @@ export default function ClientsView() {
       deleteClient(clientId, true);
       if (selectedClientId === clientId) setSelectedClientId(null);
     }
+  }
+
+  function handleShare(program) {
+    const relevantTemplates = {};
+    const relevantUserPrograms = {};
+    program.days.forEach(({ sessionTemplateId }) => {
+      if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
+      if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
+    });
+
+    const json = JSON.stringify({
+      version: '2', exportType: 'program',
+      exportDate: new Date().toISOString().split('T')[0],
+      appName: 'Fuerza & Control',
+      program: { ...program, mode: 'personal', status: 'active' },
+      sessionTemplates: relevantTemplates,
+      userPrograms: relevantUserPrograms,
+      customExercises: {}, workoutLog: [],
+    }, null, 2);
+
+    const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+    const fileName = `${safeName}.json`;
+
+    if (navigator.share) {
+      const file = new File([json], fileName, { type: 'text/plain' });
+      navigator.share({ files: [file], title: program.name, text: 'Programa — Fuerza & Control' })
+        .catch((e) => {
+          if (e.name === 'AbortError') return;
+          // Fallback si share falla
+          downloadBlob(json, fileName);
+          showToast('↓ Archivo descargado');
+        });
+      return;
+    }
+    downloadBlob(json, fileName);
+    showToast('↓ Archivo descargado');
+  }
+
+  function downloadBlob(content, fileName) {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
   function handleDeleteProgram(programId) {
@@ -367,7 +414,7 @@ export default function ClientsView() {
                   <Div1 />
                   <ActionBtn label="Editar"    onClick={() => setEditingProgram(program.id)} />
                   <Div1 />
-                  <ActionBtn label="Compartir" onClick={() => shareProgram(program.id)} />
+                  <ActionBtn label="Compartir" onClick={() => handleShare(program)} />
                   <Div1 />
                   <ActionBtn label="⋯" onClick={(e) => openContextMenu(e, program.id)} />
                 </div>
