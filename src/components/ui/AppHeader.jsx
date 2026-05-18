@@ -143,6 +143,16 @@ export default function AppHeader({ onImportFile }) {
                 />
               ))}
             </div>
+
+            {/* Versión de la app */}
+            <div style={{
+              padding: '8px 16px 10px',
+              borderTop: '1px solid var(--border)',
+              fontSize: 10, color: 'var(--muted2)',
+              letterSpacing: 1, textAlign: 'center',
+            }}>
+              F&C · v{import.meta.env.VITE_APP_VERSION ?? '—'}
+            </div>
           </div>
         </>
       )}
