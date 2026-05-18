@@ -1,4 +1,3 @@
-const EXPORT_VERSION = '2';
 const EXT = '.fcdata';
 
 export function downloadJSON(jsonString, name = 'fc-backup') {
@@ -12,6 +11,48 @@ export function downloadJSON(jsonString, name = 'fc-backup') {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function exportFullBackup(storeState) {
+  const { profile, workoutLog, programs, sessionTemplates, userPrograms, customExercises } = storeState;
+  return JSON.stringify({
+    version: '2',
+    exportDate: new Date().toISOString().split('T')[0],
+    exportType: 'full',
+    appName: 'Fuerza & Control',
+    profile,
+    programs,
+    sessionTemplates,
+    userPrograms,
+    customExercises,
+    workoutLog,
+  }, null, 2);
+}
+
+export function exportProgramOnly(storeState) {
+  const { profile, programs, sessionTemplates, userPrograms, customExercises } = storeState;
+  const activeProgramId = profile.activeProgramId;
+  const program = programs[activeProgramId];
+  if (!program) return JSON.stringify({ version: '2', exportType: 'program', appName: 'Fuerza & Control' });
+
+  const relevantTemplates = {};
+  const relevantUserPrograms = {};
+  (program.days ?? []).forEach(({ sessionTemplateId }) => {
+    if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
+    if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
+  });
+
+  return JSON.stringify({
+    version: '2',
+    exportDate: new Date().toISOString().split('T')[0],
+    exportType: 'program',
+    appName: 'Fuerza & Control',
+    program: { ...program, mode: 'personal', status: 'active' },
+    sessionTemplates: relevantTemplates,
+    userPrograms: relevantUserPrograms,
+    customExercises: {},
+    workoutLog: [],
+  }, null, 2);
 }
 
 export function parseImportFile(jsonString) {
