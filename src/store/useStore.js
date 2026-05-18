@@ -497,34 +497,24 @@ export const useStore = create(
           workoutLog: [],
         }, null, 2);
 
-        const fileName = `${program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase()}.json`;
+        const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+        const fileName = `${safeName}.json`;
 
-        // Intentar Web Share API con archivo (requiere HTTPS + navegador compatible)
+        // Web Share API — usar text/plain porque application/json no está en la lista
+        // de tipos permitidos por Android Chrome. El contenido JSON es idéntico.
         if (navigator.share) {
           try {
-            const file = new File([json], fileName, { type: 'application/json' });
-            await navigator.share({
-              files: [file],
-              title: program.name,
-              text: 'Programa de entrenamiento — Fuerza & Control',
-            });
-            return;
-          } catch (e) {
-            if (e.name === 'AbortError') return; // usuario canceló — no hacer nada más
-            // Si falla por archivos no soportados, intentar sin archivo
-            try {
-              const blob = new Blob([json], { type: 'text/plain' });
-              const textFile = new File([blob], fileName, { type: 'text/plain' });
+            const file = new File([json], fileName, { type: 'text/plain' });
+            if (navigator.canShare?.({ files: [file] })) {
               await navigator.share({
-                files: [textFile],
+                files: [file],
                 title: program.name,
                 text: 'Programa de entrenamiento — Fuerza & Control',
               });
               return;
-            } catch (e2) {
-              if (e2.name === 'AbortError') return;
-              // Ambos fallaron — caer al fallback de descarga
             }
+          } catch (e) {
+            if (e.name === 'AbortError') return;
           }
         }
 
