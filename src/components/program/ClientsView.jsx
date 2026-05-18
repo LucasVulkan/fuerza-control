@@ -186,7 +186,7 @@ export default function ClientsView() {
     }
   }
 
-  function handleShare(program) {
+  async function handleShare(program) {
     const relevantTemplates = {};
     const relevantUserPrograms = {};
     program.days.forEach(({ sessionTemplateId }) => {
@@ -208,21 +208,12 @@ export default function ClientsView() {
     const fileName = `${safeName}.json`;
     const file = new File([json], fileName, { type: 'text/plain' });
 
-    const hasShare = !!navigator.share;
-    const canFiles = navigator.canShare?.({ files: [file] }) ?? false;
-    showToast(`share:${hasShare} files:${canFiles}`);
-
-    if (hasShare && canFiles) {
-      navigator.share({ files: [file], title: program.name, text: 'Programa — F&C' })
-        .catch((e) => { if (e.name !== 'AbortError') { downloadBlob(json, fileName); } });
-      return;
+    try {
+      await navigator.share({ files: [file], title: program.name, text: 'Programa — F&C' });
+    } catch (e) {
+      showToast(`Error: ${e.name} — ${e.message}`);
+      if (e.name !== 'AbortError') downloadBlob(json, fileName);
     }
-    if (hasShare) {
-      navigator.share({ title: program.name, text: `Programa: ${program.name}` }).catch(() => {});
-      setTimeout(() => downloadBlob(json, fileName), 300);
-      return;
-    }
-    downloadBlob(json, fileName);
   }
 
   function downloadBlob(content, fileName) {
