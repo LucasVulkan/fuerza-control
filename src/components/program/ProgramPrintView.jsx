@@ -38,10 +38,26 @@ export default function ProgramPrintView() {
   const navigate             = useStore((s) => s.navigate);
   const programs             = useStore((s) => s.programs);
   const profile              = useStore((s) => s.profile);
+  const ui                   = useStore((s) => s.ui);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
+  const customExercises      = useStore((s) => s.customExercises);
 
-  const activeProgram = programs[profile.activeProgramId];
+  // Si venimos del área de clientes (_viewingProgramId), mostramos ese programa
+  const programId     = ui._viewingProgramId ?? profile.activeProgramId;
+  const fromClients   = !!ui._viewingProgramId;
+  const activeProgram = programs[programId];
+  const allExercises  = { ...exerciseLibrary, ...customExercises };
+
+  function handleBack() {
+    // Limpiar _viewingProgramId y volver
+    useStore.setState((s) => ({ ui: { ...s.ui, _viewingProgramId: null } }));
+    navigate(fromClients ? 'home' : 'home');
+    if (fromClients) {
+      // Restaurar tab de clientes
+      useStore.setState((s) => ({ ui: { ...s.ui, homeTab: 'clients', _viewingProgramId: null } }));
+    }
+  }
   if (!activeProgram) return null;
 
   const days = activeProgram.days
@@ -87,7 +103,7 @@ export default function ProgramPrintView() {
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <button
-            onClick={() => navigate('home')}
+            onClick={() => handleBack()}
             style={{ background: 'none', border: 'none', color: '#888', fontSize: 22, cursor: 'pointer', padding: '0 8px 0 0' }}
           >
             ‹
@@ -207,7 +223,7 @@ export default function ProgramPrintView() {
                 </thead>
                 <tbody>
                   {template.exercises.map((exConfig, i) => {
-                    const def = exerciseLibrary[exConfig.exerciseId];
+                    const def = allExercises[exConfig.exerciseId];
                     if (!def) return null;
                     const { sets, reps, restText } = buildTarget(def, exConfig);
                     const patternLabel = PATTERN_LABEL[exConfig.pattern ?? def.pattern];

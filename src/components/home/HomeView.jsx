@@ -18,6 +18,14 @@ export default function HomeView() {
   const ui = useStore((s) => s.ui);
   const [activeTab, setActiveTab] = useState(ui.homeTab ?? 'session');
   const [archiveModal, setArchiveModal] = useState(false);
+  const [clientsKey, setClientsKey] = useState(0);
+
+  function handleTabClick(tabId) {
+    if (tabId === 'clients' && activeTab === 'clients') {
+      setClientsKey((k) => k + 1); // fuerza remount de ClientsView → vuelve a lista
+    }
+    setActiveTab(tabId);
+  }
 
   const activeProgram    = useStore(selectActiveProgram);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -51,7 +59,7 @@ export default function HomeView() {
       )}
       {activeTab === 'history'  && <HistoryView embedded />}
       {activeTab === 'progress' && <StatsView embedded />}
-      {activeTab === 'clients'  && <ClientsView />}
+      {activeTab === 'clients'  && <ClientsView key={clientsKey} />}
 
       {/* Bottom bar */}
       <div style={{
@@ -65,7 +73,7 @@ export default function HomeView() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               style={{
                 flex: 1, background: 'none', border: 'none', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -127,7 +135,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
   }
 
   return (
-    <div>
+    <div style={{ borderTop: '1px solid var(--border)' }}>
       <div style={{ padding: '12px 20px 4px' }}>
         <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Programa activo</p>
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{activeProgram.name}</p>

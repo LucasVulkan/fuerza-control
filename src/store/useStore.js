@@ -52,6 +52,7 @@ const INITIAL_UI = {
     exerciseName: '',
   },
   _editingProgramId: null,
+  _viewingProgramId: null,  // programId para ver en programPrint (managed)
   homeTab: 'session',  // tab activo al volver a home
 };
 
@@ -231,7 +232,13 @@ export const useStore = create(
         set((s) => ({
           clients: {
             ...s.clients,
-            [id]: { id, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], programIds: [] },
+            [id]: {
+              id, name: name.trim(),
+              createdAt: new Date().toISOString().split('T')[0],
+              programIds: [], activeProgramId: null,
+              fullName: '', phone: '', email: '', notes: '',
+              bodyWeight: [], billing: [],
+            },
           },
         }));
         return id;
@@ -241,6 +248,152 @@ export const useStore = create(
         set((s) => ({
           clients: { ...s.clients, [clientId]: { ...s.clients[clientId], name: name.trim() } },
         }));
+      },
+
+      updateClientInfo: (clientId, fields) => {
+        set((s) => ({
+          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...fields } },
+        }));
+      },
+
+      addClientBilling: (clientId, entry) => {
+        const id = generateId('bill');
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              billing: [
+                { id, ...entry, status: entry.status ?? 'pending' },
+                ...(s.clients[clientId].billing ?? []),
+              ],
+            },
+          },
+        }));
+      },
+
+      updateClientBillingStatus: (clientId, billingId, status) => {
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              billing: (s.clients[clientId].billing ?? []).map((b) =>
+                b.id === billingId ? { ...b, status } : b
+              ),
+            },
+          },
+        }));
+      },
+
+      removeClientBilling: (clientId, billingId) => {
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              billing: (s.clients[clientId].billing ?? []).filter((b) => b.id !== billingId),
+            },
+          },
+        }));
+      },
+
+      setClientActiveProgram: (clientId, programId) => {
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], activeProgramId: programId },
+          },
+        }));
+      },
+
+      addClientBodyWeight: (clientId, date, weight) => {
+        const client = get().clients[clientId];
+        if (!client) return;
+        const existing = (client.bodyWeight ?? []).filter((e) => e.date !== date);
+        const sorted = [...existing, { date, weight: parseFloat(weight) }]
+          .sort((a, b) => a.date.localeCompare(b.date));
+        set((s) => ({
+          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], bodyWeight: sorted } },
+        }));
+      },
+
+      removeClientBodyWeight: (clientId, date) => {
+        const client = get().clients[clientId];
+        if (!client) return;
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              bodyWeight: (s.clients[clientId].bodyWeight ?? []).filter((e) => e.date !== date),
+            },
+          },
+        }));
+      },
+
+      importForClient: async (clientId, file, mode) => {
+        try {
+          const text = await readFileAsText(file);
+          const result = parseImportFile(text);
+          if (!result.ok) { get().showToast('⚠️ ' + result.error); return; }
+          const data = result.data;
+          const client = get().clients[clientId];
+          if (!client) return;
+
+          if (mode === 'replace') {
+            if (data.program) {
+              const programId = data.program.id;
+              const alreadyLinked = (client.programIds ?? []).includes(programId);
+              set((s) => ({
+                programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
+                sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+                userPrograms: { ...s.userPrograms, ...data.userPrograms },
+                customExercises: { ...s.customExercises, ...data.customExercises },
+                clients: alreadyLinked ? s.clients : {
+                  ...s.clients,
+                  [clientId]: { ...s.clients[clientId], programIds: [...(s.clients[clientId].programIds ?? []), programId] },
+                },
+              }));
+            }
+            const currentIds = new Set(get().workoutLog.map((e) => e.id));
+            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
+            if (newEntries.length) set((s) => ({ workoutLog: [...s.workoutLog, ...newEntries] }));
+            get().showToast('✓ Programa e historial actualizados');
+          }
+
+          if (mode === 'add_program') {
+            if (!data.program) { get().showToast('⚠️ El archivo no contiene programa'); return; }
+            const programId = data.program.id;
+            set((s) => ({
+              programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
+              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+              userPrograms: { ...s.userPrograms, ...data.userPrograms },
+              customExercises: { ...s.customExercises, ...data.customExercises },
+              clients: {
+                ...s.clients,
+                [clientId]: {
+                  ...s.clients[clientId],
+                  programIds: [...new Set([...(s.clients[clientId].programIds ?? []), programId])],
+                },
+              },
+            }));
+            get().showToast('✓ Programa añadido al cliente');
+          }
+
+          if (mode === 'merge_log') {
+            const currentIds = new Set(get().workoutLog.map((e) => e.id));
+            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
+            set((s) => ({
+              workoutLog: [...s.workoutLog, ...newEntries],
+              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+              userPrograms: { ...s.userPrograms, ...data.userPrograms },
+            }));
+            get().showToast(`✓ ${newEntries.length} sesiones añadidas`);
+          }
+        } catch (e) {
+          get().showToast('⚠️ Error al leer el archivo');
+        }
       },
 
       deleteClient: (clientId, withPrograms = false) => {
@@ -315,6 +468,10 @@ export const useStore = create(
         set((s) => ({ ui: { ...s.ui, _editingProgramId: programId, view: 'programEditor' } }));
       },
 
+      setPrintingProgram: (programId) => {
+        set((s) => ({ ui: { ...s.ui, _viewingProgramId: programId, view: 'programPrint' } }));
+      },
+
       // Exporta un programa managed específico (no el activo)
       exportSpecificProgram: (programId) => {
         const s = get();
@@ -352,6 +509,95 @@ export const useStore = create(
         }, null, 2);
 
         downloadJSON(json, program.name);
+      },
+
+      // PRO FEATURE — Exportar backup completo de todos los clientes
+      exportClientsBackup: () => {
+        const s = get();
+        const { clients, programs, sessionTemplates, userPrograms, customExercises, workoutLog } = s;
+
+        // Programas managed vinculados a clientes
+        const managedProgramIds = new Set(
+          Object.values(clients ?? {}).flatMap((c) => c.programIds ?? [])
+        );
+        const managedPrograms = {};
+        const managedTemplates = {};
+        const managedUserPrograms = {};
+        managedProgramIds.forEach((pid) => {
+          if (programs[pid]) managedPrograms[pid] = programs[pid];
+        });
+        Object.values(managedPrograms).forEach((prog) => {
+          prog.days.forEach((d) => {
+            if (sessionTemplates[d.sessionTemplateId]) managedTemplates[d.sessionTemplateId] = sessionTemplates[d.sessionTemplateId];
+            if (userPrograms[d.sessionTemplateId]) managedUserPrograms[d.sessionTemplateId] = userPrograms[d.sessionTemplateId];
+          });
+        });
+
+        const managedTemplateIds = new Set(Object.keys({ ...managedTemplates, ...managedUserPrograms }));
+        const managedLog = workoutLog.filter((e) => managedTemplateIds.has(e.sessionTemplateId));
+
+        const usedExerciseIds = new Set(
+          Object.values({ ...managedTemplates, ...managedUserPrograms })
+            .flatMap((t) => (t.exercises ?? []).map((e) => e.exerciseId))
+        );
+        const usedCustomExercises = {};
+        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
+          if (usedExerciseIds.has(id)) usedCustomExercises[id] = def;
+        });
+
+        const json = JSON.stringify({
+          version: '2',
+          exportDate: new Date().toISOString().split('T')[0],
+          exportType: 'clients_backup',
+          appName: 'Fuerza & Control',
+          clients: clients ?? {},
+          programs: managedPrograms,
+          sessionTemplates: managedTemplates,
+          userPrograms: managedUserPrograms,
+          customExercises: usedCustomExercises,
+          workoutLog: managedLog,
+        }, null, 2);
+
+        downloadJSON(json, 'backup-clientes');
+      },
+
+      // PRO FEATURE — Importar backup de clientes (reemplaza todo el área de clientes)
+      importClientsBackup: async (file) => {
+        try {
+          const text = await readFileAsText(file);
+          const parsed = JSON.parse(text);
+
+          if (parsed.exportType !== 'clients_backup') {
+            get().showToast('⚠️ El archivo no es un backup de clientes');
+            return { ok: false };
+          }
+
+          set((s) => {
+            // Mantener programas personales, reemplazar los managed
+            const personalPrograms = Object.fromEntries(
+              Object.entries(s.programs).filter(([, p]) => p.mode !== 'managed')
+            );
+            const personalTemplateIds = new Set(
+              Object.values(personalPrograms).flatMap((p) => p.days.map((d) => d.sessionTemplateId))
+            );
+            const personalLog = s.workoutLog.filter((e) => personalTemplateIds.has(e.sessionTemplateId));
+
+            return {
+              clients: parsed.clients ?? {},
+              programs: { ...personalPrograms, ...(parsed.programs ?? {}) },
+              sessionTemplates: { ...s.sessionTemplates, ...(parsed.sessionTemplates ?? {}) },
+              userPrograms: { ...s.userPrograms, ...(parsed.userPrograms ?? {}) },
+              customExercises: { ...s.customExercises, ...(parsed.customExercises ?? {}) },
+              workoutLog: [...personalLog, ...(parsed.workoutLog ?? [])],
+            };
+          });
+
+          get().showToast('✓ Backup de clientes importado');
+          return { ok: true };
+        } catch {
+          get().showToast('⚠️ Error al leer el archivo');
+          return { ok: false };
+        }
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -892,6 +1138,7 @@ export const useStore = create(
         set((s) => ({
           workoutLog: [...s.workoutLog, logEntry],
           activeSession: INITIAL_ACTIVE_SESSION,
+          ui: { ...s.ui, homeTab: 'session' },  // siempre volver a Sesión tras guardar
         }));
 
         get().stopRestTimer();

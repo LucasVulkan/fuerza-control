@@ -20,14 +20,18 @@ function useDateTime() {
 }
 
 export default function AppHeader({ onImportFile }) {
-  const navigate          = useStore((s) => s.navigate);
-  const profile           = useStore((s) => s.profile);
-  const setProfile        = useStore((s) => s.setProfile);
-  const exportFullBackup  = useStore((s) => s.exportFullBackup);
-  const exportProgramOnly = useStore((s) => s.exportProgramOnly);
+  const navigate             = useStore((s) => s.navigate);
+  const profile              = useStore((s) => s.profile);
+  const setProfile           = useStore((s) => s.setProfile);
+  const exportFullBackup     = useStore((s) => s.exportFullBackup);
+  const exportProgramOnly    = useStore((s) => s.exportProgramOnly);
+  const exportClientsBackup  = useStore((s) => s.exportClientsBackup);   // PRO FEATURE
+  const importClientsBackup  = useStore((s) => s.importClientsBackup);   // PRO FEATURE
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const fileInputRef = useRef(null);
+  const [clientsImportWarning, setClientsImportWarning] = useState(null); // file | null
+  const fileInputRef        = useRef(null);
+  const clientsFileInputRef = useRef(null);
   const dateTime = useDateTime();
 
   const currentTheme = profile.theme ?? 'dark';
@@ -46,7 +50,22 @@ export default function AppHeader({ onImportFile }) {
     if (!file) return;
     e.target.value = '';
     setMenuOpen(false);
-    onImportFile(file); // sube el archivo al estado de App.jsx
+    onImportFile(file);
+  }
+
+  function handleClientsFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setMenuOpen(false);
+    setClientsImportWarning(file);
+  }
+
+  async function handleClientsImportConfirm() {
+    if (!clientsImportWarning) return;
+    const file = clientsImportWarning;
+    setClientsImportWarning(null);
+    await importClientsBackup(file);
   }
 
   return (
@@ -72,13 +91,9 @@ export default function AppHeader({ onImportFile }) {
       </div>
 
       {/* Input de archivo oculto */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
+      {/* PRO FEATURE — input backup clientes */}
+      <input ref={clientsFileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleClientsFileChange} />
 
       {/* Dropdown menú */}
       {menuOpen && (
@@ -98,11 +113,15 @@ export default function AppHeader({ onImportFile }) {
             </div>
             <MenuItem label="↑ Programa e historial" onClick={() => { setMenuOpen(false); exportFullBackup(); }} />
             <MenuItem label="↑ Programa" onClick={() => { setMenuOpen(false); exportProgramOnly(); }} />
+            {/* PRO FEATURE */}
+            <MenuItem label="↑ Backup clientes" onClick={() => { setMenuOpen(false); exportClientsBackup(); }} />
 
             <div style={{ padding: '8px 16px 4px', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
               Importar
             </div>
             <MenuItem label="↓ Importar archivo" onClick={() => { setMenuOpen(false); fileInputRef.current?.click(); }} />
+            {/* PRO FEATURE */}
+            <MenuItem label="↓ Importar backup clientes" onClick={() => { setMenuOpen(false); clientsFileInputRef.current?.click(); }} />
 
             <div style={{ padding: '8px 16px 4px', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
               Theme
@@ -123,6 +142,30 @@ export default function AppHeader({ onImportFile }) {
                   }}
                 />
               ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* PRO FEATURE — Warning modal para importar backup de clientes */}
+      {clientsImportWarning && (
+        <>
+          <div onClick={() => setClientsImportWarning(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-card)', zIndex: 50,
+            width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px',
+          }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, marginBottom: 8 }}>IMPORTAR BACKUP CLIENTES</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 16 }}>
+              <strong style={{ color: 'var(--orange)' }}>⚠️ Atención:</strong> Esta acción reemplazará todos los datos del área de clientes (clientes, programas, historial y facturación). Tus sesiones personales no se verán afectadas.
+              <br /><br />
+              <strong style={{ color: 'var(--text)' }}>{clientsImportWarning.name}</strong>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setClientsImportWarning(null)} style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleClientsImportConfirm} style={{ flex: 2, background: 'var(--orange)', border: 'none', borderRadius: 8, color: '#0d0d0d', fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, padding: '11px', cursor: 'pointer' }}>REEMPLAZAR TODO</button>
             </div>
           </div>
         </>
