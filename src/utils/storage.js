@@ -1,12 +1,14 @@
-const EXT = '.fcdata';
-
 export function downloadJSON(jsonString, name = 'fc-backup') {
-  const safe = name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+  const safe = name
+    .replace(/\.json$|\.fcdata$/i, '')  // quitar extensión previa si existe
+    .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase();
   const blob = new Blob([jsonString], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${safe}${EXT}`;
+  a.download = `${safe}.fcdata`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

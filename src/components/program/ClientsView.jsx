@@ -206,15 +206,16 @@ export default function ClientsView() {
     }, null, 2);
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
-    downloadBlob(json, `${safeName}.fcdata`);
+    downloadBlob(json, safeName);
     showToast('↓ Programa descargado');
   }
 
   function downloadBlob(content, fileName) {
+    const safe = fileName.replace(/\.json$|\.fcdata$/i, '').replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
     const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = fileName;
+    a.href = url; a.download = `${safe}.fcdata`;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
