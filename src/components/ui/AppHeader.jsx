@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
+import { APP_VERSION } from '../../version';
 
 const THEMES = [
   { id: 'dark',     label: 'Dark',     color: '#e8ff47' },
@@ -151,7 +152,7 @@ export default function AppHeader({ onImportFile }) {
               fontSize: 10, color: 'var(--muted2)',
               letterSpacing: 1, textAlign: 'center',
             }}>
-              F&C · v{import.meta.env.VITE_APP_VERSION ?? '—'}
+              F&C · v{APP_VERSION}
             </div>
           </div>
         </>
