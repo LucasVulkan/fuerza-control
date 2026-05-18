@@ -41,8 +41,14 @@ export default function SessionCard({ session, onDelete }) {
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, color }}>
             DÍA {label} · {name.toUpperCase()}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-            {formatDate(session.timestamp)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDate(session.timestamp)}</span>
+            {session.notes?.trim() && (
+              <span style={{ fontSize: 9, background: 'rgba(232,255,71,0.08)', border: '1px solid rgba(232,255,71,0.2)', borderRadius: 3, color: 'var(--accent)', padding: '1px 5px', letterSpacing: 0.5 }}>📝 nota</span>
+            )}
+            {session.exercises?.some((e) => e.isAdHoc) && (
+              <span style={{ fontSize: 9, background: 'rgba(126,184,255,0.08)', border: '1px solid rgba(126,184,255,0.2)', borderRadius: 3, color: 'var(--accent3)', padding: '1px 5px', letterSpacing: 0.5 }}>＋ modificado</span>
+            )}
           </div>
         </div>
 
@@ -70,6 +76,18 @@ export default function SessionCard({ session, onDelete }) {
       {/* Detalle de ejercicios */}
       {open && (
         <div>
+          {/* Nota de sesión */}
+          {session.notes?.trim() && (
+            <div style={{
+              padding: '10px 14px',
+              borderTop: '1px solid var(--border)',
+              background: 'rgba(232,255,71,0.04)',
+              borderLeft: '2px solid rgba(232,255,71,0.3)',
+            }}>
+              <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, opacity: 0.8 }}>Nota</div>
+              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.notes}</div>
+            </div>
+          )}
           {session.exercises.map((ex) => {
             const def = allExercises[ex.exerciseId];
             const doneSets = ex.sets.filter((s) => s.done || s.weight || s.reps || s.time);

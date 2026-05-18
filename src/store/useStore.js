@@ -34,12 +34,11 @@ const INITIAL_PROFILE = {
 };
 
 const INITIAL_ACTIVE_SESSION = {
-  /** ID del template de sesión en curso, ej. 'tpl_A' */
   templateId: null,
-  /** Estado de los inputs de cada set: { [exId]: [{ weight, reps, time, done }] } */
   setsState: {},
-  /** Timestamp de inicio */
   startedAt: null,
+  notes: '',
+  adHocExercises: [], // [{ exerciseId, setsState: [{weight,reps,time,done}] }]
 };
 
 const INITIAL_UI = {
@@ -473,6 +472,47 @@ export const useStore = create(
       },
 
       // Exporta un programa managed específico (no el activo)
+      // PRO FEATURE — Compartir programa por Web Share API
+      shareProgram: async (programId) => {
+        const s = get();
+        const { programs, sessionTemplates, userPrograms, customExercises } = s;
+        const program = programs[programId];
+        if (!program) return;
+
+        const relevantTemplates = {};
+        const relevantUserPrograms = {};
+        program.days.forEach(({ sessionTemplateId }) => {
+          if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
+          if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
+        });
+
+        const json = JSON.stringify({
+          version: '2', exportType: 'program',
+          exportDate: new Date().toISOString().split('T')[0],
+          appName: 'Fuerza & Control',
+          program: { ...program, mode: 'personal', status: 'active' },
+          sessionTemplates: relevantTemplates,
+          userPrograms: relevantUserPrograms,
+          customExercises: {},
+          workoutLog: [],
+        }, null, 2);
+
+        const fileName = `${program.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+        const file = new File([json], fileName, { type: 'application/json' });
+
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: program.name, text: 'Programa de entrenamiento — Fuerza & Control' });
+            return;
+          } catch (e) {
+            if (e.name === 'AbortError') return; // usuario canceló
+          }
+        }
+        // Fallback: descargar
+        downloadJSON(json, program.name);
+        get().showToast('↓ Archivo descargado');
+      },
+
       exportSpecificProgram: (programId) => {
         const s = get();
         const { programs, sessionTemplates, userPrograms, customExercises } = s;
@@ -1101,19 +1141,118 @@ export const useStore = create(
       /**
        * Guarda la sesión activa en el historial.
        */
+      updateSessionNotes: (notes) => {
+        set((s) => ({ activeSession: { ...s.activeSession, notes } }));
+      },
+
+      addAdHocExercise: (exerciseId) => {
+        const allExercises = { ...get().exerciseLibrary, ...get().customExercises };
+        const def = allExercises[exerciseId];
+        const numSets = def?.sets ?? 3;
+        const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
+        set((s) => {
+          if ((s.activeSession.adHocExercises ?? []).some((e) => e.exerciseId === exerciseId)) return s;
+          const current = s.activeSession.adHocExercises ?? [];
+          return {
+            activeSession: {
+              ...s.activeSession,
+              adHocExercises: [
+                ...current,
+                { exerciseId, setsState: Array.from({ length: numSets }, emptySet) },
+              ],
+            },
+          };
+        });
+      },
+
+      removeAdHocExercise: (exerciseId) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: s.activeSession.adHocExercises.filter((e) => e.exerciseId !== exerciseId),
+          },
+        }));
+      },
+
+      updateAdHocSet: (exerciseId, setIdx, field, value) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: s.activeSession.adHocExercises.map((ex) =>
+              ex.exerciseId !== exerciseId ? ex : {
+                ...ex,
+                setsState: ex.setsState.map((set, i) => i === setIdx ? { ...set, [field]: value } : set),
+              }
+            ),
+          },
+        }));
+      },
+
+      toggleAdHocSetDone: (exerciseId, setIdx) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: s.activeSession.adHocExercises.map((ex) =>
+              ex.exerciseId !== exerciseId ? ex : {
+                ...ex,
+                setsState: ex.setsState.map((set, i) => i === setIdx ? { ...set, done: !set.done } : set),
+              }
+            ),
+          },
+        }));
+      },
+
+      addAdHocSet: (exerciseId) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: s.activeSession.adHocExercises.map((ex) =>
+              ex.exerciseId !== exerciseId ? ex : {
+                ...ex,
+                setsState: [...ex.setsState, { weight: '', reps: '', time: '', done: false }],
+              }
+            ),
+          },
+        }));
+      },
+
       saveSession: () => {
-        const { activeSession, getEffectiveTemplate, exerciseLibrary } = get();
+        const { activeSession, getEffectiveTemplate, workoutLog } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
 
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        // Filtrar solo ejercicios con al menos un set con datos
+        // Última sesión del mismo template para usar como fallback de sets marcados sin datos
+        const lastSession = [...workoutLog]
+          .filter((e) => e.sessionTemplateId === activeSession.templateId)
+          .sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
+
+        function resolveSet(set, lastSet) {
+          // Si tiene datos escritos, usar tal cual
+          if (set.weight !== '' || set.reps !== '' || set.time !== '') return set;
+          // Si está marcado ✓ pero vacío, usar los valores del último día como fallback
+          if (set.done && lastSet) {
+            return {
+              weight: lastSet.weight ?? '',
+              reps:   lastSet.reps   ?? '',
+              time:   lastSet.time   ?? '',
+              done:   true,
+            };
+          }
+          return set;
+        }
+
+        // Filtrar solo ejercicios con al menos un set con datos o marcado con fallback
         const exercises = template.exercises
           .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec }) => {
-            const setsData = activeSession.setsState[exerciseId] ?? [];
-            const validSets = setsData.filter(
-              (s) => s.weight !== '' || s.reps !== '' || s.time !== ''
+            const setsData   = activeSession.setsState[exerciseId] ?? [];
+            const lastExData = lastSession?.exercises.find((e) => e.exerciseId === exerciseId);
+            const lastSets   = lastExData?.sets ?? [];
+
+            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
+            const validSets = resolved.filter(
+              (s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done
             );
             if (validSets.length === 0) return null;
             return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec };
@@ -1130,9 +1269,16 @@ export const useStore = create(
           sessionName: template.name,
           timestamp: Date.now(),
           duration: activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
-          notes: '',
+          notes: activeSession.notes ?? '',
           bodyWeight: null,
-          exercises,
+          exercises: [
+            ...exercises,
+            ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
+              exerciseId: adHoc.exerciseId,
+              isAdHoc: true,
+              sets: adHoc.setsState,
+            })),
+          ],
         };
 
         set((s) => ({

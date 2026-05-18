@@ -1,6 +1,7 @@
 // PRO FEATURE — Gestión de clientes
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../../store/useStore';
 import SessionCard from '../history/SessionCard';
 import ExerciseStatCard from '../stats/ExerciseStatCard';
@@ -32,6 +33,7 @@ export default function ClientsView() {
   const setEditingProgram      = useStore((s) => s.setEditingProgram);
   const setPrintingProgram     = useStore((s) => s.setPrintingProgram);
   const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
+  const shareProgram           = useStore((s) => s.shareProgram);
   const importForClient       = useStore((s) => s.importForClient);
   const setClientActiveProgram = useStore((s) => s.setClientActiveProgram);
   const updateClientInfo          = useStore((s) => s.updateClientInfo);
@@ -52,6 +54,16 @@ export default function ClientsView() {
   const [newProgramName, setNewProgramName] = useState('');
   const [newProgramSessions, setNewProgramSessions] = useState(3);
   const [importFile, setImportFile] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { programId, x, y }
+
+  function openContextMenu(e, programId) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setContextMenu({
+      programId,
+      x: rect.right,
+      y: rect.top,
+    });
+  }
   const [editingClientId, setEditingClientId] = useState(null);
   const [editingClientName, setEditingClientName] = useState('');
   const [search, setSearch] = useState('');
@@ -173,9 +185,7 @@ export default function ClientsView() {
   }
 
   function handleDeleteProgram(programId) {
-    if (window.confirm('¿Eliminar este programa?')) {
-      deleteProgram(programId, false);
-    }
+    deleteProgram(programId, false);
   }
 
   function handleAddWeight() {
@@ -353,10 +363,13 @@ export default function ClientsView() {
                   </button>
                 </div>
                 <div style={{ display: 'flex' }}>
-                  <ActionBtn label="Ver" onClick={() => setPrintingProgram(program.id)} />
-                  <Div1 /><ActionBtn label="Editar" onClick={() => setEditingProgram(program.id)} />
-                  <Div1 /><ActionBtn label="Exportar" onClick={() => exportSpecificProgram(program.id)} />
-                  <Div1 /><ActionBtn label="Eliminar" onClick={() => handleDeleteProgram(program.id)} danger />
+                  <ActionBtn label="Ver"       onClick={() => setPrintingProgram(program.id)} />
+                  <Div1 />
+                  <ActionBtn label="Editar"    onClick={() => setEditingProgram(program.id)} />
+                  <Div1 />
+                  <ActionBtn label="Compartir" onClick={() => shareProgram(program.id)} />
+                  <Div1 />
+                  <ActionBtn label="⋯" onClick={(e) => openContextMenu(e, program.id)} />
                 </div>
               </div>
             );
@@ -532,6 +545,30 @@ export default function ClientsView() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Menú contextual de programa — portal para escapar overflow:hidden */}
+      {contextMenu && createPortal(
+        <>
+          <div onClick={() => setContextMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+          <div style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            transform: 'translate(-100%, -100%)',
+            background: 'var(--surface2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8, zIndex: 50,
+            overflow: 'hidden', minWidth: 150,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+          }}>
+            <button onClick={() => { exportSpecificProgram(contextMenu.programId); setContextMenu(null); }}
+              style={menuItemStyle}>↑ Exportar archivo</button>
+            <button onClick={() => { if (window.confirm('¿Eliminar este programa?')) handleDeleteProgram(contextMenu.programId); setContextMenu(null); }}
+              style={{ ...menuItemStyle, color: 'var(--red)', borderBottom: 'none' }}>✕ Eliminar</button>
+          </div>
+        </>,
+        document.body
       )}
 
       {/* Modals */}
@@ -768,5 +805,6 @@ function ClientImportModal({ file, onImport, onClose }) {
   );
 }
 
+const menuItemStyle = { display: 'block', width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '11px 14px', cursor: 'pointer', textAlign: 'left' };
 const accentBtnStyle = { background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' };
 const inputStyle = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box' };
