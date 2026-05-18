@@ -498,7 +498,7 @@ export const useStore = create(
         }, null, 2);
 
         const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
-        const fileName = `${safeName}.json`;
+        const fileName = `${safeName}.fcdata`;
 
         // Web Share API — usar text/plain porque application/json no está en la lista
         // de tipos permitidos por Android Chrome. El contenido JSON es idéntico.

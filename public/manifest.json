@@ -14,8 +14,8 @@
     {
       "action": "/",
       "accept": {
-        "application/json": [".json"],
-        "text/plain": [".json"]
+        "application/json": [".fcdata"],
+        "text/plain": [".fcdata"]
       },
       "launch_type": "single-client"
     }

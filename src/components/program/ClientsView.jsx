@@ -206,7 +206,7 @@ export default function ClientsView() {
     }, null, 2);
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
-    downloadBlob(json, `${safeName}.json`);
+    downloadBlob(json, `${safeName}.fcdata`);
     showToast('↓ Programa descargado');
   }
 
