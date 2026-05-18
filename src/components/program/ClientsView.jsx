@@ -186,6 +186,7 @@ export default function ClientsView() {
     }
   }
 
+  // TODO: React Native — usar react-native-share o Expo Sharing para compartir el archivo directamente
   function handleShare(program) {
     const relevantTemplates = {};
     const relevantUserPrograms = {};
@@ -205,22 +206,8 @@ export default function ClientsView() {
     }, null, 2);
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
-    const fileName = `${safeName}.json`;
-
-    // Descargar el archivo
-    downloadBlob(json, fileName);
-
-    // Abrir selector nativo de compartir (sin archivo — evita el bug de Chrome PWA)
-    if (navigator.share) {
-      setTimeout(() => {
-        navigator.share({
-          title: program.name,
-          text: `Te envío el programa "${program.name}". Importa el archivo .json que acaba de descargarse en la app Fuerza & Control.`,
-        }).catch(() => {});
-      }, 500); // pequeño delay para que la descarga se inicie primero
-    } else {
-      showToast('↓ Archivo descargado');
-    }
+    downloadBlob(json, `${safeName}.json`);
+    showToast('↓ Programa descargado');
   }
 
   function downloadBlob(content, fileName) {

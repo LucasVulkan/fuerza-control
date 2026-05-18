@@ -1,12 +1,25 @@
 {
   "name": "Fuerza & Control",
-  "short_name": "F&C",
-  "description": "Tracker de entrenamiento con progresión automática",
+  "short_name": "F&C Tracker",
+  "description": "Tracker de entrenamiento · Full Body",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d0d0d",
-  "theme_color": "#0d0d0d",
+  "theme_color": "#e8ff47",
   "orientation": "portrait",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/json": [".json"],
+        "text/plain": [".json"]
+      },
+      "launch_type": "single-client"
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.png",
@@ -19,22 +32,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "file_handlers": [
-    {
-      "action": "/",
-      "accept": {
-        "application/json": [".json"]
-      },
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ],
-      "launch_type": "single-client"
     }
   ]
 }

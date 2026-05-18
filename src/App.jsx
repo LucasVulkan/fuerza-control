@@ -1,12 +1,5 @@
-/**
- * App.jsx — Router de vistas y layout raíz.
- *
- * No usa React Router: la navegación es un campo `view` en el store.
- * Esto mantiene la app sin dependencias extra y compatible con la PWA offline.
- */
-
 import './index.css';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore, selectView } from './store/useStore';
 import AppHeader from './components/ui/AppHeader';
 import Toast from './components/ui/Toast';
@@ -20,43 +13,31 @@ import OnboardingView from './components/onboarding/OnboardingView';
 import ProgramSummaryView from './components/onboarding/ProgramSummaryView';
 import ProgramPrintView from './components/program/ProgramPrintView';
 import ImportModal from './components/ui/ImportModal';
-import ArchivedProgramsView from './components/program/ArchivedProgramsView';
-import ClientsView from './components/program/ClientsView';
 
 export default function App() {
-  const view       = useStore(selectView);
-  const profile    = useStore((s) => s.profile);
-  const importData = useStore((s) => s.importData);
-
+  const view        = useStore(selectView);
+  const importData  = useStore((s) => s.importData);
   const isOnboarding = view === 'onboarding';
   const isPrint      = view === 'programPrint';
 
-  // Estado global del modal de importación — compartido por AppHeader y Launch Handler
   const [importFile, setImportFile] = useState(null);
 
-  // Aplicar theme guardado al montar
-  useEffect(() => {
-    const theme = profile.theme ?? 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-  }, []);
-
-  // Launch Handler API — abre el modal cuando el usuario toca un .json desde el gestor
+  // File Handling API — procesa archivos .json abiertos desde el sistema
   useEffect(() => {
     if (!('launchQueue' in window)) return;
     window.launchQueue.setConsumer(async (launchParams) => {
-      const [fileHandle] = launchParams.files;
-      if (!fileHandle) return;
+      if (!launchParams.files?.length) return;
       try {
+        const fileHandle = launchParams.files[0];
         const file = await fileHandle.getFile();
-        if (!file.name.endsWith('.json')) return;
-        setImportFile(file); // abre el mismo modal que el menú
+        setImportFile(file);
       } catch (e) {
-        console.error('Error al abrir archivo:', e);
+        console.warn('Error al leer archivo de lanzamiento:', e);
       }
     });
   }, []);
 
-  async function handleImport(file, mode) {
+  async function handleImportFile(file, mode) {
     setImportFile(null);
     await importData(file, mode);
   }
@@ -71,19 +52,17 @@ export default function App() {
       {view === 'workout'        && <WorkoutView />}
       {view === 'history'        && <HistoryView />}
       {view === 'stats'          && <StatsView />}
-      {view === 'programEditor'      && <ProgramEditorView />}
-      {view === 'programPrint'       && <ProgramPrintView />}
-      {view === 'archivedPrograms'   && <ArchivedProgramsView />}
-      {view === 'clients'            && <ClientsView />}
+      {view === 'programEditor'  && <ProgramEditorView />}
+      {view === 'programPrint'   && <ProgramPrintView />}
 
       <Toast />
       {!isOnboarding && !isPrint && <RestTimerBar />}
 
-      {/* Modal de importación — compartido por menú y Launch Handler */}
+      {/* Modal de importación global — se activa desde AppHeader o al abrir un .json */}
       {importFile && (
         <ImportModal
           file={importFile}
-          onImport={handleImport}
+          onImport={handleImportFile}
           onClose={() => setImportFile(null)}
         />
       )}
