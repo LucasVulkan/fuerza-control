@@ -237,6 +237,7 @@ export const useStore = create(
               programIds: [], activeProgramId: null,
               fullName: '', phone: '', email: '', notes: '',
               bodyWeight: [], billing: [],
+              status: 'active',
             },
           },
         }));
@@ -460,6 +461,73 @@ export const useStore = create(
           },
           ui: { ...s.ui, _editingProgramId: programId, view: 'programEditor' },
         }));
+      },
+
+      /**
+       * Clona un programa existente con nuevos IDs para el programa y todos sus templates.
+       * Útil para instanciar plantillas con clientes o duplicar programas.
+       * @param {string} sourceProgramId — ID del programa fuente
+       * @param {{ mode?, clientId?, name? }} opts
+       * @returns {string|null} newProgramId
+       */
+      cloneProgramFromTemplate: (sourceProgramId, { mode = 'personal', clientId = null, name = null } = {}) => {
+        const { programs, sessionTemplates, userPrograms } = get();
+        const srcProgram = programs[sourceProgramId];
+        if (!srcProgram) return null;
+
+        const newProgramId = generateId('prog');
+        const newTemplates = {};
+        const newDays = [];
+
+        srcProgram.days.forEach(({ sessionTemplateId, label }) => {
+          const srcTemplate = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+          const newTemplateId = generateId('tpl');
+          newTemplates[newTemplateId] = {
+            ...(srcTemplate ?? { exercises: [], emphasis: '', color: '#e8ff47' }),
+            id: newTemplateId,
+            programId: newProgramId,
+          };
+          newDays.push({ sessionTemplateId: newTemplateId, label });
+        });
+
+        const newProgram = {
+          ...srcProgram,
+          id: newProgramId,
+          name: name ?? srcProgram.name,
+          mode,
+          status: 'active',
+          archivedAt: null,
+          createdAt: new Date().toISOString().split('T')[0],
+          days: newDays,
+        };
+        if (clientId) newProgram.clientId = clientId;
+        else delete newProgram.clientId;
+
+        const isManaged = mode === 'managed';
+        const isPersonal = mode === 'personal';
+
+        set((s) => {
+          const update = {
+            programs: { ...s.programs, [newProgramId]: newProgram },
+            sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
+          };
+          if (isManaged && clientId) {
+            update.clients = {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId],
+                programIds: [newProgramId, ...(s.clients[clientId]?.programIds ?? [])],
+              },
+            };
+            update.ui = { ...s.ui, _editingProgramId: newProgramId, view: 'programEditor' };
+          } else if (isPersonal) {
+            update.profile = { ...s.profile, activeProgramId: newProgramId, onboardingCompleted: true };
+          }
+          // mode === 'template': solo añade al store, sin navegación
+          return update;
+        });
+
+        return newProgramId;
       },
 
       // Abre el editor para un programa managed específico
@@ -707,16 +775,26 @@ export const useStore = create(
        * Si no había snapshot (nunca se llamó beginEditSession), no hace nada.
        */
       cancelEditSession: (destination = 'home', homeTab = 'session') => {
-        const { _editSnapshot } = get();
+        const { _editSnapshot, ui, programs } = get();
         if (_editSnapshot !== null) {
           set({ userPrograms: _editSnapshot, _editSnapshot: null });
         }
-        set((s) => ({ ui: { ...s.ui, _editingProgramId: null, homeTab } }));
+        // Determinar tab de retorno según el mode del programa en edición
+        const editingProgram = ui._editingProgramId ? programs[ui._editingProgramId] : null;
+        const resolvedTab = editingProgram?.mode === 'template' ? 'templates'
+          : editingProgram?.mode === 'managed' ? 'clients'
+          : homeTab;
+        set((s) => ({ ui: { ...s.ui, _editingProgramId: null, homeTab: resolvedTab } }));
         get().navigate(destination);
       },
 
       confirmEditSession: (destination = 'home', homeTab = 'session') => {
-        set((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null, homeTab } }));
+        const { ui, programs } = get();
+        const editingProgram = ui._editingProgramId ? programs[ui._editingProgramId] : null;
+        const resolvedTab = editingProgram?.mode === 'template' ? 'templates'
+          : editingProgram?.mode === 'managed' ? 'clients'
+          : homeTab;
+        set((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null, homeTab: resolvedTab } }));
         get().navigate(destination);
       },
 
@@ -998,15 +1076,15 @@ export const useStore = create(
           days: programDays,
         };
 
-        const isManaged = mode === 'managed';
+        const isPersonal = mode === 'personal';
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
-          profile: isManaged ? s.profile : { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
+          profile: isPersonal ? { ...s.profile, activeProgramId: programId, onboardingCompleted: true } : s.profile,
           ui: {
             ...s.ui,
             view: 'programEditor',
-            _editingProgramId: isManaged ? programId : null,
+            _editingProgramId: isPersonal ? null : programId,
           },
         }));
       },
@@ -1076,9 +1154,8 @@ export const useStore = create(
         });
       },
 
-      /** Marca/desmarca un set como completado y lanza el timer de descanso. */
       toggleSetDone: (exerciseId, setIndex) => {
-        const { activeSession, exerciseLibrary } = get();
+        const { activeSession, exerciseLibrary, customExercises } = get();
         const sets = activeSession.setsState[exerciseId] ?? [];
         const set_ = sets[setIndex];
         if (!set_) return;
@@ -1096,9 +1173,13 @@ export const useStore = create(
         }));
 
         if (nowDone) {
-          const exDef = exerciseLibrary[exerciseId];
-          const restSec = exDef?.restSec ?? 90;
-          get().startRestTimer(restSec, exDef?.name ?? '');
+          const exDef = exerciseLibrary[exerciseId] ?? customExercises?.[exerciseId];
+          // Leer restSec del template efectivo (donde están las ediciones del usuario)
+          // antes de caer al valor de la librería estática
+          const template = activeSession.templateId ? get().getEffectiveTemplate(activeSession.templateId) : null;
+          const exConfig = template?.exercises?.find((e) => e.exerciseId === exerciseId);
+          const restSec = exConfig?.restSec ?? exDef?.restSec ?? 90;
+          get().startRestTimer(restSec, exDef?.name ?? exerciseId);
         }
       },
 
@@ -1474,55 +1555,77 @@ export const useStore = create(
 
           const data = result.data;
 
+          // Normalizar: exportType 'full' tiene data.programs (plural)
+          // exportType 'program' tiene data.program (singular)
+          const singleProgram = data.program ?? null;
+          const multiPrograms = data.programs ?? (singleProgram ? { [singleProgram.id]: singleProgram } : {});
+
           if (mode === 'replace') {
             const importedTemplateIds = new Set([
               ...Object.keys(data.sessionTemplates ?? {}),
               ...Object.keys(data.userPrograms ?? {}),
             ]);
+            // Determinar el activeProgramId tras la importación
+            const newActiveProgramId =
+              singleProgram?.id ??
+              data.profile?.activeProgramId ??
+              get().profile.activeProgramId;
+
             set((s) => {
               const keptUserPrograms = Object.fromEntries(
                 Object.entries(s.userPrograms).filter(([id]) => !importedTemplateIds.has(id))
               );
+              // Marcar todos los programas importados como personal + active
+              const importedPrograms = Object.fromEntries(
+                Object.entries(multiPrograms).map(([id, p]) => [id, { ...p, mode: 'personal', status: 'active' }])
+              );
               return {
                 profile: {
                   ...(data.profile ?? s.profile),
-                  activeProgramId: data.program?.id ?? s.profile.activeProgramId,
+                  activeProgramId: newActiveProgramId,
                   theme: s.profile.theme,
-                  onboardingCompleted: data.program ? true : (data.profile?.onboardingCompleted ?? s.profile.onboardingCompleted),
+                  onboardingCompleted: Object.keys(multiPrograms).length > 0 ? true : (data.profile?.onboardingCompleted ?? s.profile.onboardingCompleted),
                 },
-                programs: data.program
-                  ? { ...s.programs, [data.program.id]: { ...data.program, mode: 'personal', status: 'active' } }
-                  : s.programs,
+                programs: { ...s.programs, ...importedPrograms },
                 sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
                 userPrograms: { ...keptUserPrograms, ...data.userPrograms },
                 customExercises: { ...s.customExercises, ...data.customExercises },
-                workoutLog: data.workoutLog ?? [],
+                workoutLog: data.workoutLog ?? s.workoutLog,
               };
             });
             get().showToast('✓ Importado correctamente');
           }
 
           if (mode === 'merge_log') {
-            // Solo añade sesiones nuevas al historial actual (evita duplicados por id)
             const currentIds = new Set(get().workoutLog.map((e) => e.id));
             const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
-            set((s) => ({ workoutLog: [...s.workoutLog, ...newEntries] }));
+            set((s) => ({
+              workoutLog: [...s.workoutLog, ...newEntries],
+              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
+              userPrograms: { ...s.userPrograms, ...data.userPrograms },
+            }));
             get().showToast(`✓ ${newEntries.length} sesiones añadidas al historial`);
           }
 
           if (mode === 'add_program') {
-            if (!data.program) {
+            if (!singleProgram && Object.keys(multiPrograms).length === 0) {
               get().showToast('⚠️ El archivo no contiene un programa');
               return { ok: false, error: 'Sin programa' };
             }
+            const firstProgram = singleProgram ?? Object.values(multiPrograms)[0];
             set((s) => ({
-              programs: { ...s.programs, [data.program.id]: { ...data.program, mode: 'personal', status: 'active' } },
+              programs: {
+                ...s.programs,
+                ...Object.fromEntries(
+                  Object.entries(multiPrograms).map(([id, p]) => [id, { ...p, mode: 'personal', status: 'active' }])
+                ),
+              },
               sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
               userPrograms: { ...s.userPrograms, ...data.userPrograms },
               customExercises: { ...s.customExercises, ...data.customExercises },
               profile: {
                 ...s.profile,
-                activeProgramId: data.program.id,
+                activeProgramId: firstProgram.id,
                 onboardingCompleted: true,
               },
             }));
@@ -1605,4 +1708,10 @@ export const selectArchivedPrograms = (s) =>
 export const selectManagedPrograms = (s) =>
   Object.values(s.programs ?? {})
     .filter((p) => p.mode === 'managed' && p.status !== 'archived')
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+/** Plantillas de programas reutilizables (template) — PRO FEATURE */
+export const selectTemplatePrograms = (s) =>
+  Object.values(s.programs ?? {})
+    .filter((p) => p.mode === 'template')
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -22,8 +22,11 @@ import ExerciseSelector from './ExerciseSelector';
 // ─── Fila sortable individual ─────────────────────────────────────────────────
 
 function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditingExId, onRemove, isHole, swipeProgress }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exConfig.exerciseId });
   const isEditing = editingExId === exConfig.exerciseId;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: exConfig.exerciseId,
+    disabled: isEditing,
+  });
   const canDelete = swipeProgress >= 1;
 
   const style = {
@@ -35,7 +38,7 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
       ? `linear-gradient(to left, rgba(239,68,68,${0.05 + swipeProgress * 0.25}), transparent)`
       : 'transparent',
     opacity: isDragging ? 0 : 1,
-    cursor: 'grab',
+    cursor: isEditing ? 'default' : 'grab',
     touchAction: 'none',
     userSelect: 'none',
   };

@@ -12,6 +12,7 @@ import ProgramEditorView from './components/editor/ProgramEditorView';
 import OnboardingView from './components/onboarding/OnboardingView';
 import ProgramSummaryView from './components/onboarding/ProgramSummaryView';
 import ProgramPrintView from './components/program/ProgramPrintView';
+import ArchivedProgramsView from './components/program/ArchivedProgramsView';
 import ImportModal from './components/ui/ImportModal';
 
 export default function App() {
@@ -51,8 +52,9 @@ export default function App() {
       {view === 'workout'        && <WorkoutView />}
       {view === 'history'        && <HistoryView />}
       {view === 'stats'          && <StatsView />}
-      {view === 'programEditor'  && <ProgramEditorView />}
-      {view === 'programPrint'   && <ProgramPrintView />}
+      {view === 'programEditor'     && <ProgramEditorView />}
+      {view === 'programPrint'      && <ProgramPrintView />}
+      {view === 'archivedPrograms'  && <ArchivedProgramsView />}
 
       <Toast />
       {!isOnboarding && !isPrint && <RestTimerBar />}

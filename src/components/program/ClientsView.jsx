@@ -45,8 +45,18 @@ export default function ClientsView() {
   const addClientBodyWeight       = useStore((s) => s.addClientBodyWeight);
   const removeClientBodyWeight    = useStore((s) => s.removeClientBodyWeight);
   const deleteLogEntry            = useStore((s) => s.deleteLogEntry);
+  const cloneProgramFromTemplate  = useStore((s) => s.cloneProgramFromTemplate);
+  const programs_raw              = useStore((s) => s.programs); // alias para el useMemo de abajo
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
+
+  // Derivar en useMemo para no crear array nuevo en cada render (evita bucle infinito)
+  const templatePrograms = useMemo(
+    () => Object.values(programs_raw ?? {})
+      .filter((p) => p.mode === 'template')
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [programs_raw]
+  );
 
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeTab, setActiveTab] = useState('programs');
@@ -69,6 +79,7 @@ export default function ClientsView() {
   const [editingClientId, setEditingClientId] = useState(null);
   const [editingClientName, setEditingClientName] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
   const [showGlobalBilling, setShowGlobalBilling] = useState(false);
   const [scopeFilter, setScopeFilter] = useState('active');
   const [periodFilter, setPeriodFilter] = useState('all');
@@ -79,6 +90,9 @@ export default function ClientsView() {
   const [billConcept, setBillConcept] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billStatus, setBillStatus] = useState('pending');
+  const [newProgramTab, setNewProgramTab] = useState('blank'); // 'blank' | 'template'
+  const [fromTemplateId, setFromTemplateId] = useState('');
+  const [fromTemplateName, setFromTemplateName] = useState('');
 
   function toggleSection(id) {
     setOpenSections((s) => ({ ...s, [id]: !s[id] }));
@@ -87,8 +101,14 @@ export default function ClientsView() {
   const clientList = useMemo(
     () => Object.values(clients ?? {})
       .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+      .filter((c) => {
+        const s = c.status ?? 'active';
+        if (statusFilter === 'active')   return s !== 'inactive';   // activos + en pausa
+        if (statusFilter === 'inactive') return s === 'inactive';
+        return true; // 'all'
+      })
       .sort((a, b) => a.name.localeCompare(b.name)),
-    [clients, search]
+    [clients, search, statusFilter]
   );
 
   const selectedClient = selectedClientId ? clients[selectedClientId] : null;
@@ -177,6 +197,17 @@ export default function ClientsView() {
     createProgramForClient(selectedClientId, newProgramSessions, newProgramName);
     setNewProgramName('');
     setShowNewProgram(false);
+  }
+
+  function handleCreateFromTemplate() {
+    if (!fromTemplateId || !selectedClientId) return;
+    const srcName = templatePrograms.find((p) => p.id === fromTemplateId)?.name ?? 'Programa';
+    const finalName = fromTemplateName.trim() || srcName;
+    cloneProgramFromTemplate(fromTemplateId, { mode: 'managed', clientId: selectedClientId, name: finalName });
+    setShowNewProgram(false);
+    setNewProgramTab('blank');
+    setFromTemplateId('');
+    setFromTemplateName('');
   }
 
   function handleDeleteClient(clientId) {
@@ -276,6 +307,22 @@ export default function ClientsView() {
             onChange={(e) => setSearch(e.target.value)}
             style={{ ...inputStyle, fontSize: 13, padding: '9px 14px' }}
           />
+          {/* Filtros de estado */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            {[
+              { id: 'active',   label: 'Activos' },
+              { id: 'inactive', label: 'Inactivos' },
+              { id: 'all',      label: 'Todos' },
+            ].map(({ id, label }) => (
+              <button key={id} onClick={() => setStatusFilter(id)} style={{
+                flex: 1, background: statusFilter === id ? 'rgba(232,255,71,0.1)' : 'var(--surface)',
+                border: '1px solid', borderColor: statusFilter === id ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+                borderRadius: 6, color: statusFilter === id ? 'var(--accent)' : 'var(--muted)',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '6px 4px',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>{label}</button>
+            ))}
+          </div>
         </div>
 
         <div style={{ padding: '0 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -286,6 +333,8 @@ export default function ClientsView() {
             </div>
           ) : clientList.map((client) => {
             const progCount = (client.programIds ?? []).filter((id) => programs[id]).length;
+            const clientStatus = client.status ?? 'active';
+            const statusDot = clientStatus === 'paused' ? 'var(--orange)' : clientStatus === 'inactive' ? 'var(--red)' : null;
             return (
               <div key={client.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                 <div onClick={() => handleSelectClient(client.id)} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
@@ -297,7 +346,12 @@ export default function ClientsView() {
                         onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingClientId(null); e.stopPropagation(); }}
                         style={{ background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 6, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, padding: '4px 8px', outline: 'none' }} />
                     ) : (
-                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{client.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        {statusDot && (
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusDot, flexShrink: 0, display: 'inline-block' }} />
+                        )}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{client.name}</span>
+                      </div>
                     )}
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{progCount} programa{progCount !== 1 ? 's' : ''}</div>
                   </div>
@@ -419,6 +473,33 @@ export default function ClientsView() {
 
           {/* ── Datos personales ── */}
           <Accordion label="👤 Datos personales" open={openSections.personal} onToggle={() => toggleSection('personal')}>
+            {/* Selector de estado */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Estado</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[
+                  { id: 'active',   label: 'Activo',    color: 'var(--green)' },
+                  { id: 'paused',   label: 'En pausa',  color: 'var(--orange)' },
+                  { id: 'inactive', label: 'Inactivo',  color: 'var(--red)' },
+                ].map(({ id, label, color }) => {
+                  const isSel = (selectedClient.status ?? 'active') === id;
+                  return (
+                    <button key={id} onClick={() => updateClientInfo(selectedClientId, { status: id })} style={{
+                      flex: 1, padding: '7px 4px', borderRadius: 6, border: '1px solid',
+                      borderColor: isSel ? color : 'var(--border)',
+                      background: isSel ? `${color}18` : 'var(--surface2)',
+                      color: isSel ? color : 'var(--muted)',
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 11,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    }}>
+                      {isSel && <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             {[
               { key: 'name',     label: 'Nombre de pila',   placeholder: 'Lucas' },
               { key: 'fullName', label: 'Nombre completo',  placeholder: 'Lucas García Martínez' },
@@ -609,21 +690,86 @@ export default function ClientsView() {
 
       {/* Modals */}
       {showNewProgram && (
-        <SimpleModal title="NUEVO PROGRAMA" onClose={() => setShowNewProgram(false)} onConfirm={handleCreateProgram} confirmLabel="CREAR Y EDITAR" confirmDisabled={!newProgramName.trim()}>
-          <input autoFocus type="text" placeholder="Nombre del programa" value={newProgramName}
-            onChange={(e) => setNewProgramName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateProgram()}
-            style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[2, 3, 4, 5, 6].map((n) => (
-                <button key={n} onClick={() => setNewProgramSessions(n)}
-                  style={{ flex: 1, height: 40, borderRadius: 6, border: '1px solid', borderColor: newProgramSessions === n ? 'var(--accent)' : 'var(--border)', background: newProgramSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
-              ))}
+        <>
+          <div
+            onClick={() => { setShowNewProgram(false); setNewProgramTab('blank'); setFromTemplateId(''); }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }}
+          />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>NUEVO PROGRAMA</div>
+
+            {/* Tabs vacío / desde plantilla (solo si hay plantillas) */}
+            {templatePrograms.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                {[{ id: 'blank', label: 'Vacío' }, { id: 'template', label: 'Desde plantilla' }].map(({ id, label }) => (
+                  <button key={id} onClick={() => setNewProgramTab(id)} style={{ flex: 1, padding: '7px', borderRadius: 6, border: '1px solid', borderColor: newProgramTab === id ? 'var(--accent)' : 'var(--border)', background: newProgramTab === id ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramTab === id ? 'var(--accent)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>{label}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Tab: Vacío */}
+            {newProgramTab === 'blank' && (
+              <>
+                <input autoFocus type="text" placeholder="Nombre del programa" value={newProgramName}
+                  onChange={(e) => setNewProgramName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProgram()}
+                  style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[2, 3, 4, 5, 6].map((n) => (
+                      <button key={n} onClick={() => setNewProgramSessions(n)}
+                        style={{ flex: 1, height: 40, borderRadius: 6, border: '1px solid', borderColor: newProgramSessions === n ? 'var(--accent)' : 'var(--border)', background: newProgramSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Tab: Desde plantilla */}
+            {newProgramTab === 'template' && (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Plantilla</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                    {templatePrograms.map((p) => (
+                      <button key={p.id}
+                        onClick={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
+                        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid', borderColor: fromTemplateId === p.id ? 'var(--accent)' : 'var(--border)', background: fromTemplateId === p.id ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                        <div style={{ fontWeight: 500 }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: fromTemplateId === p.id ? 'rgba(232,255,71,0.6)' : 'var(--muted)', marginTop: 2 }}>{p.days.length} sesión{p.days.length !== 1 ? 'es' : ''}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <input type="text"
+                  placeholder={fromTemplateId ? (templatePrograms.find((p) => p.id === fromTemplateId)?.name ?? 'Nombre del programa') : 'Nombre del programa'}
+                  value={fromTemplateName}
+                  onChange={(e) => setFromTemplateName(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button
+                onClick={() => { setShowNewProgram(false); setNewProgramTab('blank'); setFromTemplateId(''); }}
+                style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+              {newProgramTab === 'blank' ? (
+                <button onClick={handleCreateProgram} disabled={!newProgramName.trim()}
+                  style={{ flex: 2, background: !newProgramName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newProgramName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newProgramName.trim() ? 'not-allowed' : 'pointer' }}>
+                  CREAR Y EDITAR
+                </button>
+              ) : (
+                <button onClick={handleCreateFromTemplate} disabled={!fromTemplateId}
+                  style={{ flex: 2, background: !fromTemplateId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !fromTemplateId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !fromTemplateId ? 'not-allowed' : 'pointer' }}>
+                  ASIGNAR
+                </button>
+              )}
             </div>
           </div>
-        </SimpleModal>
+        </>
       )}
 
       {importFile && <ClientImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />}

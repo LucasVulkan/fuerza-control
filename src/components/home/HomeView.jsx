@@ -4,12 +4,14 @@ import DayCard from './DayCard';
 import HistoryView from '../history/HistoryView';
 import StatsView from '../stats/StatsView';
 import ClientsView from '../program/ClientsView';
+import TemplatesView from '../program/TemplatesView';
 
 const TABS = [
-  { id: 'session',  label: 'Sesión',    icon: '🏋️' },
-  { id: 'history',  label: 'Historial', icon: '📋' },
-  { id: 'progress', label: 'Progresión',icon: '📈' },
-  { id: 'clients',  label: 'Clientes',  icon: '👥' }, // PRO FEATURE
+  { id: 'session',   label: 'Sesión',    icon: '🏋️' },
+  { id: 'history',   label: 'Historial', icon: '📋' },
+  { id: 'progress',  label: 'Progresión',icon: '📈' },
+  { id: 'clients',   label: 'Clientes',  icon: '👥' }, // PRO FEATURE
+  { id: 'templates', label: 'Plantillas',icon: '📐' }, // PRO FEATURE
 ];
 
 const BOTTOM_BAR_HEIGHT = 64;
@@ -28,6 +30,7 @@ export default function HomeView() {
   }
 
   const activeProgram    = useStore(selectActiveProgram);
+  const activeSession    = useStore((s) => s.activeSession);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const getLastSession   = useStore((s) => s.getLastSession);
   const startSession     = useStore((s) => s.startSession);
@@ -53,13 +56,15 @@ export default function HomeView() {
           getLastSession={getLastSession}
           startSession={startSession}
           navigate={navigate}
+          activeSession={activeSession}
           onArchive={() => setArchiveModal(true)}
           allExercises={allExercises}
         />
       )}
       {activeTab === 'history'  && <HistoryView embedded />}
       {activeTab === 'progress' && <StatsView embedded />}
-      {activeTab === 'clients'  && <ClientsView key={clientsKey} />}
+      {activeTab === 'clients'    && <ClientsView key={clientsKey} />}
+      {activeTab === 'templates'  && <TemplatesView />}
 
       {/* Bottom bar */}
       <div style={{
@@ -112,7 +117,7 @@ export default function HomeView() {
   );
 }
 
-function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, startSession, navigate, onArchive, allExercises }) {
+function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, startSession, navigate, activeSession, onArchive, allExercises }) {
   if (!activeProgram) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
@@ -149,13 +154,15 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
           const template = getEffectiveTemplate(sessionTemplateId);
           if (!template) return null;
           const lastSession = getLastSession(sessionTemplateId);
+          const isActive = activeSession?.templateId === sessionTemplateId;
           return (
             <DayCard
               key={sessionTemplateId}
               template={template}
               lastSession={lastSession}
               exerciseLibrary={allExercises}
-              onClick={() => startSession(sessionTemplateId)}
+              isActive={isActive}
+              onClick={isActive ? () => navigate('workout') : () => startSession(sessionTemplateId)}
             />
           );
         })}

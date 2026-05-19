@@ -521,7 +521,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
             { n: 2, title: '2 sesiones', desc: 'A (superior) + B (inferior). Más sencillo, repite el ciclo.' },
-            { n: 4, title: '4 sesiones', desc: 'A + B + A\' + B\'. Más variedad de ejercicios por ciclo.' },
+            { n: 4, title: '4 sesiones', desc: 'A1 + B1 + A2 + B2. Más variedad de ejercicios por ciclo.' },
           ].map(({ n, title, desc }) => (
             <div
               key={n}

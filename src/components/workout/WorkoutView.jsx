@@ -60,7 +60,7 @@ export default function WorkoutView() {
         display: 'flex', alignItems: 'center', gap: 12,
         position: 'sticky', top: 57, background: 'var(--bg)', zIndex: 10,
       }}>
-        <span onClick={discardSession} style={{ color: 'var(--muted)', fontSize: 22, cursor: 'pointer', padding: '4px 8px 4px 0', lineHeight: 1 }}>‹</span>
+        <span onClick={() => navigate('home')} style={{ color: 'var(--muted)', fontSize: 22, cursor: 'pointer', padding: '4px 8px 4px 0', lineHeight: 1 }}>‹</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1, color }}>
             DÍA {template.label} · {template.name.toUpperCase()}
@@ -124,6 +124,21 @@ export default function WorkoutView() {
           onPointerUp={(e) => e.currentTarget.style.opacity = '1'}
           onPointerLeave={(e) => e.currentTarget.style.opacity = '1'}
         >GUARDAR SESIÓN</button>
+
+        <button
+          onClick={() => {
+            if (window.confirm('¿Descartar la sesión en curso? Los datos introducidos se perderán.')) {
+              discardSession();
+            }
+          }}
+          style={{
+            background: 'none', border: 'none', color: 'var(--muted)',
+            fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+            padding: '10px 0 4px', cursor: 'pointer', width: '100%',
+          }}
+        >
+          Descartar sesión
+        </button>
       </div>
 
       {/* Bottom sheet — Notas */}

@@ -17,6 +17,7 @@ export default function StatsView({ embedded = false }) {
 
   const [scope,  setScope]  = useState('all');
   const [period, setPeriod] = useState('all');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const programTemplateIds = new Set(
     activeProgram?.days.map((d) => d.sessionTemplateId) ?? []
@@ -29,19 +30,25 @@ export default function StatsView({ embedded = false }) {
     }) ?? []
   );
 
+  // Log filtrado por scope + period → para la tabla
   const filteredLog = filterLog(workoutLog, scope, period, programTemplateIds);
+  // Log filtrado solo por scope → para la gráfica (usa su propio filtro de período)
+  const filteredLogScope = filterLog(workoutLog, scope, 'all', programTemplateIds);
 
-  function getExerciseLogs(exerciseId) {
-    return filteredLog
-      .filter((log) => log.exercises.some((e) =>
-        e.exerciseId === exerciseId &&
-        e.sets.some((s) => s.done || s.weight || s.reps || s.time)
-      ))
+  function hasData(log, exerciseId) {
+    return log.exercises.some((e) =>
+      e.exerciseId === exerciseId &&
+      e.sets.some((s) => s.done || s.weight || s.reps || s.time)
+    );
+  }
+
+  function getExerciseLogs(exerciseId, sourceLog) {
+    return sourceLog
+      .filter((log) => hasData(log, exerciseId))
       .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-6)
       .map((log) => ({
         timestamp: log.timestamp,
-        exercise: log.exercises.find((e) => e.exerciseId === exerciseId),
+        exercise:  log.exercises.find((e) => e.exerciseId === exerciseId),
       }));
   }
 
@@ -56,31 +63,138 @@ export default function StatsView({ embedded = false }) {
   const exercisesWithLogs = (scope === 'program'
     ? allExerciseIds.filter((id) => programExerciseIds.has(id))
     : allExerciseIds
-  ).filter((id) => getExerciseLogs(id).length > 0);
+  ).filter((id) => getExerciseLogs(id, filteredLog).length > 0);
+
+  // Selector de ejercicios (solo cuando hay más de 5)
+  const showSelector = exercisesWithLogs.length > 5;
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  function toggleId(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  const visibleExercises = selectedIds.size > 0
+    ? exercisesWithLogs.filter((id) => selectedIds.has(id))
+    : exercisesWithLogs;
 
   return (
     <div>
       {!embedded && (
-      <div
-        onClick={() => navigate('home')}
-        style={{
-          padding: '14px 20px',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 12,
-          cursor: 'pointer', userSelect: 'none',
-        }}
-      >
-        <span style={{ color: 'var(--muted)', fontSize: 22, lineHeight: 1 }}>‹</span>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>
-          PROGRESIÓN
+        <div
+          onClick={() => navigate('home')}
+          style={{
+            padding: '14px 20px', borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 12,
+            cursor: 'pointer', userSelect: 'none',
+          }}
+        >
+          <span style={{ color: 'var(--muted)', fontSize: 22, lineHeight: 1 }}>‹</span>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>
+            PROGRESIÓN
+          </div>
         </div>
-      </div>
       )}
 
       <FilterBar scope={scope} period={period} onScope={setScope} onPeriod={setPeriod} />
 
+      {/* Selector de ejercicios — dropdown con checkboxes */}
+      {showSelector && (
+        <div style={{ margin: '8px 20px 2px' }}>
+          {/* Trigger */}
+          <button
+            onClick={() => setFilterOpen((v) => !v)}
+            style={{
+              width: '100%', background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: filterOpen ? '8px 8px 0 0' : 8,
+              padding: '9px 14px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+              color: selectedIds.size > 0 ? 'var(--accent)' : 'var(--muted)',
+              transition: 'border-radius 0.15s',
+            }}
+          >
+            <span>
+              {selectedIds.size > 0
+                ? `${selectedIds.size} de ${exercisesWithLogs.length} ejercicios seleccionados`
+                : `Todos los ejercicios (${exercisesWithLogs.length})`}
+            </span>
+            <span style={{
+              fontSize: 11, transition: 'transform 0.2s',
+              transform: filterOpen ? 'rotate(180deg)' : 'none',
+              display: 'inline-block',
+            }}>▾</span>
+          </button>
+
+          {/* Panel con lista de checkboxes */}
+          {filterOpen && (
+            <div style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderTop: 'none', borderRadius: '0 0 8px 8px',
+              maxHeight: 240, overflowY: 'auto',
+            }}>
+              {exercisesWithLogs.map((id, i) => {
+                const name    = allExercises[id]?.name ?? id;
+                const checked = selectedIds.has(id);
+                const isLast  = i === exercisesWithLogs.length - 1;
+                return (
+                  <label key={id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', cursor: 'pointer',
+                    borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                    background: checked ? 'rgba(232,255,71,0.04)' : 'transparent',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleId(id)}
+                      style={{
+                        accentColor: '#e8ff47',
+                        width: 15, height: 15,
+                        flexShrink: 0, cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{
+                      fontSize: 12, lineHeight: 1.3,
+                      color: checked ? 'var(--text)' : 'var(--muted)',
+                    }}>{name}</span>
+                  </label>
+                );
+              })}
+
+              {/* Footer: limpiar selección */}
+              {selectedIds.size > 0 && (
+                <div style={{
+                  padding: '8px 14px', borderTop: '1px solid var(--border)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  position: 'sticky', bottom: 0,
+                  background: 'var(--surface)',
+                }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                  </span>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    style={{
+                      background: 'none', border: 'none',
+                      color: 'var(--accent)', fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 11, cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    Limpiar selección
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ padding: '10px 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {exercisesWithLogs.length === 0 ? (
+        {visibleExercises.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
             <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>📈</span>
             {workoutLog.length === 0
@@ -88,15 +202,14 @@ export default function StatsView({ embedded = false }) {
               : <>Sin datos para este filtro.</>
             }
           </div>
-        ) : (
-          exercisesWithLogs.map((exerciseId) => {
-            const def = allExercises[exerciseId];
-            const logs = getExerciseLogs(exerciseId);
-            return (
-              <ExerciseStatCard key={exerciseId} def={def} logs={logs} />
-            );
-          })
-        )}
+        ) : visibleExercises.map((exerciseId) => {
+          const def     = allExercises[exerciseId];
+          const logs    = getExerciseLogs(exerciseId, filteredLog).slice(-6);
+          const allLogs = getExerciseLogs(exerciseId, filteredLogScope);
+          return (
+            <ExerciseStatCard key={exerciseId} def={def} logs={logs} allLogs={allLogs} />
+          );
+        })}
       </div>
     </div>
   );

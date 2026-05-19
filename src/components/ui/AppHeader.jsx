@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
-import { APP_VERSION } from '../../version';
 
 const THEMES = [
   { id: 'dark',     label: 'Dark',     color: '#e8ff47' },
@@ -85,7 +84,7 @@ export default function AppHeader({ onImportFile }) {
         </div>
         <button
           onClick={() => setMenuOpen((o) => !o)}
-          style={{ background: 'none', border: 'none', color: menuOpen ? 'var(--accent)' : 'var(--muted)', fontSize: 20, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', color: menuOpen ? 'var(--accent)' : 'var(--muted)', fontSize: 26, cursor: 'pointer', padding: '4px 8px', lineHeight: 1 }}
         >
           ≡
         </button>
@@ -143,16 +142,6 @@ export default function AppHeader({ onImportFile }) {
                   }}
                 />
               ))}
-            </div>
-
-            {/* Versión de la app */}
-            <div style={{
-              padding: '8px 16px 10px',
-              borderTop: '1px solid var(--border)',
-              fontSize: 10, color: 'var(--muted2)',
-              letterSpacing: 1, textAlign: 'center',
-            }}>
-              F&C · v{APP_VERSION}
             </div>
           </div>
         </>
