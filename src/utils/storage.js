@@ -4,11 +4,11 @@ export function downloadJSON(jsonString, name = 'fc-backup') {
     .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
     .replace(/\s+/g, '-')
     .toLowerCase();
-  const blob = new Blob([jsonString], { type: 'application/octet-stream' });
+  const blob = new Blob([jsonString], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${safe}.fcdata`;
+  a.download = `${safe}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

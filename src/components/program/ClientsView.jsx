@@ -212,10 +212,10 @@ export default function ClientsView() {
 
   function downloadBlob(content, fileName) {
     const safe = fileName.replace(/\.json$|\.fcdata$/i, '').replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
-    const blob = new Blob([content], { type: 'application/octet-stream' });
+    const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${safe}.fcdata`;
+    a.href = url; a.download = `${safe}.json`;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }

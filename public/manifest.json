@@ -7,19 +7,6 @@
   "background_color": "#0d0d0d",
   "theme_color": "#e8ff47",
   "orientation": "portrait",
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  },
-  "file_handlers": [
-    {
-      "action": "/",
-      "accept": {
-        "application/json": [".fcdata"],
-        "text/plain": [".fcdata"]
-      },
-      "launch_type": "single-client"
-    }
-  ],
   "icons": [
     {
       "src": "icon-192.png",
