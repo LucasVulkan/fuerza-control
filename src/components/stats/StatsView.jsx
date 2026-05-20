@@ -19,15 +19,22 @@ export default function StatsView({ embedded = false }) {
   const [period, setPeriod] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const programTemplateIds = new Set(
-    activeProgram?.days.map((d) => d.sessionTemplateId) ?? []
-  );
+  const programTemplateIds = (() => {
+    const ids = new Set();
+    if (!activeProgram) return ids;
+    if (activeProgram.stages?.length > 0) {
+      activeProgram.stages.forEach((st) => st.days.forEach((d) => ids.add(d.sessionTemplateId)));
+    } else {
+      activeProgram.days.forEach((d) => ids.add(d.sessionTemplateId));
+    }
+    return ids;
+  })();
 
   const programExerciseIds = new Set(
-    activeProgram?.days.flatMap(({ sessionTemplateId }) => {
+    [...programTemplateIds].flatMap((sessionTemplateId) => {
       const tpl = getEffectiveTemplate(sessionTemplateId);
       return tpl?.exercises.map((e) => e.exerciseId) ?? [];
-    }) ?? []
+    })
   );
 
   // Log filtrado por scope + period → para la tabla
@@ -86,7 +93,7 @@ export default function StatsView({ embedded = false }) {
         <div
           onClick={() => navigate('home')}
           style={{
-            padding: '14px 20px', borderBottom: '1px solid var(--border)',
+            padding: '14px 20px', borderBottom: 'var(--border-width) solid var(--border)',
             display: 'flex', alignItems: 'center', gap: 12,
             cursor: 'pointer', userSelect: 'none',
           }}
@@ -108,7 +115,7 @@ export default function StatsView({ embedded = false }) {
             onClick={() => setFilterOpen((v) => !v)}
             style={{
               width: '100%', background: 'var(--surface)',
-              border: '1px solid var(--border)',
+              border: 'var(--border-width) solid var(--border)',
               borderRadius: filterOpen ? '8px 8px 0 0' : 8,
               padding: '9px 14px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -132,7 +139,7 @@ export default function StatsView({ embedded = false }) {
           {/* Panel con lista de checkboxes */}
           {filterOpen && (
             <div style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
+              background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
               borderTop: 'none', borderRadius: '0 0 8px 8px',
               maxHeight: 240, overflowY: 'auto',
             }}>
@@ -144,7 +151,7 @@ export default function StatsView({ embedded = false }) {
                   <label key={id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 14px', cursor: 'pointer',
-                    borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                    borderBottom: isLast ? 'none' : 'var(--border-width) solid var(--border)',
                     background: checked ? 'rgba(232,255,71,0.04)' : 'transparent',
                   }}>
                     <input
@@ -168,7 +175,7 @@ export default function StatsView({ embedded = false }) {
               {/* Footer: limpiar selección */}
               {selectedIds.size > 0 && (
                 <div style={{
-                  padding: '8px 14px', borderTop: '1px solid var(--border)',
+                  padding: '8px 14px', borderTop: 'var(--border-width) solid var(--border)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   position: 'sticky', bottom: 0,
                   background: 'var(--surface)',

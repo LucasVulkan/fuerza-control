@@ -37,17 +37,28 @@ export function useWorkout() {
     // Cuenta cualquier set con datos, no solo los marcados con check
     const lastSetsWithData = lastSets.filter((s) => s.done || s.weight || s.reps || s.time);
 
+    // Fusionar exConfig sobre def para que getProgression use los valores
+    // editados por el usuario (minReps, maxReps, minTime, maxTime, progressionModel)
+    // en lugar de los defaults de la librería. Filtramos null para no sobreescribir
+    // valores válidos del def con nulls de exConfig.
+    const progressionDef = {
+      ...def,
+      ...Object.fromEntries(
+        Object.entries(exConfig).filter(([, v]) => v != null)
+      ),
+    };
+
     return {
       exerciseId,
       def,
       isKey,
       sets,
       restSec,
-      exConfig,  // ← incluimos el exConfig completo para que ExerciseCard acceda a los overrides
+      exConfig,
       currentSets,
       lastSets,
       prevSummary: summarizeSets(def, lastSetsWithData),
-      progression: getProgression(def, lastSets),
+      progression: getProgression(progressionDef, lastSets, sets),
     };
   });
 

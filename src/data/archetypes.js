@@ -27,7 +27,7 @@ export const ARCHETYPES = [
       {
         label: 'A',
         name: 'Tracción, empuje horizontal y cadera',
-        color: '#e8ff47',
+        color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
           { exerciseId: 'pull_up_weighted_barbell', role: 'key',      sets: 4, minReps: 6,  maxReps: 8,  restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
@@ -41,7 +41,7 @@ export const ARCHETYPES = [
       {
         label: 'B',
         name: 'Empuje vertical, tracción y pierna anterior',
-        color: '#ff6b35',
+        color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
           { exerciseId: 'shoulder_press_db',     role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'vertical_push',   primaryGroup: 'shoulders' },
@@ -55,7 +55,7 @@ export const ARCHETYPES = [
       {
         label: 'C',
         name: 'Tracción, empuje inclinado y cadera',
-        color: '#7eb8ff',
+        color: 'var(--day3)',
         emphasis: 'pull',
         exercises: [
           { exerciseId: 'pulldown_pronated',     role: 'key',      sets: 4, minReps: 10, maxReps: 12, restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
@@ -84,7 +84,7 @@ export const ARCHETYPES = [
       {
         label: 'A',
         name: 'Tracción, empuje horizontal y cadera',
-        color: '#e8ff47',
+        color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
           { exerciseId: 'pull_up_weighted',      role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 150, pattern: 'vertical_pull',   primaryGroup: 'back' },
@@ -99,7 +99,7 @@ export const ARCHETYPES = [
       {
         label: 'B',
         name: 'Empuje vertical, tracción y pierna anterior',
-        color: '#ff6b35',
+        color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
           { exerciseId: 'overhead_press_barbell',role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 150, pattern: 'vertical_push',   primaryGroup: 'shoulders' },
@@ -114,7 +114,7 @@ export const ARCHETYPES = [
       {
         label: 'C',
         name: 'Tracción, empuje inclinado y cadera',
-        color: '#7eb8ff',
+        color: 'var(--day3)',
         emphasis: 'pull',
         exercises: [
           { exerciseId: 'pull_up_neutral',       role: 'key',      sets: 4, minReps: 6,  maxReps: 8,  restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
@@ -144,7 +144,7 @@ export const ARCHETYPES = [
       {
         label: 'A',
         name: 'Glúteo e isquios prioritario',
-        color: '#e8ff47',
+        color: 'var(--day1)',
         emphasis: 'glutes',
         exercises: [
           { exerciseId: 'hip_thrust',            role: 'key',      sets: 4, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
@@ -158,7 +158,7 @@ export const ARCHETYPES = [
       {
         label: 'B',
         name: 'Pierna anterior y empuje',
-        color: '#ff6b35',
+        color: 'var(--day2)',
         emphasis: 'legs_push',
         exercises: [
           { exerciseId: 'leg_press_standard',    role: 'key',      sets: 4, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'squat',           primaryGroup: 'quads' },
@@ -172,7 +172,7 @@ export const ARCHETYPES = [
       {
         label: 'C',
         name: 'Glúteo, isquios y hombro',
-        color: '#7eb8ff',
+        color: 'var(--day3)',
         emphasis: 'glutes_shoulders',
         exercises: [
           { exerciseId: 'hip_thrust',            role: 'key',      sets: 4, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
@@ -201,7 +201,7 @@ export const ARCHETYPES = [
       {
         label: 'A',
         name: 'Tracción y core',
-        color: '#e8ff47',
+        color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
           { exerciseId: 'pull_up_weighted_barbell',role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 120, pattern: 'vertical_pull',     primaryGroup: 'back' },
@@ -215,7 +215,7 @@ export const ARCHETYPES = [
       {
         label: 'B',
         name: 'Empuje y pierna',
-        color: '#ff6b35',
+        color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
           { exerciseId: 'dip',                   role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 120, pattern: 'vertical_push',     primaryGroup: 'chest' },
@@ -229,7 +229,7 @@ export const ARCHETYPES = [
       {
         label: 'C',
         name: 'Full body funcional',
-        color: '#7eb8ff',
+        color: 'var(--day3)',
         emphasis: 'full',
         exercises: [
           { exerciseId: 'pull_up_weighted_barbell',role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 120, pattern: 'vertical_pull',    primaryGroup: 'back' },

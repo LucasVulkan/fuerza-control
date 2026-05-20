@@ -44,7 +44,7 @@ export const PROGRAMS = {
 export const SESSION_TEMPLATES = {
   tpl_A: {
     id: 'tpl_A', programId: 'prog_001', label: 'A',
-    name: 'Tracción prioritaria', emphasis: 'pull', color: '#e8ff47',
+    name: 'Tracción prioritaria', emphasis: 'pull', color: 'var(--day1)',
     generatedWarmup: [
       '10 retracciones escapulares en barra',
       '10 rotaciones de hombro con banda',
@@ -60,7 +60,7 @@ export const SESSION_TEMPLATES = {
   },
   tpl_B: {
     id: 'tpl_B', programId: 'prog_001', label: 'B',
-    name: 'Empuje prioritario', emphasis: 'push', color: '#ff6b35',
+    name: 'Empuje prioritario', emphasis: 'push', color: 'var(--day2)',
     generatedWarmup: [
       '10 fondos de hombros en paralelas',
       '10 rotaciones de hombro',
@@ -76,7 +76,7 @@ export const SESSION_TEMPLATES = {
   },
   tpl_C: {
     id: 'tpl_C', programId: 'prog_001', label: 'C',
-    name: 'Pierna prioritaria', emphasis: 'legs', color: '#7eb8ff',
+    name: 'Pierna prioritaria', emphasis: 'legs', color: 'var(--day3)',
     generatedWarmup: [
       '5 min caminata ligera',
       '10 círculos de cadera cada lado',
@@ -92,7 +92,7 @@ export const SESSION_TEMPLATES = {
   },
   tpl_D: {
     id: 'tpl_D', programId: 'prog_002', label: 'A',
-    name: 'Glúteo y empuje', emphasis: 'glutes_push', color: '#e8ff47',
+    name: 'Glúteo y empuje', emphasis: 'glutes_push', color: 'var(--day1)',
     generatedWarmup: ['5 min bicicleta estática suave', '10 puentes de glúteo sin peso', '10 círculos de rodilla'],
     exercises: [
       { exerciseId: 'hip_thrust',            order: 1, isKey: true,  sets: 3, restSec: 90, progressionOverride: null },
@@ -104,7 +104,7 @@ export const SESSION_TEMPLATES = {
   },
   tpl_E: {
     id: 'tpl_E', programId: 'prog_002', label: 'B',
-    name: 'Pierna y tracción', emphasis: 'legs_pull', color: '#ff6b35',
+    name: 'Pierna y tracción', emphasis: 'legs_pull', color: 'var(--day2)',
     generatedWarmup: ['5 min caminata ligera', '10 buenos días sin peso', '10 extensiones de rodilla sin peso'],
     exercises: [
       { exerciseId: 'romanian_deadlift_db', order: 1, isKey: true,  sets: 3, restSec: 120, progressionOverride: null },
@@ -116,7 +116,7 @@ export const SESSION_TEMPLATES = {
   },
   tpl_F: {
     id: 'tpl_F', programId: 'prog_002', label: 'C',
-    name: 'Full body', emphasis: 'full', color: '#7eb8ff',
+    name: 'Full body', emphasis: 'full', color: 'var(--day3)',
     generatedWarmup: ['5 min bicicleta estática', '10 círculos de cadera', '10 sentadillas activación'],
     exercises: [
       { exerciseId: 'goblet_squat',           order: 1, isKey: true,  sets: 3, restSec: 90, progressionOverride: null },

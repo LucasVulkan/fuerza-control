@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { useRestTimer } from '../../hooks/useRestTimer';
 
 const RING_SIZE = 64;
@@ -57,7 +57,7 @@ export default function RestTimerBar() {
         width: 'calc(100% - 32px)',
         maxWidth: 440,
         background: 'var(--surface2)',
-        border: '1px solid var(--border)',
+        border: 'var(--border-width) solid var(--border)',
         borderRadius: 16,
         padding: '14px 18px',
         display: 'flex',
@@ -118,7 +118,7 @@ export default function RestTimerBar() {
         onClick={skip}
         style={{
           background: 'none',
-          border: '1px solid var(--border)',
+          border: 'var(--border-width) solid var(--border)',
           borderRadius: 8,
           color: 'var(--muted)',
           fontSize: 12,

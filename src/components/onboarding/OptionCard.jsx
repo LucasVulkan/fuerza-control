@@ -19,8 +19,8 @@ export default function OptionCard({
     <div
       onClick={disabled ? undefined : onClick}
       style={{
-        background: selected ? 'rgba(232,255,71,0.06)' : 'var(--surface)',
-        border: '1px solid',
+        background: selected ? 'var(--accent-tint)' : 'var(--surface)',
+        border: 'var(--border-width) solid',
         borderColor: selected ? 'var(--accent)' : disabled ? 'var(--border)' : 'var(--border)',
         borderRadius: 10,
         padding: '14px 16px',
@@ -32,9 +32,9 @@ export default function OptionCard({
         alignItems: 'flex-start',
         gap: 12,
       }}
-      onPointerDown={(e) => { if (!disabled) e.currentTarget.style.background = 'rgba(232,255,71,0.04)'; }}
-      onPointerUp={(e) => { if (!disabled) e.currentTarget.style.background = selected ? 'rgba(232,255,71,0.06)' : 'var(--surface)'; }}
-      onPointerLeave={(e) => { if (!disabled) e.currentTarget.style.background = selected ? 'rgba(232,255,71,0.06)' : 'var(--surface)'; }}
+      onPointerDown={(e) => { if (!disabled) e.currentTarget.style.background = 'var(--surface2)'; }}
+      onPointerUp={(e) => { if (!disabled) e.currentTarget.style.background = selected ? 'var(--accent-tint)' : 'var(--surface)'; }}
+      onPointerLeave={(e) => { if (!disabled) e.currentTarget.style.background = selected ? 'var(--accent-tint)' : 'var(--surface)'; }}
     >
       {/* Indicador de selección */}
       <div style={{
@@ -77,7 +77,7 @@ export default function OptionCard({
             color: 'var(--accent)',
             marginTop: 8,
             padding: '8px 10px',
-            background: 'rgba(232,255,71,0.06)',
+            background: 'var(--accent-tint)',
             borderRadius: 6,
             lineHeight: 1.6,
           }}>

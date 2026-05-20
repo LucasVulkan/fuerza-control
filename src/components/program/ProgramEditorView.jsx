@@ -46,7 +46,7 @@ export default function ProgramEditorView() {
     <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ padding: '20px 20px 14px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ padding: '20px 20px 14px', borderBottom: 'var(--border-width) solid var(--border)' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1, color: 'var(--text)' }}>
           {isFromClients ? 'EDITAR PROGRAMA DE CLIENTE' : 'EDITAR PROGRAMA'}
         </div>
@@ -97,8 +97,8 @@ export default function ProgramEditorView() {
         <button
           onClick={() => addSessionToProgram(editingId)}
           style={{
-            width: '100%', background: 'rgba(232,255,71,0.04)',
-            border: '1px dashed rgba(232,255,71,0.25)', borderRadius: 10,
+            width: '100%', background: 'var(--accent-tint)',
+            border: '1px dashed var(--accent-tint-border)', borderRadius: 10,
             color: 'var(--accent)', fontFamily: "'DM Sans', sans-serif",
             fontSize: 13, padding: '14px 0', cursor: 'pointer', marginTop: 4,
           }}
@@ -111,15 +111,15 @@ export default function ProgramEditorView() {
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, padding: '12px 20px 28px',
-        borderTop: '1px solid var(--border)', background: 'var(--bg)',
+        borderTop: 'var(--border-width) solid var(--border)', background: 'var(--bg)',
         display: 'flex', gap: 10, boxSizing: 'border-box',
       }}>
         <button
           onClick={() => cancelEditSession(backDest, backTab)}
           style={{
-            flex: 1, background: 'transparent',
-            border: '1.5px solid rgba(255,255,255,0.35)', borderRadius: 10,
-            color: '#ffffff', fontFamily: "'DM Sans', sans-serif",
+            flex: 1, background: 'var(--surface2)',
+            border: 'var(--border-width) solid var(--border-card)', borderRadius: 10,
+            color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
             fontSize: 13, padding: '13px 8px', cursor: 'pointer',
           }}
         >

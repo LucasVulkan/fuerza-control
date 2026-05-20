@@ -35,7 +35,7 @@ export default function ArchivedProgramsView() {
       <div
         onClick={() => navigate('home')}
         style={{
-          padding: '14px 20px', borderBottom: '1px solid var(--border)',
+          padding: '14px 20px', borderBottom: 'var(--border-width) solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 12,
           cursor: 'pointer', userSelect: 'none',
         }}
@@ -57,11 +57,11 @@ export default function ArchivedProgramsView() {
             const sessions = getSessionCount(program);
             return (
               <div key={program.id} style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
+                background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
                 borderRadius: 10, overflow: 'hidden',
               }}>
                 {/* Info */}
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ padding: '14px 16px', borderBottom: 'var(--border-width) solid var(--border)' }}>
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{program.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
                     Archivado: {program.archivedAt ?? '—'} · {sessions} sesiones registradas
@@ -69,7 +69,7 @@ export default function ArchivedProgramsView() {
                 </div>
 
                 {/* Acciones */}
-                <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', borderTop: 'var(--border-width) solid var(--border)' }}>
                   <ActionBtn label="Exportar" onClick={() => exportFullBackup()} />
                   <div style={{ width: 1, background: 'var(--border)' }} />
                   <ActionBtn label="Eliminar" onClick={() => setDeleteModal(program.id)} danger />
@@ -86,7 +86,7 @@ export default function ArchivedProgramsView() {
           <div onClick={() => setDeleteModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
           <div style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            background: 'var(--surface)', border: '1px solid var(--border)',
+            background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
             borderRadius: 'var(--radius-card)', zIndex: 50,
             width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px',
           }}>
@@ -111,7 +111,7 @@ export default function ArchivedProgramsView() {
               <button
                 onClick={() => setDeleteModal(null)}
                 style={{
-                  background: 'none', border: '1px solid var(--border)',
+                  background: 'none', border: 'var(--border-width) solid var(--border)',
                   borderRadius: 'var(--radius-btn)', color: 'var(--muted)',
                   fontFamily: 'var(--font-body)', fontSize: 12,
                   padding: '10px', cursor: 'pointer', marginTop: 4,
@@ -152,7 +152,7 @@ function DeleteOption({ label, desc, onClick, danger }) {
     <button
       onClick={onClick}
       style={{
-        background: 'var(--surface2)', border: '1px solid',
+        background: 'var(--surface2)', border: 'var(--border-width) solid',
         borderColor: danger ? 'rgba(248,113,113,0.3)' : 'var(--border)',
         borderRadius: 'var(--radius-btn)', padding: '12px 14px',
         cursor: 'pointer', textAlign: 'left', width: '100%',

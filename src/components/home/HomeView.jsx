@@ -70,7 +70,7 @@ export default function HomeView() {
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480, height: BOTTOM_BAR_HEIGHT,
-        background: 'var(--surface)', borderTop: '1px solid var(--border)',
+        background: 'var(--surface)', borderTop: 'var(--border-width) solid var(--border)',
         display: 'flex', zIndex: 20,
       }}>
         {TABS.map((tab) => {
@@ -118,6 +118,12 @@ export default function HomeView() {
 }
 
 function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, startSession, navigate, activeSession, onArchive, allExercises }) {
+  const advanceStage        = useStore((s) => s.advanceStage);
+  const dismissStageAdvance = useStore((s) => s.dismissStageAdvance);
+  const setCurrentStage     = useStore((s) => s.setCurrentStage);
+
+  const [stagePicker, setStagePicker] = useState(false);
+
   if (!activeProgram) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
@@ -139,12 +145,165 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
     );
   }
 
+  const hasStages       = (activeProgram.stages?.length ?? 0) > 0;
+  const currentStageIdx = activeProgram.currentStageIndex ?? 0;
+  const currentStage    = hasStages ? activeProgram.stages[currentStageIdx] : null;
+  const nextStage       = hasStages ? activeProgram.stages[currentStageIdx + 1] : null;
+  const sessionsCompleted = activeProgram.stageSessionsCompleted ?? 0;
+  const threshold         = currentStage
+    ? currentStage.durationWeeks * (currentStage.days?.length || 1)
+    : 0;
+  const progress = threshold > 0 ? Math.min(1, sessionsCompleted / threshold) : 0;
+
   return (
-    <div style={{ borderTop: '1px solid var(--border)' }}>
+    <div style={{ borderTop: 'var(--border-width) solid var(--border)' }}>
       <div style={{ padding: '12px 20px 4px' }}>
         <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Programa activo</p>
-        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{activeProgram.name}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', margin: 0, flex: 1, minWidth: 0 }}>{activeProgram.name}</p>
+          {hasStages && (
+            <button
+              onClick={() => setStagePicker(true)}
+              style={{
+                fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+                background: 'var(--accent-tint-active)', color: 'var(--accent)',
+                border: 'var(--border-width) solid var(--accent-tint-border)',
+                borderRadius: 4, padding: '2px 8px', flexShrink: 0,
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {currentStage?.name ?? `Etapa ${currentStageIdx + 1}`}
+              <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+            </button>
+          )}
+        </div>
+        {hasStages && threshold > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>
+                {sessionsCompleted} / {threshold} sesiones
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>
+                {currentStageIdx + 1} / {activeProgram.stages.length} etapas
+              </span>
+            </div>
+            <div style={{ height: 3, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${Math.round(progress * 100)}%`,
+                background: 'var(--accent)', borderRadius: 2,
+                transition: 'width 0.4s ease',
+              }} />
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Stage picker modal */}
+      {stagePicker && hasStages && (
+        <>
+          <div onClick={() => setStagePicker(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 49 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
+            borderRadius: 'var(--radius-card)', zIndex: 50,
+            width: 'calc(100% - 40px)', maxWidth: 320,
+            padding: '18px', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: 1, marginBottom: 12 }}>
+              SELECCIONAR ETAPA
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {activeProgram.stages.map((stage, idx) => {
+                const isActive = idx === currentStageIdx;
+                return (
+                  <button
+                    key={stage.id ?? idx}
+                    onClick={() => {
+                      if (!isActive) setCurrentStage(activeProgram.id, idx);
+                      setStagePicker(false);
+                    }}
+                    style={{
+                      background: isActive ? 'var(--accent-tint-active)' : 'var(--surface2)',
+                      border: 'var(--border-width) solid',
+                      borderColor: isActive ? 'var(--accent-tint-border)' : 'var(--border)',
+                      borderRadius: 8, padding: '12px 14px',
+                      cursor: isActive ? 'default' : 'pointer',
+                      textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: isActive ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font-body)' }}>
+                        {stage.name}
+                      </span>
+                      {isActive && (
+                        <span style={{ fontSize: 9, letterSpacing: 1, color: 'var(--accent)', textTransform: 'uppercase' }}>Activa</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                      {stage.durationWeeks ?? 4} semanas · {stage.days?.length ?? 0} sesiones/semana
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setStagePicker(false)}
+              style={{
+                marginTop: 12, width: '100%', background: 'none',
+                border: 'var(--border-width) solid var(--border)', borderRadius: 'var(--radius-btn)',
+                color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: 12,
+                padding: '10px', cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
+
+
+      {/* Banner de avance de etapa */}
+      {activeProgram.stageAdvancePending && nextStage && (
+        <div style={{
+          margin: '10px 20px 0',
+          background: 'var(--accent-tint)',
+          border: 'var(--border-width) solid var(--accent-tint-border)',
+          borderRadius: 10, padding: '14px 16px',
+        }}>
+          <div style={{ fontSize: 10, color: 'var(--accent)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+            ¡Etapa completada!
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>
+            Has terminado {currentStage?.name}. ¿Empezar {nextStage.name}?
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => advanceStage(activeProgram.id)}
+              style={{
+                flex: 2, background: 'var(--accent)', border: 'none', borderRadius: 8,
+                color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 15, letterSpacing: 1, padding: '10px 0', cursor: 'pointer',
+              }}
+            >
+              AVANZAR A {nextStage.name.toUpperCase()}
+            </button>
+            <button
+              onClick={() => dismissStageAdvance(activeProgram.id)}
+              style={{
+                flex: 1, background: 'none',
+                border: 'var(--border-width) solid var(--accent-tint-border)',
+                borderRadius: 8, color: 'var(--muted)',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                padding: '10px 0', cursor: 'pointer',
+              }}
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: '8px 20px 4px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
@@ -186,7 +345,7 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        background: 'var(--surface)', border: '1px solid var(--border)',
+        background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
         borderRadius: 'var(--radius-card)', zIndex: 50,
         width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
@@ -214,7 +373,7 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
           <button
             onClick={onClose}
             style={{
-              background: 'none', border: '1px solid var(--border)',
+              background: 'none', border: 'var(--border-width) solid var(--border)',
               borderRadius: 'var(--radius-btn)', color: 'var(--muted)',
               fontFamily: 'var(--font-body)', fontSize: 12,
               padding: '10px', cursor: 'pointer', marginTop: 4,
@@ -233,7 +392,7 @@ function ArchiveOption({ label, desc, onClick, danger }) {
     <button
       onClick={onClick}
       style={{
-        background: 'var(--surface2)', border: '1px solid',
+        background: 'var(--surface2)', border: 'var(--border-width) solid',
         borderColor: danger ? 'rgba(248,113,113,0.3)' : 'var(--border)',
         borderRadius: 'var(--radius-btn)', padding: '12px 14px',
         cursor: 'pointer', textAlign: 'left', width: '100%',
@@ -254,16 +413,18 @@ function ProgramBtn({ label, onClick, accent, danger }) {
     <button
       onClick={onClick}
       style={{
-        flex: 1, background: 'transparent', border: '1px solid',
-        borderColor: danger ? 'rgba(248,113,113,0.3)' : accent ? 'rgba(232,255,71,0.35)' : 'var(--border)',
+        flex: 1,
+        background: danger ? 'rgba(248,113,113,0.07)' : accent ? 'var(--accent-tint)' : 'var(--surface)',
+        border: 'var(--border-width) solid',
+        borderColor: danger ? 'rgba(248,113,113,0.3)' : accent ? 'var(--accent-tint-border)' : 'var(--border)',
         borderRadius: 8, padding: '8px 4px', cursor: 'pointer',
         color: danger ? 'var(--red)' : accent ? 'var(--accent)' : 'var(--muted)',
         fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 0.3,
         transition: 'background 0.15s',
       }}
       onPointerDown={(e) => e.currentTarget.style.background = 'var(--surface2)'}
-      onPointerUp={(e) => e.currentTarget.style.background = 'transparent'}
-      onPointerLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      onPointerUp={(e) => e.currentTarget.style.background = danger ? 'rgba(248,113,113,0.07)' : accent ? 'var(--accent-tint)' : 'var(--surface)'}
+      onPointerLeave={(e) => e.currentTarget.style.background = danger ? 'rgba(248,113,113,0.07)' : accent ? 'var(--accent-tint)' : 'var(--surface)'}
     >
       {label}
     </button>

@@ -18,7 +18,7 @@ import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { SESSION_TEMPLATES, PROGRAMS } from '../data/programs';
 import { getProgression } from '../utils/progression';
 import { generateId } from '../utils/formatters';
-import { exportFullBackup, exportProgramOnly, downloadJSON, parseImportFile, readFileAsText } from '../utils/storage';
+import { exportFullBackup, exportProgramWithLog, downloadJSON, parseImportFile, readFileAsText } from '../utils/storage';
 
 // ─── Estado inicial ───────────────────────────────────────────────────────────
 
@@ -31,6 +31,7 @@ const INITIAL_PROFILE = {
   goals: [],
   bodyWeight: null,
   theme: 'dark',
+  isPro: true,  // dev: true para ver todas las features
 };
 
 const INITIAL_ACTIVE_SESSION = {
@@ -140,7 +141,13 @@ export const useStore = create(
         const { programs, profile } = get();
         const program = programs[programId];
         if (!program) return;
-        const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+        // Recoger templateIds de TODAS las etapas (no solo program.days = etapa actual)
+        const templateIds = new Set();
+        if (program.stages?.length > 0) {
+          program.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
+        } else {
+          program.days.forEach((d) => templateIds.add(d.sessionTemplateId));
+        }
         const wasActive = profile.activeProgramId === programId;
 
         set((s) => ({
@@ -199,7 +206,12 @@ export const useStore = create(
       deleteProgram: (programId, deleteHistory = false) => {
         const { programs } = get();
         const program = programs[programId];
-        const templateIds = new Set(program?.days.map((d) => d.sessionTemplateId) ?? []);
+        const templateIds = new Set();
+        if (program?.stages?.length > 0) {
+          program.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
+        } else {
+          (program?.days ?? []).forEach((d) => templateIds.add(d.sessionTemplateId));
+        }
 
         set((s) => {
           const next = { ...s.programs };
@@ -412,7 +424,11 @@ export const useStore = create(
           const templateIds = new Set();
           (client.programIds ?? []).forEach((pid) => {
             const prog = programs[pid];
-            prog?.days.forEach((d) => templateIds.add(d.sessionTemplateId));
+            if (prog?.stages?.length > 0) {
+              prog.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
+            } else {
+              prog?.days.forEach((d) => templateIds.add(d.sessionTemplateId));
+            }
             delete nextPrograms[pid];
           });
           return {
@@ -426,7 +442,7 @@ export const useStore = create(
       createProgramForClient: (clientId, numSessions, programName) => {
         const programId = generateId('prog');
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+        const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
         const newTemplates = {};
         const programDays = [];
 
@@ -436,7 +452,7 @@ export const useStore = create(
           newTemplates[templateId] = {
             id: templateId, programId,
             label, name: `Sesión ${label}`,
-            emphasis: '', color: colors[i] ?? '#e8ff47',
+            emphasis: '', color: colors[i % colors.length],
             exercises: [],
           };
           programDays.push({ sessionTemplateId: templateId, label });
@@ -477,18 +493,36 @@ export const useStore = create(
 
         const newProgramId = generateId('prog');
         const newTemplates = {};
-        const newDays = [];
 
-        srcProgram.days.forEach(({ sessionTemplateId, label }) => {
-          const srcTemplate = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
-          const newTemplateId = generateId('tpl');
-          newTemplates[newTemplateId] = {
-            ...(srcTemplate ?? { exercises: [], emphasis: '', color: '#e8ff47' }),
-            id: newTemplateId,
-            programId: newProgramId,
-          };
-          newDays.push({ sessionTemplateId: newTemplateId, label });
-        });
+        // Clona un array de days generando nuevos IDs de template para cada sesión
+        function cloneDays(days) {
+          return (days ?? []).map(({ sessionTemplateId, label }) => {
+            const srcTemplate = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const newTemplateId = generateId('tpl');
+            newTemplates[newTemplateId] = {
+              ...(srcTemplate ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
+              id: newTemplateId,
+              programId: newProgramId,
+            };
+            return { sessionTemplateId: newTemplateId, label };
+          });
+        }
+
+        let newDays;
+        let newStages;
+
+        if (srcProgram.stages?.length > 0) {
+          // Clonar cada etapa de forma independiente con sus propios nuevos IDs
+          newStages = srcProgram.stages.map((stage) => ({
+            ...stage,
+            days: cloneDays(stage.days),
+          }));
+          // program.days queda sincronizado con la etapa activa
+          const currentIdx = srcProgram.currentStageIndex ?? 0;
+          newDays = newStages[currentIdx]?.days ?? cloneDays(srcProgram.days);
+        } else {
+          newDays = cloneDays(srcProgram.days);
+        }
 
         const newProgram = {
           ...srcProgram,
@@ -499,6 +533,7 @@ export const useStore = create(
           archivedAt: null,
           createdAt: new Date().toISOString().split('T')[0],
           days: newDays,
+          ...(newStages ? { stages: newStages } : {}),
         };
         if (clientId) newProgram.clientId = clientId;
         else delete newProgram.clientId;
@@ -547,9 +582,16 @@ export const useStore = create(
         const program = programs[programId];
         if (!program) return;
 
+        // Recoger templates de TODAS las etapas, no solo program.days
+        const allTplIds = new Set();
+        if (program.stages?.length > 0) {
+          program.stages.forEach((st) => st.days.forEach((d) => allTplIds.add(d.sessionTemplateId)));
+        } else {
+          program.days.forEach((d) => allTplIds.add(d.sessionTemplateId));
+        }
         const relevantTemplates = {};
         const relevantUserPrograms = {};
-        program.days.forEach(({ sessionTemplateId }) => {
+        allTplIds.forEach((sessionTemplateId) => {
           if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
           if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
         });
@@ -597,7 +639,14 @@ export const useStore = create(
         const program = programs[programId];
         if (!program) return;
 
-        const templateIds = program.days.map((d) => d.sessionTemplateId);
+        // Recoger templates de TODAS las etapas, no solo program.days
+        const allTplIds = new Set();
+        if (program.stages?.length > 0) {
+          program.stages.forEach((st) => st.days.forEach((d) => allTplIds.add(d.sessionTemplateId)));
+        } else {
+          program.days.forEach((d) => allTplIds.add(d.sessionTemplateId));
+        }
+        const templateIds = [...allTplIds];
         const relevantTemplates = {};
         const relevantUserPrograms = {};
         templateIds.forEach((id) => {
@@ -627,95 +676,6 @@ export const useStore = create(
         }, null, 2);
 
         downloadJSON(json, program.name);
-      },
-
-      // PRO FEATURE — Exportar backup completo de todos los clientes
-      exportClientsBackup: () => {
-        const s = get();
-        const { clients, programs, sessionTemplates, userPrograms, customExercises, workoutLog } = s;
-
-        // Programas managed vinculados a clientes
-        const managedProgramIds = new Set(
-          Object.values(clients ?? {}).flatMap((c) => c.programIds ?? [])
-        );
-        const managedPrograms = {};
-        const managedTemplates = {};
-        const managedUserPrograms = {};
-        managedProgramIds.forEach((pid) => {
-          if (programs[pid]) managedPrograms[pid] = programs[pid];
-        });
-        Object.values(managedPrograms).forEach((prog) => {
-          prog.days.forEach((d) => {
-            if (sessionTemplates[d.sessionTemplateId]) managedTemplates[d.sessionTemplateId] = sessionTemplates[d.sessionTemplateId];
-            if (userPrograms[d.sessionTemplateId]) managedUserPrograms[d.sessionTemplateId] = userPrograms[d.sessionTemplateId];
-          });
-        });
-
-        const managedTemplateIds = new Set(Object.keys({ ...managedTemplates, ...managedUserPrograms }));
-        const managedLog = workoutLog.filter((e) => managedTemplateIds.has(e.sessionTemplateId));
-
-        const usedExerciseIds = new Set(
-          Object.values({ ...managedTemplates, ...managedUserPrograms })
-            .flatMap((t) => (t.exercises ?? []).map((e) => e.exerciseId))
-        );
-        const usedCustomExercises = {};
-        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
-          if (usedExerciseIds.has(id)) usedCustomExercises[id] = def;
-        });
-
-        const json = JSON.stringify({
-          version: '2',
-          exportDate: new Date().toISOString().split('T')[0],
-          exportType: 'clients_backup',
-          appName: 'Fuerza & Control',
-          clients: clients ?? {},
-          programs: managedPrograms,
-          sessionTemplates: managedTemplates,
-          userPrograms: managedUserPrograms,
-          customExercises: usedCustomExercises,
-          workoutLog: managedLog,
-        }, null, 2);
-
-        downloadJSON(json, 'backup-clientes');
-      },
-
-      // PRO FEATURE — Importar backup de clientes (reemplaza todo el área de clientes)
-      importClientsBackup: async (file) => {
-        try {
-          const text = await readFileAsText(file);
-          const parsed = JSON.parse(text);
-
-          if (parsed.exportType !== 'clients_backup') {
-            get().showToast('⚠️ El archivo no es un backup de clientes');
-            return { ok: false };
-          }
-
-          set((s) => {
-            // Mantener programas personales, reemplazar los managed
-            const personalPrograms = Object.fromEntries(
-              Object.entries(s.programs).filter(([, p]) => p.mode !== 'managed')
-            );
-            const personalTemplateIds = new Set(
-              Object.values(personalPrograms).flatMap((p) => p.days.map((d) => d.sessionTemplateId))
-            );
-            const personalLog = s.workoutLog.filter((e) => personalTemplateIds.has(e.sessionTemplateId));
-
-            return {
-              clients: parsed.clients ?? {},
-              programs: { ...personalPrograms, ...(parsed.programs ?? {}) },
-              sessionTemplates: { ...s.sessionTemplates, ...(parsed.sessionTemplates ?? {}) },
-              userPrograms: { ...s.userPrograms, ...(parsed.userPrograms ?? {}) },
-              customExercises: { ...s.customExercises, ...(parsed.customExercises ?? {}) },
-              workoutLog: [...personalLog, ...(parsed.workoutLog ?? [])],
-            };
-          });
-
-          get().showToast('✓ Backup de clientes importado');
-          return { ok: true };
-        } catch {
-          get().showToast('⚠️ Error al leer el archivo');
-          return { ok: false };
-        }
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -1051,7 +1011,7 @@ export const useStore = create(
       createEmptyProgram: (numSessions, programName = 'Mi programa', mode = 'personal') => {
         const programId = generateId('prog');
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+        const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
         const newTemplates = {};
         const programDays = [];
 
@@ -1061,7 +1021,7 @@ export const useStore = create(
           newTemplates[templateId] = {
             id: templateId, programId,
             label, name: `Sesión ${label}`,
-            emphasis: '', color: colors[i] ?? '#e8ff47',
+            emphasis: '', color: colors[i % colors.length],
             exercises: [],
           };
           programDays.push({ sessionTemplateId: templateId, label });
@@ -1089,34 +1049,293 @@ export const useStore = create(
         }));
       },
 
-      // Añade una sesión vacía al programa activo
-      addSessionToProgram: (programId) => {
+      // Añade una sesión vacía al programa (o a una etapa concreta si stageIndex != null)
+      addSessionToProgram: (programId, stageIndex = null) => {
         const { programs, sessionTemplates } = get();
         const program = programs[programId];
         if (!program) return;
 
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const colors = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
-        const i = program.days.length;
-        const label = labels[i] ?? String(i + 1);
-        const color = colors[i] ?? '#888';
-        const templateId = generateId('tpl');
+        const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
+        const hasStages = program.stages?.length > 0;
+
+        const targetStageIdx = hasStages
+          ? (stageIndex !== null ? stageIndex : (program.currentStageIndex ?? 0))
+          : null;
+        const targetDays = hasStages
+          ? (program.stages[targetStageIdx]?.days ?? [])
+          : program.days;
+
+        const i       = targetDays.length;
+        const label   = labels[i] ?? String(i + 1);
+        const color   = colors[i % colors.length];
+        const tplId   = generateId('tpl');
 
         const newTemplate = {
-          id: templateId, programId,
+          id: tplId, programId,
           label, name: `Sesión ${label}`,
-          emphasis: '', color,
-          exercises: [],
+          emphasis: '', color, exercises: [],
         };
 
+        if (hasStages) {
+          const newDays   = [...targetDays, { sessionTemplateId: tplId, label }];
+          const newStages = program.stages.map((st, i) =>
+            i === targetStageIdx ? { ...st, days: newDays } : st
+          );
+          const isCurrentStage = targetStageIdx === (program.currentStageIndex ?? 0);
+          set((s) => ({
+            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+            programs: {
+              ...s.programs,
+              [programId]: {
+                ...program,
+                stages: newStages,
+                days: isCurrentStage ? newDays : program.days,
+              },
+            },
+          }));
+        } else {
+          set((s) => ({
+            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+            programs: {
+              ...s.programs,
+              [programId]: {
+                ...program,
+                days: [...program.days, { sessionTemplateId: tplId, label }],
+              },
+            },
+          }));
+        }
+      },
+
+      /**
+       * Elimina una sesión (template) de un programa.
+       * La quita de program.days y, si tiene etapas, de la etapa correspondiente.
+       * También la borra de sessionTemplates y userPrograms.
+       */
+      removeSessionFromProgram: (programId, templateId) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program) return;
+
+        const newDays = program.days.filter((d) => d.sessionTemplateId !== templateId);
+        const newStages = program.stages?.map((stage) => ({
+          ...stage,
+          days: stage.days.filter((d) => d.sessionTemplateId !== templateId),
+        }));
+
+        set((s) => {
+          const nextSessionTemplates = { ...s.sessionTemplates };
+          delete nextSessionTemplates[templateId];
+          const nextUserPrograms = { ...s.userPrograms };
+          delete nextUserPrograms[templateId];
+
+          return {
+            programs: {
+              ...s.programs,
+              [programId]: {
+                ...program,
+                days: newDays,
+                ...(newStages ? { stages: newStages } : {}),
+              },
+            },
+            sessionTemplates: nextSessionTemplates,
+            userPrograms: nextUserPrograms,
+          };
+        });
+      },
+
+      // ══════════════════════════════════════════════════════════════════════
+      // ACCIONES — ETAPAS DE PROGRAMA (PRO FEATURE)
+      // ══════════════════════════════════════════════════════════════════════
+
+      /**
+       * Añade una nueva etapa al programa.
+       * Si el programa no tenía etapas, convierte las sessions actuales en "Etapa 1"
+       * y crea la nueva etapa clonando esas sesiones con nuevos IDs.
+       * PRO FEATURE: la restricción la aplica la UI, no la acción.
+       */
+      addStageToProgram: (programId, stageName = null, durationWeeks = 4) => {
+        const { programs, sessionTemplates, userPrograms } = get();
+        const program = programs[programId];
+        if (!program) return;
+
+        const hasStages = program.stages?.length > 0;
+        const existingStages = program.stages ?? [];
+        let updatedStages;
+        const updatedSessionTemplates = { ...sessionTemplates };
+
+        function cloneDays(sourceDays) {
+          const newDays = [];
+          sourceDays.forEach(({ sessionTemplateId, label }) => {
+            const src = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const newTplId = generateId('tpl');
+            updatedSessionTemplates[newTplId] = {
+              ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
+              id: newTplId,
+              programId,
+            };
+            newDays.push({ sessionTemplateId: newTplId, label });
+          });
+          return newDays;
+        }
+
+        if (!hasStages) {
+          // Primera vez: envuelve el programa actual como "Etapa 1"
+          const stage1 = {
+            id: generateId('stage'),
+            name: 'Etapa 1',
+            durationWeeks: 4,
+            days: program.days,
+          };
+          const newStageDays = cloneDays(program.days);
+          const newStage = {
+            id: generateId('stage'),
+            name: stageName ?? 'Etapa 2',
+            durationWeeks,
+            days: newStageDays,
+          };
+          updatedStages = [stage1, newStage];
+        } else {
+          // Clonar la última etapa
+          const lastStage = existingStages[existingStages.length - 1];
+          const newStageDays = cloneDays(lastStage.days);
+          const newStage = {
+            id: generateId('stage'),
+            name: stageName ?? `Etapa ${existingStages.length + 1}`,
+            durationWeeks,
+            days: newStageDays,
+          };
+          updatedStages = [...existingStages, newStage];
+        }
+
         set((s) => ({
-          sessionTemplates: { ...s.sessionTemplates, [templateId]: newTemplate },
+          sessionTemplates: updatedSessionTemplates,
           programs: {
             ...s.programs,
             [programId]: {
               ...program,
-              days: [...program.days, { sessionTemplateId: templateId, label }],
+              stages: updatedStages,
+              currentStageIndex: program.currentStageIndex ?? 0,
+              stageSessionsCompleted: program.stageSessionsCompleted ?? 0,
+              stageAdvancePending: program.stageAdvancePending ?? false,
+              // days sigue apuntando a la etapa activa actual
             },
+          },
+        }));
+      },
+
+      /** Actualiza nombre y/o duración de una etapa concreta. */
+      updateStage: (programId, stageIndex, updates) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program?.stages) return;
+        const newStages = program.stages.map((st, i) =>
+          i === stageIndex ? { ...st, ...updates } : st
+        );
+        set((s) => ({
+          programs: { ...s.programs, [programId]: { ...program, stages: newStages } },
+        }));
+      },
+
+      /**
+       * Elimina una etapa del programa.
+       * Si queda solo 1 etapa, colapsa el programa a no-staged.
+       */
+      removeStageFromProgram: (programId, stageIndex) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program?.stages || program.stages.length <= 1) return;
+
+        const newStages = program.stages.filter((_, i) => i !== stageIndex);
+        const currentIdx = program.currentStageIndex ?? 0;
+        const newCurrentIdx = stageIndex <= currentIdx ? Math.max(0, currentIdx - 1) : currentIdx;
+
+        if (newStages.length === 1) {
+          // Colapsar a programa sin etapas
+          const { stages: _s, currentStageIndex: _csi, stageSessionsCompleted: _ssc, stageAdvancePending: _sap, ...rest } = program;
+          set((s) => ({
+            programs: {
+              ...s.programs,
+              [programId]: { ...rest, days: newStages[0].days },
+            },
+          }));
+        } else {
+          set((s) => ({
+            programs: {
+              ...s.programs,
+              [programId]: {
+                ...program,
+                stages: newStages,
+                currentStageIndex: newCurrentIdx,
+                days: newStages[newCurrentIdx].days,
+                stageSessionsCompleted: 0,
+                stageAdvancePending: false,
+              },
+            },
+          }));
+        }
+      },
+
+      /**
+       * Avanza a la siguiente etapa (auto o manual).
+       * Sincroniza program.days con la nueva etapa y reinicia el contador.
+       */
+      advanceStage: (programId) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program?.stages?.length) return;
+        const currentIdx = program.currentStageIndex ?? 0;
+        const nextIdx = currentIdx + 1;
+        if (nextIdx >= program.stages.length) return;
+        const nextStage = program.stages[nextIdx];
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: {
+              ...program,
+              currentStageIndex: nextIdx,
+              days: nextStage.days,
+              stageSessionsCompleted: 0,
+              stageAdvancePending: false,
+            },
+          },
+        }));
+      },
+
+      /**
+       * Cambia manualmente a cualquier etapa.
+       * Reinicia el contador de sesiones completadas.
+       */
+      setCurrentStage: (programId, stageIndex) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program?.stages?.length) return;
+        if (stageIndex < 0 || stageIndex >= program.stages.length) return;
+        const targetStage = program.stages[stageIndex];
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: {
+              ...program,
+              currentStageIndex: stageIndex,
+              days: targetStage.days,
+              stageSessionsCompleted: 0,
+              stageAdvancePending: false,
+            },
+          },
+        }));
+      },
+
+      /** Descarta el banner de avance de etapa sin cambiar de etapa. */
+      dismissStageAdvance: (programId) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program) return;
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: { ...program, stageAdvancePending: false },
           },
         }));
       },
@@ -1307,8 +1526,27 @@ export const useStore = create(
         }));
       },
 
+      // Añade una serie extra a un ejercicio del programa durante la sesión activa
+      addSetToSession: (exerciseId) => {
+        set((s) => {
+          const current = s.activeSession.setsState[exerciseId] ?? [];
+          // Pre-rellena el peso de la última serie como punto de partida
+          const lastSet = current[current.length - 1] ?? {};
+          const newSet  = { weight: lastSet.weight ?? '', reps: '', time: '', done: false };
+          return {
+            activeSession: {
+              ...s.activeSession,
+              setsState: {
+                ...s.activeSession.setsState,
+                [exerciseId]: [...current, newSet],
+              },
+            },
+          };
+        });
+      },
+
       saveSession: () => {
-        const { activeSession, getEffectiveTemplate, workoutLog } = get();
+        const { activeSession, getEffectiveTemplate, workoutLog, programs } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
 
         const template = getEffectiveTemplate(activeSession.templateId);
@@ -1372,10 +1610,43 @@ export const useStore = create(
           ],
         };
 
+        // Tracking de progreso de etapa
+        const ownerProgramId = template?.programId;
+        const ownerProgram   = ownerProgramId ? programs[ownerProgramId] : null;
+        let stageUpdate = null;
+
+        if (ownerProgram?.stages?.length > 0) {
+          const stageIdx = ownerProgram.currentStageIndex ?? 0;
+          const stage    = ownerProgram.stages[stageIdx];
+          const stageTplIds = new Set((stage?.days ?? []).map((d) => d.sessionTemplateId));
+
+          if (stageTplIds.has(activeSession.templateId) && stage) {
+            const newCount  = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
+            const threshold = stage.durationWeeks * stage.days.length;
+            const isLast    = stageIdx >= ownerProgram.stages.length - 1;
+            stageUpdate = {
+              programId: ownerProgramId,
+              stageSessionsCompleted: newCount,
+              stageAdvancePending: (newCount >= threshold && !isLast)
+                || (ownerProgram.stageAdvancePending ?? false),
+            };
+          }
+        }
+
         set((s) => ({
           workoutLog: [...s.workoutLog, logEntry],
           activeSession: INITIAL_ACTIVE_SESSION,
-          ui: { ...s.ui, homeTab: 'session' },  // siempre volver a Sesión tras guardar
+          ui: { ...s.ui, homeTab: 'session' },
+          ...(stageUpdate ? {
+            programs: {
+              ...s.programs,
+              [stageUpdate.programId]: {
+                ...s.programs[stageUpdate.programId],
+                stageSessionsCompleted: stageUpdate.stageSessionsCompleted,
+                stageAdvancePending:    stageUpdate.stageAdvancePending,
+              },
+            },
+          } : {}),
         }));
 
         get().stopRestTimer();
@@ -1519,124 +1790,147 @@ export const useStore = create(
       // ACCIONES — EXPORTAR / IMPORTAR
       // ══════════════════════════════════════════════════════════════════════
 
-      // Exportar backup completo
+      // Exportar backup completo (programa + historial + clientes PRO + plantillas PRO)
       exportFullBackup: () => {
         const s = get();
         const json = exportFullBackup(s);
-        const name = s.programs[s.profile.activeProgramId]?.name ?? 'backup';
+        downloadJSON(json, 'fc-backup');
+      },
+
+      // Exportar programa activo + su historial (para devolver al entrenador)
+      exportProgramWithLog: () => {
+        const s = get();
+        const json = exportProgramWithLog(s);
+        if (!json) { get().showToast('Sin programa activo'); return; }
+        const name = s.programs[s.profile.activeProgramId]?.name ?? 'programa';
         downloadJSON(json, name);
       },
 
-      // Exportar solo el programa (sin historial)
-      exportProgramOnly: () => {
-        const s = get();
-        const json = exportProgramOnly(s);
-        const name = s.programs[s.profile.activeProgramId]?.name ?? 'programa';
-        downloadJSON(json, `programa-${name}`);
-      },
-
       /**
-       * Importa un archivo JSON exportado por la app.
-       * @param {File} file
-       * @param {'replace'|'merge_log'|'add_program'} mode
-       *   - replace: reemplaza todo (backup completo)
-       *   - merge_log: fusiona solo el historial (el cliente manda sus sesiones al entrenador)
-       *   - add_program: importa el programa como nuevo programa activo, sin tocar el historial
+       * Importa datos ya parseados según las secciones seleccionadas por el usuario.
+       * @param {object} data — resultado de parseImportFile (ya parseado en el modal)
+       * @param {object} sections — { program, log, customExercises, clients, templates, templatesMode }
        */
-      importData: async (file, mode = 'replace') => {
-        try {
-          const text = await readFileAsText(file);
-          const result = parseImportFile(text);
+      importData: (data, sections) => {
+        const allFilePrograms = {
+          ...(data.programs ?? {}),
+          ...(data.program ? { [data.program.id]: data.program } : {}),
+        };
 
-          if (!result.ok) {
-            get().showToast('⚠️ ' + result.error);
-            return { ok: false, error: result.error };
+        set((s) => {
+          const updates = {};
+
+          // sessionTemplates y userPrograms se necesitan para cualquier programa importado
+          const needsTemplateData = sections.program || sections.clients || sections.templates;
+          if (needsTemplateData) {
+            updates.sessionTemplates = { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) };
+            updates.userPrograms = { ...s.userPrograms, ...(data.userPrograms ?? {}) };
           }
 
-          const data = result.data;
+          if (sections.program) {
+            const personalPrograms = {};
+            // Templates del archivo (sessionTemplates + userPrograms) para poder remapear
+            const fileTplMap = { ...(data.sessionTemplates ?? {}), ...(data.userPrograms ?? {}) };
 
-          // Normalizar: exportType 'full' tiene data.programs (plural)
-          // exportType 'program' tiene data.program (singular)
-          const singleProgram = data.program ?? null;
-          const multiPrograms = data.programs ?? (singleProgram ? { [singleProgram.id]: singleProgram } : {});
+            Object.entries(allFilePrograms).forEach(([id, p]) => {
+              if (p.mode === 'template' || p.mode === 'managed') return;
 
-          if (mode === 'replace') {
-            const importedTemplateIds = new Set([
-              ...Object.keys(data.sessionTemplates ?? {}),
-              ...Object.keys(data.userPrograms ?? {}),
-            ]);
-            // Determinar el activeProgramId tras la importación
-            const newActiveProgramId =
-              singleProgram?.id ??
-              data.profile?.activeProgramId ??
-              get().profile.activeProgramId;
+              const existingMode = s.programs[id]?.mode;
+              // Solo proteger plantillas: importar sobre managed está permitido
+              // (es exactamente el flujo de retorno cliente→entrenador con mismo ID)
+              const conflictsWithProtected = existingMode === 'template';
 
-            set((s) => {
-              const keptUserPrograms = Object.fromEntries(
-                Object.entries(s.userPrograms).filter(([id]) => !importedTemplateIds.has(id))
-              );
-              // Marcar todos los programas importados como personal + active
-              const importedPrograms = Object.fromEntries(
-                Object.entries(multiPrograms).map(([id, p]) => [id, { ...p, mode: 'personal', status: 'active' }])
-              );
-              return {
-                profile: {
-                  ...(data.profile ?? s.profile),
-                  activeProgramId: newActiveProgramId,
-                  theme: s.profile.theme,
-                  onboardingCompleted: Object.keys(multiPrograms).length > 0 ? true : (data.profile?.onboardingCompleted ?? s.profile.onboardingCompleted),
-                },
-                programs: { ...s.programs, ...importedPrograms },
-                sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
-                userPrograms: { ...keptUserPrograms, ...data.userPrograms },
-                customExercises: { ...s.customExercises, ...data.customExercises },
-                workoutLog: data.workoutLog ?? s.workoutLog,
-              };
+              if (conflictsWithProtected) {
+                // El ID ya pertenece a una plantilla/managed → clonar con nuevos IDs
+                // para no pisar nunca la plantilla original.
+                const newProgId = generateId('prog');
+                const remappedTpls = {};
+
+                const remapDays = (days) =>
+                  (days ?? []).map(({ sessionTemplateId, label }) => {
+                    const newTplId = generateId('tpl');
+                    const src = fileTplMap[sessionTemplateId];
+                    if (src) remappedTpls[newTplId] = { ...src, id: newTplId, programId: newProgId };
+                    return { sessionTemplateId: newTplId, label };
+                  });
+
+                if (p.stages?.length > 0) {
+                  // Remapear cada etapa y sincronizar program.days con la etapa activa
+                  const newStages = p.stages.map((st) => ({ ...st, days: remapDays(st.days) }));
+                  const currentIdx = p.currentStageIndex ?? 0;
+                  personalPrograms[newProgId] = {
+                    ...p, id: newProgId, mode: 'personal', status: 'active',
+                    stages: newStages,
+                    days: newStages[currentIdx]?.days ?? [],
+                  };
+                } else {
+                  personalPrograms[newProgId] = {
+                    ...p, id: newProgId, mode: 'personal', status: 'active',
+                    days: remapDays(p.days),
+                  };
+                }
+
+                // Añadir los templates remapeados al store
+                updates.sessionTemplates = {
+                  ...(updates.sessionTemplates ?? s.sessionTemplates),
+                  ...remappedTpls,
+                };
+              } else {
+                personalPrograms[id] = { ...p, mode: 'personal', status: 'active' };
+              }
             });
-            get().showToast('✓ Importado correctamente');
-          }
 
-          if (mode === 'merge_log') {
-            const currentIds = new Set(get().workoutLog.map((e) => e.id));
-            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
-            set((s) => ({
-              workoutLog: [...s.workoutLog, ...newEntries],
-              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
-              userPrograms: { ...s.userPrograms, ...data.userPrograms },
-            }));
-            get().showToast(`✓ ${newEntries.length} sesiones añadidas al historial`);
-          }
-
-          if (mode === 'add_program') {
-            if (!singleProgram && Object.keys(multiPrograms).length === 0) {
-              get().showToast('⚠️ El archivo no contiene un programa');
-              return { ok: false, error: 'Sin programa' };
-            }
-            const firstProgram = singleProgram ?? Object.values(multiPrograms)[0];
-            set((s) => ({
-              programs: {
-                ...s.programs,
-                ...Object.fromEntries(
-                  Object.entries(multiPrograms).map(([id, p]) => [id, { ...p, mode: 'personal', status: 'active' }])
-                ),
-              },
-              sessionTemplates: { ...s.sessionTemplates, ...data.sessionTemplates },
-              userPrograms: { ...s.userPrograms, ...data.userPrograms },
-              customExercises: { ...s.customExercises, ...data.customExercises },
-              profile: {
+            const firstId = Object.keys(personalPrograms)[0] ?? null;
+            updates.programs = { ...(updates.programs ?? s.programs), ...personalPrograms };
+            if (firstId) {
+              updates.profile = {
                 ...s.profile,
-                activeProgramId: firstProgram.id,
+                activeProgramId: firstId,
                 onboardingCompleted: true,
-              },
-            }));
-            get().showToast('✓ Programa importado correctamente');
+              };
+            }
           }
 
-          return { ok: true, data };
-        } catch (e) {
-          get().showToast('⚠️ Error al leer el archivo');
-          return { ok: false, error: e.message };
-        }
+          if (sections.log) {
+            const currentIds = new Set(s.workoutLog.map((e) => e.id));
+            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
+            updates.workoutLog = [...s.workoutLog, ...newEntries];
+          }
+
+          if (sections.customExercises) {
+            updates.customExercises = { ...s.customExercises, ...(data.customExercises ?? {}) };
+          }
+
+          if (sections.clients) {
+            const managedPrograms = {};
+            Object.entries(allFilePrograms).forEach(([id, p]) => {
+              if (p.mode === 'managed') managedPrograms[id] = p;
+            });
+            updates.clients = { ...(s.clients ?? {}), ...(data.clients ?? {}) };
+            updates.programs = { ...(updates.programs ?? s.programs), ...managedPrograms };
+          }
+
+          if (sections.templates) {
+            const templateProgs = {};
+            Object.entries(allFilePrograms).forEach(([id, p]) => {
+              if (p.mode === 'template') templateProgs[id] = p;
+            });
+            const base = updates.programs ?? s.programs;
+            if (sections.templatesMode === 'replace') {
+              const withoutTemplates = Object.fromEntries(
+                Object.entries(base).filter(([, p]) => p.mode !== 'template')
+              );
+              updates.programs = { ...withoutTemplates, ...templateProgs };
+            } else {
+              updates.programs = { ...base, ...templateProgs };
+            }
+          }
+
+          return updates;
+        });
+
+        get().showToast('✓ Importado correctamente');
+        return { ok: true };
       },
     }),
 
@@ -1659,6 +1953,25 @@ export const useStore = create(
       // Al rehidratar: si hay sesión en progreso, navegar a workout automáticamente
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+
+        // Migración: normaliza colores hex hardcodeados → CSS vars en templates almacenados
+        const HEX_TO_VAR = {
+          '#e8ff47': 'var(--day1)', '#E8FF47': 'var(--day1)',
+          '#ff6b35': 'var(--day2)', '#FF6B35': 'var(--day2)',
+          '#7eb8ff': 'var(--day3)', '#7EB8FF': 'var(--day3)',
+          '#a78bfa': 'var(--day4)', '#A78BFA': 'var(--day4)',
+          '#34d399': 'var(--day5)', '#34D399': 'var(--day5)',
+          '#f472b6': 'var(--day6)', '#F472B6': 'var(--day6)',
+        };
+        const migrateTemplates = (map) => {
+          if (!map) return;
+          Object.values(map).forEach((tpl) => {
+            if (tpl?.color && HEX_TO_VAR[tpl.color]) tpl.color = HEX_TO_VAR[tpl.color];
+          });
+        };
+        migrateTemplates(state.userPrograms);
+        migrateTemplates(state.sessionTemplates);
+
         const hasProgram = state.profile?.activeProgramId && state.programs?.[state.profile.activeProgramId];
         if (!state.profile?.onboardingCompleted && !hasProgram) {
           state.ui = { ...INITIAL_UI, view: 'onboarding' };

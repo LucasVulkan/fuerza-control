@@ -1,4 +1,4 @@
-.counter {
+﻿.counter {
   font-size: 16px;
   padding: 5px 10px;
   border-radius: 5px;
@@ -72,7 +72,7 @@
 
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
+  border-top: var(--border-width) solid var(--border);
   text-align: left;
 
   & > div {
@@ -96,11 +96,11 @@
 }
 
 #docs {
-  border-right: 1px solid var(--border);
+  border-right: var(--border-width) solid var(--border);
 
   @media (max-width: 1024px) {
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--border-width) solid var(--border);
   }
 }
 
@@ -155,7 +155,7 @@
 
 #spacer {
   height: 88px;
-  border-top: 1px solid var(--border);
+  border-top: var(--border-width) solid var(--border);
   @media (max-width: 1024px) {
     height: 48px;
   }

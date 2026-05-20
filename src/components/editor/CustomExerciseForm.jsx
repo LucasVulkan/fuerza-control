@@ -29,7 +29,7 @@ const EQUIPMENT_OPTIONS = [
 const inputStyle = {
   width: '100%',
   background: 'var(--surface2)',
-  border: '1px solid var(--border)',
+  border: 'var(--border-width) solid var(--border)',
   borderRadius: 8,
   color: 'var(--text)',
   fontFamily: "'DM Sans', sans-serif",
@@ -132,7 +132,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
       {/* Header */}
       <div style={{
         padding: '16px 20px 12px',
-        borderBottom: '1px solid var(--border)',
+        borderBottom: 'var(--border-width) solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0,
       }}>
@@ -209,7 +209,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
                 style={{
                   flex: 1,
                   background: form.restSec === s ? 'var(--accent)' : 'var(--surface2)',
-                  border: '1px solid',
+                  border: 'var(--border-width) solid',
                   borderColor: form.restSec === s ? 'var(--accent)' : 'var(--border)',
                   borderRadius: 6,
                   color: form.restSec === s ? '#0d0d0d' : 'var(--muted)',
@@ -236,9 +236,9 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
                   key={eq.value}
                   onClick={() => toggleEquipment(eq.value)}
                   style={{
-                    background: active ? 'rgba(232,255,71,0.1)' : 'var(--surface2)',
-                    border: '1px solid',
-                    borderColor: active ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+                    background: active ? 'var(--accent-tint-active)' : 'var(--surface2)',
+                    border: 'var(--border-width) solid',
+                    borderColor: active ? 'var(--accent-tint-border)' : 'var(--border)',
                     borderRadius: 6,
                     color: active ? 'var(--accent)' : 'var(--muted)',
                     fontSize: 11,
@@ -289,7 +289,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
                 style={{
                   width: 44, height: 24, borderRadius: 12,
                   background: form.isUnilateral ? 'var(--accent)' : 'var(--surface2)',
-                  border: '1px solid var(--border)',
+                  border: 'var(--border-width) solid var(--border)',
                   cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
                 }}
               >
@@ -339,7 +339,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
       <div style={{
         flexShrink: 0,
         padding: '12px 20px 28px',
-        borderTop: '1px solid var(--border)',
+        borderTop: 'var(--border-width) solid var(--border)',
         display: 'flex', gap: 10,
       }}>
         <button

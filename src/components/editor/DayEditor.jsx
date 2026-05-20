@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -33,7 +33,7 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? 'none' : transition,
     padding: '10px 16px',
-    borderBottom: '1px solid var(--border)',
+    borderBottom: 'var(--border-width) solid var(--border)',
     background: isDragging && swipeProgress > 0
       ? `linear-gradient(to left, rgba(239,68,68,${0.05 + swipeProgress * 0.25}), transparent)`
       : 'transparent',
@@ -68,9 +68,9 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setEditingExId(isEditing ? null : exConfig.exerciseId)}
           style={{
-            background: isEditing ? 'rgba(232,255,71,0.1)' : 'var(--surface2)',
-            border: '1px solid',
-            borderColor: isEditing ? 'rgba(232,255,71,0.3)' : 'var(--border)',
+            background: isEditing ? 'var(--accent-tint-active)' : 'var(--surface2)',
+            border: 'var(--border-width) solid',
+            borderColor: isEditing ? 'var(--accent-tint-border)' : 'var(--border)',
             borderRadius: 6,
             color: isEditing ? 'var(--accent)' : 'var(--muted)',
             fontSize: 12, padding: '5px 10px', cursor: 'pointer',
@@ -111,7 +111,7 @@ function DragClone({ exConfig, def, swipeProgress }) {
     <div style={{
       padding: '10px 16px',
       background: bg,
-      border: `1px solid ${borderColor}`,
+      border: `var(--border-width) solid ${borderColor}`,
       borderRadius: 10,
       opacity: 0.95,
       boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
@@ -238,7 +238,7 @@ export default function DayEditor({ templateId }) {
   return (
     <div style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      border: 'var(--border-width) solid var(--border)',
       borderLeft: `3px solid ${color}`,
       borderRadius: 10,
       overflow: 'hidden',
@@ -302,7 +302,7 @@ export default function DayEditor({ templateId }) {
 
       {/* Lista sortable */}
       {open && (
-        <div style={{ borderTop: '1px solid var(--border)' }}>
+        <div style={{ borderTop: 'var(--border-width) solid var(--border)' }}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
             <SortableContext items={exerciseIds} strategy={verticalListSortingStrategy}>
               {template.exercises.map((exConfig, i) => (
@@ -331,13 +331,13 @@ export default function DayEditor({ templateId }) {
           </DndContext>
 
           {/* Botón añadir */}
-          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+          <div style={{ padding: '10px 16px', borderTop: 'var(--border-width) solid var(--border)', display: 'flex', gap: 8 }}>
             <button
               onClick={() => setShowAddSelector(true)}
               style={{
                 flex: 1,
-                background: 'rgba(232,255,71,0.06)',
-                border: '1px dashed rgba(232,255,71,0.3)',
+                background: 'var(--accent-tint)',
+                border: '1px dashed var(--accent-tint-border)',
                 borderRadius: 8,
                 color: 'var(--accent)',
                 fontFamily: "'DM Sans', sans-serif",
@@ -353,7 +353,7 @@ export default function DayEditor({ templateId }) {
                 onClick={handleReset}
                 style={{
                   background: 'none',
-                  border: '1px solid var(--border)',
+                  border: 'var(--border-width) solid var(--border)',
                   borderRadius: 8,
                   color: 'var(--muted)',
                   fontFamily: "'DM Sans', sans-serif",

@@ -63,7 +63,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
     <>
       <div style={{
         background: 'var(--surface2)',
-        border: '1px solid var(--border)',
+        border: 'var(--border-width) solid var(--border)',
         borderRadius: 10,
         padding: '14px 16px',
         margin: '4px 0 8px',
@@ -85,9 +85,9 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
                 onClick={() => setProgressionModel(m.id)}
                 style={{
                   flex: '1 1 calc(50% - 3px)',
-                  background: progressionModel === m.id ? 'rgba(232,255,71,0.1)' : 'var(--surface)',
-                  border: '1px solid',
-                  borderColor: progressionModel === m.id ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+                  background: progressionModel === m.id ? 'var(--accent-tint-active)' : 'var(--surface)',
+                  border: 'var(--border-width) solid',
+                  borderColor: progressionModel === m.id ? 'var(--accent-tint-border)' : 'var(--border)',
                   borderRadius: 6,
                   color: progressionModel === m.id ? 'var(--accent)' : 'var(--muted)',
                   fontFamily: "'DM Sans', sans-serif",
@@ -135,7 +135,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
             onClick={() => setShowSelector(true)}
             style={{
               flex: 1, background: 'var(--surface3)',
-              border: '1px solid var(--border)', borderRadius: 8,
+              border: 'var(--border-width) solid var(--border-card)', borderRadius: 8,
               color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
               fontSize: 12, padding: '9px 0', cursor: 'pointer',
             }}
@@ -145,7 +145,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
           <button
             onClick={onClose}
             style={{
-              background: 'none', border: '1px solid var(--border)', borderRadius: 8,
+              background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8,
               color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif",
               fontSize: 12, padding: '9px 14px', cursor: 'pointer',
             }}
@@ -190,7 +190,7 @@ function EditorField({ label, value, onChange, min, max }) {
         max={max}
         onChange={(e) => onChange(e.target.value)}
         style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
+          background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
           borderRadius: 6, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
           fontSize: 15, fontWeight: 500, textAlign: 'center',
           padding: '8px 4px', width: '100%', outline: 'none',

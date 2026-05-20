@@ -110,9 +110,9 @@ export default function TemplatesView() {
         ) : templatePrograms.map((program) => {
           const exCount = getExerciseCount(program);
           return (
-            <div key={program.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div key={program.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, overflow: 'hidden' }}>
               {/* Info */}
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '13px 16px', borderBottom: 'var(--border-width) solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{program.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
@@ -121,7 +121,7 @@ export default function TemplatesView() {
                   </div>
                 </div>
                 {/* Badge PRO */}
-                <span style={{ fontSize: 9, letterSpacing: 1, background: 'rgba(232,255,71,0.08)', color: 'var(--accent)', border: '1px solid rgba(232,255,71,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                <span style={{ fontSize: 9, letterSpacing: 1, background: 'var(--accent-tint)', color: 'var(--accent)', border: '1px solid var(--accent-tint-border)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
                   PLANTILLA
                 </span>
               </div>
@@ -148,7 +148,7 @@ export default function TemplatesView() {
           <div style={{
             position: 'fixed', top: contextMenu.y, left: contextMenu.x,
             transform: 'translate(-100%, -100%)',
-            background: 'var(--surface2)', border: '1px solid var(--border)',
+            background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)',
             borderRadius: 8, zIndex: 50, overflow: 'hidden', minWidth: 170,
             boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           }}>
@@ -176,7 +176,7 @@ export default function TemplatesView() {
       {showNew && (
         <>
           <div onClick={() => setShowNew(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>NUEVA PLANTILLA</div>
             <input
               autoFocus type="text" placeholder="Nombre de la plantilla"
@@ -190,12 +190,12 @@ export default function TemplatesView() {
               <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {[2, 3, 4, 5, 6].map((n) => (
-                  <button key={n} onClick={() => setNewSessions(n)} style={{ flex: 1, height: 40, borderRadius: 6, border: '1px solid', borderColor: newSessions === n ? 'var(--accent)' : 'var(--border)', background: newSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
+                  <button key={n} onClick={() => setNewSessions(n)} style={{ flex: 1, height: 40, borderRadius: 6, border: 'var(--border-width) solid', borderColor: newSessions === n ? 'var(--accent-tint-border)' : 'var(--border)', background: newSessions === n ? 'var(--accent-tint-active)' : 'var(--surface2)', color: newSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 2, background: !newName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newName.trim() ? 'not-allowed' : 'pointer' }}>CREAR Y EDITAR</button>
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function TemplatesView() {
       {assignModal && (
         <>
           <div onClick={() => setAssignModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>ASIGNAR A CLIENTE</div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
               Se creará una copia del programa para el cliente seleccionado. La plantilla original no se modifica.
@@ -247,7 +247,7 @@ export default function TemplatesView() {
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setAssignModal(null)} style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setAssignModal(null)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
               {clientList.length > 0 && (
                 <button onClick={handleAssign} disabled={!assignClientId} style={{ flex: 2, background: !assignClientId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !assignClientId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !assignClientId ? 'not-allowed' : 'pointer' }}>ASIGNAR</button>
               )}
@@ -275,13 +275,13 @@ function TplDivider() { return <div style={{ width: 1, background: 'var(--border
 
 const menuItemStyle = {
   display: 'block', width: '100%', background: 'none',
-  border: 'none', borderBottom: '1px solid var(--border)',
+  border: 'none', borderBottom: 'var(--border-width) solid var(--border)',
   color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
   fontSize: 12, padding: '11px 14px', cursor: 'pointer', textAlign: 'left',
 };
 
 const inputStyle = {
-  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+  width: '100%', background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)',
   borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
   fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box',
 };

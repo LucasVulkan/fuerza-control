@@ -77,15 +77,17 @@ function computeTotals(def, allLogs) {
   return `${sessions} sesión${sessions !== 1 ? 'es' : ''}`;
 }
 
-function CustomTooltip({ active, payload, label, metricLabel }) {
+function CustomTooltip({ active, payload, metricLabel }) {
   if (!active || !payload?.length) return null;
+  // Usar payload.date directamente para distinguir sesiones del mismo día
+  const entry = payload[0]?.payload;
   return (
     <div style={{
       background: '#1f1f1f', border: '1px solid #2a2a2a',
       borderRadius: 6, padding: '6px 10px',
       fontSize: 11, fontFamily: "'DM Sans', sans-serif", color: '#f0f0f0',
     }}>
-      <div style={{ color: '#888', marginBottom: 2 }}>{label}</div>
+      <div style={{ color: '#888', marginBottom: 2 }}>{entry?.date ?? ''}</div>
       <div style={{ fontWeight: 500 }}>
         {payload[0].value}{' '}
         <span style={{ color: '#888', fontWeight: 400 }}>{metricLabel}</span>
@@ -111,6 +113,8 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
   const tableLogs = useMemo(() => [...(logs ?? [])].reverse(), [logs]);
 
   // Gráfica: allLogs filtrado por chartPeriod local
+  // Eje X normalizado (índice equidistante) para evitar espaciado irregular
+  // y para distinguir múltiples sesiones en el mismo día.
   const chartData = useMemo(() => {
     let filtered = [...effectiveLogs];
     if (chartPeriod !== 'all') {
@@ -121,14 +125,29 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
     return filtered
       .map(({ timestamp, exercise }) => ({
         date:  shortDate(timestamp),
+        timestamp,
         value: computeValue(exercise?.sets, activeMetric),
       }))
-      .filter((d) => d.value !== null);
+      .filter((d) => d.value !== null)
+      .map((d, i) => ({ ...d, i })); // índice normalizado para el eje X
   }, [effectiveLogs, chartPeriod, activeMetric]);
+
+  // Ancho dinámico del eje Y según el valor máximo del dataset.
+  // El margen izquierdo del LineChart es fijo a -8 para quitar el padding
+  // extra de recharts. El espacio visible = yAxisWidth + (-8).
+  // Necesitamos visible ≥ dígitos × ~6.5px a font-size 9.
+  const yAxisWidth = useMemo(() => {
+    if (!chartData.length) return 32;
+    const maxVal = Math.max(...chartData.map((d) => d.value ?? 0));
+    if (maxVal >= 10000) return 48; // visible 40px — 5 dígitos
+    if (maxVal >= 1000)  return 40; // visible 32px — 4 dígitos
+    if (maxVal >= 100)   return 32; // visible 24px — 3 dígitos
+    return 24;                      // visible 16px — 2 dígitos
+  }, [chartData]);
 
   return (
     <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
+      background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)',
       borderRadius: 10, overflow: 'hidden',
     }}>
       {/* Cabecera */}
@@ -149,9 +168,9 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
         <button
           onClick={() => setExpanded((v) => !v)}
           style={{
-            background: expanded ? 'rgba(232,255,71,0.1)' : 'none',
-            border: '1px solid',
-            borderColor: expanded ? 'rgba(232,255,71,0.3)' : 'var(--border)',
+            background: expanded ? 'var(--accent-tint-active)' : 'none',
+            border: 'var(--border-width) solid',
+            borderColor: expanded ? 'var(--accent-tint-border)' : 'var(--border)',
             borderRadius: 6, color: expanded ? 'var(--accent)' : 'var(--muted)',
             fontSize: 13, padding: '4px 9px', cursor: 'pointer',
             flexShrink: 0, lineHeight: 1,
@@ -168,7 +187,7 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
             <div key={timestamp} style={{
               display: 'flex', justifyContent: 'space-between',
               fontSize: 11, padding: '5px 0',
-              borderBottom: '1px solid var(--border)', color: 'var(--muted)',
+              borderBottom: 'var(--border-width) solid var(--border)', color: 'var(--muted)',
             }}>
               <span>{formatDate(timestamp)}</span>
               <span style={{ color: 'var(--text)', fontWeight: 500 }}>
@@ -181,7 +200,7 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
 
       {/* Gráfica expandible */}
       {expanded && (
-        <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px 16px' }}>
+        <div style={{ borderTop: 'var(--border-width) solid var(--border)', padding: '12px 14px 16px' }}>
 
           {/* Filtros */}
           <div style={{
@@ -191,9 +210,9 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
             <div style={{ display: 'flex', gap: 4 }}>
               {PERIOD_OPTIONS.map(({ id, label }) => (
                 <button key={id} onClick={() => setChartPeriod(id)} style={{
-                  padding: '4px 10px', borderRadius: 5, border: '1px solid',
-                  borderColor: chartPeriod === id ? 'rgba(232,255,71,0.4)' : 'var(--border)',
-                  background:  chartPeriod === id ? 'rgba(232,255,71,0.1)' : 'var(--surface2)',
+                  padding: '4px 10px', borderRadius: 5, border: 'var(--border-width) solid',
+                  borderColor: chartPeriod === id ? 'var(--accent-tint-border)' : 'var(--border)',
+                  background:  chartPeriod === id ? 'var(--accent-tint-active)' : 'var(--surface2)',
                   color:       chartPeriod === id ? 'var(--accent)' : 'var(--muted)',
                   fontFamily: "'DM Sans', sans-serif", fontSize: 11, cursor: 'pointer',
                 }}>{label}</button>
@@ -203,9 +222,9 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
               <div style={{ display: 'flex', gap: 4 }}>
                 {metrics.map(({ id, label }) => (
                   <button key={id} onClick={() => setChartMetric(id)} style={{
-                    padding: '4px 10px', borderRadius: 5, border: '1px solid',
-                    borderColor: activeMetric === id ? 'rgba(232,255,71,0.4)' : 'var(--border)',
-                    background:  activeMetric === id ? 'rgba(232,255,71,0.1)' : 'var(--surface2)',
+                    padding: '4px 10px', borderRadius: 5, border: 'var(--border-width) solid',
+                    borderColor: activeMetric === id ? 'var(--accent-tint-border)' : 'var(--border)',
+                    background:  activeMetric === id ? 'var(--accent-tint-active)' : 'var(--surface2)',
                     color:       activeMetric === id ? 'var(--accent)' : 'var(--muted)',
                     fontFamily: "'DM Sans', sans-serif", fontSize: 11, cursor: 'pointer',
                   }}>{label}</button>
@@ -223,33 +242,40 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
               Necesitas al menos 2 sesiones en este período.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 9, fill: '#888', fontFamily: "'DM Sans', sans-serif" }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 9, fill: '#888', fontFamily: "'DM Sans', sans-serif" }}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={['auto', 'auto']}
-                  width={40}
-                />
-                <Tooltip content={<CustomTooltip metricLabel={activeMetricLabel} />} />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#e8ff47"
-                  strokeWidth={2}
-                  dot={{ fill: '#e8ff47', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#e8ff47', strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            // outline:none evita el foco visible al hacer click en el gráfico
+            <div style={{ outline: 'none', userSelect: 'none' }} onMouseDown={(e) => e.preventDefault()}>
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
+                  <XAxis
+                    dataKey="i"
+                    type="number"
+                    domain={[0, chartData.length - 1]}
+                    ticks={chartData.map((d) => d.i)}
+                    tickFormatter={(i) => chartData[i]?.date ?? ''}
+                    tick={{ fontSize: 9, fill: '#888', fontFamily: "'DM Sans', sans-serif" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: '#888', fontFamily: "'DM Sans', sans-serif" }}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={['auto', 'auto']}
+                    width={yAxisWidth}
+                  />
+                  <Tooltip content={<CustomTooltip metricLabel={activeMetricLabel} />} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--accent)"
+                    strokeWidth={2}
+                    dot={{ fill: 'var(--accent)', r: 3, strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: 'var(--accent)', strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       )}

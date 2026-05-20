@@ -17,7 +17,7 @@ const GOAL_PARAMS = {
 
 // ─── Colores y etiquetas de días ─────────────────────────────────────────────
 
-const DAY_COLORS = ['#e8ff47', '#ff6b35', '#7eb8ff', '#a78bfa', '#34d399', '#f472b6'];
+const DAY_COLORS = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
 const DAY_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // ─── Patrones por disciplina + distribución ───────────────────────────────────

@@ -1,6 +1,6 @@
 export function downloadJSON(jsonString, name = 'fc-backup') {
   const safe = name
-    .replace(/\.json$|\.fcdata$/i, '')  // quitar extensión previa si existe
+    .replace(/\.json$|\.fcdata$/i, '')
     .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
     .replace(/\s+/g, '-')
     .toLowerCase();
@@ -16,7 +16,7 @@ export function downloadJSON(jsonString, name = 'fc-backup') {
 }
 
 export function exportFullBackup(storeState) {
-  const { profile, workoutLog, programs, sessionTemplates, userPrograms, customExercises } = storeState;
+  const { profile, workoutLog, programs, sessionTemplates, userPrograms, customExercises, clients } = storeState;
   return JSON.stringify({
     version: '2',
     exportDate: new Date().toISOString().split('T')[0],
@@ -28,32 +28,54 @@ export function exportFullBackup(storeState) {
     userPrograms,
     customExercises,
     workoutLog,
+    clients: clients ?? {},
   }, null, 2);
 }
 
-export function exportProgramOnly(storeState) {
-  const { profile, programs, sessionTemplates, userPrograms, customExercises } = storeState;
+// Exporta el programa activo + su historial (para que el cliente se lo devuelva al entrenador)
+export function exportProgramWithLog(storeState) {
+  const { profile, programs, sessionTemplates, userPrograms, customExercises, workoutLog } = storeState;
   const activeProgramId = profile.activeProgramId;
   const program = programs[activeProgramId];
-  if (!program) return JSON.stringify({ version: '2', exportType: 'program', appName: 'Fuerza & Control' });
+  if (!program) return null;
+
+  // Recoger template IDs de TODAS las etapas (no solo la etapa activa)
+  const templateIds = new Set();
+  if (program.stages?.length > 0) {
+    program.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
+  } else {
+    program.days.forEach((d) => templateIds.add(d.sessionTemplateId));
+  }
 
   const relevantTemplates = {};
   const relevantUserPrograms = {};
-  (program.days ?? []).forEach(({ sessionTemplateId }) => {
-    if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
-    if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
+  templateIds.forEach((id) => {
+    if (sessionTemplates[id]) relevantTemplates[id] = sessionTemplates[id];
+    if (userPrograms[id]) relevantUserPrograms[id] = userPrograms[id];
   });
+
+  const usedExerciseIds = new Set(
+    [...Object.values(relevantTemplates), ...Object.values(relevantUserPrograms)]
+      .flatMap((t) => (t.exercises ?? []).map((e) => e.exerciseId))
+  );
+  const referencedCustom = {};
+  Object.entries(customExercises ?? {}).forEach(([id, def]) => {
+    if (usedExerciseIds.has(id)) referencedCustom[id] = def;
+  });
+
+  // El log incluye sesiones de TODAS las etapas del programa
+  const relevantLog = workoutLog.filter((e) => templateIds.has(e.sessionTemplateId));
 
   return JSON.stringify({
     version: '2',
     exportDate: new Date().toISOString().split('T')[0],
-    exportType: 'program',
+    exportType: 'program_with_log',
     appName: 'Fuerza & Control',
     program: { ...program, mode: 'personal', status: 'active' },
     sessionTemplates: relevantTemplates,
     userPrograms: relevantUserPrograms,
-    customExercises: {},
-    workoutLog: [],
+    customExercises: referencedCustom,
+    workoutLog: relevantLog,
   }, null, 2);
 }
 

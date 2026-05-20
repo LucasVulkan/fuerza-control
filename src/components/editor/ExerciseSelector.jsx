@@ -119,7 +119,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
         {/* Header */}
         <div style={{
           padding: '16px 20px 12px',
-          borderBottom: '1px solid var(--border)',
+          borderBottom: 'var(--border-width) solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -141,7 +141,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
             style={{
               width: '100%',
               background: 'var(--surface2)',
-              border: '1px solid var(--border)',
+              border: 'var(--border-width) solid var(--border)',
               borderRadius: 8,
               color: 'var(--text)',
               fontFamily: "'DM Sans', sans-serif",
@@ -166,7 +166,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                   style={{
                     background: filterMode === tab.id ? 'var(--accent)' : 'var(--surface2)',
                     color: filterMode === tab.id ? '#0d0d0d' : 'var(--muted)',
-                    border: '1px solid',
+                    border: 'var(--border-width) solid',
                     borderColor: filterMode === tab.id ? 'var(--accent)' : 'var(--border)',
                     borderRadius: 6,
                     fontSize: 11,
@@ -189,7 +189,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                 style={{
                   width: '100%',
                   background: 'var(--surface2)',
-                  border: '1px solid var(--border)',
+                  border: 'var(--border-width) solid var(--border)',
                   borderRadius: 6,
                   color: 'var(--text)',
                   fontFamily: "'DM Sans', sans-serif",
@@ -213,7 +213,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                 style={{
                   width: '100%',
                   background: 'var(--surface2)',
-                  border: '1px solid var(--border)',
+                  border: 'var(--border-width) solid var(--border)',
                   borderRadius: 6,
                   color: 'var(--text)',
                   fontFamily: "'DM Sans', sans-serif",
@@ -240,7 +240,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
             onClick={() => setShowCreate(true)}
             style={{
               background: 'none',
-              border: '1px solid rgba(232,255,71,0.3)',
+              border: 'var(--border-width) solid var(--accent-tint-border)',
               borderRadius: 6,
               color: 'var(--accent)',
               fontSize: 11,
@@ -281,7 +281,7 @@ function ExerciseOption({ ex, onSelect }) {
       onClick={onSelect}
       style={{
         padding: '11px 0',
-        borderBottom: '1px solid var(--border)',
+        borderBottom: 'var(--border-width) solid var(--border)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -295,8 +295,8 @@ function ExerciseOption({ ex, onSelect }) {
           {ex.isCustom && (
             <span style={{
               fontSize: 9, letterSpacing: 1,
-              background: 'rgba(232,255,71,0.08)',
-              border: '1px solid rgba(232,255,71,0.25)',
+              background: 'var(--accent-tint)',
+              border: 'var(--border-width) solid var(--accent-tint-border)',
               color: 'var(--accent)',
               borderRadius: 4, padding: '1px 5px',
             }}>CUSTOM</span>

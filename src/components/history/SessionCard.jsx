@@ -1,9 +1,10 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { formatDate } from '../../utils/formatters';
 import { useStore } from '../../store/useStore';
 
 const DAY_COLORS = {
   A: 'var(--day1)', B: 'var(--day2)', C: 'var(--day3)',
+  D: 'var(--day4)', E: 'var(--day5)', F: 'var(--day6)',
 };
 
 export default function SessionCard({ session, onDelete }) {
@@ -11,6 +12,7 @@ export default function SessionCard({ session, onDelete }) {
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
+  const programs = useStore((s) => s.programs);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
   const template = getEffectiveTemplate(session.sessionTemplateId);
@@ -18,10 +20,22 @@ export default function SessionCard({ session, onDelete }) {
   const name = template?.name ?? session.sessionTemplateId;
   const color = template?.color ?? DAY_COLORS[label] ?? 'var(--accent)';
 
+  const stageName = (() => {
+    if (!template?.programId) return null;
+    const program = programs[template.programId];
+    if (!program?.stages?.length) return null;
+    for (const stage of program.stages) {
+      if (stage.days.some((d) => d.sessionTemplateId === session.sessionTemplateId)) {
+        return stage.name;
+      }
+    }
+    return null;
+  })();
+
   return (
     <div style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      border: 'var(--border-width) solid var(--border-card)',
       borderRadius: 10,
       overflow: 'hidden',
     }}>
@@ -43,8 +57,11 @@ export default function SessionCard({ session, onDelete }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDate(session.timestamp)}</span>
+            {stageName && (
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {stageName}</span>
+            )}
             {session.notes?.trim() && (
-              <span style={{ fontSize: 9, background: 'rgba(232,255,71,0.08)', border: '1px solid rgba(232,255,71,0.2)', borderRadius: 3, color: 'var(--accent)', padding: '1px 5px', letterSpacing: 0.5 }}>📝 nota</span>
+              <span style={{ fontSize: 9, background: 'var(--accent-tint)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 3, color: 'var(--accent)', padding: '1px 5px', letterSpacing: 0.5 }}>📝 nota</span>
             )}
             {session.exercises?.some((e) => e.isAdHoc) && (
               <span style={{ fontSize: 9, background: 'rgba(126,184,255,0.08)', border: '1px solid rgba(126,184,255,0.2)', borderRadius: 3, color: 'var(--accent3)', padding: '1px 5px', letterSpacing: 0.5 }}>＋ modificado</span>
@@ -80,9 +97,9 @@ export default function SessionCard({ session, onDelete }) {
           {session.notes?.trim() && (
             <div style={{
               padding: '10px 14px',
-              borderTop: '1px solid var(--border)',
-              background: 'rgba(232,255,71,0.04)',
-              borderLeft: '2px solid rgba(232,255,71,0.3)',
+              borderTop: 'var(--border-width) solid var(--border)',
+              background: 'var(--accent-tint)',
+              borderLeft: '2px solid var(--accent-tint-border)',
             }}>
               <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, opacity: 0.8 }}>Nota</div>
               <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.notes}</div>
@@ -96,7 +113,7 @@ export default function SessionCard({ session, onDelete }) {
             return (
               <div key={ex.exerciseId} style={{
                 padding: '8px 14px',
-                borderTop: '1px solid var(--border)',
+                borderTop: 'var(--border-width) solid var(--border)',
               }}>
                 <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
                   {def?.name ?? ex.exerciseId}
@@ -108,7 +125,7 @@ export default function SessionCard({ session, onDelete }) {
                       <span key={i} style={{
                         fontSize: 10,
                         background: s.done ? 'rgba(74,222,128,0.08)' : 'var(--surface2)',
-                        border: s.done ? '1px solid rgba(74,222,128,0.3)' : '1px solid var(--border)',
+                        border: s.done ? '1px solid rgba(74,222,128,0.3)' : 'var(--border-width) solid var(--border)',
                         borderRadius: 4,
                         padding: '2px 7px',
                         color: s.done ? 'var(--green)' : 'var(--muted)',

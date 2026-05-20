@@ -296,7 +296,7 @@ export default function ClientsView() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Clientes</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setShowGlobalBilling(true)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '7px 12px', cursor: 'pointer' }}>💳</button>
+              <button onClick={() => setShowGlobalBilling(true)} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 6, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '7px 12px', cursor: 'pointer' }}>💳</button>
               <button onClick={() => setShowNewClient(true)} style={{ ...accentBtnStyle, fontSize: 16, padding: '8px 18px' }}>＋ NUEVO</button>
             </div>
           </div>
@@ -315,8 +315,8 @@ export default function ClientsView() {
               { id: 'all',      label: 'Todos' },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => setStatusFilter(id)} style={{
-                flex: 1, background: statusFilter === id ? 'rgba(232,255,71,0.1)' : 'var(--surface)',
-                border: '1px solid', borderColor: statusFilter === id ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+                flex: 1, background: statusFilter === id ? 'var(--accent-tint-active)' : 'var(--surface)',
+                border: 'var(--border-width) solid', borderColor: statusFilter === id ? 'var(--accent-tint-border)' : 'var(--border)',
                 borderRadius: 6, color: statusFilter === id ? 'var(--accent)' : 'var(--muted)',
                 fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '6px 4px',
                 cursor: 'pointer', transition: 'all 0.15s',
@@ -336,7 +336,7 @@ export default function ClientsView() {
             const clientStatus = client.status ?? 'active';
             const statusDot = clientStatus === 'paused' ? 'var(--orange)' : clientStatus === 'inactive' ? 'var(--red)' : null;
             return (
-              <div key={client.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+              <div key={client.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, overflow: 'hidden' }}>
                 <div onClick={() => handleSelectClient(client.id)} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                   <div>
                     {editingClientId === client.id ? (
@@ -388,14 +388,14 @@ export default function ClientsView() {
             <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>{selectedClient.name}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => document.getElementById('client-import-input')?.click()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '8px 14px', cursor: 'pointer' }}>↓ Importar</button>
+            <button onClick={() => document.getElementById('client-import-input')?.click()} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '8px 14px', cursor: 'pointer' }}>↓ Importar</button>
             <button onClick={() => setShowNewProgram(true)} style={{ ...accentBtnStyle, fontSize: 16, padding: '8px 16px' }}>＋</button>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginTop: 10 }}>
+      <div style={{ display: 'flex', borderBottom: 'var(--border-width) solid var(--border)', marginTop: 10 }}>
         {CLIENT_TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -427,12 +427,12 @@ export default function ClientsView() {
             const lastActivity = getLastActivity(program);
             const isActive = selectedClient.activeProgramId === program.id;
             return (
-              <div key={program.id} style={{ background: 'var(--surface)', border: '1px solid', borderColor: isActive ? 'rgba(232,255,71,0.3)' : 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div key={program.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid', borderColor: isActive ? 'var(--accent-tint-border)' : 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '13px 16px', borderBottom: 'var(--border-width) solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       {program.name}
-                      {isActive && <span style={{ fontSize: 9, letterSpacing: 1, background: 'rgba(232,255,71,0.1)', color: 'var(--accent)', border: '1px solid rgba(232,255,71,0.25)', borderRadius: 4, padding: '2px 6px' }}>ACTIVO</span>}
+                      {isActive && <span style={{ fontSize: 9, letterSpacing: 1, background: 'var(--accent-tint-active)', color: 'var(--accent)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 4, padding: '2px 6px' }}>ACTIVO</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                       {sessions} sesiones{lastActivity ? ` · Última: ${new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ''}
@@ -485,7 +485,7 @@ export default function ClientsView() {
                   const isSel = (selectedClient.status ?? 'active') === id;
                   return (
                     <button key={id} onClick={() => updateClientInfo(selectedClientId, { status: id })} style={{
-                      flex: 1, padding: '7px 4px', borderRadius: 6, border: '1px solid',
+                      flex: 1, padding: '7px 4px', borderRadius: 6, border: 'var(--border-width) solid',
                       borderColor: isSel ? color : 'var(--border)',
                       background: isSel ? `${color}18` : 'var(--surface2)',
                       color: isSel ? color : 'var(--muted)',
@@ -546,9 +546,9 @@ export default function ClientsView() {
             {(selectedClient.bodyWeight ?? []).length === 0 ? (
               <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>Sin datos todavía.</div>
             ) : (
-              <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ borderRadius: 8, overflow: 'hidden', border: 'var(--border-width) solid var(--border-card)' }}>
                 {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry) => (
-                  <div key={entry.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid var(--border)' }}>
+                  <div key={entry.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: 'var(--border-width) solid var(--border)' }}>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>{entry.date}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{entry.weight} kg</span>
@@ -573,7 +573,7 @@ export default function ClientsView() {
                     { label: 'Cobrado',   value: `${paid.toFixed(2)}€`,  color: 'var(--green)' },
                     { label: 'Pendiente', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? 'var(--orange)' : 'var(--muted)' },
                   ].map(({ label, value, color }) => (
-                    <div key={label} style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                    <div key={label} style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px', textAlign: 'center', border: 'var(--border-width) solid var(--border-card)' }}>
                       <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
                       <div style={{ fontSize: 13, fontWeight: 500, color }}>{value}</div>
                     </div>
@@ -599,7 +599,7 @@ export default function ClientsView() {
                   onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                 <button onClick={() => setBillStatus((s) => s === 'paid' ? 'pending' : 'paid')}
-                  style={{ background: billStatus === 'paid' ? 'rgba(74,222,128,0.1)' : 'var(--surface2)', border: '1px solid', borderColor: billStatus === 'paid' ? 'rgba(74,222,128,0.3)' : 'var(--border)', borderRadius: 8, color: billStatus === 'paid' ? 'var(--green)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '8px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  style={{ background: billStatus === 'paid' ? 'rgba(74,222,128,0.1)' : 'var(--surface2)', border: 'var(--border-width) solid', borderColor: billStatus === 'paid' ? 'rgba(74,222,128,0.3)' : 'var(--border)', borderRadius: 8, color: billStatus === 'paid' ? 'var(--green)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '8px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   {billStatus === 'paid' ? '✓ Pagado' : 'Pendiente'}
                 </button>
                 <button onClick={handleAddBilling} disabled={!billConcept.trim() || !billAmount}
@@ -611,9 +611,9 @@ export default function ClientsView() {
             {(selectedClient.billing ?? []).length === 0 ? (
               <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>Sin entradas todavía.</div>
             ) : (
-              <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ borderRadius: 8, overflow: 'hidden', border: 'var(--border-width) solid var(--border-card)' }}>
                 {(selectedClient.billing ?? []).map((entry) => (
-                  <div key={entry.id} style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div key={entry.id} style={{ padding: '10px 14px', borderBottom: 'var(--border-width) solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.concept}</div>
                       <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>{entry.date}</div>
@@ -621,10 +621,10 @@ export default function ClientsView() {
                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', flexShrink: 0 }}>{entry.amount?.toFixed(2)}€</div>
                     <button
                       onClick={() => updateClientBillingStatus(selectedClientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
-                      style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: '1px solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                      style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: 'var(--border-width) solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
                       {entry.status === 'paid' ? '✓ Pagado' : 'Pendiente'}
                     </button>
-                    <button onClick={() => { if (window.confirm('¿Eliminar esta factura?')) removeClientBilling(selectedClientId, entry.id); }} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '3px 8px', flexShrink: 0 }}>✕</button>
+                    <button onClick={() => { if (window.confirm('¿Eliminar esta factura?')) removeClientBilling(selectedClientId, entry.id); }} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 6, color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '3px 8px', flexShrink: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -674,7 +674,7 @@ export default function ClientsView() {
             left: contextMenu.x,
             transform: 'translate(-100%, -100%)',
             background: 'var(--surface2)',
-            border: '1px solid var(--border)',
+            border: 'var(--border-width) solid var(--border)',
             borderRadius: 8, zIndex: 50,
             overflow: 'hidden', minWidth: 150,
             boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
@@ -695,14 +695,14 @@ export default function ClientsView() {
             onClick={() => { setShowNewProgram(false); setNewProgramTab('blank'); setFromTemplateId(''); }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }}
           />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>NUEVO PROGRAMA</div>
 
             {/* Tabs vacío / desde plantilla (solo si hay plantillas) */}
             {templatePrograms.length > 0 && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 {[{ id: 'blank', label: 'Vacío' }, { id: 'template', label: 'Desde plantilla' }].map(({ id, label }) => (
-                  <button key={id} onClick={() => setNewProgramTab(id)} style={{ flex: 1, padding: '7px', borderRadius: 6, border: '1px solid', borderColor: newProgramTab === id ? 'var(--accent)' : 'var(--border)', background: newProgramTab === id ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramTab === id ? 'var(--accent)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>{label}</button>
+                  <button key={id} onClick={() => setNewProgramTab(id)} style={{ flex: 1, padding: '7px', borderRadius: 6, border: 'var(--border-width) solid', borderColor: newProgramTab === id ? 'var(--accent-tint-border)' : 'var(--border)', background: newProgramTab === id ? 'var(--accent-tint-active)' : 'var(--surface2)', color: newProgramTab === id ? 'var(--accent)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>{label}</button>
                 ))}
               </div>
             )}
@@ -719,7 +719,7 @@ export default function ClientsView() {
                   <div style={{ display: 'flex', gap: 6 }}>
                     {[2, 3, 4, 5, 6].map((n) => (
                       <button key={n} onClick={() => setNewProgramSessions(n)}
-                        style={{ flex: 1, height: 40, borderRadius: 6, border: '1px solid', borderColor: newProgramSessions === n ? 'var(--accent)' : 'var(--border)', background: newProgramSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: newProgramSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
+                        style={{ flex: 1, height: 40, borderRadius: 6, border: 'var(--border-width) solid', borderColor: newProgramSessions === n ? 'var(--accent-tint-border)' : 'var(--border)', background: newProgramSessions === n ? 'var(--accent-tint-active)' : 'var(--surface2)', color: newProgramSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
                     ))}
                   </div>
                 </div>
@@ -735,9 +735,9 @@ export default function ClientsView() {
                     {templatePrograms.map((p) => (
                       <button key={p.id}
                         onClick={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
-                        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid', borderColor: fromTemplateId === p.id ? 'var(--accent)' : 'var(--border)', background: fromTemplateId === p.id ? 'rgba(232,255,71,0.08)' : 'var(--surface2)', color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                        style={{ padding: '10px 12px', borderRadius: 8, border: 'var(--border-width) solid', borderColor: fromTemplateId === p.id ? 'var(--accent-tint-border)' : 'var(--border)', background: fromTemplateId === p.id ? 'var(--accent-tint-active)' : 'var(--surface2)', color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                         <div style={{ fontWeight: 500 }}>{p.name}</div>
-                        <div style={{ fontSize: 10, color: fromTemplateId === p.id ? 'rgba(232,255,71,0.6)' : 'var(--muted)', marginTop: 2 }}>{p.days.length} sesión{p.days.length !== 1 ? 'es' : ''}</div>
+                        <div style={{ fontSize: 10, color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--muted)', marginTop: 2 }}>{p.days.length} sesión{p.days.length !== 1 ? 'es' : ''}</div>
                       </button>
                     ))}
                   </div>
@@ -755,7 +755,7 @@ export default function ClientsView() {
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 onClick={() => { setShowNewProgram(false); setNewProgramTab('blank'); setFromTemplateId(''); }}
-                style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+                style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
               {newProgramTab === 'blank' ? (
                 <button onClick={handleCreateProgram} disabled={!newProgramName.trim()}
                   style={{ flex: 2, background: !newProgramName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newProgramName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newProgramName.trim() ? 'not-allowed' : 'pointer' }}>
@@ -802,8 +802,8 @@ function ClientFilters({ scopeFilter, setScopeFilter, periodFilter, setPeriodFil
 function FilterChip({ active, label, onClick }) {
   return (
     <button onClick={onClick} style={{
-      flex: 1, background: active ? 'rgba(232,255,71,0.1)' : 'var(--surface)',
-      border: '1px solid', borderColor: active ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+      flex: 1, background: active ? 'var(--accent-tint-active)' : 'var(--surface)',
+      border: 'var(--border-width) solid', borderColor: active ? 'var(--accent-tint-border)' : 'var(--border)',
       borderRadius: 6, color: active ? 'var(--accent)' : 'var(--muted)',
       fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '6px 4px',
       cursor: 'pointer', transition: 'all 0.15s',
@@ -827,11 +827,11 @@ function SimpleModal({ title, children, onClose, onConfirm, confirmLabel, confir
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>{title}</div>
         {children}
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          <button onClick={onClose} style={{ flex: 1, background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onClose} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
           <button onClick={onConfirm} disabled={confirmDisabled} style={{ flex: 2, background: confirmDisabled ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: confirmDisabled ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: confirmDisabled ? 'not-allowed' : 'pointer' }}>{confirmLabel}</button>
         </div>
       </div>
@@ -883,7 +883,7 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
           { label: 'Cobrado',   value: `${paidFiltered.toFixed(2)}€`,  color: 'var(--green)' },
           { label: 'Pendiente', value: `${pendingFiltered.toFixed(2)}€`, color: pendingFiltered > 0 ? 'var(--orange)' : 'var(--muted)' },
         ].map(({ label, value, color }) => (
-          <div key={label} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
+          <div key={label} style={{ flex: 1, background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
             <div style={{ fontSize: 13, fontWeight: 500, color }}>{value}</div>
           </div>
@@ -909,7 +909,7 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>Sin entradas para este filtro.</div>
         ) : filtered.map((entry) => (
-          <div key={entry.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div key={entry.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 onClick={() => onSelectClient(entry.clientId)}
@@ -923,7 +923,7 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
             <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', flexShrink: 0 }}>{entry.amount?.toFixed(2)}€</div>
             <button
               onClick={() => updateClientBillingStatus(entry.clientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
-              style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: '1px solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+              style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: 'var(--border-width) solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
               {entry.status === 'paid' ? '✓ Pagado' : 'Pendiente'}
             </button>
           </div>
@@ -935,7 +935,7 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
 
 function Accordion({ label, open, onToggle, children }) {
   return (
-    <div style={{ borderBottom: '1px solid var(--border)' }}>
+    <div style={{ borderBottom: 'var(--border-width) solid var(--border)' }}>
       <button onClick={onToggle} style={{
         width: '100%', background: 'none', border: 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -959,7 +959,7 @@ function ClientImportModal({ file, onImport, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>IMPORTAR ARCHIVO</div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
           <strong style={{ color: 'var(--text)' }}>{file.name}</strong>
@@ -971,7 +971,7 @@ function ClientImportModal({ file, onImport, onClose }) {
             { mode: 'merge_log',   label: 'Actualizar historial', desc: 'Solo añade las sesiones del archivo.' },
           ].map(({ mode, label, desc }) => (
             <button key={mode} onClick={() => onImport(file, mode)}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.15s' }}
+              style={{ background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.15s' }}
               onPointerDown={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
               onPointerUp={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
               onPointerLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
@@ -980,13 +980,13 @@ function ClientImportModal({ file, onImport, onClose }) {
               <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{desc}</div>
             </button>
           ))}
-          <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '10px', cursor: 'pointer', marginTop: 4 }}>Cancelar</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '10px', cursor: 'pointer', marginTop: 4 }}>Cancelar</button>
         </div>
       </div>
     </>
   );
 }
 
-const menuItemStyle = { display: 'block', width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '11px 14px', cursor: 'pointer', textAlign: 'left' };
+const menuItemStyle = { display: 'block', width: '100%', background: 'none', border: 'none', borderBottom: 'var(--border-width) solid var(--border)', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '11px 14px', cursor: 'pointer', textAlign: 'left' };
 const accentBtnStyle = { background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' };
-const inputStyle = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box' };

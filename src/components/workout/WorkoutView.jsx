@@ -16,6 +16,7 @@ export default function WorkoutView() {
   const updateAdHocSet      = useStore((s) => s.updateAdHocSet);
   const toggleAdHocSetDone  = useStore((s) => s.toggleAdHocSetDone);
   const addAdHocSet         = useStore((s) => s.addAdHocSet);
+  const addSetToSession     = useStore((s) => s.addSetToSession);
   const exerciseLibrary     = useStore((s) => s.exerciseLibrary);
   const customExercises     = useStore((s) => s.customExercises);
   const allExercises        = { ...exerciseLibrary, ...customExercises };
@@ -56,7 +57,7 @@ export default function WorkoutView() {
     <div style={{ paddingBottom: 24 }}>
       {/* Header */}
       <div style={{
-        padding: '14px 20px', borderBottom: '1px solid var(--border)',
+        padding: '14px 20px', borderBottom: 'var(--border-width) solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 12,
         position: 'sticky', top: 57, background: 'var(--bg)', zIndex: 10,
       }}>
@@ -69,7 +70,7 @@ export default function WorkoutView() {
         </div>
         <button onClick={openNotes} style={{
           background: hasNotes ? 'rgba(232,255,71,0.1)' : 'none',
-          border: '1px solid', borderColor: hasNotes ? 'rgba(232,255,71,0.35)' : 'var(--border)',
+          border: 'var(--border-width) solid', borderColor: hasNotes ? 'rgba(232,255,71,0.35)' : 'var(--border)',
           borderRadius: 8, color: hasNotes ? 'var(--accent)' : 'var(--muted)',
           fontSize: 16, padding: '6px 10px', cursor: 'pointer', lineHeight: 1, flexShrink: 0,
         }}>📝</button>
@@ -78,12 +79,12 @@ export default function WorkoutView() {
       {/* Lista de ejercicios */}
       <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {exercises.map((ex, i) => (
-          <ExerciseCard key={ex.exerciseId} index={i} {...ex} onFieldChange={updateSetField} onToggleDone={toggleSetDone} />
+          <ExerciseCard key={ex.exerciseId} index={i} {...ex} onFieldChange={updateSetField} onToggleDone={toggleSetDone} onAddSet={() => addSetToSession(ex.exerciseId)} />
         ))}
 
         {/* Ejercicios ad-hoc */}
         {adHocList.length > 0 && (
-          <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ borderTop: '1px dashed var(--border-dashed)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11 }}>➕</span> Añadidos en esta sesión
             </div>
@@ -107,7 +108,7 @@ export default function WorkoutView() {
 
         {/* Botón añadir ejercicio */}
         <button onClick={() => setSelectorOpen(true)} style={{
-          background: 'var(--surface)', border: '1px dashed var(--border)',
+          background: 'var(--surface)', border: '1px dashed var(--border-dashed)',
           borderRadius: 10, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif",
           fontSize: 13, padding: '13px', cursor: 'pointer', width: '100%',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -148,7 +149,7 @@ export default function WorkoutView() {
           <div style={{
             position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
             width: '100%', maxWidth: 480, background: 'var(--surface)',
-            borderTop: '1px solid var(--border)', borderRadius: '16px 16px 0 0',
+            borderTop: 'var(--border-width) solid var(--border)', borderRadius: '16px 16px 0 0',
             zIndex: 41, padding: '12px 20px 32px',
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 16px' }} />
@@ -183,7 +184,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
   const name = def?.name ?? exerciseId;
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '10px 14px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
@@ -222,7 +223,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
               </>
             )}
             <button onClick={() => onToggleDone(i)} style={{
-              width: 32, height: 32, borderRadius: 6, border: '1px solid',
+              width: 32, height: 32, borderRadius: 6, border: 'var(--border-width) solid',
               borderColor: set.done ? 'var(--green)' : 'var(--border)',
               background: set.done ? 'rgba(74,222,128,0.1)' : 'var(--surface2)',
               color: set.done ? 'var(--green)' : 'var(--muted)',
@@ -231,7 +232,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
           </div>
         ))}
         <button onClick={onAddSet} style={{
-          background: 'none', border: '1px dashed var(--border)', borderRadius: 6,
+          background: 'none', border: '1px dashed var(--border-dashed)', borderRadius: 6,
           color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif",
           fontSize: 11, padding: '6px', cursor: 'pointer', marginTop: 2,
         }}>＋ serie</button>
@@ -241,7 +242,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
 }
 
 const setInputStyle = {
-  background: 'var(--surface2)', border: '1px solid var(--border)',
+  background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)',
   borderRadius: 6, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
   fontSize: 15, fontWeight: 500, textAlign: 'center',
   padding: '8px 4px', width: '100%', outline: 'none',

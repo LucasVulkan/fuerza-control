@@ -2,7 +2,7 @@ import { useState } from 'react';
 import ProgressionChip from '../ui/ProgressionChip';
 import SetRow from './SetRow';
 
-export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, currentSets, lastSets, prevSummary, progression, onFieldChange, onToggleDone }) {
+export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, currentSets, lastSets, prevSummary, progression, onFieldChange, onToggleDone, onAddSet }) {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   if (!def) return null;
@@ -10,44 +10,62 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
   const target = buildTarget(def, sets, exConfig);
   const hasTips = def.tips && def.tips.length > 0;
 
-  // Colapsar automáticamente cuando todos los sets están marcados como done
   const allDone = currentSets.length > 0 && currentSets.every((s) => s.done);
   const isCollapsed = allDone && !manualOpen;
 
   if (isCollapsed) {
     return (
-      <div
-        onClick={() => setManualOpen(true)}
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderLeft: '3px solid var(--accent)',
-          borderRadius: 10,
-          padding: '12px 14px 10px',
-          cursor: 'pointer',
-        }}
-      >
-        <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}>
-          EJ {index + 1}
+      <div style={{
+        background: 'var(--surface)',
+        border: 'var(--border-width) solid var(--border-card)',
+        borderLeft: '3px solid var(--accent)',
+        borderRadius: 10,
+        padding: '12px 14px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        {/* Info — click expande */}
+        <div onClick={() => setManualOpen(true)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            EJ {index + 1}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ color: 'var(--accent)', fontSize: 14 }}>✓</span>
+            <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.name}</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+            {currentSets.map((s, i) => (
+              <span key={i} style={{
+                fontSize: 10,
+                background: 'rgba(74,222,128,0.08)',
+                border: '1px solid rgba(74,222,128,0.3)',
+                borderRadius: 4,
+                padding: '2px 7px',
+                color: 'var(--green)',
+              }}>
+                {buildSetLabel(s, i)}
+              </span>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-          <span style={{ color: 'var(--accent)', fontSize: 14 }}>✓</span>
-          <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3, color: 'var(--text)' }}>{def.name}</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-          {currentSets.map((s, i) => (
-            <span key={i} style={{
-              fontSize: 10,
-              background: 'rgba(74,222,128,0.08)',
-              border: '1px solid rgba(74,222,128,0.3)',
-              borderRadius: 4,
-              padding: '2px 7px',
-              color: 'var(--green)',
-            }}>
-              {buildSetLabel(s, i)}
-            </span>
-          ))}
-        </div>
+
+        {/* Botón ＋ serie */}
+        <button
+          onClick={() => { onAddSet?.(); setManualOpen(true); }}
+          style={{
+            flexShrink: 0,
+            background: 'none',
+            border: '1px dashed var(--border-dashed)',
+            borderRadius: 6,
+            color: 'var(--muted)',
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 11,
+            padding: '6px 10px',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >＋ serie</button>
       </div>
     );
   }
@@ -55,7 +73,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
   return (
     <div style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      border: 'var(--border-width) solid var(--border-card)',
       borderRadius: 10,
       overflow: 'hidden',
     }}>
@@ -79,9 +97,9 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
               <button
                 onClick={() => setTipsOpen((o) => !o)}
                 style={{
-                  background: tipsOpen ? 'rgba(232,255,71,0.1)' : 'none',
-                  border: '1px solid',
-                  borderColor: tipsOpen ? 'rgba(232,255,71,0.3)' : 'var(--border)',
+                  background: tipsOpen ? 'var(--accent-tint-active)' : 'none',
+                  border: 'var(--border-width) solid',
+                  borderColor: tipsOpen ? 'var(--accent-tint-border)' : 'var(--border)',
                   borderRadius: 4,
                   color: tipsOpen ? 'var(--accent)' : 'var(--muted)',
                   fontSize: 11,
@@ -92,7 +110,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
                   flexShrink: 0,
                 }}
               >
-                ⓘ
+                ℹ
               </button>
             )}
           </div>
@@ -112,7 +130,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
                 cursor: 'pointer', padding: '2px 4px',
               }}
             >
-              ↑ colapsar
+              → colapsar
             </button>
           )}
           {/* Dato de sesión anterior */}
@@ -133,8 +151,8 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
         <div style={{
           margin: '0 14px 10px',
           padding: '10px 12px',
-          background: 'rgba(232,255,71,0.04)',
-          border: '1px solid rgba(232,255,71,0.12)',
+          background: 'var(--accent-tint)',
+          border: '1px solid var(--accent-tint-border)',
           borderRadius: 6,
           display: 'flex',
           flexDirection: 'column',
@@ -165,6 +183,20 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
             onToggleDone={() => onToggleDone(exerciseId, i)}
           />
         ))}
+        <button
+          onClick={() => onAddSet?.()}
+          style={{
+            background: 'none',
+            border: '1px dashed var(--border-dashed)',
+            borderRadius: 6,
+            color: 'var(--muted)',
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 11,
+            padding: '6px',
+            cursor: 'pointer',
+            marginTop: 2,
+          }}
+        >＋ serie</button>
       </div>
     </div>
   );

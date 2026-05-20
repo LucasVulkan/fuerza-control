@@ -32,9 +32,9 @@ function FilterRow({ options, value, onChange }) {
             onClick={() => onChange(opt.id)}
             style={{
               flex: 1,
-              background: active ? 'rgba(232,255,71,0.1)' : 'var(--surface)',
-              border: '1px solid',
-              borderColor: active ? 'rgba(232,255,71,0.4)' : 'var(--border)',
+              background: active ? 'var(--accent-tint-active)' : 'var(--surface)',
+              border: 'var(--border-width) solid',
+              borderColor: active ? 'var(--accent-tint-border)' : 'var(--border)',
               borderRadius: 6,
               color: active ? 'var(--accent)' : 'var(--muted)',
               fontFamily: "'DM Sans', sans-serif",

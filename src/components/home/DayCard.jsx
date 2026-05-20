@@ -1,9 +1,8 @@
-import { formatDate } from '../../utils/formatters';
+﻿import { formatDate } from '../../utils/formatters';
 
 const DAY_COLORS = {
-  A: 'var(--day1)',
-  B: 'var(--day2)',
-  C: 'var(--day3)',
+  A: 'var(--day1)', B: 'var(--day2)', C: 'var(--day3)',
+  D: 'var(--day4)', E: 'var(--day5)', F: 'var(--day6)',
 };
 
 function relativeTime(ts) {
@@ -29,7 +28,7 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
       onClick={onClick}
       style={{
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
+        border: 'var(--border-width) solid var(--border-card)',
         borderLeft: `3px solid ${color}`,
         borderRadius: 10,
         padding: '14px 18px',
@@ -56,7 +55,7 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
         {isActive ? (
           <div style={{
             fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase',
-            color, border: `1px solid ${color}`,
+            color, border: `var(--border-width) solid ${color}`,
             borderRadius: 20, padding: '2px 10px',
             background: 'rgba(255,255,255,0.04)',
             fontWeight: 500, whiteSpace: 'nowrap', marginTop: 4,

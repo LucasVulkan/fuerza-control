@@ -1,20 +1,20 @@
 import { useStore } from '../../store/useStore';
 
-// Mapeo de pattern a etiqueta visual legible
+// Mapeo de pattern → etiqueta y CSS var del color de día
 const PATTERN_LABEL = {
-  vertical_pull:   { label: 'TRACCIÓN',  color: '#60a5fa' },
-  horizontal_pull: { label: 'TRACCIÓN',  color: '#60a5fa' },
-  vertical_push:   { label: 'EMPUJE',    color: '#f97316' },
-  horizontal_push: { label: 'EMPUJE',    color: '#f97316' },
-  squat:           { label: 'PIERNA',    color: '#a78bfa' },
-  hip_hinge:       { label: 'PIERNA',    color: '#a78bfa' },
-  core:            { label: 'CORE',      color: '#34d399' },
-  carry_grip:      { label: 'AGARRE',    color: '#34d399' },
-  calf_raise:      { label: 'GEMELOS',   color: '#a78bfa' },
+  vertical_pull:   { label: 'TRACCIÓN',  dayVar: 'day3' },
+  horizontal_pull: { label: 'TRACCIÓN',  dayVar: 'day3' },
+  vertical_push:   { label: 'EMPUJE',    dayVar: 'day2' },
+  horizontal_push: { label: 'EMPUJE',    dayVar: 'day2' },
+  squat:           { label: 'PIERNA',    dayVar: 'day4' },
+  hip_hinge:       { label: 'PIERNA',    dayVar: 'day4' },
+  core:            { label: 'CORE',      dayVar: 'day5' },
+  carry_grip:      { label: 'AGARRE',    dayVar: 'day5' },
+  calf_raise:      { label: 'GEMELOS',   dayVar: 'day4' },
 };
 
 function getPatternTag(pattern) {
-  return PATTERN_LABEL[pattern] ?? { label: 'ACCESORIO', color: '#6b7280' };
+  return PATTERN_LABEL[pattern] ?? { label: 'ACCESORIO', dayVar: 'muted' };
 }
 
 export default function ProgramSummaryView() {
@@ -64,7 +64,7 @@ export default function ProgramSummaryView() {
           return (
             <div key={sessionTemplateId} style={{
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
+              border: 'var(--border-width) solid var(--border-card)',
               borderLeft: `3px solid ${template.color ?? 'var(--accent)'}`,
               borderRadius: 10,
               overflow: 'hidden',
@@ -86,7 +86,7 @@ export default function ProgramSummaryView() {
                 return (
                   <div key={ex.exerciseId} style={{
                     padding: '8px 16px',
-                    borderTop: '1px solid var(--border)',
+                    borderTop: 'var(--border-width) solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -95,7 +95,7 @@ export default function ProgramSummaryView() {
                       <div style={{
                         fontSize: 12,
                         fontWeight: isKey ? 500 : 400,
-                        color: isKey ? 'var(--text)' : '#d1d5db',
+                        color: isKey ? 'var(--text)' : 'var(--muted)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -114,8 +114,8 @@ export default function ProgramSummaryView() {
                       {isKey && (
                         <span style={{
                           fontSize: 9, letterSpacing: 1,
-                          background: 'rgba(232,255,71,0.1)',
-                          border: '1px solid rgba(232,255,71,0.35)',
+                          background: 'var(--accent-tint-active)',
+                          border: 'var(--border-width) solid var(--accent-tint-border)',
                           color: 'var(--accent)',
                           borderRadius: 4,
                           padding: '2px 6px',
@@ -125,9 +125,9 @@ export default function ProgramSummaryView() {
                       )}
                       <span style={{
                         fontSize: 9, letterSpacing: 0.5,
-                        background: `${tag.color}18`,
-                        border: `1px solid ${tag.color}55`,
-                        color: tag.color,
+                        background: `color-mix(in srgb, var(--${tag.dayVar}) 18%, transparent)`,
+                        border: `var(--border-width) solid color-mix(in srgb, var(--${tag.dayVar}) 45%, transparent)`,
+                        color: `var(--${tag.dayVar})`,
                         borderRadius: 4,
                         padding: '2px 6px',
                       }}>
@@ -151,7 +151,7 @@ export default function ProgramSummaryView() {
         width: '100%',
         maxWidth: 480,
         padding: '12px 20px 28px',
-        borderTop: '1px solid var(--border)',
+        borderTop: 'var(--border-width) solid var(--border)',
         background: 'var(--bg)',
         display: 'flex',
         gap: 10,
@@ -161,10 +161,10 @@ export default function ProgramSummaryView() {
           onClick={() => navigate('programEditor')}
           style={{
             flex: 1,
-            background: 'transparent',
-            border: '1.5px solid rgba(255,255,255,0.35)',
+            background: 'var(--surface2)',
+            border: 'var(--border-width) solid var(--border)',
             borderRadius: 10,
-            color: '#ffffff',
+            color: 'var(--text)',
             fontFamily: "'DM Sans', sans-serif",
             fontSize: 13,
             padding: '13px 8px',

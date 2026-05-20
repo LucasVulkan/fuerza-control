@@ -287,7 +287,7 @@ export default function OnboardingView() {
               placeholder="Ej: Lucas - Full Body"
               style={{
                 width: '100%', background: 'var(--surface2)',
-                border: '1px solid var(--border)', borderRadius: 8,
+                border: 'var(--border-width) solid var(--border-card)', borderRadius: 8,
                 color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
                 fontSize: 14, padding: '10px 14px', outline: 'none',
                 boxSizing: 'border-box',
@@ -309,9 +309,9 @@ export default function OnboardingView() {
                   onClick={() => setManualSessions(n)}
                   style={{
                     flex: 1, height: 56,
-                    borderRadius: 8, border: '1px solid',
+                    borderRadius: 8, border: 'var(--border-width) solid',
                     borderColor: manualSessions === n ? 'var(--accent)' : 'var(--border)',
-                    background: manualSessions === n ? 'rgba(232,255,71,0.08)' : 'var(--surface)',
+                    background: manualSessions === n ? 'var(--accent-tint-active)' : 'var(--surface)',
                     color: manualSessions === n ? 'var(--accent)' : 'var(--text)',
                     fontFamily: "'Bebas Neue', sans-serif", fontSize: 26,
                     cursor: 'pointer', transition: 'all 0.15s',
@@ -326,19 +326,19 @@ export default function OnboardingView() {
             </p>
           </div>
 
-          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', borderRadius: 8, padding: '12px 14px', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', borderRadius: 8, padding: '12px 14px', border: 'var(--border-width) solid var(--border-card)' }}>
             Se crearán {manualSessions} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.
           </p>
         </div>
 
         {/* Botones */}
-        <div style={{ padding: '12px 20px 28px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+        <div style={{ padding: '12px 20px 28px', borderTop: 'var(--border-width) solid var(--border)', display: 'flex', gap: 10 }}>
           <button
             onClick={() => setMode(null)}
             style={{
-              flex: 1, background: 'transparent',
-              border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 10,
-              color: '#fff', fontFamily: "'DM Sans', sans-serif",
+              flex: 1, background: 'var(--surface)',
+              border: 'var(--border-width) solid var(--border-card)', borderRadius: 10,
+              color: 'var(--text)', fontFamily: "'DM Sans', sans-serif",
               fontSize: 13, padding: 13, cursor: 'pointer',
             }}
           >
@@ -528,7 +528,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
               onClick={() => set_('daysPerWeek', n)}
               style={{
                 background: 'var(--surface)',
-                border: '1px solid',
+                border: 'var(--border-width) solid',
                 borderColor: answers.daysPerWeek === n ? 'var(--accent)' : 'var(--border)',
                 borderRadius: 10,
                 padding: '14px 18px',
@@ -563,7 +563,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
         <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {['Sesión A — Empuje', 'Sesión B — Tracción', 'Sesión C — Pierna'].map((label, i) => (
             <div key={i} style={{
-              background: 'var(--surface)', border: '1px solid rgba(232,255,71,0.2)',
+              background: 'var(--surface)', border: 'var(--border-width) solid var(--accent-tint-border)',
               borderRadius: 8, padding: '12px 16px',
               fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
             }}>
@@ -593,9 +593,9 @@ function StepDays({ answers, set_, onNext, onBack }) {
             style={{
               width: 64, height: 64,
               borderRadius: 10,
-              border: '1px solid',
+              border: 'var(--border-width) solid',
               borderColor: answers.daysPerWeek === d ? 'var(--accent)' : 'var(--border)',
-              background: answers.daysPerWeek === d ? 'rgba(232,255,71,0.08)' : 'var(--surface)',
+              background: answers.daysPerWeek === d ? 'var(--accent-tint-active)' : 'var(--surface)',
               color: answers.daysPerWeek === d ? 'var(--accent)' : 'var(--text)',
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 28,
@@ -713,9 +713,9 @@ function ModeCard({ icon, title, desc, onClick, accent }) {
     <button
       onClick={onClick}
       style={{
-        background: accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)',
-        border: '1px solid',
-        borderColor: accent ? 'rgba(232,255,71,0.25)' : 'var(--border)',
+        background: accent ? 'var(--accent-tint)' : 'var(--surface)',
+        border: 'var(--border-width) solid',
+        borderColor: accent ? 'var(--accent-tint-border)' : 'var(--border)',
         borderRadius: 12,
         padding: '18px 20px',
         cursor: 'pointer',
@@ -727,8 +727,8 @@ function ModeCard({ icon, title, desc, onClick, accent }) {
         transition: 'background 0.15s',
       }}
       onPointerDown={(e) => e.currentTarget.style.background = 'var(--surface2)'}
-      onPointerUp={(e) => e.currentTarget.style.background = accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)'}
-      onPointerLeave={(e) => e.currentTarget.style.background = accent ? 'rgba(232,255,71,0.06)' : 'var(--surface)'}
+      onPointerUp={(e) => e.currentTarget.style.background = accent ? 'var(--accent-tint)' : 'var(--surface)'}
+      onPointerLeave={(e) => e.currentTarget.style.background = accent ? 'var(--accent-tint)' : 'var(--surface)'}
     >
       <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{icon}</span>
       <div>

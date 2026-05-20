@@ -46,10 +46,10 @@ export default function OnboardingStep({
           <button
             onClick={onBack}
             style={{
-              background: 'none',
-              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              border: 'var(--border-width) solid var(--border)',
               borderRadius: 10,
-              color: 'var(--muted)',
+              color: 'var(--text)',
               fontFamily: "'DM Sans', sans-serif",
               fontSize: 14,
               padding: '14px 20px',

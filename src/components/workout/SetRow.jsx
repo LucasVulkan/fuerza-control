@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SetRow — fila de una serie individual.
  * Adapta los inputs según el tipo de ejercicio:
  *   - time_progression → un input de segundos
@@ -70,7 +70,7 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
         onClick={onToggleDone}
         style={{
           width: 32, height: 32, borderRadius: 6,
-          border: done ? '1px solid var(--green)' : '1px solid var(--border)',
+          border: done ? '1px solid var(--green)' : 'var(--border-width) solid var(--border)',
           background: done ? 'rgba(74,222,128,0.1)' : 'var(--surface2)',
           color: done ? 'var(--green)' : 'var(--muted)',
           fontSize: 15, cursor: 'pointer',
@@ -110,7 +110,7 @@ function SetInput({ value, placeholder, inputMode, step, onChange, done }) {
       onChange={(e) => onChange(e.target.value)}
       style={{
         background: 'var(--surface2)',
-        border: done ? '1px solid rgba(74,222,128,0.3)' : '1px solid var(--border)',
+        border: done ? '1px solid rgba(74,222,128,0.3)' : 'var(--border-width) solid var(--border)',
         borderRadius: 6,
         color: 'var(--text)',
         fontFamily: "'DM Sans', sans-serif",
