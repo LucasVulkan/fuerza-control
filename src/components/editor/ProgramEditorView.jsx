@@ -11,6 +11,7 @@ export default function ProgramEditorView() {
   const cancelEditSession      = useStore((s) => s.cancelEditSession);
   const confirmEditSession     = useStore((s) => s.confirmEditSession);
   const addSessionToProgram    = useStore((s) => s.addSessionToProgram);
+  const removeSessionFromProgram = useStore((s) => s.removeSessionFromProgram);
   const renameProgram          = useStore((s) => s.renameProgram);
   const addStageToProgram      = useStore((s) => s.addStageToProgram);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
@@ -273,7 +274,13 @@ export default function ProgramEditorView() {
         )}
 
         {editorDays.map(({ sessionTemplateId }) => (
-          <DayEditor key={sessionTemplateId} templateId={sessionTemplateId} />
+          <DayEditor
+            key={sessionTemplateId}
+            templateId={sessionTemplateId}
+            onRemove={editorDays.length > 1
+              ? () => removeSessionFromProgram(editingId, sessionTemplateId)
+              : null}
+          />
         ))}
 
         <button

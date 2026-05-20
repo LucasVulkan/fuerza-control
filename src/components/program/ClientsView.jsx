@@ -50,6 +50,14 @@ export default function ClientsView() {
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
+  // Devuelve todos los days de un programa, incluyendo los de todas las etapas
+  function getAllProgramDays(p) {
+    if (p.stages?.length > 0) {
+      return p.stages.flatMap((st) => st.days ?? []);
+    }
+    return p.days ?? [];
+  }
+
   // Derivar en useMemo para no crear array nuevo en cada render (evita bucle infinito)
   const templatePrograms = useMemo(
     () => Object.values(programs_raw ?? {})
@@ -121,17 +129,17 @@ export default function ClientsView() {
       .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
   }, [selectedClient, programs]);
 
-  // Templates de todos los programas del cliente
+  // Templates de todos los programas del cliente (incluyendo todas las etapas)
   const allClientTemplateIds = useMemo(() => {
-    return new Set(clientPrograms.flatMap((p) => p.days.map((d) => d.sessionTemplateId)));
+    return new Set(clientPrograms.flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId)));
   }, [clientPrograms]);
 
-  // Templates del programa activo del cliente
+  // Templates del programa activo del cliente (incluyendo todas las etapas)
   const activeClientTemplateIds = useMemo(() => {
     if (!selectedClient?.activeProgramId) return new Set();  // sin programa activo = no mostrar nada
     const activeProg = programs[selectedClient.activeProgramId];
     if (!activeProg) return new Set();
-    return new Set(activeProg.days.map((d) => d.sessionTemplateId));
+    return new Set(getAllProgramDays(activeProg).map((d) => d.sessionTemplateId));
   }, [selectedClient, programs]);
 
   // Log filtrado por scope y period
@@ -166,12 +174,12 @@ export default function ClientsView() {
   }
 
   function getSessionCount(program) {
-    const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+    const templateIds = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
     return workoutLog.filter((e) => templateIds.has(e.sessionTemplateId)).length;
   }
 
   function getLastActivity(program) {
-    const templateIds = new Set(program.days.map((d) => d.sessionTemplateId));
+    const templateIds = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
     const sessions = workoutLog.filter((e) => templateIds.has(e.sessionTemplateId));
     if (!sessions.length) return null;
     return Math.max(...sessions.map((e) => e.timestamp));
@@ -221,7 +229,7 @@ export default function ClientsView() {
   function handleShare(program) {
     const relevantTemplates = {};
     const relevantUserPrograms = {};
-    program.days.forEach(({ sessionTemplateId }) => {
+    getAllProgramDays(program).forEach(({ sessionTemplateId }) => {
       if (sessionTemplates[sessionTemplateId]) relevantTemplates[sessionTemplateId] = sessionTemplates[sessionTemplateId];
       if (userPrograms[sessionTemplateId]) relevantUserPrograms[sessionTemplateId] = userPrograms[sessionTemplateId];
     });

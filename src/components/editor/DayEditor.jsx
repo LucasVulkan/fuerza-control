@@ -133,7 +133,7 @@ function DragClone({ exConfig, def, swipeProgress }) {
 
 // ─── DayEditor principal ──────────────────────────────────────────────────────
 
-export default function DayEditor({ templateId }) {
+export default function DayEditor({ templateId, onRemove }) {
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
@@ -288,15 +288,17 @@ export default function DayEditor({ templateId }) {
             {isEdited && <span style={{ color: 'var(--accent)', marginLeft: 8 }}>· Editado</span>}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <button
             onClick={(e) => { e.stopPropagation(); setSessionNameValue(template.name); setEditingSessionName(true); }}
-            style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '2px 4px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '2px 6px' }}
           >✎</button>
-          <div
-            onClick={() => { setOpen((o) => !o); setEditingExId(null); setEditingSessionName(false); }}
-            style={{ color: 'var(--muted)', fontSize: 16, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', cursor: 'pointer' }}
-          >▾</div>
+          {onRemove && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              style={{ background: 'none', border: 'none', color: 'var(--muted2)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}
+            >✕</button>
+          )}
         </div>
       </div>
 

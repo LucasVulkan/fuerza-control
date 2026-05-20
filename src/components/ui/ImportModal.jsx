@@ -64,7 +64,7 @@ function BackupSections({ parsedData, onImport, onClose }) {
     log:             hasLog,
     customExercises: hasCustomExercises,
     clients:         hasClients,
-    templates:       false,
+    templates:       hasTemplates,
     templatesMode:   'merge',
   });
 
@@ -76,6 +76,16 @@ function BackupSections({ parsedData, onImport, onClose }) {
 
   return (
     <>
+      {/* Warning general */}
+      <div style={{
+        background: 'rgba(248,113,113,0.08)',
+        border: 'var(--border-width) solid rgba(248,113,113,0.3)',
+        borderRadius: 8, padding: '8px 12px', marginBottom: 12,
+        fontSize: 11, color: 'var(--red, #f87171)', lineHeight: 1.5,
+      }}>
+        ⚠️ Los datos seleccionados reemplazarán los actuales. Esta acción no se puede deshacer.
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
         <SectionToggle
           label="Programa personal"
@@ -105,36 +115,47 @@ function BackupSections({ parsedData, onImport, onClose }) {
           disabled={!hasClients}
           onToggle={() => toggle('clients')}
         />
-        <SectionToggle
-          label="Plantillas"
-          desc="Programas de tipo plantilla"
-          active={sections.templates}
-          disabled={!hasTemplates}
-          onToggle={() => toggle('templates')}
-        />
 
-        {sections.templates && hasTemplates && (
-          <div style={{ marginLeft: 16, marginTop: 4, display: 'flex', gap: 6 }}>
-            {['merge', 'replace'].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setSections((s) => ({ ...s, templatesMode: mode }))}
-                style={{
-                  flex: 1,
-                  background: sections.templatesMode === mode ? 'var(--accent-tint-active)' : 'var(--surface2)',
-                  border: 'var(--border-width) solid',
-                  borderColor: sections.templatesMode === mode ? 'var(--accent-tint-border)' : 'var(--border)',
-                  borderRadius: 6,
-                  color: sections.templatesMode === mode ? 'var(--accent)' : 'var(--muted)',
-                  fontFamily: 'var(--font-body)', fontSize: 11,
-                  padding: '6px 0', cursor: 'pointer',
-                }}
-              >
-                {mode === 'merge' ? 'Fusionar' : 'Reemplazar todas'}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Plantillas — con botones de modo integrados dentro */}
+        <div style={{
+          background: sections.templates ? 'var(--accent-tint)' : 'var(--surface2)',
+          border: 'var(--border-width) solid',
+          borderColor: sections.templates ? 'var(--accent-tint-border)' : 'var(--border)',
+          borderRadius: 8,
+          opacity: !hasTemplates ? 0.4 : 1,
+          transition: 'all 0.15s',
+        }}>
+          <SectionToggle
+            label="Plantillas"
+            desc="Programas de tipo plantilla"
+            active={sections.templates}
+            disabled={!hasTemplates}
+            onToggle={() => toggle('templates')}
+            noBorder
+          />
+          {sections.templates && hasTemplates && (
+            <div style={{ padding: '0 12px 10px', display: 'flex', gap: 6 }}>
+              {['merge', 'replace'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setSections((s) => ({ ...s, templatesMode: mode }))}
+                  style={{
+                    flex: 1,
+                    background: sections.templatesMode === mode ? 'var(--accent-tint-active)' : 'var(--surface)',
+                    border: 'var(--border-width) solid',
+                    borderColor: sections.templatesMode === mode ? 'var(--accent-tint-border)' : 'var(--border)',
+                    borderRadius: 6,
+                    color: sections.templatesMode === mode ? 'var(--accent)' : 'var(--muted)',
+                    fontFamily: 'var(--font-body)', fontSize: 11,
+                    padding: '6px 0', cursor: 'pointer',
+                  }}
+                >
+                  {mode === 'merge' ? 'Fusionar' : 'Reemplazar todas'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
@@ -187,16 +208,16 @@ function ProgramModes({ parsedData, hasLog, onImport, onClose }) {
 
 // ── Componentes auxiliares ────────────────────────────────────────────────────
 
-function SectionToggle({ label, desc, active, disabled, onToggle }) {
+function SectionToggle({ label, desc, active, disabled, onToggle, noBorder = false }) {
   return (
     <button
       onClick={disabled ? undefined : onToggle}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        background: active ? 'var(--accent-tint)' : 'var(--surface2)',
-        border: 'var(--border-width) solid',
+        background: noBorder ? 'transparent' : active ? 'var(--accent-tint)' : 'var(--surface2)',
+        border: noBorder ? 'none' : 'var(--border-width) solid',
         borderColor: active ? 'var(--accent-tint-border)' : 'var(--border)',
-        borderRadius: 8, padding: '10px 12px',
+        borderRadius: noBorder ? 0 : 8, padding: '10px 12px',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
         textAlign: 'left', width: '100%',
