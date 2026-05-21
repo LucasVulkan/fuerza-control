@@ -9,6 +9,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
   const getExName = useExerciseName();
   const [tipsOpen, setTipsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [hintSetIndex, setHintSetIndex] = useState(0);
   if (!def) return null;
 
   const exName = getExName(def);
@@ -181,7 +182,14 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
             setData={setData}
             exerciseDef={def}
             lastSet={lastSets[i] ?? null}
-            onFieldChange={(field, value) => onFieldChange(exerciseId, i, field, value)}
+            showHint={i === hintSetIndex}
+            onFieldChange={(field, value) => {
+              onFieldChange(exerciseId, i, field, value);
+              // Avanzar el hint al siguiente set cuando se rellena un campo real
+              if (value !== '' && i >= hintSetIndex) {
+                setHintSetIndex(i + 1);
+              }
+            }}
             onToggleDone={() => onToggleDone(exerciseId, i)}
           />
         ))}

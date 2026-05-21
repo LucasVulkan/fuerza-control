@@ -19,7 +19,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldChange, onToggleDone }) {
+export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldChange, onToggleDone, showHint = false }) {
   const { t } = useTranslation();
   const { weight, reps, time, done } = setData;
   const model = exerciseDef?.progressionModel;
@@ -50,6 +50,7 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
               scrollStep={5}
               onChange={(v) => onFieldChange('time', v)}
               done={done}
+              showHint={showHint}
             />
           </InputWrap>
         ) : (
@@ -62,6 +63,7 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
                 scrollStep={0.5}
                 onChange={(v) => onFieldChange('weight', v)}
                 done={done}
+                showHint={showHint}
               />
             </InputWrap>
             <InputWrap label={t('workout.reps')}>
@@ -72,6 +74,7 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
                 scrollStep={1}
                 onChange={(v) => onFieldChange('reps', v)}
                 done={done}
+                showHint={showHint}
               />
             </InputWrap>
           </>
@@ -112,7 +115,7 @@ function InputWrap({ label, children }) {
   );
 }
 
-function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, done }) {
+function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, done, showHint = false }) {
   const inputRef = useRef(null);
   const [scrollActive, setScrollActive] = useState(false);
 
@@ -289,21 +292,29 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
         onBlur={(e)  => { if (!scrollActive) e.target.style.borderColor = done ? 'rgba(74,222,128,0.3)' : 'var(--border)'; }}
       />
 
-      {/* Indicador visual de modo swipe ◀ ▶ */}
-      {scrollActive && (
+      {/* Indicador de swipe: activo (accent) o hint (muted) */}
+      {(scrollActive || showHint) && (
         <>
           <span style={{
-            position: 'absolute', top: '50%', left: 3,
+            position: 'absolute', top: '50%', left: 6,
             transform: 'translateY(-50%)',
-            fontSize: 8, color: 'var(--accent)', lineHeight: 1,
+            fontSize: 11,
+            color: scrollActive ? 'var(--accent)' : 'var(--muted)',
+            opacity: scrollActive ? 1 : 0.6,
+            lineHeight: 1,
             pointerEvents: 'none',
-          }}>◀</span>
+            userSelect: 'none',
+          }}>‹</span>
           <span style={{
-            position: 'absolute', top: '50%', right: 3,
+            position: 'absolute', top: '50%', right: 6,
             transform: 'translateY(-50%)',
-            fontSize: 8, color: 'var(--accent)', lineHeight: 1,
+            fontSize: 11,
+            color: scrollActive ? 'var(--accent)' : 'var(--muted)',
+            opacity: scrollActive ? 1 : 0.6,
+            lineHeight: 1,
             pointerEvents: 'none',
-          }}>▶</span>
+            userSelect: 'none',
+          }}>›</span>
         </>
       )}
     </div>
