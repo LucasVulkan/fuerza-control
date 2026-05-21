@@ -144,11 +144,11 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
 
     function onTouchMove(e) {
       if (lastY === null) return;
+      e.preventDefault(); // bloquea scroll de página desde el primer pixel
       const currentY = e.touches[0].clientY;
       const dy = lastY - currentY; // positivo = swipe hacia arriba = aumenta
 
       if (Math.abs(dy) >= THRESHOLD) {
-        e.preventDefault();
         const step    = stepRef.current;
         const current = parseFloat(valueRef.current) || 0;
         const delta   = dy > 0 ? step : -step;
@@ -198,6 +198,7 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
         transition: 'border-color 0.15s',
         // Evitar que el navegador interfiera con el scroll nativo del input type=number
         MozAppearance: 'textfield',
+        touchAction: 'none', // le dice al navegador que no gestione el touch aquí
       }}
       onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
       onBlur={(e)  => e.target.style.borderColor = done ? 'rgba(74,222,128,0.3)' : 'var(--border)'}
