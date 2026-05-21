@@ -134,105 +134,104 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
     onChangeRef.current(String(next));
   }
 
-  // ── Long press → modo scroll (móvil) ─────────────────────────────────────
+  // ── Swipe horizontal → cambia valor (móvil) ──────────────────────────────
   // Flujo:
-  //   touchstart  → readOnly=true INMEDIATAMENTE (Android no puede mostrar handles
-  //                 de selección en inputs readOnly) + inicia temporizador 350 ms
-  //   < 350 ms    → tap: touchend → readOnly=false + focus() → teclado
-  //   ≥ 350 ms    → activa modo scroll:
-  //                   · blur → cierra teclado si estaba abierto
-  //                   · feedback visual (borde accent + fondo tint + ▲▼)
-  //                   · haptic (Android)
-  //                   · touchmove controla el valor (preventDefault → sin scroll)
-  //   touchend    → desactiva modo scroll, readOnly=false
-  //
-  // Anti-selección-de-texto:
-  //   · readOnly=true en touchstart → Android no activa handles de selección
-  //   · CSS: userSelect/WebkitUserSelect/WebkitTouchCallout = none
-  //   · JS:  selectstart → preventDefault
+  //   touchstart  → readOnly=true inmediato (bloquea selección de texto del OS)
+  //                 + registra posición inicial
+  //   touchmove   → detecta dirección en los primeros DIR_THRESHOLD px:
+  //                   · horizontal (|dx|>|dy|) → bloquea scroll de página,
+  //                     activa modo swipe, cambia valor según desplazamiento
+  //                   · vertical   (|dy|>|dx|) → readOnly=false, deja que la
+  //                     página haga scroll con normalidad
+  //   touchend    → si fue swipe: desactiva
+  //                 si fue tap (sin movimiento): readOnly=false + focus() → teclado
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
 
-    let longPressTimer    = null;
-    let isScrollMode      = false;
-    let cancelledByScroll = false; // true si el timer se canceló por scroll de página
-    let startY            = null;
-    let lastY             = null;
+    let startX        = null;
+    let startY        = null;
+    let lastX         = null;
+    let directionLock = null; // null | 'h' | 'v'
 
-    const DELAY     = 350; // ms de hold para activar
-    const THRESHOLD = 6;   // px mínimos entre actualizaciones de valor
+    const DIR_THRESHOLD = 8; // px antes de decidir la dirección
+    const STEP_PX       = 8; // px horizontales por paso de valor
 
     function activate() {
-      isScrollMode = true;
-      el.blur();              // cierra teclado si ya estaba abierto
       setScrollActive(true);
-      if (navigator.vibrate) navigator.vibrate(25);
+      if (navigator.vibrate) navigator.vibrate(15);
     }
 
     function deactivate() {
-      isScrollMode      = false;
-      cancelledByScroll = false;
-      el.readOnly       = false;  // restaura la edición normal
+      directionLock = null;
+      el.readOnly   = false;
       setScrollActive(false);
+      startX = null;
       startY = null;
-      lastY  = null;
+      lastX  = null;
     }
 
-    // Bloquea la selección nativa de texto que compite con el long press
     function onSelectStart(e) { e.preventDefault(); }
 
     function onTouchStart(e) {
-      startY            = e.touches[0].clientY;
-      lastY             = e.touches[0].clientY;
-      cancelledByScroll = false;
-      // readOnly=true ANTES del timer: Android no muestra handles de selección
-      // en inputs readOnly, así bloqueamos la selección desde el primer ms.
-      el.readOnly    = true;
-      longPressTimer = setTimeout(activate, DELAY);
+      startX        = e.touches[0].clientX;
+      startY        = e.touches[0].clientY;
+      lastX         = e.touches[0].clientX;
+      directionLock = null;
+      el.readOnly   = true; // bloquea selección de texto desde el primer ms
     }
 
     function onTouchMove(e) {
+      const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
 
-      if (!isScrollMode) {
-        // Cancelar long press si el dedo se desplaza demasiado antes de activarse
-        if (startY !== null && Math.abs(currentY - startY) > 10) {
-          clearTimeout(longPressTimer);
-          cancelledByScroll = true;
+      // ── Aún sin dirección bloqueada: detectar ────────────────────────────
+      if (directionLock === null) {
+        const totalDx = Math.abs(currentX - startX);
+        const totalDy = Math.abs(currentY - startY);
+
+        if (totalDx > DIR_THRESHOLD && totalDx > totalDy) {
+          directionLock = 'h';
+          activate();
+        } else if (totalDy > DIR_THRESHOLD && totalDy >= totalDx) {
+          directionLock = 'v';
+          el.readOnly = false; // liberar para que la página haga scroll
         }
-        return; // la página puede hacer scroll con normalidad
+        lastX = currentX;
+        return;
       }
 
-      // Modo scroll activo: bloquear scroll de página y cambiar el valor
-      e.preventDefault();
-      const dy = lastY - currentY; // positivo = swipe arriba = incremento
-      if (Math.abs(dy) >= THRESHOLD) {
-        const step    = stepRef.current;
-        const current = parseFloat(valueRef.current) || 0;
-        const delta   = dy > 0 ? step : -step;
-        const next    = Math.max(0, Math.round((current + delta) * 100) / 100);
-        onChangeRef.current(String(next));
-        lastY = currentY;
+      // ── Swipe horizontal activo ───────────────────────────────────────────
+      if (directionLock === 'h') {
+        e.preventDefault(); // impide scroll de página mientras se cambia el valor
+        const dx = currentX - lastX;
+        if (Math.abs(dx) >= STEP_PX) {
+          const steps   = Math.trunc(dx / STEP_PX);
+          const step    = stepRef.current;
+          const current = parseFloat(valueRef.current) || 0;
+          const next    = Math.max(0, Math.round((current + steps * step) * 100) / 100);
+          onChangeRef.current(String(next));
+          lastX = currentX - (dx % STEP_PX); // conserva el resto para el próximo evento
+        }
       }
+      // directionLock === 'v': la página ya scrollea sola, no hay nada que hacer
     }
 
     function onTouchEnd(e) {
-      clearTimeout(longPressTimer);
-      if (isScrollMode) {
-        e.preventDefault(); // previene el click/focus posterior al scroll
+      if (directionLock === 'h') {
+        e.preventDefault(); // evita el click/focus que sigue al swipe
         deactivate();
+      } else if (directionLock === null) {
+        // Tap puro: abrir teclado
+        el.readOnly = false;
+        el.focus();
+        directionLock = null;
       } else {
-        const wasTap = !cancelledByScroll;
-        deactivate();           // pone readOnly=false primero
-        if (wasTap) el.focus(); // luego abre el teclado (solo si fue tap real)
+        deactivate(); // scroll de página
       }
     }
 
-    function onTouchCancel() {
-      clearTimeout(longPressTimer);
-      deactivate();
-    }
+    function onTouchCancel() { deactivate(); }
 
     el.addEventListener('selectstart', onSelectStart);
     el.addEventListener('touchstart',  onTouchStart,  { passive: true  });
@@ -246,7 +245,6 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
       el.removeEventListener('touchmove',   onTouchMove);
       el.removeEventListener('touchend',    onTouchEnd);
       el.removeEventListener('touchcancel', onTouchCancel);
-      clearTimeout(longPressTimer);
     };
   }, []); // solo al montar — usa refs para lo dinámico
 
@@ -291,18 +289,22 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
         onBlur={(e)  => { if (!scrollActive) e.target.style.borderColor = done ? 'rgba(74,222,128,0.3)' : 'var(--border)'; }}
       />
 
-      {/* Indicador visual de modo scroll ▲ ▼ */}
+      {/* Indicador visual de modo swipe ◀ ▶ */}
       {scrollActive && (
-        <div style={{
-          position: 'absolute', top: '50%', right: 5,
-          transform: 'translateY(-50%)',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', gap: 2,
-          pointerEvents: 'none',
-        }}>
-          <span style={{ fontSize: 8, color: 'var(--accent)', lineHeight: 1 }}>▲</span>
-          <span style={{ fontSize: 8, color: 'var(--accent)', lineHeight: 1 }}>▼</span>
-        </div>
+        <>
+          <span style={{
+            position: 'absolute', top: '50%', left: 3,
+            transform: 'translateY(-50%)',
+            fontSize: 8, color: 'var(--accent)', lineHeight: 1,
+            pointerEvents: 'none',
+          }}>◀</span>
+          <span style={{
+            position: 'absolute', top: '50%', right: 3,
+            transform: 'translateY(-50%)',
+            fontSize: 8, color: 'var(--accent)', lineHeight: 1,
+            pointerEvents: 'none',
+          }}>▶</span>
+        </>
       )}
     </div>
   );
