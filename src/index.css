@@ -43,11 +43,11 @@
 /* ── Theme: Midnight ───────────────────────────────────────────── */
 [data-theme="midnight"] {
   --bg: #04091a;
-  --surface: #080f28;
-  --surface2: #0c1838;
-  --surface3: #102048;
-  --border: rgba(0,200,240,0.50);
-  --border-card: rgba(0,200,240,0.50);
+  --surface: #0c1535;
+  --surface2: #111e45;
+  --surface3: #152450;
+  --border: rgba(0,200,240,0.88);
+  --border-card: rgba(0,200,240,0.88);
   --accent: #00c8f0;
   --accent2: #9b74f7;
   --accent3: #00e8a0;
@@ -64,18 +64,17 @@
   --day5: #fbbf24;
   --day6: #60a5fa;
 
-  /* Gradiente cian→violeta para fondos de botones activos */
-  --accent-tint:        linear-gradient(135deg, rgba(0,200,240,0.13) 0%, rgba(155,116,247,0.09) 100%);
-  --accent-tint-active: linear-gradient(135deg, rgba(0,200,240,0.28) 0%, rgba(155,116,247,0.20) 100%);
-  --accent-tint-border: rgba(0,200,240,0.60);
-  --border-dashed:      rgba(0,200,240,0.45);
+  --accent-tint:        rgba(0,200,240,0.10);
+  --accent-tint-active: rgba(0,200,240,0.22);
+  --accent-tint-border: rgba(0,200,240,0.90);
+  --border-dashed:      rgba(0,200,240,0.70);
 
   --radius-card: 10px;
   --radius-btn: 10px;
   --radius-input: 6px;
   --font-display: 'Bebas Neue', sans-serif;
   --font-body: 'DM Sans', sans-serif;
-  --border-width: 2px;
+  --border-width: 1px;
 }
 
 /* ── Theme: Earthy (claro) ─────────────────────────────────────── */
@@ -155,6 +154,57 @@
   --border-width: 1px;
 }
 
+/* Sharp — botones con fondo blanco semitransparente + vértices biselados en esquinas derechas */
+[data-theme="sharp"] button {
+  background: rgba(255,255,255,0.28) !important;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 7px) 0,
+    100% 7px,
+    100% calc(100% - 7px),
+    calc(100% - 7px) 100%,
+    0 100%
+  );
+}
+
+/* ── Theme: Space (claro moderno) ──────────────────────────────── */
+[data-theme="space"] {
+  color-scheme: light;
+  --bg: #efefef;
+  --surface: #ffffff;
+  --surface2: #e6e6e6;
+  --surface3: #dcdcdc;
+  --border: #cecece;
+  --border-card: #c0c0c0;
+  --accent: #111111;
+  --accent2: #444444;
+  --accent3: #666666;
+  --text: #0a0a0a;
+  --muted: #666666;
+  --muted2: #aaaaaa;
+  --green: #1a7a30;
+  --orange: #a04010;
+  --red: #a02020;
+  --day1: #111111;
+  --day2: #335599;
+  --day3: #226644;
+  --day4: #774499;
+  --day5: #aa5500;
+  --day6: #995566;
+
+  --accent-tint:        rgba(0,0,0,0.05);
+  --accent-tint-active: rgba(0,0,0,0.12);
+  --accent-tint-border: rgba(0,0,0,0.25);
+  --border-dashed:      rgba(0,0,0,0.30);
+
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-input: 8px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --border-width: 1px;
+}
+
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -165,7 +215,7 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-weight: 300;
   min-height: 100vh;
 }

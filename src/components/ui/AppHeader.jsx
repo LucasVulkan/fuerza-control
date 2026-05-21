@@ -7,6 +7,7 @@ const THEMES = [
   { id: 'midnight', label: 'Midnight', bg: '#04091a', ring: '#00c8f0' },
   { id: 'earthy',   label: 'Earthy',   bg: '#dbd5c8', ring: '#6a9458' },
   { id: 'sharp',    label: 'Sharp',    bg: '#0a0a0a', ring: '#ffffff' },
+  { id: 'space',    label: 'Space',    bg: '#efefef', ring: '#111111' },
 ];
 
 function useDateTime(locale) {
