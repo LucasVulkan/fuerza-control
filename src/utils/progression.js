@@ -122,9 +122,14 @@ export function getProgression(exerciseDef, lastSets, totalSets, t) {
   return null;
 }
 
-export function summarizeSets(exerciseDef, doneSets) {
+/**
+ * @param {Function|null} weightFmt  (kg) => string — formateador de peso.
+ *   Por defecto: kg => `${kg}kg`. Usar con useWeightUnit().fmt para respetar la unidad del usuario.
+ */
+export function summarizeSets(exerciseDef, doneSets, weightFmt = null) {
   if (!doneSets || !doneSets.length) return '—';
 
+  const fmtW = weightFmt ?? ((kg) => `${kg}kg`);
   const model = exerciseDef?.progressionModel;
 
   if (model === 'time_progression') {
@@ -136,13 +141,13 @@ export function summarizeSets(exerciseDef, doneSets) {
     const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0);
     const maxW = Math.max(...doneSets.map((s) => parseFloat(s.weight) || 0));
     if (!total) return '—';
-    return maxW > 0 ? `${total} reps · ${maxW}kg` : `${total} reps tot.`;
+    return maxW > 0 ? `${total} reps · ${fmtW(maxW)}` : `${total} reps tot.`;
   }
 
   // double_progression y cualquier otro modelo con peso
   const maxW = Math.max(...doneSets.map((s) => parseFloat(s.weight) || 0));
   const repsList = doneSets.map((s) => s.reps).filter(Boolean).join('/');
-  if (maxW > 0) return `${maxW}kg · ${repsList}`;
+  if (maxW > 0) return `${fmtW(maxW)} · ${repsList}`;
   if (repsList) return `${repsList} reps`;
   return '—';
 }

@@ -18,6 +18,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 
 export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldChange, onToggleDone, showHint = false }) {
   const { t } = useTranslation();
@@ -25,9 +26,13 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
   const model = exerciseDef?.progressionModel;
   const isDecrease = exerciseDef?.progressionDirection === 'decrease';
 
-  const prevWeight = lastSet?.weight ?? '';
-  const prevReps   = lastSet?.reps   ?? '';
-  const prevTime   = lastSet?.time   ?? '';
+  const { label: weightLabel, toDisplay: wDisplay, toKg: wToKg, scrollStep: wStep, inputMode: wInputMode } = useWeightUnit();
+
+  // Convertir valores almacenados (kg) a la unidad de display
+  const weightDisp   = String(wDisplay(weight)          || '');
+  const prevWDisp    = String(wDisplay(lastSet?.weight)  || '');
+  const prevReps     = lastSet?.reps  ?? '';
+  const prevTime     = lastSet?.time  ?? '';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -55,13 +60,13 @@ export default function SetRow({ index, setData, exerciseDef, lastSet, onFieldCh
           </InputWrap>
         ) : (
           <>
-            <InputWrap label={isDecrease ? t('workout.assistance') : t('workout.kg')}>
+            <InputWrap label={isDecrease ? t('workout.assistance') : weightLabel}>
               <SetInput
-                value={weight}
-                placeholder={prevWeight || '—'}
-                inputMode="decimal"
-                scrollStep={0.5}
-                onChange={(v) => onFieldChange('weight', v)}
+                value={weightDisp}
+                placeholder={prevWDisp || '—'}
+                inputMode={wInputMode}
+                scrollStep={wStep}
+                onChange={(v) => onFieldChange('weight', v !== '' ? String(wToKg(parseFloat(v))) : '')}
                 done={done}
                 showHint={showHint}
               />

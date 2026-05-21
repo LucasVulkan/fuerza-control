@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/formatters';
 import { useStore } from '../../store/useStore';
 import { useExerciseName } from '../../hooks/useExerciseName';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 
 const DAY_COLORS = {
   A: 'var(--day1)', B: 'var(--day2)', C: 'var(--day3)',
@@ -12,6 +13,7 @@ const DAY_COLORS = {
 export default function SessionCard({ session, onDelete }) {
   const { t } = useTranslation();
   const getExName = useExerciseName();
+  const { fmt: fmtWeight } = useWeightUnit();
   const [open, setOpen] = useState(false);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
@@ -124,7 +126,7 @@ export default function SessionCard({ session, onDelete }) {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {ex.sets.map((s, i) => {
-                    const label = buildSetLabel(s, i, def);
+                    const label = buildSetLabel(s, i, def, fmtWeight);
                     return (
                       <span key={i} style={{
                         fontSize: 10,
@@ -148,10 +150,11 @@ export default function SessionCard({ session, onDelete }) {
   );
 }
 
-function buildSetLabel(set, index, def) {
+function buildSetLabel(set, index, def, fmtWeight) {
+  const fw = fmtWeight ?? ((kg) => `${kg}kg`);
   if (set.time) return set.time + 's';
-  if (set.weight && set.reps) return set.weight + 'kg×' + set.reps;
+  if (set.weight && set.reps) return fw(set.weight) + '×' + set.reps;
   if (set.reps) return set.reps + ' reps';
-  if (set.weight) return set.weight + 'kg';
+  if (set.weight) return fw(set.weight);
   return 'S' + (index + 1);
 }

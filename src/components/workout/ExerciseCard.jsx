@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useExerciseName } from '../../hooks/useExerciseName';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 import ProgressionChip from '../ui/ProgressionChip';
 import SetRow from './SetRow';
 
 export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, currentSets, lastSets, prevSummary, progression, onFieldChange, onToggleDone, onAddSet }) {
   const { t, i18n } = useTranslation();
   const getExName = useExerciseName();
+  const { fmt: fmtWeight } = useWeightUnit();
   const [tipsOpen, setTipsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [hintSetIndex, setHintSetIndex] = useState(0);
@@ -50,7 +52,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
                 padding: '2px 7px',
                 color: 'var(--green)',
               }}>
-                {buildSetLabel(s, i)}
+                {buildSetLabel(s, i, fmtWeight)}
               </span>
             ))}
           </div>
@@ -212,11 +214,12 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
   );
 }
 
-function buildSetLabel(set, index) {
+function buildSetLabel(set, index, fmtWeight) {
+  const fw = fmtWeight ?? ((kg) => `${kg}kg`);
   if (set.time)               return set.time + 's';
-  if (set.weight && set.reps) return set.weight + 'kg×' + set.reps;
+  if (set.weight && set.reps) return fw(set.weight) + '×' + set.reps;
   if (set.reps)               return set.reps + ' reps';
-  if (set.weight)             return set.weight + 'kg';
+  if (set.weight)             return fw(set.weight);
   return 'S' + (index + 1);
 }
 

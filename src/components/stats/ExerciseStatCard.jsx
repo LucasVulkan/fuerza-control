@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { formatDate } from '../../utils/formatters';
 import { summarizeSets } from '../../utils/progression';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 
 const PERIOD_OPTIONS = [
   { id: '1m',  label: '1M' },
@@ -15,7 +16,7 @@ function shortDate(ts) {
   return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-function getMetrics(def, allLogs) {
+function getMetrics(def, allLogs, weightLabel = 'kg') {
   const model = def?.progressionModel;
   if (model === 'time_progression') return [{ id: 'time', label: 'Segundos' }];
   if (model === 'submax') return [{ id: 'reps', label: 'Reps' }];
@@ -24,8 +25,8 @@ function getMetrics(def, allLogs) {
   );
   const m = [{ id: 'reps', label: 'Reps' }];
   if (hasWeight) {
-    m.unshift({ id: 'kg', label: 'Kg' });
-    m.push({ id: 'vol', label: 'Volumen' });
+    m.unshift({ id: 'kg', label: weightLabel.toUpperCase() });
+    m.push({ id: 'vol', label: 'Vol' });
   }
   return m;
 }
@@ -52,7 +53,8 @@ function computeValue(sets, metricId) {
   return null;
 }
 
-function computeTotals(def, allLogs) {
+function computeTotals(def, allLogs, fmtWeight = null) {
+  const fmtW = fmtWeight ?? ((kg) => `${kg}kg`);
   const model = def?.progressionModel;
   const allDone = allLogs.flatMap(({ exercise }) =>
     exercise?.sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? []
@@ -70,7 +72,7 @@ function computeTotals(def, allLogs) {
 
   const maxKg = Math.max(...allDone.map((s) => parseFloat(s.weight) || 0));
   if (maxKg > 0) {
-    return `PR ${maxKg}kg · ${sessions} sesión${sessions !== 1 ? 'es' : ''}`;
+    return `PR ${fmtW(maxKg)} · ${sessions} sesión${sessions !== 1 ? 'es' : ''}`;
   }
 
   // submax u ejercicios sin peso
@@ -101,13 +103,15 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
   const [chartPeriod, setChartPeriod] = useState('all');
   const [chartMetric, setChartMetric] = useState(null);
 
+  const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
+
   const effectiveLogs = allLogs ?? logs ?? [];
   if (!effectiveLogs.length && !logs?.length) return null;
 
-  const metrics           = useMemo(() => getMetrics(def, effectiveLogs), [def, effectiveLogs]);
+  const metrics           = useMemo(() => getMetrics(def, effectiveLogs, weightLabel), [def, effectiveLogs, weightLabel]);
   const activeMetric      = chartMetric ?? metrics[0]?.id;
   const activeMetricLabel = metrics.find((m) => m.id === activeMetric)?.label ?? '';
-  const totals            = useMemo(() => computeTotals(def, effectiveLogs), [def, effectiveLogs]);
+  const totals            = useMemo(() => computeTotals(def, effectiveLogs, fmtWeight), [def, effectiveLogs, fmtWeight]);
 
   // Tabla: últimas 6 de más reciente a más antigua
   const tableLogs = useMemo(() => [...(logs ?? [])].reverse(), [logs]);
@@ -122,15 +126,19 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
       filtered = filtered.filter(({ timestamp }) => timestamp >= cutoff);
     }
+    const needsConversion = activeMetric === 'kg' || activeMetric === 'vol';
     return filtered
-      .map(({ timestamp, exercise }) => ({
-        date:  shortDate(timestamp),
-        timestamp,
-        value: computeValue(exercise?.sets, activeMetric),
-      }))
+      .map(({ timestamp, exercise }) => {
+        const raw = computeValue(exercise?.sets, activeMetric);
+        // Convertir valores de peso/volumen a la unidad elegida
+        const value = (raw !== null && needsConversion)
+          ? (activeMetric === 'kg' ? wDisplay(raw) : Math.round(wDisplay(1) * raw * 10) / 10)
+          : raw;
+        return { date: shortDate(timestamp), timestamp, value };
+      })
       .filter((d) => d.value !== null)
       .map((d, i) => ({ ...d, i })); // índice normalizado para el eje X
-  }, [effectiveLogs, chartPeriod, activeMetric]);
+  }, [effectiveLogs, chartPeriod, activeMetric, wDisplay]);
 
   // Ancho dinámico del eje Y según el valor máximo del dataset.
   // El margen izquierdo del LineChart es fijo a -8 para quitar el padding
@@ -191,7 +199,7 @@ export default function ExerciseStatCard({ def, logs, allLogs }) {
             }}>
               <span>{formatDate(timestamp)}</span>
               <span style={{ color: 'var(--text)', fontWeight: 500 }}>
-                {summarizeSets(def, done)}
+                {summarizeSets(def, done, fmtWeight)}
               </span>
             </div>
           );

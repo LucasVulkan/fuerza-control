@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useWorkout } from '../../hooks/useWorkout';
 import { useStore } from '../../store/useStore';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 import ExerciseCard from './ExerciseCard';
 import ExerciseSelector from '../editor/ExerciseSelector';
 
@@ -183,6 +184,7 @@ export default function WorkoutView() {
 // ── Tarjeta para ejercicios ad-hoc ────────────────────────────────────────────
 function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, onAddSet, onRemove }) {
   const { t, i18n } = useTranslation();
+  const { label: weightLabel, toDisplay: wDisplay, toKg: wToKg } = useWeightUnit();
   const isTime = def?.progressionModel === 'time_progression';
   const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : exerciseId;
 
@@ -212,9 +214,9 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
             ) : (
               <>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: 'var(--muted2)', textAlign: 'center', marginBottom: 2 }}>Kg</div>
-                  <input type="number" inputMode="decimal" placeholder="—" value={set.weight ?? ''}
-                    onChange={(e) => onFieldChange(i, 'weight', e.target.value)}
+                  <div style={{ fontSize: 9, color: 'var(--muted2)', textAlign: 'center', marginBottom: 2 }}>{weightLabel}</div>
+                  <input type="number" inputMode="decimal" placeholder="—" value={String(wDisplay(set.weight) || '')}
+                    onChange={(e) => onFieldChange(i, 'weight', e.target.value !== '' ? String(wToKg(parseFloat(e.target.value))) : '')}
                     style={setInputStyle} />
                 </div>
                 <div style={{ flex: 1 }}>

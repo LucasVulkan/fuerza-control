@@ -158,6 +158,33 @@ export default function AppHeader({ onImportFile }) {
               })}
             </div>
 
+            <SectionLabel label={t('header.units')} />
+            <div style={{ padding: '6px 12px 10px', display: 'flex', gap: 6, borderBottom: 'var(--border-width) solid var(--border)' }}>
+              {['kg', 'lb'].map((u) => {
+                const active = (profile.weightUnit ?? 'kg') === u;
+                return (
+                  <button
+                    key={u}
+                    onClick={() => { if (!active) setProfile({ weightUnit: u }); }}
+                    style={{
+                      flex: 1,
+                      background: active ? 'var(--accent-tint-active)' : 'var(--surface2)',
+                      border: 'var(--border-width) solid',
+                      borderColor: active ? 'var(--accent-tint-border)' : 'var(--border)',
+                      borderRadius: 6,
+                      color: active ? 'var(--accent)' : 'var(--muted)',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13, fontWeight: 500,
+                      padding: '6px 0',
+                      cursor: active ? 'default' : 'pointer',
+                    }}
+                  >
+                    {u.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+
             <SectionLabel label={t('header.theme')} />
             <div style={{ padding: '6px 12px 10px', display: 'flex', gap: 8 }}>
               {THEMES.map((t_) => {

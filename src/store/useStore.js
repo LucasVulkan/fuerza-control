@@ -34,6 +34,7 @@ const INITIAL_PROFILE = {
   theme: 'dark',
   isPro: true,  // dev: true para ver todas las features
   language: 'es',
+  weightUnit: 'kg', // 'kg' | 'lb' — los pesos se almacenan siempre en kg
 };
 
 const INITIAL_ACTIVE_SESSION = {

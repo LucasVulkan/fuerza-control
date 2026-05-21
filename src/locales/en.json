@@ -31,7 +31,8 @@
     "switchToFree": "Switch to FREE",
     "switchToPro": "Switch to PRO",
     "theme": "Theme",
-    "language": "Language"
+    "language": "Language",
+    "units": "Weight units"
   },
   "tabs": {
     "session": "Session",

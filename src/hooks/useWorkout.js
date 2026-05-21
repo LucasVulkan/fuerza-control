@@ -7,9 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveSession } from '../store/useStore';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { getProgression, summarizeSets } from '../utils/progression';
+import { useWeightUnit } from './useWeightUnit';
 
 export function useWorkout() {
   const { t } = useTranslation();
+  const { fmt: fmtWeight } = useWeightUnit();
   const activeSession = useStore(selectActiveSession);
   const updateSetField = useStore((s) => s.updateSetField);
   const toggleSetDone = useStore((s) => s.toggleSetDone);
@@ -59,7 +61,7 @@ export function useWorkout() {
       exConfig,
       currentSets,
       lastSets,
-      prevSummary: summarizeSets(def, lastSetsWithData),
+      prevSummary: summarizeSets(def, lastSetsWithData, fmtWeight),
       progression: getProgression(progressionDef, lastSets, sets, t),
     };
   });
