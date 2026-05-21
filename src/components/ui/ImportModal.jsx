@@ -167,7 +167,7 @@ function BackupSections({ parsedData, onImport, onClose }) {
             flex: 2,
             background: nothingSelected ? 'var(--surface2)' : 'var(--accent)',
             border: 'none', borderRadius: 'var(--radius-btn)',
-            color: nothingSelected ? 'var(--muted)' : '#0d0d0d',
+            color: nothingSelected ? 'var(--muted)' : 'var(--on-accent)',
             fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1,
             padding: '11px', cursor: nothingSelected ? 'not-allowed' : 'pointer',
           }}

@@ -212,7 +212,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
                   border: 'var(--border-width) solid',
                   borderColor: form.restSec === s ? 'var(--accent)' : 'var(--border)',
                   borderRadius: 6,
-                  color: form.restSec === s ? '#0d0d0d' : 'var(--muted)',
+                  color: form.restSec === s ? 'var(--on-accent)' : 'var(--muted)',
                   fontSize: 12,
                   padding: '8px 0',
                   cursor: 'pointer',
@@ -360,7 +360,7 @@ export default function CustomExerciseForm({ onCreated, onClose }) {
           style={{
             flex: 2,
             background: 'var(--accent)', border: 'none',
-            borderRadius: 10, color: '#0d0d0d',
+            borderRadius: 10, color: 'var(--on-accent)',
             fontFamily: "'Bebas Neue', sans-serif",
             fontSize: 20, letterSpacing: 1.5,
             padding: 13, cursor: 'pointer',

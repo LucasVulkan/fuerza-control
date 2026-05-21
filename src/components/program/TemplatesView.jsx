@@ -96,7 +96,7 @@ export default function TemplatesView() {
         <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>{t('templates.title')}</p>
         <button
           onClick={() => setShowNew(true)}
-          style={{ background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, padding: '8px 18px', cursor: 'pointer' }}
+          style={{ background: 'var(--accent)', border: 'none', borderRadius: 6, color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, padding: '8px 18px', cursor: 'pointer' }}
         >{t('templates.newBtn')}</button>
       </div>
 
@@ -193,7 +193,7 @@ export default function TemplatesView() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
-              <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 2, background: !newName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newName.trim() ? 'not-allowed' : 'pointer' }}>{t('templates.newModal.createBtn')}</button>
+              <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 2, background: !newName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newName.trim() ? 'var(--muted)' : 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newName.trim() ? 'not-allowed' : 'pointer' }}>{t('templates.newModal.createBtn')}</button>
             </div>
           </div>
         </>
@@ -246,7 +246,7 @@ export default function TemplatesView() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setAssignModal(null)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
               {clientList.length > 0 && (
-                <button onClick={handleAssign} disabled={!assignClientId} style={{ flex: 2, background: !assignClientId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !assignClientId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !assignClientId ? 'not-allowed' : 'pointer' }}>{t('templates.assignModal.assignBtn')}</button>
+                <button onClick={handleAssign} disabled={!assignClientId} style={{ flex: 2, background: !assignClientId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !assignClientId ? 'var(--muted)' : 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !assignClientId ? 'not-allowed' : 'pointer' }}>{t('templates.assignModal.assignBtn')}</button>
               )}
             </div>
           </div>

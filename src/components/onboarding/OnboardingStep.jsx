@@ -64,7 +64,7 @@ export default function OnboardingStep({
             background: nextDisabled ? 'var(--surface2)' : 'var(--accent)',
             border: 'none',
             borderRadius: 10,
-            color: nextDisabled ? 'var(--muted)' : '#0d0d0d',
+            color: nextDisabled ? 'var(--muted)' : 'var(--on-accent)',
             fontFamily: "'Bebas Neue', sans-serif",
             fontSize: 20,
             letterSpacing: 1.5,

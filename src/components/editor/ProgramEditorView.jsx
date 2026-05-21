@@ -327,7 +327,7 @@ export default function ProgramEditorView() {
           onClick={() => confirmEditSession(backDest, backTab)}
           style={{
             flex: 2, background: 'var(--accent)', border: 'none', borderRadius: 10,
-            color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+            color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif",
             fontSize: 20, letterSpacing: 1.5, padding: '13px 8px', cursor: 'pointer',
           }}
         >

@@ -12,7 +12,7 @@ export default function Toast() {
         ? 'translateX(-50%) translateY(0)'
         : 'translateX(-50%) translateY(12px)',
       background: 'var(--green)',
-      color: '#0d0d0d',
+      color: 'var(--on-green)',
       padding: '9px 18px',
       borderRadius: 20,
       fontSize: 13,

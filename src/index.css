@@ -38,6 +38,8 @@
   --font-display: 'Bebas Neue', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --border-width: 1px;
+  --on-accent: #0d0d0d;
+  --on-green:  #0d0d0d;
 }
 
 /* ── Theme: Midnight ───────────────────────────────────────────── */
@@ -75,6 +77,8 @@
   --font-display: 'Bebas Neue', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --border-width: 1px;
+  --on-accent: #04091a;
+  --on-green:  #04091a;
 }
 
 /* ── Theme: Earthy (claro) ─────────────────────────────────────── */
@@ -115,6 +119,8 @@
   --font-display: 'Bebas Neue', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --border-width: 1px;
+  --on-accent: #ffffff;
+  --on-green:  #ffffff;
 }
 
 /* ── Theme: Sharp (sin redondeos, tipografía diferente) ────────── */
@@ -152,19 +158,13 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Space Grotesk', sans-serif;
   --border-width: 1px;
+  --on-accent: #0a0a0a;
+  --on-green:  #0a0a0a;
 }
 
-/* Sharp — botones con fondo blanco semitransparente + vértices biselados en esquinas derechas */
+/* Sharp — botones con fondo blanco semitransparente */
 [data-theme="sharp"] button {
   background: rgba(255,255,255,0.28) !important;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 7px) 0,
-    100% 7px,
-    100% calc(100% - 7px),
-    calc(100% - 7px) 100%,
-    0 100%
-  );
 }
 
 /* ── Theme: Space (claro moderno) ──────────────────────────────── */
@@ -172,8 +172,8 @@
   color-scheme: light;
   --bg: #efefef;
   --surface: #ffffff;
-  --surface2: #e6e6e6;
-  --surface3: #dcdcdc;
+  --surface2: #d6d6d6;
+  --surface3: #cacaca;
   --border: #cecece;
   --border-card: #c0c0c0;
   --accent: #111111;
@@ -203,6 +203,13 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Space Grotesk', sans-serif;
   --border-width: 1px;
+  --on-accent: #ffffff;
+  --on-green:  #ffffff;
+}
+
+/* Space — botones planos sin outline */
+[data-theme="space"] button {
+  border-color: transparent !important;
 }
 
 *, *::before, *::after {

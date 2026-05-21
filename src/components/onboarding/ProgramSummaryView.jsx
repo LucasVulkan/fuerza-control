@@ -192,7 +192,7 @@ export default function ProgramSummaryView() {
             background: 'var(--accent)',
             border: 'none',
             borderRadius: 10,
-            color: '#0d0d0d',
+            color: 'var(--on-accent)',
             fontFamily: "'Bebas Neue', sans-serif",
             fontSize: 20,
             letterSpacing: 1.5,

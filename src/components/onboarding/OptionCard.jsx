@@ -52,7 +52,7 @@ export default function OptionCard({
         justifyContent: 'center',
       }}>
         {selected && (
-          <span style={{ fontSize: 10, color: '#0d0d0d', fontWeight: 700 }}>✓</span>
+          <span style={{ fontSize: 10, color: 'var(--on-accent)', fontWeight: 700 }}>✓</span>
         )}
       </div>
 

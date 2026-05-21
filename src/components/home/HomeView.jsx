@@ -136,7 +136,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
             onClick={() => navigate('onboarding')}
             style={{
               background: 'var(--accent)', border: 'none', borderRadius: 10,
-              color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+              color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 18, letterSpacing: 1, padding: '13px 24px', cursor: 'pointer',
             }}
           >
@@ -284,7 +284,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
               onClick={() => advanceStage(activeProgram.id)}
               style={{
                 flex: 2, background: 'var(--accent)', border: 'none', borderRadius: 8,
-                color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+                color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif",
                 fontSize: 15, letterSpacing: 1, padding: '10px 0', cursor: 'pointer',
               }}
             >

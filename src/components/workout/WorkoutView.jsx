@@ -119,7 +119,7 @@ export default function WorkoutView() {
         </button>
 
         <button onClick={handleSave} style={{
-          marginTop: 2, width: '100%', background: 'var(--accent)', color: '#0d0d0d',
+          marginTop: 2, width: '100%', background: 'var(--accent)', color: 'var(--on-accent)',
           border: 'none', borderRadius: 10, padding: 15,
           fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1.5, cursor: 'pointer',
         }}
@@ -157,7 +157,7 @@ export default function WorkoutView() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 16px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>{t('workout.sessionNotes')}</div>
-              <button onClick={closeNotes} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, padding: '6px 16px', cursor: 'pointer' }}>{t('common.save')}</button>
+              <button onClick={closeNotes} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, padding: '6px 16px', cursor: 'pointer' }}>{t('common.save')}</button>
             </div>
             <textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
               placeholder={t('workout.notesPlaceholder')}

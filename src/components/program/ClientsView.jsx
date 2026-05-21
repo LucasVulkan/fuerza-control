@@ -545,7 +545,7 @@ export default function ClientsView() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddWeight()}
                 style={{ ...inputStyle, width: 90, padding: '8px 10px', fontSize: 13, textAlign: 'center' }} />
               <button onClick={handleAddWeight} disabled={!weightValue}
-                style={{ background: weightValue ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: weightValue ? '#0d0d0d' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 14px', cursor: weightValue ? 'pointer' : 'not-allowed' }}>＋</button>
+                style={{ background: weightValue ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: weightValue ? 'var(--on-accent)' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 14px', cursor: weightValue ? 'pointer' : 'not-allowed' }}>＋</button>
             </div>
             {(selectedClient.bodyWeight ?? []).length === 0 ? (
               <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>{t('clients.noWeightData')}</div>
@@ -605,7 +605,7 @@ export default function ClientsView() {
                   {billStatus === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
                 </button>
                 <button onClick={handleAddBilling} disabled={!billConcept.trim() || !billAmount}
-                  style={{ background: (billConcept.trim() && billAmount) ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: (billConcept.trim() && billAmount) ? '#0d0d0d' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 12px', cursor: (billConcept.trim() && billAmount) ? 'pointer' : 'not-allowed' }}>＋</button>
+                  style={{ background: (billConcept.trim() && billAmount) ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: (billConcept.trim() && billAmount) ? 'var(--on-accent)' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 12px', cursor: (billConcept.trim() && billAmount) ? 'pointer' : 'not-allowed' }}>＋</button>
               </div>
             </div>
 
@@ -758,12 +758,12 @@ export default function ClientsView() {
                 style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
               {newProgramTab === 'blank' ? (
                 <button onClick={handleCreateProgram} disabled={!newProgramName.trim()}
-                  style={{ flex: 2, background: !newProgramName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newProgramName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newProgramName.trim() ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: 2, background: !newProgramName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newProgramName.trim() ? 'var(--muted)' : 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newProgramName.trim() ? 'not-allowed' : 'pointer' }}>
                   {t('clients.newProgramModal.createBtn')}
                 </button>
               ) : (
                 <button onClick={handleCreateFromTemplate} disabled={!fromTemplateId}
-                  style={{ flex: 2, background: !fromTemplateId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !fromTemplateId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !fromTemplateId ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: 2, background: !fromTemplateId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !fromTemplateId ? 'var(--muted)' : 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !fromTemplateId ? 'not-allowed' : 'pointer' }}>
                   {t('clients.newProgramModal.assignBtn')}
                 </button>
               )}
@@ -832,7 +832,7 @@ function SimpleModal({ title, children, onClose, onConfirm, confirmLabel, confir
         {children}
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button onClick={onClose} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={onConfirm} disabled={confirmDisabled} style={{ flex: 2, background: confirmDisabled ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: confirmDisabled ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: confirmDisabled ? 'not-allowed' : 'pointer' }}>{confirmLabel}</button>
+          <button onClick={onConfirm} disabled={confirmDisabled} style={{ flex: 2, background: confirmDisabled ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: confirmDisabled ? 'var(--muted)' : 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: confirmDisabled ? 'not-allowed' : 'pointer' }}>{confirmLabel}</button>
         </div>
       </div>
     </>
@@ -985,5 +985,5 @@ function ClientImportModal({ t, file, onImport, onClose }) {
 }
 
 const menuItemStyle = { display: 'block', width: '100%', background: 'none', border: 'none', borderBottom: 'var(--border-width) solid var(--border)', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '11px 14px', cursor: 'pointer', textAlign: 'left' };
-const accentBtnStyle = { background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' };
+const accentBtnStyle = { background: 'var(--accent)', border: 'none', borderRadius: 6, color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' };
 const inputStyle = { width: '100%', background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box' };

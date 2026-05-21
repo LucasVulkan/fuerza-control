@@ -259,7 +259,7 @@ export default function OnboardingView() {
               flex: 2,
               background: manualName.trim() ? 'var(--accent)' : 'var(--surface2)',
               border: 'none', borderRadius: 10,
-              color: manualName.trim() ? '#0d0d0d' : 'var(--muted)',
+              color: manualName.trim() ? 'var(--on-accent)' : 'var(--muted)',
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 20, letterSpacing: 1.5,
               padding: 13, cursor: manualName.trim() ? 'pointer' : 'not-allowed',

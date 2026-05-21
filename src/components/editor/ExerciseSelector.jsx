@@ -136,7 +136,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                   onClick={() => setFilterMode(tab.id)}
                   style={{
                     background: filterMode === tab.id ? 'var(--accent)' : 'var(--surface2)',
-                    color: filterMode === tab.id ? '#0d0d0d' : 'var(--muted)',
+                    color: filterMode === tab.id ? 'var(--on-accent)' : 'var(--muted)',
                     border: 'var(--border-width) solid',
                     borderColor: filterMode === tab.id ? 'var(--accent)' : 'var(--border)',
                     borderRadius: 6,

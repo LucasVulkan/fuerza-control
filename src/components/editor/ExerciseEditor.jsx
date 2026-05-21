@@ -156,7 +156,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
             onClick={handleSave}
             style={{
               background: 'var(--accent)', border: 'none', borderRadius: 8,
-              color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif",
+              color: 'var(--on-accent)', fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 15, letterSpacing: 1, padding: '9px 16px', cursor: 'pointer',
             }}
           >
