@@ -158,13 +158,14 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Space Grotesk', sans-serif;
   --border-width: 1px;
-  --on-accent: #0a0a0a;
+  --on-accent: #ffffff;
   --on-green:  #0a0a0a;
 }
 
-/* Sharp — botones con fondo blanco semitransparente */
-[data-theme="sharp"] button {
-  background: rgba(255,255,255,0.28) !important;
+/* Sharp — solo los botones CTA (background: var(--accent)) reciben el overlay blanco.
+   Nav, hamburguesa, items de menú, iconos (background: none / surface) no se tocan. */
+[data-theme="sharp"] button[style*="background: var(--accent);"] {
+  background: rgba(255,255,255,0.22) !important;
 }
 
 /* ── Theme: Space (claro moderno) ──────────────────────────────── */
