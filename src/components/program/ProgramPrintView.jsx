@@ -239,7 +239,7 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
         padding: '14px 20px 12px',
         borderBottom: '1px solid #1a1a1a',
       }}>
-        <p style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+        <p style={{ fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', color: '#aaa', marginBottom: 5, fontWeight: 500 }}>
           {t('print.sessionLabel', { label: template.label ?? index, name: '' }).replace('·', '').trim()}
         </p>
         <div style={{
@@ -272,19 +272,17 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
               display: 'flex',
               gap: 12,
               padding: '13px 0',
-              borderBottom: isLast ? 'none' : '1px solid #161616',
+              borderBottom: isLast ? 'none' : '1px solid #252525',
               alignItems: 'flex-start',
             }}>
 
               {/* Número */}
               <div style={{
-                width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                background: `${color}15`,
-                border: `1px solid ${color}40`,
-                color,
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginTop: 2,
+                width: 22, flexShrink: 0,
+                fontSize: 16, fontWeight: 600,
+                color: '#666',
+                lineHeight: 1.3,
+                textAlign: 'right',
               }}>
                 {i + 1}
               </div>
@@ -308,9 +306,9 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
                     <span style={{
                       fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase',
                       padding: '2px 6px', borderRadius: 3,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid #252525',
-                      color: '#555',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid #2e2e2e',
+                      color: '#888',
                     }}>
                       {patternLabel}
                     </span>
@@ -320,8 +318,8 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
                 {/* Pastilla de volumen + descanso */}
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
-                  background: '#161616',
-                  border: '1px solid #232323',
+                  background: '#1a1a1a',
+                  border: '1px solid #2e2e2e',
                   borderRadius: 6,
                   padding: '5px 11px',
                   marginBottom: tip ? 8 : 0,
@@ -329,10 +327,10 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
                   <span style={{ fontSize: 13, fontWeight: 500, color: '#f0f0f0' }}>
                     {sets}
                   </span>
-                  <span style={{ fontSize: 11, color: '#3a3a3a' }}>×</span>
-                  <span style={{ fontSize: 12, color: '#ccc' }}>{reps}</span>
-                  <span style={{ width: 1, height: 11, background: '#2a2a2a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#555' }}>
+                  <span style={{ fontSize: 15, fontWeight: 400, color: '#888' }}>×</span>
+                  <span style={{ fontSize: 12, color: '#ddd' }}>{reps}</span>
+                  <span style={{ width: 1, height: 11, background: '#333', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: '#888' }}>
                     {restText} {t('print.tableRest').toLowerCase()}
                   </span>
                 </div>
@@ -340,7 +338,7 @@ function DaySection({ template, color, index, allExercises, t, getExName, getTip
                 {/* Tip (traducido) */}
                 {tip && (
                   <div style={{
-                    fontSize: 11, color: '#4a4a4a',
+                    fontSize: 11, color: '#666',
                     lineHeight: 1.5, fontStyle: 'italic',
                   }}>
                     {tip}
