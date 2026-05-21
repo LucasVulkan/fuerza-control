@@ -136,41 +136,44 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
 
   // ── Long press → modo scroll (móvil) ─────────────────────────────────────
   // Flujo:
-  //   touchstart  → inicia temporizador de 350 ms
-  //   < 350 ms    → tap normal → el browser abre el teclado
+  //   touchstart  → readOnly=true INMEDIATAMENTE (Android no puede mostrar handles
+  //                 de selección en inputs readOnly) + inicia temporizador 350 ms
+  //   < 350 ms    → tap: touchend → readOnly=false + focus() → teclado
   //   ≥ 350 ms    → activa modo scroll:
-  //                   · readOnly=true + blur → el teclado NO puede aparecer
+  //                   · blur → cierra teclado si estaba abierto
   //                   · feedback visual (borde accent + fondo tint + ▲▼)
   //                   · haptic (Android)
   //                   · touchmove controla el valor (preventDefault → sin scroll)
   //   touchend    → desactiva modo scroll, readOnly=false
   //
   // Anti-selección-de-texto:
+  //   · readOnly=true en touchstart → Android no activa handles de selección
   //   · CSS: userSelect/WebkitUserSelect/WebkitTouchCallout = none
   //   · JS:  selectstart → preventDefault
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
 
-    let longPressTimer = null;
-    let isScrollMode   = false;
-    let startY         = null;
-    let lastY          = null;
+    let longPressTimer    = null;
+    let isScrollMode      = false;
+    let cancelledByScroll = false; // true si el timer se canceló por scroll de página
+    let startY            = null;
+    let lastY             = null;
 
     const DELAY     = 350; // ms de hold para activar
     const THRESHOLD = 6;   // px mínimos entre actualizaciones de valor
 
     function activate() {
-      isScrollMode  = true;
-      el.readOnly   = true;   // impide teclado de forma nativa, más fiable que blur solo
+      isScrollMode = true;
       el.blur();              // cierra teclado si ya estaba abierto
       setScrollActive(true);
       if (navigator.vibrate) navigator.vibrate(25);
     }
 
     function deactivate() {
-      isScrollMode  = false;
-      el.readOnly   = false;  // restaura la edición normal (tap → teclado)
+      isScrollMode      = false;
+      cancelledByScroll = false;
+      el.readOnly       = false;  // restaura la edición normal
       setScrollActive(false);
       startY = null;
       lastY  = null;
@@ -180,8 +183,12 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
     function onSelectStart(e) { e.preventDefault(); }
 
     function onTouchStart(e) {
-      startY = e.touches[0].clientY;
-      lastY  = e.touches[0].clientY;
+      startY            = e.touches[0].clientY;
+      lastY             = e.touches[0].clientY;
+      cancelledByScroll = false;
+      // readOnly=true ANTES del timer: Android no muestra handles de selección
+      // en inputs readOnly, así bloqueamos la selección desde el primer ms.
+      el.readOnly    = true;
       longPressTimer = setTimeout(activate, DELAY);
     }
 
@@ -192,6 +199,7 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
         // Cancelar long press si el dedo se desplaza demasiado antes de activarse
         if (startY !== null && Math.abs(currentY - startY) > 10) {
           clearTimeout(longPressTimer);
+          cancelledByScroll = true;
         }
         return; // la página puede hacer scroll con normalidad
       }
@@ -213,8 +221,12 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
       clearTimeout(longPressTimer);
       if (isScrollMode) {
         e.preventDefault(); // previene el click/focus posterior al scroll
+        deactivate();
+      } else {
+        const wasTap = !cancelledByScroll;
+        deactivate();           // pone readOnly=false primero
+        if (wasTap) el.focus(); // luego abre el teclado (solo si fue tap real)
       }
-      deactivate();
     }
 
     function onTouchCancel() {
