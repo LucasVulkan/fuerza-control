@@ -137,12 +137,17 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
   // ── Long press → modo scroll (móvil) ─────────────────────────────────────
   // Flujo:
   //   touchstart  → inicia temporizador de 350 ms
-  //   < 350 ms    → el dedo se levanta = tap normal → teclado
-  //   ≥ 350 ms    → se activa modo scroll:
-  //                   · cierra teclado (blur)
-  //                   · feedback visual + haptico
+  //   < 350 ms    → tap normal → el browser abre el teclado
+  //   ≥ 350 ms    → activa modo scroll:
+  //                   · readOnly=true + blur → el teclado NO puede aparecer
+  //                   · feedback visual (borde accent + fondo tint + ▲▼)
+  //                   · haptic (Android)
   //                   · touchmove controla el valor (preventDefault → sin scroll)
-  //   touchend    → desactiva modo scroll
+  //   touchend    → desactiva modo scroll, readOnly=false
+  //
+  // Anti-selección-de-texto:
+  //   · CSS: userSelect/WebkitUserSelect/WebkitTouchCallout = none
+  //   · JS:  selectstart → preventDefault
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -156,18 +161,23 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
     const THRESHOLD = 6;   // px mínimos entre actualizaciones de valor
 
     function activate() {
-      isScrollMode = true;
+      isScrollMode  = true;
+      el.readOnly   = true;   // impide teclado de forma nativa, más fiable que blur solo
+      el.blur();              // cierra teclado si ya estaba abierto
       setScrollActive(true);
-      el.blur();                                        // cierra el teclado
-      if (navigator.vibrate) navigator.vibrate(25);    // haptic corto (Android)
+      if (navigator.vibrate) navigator.vibrate(25);
     }
 
     function deactivate() {
-      isScrollMode = false;
+      isScrollMode  = false;
+      el.readOnly   = false;  // restaura la edición normal (tap → teclado)
       setScrollActive(false);
       startY = null;
       lastY  = null;
     }
+
+    // Bloquea la selección nativa de texto que compite con el long press
+    function onSelectStart(e) { e.preventDefault(); }
 
     function onTouchStart(e) {
       startY = e.touches[0].clientY;
@@ -179,7 +189,7 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
       const currentY = e.touches[0].clientY;
 
       if (!isScrollMode) {
-        // Cancelar long press si el dedo se desplaza antes de activarse
+        // Cancelar long press si el dedo se desplaza demasiado antes de activarse
         if (startY !== null && Math.abs(currentY - startY) > 10) {
           clearTimeout(longPressTimer);
         }
@@ -212,12 +222,14 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
       deactivate();
     }
 
+    el.addEventListener('selectstart', onSelectStart);
     el.addEventListener('touchstart',  onTouchStart,  { passive: true  });
     el.addEventListener('touchmove',   onTouchMove,   { passive: false });
     el.addEventListener('touchend',    onTouchEnd,    { passive: false });
     el.addEventListener('touchcancel', onTouchCancel, { passive: true  });
 
     return () => {
+      el.removeEventListener('selectstart', onSelectStart);
       el.removeEventListener('touchstart',  onTouchStart);
       el.removeEventListener('touchmove',   onTouchMove);
       el.removeEventListener('touchend',    onTouchEnd);
@@ -236,9 +248,10 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
         step={scrollStep}
         value={value}
         placeholder={placeholder}
+        readOnly={scrollActive}             // sin teclado mientras se hace scroll
         onChange={(e) => onChange(e.target.value)}
         onWheel={handleWheel}
-        onContextMenu={(e) => e.preventDefault()} // evita menú contextual en long press
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           background: scrollActive ? 'var(--accent-tint-active)' : 'var(--surface2)',
           border: scrollActive
@@ -257,8 +270,10 @@ function SetInput({ value, placeholder, inputMode, scrollStep = 1, onChange, don
           outline: 'none',
           transition: 'border-color 0.15s, background 0.15s',
           MozAppearance: 'textfield',
-          // touchAction no se fija a 'none': el scroll de página funciona normalmente
-          // hasta que se activa el modo scroll con long press.
+          // Evita que el browser active la selección de texto nativa en long press
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
         }}
         onFocus={(e) => { if (!scrollActive) e.target.style.borderColor = 'var(--accent)'; }}
         onBlur={(e)  => { if (!scrollActive) e.target.style.borderColor = done ? 'rgba(74,222,128,0.3)' : 'var(--border)'; }}
