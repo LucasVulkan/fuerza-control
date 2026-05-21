@@ -1,23 +1,32 @@
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
-// Mapeo de pattern → etiqueta y CSS var del color de día
-const PATTERN_LABEL = {
-  vertical_pull:   { label: 'TRACCIÓN',  dayVar: 'day3' },
-  horizontal_pull: { label: 'TRACCIÓN',  dayVar: 'day3' },
-  vertical_push:   { label: 'EMPUJE',    dayVar: 'day2' },
-  horizontal_push: { label: 'EMPUJE',    dayVar: 'day2' },
-  squat:           { label: 'PIERNA',    dayVar: 'day4' },
-  hip_hinge:       { label: 'PIERNA',    dayVar: 'day4' },
-  core:            { label: 'CORE',      dayVar: 'day5' },
-  carry_grip:      { label: 'AGARRE',    dayVar: 'day5' },
-  calf_raise:      { label: 'GEMELOS',   dayVar: 'day4' },
+const PATTERN_DAY_VAR = {
+  vertical_pull:   'day3',
+  horizontal_pull: 'day3',
+  vertical_push:   'day2',
+  horizontal_push: 'day2',
+  squat:           'day4',
+  hip_hinge:       'day4',
+  core:            'day5',
+  carry_grip:      'day5',
+  calf_raise:      'day4',
 };
 
-function getPatternTag(pattern) {
-  return PATTERN_LABEL[pattern] ?? { label: 'ACCESORIO', dayVar: 'muted' };
-}
+const PATTERN_I18N_KEY = {
+  vertical_pull:   'summary.patternPull',
+  horizontal_pull: 'summary.patternPull',
+  vertical_push:   'summary.patternPush',
+  horizontal_push: 'summary.patternPush',
+  squat:           'summary.patternLegs',
+  hip_hinge:       'summary.patternLegs',
+  core:            'summary.patternCore',
+  carry_grip:      'summary.patternGrip',
+  calf_raise:      'summary.patternCalves',
+};
 
 export default function ProgramSummaryView() {
+  const { t } = useTranslation();
   const navigate             = useStore((s) => s.navigate);
   const programs             = useStore((s) => s.programs);
   const profile              = useStore((s) => s.profile);
@@ -40,13 +49,13 @@ export default function ProgramSummaryView() {
       {/* Header */}
       <div style={{ padding: '24px 20px 16px' }}>
         <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 8 }}>
-          Tu programa está listo
+          {t('summary.ready')}
         </div>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: 1, color: 'var(--accent)' }}>
           {activeProgram.name}
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-          {activeProgram.days.length} días · Revisa el plan antes de empezar
+          {t('summary.daysReview', { count: activeProgram.days.length })}
         </div>
       </div>
 
@@ -72,7 +81,7 @@ export default function ProgramSummaryView() {
               {/* Header día */}
               <div style={{ padding: '12px 16px 10px' }}>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, color: template.color ?? 'var(--accent)' }}>
-                  DÍA {template.label} · {template.name.toUpperCase()}
+                  {t('common.day')} {template.label} · {template.name.toUpperCase()}
                 </div>
               </div>
 
@@ -81,7 +90,10 @@ export default function ProgramSummaryView() {
                 const def     = exerciseLibrary[ex.exerciseId];
                 const isKey   = ex.isKey;
                 const pattern = ex.pattern ?? def?.pattern;
-                const tag     = getPatternTag(pattern);
+                const dayVar  = PATTERN_DAY_VAR[pattern] ?? 'muted';
+                const patternLabel = pattern && PATTERN_I18N_KEY[pattern]
+                  ? t(PATTERN_I18N_KEY[pattern])
+                  : t('summary.patternAccessory');
 
                 return (
                   <div key={ex.exerciseId} style={{
@@ -103,7 +115,7 @@ export default function ProgramSummaryView() {
                         {def?.name ?? ex.exerciseId}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
-                        {ex.sets} series
+                        {t('summary.sets', { count: ex.sets })}
                         {ex.minReps && ` · ${ex.minReps}–${ex.maxReps} reps`}
                         {` · ${ex.restSec}s`}
                       </div>
@@ -125,13 +137,13 @@ export default function ProgramSummaryView() {
                       )}
                       <span style={{
                         fontSize: 9, letterSpacing: 0.5,
-                        background: `color-mix(in srgb, var(--${tag.dayVar}) 18%, transparent)`,
-                        border: `var(--border-width) solid color-mix(in srgb, var(--${tag.dayVar}) 45%, transparent)`,
-                        color: `var(--${tag.dayVar})`,
+                        background: `color-mix(in srgb, var(--${dayVar}) 18%, transparent)`,
+                        border: `var(--border-width) solid color-mix(in srgb, var(--${dayVar}) 45%, transparent)`,
+                        color: `var(--${dayVar})`,
                         borderRadius: 4,
                         padding: '2px 6px',
                       }}>
-                        {tag.label}
+                        {patternLabel}
                       </span>
                     </div>
                   </div>
@@ -171,7 +183,7 @@ export default function ProgramSummaryView() {
             cursor: 'pointer',
           }}
         >
-          ✎ Personalizar
+          {t('summary.customize')}
         </button>
         <button
           onClick={() => navigate('home')}
@@ -188,7 +200,7 @@ export default function ProgramSummaryView() {
             cursor: 'pointer',
           }}
         >
-          EMPEZAR
+          {t('summary.start')}
         </button>
       </div>
     </div>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useWorkout } from '../../hooks/useWorkout';
 import { useStore } from '../../store/useStore';
 import ExerciseCard from './ExerciseCard';
 import ExerciseSelector from '../editor/ExerciseSelector';
 
 export default function WorkoutView() {
+  const { t } = useTranslation();
   const { template, exercises, updateSetField, toggleSetDone, saveSession, discardSession } = useWorkout();
   const showToast           = useStore((s) => s.showToast);
   const navigate            = useStore((s) => s.navigate);
@@ -41,7 +43,7 @@ export default function WorkoutView() {
   function handleSave() {
     const result = saveSession();
     if (!result.ok) { showToast('⚠️ ' + result.error); return; }
-    showToast('✓ Sesión guardada');
+    showToast(t('workout.sessionSaved'));
     setTimeout(() => navigate('home'), 1200);
   }
 
@@ -64,7 +66,7 @@ export default function WorkoutView() {
         <span onClick={() => navigate('home')} style={{ color: 'var(--muted)', fontSize: 22, cursor: 'pointer', padding: '4px 8px 4px 0', lineHeight: 1 }}>‹</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1, color }}>
-            DÍA {template.label} · {template.name.toUpperCase()}
+            {t('common.day')} {template.label} · {template.name.toUpperCase()}
           </div>
           <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{template.emphasis}</div>
         </div>
@@ -86,7 +88,7 @@ export default function WorkoutView() {
         {adHocList.length > 0 && (
           <div style={{ borderTop: '1px dashed var(--border-dashed)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11 }}>➕</span> Añadidos en esta sesión
+              <span style={{ fontSize: 11 }}>➕</span> {t('workout.addedThisSession')}
             </div>
             {adHocList.map((adHoc) => {
               const def = allExercises[adHoc.exerciseId];
@@ -113,7 +115,7 @@ export default function WorkoutView() {
           fontSize: 13, padding: '13px', cursor: 'pointer', width: '100%',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 16 }}>＋</span> Añadir ejercicio
+          <span style={{ fontSize: 16 }}>＋</span> {t('workout.addExercise')}
         </button>
 
         <button onClick={handleSave} style={{
@@ -124,11 +126,11 @@ export default function WorkoutView() {
           onPointerDown={(e) => e.currentTarget.style.opacity = '0.85'}
           onPointerUp={(e) => e.currentTarget.style.opacity = '1'}
           onPointerLeave={(e) => e.currentTarget.style.opacity = '1'}
-        >GUARDAR SESIÓN</button>
+        >{t('workout.saveSession')}</button>
 
         <button
           onClick={() => {
-            if (window.confirm('¿Descartar la sesión en curso? Los datos introducidos se perderán.')) {
+            if (window.confirm(t('workout.discardConfirm'))) {
               discardSession();
             }
           }}
@@ -138,7 +140,7 @@ export default function WorkoutView() {
             padding: '10px 0 4px', cursor: 'pointer', width: '100%',
           }}
         >
-          Descartar sesión
+          {t('workout.discardSession')}
         </button>
       </div>
 
@@ -154,13 +156,13 @@ export default function WorkoutView() {
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 16px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>NOTAS DE SESIÓN</div>
-              <button onClick={closeNotes} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, padding: '6px 16px', cursor: 'pointer' }}>GUARDAR</button>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>{t('workout.sessionNotes')}</div>
+              <button onClick={closeNotes} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, padding: '6px 16px', cursor: 'pointer' }}>{t('common.save')}</button>
             </div>
             <textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
-              placeholder="Anota cómo fue el entreno, sensaciones, ajustes para la próxima vez..."
+              placeholder={t('workout.notesPlaceholder')}
               style={{ width: '100%', minHeight: 140, background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 10, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.7, padding: '12px 14px', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
-            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>Se guarda con la sesión al pulsar GUARDAR SESIÓN.</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>{t('workout.notesSavedWith')}</div>
           </div>
         </>
       )}
@@ -180,15 +182,16 @@ export default function WorkoutView() {
 
 // ── Tarjeta para ejercicios ad-hoc ────────────────────────────────────────────
 function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, onAddSet, onRemove }) {
+  const { t, i18n } = useTranslation();
   const isTime = def?.progressionModel === 'time_progression';
-  const name = def?.name ?? exerciseId;
+  const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : exerciseId;
 
   return (
     <div style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '10px 14px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 9, letterSpacing: 1.5, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 2 }}>Añadido · Esta sesión</div>
+          <div style={{ fontSize: 9, letterSpacing: 1.5, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 2 }}>{t('workout.addedLabel')}</div>
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{name}</div>
         </div>
         <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--muted2)', fontSize: 16, cursor: 'pointer', padding: '4px 8px' }}>✕</button>
@@ -201,7 +204,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
             <div style={{ fontSize: 10, color: 'var(--muted)', width: 26, letterSpacing: 1 }}>S{i + 1}</div>
             {isTime ? (
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, color: 'var(--muted2)', textAlign: 'center', marginBottom: 2 }}>Seg</div>
+                <div style={{ fontSize: 9, color: 'var(--muted2)', textAlign: 'center', marginBottom: 2 }}>{t('workout.timeSec')}</div>
                 <input type="number" inputMode="numeric" placeholder="—" value={set.time ?? ''}
                   onChange={(e) => onFieldChange(i, 'time', e.target.value)}
                   style={setInputStyle} />
@@ -235,7 +238,7 @@ function AdHocCard({ def, exerciseId, setsState, onFieldChange, onToggleDone, on
           background: 'none', border: '1px dashed var(--border-dashed)', borderRadius: 6,
           color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif",
           fontSize: 11, padding: '6px', cursor: 'pointer', marginTop: 2,
-        }}>＋ serie</button>
+        }}>{t('workout.addSet')}</button>
       </div>
     </div>
   );

@@ -1,12 +1,14 @@
-﻿import { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRestTimer } from '../../hooks/useRestTimer';
 
 const RING_SIZE = 64;
 const RADIUS = 26;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // ~163.4
-const SWIPE_THRESHOLD = 72; // px para activar el dismiss
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const SWIPE_THRESHOLD = 72;
 
 export default function RestTimerBar() {
+  const { t } = useTranslation();
   const { active, remaining, total, exerciseName, skip } = useRestTimer();
   const [dragX, setDragX] = useState(0);
   const startX = useRef(null);
@@ -16,7 +18,6 @@ export default function RestTimerBar() {
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
 
   function onPointerDown(e) {
-    // Ignorar clicks en el botón Saltar
     if (e.target.closest('button')) return;
     startX.current = e.clientX;
     dragging.current = true;
@@ -25,7 +26,7 @@ export default function RestTimerBar() {
 
   function onPointerMove(e) {
     if (!dragging.current) return;
-    const dx = Math.max(0, e.clientX - startX.current); // solo derecha
+    const dx = Math.max(0, e.clientX - startX.current);
     setDragX(dx);
   }
 
@@ -38,7 +39,6 @@ export default function RestTimerBar() {
     setDragX(0);
   }
 
-  // Opacidad se reduce conforme se arrastra
   const swipeOpacity = 1 - (dragX / (SWIPE_THRESHOLD * 1.5));
 
   return (
@@ -72,7 +72,7 @@ export default function RestTimerBar() {
         cursor: dragX > 0 ? 'grabbing' : 'grab',
       }}
     >
-      {/* Anillo SVG — más grande */}
+      {/* Anillo SVG */}
       <div style={{ position: 'relative', width: RING_SIZE, height: RING_SIZE, flexShrink: 0 }}>
         <svg
           width={RING_SIZE} height={RING_SIZE}
@@ -109,7 +109,7 @@ export default function RestTimerBar() {
           {exerciseName}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
-          {remaining > 0 ? `${remaining}s restantes` : '¡Adelante!'}
+          {remaining > 0 ? t('restTimer.remaining', { count: remaining }) : t('restTimer.go')}
         </div>
       </div>
 
@@ -128,7 +128,7 @@ export default function RestTimerBar() {
           flexShrink: 0,
         }}
       >
-        Saltar ›
+        {t('restTimer.skip')}
       </button>
     </div>
   );

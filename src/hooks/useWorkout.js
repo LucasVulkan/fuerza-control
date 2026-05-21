@@ -3,11 +3,13 @@
  * Usa getEffectiveTemplate para reflejar ediciones del usuario en tiempo real.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveSession } from '../store/useStore';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { getProgression, summarizeSets } from '../utils/progression';
 
 export function useWorkout() {
+  const { t } = useTranslation();
   const activeSession = useStore(selectActiveSession);
   const updateSetField = useStore((s) => s.updateSetField);
   const toggleSetDone = useStore((s) => s.toggleSetDone);
@@ -58,7 +60,7 @@ export function useWorkout() {
       currentSets,
       lastSets,
       prevSummary: summarizeSets(def, lastSetsWithData),
-      progression: getProgression(progressionDef, lastSets, sets),
+      progression: getProgression(progressionDef, lastSets, sets, t),
     };
   });
 

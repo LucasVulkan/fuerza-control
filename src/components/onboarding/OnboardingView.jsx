@@ -1,139 +1,50 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import OnboardingProgress from './OnboardingProgress';
 import OnboardingStep from './OnboardingStep';
 import OptionCard from './OptionCard';
 import ImportModal from '../ui/ImportModal';
 
-// ─── Definición de pasos ──────────────────────────────────────────────────────
+// ─── Datos estáticos (IDs) ────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 7; // +1 si advanced (modelo de progresión)
-
-const LEVELS = [
-  {
-    id: 'beginner',
-    label: 'Principiante',
-    description: 'Menos de 1 año entrenando o volviendo tras una pausa larga.',
-    detail: 'Ejercicios guiados por máquina, patrones básicos con peso corporal y mancuernas. Progresión sencilla y segura.',
-  },
-  {
-    id: 'intermediate',
-    label: 'Intermedio',
-    description: '1–3 años entrenando con continuidad.',
-    detail: 'Mancuernas, cables, kettlebell y ejercicios de peso corporal técnicos como dominadas o fondos. Doble progresión.',
-  },
-  {
-    id: 'advanced',
-    label: 'Avanzado',
-    description: 'Más de 3 años con técnica sólida en movimientos libres.',
-    detail: 'Barra libre, ejercicios lastrados, periodización. Requiere buena técnica en sentadilla, peso muerto y press.',
-  },
-];
-
-const DISCIPLINES = [
-  {
-    id: 'standard',
-    label: 'Estándar',
-    description: 'Hipertrofia y fuerza general. El enfoque más completo y versátil.',
-    detail: 'Cubre todos los patrones de movimiento con los mejores ejercicios para cada objetivo.',
-  },
-  {
-    id: 'calisthenics',
-    label: 'Calistenia / Funcional',
-    description: 'Peso corporal, agarre y core. Con transferencia a deporte y disciplinas aéreas.',
-    detail: 'Dominadas, fondos, L-sit, hollow body. Fuerza relativa y control corporal.',
-  },
-  {
-    id: 'glutes_legs',
-    label: 'Pierna & Glúteo',
-    description: 'Máximo énfasis en glúteo, isquios y pierna. Popular en programas femeninos.',
-    detail: 'Hip thrust, peso muerto rumano, prensa y variantes de sentadilla como ejercicios centrales.',
-  },
-  {
-    id: 'strength',
-    label: 'Fuerza / Powerlifting',
-    description: 'Mover más peso. Sentadilla, peso muerto y press como eje central.',
-    detail: 'Rangos de 3–6 reps, descansos largos y progresión de carga como prioridad.',
-  },
-];
-
-const DISTRIBUTIONS = [
-  {
-    id: 'full_body',
-    label: 'Full Body',
-    description: 'Todos los grupos musculares en cada sesión. 2–6 días.',
-    minLevel: 'beginner',
-    availableFor: ['standard', 'calisthenics', 'glutes_legs', 'strength'],
-  },
-  {
-    id: 'upper_lower',
-    label: 'Upper / Lower',
-    description: 'Tren superior un día, inferior otro. 2 sesiones distintas.',
-    minLevel: 'intermediate',
-    availableFor: ['standard', 'calisthenics', 'strength'],
-  },
-  {
-    id: 'push_pull_legs',
-    label: 'Push / Pull / Legs',
-    description: 'Un día de empuje, uno de tracción, uno de pierna. 3 sesiones.',
-    minLevel: 'intermediate',
-    availableFor: ['standard', 'calisthenics', 'strength'],
-  },
-];
-
-const GOALS = [
-  { id: 'hypertrophy',  label: 'Hipertrofia',    description: 'Aumentar masa muscular. 8–12 reps por serie.',       minLevel: 'beginner' },
-  { id: 'endurance',    label: 'Resistencia',     description: 'Aguantar más. 12–20 reps, descansos cortos.',        minLevel: 'beginner' },
-  { id: 'strength',     label: 'Fuerza',          description: 'Mover más peso. 5–8 reps, descansos largos.',        minLevel: 'intermediate' },
-  { id: 'max_strength', label: 'Fuerza máxima',   description: 'Máximo rendimiento. 3–5 reps, solo avanzado.',       minLevel: 'advanced' },
-];
-
-const EQUIPMENT_OPTIONS = [
-  { id: 'machines',        label: 'Máquinas',           description: 'Prensa, polea, curl, extensión...' },
-  { id: 'dumbbells',       label: 'Mancuernas',          description: 'Ajustables o fijas.' },
-  { id: 'barbell',         label: 'Barra libre',         description: 'Barra olímpica con discos.' },
-  { id: 'pullup_bar',      label: 'Barra de dominadas',  description: 'Fija o de puerta.' },
-  { id: 'parallettes',     label: 'Paralelas / Dip bar', description: 'Para fondos y L-sit.' },
-  { id: 'kettlebell',      label: 'Kettlebell',          description: 'Una o varias.' },
-  { id: 'resistance_band', label: 'Bandas elásticas',    description: 'Para asistencia o activación.' },
-  { id: 'ab_wheel',        label: 'Rueda abdominal',     description: 'Ab wheel rollout.' },
-];
-
-const LIMITATIONS = [
-  { id: 'none',        label: 'Sin limitaciones',   description: 'Puedo hacer cualquier ejercicio sin restricciones.' },
-  { id: 'shoulder',    label: 'Hombro / Trapecio',  description: 'Molestias en hombro, manguito rotador o trapecio.' },
-  { id: 'lower_back',  label: 'Zona lumbar',         description: 'Problemas en la zona baja de la espalda.' },
-  { id: 'knee',        label: 'Rodilla',             description: 'Molestias en rodilla o menisco.' },
-];
-
-const PROGRESSION_MODELS = [
-  { id: 'double_progression', label: 'Doble progresión',    description: 'Llegas al máximo de reps → subes peso → vuelves al mínimo. El más habitual.' },
-  { id: 'linear',             label: 'Progresión lineal',   description: 'Subes peso fijo cada sesión. Clásico en programas de fuerza como Starting Strength.' },
-  { id: 'reps_progression',   label: 'Por repeticiones',   description: 'El peso no cambia, solo subes reps cada sesión.' },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const LEVEL_IDS   = ['beginner', 'intermediate', 'advanced'];
+const DISC_IDS    = ['standard', 'calisthenics', 'glutes_legs', 'strength'];
+const DIST_IDS    = ['full_body', 'upper_lower', 'push_pull_legs'];
+const GOAL_IDS    = ['hypertrophy', 'endurance', 'strength', 'max_strength'];
+const EQUIP_IDS   = ['machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
+const LIMIT_IDS   = ['none', 'shoulder', 'lower_back', 'knee'];
+const PROG_IDS    = ['double_progression', 'linear', 'reps_progression'];
 
 const LEVEL_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
 
-function goalIsAvailable(goal, level) {
-  return LEVEL_ORDER[level] >= LEVEL_ORDER[goal.minLevel];
+const DIST_MIN_LEVEL = { full_body: 'beginner', upper_lower: 'intermediate', push_pull_legs: 'intermediate' };
+const DIST_FOR = {
+  full_body:       ['standard', 'calisthenics', 'glutes_legs', 'strength'],
+  upper_lower:     ['standard', 'calisthenics', 'strength'],
+  push_pull_legs:  ['standard', 'calisthenics', 'strength'],
+};
+const GOAL_MIN_LEVEL = { hypertrophy: 'beginner', endurance: 'beginner', strength: 'intermediate', max_strength: 'advanced' };
+
+function goalIsAvailable(goalId, level) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[GOAL_MIN_LEVEL[goalId]];
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function OnboardingView() {
+  const { t } = useTranslation();
   const generateAndActivateProgram = useStore((s) => s.generateAndActivateProgram);
   const createEmptyProgram = useStore((s) => s.createEmptyProgram);
   const importData = useStore((s) => s.importData);
   const navigate   = useStore((s) => s.navigate);
 
-  const [mode, setMode] = useState(null); // null | 'auto' | 'manual'
+  const [mode, setMode] = useState(null);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [manualSessions, setManualSessions] = useState(3);
-  const [manualName, setManualName] = useState('Mi programa');
+  const [manualName, setManualName] = useState('');
   const fileInputRef = useRef(null);
   const [answers, setAnswers] = useState({
     level: null,
@@ -171,7 +82,7 @@ export default function OnboardingView() {
   }
 
   function handleManualCreate() {
-    createEmptyProgram(manualSessions, manualName);
+    createEmptyProgram(manualSessions, manualName || t('onboarding.programNamePlaceholder'));
   }
 
   async function handleImport(file, mode) {
@@ -211,47 +122,47 @@ export default function OnboardingView() {
         background: 'var(--bg)',
       }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: 'var(--accent)', letterSpacing: 2 }}>
-          GENERANDO PROGRAMA
+          {t('onboarding.generating')}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>Construyendo tu plan personalizado...</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t('onboarding.buildingPlan')}</div>
       </div>
     );
   }
 
-  // ── Pantalla de selección de modo (sin barra de progreso) ──────────────────
+  // ── Pantalla de selección de modo ──────────────────────────────────────────
   if (mode === null) {
     return (
       <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '40px 20px 32px' }}>
         <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
 
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 8 }}>
-          FUERZA & CONTROL
+          {t('onboarding.appName')}
         </div>
         <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 1, lineHeight: 1.1, marginBottom: 8 }}>
-          NUEVO PROGRAMA
+          {t('onboarding.newProgram')}
         </h2>
         <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 32 }}>
-          ¿Cómo quieres crear tu programa?
+          {t('onboarding.howToCreate')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
           <ModeCard
             icon="🤖"
-            title="Generar automáticamente"
-            desc="Responde unas preguntas y el sistema crea el programa. Puedes editarlo después."
+            title={t('onboarding.modeAuto')}
+            desc={t('onboarding.modeAutoDesc')}
             onClick={() => setMode('auto')}
             accent
           />
           <ModeCard
             icon="✏️"
-            title="Construir manualmente"
-            desc="Elige cuántas sesiones quieres y añade tus propios ejercicios."
+            title={t('onboarding.modeManual')}
+            desc={t('onboarding.modeManualDesc')}
             onClick={() => setMode('manual')}
           />
           <ModeCard
             icon="📥"
-            title="Importar programa"
-            desc="Abre un archivo exportado desde esta app."
+            title={t('onboarding.modeImport')}
+            desc={t('onboarding.modeImportDesc')}
             onClick={() => fileInputRef.current?.click()}
           />
         </div>
@@ -269,22 +180,21 @@ export default function OnboardingView() {
       <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 20px 16px' }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 4 }}>
-            FUERZA & CONTROL
+            {t('onboarding.appName')}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1 }}>PROGRAMA MANUAL</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1 }}>{t('onboarding.manualProgram')}</div>
         </div>
 
         <div style={{ flex: 1, padding: '8px 20px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Nombre */}
           <div>
             <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-              Nombre del programa
+              {t('onboarding.programName')}
             </div>
             <input
               type="text"
               value={manualName}
               onChange={(e) => setManualName(e.target.value)}
-              placeholder="Ej: Lucas - Full Body"
+              placeholder={t('onboarding.programNamePlaceholder')}
               style={{
                 width: '100%', background: 'var(--surface2)',
                 border: 'var(--border-width) solid var(--border-card)', borderRadius: 8,
@@ -297,10 +207,9 @@ export default function OnboardingView() {
             />
           </div>
 
-          {/* Número de sesiones */}
           <div>
             <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-              Número de sesiones
+              {t('onboarding.numberOfSessions')}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[2, 3, 4, 5, 6].map((n) => (
@@ -322,16 +231,15 @@ export default function OnboardingView() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-              Podrás añadir más sesiones desde el editor.
+              {t('onboarding.addMoreFromEditor')}
             </p>
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', borderRadius: 8, padding: '12px 14px', border: 'var(--border-width) solid var(--border-card)' }}>
-            Se crearán {manualSessions} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.
+            {t('onboarding.emptySessionsHint', { count: manualSessions })}
           </p>
         </div>
 
-        {/* Botones */}
         <div style={{ padding: '12px 20px 28px', borderTop: 'var(--border-width) solid var(--border)', display: 'flex', gap: 10 }}>
           <button
             onClick={() => setMode(null)}
@@ -342,7 +250,7 @@ export default function OnboardingView() {
               fontSize: 13, padding: 13, cursor: 'pointer',
             }}
           >
-            ‹ Atrás
+            {t('common.back')}
           </button>
           <button
             onClick={handleManualCreate}
@@ -357,7 +265,7 @@ export default function OnboardingView() {
               padding: 13, cursor: manualName.trim() ? 'pointer' : 'not-allowed',
             }}
           >
-            CREAR Y EDITAR ›
+            {t('onboarding.createAndEdit')}
           </button>
         </div>
       </div>
@@ -367,59 +275,29 @@ export default function OnboardingView() {
   // ── Modo automático ─────────────────────────────────────────────────────────
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
 
-      {/* Input de archivo oculto */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={handleFileChange}
-      />
-      {/* Header */}
       <div style={{ padding: '20px 20px 16px' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: 'var(--accent)', letterSpacing: 1, marginBottom: 12 }}>
-          FUERZA & CONTROL
+          {t('onboarding.appName')}
         </div>
         <OnboardingProgress current={step + 1} total={totalSteps} />
         <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, letterSpacing: 1 }}>
-          PASO {step + 1} DE {totalSteps}
+          {t('onboarding.stepIndicator', { current: step + 1, total: totalSteps })}
         </div>
       </div>
 
-      {/* Pasos */}
-      {step === 0 && (
-        <StepLevel answers={answers} set_={set_} onNext={nextStep} />
-      )}
-      {step === 1 && (
-        <StepDiscipline answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 2 && (
-        <StepDistribution answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 3 && (
-        <StepDays answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 4 && (
-        <StepGoal answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 5 && (
-        <StepEquipment answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 6 && (
-        <StepLimitations answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} isLast={answers.level !== 'advanced'} />
-      )}
-      {step === 7 && answers.level === 'advanced' && (
-        <StepProgression answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} isLast />
-      )}
+      {step === 0 && <StepLevel answers={answers} set_={set_} onNext={nextStep} />}
+      {step === 1 && <StepDiscipline answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />}
+      {step === 2 && <StepDistribution answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />}
+      {step === 3 && <StepDays answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />}
+      {step === 4 && <StepGoal answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} />}
+      {step === 5 && <StepEquipment answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />}
+      {step === 6 && <StepLimitations answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} isLast={answers.level !== 'advanced'} />}
+      {step === 7 && answers.level === 'advanced' && <StepProgression answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} isLast />}
 
-      {/* Modal de importación */}
       {importFile && (
-        <ImportModal
-          file={importFile}
-          onImport={handleImport}
-          onClose={() => setImportFile(null)}
-        />
+        <ImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />
       )}
     </div>
   );
@@ -428,20 +306,24 @@ export default function OnboardingView() {
 // ─── Pasos individuales ───────────────────────────────────────────────────────
 
 function StepLevel({ answers, set_, onNext }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Cuál es tu nivel?"
-      subtitle="Esto determina qué ejercicios y estructuras se incluirán en tu programa."
+      title={t('onboarding.stepLevel.title')}
+      subtitle={t('onboarding.stepLevel.subtitle')}
       onNext={onNext}
       nextDisabled={!answers.level}
       showBack={false}
     >
-      {LEVELS.map((l) => (
+      {LEVEL_IDS.map((id) => (
         <OptionCard
-          key={l.id}
-          {...l}
-          selected={answers.level === l.id}
-          onClick={() => set_('level', l.id)}
+          key={id}
+          id={id}
+          label={t(`onboarding.levels.${id}.label`)}
+          description={t(`onboarding.levels.${id}.description`)}
+          detail={t(`onboarding.levels.${id}.detail`)}
+          selected={answers.level === id}
+          onClick={() => set_('level', id)}
         />
       ))}
     </OnboardingStep>
@@ -449,26 +331,28 @@ function StepLevel({ answers, set_, onNext }) {
 }
 
 function StepDiscipline({ answers, set_, onNext, onBack }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Cuál es tu enfoque?"
-      subtitle="Define qué tipo de entrenamiento y ejercicios quieres priorizar."
+      title={t('onboarding.stepDiscipline.title')}
+      subtitle={t('onboarding.stepDiscipline.subtitle')}
       onNext={onNext}
       onBack={onBack}
       nextDisabled={!answers.discipline}
     >
-      {DISCIPLINES.map((d) => (
+      {DISC_IDS.map((id) => (
         <OptionCard
-          key={d.id}
-          {...d}
-          selected={answers.discipline === d.id}
+          key={id}
+          id={id}
+          label={t(`onboarding.disciplines.${id}.label`)}
+          description={t(`onboarding.disciplines.${id}.description`)}
+          detail={t(`onboarding.disciplines.${id}.detail`)}
+          selected={answers.discipline === id}
           onClick={() => {
-            set_('discipline', d.id);
-            // Pre-seleccionar goal según disciplina
-            if (d.id === 'strength' && !answers.goal) set_('goal', 'strength');
-            if (d.id === 'glutes_legs' && !answers.goal) set_('goal', 'hypertrophy');
-            // Resetear distribución si no es compatible
-            if (d.id === 'glutes_legs') set_('distribution', 'full_body');
+            set_('discipline', id);
+            if (id === 'strength' && !answers.goal) set_('goal', 'strength');
+            if (id === 'glutes_legs' && !answers.goal) set_('goal', 'hypertrophy');
+            if (id === 'glutes_legs') set_('distribution', 'full_body');
           }}
         />
       ))}
@@ -477,31 +361,34 @@ function StepDiscipline({ answers, set_, onNext, onBack }) {
 }
 
 function StepDistribution({ answers, set_, onNext, onBack }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Cómo distribuyes los días?"
-      subtitle="La distribución define la estructura de cada sesión."
+      title={t('onboarding.stepDistribution.title')}
+      subtitle={t('onboarding.stepDistribution.subtitle')}
       onNext={onNext}
       onBack={onBack}
       nextDisabled={!answers.distribution}
     >
-      {DISTRIBUTIONS.map((d) => {
-        const levelOk = LEVEL_ORDER[answers.level] >= LEVEL_ORDER[d.minLevel];
-        const disciplineOk = d.availableFor.includes(answers.discipline);
-        const available = levelOk && disciplineOk;
+      {DIST_IDS.map((id) => {
+        const levelOk     = LEVEL_ORDER[answers.level] >= LEVEL_ORDER[DIST_MIN_LEVEL[id]];
+        const disciplineOk = DIST_FOR[id].includes(answers.discipline);
+        const available    = levelOk && disciplineOk;
         const disabledReason = !disciplineOk
-          ? `No disponible para ${answers.discipline === 'glutes_legs' ? 'Pierna & Glúteo' : answers.discipline}`
+          ? t('onboarding.disabledReasons.notForDiscipline', { discipline: t(`onboarding.disciplines.${answers.discipline}.label`) })
           : !levelOk
-          ? `Requiere nivel ${d.minLevel === 'intermediate' ? 'intermedio' : 'avanzado'}`
+          ? (DIST_MIN_LEVEL[id] === 'intermediate' ? t('onboarding.disabledReasons.requiresIntermediate') : t('onboarding.disabledReasons.requiresAdvanced'))
           : undefined;
         return (
           <OptionCard
-            key={d.id}
-            {...d}
-            selected={answers.distribution === d.id}
+            key={id}
+            id={id}
+            label={t(`onboarding.distributions.${id}.label`)}
+            description={t(`onboarding.distributions.${id}.description`)}
+            selected={answers.distribution === id}
             disabled={!available}
             disabledReason={disabledReason}
-            onClick={() => available && set_('distribution', d.id)}
+            onClick={() => available && set_('distribution', id)}
           />
         );
       })}
@@ -510,29 +397,28 @@ function StepDistribution({ answers, set_, onNext, onBack }) {
 }
 
 function StepDays({ answers, set_, onNext, onBack }) {
+  const { t } = useTranslation();
+
   if (answers.distribution === 'upper_lower') {
     return (
       <OnboardingStep
-        title="Sesiones por ciclo"
-        subtitle="Upper/Lower tiene 2 o 4 sesiones distintas. Puedes repetirlas con la frecuencia que quieras."
+        title={t('onboarding.stepDays.titleUpperLower')}
+        subtitle={t('onboarding.stepDays.subtitleUpperLower')}
         onNext={onNext}
         onBack={onBack}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { n: 2, title: '2 sesiones', desc: 'A (superior) + B (inferior). Más sencillo, repite el ciclo.' },
-            { n: 4, title: '4 sesiones', desc: 'A1 + B1 + A2 + B2. Más variedad de ejercicios por ciclo.' },
+            { n: 2, title: t('onboarding.upperLowerOptions.2sessions'), desc: t('onboarding.upperLowerOptions.2sessionsDesc') },
+            { n: 4, title: t('onboarding.upperLowerOptions.4sessions'), desc: t('onboarding.upperLowerOptions.4sessionsDesc') },
           ].map(({ n, title, desc }) => (
             <div
               key={n}
               onClick={() => set_('daysPerWeek', n)}
               style={{
-                background: 'var(--surface)',
-                border: 'var(--border-width) solid',
+                background: 'var(--surface)', border: 'var(--border-width) solid',
                 borderColor: answers.daysPerWeek === n ? 'var(--accent)' : 'var(--border)',
-                borderRadius: 10,
-                padding: '14px 18px',
-                cursor: 'pointer',
+                borderRadius: 10, padding: '14px 18px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 16,
               }}
             >
@@ -544,7 +430,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
             </div>
           ))}
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-            Puedes hacer 2 sesiones a la semana con 4 sesiones distintas — simplemente alternas el ciclo.
+            {t('onboarding.stepDays.ulCycleHint')}
           </p>
         </div>
       </OnboardingStep>
@@ -555,13 +441,17 @@ function StepDays({ answers, set_, onNext, onBack }) {
     if (answers.daysPerWeek !== 3) set_('daysPerWeek', 3);
     return (
       <OnboardingStep
-        title="Sesiones por ciclo"
-        subtitle="Push/Pull/Legs usa 3 sesiones distintas. Puedes repetir el ciclo con la frecuencia que quieras."
+        title={t('onboarding.stepDays.titlePPL')}
+        subtitle={t('onboarding.stepDays.subtitlePPL')}
         onNext={onNext}
         onBack={onBack}
       >
         <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {['Sesión A — Empuje', 'Sesión B — Tracción', 'Sesión C — Pierna'].map((label, i) => (
+          {[
+            t('onboarding.pplSessions.push'),
+            t('onboarding.pplSessions.pull'),
+            t('onboarding.pplSessions.legs'),
+          ].map((label, i) => (
             <div key={i} style={{
               background: 'var(--surface)', border: 'var(--border-width) solid var(--accent-tint-border)',
               borderRadius: 8, padding: '12px 16px',
@@ -570,7 +460,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
               {label}
             </div>
           ))}
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Alterna A → B → C → A → B → C a tu ritmo</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{t('onboarding.stepDays.pplCycleHint')}</p>
         </div>
       </OnboardingStep>
     );
@@ -578,63 +468,67 @@ function StepDays({ answers, set_, onNext, onBack }) {
 
   // Full Body
   const availableDays = [2, 3, 4, 5, 6];
+  const d = answers.daysPerWeek;
+  const hint = d <= 2
+    ? ' · ' + t('onboarding.stepDays.allGroupsHint')
+    : d >= 4
+    ? ' · ' + t('onboarding.stepDays.moreVarietyHint')
+    : '';
+
   return (
     <OnboardingStep
-      title="¿Cuántas sesiones?"
-      subtitle="Número de sesiones distintas por ciclo. A más sesiones, más variedad de ejercicios y patrones cubiertos."
+      title={t('onboarding.stepDays.titleFullBody')}
+      subtitle={t('onboarding.stepDays.subtitleFullBody')}
       onNext={onNext}
       onBack={onBack}
     >
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {availableDays.map((d) => (
+        {availableDays.map((n) => (
           <button
-            key={d}
-            onClick={() => set_('daysPerWeek', d)}
+            key={n}
+            onClick={() => set_('daysPerWeek', n)}
             style={{
-              width: 64, height: 64,
-              borderRadius: 10,
-              border: 'var(--border-width) solid',
-              borderColor: answers.daysPerWeek === d ? 'var(--accent)' : 'var(--border)',
-              background: answers.daysPerWeek === d ? 'var(--accent-tint-active)' : 'var(--surface)',
-              color: answers.daysPerWeek === d ? 'var(--accent)' : 'var(--text)',
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 28,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
+              width: 64, height: 64, borderRadius: 10, border: 'var(--border-width) solid',
+              borderColor: answers.daysPerWeek === n ? 'var(--accent)' : 'var(--border)',
+              background: answers.daysPerWeek === n ? 'var(--accent-tint-active)' : 'var(--surface)',
+              color: answers.daysPerWeek === n ? 'var(--accent)' : 'var(--text)',
+              fontFamily: "'Bebas Neue', sans-serif", fontSize: 28,
+              cursor: 'pointer', transition: 'all 0.15s',
             }}
           >
-            {d}
+            {n}
           </button>
         ))}
       </div>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-        {answers.daysPerWeek} sesión{answers.daysPerWeek !== 1 ? 'es' : ''} por ciclo
-        {answers.daysPerWeek <= 2 && ' · Todos los grupos en cada sesión'}
-        {answers.daysPerWeek >= 4 && ' · Mayor variedad de ejercicios y patrones'}
+        {t('onboarding.stepDays.sessionsCount', { count: d })}{hint}
       </p>
     </OnboardingStep>
   );
 }
 
 function StepGoal({ answers, set_, onNext, onBack }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Cuál es tu objetivo?"
-      subtitle="Determina el rango de repeticiones y el descanso entre series."
+      title={t('onboarding.stepGoal.title')}
+      subtitle={t('onboarding.stepGoal.subtitle')}
       onNext={onNext}
       onBack={onBack}
       nextDisabled={!answers.goal}
     >
-      {GOALS.map((g) => {
-        const available = goalIsAvailable(g, answers.level);
+      {GOAL_IDS.map((id) => {
+        const available = goalIsAvailable(id, answers.level);
         return (
           <OptionCard
-            key={g.id}
-            {...g}
-            selected={answers.goal === g.id}
+            key={id}
+            id={id}
+            label={t(`onboarding.goals.${id}.label`)}
+            description={t(`onboarding.goals.${id}.description`)}
+            selected={answers.goal === id}
             disabled={!available}
-            disabledReason={!available ? `Requiere nivel ${g.minLevel === 'intermediate' ? 'intermedio' : 'avanzado'}` : undefined}
-            onClick={() => available && set_('goal', g.id)}
+            disabledReason={!available ? (GOAL_MIN_LEVEL[id] === 'intermediate' ? t('onboarding.disabledReasons.requiresIntermediate') : t('onboarding.disabledReasons.requiresAdvanced')) : undefined}
+            onClick={() => available && set_('goal', id)}
           />
         );
       })}
@@ -643,21 +537,24 @@ function StepGoal({ answers, set_, onNext, onBack }) {
 }
 
 function StepEquipment({ answers, toggleMulti, onNext, onBack }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Qué equipo tienes?"
-      subtitle="Selecciona todo lo que tienes disponible habitualmente."
+      title={t('onboarding.stepEquipment.title')}
+      subtitle={t('onboarding.stepEquipment.subtitle')}
       onNext={onNext}
       onBack={onBack}
       nextDisabled={answers.equipment.length === 0}
     >
-      {EQUIPMENT_OPTIONS.map((e) => (
+      {EQUIP_IDS.map((id) => (
         <OptionCard
-          key={e.id}
-          {...e}
+          key={id}
+          id={id}
+          label={t(`onboarding.equipment.${id}.label`)}
+          description={t(`onboarding.equipment.${id}.description`)}
           multi
-          selected={answers.equipment.includes(e.id)}
-          onClick={() => toggleMulti('equipment', e.id)}
+          selected={answers.equipment.includes(id)}
+          onClick={() => toggleMulti('equipment', id)}
         />
       ))}
     </OnboardingStep>
@@ -665,22 +562,25 @@ function StepEquipment({ answers, toggleMulti, onNext, onBack }) {
 }
 
 function StepLimitations({ answers, toggleMulti, onNext, onBack, isLast }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="¿Tienes alguna limitación?"
-      subtitle="Se evitarán ejercicios que puedan agravar estas zonas como ejercicio principal."
+      title={t('onboarding.stepLimitations.title')}
+      subtitle={t('onboarding.stepLimitations.subtitle')}
       onNext={onNext}
       onBack={onBack}
       nextDisabled={answers.limitations.length === 0}
       isLast={isLast}
     >
-      {LIMITATIONS.map((l) => (
+      {LIMIT_IDS.map((id) => (
         <OptionCard
-          key={l.id}
-          {...l}
+          key={id}
+          id={id}
+          label={t(`onboarding.limitations.${id}.label`)}
+          description={t(`onboarding.limitations.${id}.description`)}
           multi
-          selected={answers.limitations.includes(l.id)}
-          onClick={() => toggleMulti('limitations', l.id)}
+          selected={answers.limitations.includes(id)}
+          onClick={() => toggleMulti('limitations', id)}
         />
       ))}
     </OnboardingStep>
@@ -688,20 +588,23 @@ function StepLimitations({ answers, toggleMulti, onNext, onBack, isLast }) {
 }
 
 function StepProgression({ answers, set_, onNext, onBack, isLast }) {
+  const { t } = useTranslation();
   return (
     <OnboardingStep
-      title="Modelo de progresión"
-      subtitle="Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
+      title={t('onboarding.stepProgression.title')}
+      subtitle={t('onboarding.stepProgression.subtitle')}
       onNext={onNext}
       onBack={onBack}
       isLast={isLast}
     >
-      {PROGRESSION_MODELS.map((p) => (
+      {PROG_IDS.map((id) => (
         <OptionCard
-          key={p.id}
-          {...p}
-          selected={answers.progressionModel === p.id}
-          onClick={() => set_('progressionModel', p.id)}
+          key={id}
+          id={id}
+          label={t(`onboarding.progressionModels.${id}.label`)}
+          description={t(`onboarding.progressionModels.${id}.description`)}
+          selected={answers.progressionModel === id}
+          onClick={() => set_('progressionModel', id)}
         />
       ))}
     </OnboardingStep>
@@ -716,14 +619,9 @@ function ModeCard({ icon, title, desc, onClick, accent }) {
         background: accent ? 'var(--accent-tint)' : 'var(--surface)',
         border: 'var(--border-width) solid',
         borderColor: accent ? 'var(--accent-tint-border)' : 'var(--border)',
-        borderRadius: 12,
-        padding: '18px 20px',
-        cursor: 'pointer',
-        textAlign: 'left',
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
+        borderRadius: 12, padding: '18px 20px', cursor: 'pointer',
+        textAlign: 'left', width: '100%',
+        display: 'flex', alignItems: 'center', gap: 16,
         transition: 'background 0.15s',
       }}
       onPointerDown={(e) => e.currentTarget.style.background = 'var(--surface2)'}
@@ -735,8 +633,7 @@ function ModeCard({ icon, title, desc, onClick, accent }) {
         <div style={{
           fontSize: 14, fontWeight: 500,
           color: accent ? 'var(--accent)' : 'var(--text)',
-          fontFamily: "'DM Sans', sans-serif",
-          marginBottom: 3,
+          fontFamily: "'DM Sans', sans-serif", marginBottom: 3,
         }}>
           {title}
         </div>

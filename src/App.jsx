@@ -1,5 +1,6 @@
 import './index.css';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore, selectView } from './store/useStore';
 import { readFileAsText, parseImportFile } from './utils/storage';
 import AppHeader from './components/ui/AppHeader';
@@ -17,6 +18,7 @@ import ArchivedProgramsView from './components/program/ArchivedProgramsView';
 import ImportModal from './components/ui/ImportModal';
 
 export default function App() {
+  const { t } = useTranslation();
   const view       = useStore(selectView);
   const importData = useStore((s) => s.importData);
   const showToast  = useStore((s) => s.showToast);
@@ -50,7 +52,7 @@ export default function App() {
       }
       setImportState({ fileName: file.name, parsedData: result.data });
     } catch {
-      showToast('No se pudo leer el archivo');
+      showToast(t('errors.cannotReadFile'));
     }
   }
 

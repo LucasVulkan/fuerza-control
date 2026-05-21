@@ -2,24 +2,14 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import SessionCard from '../history/SessionCard';
 import ExerciseStatCard from '../stats/ExerciseStatCard';
 
-const CLIENT_TABS = [
-  { id: 'programs',  label: 'Programas',  icon: '🏋️' },
-  { id: 'history',   label: 'Historial',  icon: '📋' },
-  { id: 'progress',  label: 'Progresión', icon: '📈' },
-  { id: 'info',      label: 'Info',       icon: '📝' },
-];
-
-const PERIOD_OPTIONS = [
-  { id: '7d',  label: '7 días' },
-  { id: '30d', label: '30 días' },
-  { id: 'all', label: 'Todo' },
-];
-
 export default function ClientsView() {
+  const { t } = useTranslation();
+
   const clients                = useStore((s) => s.clients);
   const programs               = useStore((s) => s.programs);
   const workoutLog             = useStore((s) => s.workoutLog);
@@ -46,11 +36,23 @@ export default function ClientsView() {
   const removeClientBodyWeight    = useStore((s) => s.removeClientBodyWeight);
   const deleteLogEntry            = useStore((s) => s.deleteLogEntry);
   const cloneProgramFromTemplate  = useStore((s) => s.cloneProgramFromTemplate);
-  const programs_raw              = useStore((s) => s.programs); // alias para el useMemo de abajo
+  const programs_raw              = useStore((s) => s.programs);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  // Devuelve todos los days de un programa, incluyendo los de todas las etapas
+  const CLIENT_TABS = [
+    { id: 'programs',  label: t('clients.tabs.programs'),  icon: '🏋️' },
+    { id: 'history',   label: t('clients.tabs.history'),   icon: '📋' },
+    { id: 'progress',  label: t('clients.tabs.progress'),  icon: '📈' },
+    { id: 'info',      label: t('clients.tabs.info'),      icon: '📝' },
+  ];
+
+  const PERIOD_OPTIONS = [
+    { id: '7d',  label: t('clients.period.7d') },
+    { id: '30d', label: t('clients.period.30d') },
+    { id: 'all', label: t('clients.period.all') },
+  ];
+
   function getAllProgramDays(p) {
     if (p.stages?.length > 0) {
       return p.stages.flatMap((st) => st.days ?? []);
@@ -58,7 +60,6 @@ export default function ClientsView() {
     return p.days ?? [];
   }
 
-  // Derivar en useMemo para no crear array nuevo en cada render (evita bucle infinito)
   const templatePrograms = useMemo(
     () => Object.values(programs_raw ?? {})
       .filter((p) => p.mode === 'template')
@@ -74,20 +75,16 @@ export default function ClientsView() {
   const [newProgramName, setNewProgramName] = useState('');
   const [newProgramSessions, setNewProgramSessions] = useState(3);
   const [importFile, setImportFile] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null); // { programId, x, y }
+  const [contextMenu, setContextMenu] = useState(null);
 
   function openContextMenu(e, programId) {
     const rect = e.currentTarget.getBoundingClientRect();
-    setContextMenu({
-      programId,
-      x: rect.right,
-      y: rect.top,
-    });
+    setContextMenu({ programId, x: rect.right, y: rect.top });
   }
   const [editingClientId, setEditingClientId] = useState(null);
   const [editingClientName, setEditingClientName] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
+  const [statusFilter, setStatusFilter] = useState('active');
   const [showGlobalBilling, setShowGlobalBilling] = useState(false);
   const [scopeFilter, setScopeFilter] = useState('active');
   const [periodFilter, setPeriodFilter] = useState('all');
@@ -98,7 +95,7 @@ export default function ClientsView() {
   const [billConcept, setBillConcept] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billStatus, setBillStatus] = useState('pending');
-  const [newProgramTab, setNewProgramTab] = useState('blank'); // 'blank' | 'template'
+  const [newProgramTab, setNewProgramTab] = useState('blank');
   const [fromTemplateId, setFromTemplateId] = useState('');
   const [fromTemplateName, setFromTemplateName] = useState('');
 
@@ -111,9 +108,9 @@ export default function ClientsView() {
       .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
       .filter((c) => {
         const s = c.status ?? 'active';
-        if (statusFilter === 'active')   return s !== 'inactive';   // activos + en pausa
+        if (statusFilter === 'active')   return s !== 'inactive';
         if (statusFilter === 'inactive') return s === 'inactive';
-        return true; // 'all'
+        return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name)),
     [clients, search, statusFilter]
@@ -129,20 +126,17 @@ export default function ClientsView() {
       .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
   }, [selectedClient, programs]);
 
-  // Templates de todos los programas del cliente (incluyendo todas las etapas)
   const allClientTemplateIds = useMemo(() => {
     return new Set(clientPrograms.flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId)));
   }, [clientPrograms]);
 
-  // Templates del programa activo del cliente (incluyendo todas las etapas)
   const activeClientTemplateIds = useMemo(() => {
-    if (!selectedClient?.activeProgramId) return new Set();  // sin programa activo = no mostrar nada
+    if (!selectedClient?.activeProgramId) return new Set();
     const activeProg = programs[selectedClient.activeProgramId];
     if (!activeProg) return new Set();
     return new Set(getAllProgramDays(activeProg).map((d) => d.sessionTemplateId));
   }, [selectedClient, programs]);
 
-  // Log filtrado por scope y period
   const filteredLog = useMemo(() => {
     const templateIds = scopeFilter === 'active' ? activeClientTemplateIds : allClientTemplateIds;
     let log = workoutLog.filter((e) => templateIds.has(e.sessionTemplateId));
@@ -154,7 +148,6 @@ export default function ClientsView() {
     return log.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scopeFilter, periodFilter, activeClientTemplateIds, allClientTemplateIds]);
 
-  // Ejercicios únicos con sesiones en el log filtrado
   const exercisesWithLogs = useMemo(() => {
     const ids = [...new Set(
       filteredLog.flatMap((log) =>
@@ -219,13 +212,12 @@ export default function ClientsView() {
   }
 
   function handleDeleteClient(clientId) {
-    if (window.confirm('¿Eliminar cliente y todos sus programas e historial?')) {
+    if (window.confirm(t('clients.deleteClientConfirm'))) {
       deleteClient(clientId, true);
       if (selectedClientId === clientId) setSelectedClientId(null);
     }
   }
 
-  // TODO: React Native — usar react-native-share o Expo Sharing para compartir el archivo directamente
   function handleShare(program) {
     const relevantTemplates = {};
     const relevantUserPrograms = {};
@@ -246,7 +238,7 @@ export default function ClientsView() {
 
     const safeName = program.name.replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
     downloadBlob(json, safeName);
-    showToast('↓ Programa descargado');
+    showToast(t('clients.toastDownloaded'));
   }
 
   function downloadBlob(content, fileName) {
@@ -288,6 +280,7 @@ export default function ClientsView() {
   // ── Vista global de facturación ───────────────────────────────────────────
   if (showGlobalBilling) {
     return <GlobalBillingView
+      t={t}
       clients={clients}
       clientList={clientList}
       onClose={() => setShowGlobalBilling(false)}
@@ -302,25 +295,24 @@ export default function ClientsView() {
       <div>
         <div style={{ padding: '16px 20px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Clientes</p>
+            <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>{t('clients.title')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setShowGlobalBilling(true)} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 6, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '7px 12px', cursor: 'pointer' }}>💳</button>
-              <button onClick={() => setShowNewClient(true)} style={{ ...accentBtnStyle, fontSize: 16, padding: '8px 18px' }}>＋ NUEVO</button>
+              <button onClick={() => setShowNewClient(true)} style={{ ...accentBtnStyle, fontSize: 16, padding: '8px 18px' }}>{t('clients.newBtn')}</button>
             </div>
           </div>
           <input
             type="text"
-            placeholder="Buscar cliente..."
+            placeholder={t('clients.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ ...inputStyle, fontSize: 13, padding: '9px 14px' }}
           />
-          {/* Filtros de estado */}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             {[
-              { id: 'active',   label: 'Activos' },
-              { id: 'inactive', label: 'Inactivos' },
-              { id: 'all',      label: 'Todos' },
+              { id: 'active',   label: t('clients.filterActive') },
+              { id: 'inactive', label: t('clients.filterInactive') },
+              { id: 'all',      label: t('clients.filterAll') },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => setStatusFilter(id)} style={{
                 flex: 1, background: statusFilter === id ? 'var(--accent-tint-active)' : 'var(--surface)',
@@ -337,7 +329,7 @@ export default function ClientsView() {
           {clientList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
               <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>👥</span>
-              Sin clientes todavía.
+              {t('clients.noClients')}
             </div>
           ) : clientList.map((client) => {
             const progCount = (client.programIds ?? []).filter((id) => programs[id]).length;
@@ -361,7 +353,9 @@ export default function ClientsView() {
                         <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{client.name}</span>
                       </div>
                     )}
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{progCount} programa{progCount !== 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                      {t('clients.programCount', { count: progCount })}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={(e) => { e.stopPropagation(); setEditingClientId(client.id); setEditingClientName(client.name); }} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>✎</button>
@@ -375,8 +369,8 @@ export default function ClientsView() {
         </div>
 
         {showNewClient && (
-          <SimpleModal title="NUEVO CLIENTE" onClose={() => setShowNewClient(false)} onConfirm={handleCreateClient} confirmLabel="CREAR" confirmDisabled={!newClientName.trim()}>
-            <input autoFocus type="text" placeholder="Nombre del cliente" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateClient()} style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
+          <SimpleModal title={t('clients.newClientModal.title')} onClose={() => setShowNewClient(false)} onConfirm={handleCreateClient} confirmLabel={t('clients.newClientModal.createBtn')} confirmDisabled={!newClientName.trim()}>
+            <input autoFocus type="text" placeholder={t('clients.newClientModal.namePlaceholder')} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateClient()} style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
           </SimpleModal>
         )}
       </div>
@@ -384,7 +378,6 @@ export default function ClientsView() {
   }
 
   // ── Detalle de cliente ─────────────────────────────────────────────────────
-  const scopeLabel = selectedClient?.activeProgramId ? 'Programa activo' : 'Todos';
 
   return (
     <div style={{ paddingBottom: 0 }}>
@@ -396,7 +389,7 @@ export default function ClientsView() {
             <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>{selectedClient.name}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => document.getElementById('client-import-input')?.click()} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '8px 14px', cursor: 'pointer' }}>↓ Importar</button>
+            <button onClick={() => document.getElementById('client-import-input')?.click()} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '8px 14px', cursor: 'pointer' }}>{t('clients.importBtn')}</button>
             <button onClick={() => setShowNewProgram(true)} style={{ ...accentBtnStyle, fontSize: 16, padding: '8px 16px' }}>＋</button>
           </div>
         </div>
@@ -428,22 +421,26 @@ export default function ClientsView() {
 
       {/* ── Tab: Programas ── */}
       {activeTab === 'programs' && (
-        <div style={{ padding: '12px 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>          {clientPrograms.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>Sin programas. Crea uno o importa.</div>
+        <div style={{ padding: '12px 20px 80px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {clientPrograms.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>{t('clients.noPrograms')}</div>
           ) : clientPrograms.map((program) => {
             const sessions = getSessionCount(program);
             const lastActivity = getLastActivity(program);
             const isActive = selectedClient.activeProgramId === program.id;
+            const locale = 'es-ES';
             return (
               <div key={program.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid', borderColor: isActive ? 'var(--accent-tint-border)' : 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '13px 16px', borderBottom: 'var(--border-width) solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       {program.name}
-                      {isActive && <span style={{ fontSize: 9, letterSpacing: 1, background: 'var(--accent-tint-active)', color: 'var(--accent)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 4, padding: '2px 6px' }}>ACTIVO</span>}
+                      {isActive && <span style={{ fontSize: 9, letterSpacing: 1, background: 'var(--accent-tint-active)', color: 'var(--accent)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 4, padding: '2px 6px' }}>{t('clients.activeLabel')}</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                      {sessions} sesiones{lastActivity ? ` · Última: ${new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ''}
+                      {lastActivity
+                        ? t('clients.sessionsLastActivity', { count: sessions, date: new Date(lastActivity).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) })
+                        : t('clients.sessionsOnly', { count: sessions })}
                     </div>
                   </div>
                   <button
@@ -454,18 +451,18 @@ export default function ClientsView() {
                       fontSize: 11, cursor: 'pointer', padding: '4px 6px',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                     }}
-                    title={isActive ? 'Quitar como activo' : 'Marcar como activo'}
+                    title={isActive ? t('clients.removeActiveTitle') : t('clients.setActiveTitle')}
                   >
                     <span style={{ fontSize: 20, lineHeight: 1 }}>{isActive ? '★' : '☆'}</span>
-                    <span style={{ fontSize: 9, letterSpacing: 0.5 }}>{isActive ? 'Activo' : 'Activar'}</span>
+                    <span style={{ fontSize: 9, letterSpacing: 0.5 }}>{isActive ? t('clients.activeStarLabel') : t('clients.activateStarLabel')}</span>
                   </button>
                 </div>
                 <div style={{ display: 'flex' }}>
-                  <ActionBtn label="Ver"       onClick={() => setPrintingProgram(program.id)} />
+                  <ActionBtn label={t('clients.actionView')}   onClick={() => setPrintingProgram(program.id)} />
                   <Div1 />
-                  <ActionBtn label="Editar"    onClick={() => setEditingProgram(program.id)} />
+                  <ActionBtn label={t('clients.actionEdit')}   onClick={() => setEditingProgram(program.id)} />
                   <Div1 />
-                  <ActionBtn label="Compartir" onClick={() => handleShare(program)} />
+                  <ActionBtn label={t('clients.actionShare')}  onClick={() => handleShare(program)} />
                   <Div1 />
                   <ActionBtn label="⋯" onClick={(e) => openContextMenu(e, program.id)} />
                 </div>
@@ -479,16 +476,15 @@ export default function ClientsView() {
       {activeTab === 'info' && (
         <div key={selectedClientId} style={{ padding: '8px 20px 80px', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* ── Datos personales ── */}
-          <Accordion label="👤 Datos personales" open={openSections.personal} onToggle={() => toggleSection('personal')}>
-            {/* Selector de estado */}
+          {/* Datos personales */}
+          <Accordion label={t('clients.personalData')} open={openSections.personal} onToggle={() => toggleSection('personal')}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Estado</div>
+              <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('clients.statusLabel')}</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
-                  { id: 'active',   label: 'Activo',    color: 'var(--green)' },
-                  { id: 'paused',   label: 'En pausa',  color: 'var(--orange)' },
-                  { id: 'inactive', label: 'Inactivo',  color: 'var(--red)' },
+                  { id: 'active',   label: t('clients.statusActive'),   color: 'var(--green)' },
+                  { id: 'paused',   label: t('clients.statusPaused'),   color: 'var(--orange)' },
+                  { id: 'inactive', label: t('clients.statusInactive'), color: 'var(--red)' },
                 ].map(({ id, label, color }) => {
                   const isSel = (selectedClient.status ?? 'active') === id;
                   return (
@@ -509,10 +505,10 @@ export default function ClientsView() {
               </div>
             </div>
             {[
-              { key: 'name',     label: 'Nombre de pila',   placeholder: 'Lucas' },
-              { key: 'fullName', label: 'Nombre completo',  placeholder: 'Lucas García Martínez' },
-              { key: 'phone',    label: 'Teléfono',         placeholder: '+34 600 000 000' },
-              { key: 'email',    label: 'Email',            placeholder: 'lucas@email.com', type: 'email' },
+              { key: 'name',     label: t('clients.fieldFirstName'), placeholder: 'Lucas' },
+              { key: 'fullName', label: t('clients.fieldFullName'),  placeholder: 'Lucas García Martínez' },
+              { key: 'phone',    label: t('clients.fieldPhone'),     placeholder: '+34 600 000 000' },
+              { key: 'email',    label: t('clients.fieldEmail'),     placeholder: 'lucas@email.com', type: 'email' },
             ].map(({ key, label, placeholder, type }) => (
               <div key={key} style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
@@ -527,20 +523,20 @@ export default function ClientsView() {
               </div>
             ))}
             <div>
-              <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Notas</div>
+              <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{t('clients.fieldNotes')}</div>
               <textarea
                 defaultValue={selectedClient.notes ?? ''}
-                placeholder="Objetivos, lesiones, preferencias, observaciones..."
+                placeholder={t('clients.notesPlaceholder')}
                 onBlur={(e) => updateClientInfo(selectedClientId, { notes: e.target.value })}
                 style={{ ...inputStyle, minHeight: 90, resize: 'vertical', padding: '8px 12px', fontSize: 13, lineHeight: 1.6 }}
                 onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
               />
-              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>Se guarda al salir del campo.</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{t('clients.notesSavedHint')}</div>
             </div>
           </Accordion>
 
-          {/* ── Peso corporal ── */}
-          <Accordion label="⚖️ Peso corporal" open={openSections.weight} onToggle={() => toggleSection('weight')}>
+          {/* Peso corporal */}
+          <Accordion label={t('clients.bodyWeight')} open={openSections.weight} onToggle={() => toggleSection('weight')}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 10 }}>
               <input type="date" value={weightDate} onChange={(e) => setWeightDate(e.target.value)}
                 style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 12, colorScheme: 'dark' }} />
@@ -552,7 +548,7 @@ export default function ClientsView() {
                 style={{ background: weightValue ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: weightValue ? '#0d0d0d' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 14px', cursor: weightValue ? 'pointer' : 'not-allowed' }}>＋</button>
             </div>
             {(selectedClient.bodyWeight ?? []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>Sin datos todavía.</div>
+              <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>{t('clients.noWeightData')}</div>
             ) : (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: 'var(--border-width) solid var(--border-card)' }}>
                 {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry) => (
@@ -568,18 +564,17 @@ export default function ClientsView() {
             )}
           </Accordion>
 
-          {/* ── Facturación ── */}
-          <Accordion label="💳 Facturación" open={openSections.billing} onToggle={() => toggleSection('billing')}>
-            {/* Resumen */}
+          {/* Facturación */}
+          <Accordion label={t('clients.billing')} open={openSections.billing} onToggle={() => toggleSection('billing')}>
             {(selectedClient.billing ?? []).length > 0 && (() => {
               const total = (selectedClient.billing ?? []).reduce((a, b) => a + (b.amount ?? 0), 0);
               const paid  = (selectedClient.billing ?? []).filter((b) => b.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
               return (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   {[
-                    { label: 'Facturado', value: `${total.toFixed(2)}€`, color: 'var(--text)' },
-                    { label: 'Cobrado',   value: `${paid.toFixed(2)}€`,  color: 'var(--green)' },
-                    { label: 'Pendiente', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? 'var(--orange)' : 'var(--muted)' },
+                    { label: t('clients.billedLabel'),   value: `${total.toFixed(2)}€`, color: 'var(--text)' },
+                    { label: t('clients.receivedLabel'), value: `${paid.toFixed(2)}€`,  color: 'var(--green)' },
+                    { label: t('clients.pendingLabel'),  value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? 'var(--orange)' : 'var(--muted)' },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px', textAlign: 'center', border: 'var(--border-width) solid var(--border-card)' }}>
                       <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
@@ -590,7 +585,6 @@ export default function ClientsView() {
               );
             })()}
 
-            {/* Nueva entrada */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)}
@@ -600,7 +594,7 @@ export default function ClientsView() {
                   style={{ ...inputStyle, width: 90, padding: '8px 10px', fontSize: 13, textAlign: 'center' }} />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input type="text" placeholder="Concepto (ej: Mensualidad junio)" value={billConcept}
+                <input type="text" placeholder={t('clients.billConceptPlaceholder')} value={billConcept}
                   onChange={(e) => setBillConcept(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddBilling()}
                   style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13 }}
@@ -608,16 +602,15 @@ export default function ClientsView() {
                   onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                 <button onClick={() => setBillStatus((s) => s === 'paid' ? 'pending' : 'paid')}
                   style={{ background: billStatus === 'paid' ? 'rgba(74,222,128,0.1)' : 'var(--surface2)', border: 'var(--border-width) solid', borderColor: billStatus === 'paid' ? 'rgba(74,222,128,0.3)' : 'var(--border)', borderRadius: 8, color: billStatus === 'paid' ? 'var(--green)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, padding: '8px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {billStatus === 'paid' ? '✓ Pagado' : 'Pendiente'}
+                  {billStatus === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
                 </button>
                 <button onClick={handleAddBilling} disabled={!billConcept.trim() || !billAmount}
                   style={{ background: (billConcept.trim() && billAmount) ? 'var(--accent)' : 'var(--surface2)', border: 'none', borderRadius: 8, color: (billConcept.trim() && billAmount) ? '#0d0d0d' : 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, padding: '8px 12px', cursor: (billConcept.trim() && billAmount) ? 'pointer' : 'not-allowed' }}>＋</button>
               </div>
             </div>
 
-            {/* Lista */}
             {(selectedClient.billing ?? []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>Sin entradas todavía.</div>
+              <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 12 }}>{t('clients.noBillingData')}</div>
             ) : (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: 'var(--border-width) solid var(--border-card)' }}>
                 {(selectedClient.billing ?? []).map((entry) => (
@@ -630,9 +623,9 @@ export default function ClientsView() {
                     <button
                       onClick={() => updateClientBillingStatus(selectedClientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
                       style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: 'var(--border-width) solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
-                      {entry.status === 'paid' ? '✓ Pagado' : 'Pendiente'}
+                      {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
                     </button>
-                    <button onClick={() => { if (window.confirm('¿Eliminar esta factura?')) removeClientBilling(selectedClientId, entry.id); }} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 6, color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '3px 8px', flexShrink: 0 }}>✕</button>
+                    <button onClick={() => { if (window.confirm(t('clients.billDeleteConfirm'))) removeClientBilling(selectedClientId, entry.id); }} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 6, color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '3px 8px', flexShrink: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -645,12 +638,12 @@ export default function ClientsView() {
       {/* ── Tab: Historial ── */}
       {activeTab === 'history' && (
         <div style={{ padding: '10px 20px 80px' }}>
-          <ClientFilters scopeFilter={scopeFilter} setScopeFilter={setScopeFilter} periodFilter={periodFilter} setPeriodFilter={setPeriodFilter} />
+          <ClientFilters t={t} scopeFilter={scopeFilter} setScopeFilter={setScopeFilter} periodFilter={periodFilter} setPeriodFilter={setPeriodFilter} PERIOD_OPTIONS={PERIOD_OPTIONS} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {filteredLog.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>Sin sesiones para este filtro.</div>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>{t('clients.noSessionsFilter')}</div>
             ) : filteredLog.map((session) => (
-              <SessionCard key={session.id} session={session} onDelete={(id) => { if (window.confirm('¿Eliminar esta sesión?')) deleteLogEntry(id); }} />
+              <SessionCard key={session.id} session={session} onDelete={(id) => { if (window.confirm(t('history.deleteConfirm'))) deleteLogEntry(id); }} />
             ))}
           </div>
         </div>
@@ -659,10 +652,10 @@ export default function ClientsView() {
       {/* ── Tab: Progresión ── */}
       {activeTab === 'progress' && (
         <div style={{ padding: '10px 20px 80px' }}>
-          <ClientFilters scopeFilter={scopeFilter} setScopeFilter={setScopeFilter} periodFilter={periodFilter} setPeriodFilter={setPeriodFilter} />
+          <ClientFilters t={t} scopeFilter={scopeFilter} setScopeFilter={setScopeFilter} periodFilter={periodFilter} setPeriodFilter={setPeriodFilter} PERIOD_OPTIONS={PERIOD_OPTIONS} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {exercisesWithLogs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>Sin datos de progresión para este filtro.</div>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>{t('clients.noProgressFilter')}</div>
             ) : exercisesWithLogs.map((exerciseId) => {
               const def = allExercises[exerciseId];
               const logs = getExerciseLogs(exerciseId);
@@ -672,7 +665,7 @@ export default function ClientsView() {
         </div>
       )}
 
-      {/* Menú contextual de programa — portal para escapar overflow:hidden */}
+      {/* Menú contextual */}
       {contextMenu && createPortal(
         <>
           <div onClick={() => setContextMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
@@ -688,15 +681,15 @@ export default function ClientsView() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           }}>
             <button onClick={() => { exportSpecificProgram(contextMenu.programId); setContextMenu(null); }}
-              style={menuItemStyle}>↑ Exportar archivo</button>
-            <button onClick={() => { if (window.confirm('¿Eliminar este programa?')) handleDeleteProgram(contextMenu.programId); setContextMenu(null); }}
-              style={{ ...menuItemStyle, color: 'var(--red)', borderBottom: 'none' }}>✕ Eliminar</button>
+              style={menuItemStyle}>{t('clients.contextExport')}</button>
+            <button onClick={() => { if (window.confirm(t('clients.deleteProgramConfirm'))) handleDeleteProgram(contextMenu.programId); setContextMenu(null); }}
+              style={{ ...menuItemStyle, color: 'var(--red)', borderBottom: 'none' }}>{t('clients.contextDelete')}</button>
           </div>
         </>,
         document.body
       )}
 
-      {/* Modals */}
+      {/* Modal: Nuevo programa */}
       {showNewProgram && (
         <>
           <div
@@ -704,26 +697,24 @@ export default function ClientsView() {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }}
           />
           <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>NUEVO PROGRAMA</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>{t('clients.newProgramModal.title')}</div>
 
-            {/* Tabs vacío / desde plantilla (solo si hay plantillas) */}
             {templatePrograms.length > 0 && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                {[{ id: 'blank', label: 'Vacío' }, { id: 'template', label: 'Desde plantilla' }].map(({ id, label }) => (
+                {[{ id: 'blank', label: t('clients.newProgramModal.tabBlank') }, { id: 'template', label: t('clients.newProgramModal.tabTemplate') }].map(({ id, label }) => (
                   <button key={id} onClick={() => setNewProgramTab(id)} style={{ flex: 1, padding: '7px', borderRadius: 6, border: 'var(--border-width) solid', borderColor: newProgramTab === id ? 'var(--accent-tint-border)' : 'var(--border)', background: newProgramTab === id ? 'var(--accent-tint-active)' : 'var(--surface2)', color: newProgramTab === id ? 'var(--accent)' : 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>{label}</button>
                 ))}
               </div>
             )}
 
-            {/* Tab: Vacío */}
             {newProgramTab === 'blank' && (
               <>
-                <input autoFocus type="text" placeholder="Nombre del programa" value={newProgramName}
+                <input autoFocus type="text" placeholder={t('clients.newProgramModal.namePlaceholder')} value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateProgram()}
                   style={inputStyle} onFocus={(e) => e.target.style.borderColor = 'var(--accent)'} onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('clients.newProgramModal.sessionsLabel')}</div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {[2, 3, 4, 5, 6].map((n) => (
                       <button key={n} onClick={() => setNewProgramSessions(n)}
@@ -734,24 +725,25 @@ export default function ClientsView() {
               </>
             )}
 
-            {/* Tab: Desde plantilla */}
             {newProgramTab === 'template' && (
               <>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Plantilla</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('clients.newProgramModal.templateLabel')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
                     {templatePrograms.map((p) => (
                       <button key={p.id}
                         onClick={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
                         style={{ padding: '10px 12px', borderRadius: 8, border: 'var(--border-width) solid', borderColor: fromTemplateId === p.id ? 'var(--accent-tint-border)' : 'var(--border)', background: fromTemplateId === p.id ? 'var(--accent-tint-active)' : 'var(--surface2)', color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--text)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                         <div style={{ fontWeight: 500 }}>{p.name}</div>
-                        <div style={{ fontSize: 10, color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--muted)', marginTop: 2 }}>{p.days.length} sesión{p.days.length !== 1 ? 'es' : ''}</div>
+                        <div style={{ fontSize: 10, color: fromTemplateId === p.id ? 'var(--accent)' : 'var(--muted)', marginTop: 2 }}>
+                          {t('common.session', { count: p.days.length })}
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
                 <input type="text"
-                  placeholder={fromTemplateId ? (templatePrograms.find((p) => p.id === fromTemplateId)?.name ?? 'Nombre del programa') : 'Nombre del programa'}
+                  placeholder={fromTemplateId ? (templatePrograms.find((p) => p.id === fromTemplateId)?.name ?? t('clients.newProgramModal.namePlaceholder')) : t('clients.newProgramModal.namePlaceholder')}
                   value={fromTemplateName}
                   onChange={(e) => setFromTemplateName(e.target.value)}
                   style={inputStyle}
@@ -763,16 +755,16 @@ export default function ClientsView() {
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 onClick={() => { setShowNewProgram(false); setNewProgramTab('blank'); setFromTemplateId(''); }}
-                style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+                style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
               {newProgramTab === 'blank' ? (
                 <button onClick={handleCreateProgram} disabled={!newProgramName.trim()}
                   style={{ flex: 2, background: !newProgramName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newProgramName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newProgramName.trim() ? 'not-allowed' : 'pointer' }}>
-                  CREAR Y EDITAR
+                  {t('clients.newProgramModal.createBtn')}
                 </button>
               ) : (
                 <button onClick={handleCreateFromTemplate} disabled={!fromTemplateId}
                   style={{ flex: 2, background: !fromTemplateId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !fromTemplateId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !fromTemplateId ? 'not-allowed' : 'pointer' }}>
-                  ASIGNAR
+                  {t('clients.newProgramModal.assignBtn')}
                 </button>
               )}
             </div>
@@ -780,16 +772,16 @@ export default function ClientsView() {
         </>
       )}
 
-      {importFile && <ClientImportModal file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />}
+      {importFile && <ClientImportModal t={t} file={importFile} onImport={handleImport} onClose={() => setImportFile(null)} />}
     </div>
   );
 }
 
-// ── Filtros para historial y progresión del cliente ───────────────────────────
-function ClientFilters({ scopeFilter, setScopeFilter, periodFilter, setPeriodFilter }) {
+// ── Filtros ───────────────────────────────────────────────────────────────────
+function ClientFilters({ t, scopeFilter, setScopeFilter, periodFilter, setPeriodFilter, PERIOD_OPTIONS }) {
   const scopeOptions = [
-    { id: 'active', label: 'Programa activo' },
-    { id: 'all',    label: 'Todos los programas' },
+    { id: 'active', label: t('clients.scope.active') },
+    { id: 'all',    label: t('clients.scope.all') },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -847,7 +839,7 @@ function SimpleModal({ title, children, onClose, onConfirm, confirmLabel, confir
   );
 }
 
-function GlobalBillingView({ clients, clientList, onClose, updateClientBillingStatus, onSelectClient }) {
+function GlobalBillingView({ t, clients, clientList, onClose, updateClientBillingStatus, onSelectClient }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all');
 
@@ -881,15 +873,14 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
     <div>
       <div style={{ padding: '16px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 24, cursor: 'pointer', padding: '2px 0', lineHeight: 1 }}>‹</button>
-        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>Facturación global</div>
+        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>{t('clients.globalBilling')}</div>
       </div>
 
-      {/* Resumen */}
       <div style={{ padding: '0 20px 12px', display: 'flex', gap: 8 }}>
         {[
-          { label: 'Facturado', value: `${totalFiltered.toFixed(2)}€`, color: 'var(--text)' },
-          { label: 'Cobrado',   value: `${paidFiltered.toFixed(2)}€`,  color: 'var(--green)' },
-          { label: 'Pendiente', value: `${pendingFiltered.toFixed(2)}€`, color: pendingFiltered > 0 ? 'var(--orange)' : 'var(--muted)' },
+          { label: t('clients.billedLabel'),   value: `${totalFiltered.toFixed(2)}€`, color: 'var(--text)' },
+          { label: t('clients.receivedLabel'), value: `${paidFiltered.toFixed(2)}€`,  color: 'var(--green)' },
+          { label: t('clients.pendingLabel'),  value: `${pendingFiltered.toFixed(2)}€`, color: pendingFiltered > 0 ? 'var(--orange)' : 'var(--muted)' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ flex: 1, background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
@@ -898,24 +889,22 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
         ))}
       </div>
 
-      {/* Filtros */}
       <div style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {[{ id: 'all', label: 'Facturado' }, { id: 'pending', label: 'Pendiente' }, { id: 'paid', label: 'Pagado' }].map((o) => (
+          {[{ id: 'all', label: t('clients.statusBilled') }, { id: 'pending', label: t('clients.billPending') }, { id: 'paid', label: t('clients.statusPaid') }].map((o) => (
             <FilterChip key={o.id} active={statusFilter === o.id} label={o.label} onClick={() => setStatusFilter(o.id)} />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {[{ id: 'all', label: 'Todo' }, { id: '1m', label: 'Este mes' }, { id: '3m', label: 'Últimos 3 meses' }].map((o) => (
+          {[{ id: 'all', label: t('clients.period.all') }, { id: '1m', label: t('clients.periodThisMonth') }, { id: '3m', label: t('clients.periodLast3Months') }].map((o) => (
             <FilterChip key={o.id} active={periodFilter === o.id} label={o.label} onClick={() => setPeriodFilter(o.id)} />
           ))}
         </div>
       </div>
 
-      {/* Lista */}
       <div style={{ padding: '0 20px 80px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>Sin entradas para este filtro.</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>{t('clients.noBillingEntries')}</div>
         ) : filtered.map((entry) => (
           <div key={entry.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -932,7 +921,7 @@ function GlobalBillingView({ clients, clientList, onClose, updateClientBillingSt
             <button
               onClick={() => updateClientBillingStatus(entry.clientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
               style={{ background: entry.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(251,146,60,0.1)', border: 'var(--border-width) solid', borderColor: entry.status === 'paid' ? 'rgba(74,222,128,0.3)' : 'rgba(251,146,60,0.3)', borderRadius: 6, color: entry.status === 'paid' ? 'var(--green)' : 'var(--orange)', fontSize: 10, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
-              {entry.status === 'paid' ? '✓ Pagado' : 'Pendiente'}
+              {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
             </button>
           </div>
         ))}
@@ -963,20 +952,20 @@ function Accordion({ label, open, onToggle, children }) {
   );
 }
 
-function ClientImportModal({ file, onImport, onClose }) {
+function ClientImportModal({ t, file, onImport, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
       <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px' }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>IMPORTAR ARCHIVO</div>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>{t('clients.importModal.title')}</div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
           <strong style={{ color: 'var(--text)' }}>{file.name}</strong>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { mode: 'replace',     label: 'Reemplazar',        desc: 'Sustituye el programa con el mismo ID y añade las sesiones.' },
-            { mode: 'add_program', label: 'Añadir programa',   desc: 'Añade el programa como nuevo al cliente.' },
-            { mode: 'merge_log',   label: 'Actualizar historial', desc: 'Solo añade las sesiones del archivo.' },
+            { mode: 'replace',     label: t('clients.importModal.replaceLabel'),    desc: t('clients.importModal.replaceDesc') },
+            { mode: 'add_program', label: t('clients.importModal.addProgramLabel'), desc: t('clients.importModal.addProgramDesc') },
+            { mode: 'merge_log',   label: t('clients.importModal.mergeLogLabel'),   desc: t('clients.importModal.mergeLogDesc') },
           ].map(({ mode, label, desc }) => (
             <button key={mode} onClick={() => onImport(file, mode)}
               style={{ background: 'var(--surface2)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.15s' }}
@@ -988,7 +977,7 @@ function ClientImportModal({ file, onImport, onClose }) {
               <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{desc}</div>
             </button>
           ))}
-          <button onClick={onClose} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '10px', cursor: 'pointer', marginTop: 4 }}>Cancelar</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 12, padding: '10px', cursor: 'pointer', marginTop: 4 }}>{t('common.cancel')}</button>
         </div>
       </div>
     </>

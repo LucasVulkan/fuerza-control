@@ -1,14 +1,20 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useExerciseName } from '../../hooks/useExerciseName';
 import ProgressionChip from '../ui/ProgressionChip';
 import SetRow from './SetRow';
 
 export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, currentSets, lastSets, prevSummary, progression, onFieldChange, onToggleDone, onAddSet }) {
+  const { t, i18n } = useTranslation();
+  const getExName = useExerciseName();
   const [tipsOpen, setTipsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   if (!def) return null;
 
-  const target = buildTarget(def, sets, exConfig);
-  const hasTips = def.tips && def.tips.length > 0;
+  const exName = getExName(def);
+  const tips = i18n.language === 'en' ? (def.tipsEn ?? def.tips) : def.tips;
+  const target = buildTarget(def, sets, exConfig, t);
+  const hasTips = tips && tips.length > 0;
 
   const allDone = currentSets.length > 0 && currentSets.every((s) => s.done);
   const isCollapsed = allDone && !manualOpen;
@@ -25,14 +31,13 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
         alignItems: 'center',
         gap: 10,
       }}>
-        {/* Info — click expande */}
         <div onClick={() => setManualOpen(true)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
           <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}>
-            EJ {index + 1}
+            {t('workout.exerciseLabel')} {index + 1}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ color: 'var(--accent)', fontSize: 14 }}>✓</span>
-            <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.name}</span>
+            <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exName}</span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
             {currentSets.map((s, i) => (
@@ -50,7 +55,6 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
           </div>
         </div>
 
-        {/* Botón ＋ serie */}
         <button
           onClick={() => { onAddSet?.(); setManualOpen(true); }}
           style={{
@@ -65,7 +69,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
             cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}
-        >＋ serie</button>
+        >{t('workout.addSet')}</button>
       </div>
     );
   }
@@ -87,11 +91,11 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
       }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}>
-            EJ {index + 1}
+            {t('workout.exerciseLabel')} {index + 1}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3 }}>
-              {def.name}
+              {exName}
             </div>
             {hasTips && (
               <button
@@ -120,7 +124,6 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-          {/* Botón colapsar (solo visible si manualOpen) */}
           {manualOpen && (
             <button
               onClick={() => setManualOpen(false)}
@@ -130,17 +133,16 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
                 cursor: 'pointer', padding: '2px 4px',
               }}
             >
-              → colapsar
+              {t('workout.collapse')}
             </button>
           )}
-          {/* Dato de sesión anterior */}
           {prevSummary && prevSummary !== '—' && (
             <div style={{
               fontSize: 10, color: 'var(--accent)',
               textAlign: 'right', whiteSpace: 'nowrap',
               flexShrink: 0, lineHeight: 1.6,
             }}>
-              Anterior<br />{prevSummary}
+              {t('workout.previous')}<br />{prevSummary}
             </div>
           )}
         </div>
@@ -158,7 +160,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
           flexDirection: 'column',
           gap: 6,
         }}>
-          {def.tips.map((tip, i) => (
+          {tips.map((tip, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, lineHeight: 1.5, color: 'var(--text)' }}>
               <span style={{ color: 'var(--accent)', flexShrink: 0 }}>·</span>
               <span>{tip}</span>
@@ -196,7 +198,7 @@ export default function ExerciseCard({ index, exerciseId, def, sets, exConfig, c
             cursor: 'pointer',
             marginTop: 2,
           }}
-        >＋ serie</button>
+        >{t('workout.addSet')}</button>
       </div>
     </div>
   );
@@ -210,17 +212,16 @@ function buildSetLabel(set, index) {
   return 'S' + (index + 1);
 }
 
-function buildTarget(def, sets, exConfig) {
+function buildTarget(def, sets, exConfig, t) {
   const model = def.progressionModel;
-  // Leer valores del template (exConfig) si existen, si no del def de la librería
   const minTime  = exConfig?.minTime  ?? def.minTime;
   const maxTime  = exConfig?.maxTime  ?? def.maxTime;
   const minReps  = exConfig?.minReps  ?? def.minReps;
   const maxReps  = exConfig?.maxReps  ?? def.maxReps;
 
   if (model === 'time_progression') return `${sets} × ${minTime}–${maxTime} s`;
-  if (model === 'submax') return `${sets} × submáx`;
+  if (model === 'submax') return `${sets} × ${t('workout.submax')}`;
   const repsText = minReps === maxReps ? `${minReps} reps` : `${minReps}–${maxReps} reps`;
-  const unilateral = def.isUnilateral ? ' c/p' : '';
+  const unilateral = def.isUnilateral ? ` ${t('workout.perSide')}` : '';
   return `${sets} × ${repsText}${unilateral}`;
 }

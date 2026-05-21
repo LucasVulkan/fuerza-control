@@ -1,0 +1,678 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "back": "‹ Atrás",
+    "next": "Siguiente",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "export": "Exportar",
+    "import": "Importar",
+    "merge": "Fusionar",
+    "replace": "Reemplazar",
+    "sessions": "sesiones",
+    "session_one": "{{count}} sesión",
+    "session_other": "{{count}} sesiones",
+    "exercises_one": "{{count}} ejercicio",
+    "exercises_other": "{{count}} ejercicios",
+    "clients_one": "{{count}} cliente",
+    "clients_other": "{{count}} clientes",
+    "day": "DÍA"
+  },
+  "header": {
+    "newProgram": "＋ Nuevo programa",
+    "archivedPrograms": "🗂 Programas archivados",
+    "exportSection": "Exportar",
+    "fullBackup": "↑ Backup completo",
+    "programAndHistory": "↑ Programa y historial",
+    "importSection": "Importar",
+    "importFile": "↓ Importar archivo",
+    "developer": "Developer",
+    "plan": "Plan:",
+    "switchToFree": "Cambiar a FREE",
+    "switchToPro": "Cambiar a PRO",
+    "theme": "Theme",
+    "language": "Idioma"
+  },
+  "tabs": {
+    "session": "Sesión",
+    "history": "Historial",
+    "progress": "Progresión",
+    "clients": "Clientes",
+    "templates": "Plantillas"
+  },
+  "home": {
+    "noActiveProgram": "No hay programa activo.",
+    "newProgram": "＋ NUEVO PROGRAMA",
+    "activeProgram": "Programa activo",
+    "selectSession": "Selecciona sesión de hoy",
+    "program": "Programa",
+    "viewProgram": "Ver programa",
+    "edit": "Editar",
+    "archive": "Archivar",
+    "stageProgress": "{{completed}} / {{total}} sesiones",
+    "stageCount": "{{current}} / {{total}} etapas",
+    "selectStage": "SELECCIONAR ETAPA",
+    "activeStage": "Activa",
+    "stageCompleted": "¡Etapa completada!",
+    "stageAdvanceText": "Has terminado {{current}}. ¿Empezar {{next}}?",
+    "advanceTo": "AVANZAR A {{name}}",
+    "continueStage": "Continuar",
+    "archiveModal": {
+      "title": "ARCHIVAR PROGRAMA",
+      "desc": "El programa archivado se puede ver en \"Programas archivados\" del menú, pero no se puede volver a activar (versión gratuita).",
+      "keepHistory": "Archivar programa",
+      "keepHistoryDesc": "El historial de sesiones se conserva.",
+      "clearHistory": "Archivar y limpiar historial",
+      "clearHistoryDesc": "Se elimina también el historial de este programa."
+    }
+  },
+  "workout": {
+    "addedThisSession": "Añadidos en esta sesión",
+    "addExercise": "Añadir ejercicio",
+    "saveSession": "GUARDAR SESIÓN",
+    "discardSession": "Descartar sesión",
+    "discardConfirm": "¿Descartar la sesión en curso? Los datos introducidos se perderán.",
+    "sessionSaved": "✓ Sesión guardada",
+    "sessionNotes": "NOTAS DE SESIÓN",
+    "notesPlaceholder": "Anota cómo fue el entreno, sensaciones, ajustes para la próxima vez...",
+    "notesSavedWith": "Se guarda con la sesión al pulsar GUARDAR SESIÓN.",
+    "addedLabel": "Añadido · Esta sesión",
+    "addSet": "＋ serie",
+    "submax": "submáx",
+    "perSide": "c/p",
+    "collapse": "→ colapsar",
+    "exerciseLabel": "EJ",
+    "previous": "Anterior",
+    "timeSec": "Seg",
+    "kg": "Kg",
+    "reps": "Reps",
+    "seconds": "Segundos",
+    "assistance": "Asistencia"
+  },
+  "history": {
+    "title": "HISTORIAL",
+    "currentProgram": "Programa actual",
+    "all": "Todo",
+    "allStages": "Todas ✕",
+    "noSessions": "Sin sesiones para este filtro.",
+    "deleteConfirm": "¿Eliminar esta sesión?",
+    "noteLabel": "Nota",
+    "noteTag": "📝 nota",
+    "modifiedTag": "＋ modificado"
+  },
+  "archived": {
+    "title": "PROGRAMAS ARCHIVADOS",
+    "empty": "No hay programas archivados.",
+    "archivedOn": "Archivado: {{date}} · {{count}} sesiones registradas",
+    "export": "Exportar",
+    "delete": "Eliminar",
+    "deleteModal": {
+      "title": "ELIMINAR PROGRAMA",
+      "desc": "Esta acción es permanente e irreversible.",
+      "keepHistory": "Eliminar programa",
+      "keepHistoryDesc": "El historial de sesiones se conserva.",
+      "withHistory": "Eliminar programa e historial",
+      "withHistoryDesc": "Se elimina también el historial. No hay vuelta atrás."
+    }
+  },
+  "import": {
+    "title": "IMPORTAR ARCHIVO",
+    "typeFullBackup": "Backup completo",
+    "typeProgramWithLog": "Programa + historial",
+    "typeProgram": "Programa",
+    "warning": "⚠️ Los datos seleccionados reemplazarán los actuales. Esta acción no se puede deshacer.",
+    "sectionProgram": "Programa personal",
+    "sectionProgramDesc": "Reemplaza el programa activo",
+    "sectionLog": "Historial de sesiones",
+    "sectionCustomExercises": "Ejercicios personalizados",
+    "sectionClients": "Clientes y programas gestionados",
+    "sectionTemplates": "Plantillas",
+    "sectionTemplatesDesc": "Programas de tipo plantilla",
+    "mergeModeLabel": "Fusionar",
+    "replaceModeLabel": "Reemplazar todas",
+    "importBtn": "IMPORTAR",
+    "replaceProgram": "Reemplazar programa",
+    "replaceProgramDesc": "Importa el programa y fusiona el historial. Pasa a ser tu programa activo.",
+    "addLogOnly": "Solo añadir historial",
+    "addLogOnlyDesc": "Añade las sesiones del archivo sin cambiar el programa activo.",
+    "programOnly": "Solo el programa",
+    "programOnlyDesc": "Importa el programa sin tocar tu historial actual."
+  },
+  "summary": {
+    "ready": "Tu programa está listo",
+    "daysReview": "{{count}} días · Revisa el plan antes de empezar",
+    "sets": "{{count}} series",
+    "customize": "✎ Personalizar",
+    "start": "EMPEZAR",
+    "patternPull": "TRACCIÓN",
+    "patternPush": "EMPUJE",
+    "patternLegs": "PIERNA",
+    "patternCore": "CORE",
+    "patternGrip": "AGARRE",
+    "patternCalves": "GEMELOS",
+    "patternAccessory": "ACCESORIO"
+  },
+  "onboarding": {
+    "generating": "GENERANDO PROGRAMA",
+    "buildingPlan": "Construyendo tu plan personalizado...",
+    "appName": "FUERZA & CONTROL",
+    "newProgram": "NUEVO PROGRAMA",
+    "howToCreate": "¿Cómo quieres crear tu programa?",
+    "modeAuto": "Generar automáticamente",
+    "modeAutoDesc": "Responde unas preguntas y el sistema crea el programa. Puedes editarlo después.",
+    "modeManual": "Construir manualmente",
+    "modeManualDesc": "Elige cuántas sesiones quieres y añade tus propios ejercicios.",
+    "modeImport": "Importar programa",
+    "modeImportDesc": "Abre un archivo exportado desde esta app.",
+    "manualProgram": "PROGRAMA MANUAL",
+    "programName": "Nombre del programa",
+    "programNamePlaceholder": "Ej: Lucas - Full Body",
+    "numberOfSessions": "Número de sesiones",
+    "addMoreFromEditor": "Podrás añadir más sesiones desde el editor.",
+    "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.",
+    "createAndEdit": "CREAR Y EDITAR ›",
+    "stepIndicator": "PASO {{current}} DE {{total}}",
+    "stepLevel": {
+      "title": "¿Cuál es tu nivel?",
+      "subtitle": "Esto determina qué ejercicios y estructuras se incluirán en tu programa."
+    },
+    "stepDiscipline": {
+      "title": "¿Cuál es tu enfoque?",
+      "subtitle": "Define qué tipo de entrenamiento y ejercicios quieres priorizar."
+    },
+    "stepDistribution": {
+      "title": "¿Cómo distribuyes los días?",
+      "subtitle": "La distribución define la estructura de cada sesión."
+    },
+    "stepDays": {
+      "titleUpperLower": "Sesiones por ciclo",
+      "subtitleUpperLower": "Upper/Lower tiene 2 o 4 sesiones distintas. Puedes repetirlas con la frecuencia que quieras.",
+      "titlePPL": "Sesiones por ciclo",
+      "subtitlePPL": "Push/Pull/Legs usa 3 sesiones distintas. Puedes repetir el ciclo con la frecuencia que quieras.",
+      "titleFullBody": "¿Cuántas sesiones?",
+      "subtitleFullBody": "Número de sesiones distintas por ciclo. A más sesiones, más variedad de ejercicios y patrones cubiertos.",
+      "pplCycleHint": "Alterna A → B → C → A → B → C a tu ritmo",
+      "ulCycleHint": "Puedes hacer 2 sesiones a la semana con 4 sesiones distintas — simplemente alternas el ciclo.",
+      "sessionsCount": "{{count}} sesión por ciclo",
+      "sessionsCount_other": "{{count}} sesiones por ciclo",
+      "allGroupsHint": "Todos los grupos en cada sesión",
+      "moreVarietyHint": "Mayor variedad de ejercicios y patrones"
+    },
+    "stepGoal": {
+      "title": "¿Cuál es tu objetivo?",
+      "subtitle": "Determina el rango de repeticiones y el descanso entre series."
+    },
+    "stepEquipment": {
+      "title": "¿Qué equipo tienes?",
+      "subtitle": "Selecciona todo lo que tienes disponible habitualmente."
+    },
+    "stepLimitations": {
+      "title": "¿Tienes alguna limitación?",
+      "subtitle": "Se evitarán ejercicios que puedan agravar estas zonas como ejercicio principal."
+    },
+    "stepProgression": {
+      "title": "Modelo de progresión",
+      "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
+    },
+    "generateProgram": "🏋️ GENERAR PROGRAMA",
+    "levels": {
+      "beginner": {
+        "label": "Principiante",
+        "description": "Menos de 1 año entrenando o volviendo tras una pausa larga.",
+        "detail": "Ejercicios guiados por máquina, patrones básicos con peso corporal y mancuernas. Progresión sencilla y segura."
+      },
+      "intermediate": {
+        "label": "Intermedio",
+        "description": "1–3 años entrenando con continuidad.",
+        "detail": "Mancuernas, cables, kettlebell y ejercicios de peso corporal técnicos como dominadas o fondos. Doble progresión."
+      },
+      "advanced": {
+        "label": "Avanzado",
+        "description": "Más de 3 años con técnica sólida en movimientos libres.",
+        "detail": "Barra libre, ejercicios lastrados, periodización. Requiere buena técnica en sentadilla, peso muerto y press."
+      }
+    },
+    "disciplines": {
+      "standard": {
+        "label": "Estándar",
+        "description": "Hipertrofia y fuerza general. El enfoque más completo y versátil.",
+        "detail": "Cubre todos los patrones de movimiento con los mejores ejercicios para cada objetivo."
+      },
+      "calisthenics": {
+        "label": "Calistenia / Funcional",
+        "description": "Peso corporal, agarre y core. Con transferencia a deporte y disciplinas aéreas.",
+        "detail": "Dominadas, fondos, L-sit, hollow body. Fuerza relativa y control corporal."
+      },
+      "glutes_legs": {
+        "label": "Pierna & Glúteo",
+        "description": "Máximo énfasis en glúteo, isquios y pierna. Popular en programas femeninos.",
+        "detail": "Hip thrust, peso muerto rumano, prensa y variantes de sentadilla como ejercicios centrales."
+      },
+      "strength": {
+        "label": "Fuerza / Powerlifting",
+        "description": "Mover más peso. Sentadilla, peso muerto y press como eje central.",
+        "detail": "Rangos de 3–6 reps, descansos largos y progresión de carga como prioridad."
+      }
+    },
+    "distributions": {
+      "full_body": {
+        "label": "Full Body",
+        "description": "Todos los grupos musculares en cada sesión. 2–6 días."
+      },
+      "upper_lower": {
+        "label": "Upper / Lower",
+        "description": "Tren superior un día, inferior otro. 2 sesiones distintas."
+      },
+      "push_pull_legs": {
+        "label": "Push / Pull / Legs",
+        "description": "Un día de empuje, uno de tracción, uno de pierna. 3 sesiones."
+      }
+    },
+    "goals": {
+      "hypertrophy": {
+        "label": "Hipertrofia",
+        "description": "Aumentar masa muscular. 8–12 reps por serie."
+      },
+      "endurance": {
+        "label": "Resistencia",
+        "description": "Aguantar más. 12–20 reps, descansos cortos."
+      },
+      "strength": {
+        "label": "Fuerza",
+        "description": "Mover más peso. 5–8 reps, descansos largos."
+      },
+      "max_strength": {
+        "label": "Fuerza máxima",
+        "description": "Máximo rendimiento. 3–5 reps, solo avanzado."
+      }
+    },
+    "equipment": {
+      "machines": {
+        "label": "Máquinas",
+        "description": "Prensa, polea, curl, extensión..."
+      },
+      "dumbbells": {
+        "label": "Mancuernas",
+        "description": "Ajustables o fijas."
+      },
+      "barbell": {
+        "label": "Barra libre",
+        "description": "Barra olímpica con discos."
+      },
+      "pullup_bar": {
+        "label": "Barra de dominadas",
+        "description": "Fija o de puerta."
+      },
+      "parallettes": {
+        "label": "Paralelas / Dip bar",
+        "description": "Para fondos y L-sit."
+      },
+      "kettlebell": {
+        "label": "Kettlebell",
+        "description": "Una o varias."
+      },
+      "resistance_band": {
+        "label": "Bandas elásticas",
+        "description": "Para asistencia o activación."
+      },
+      "ab_wheel": {
+        "label": "Rueda abdominal",
+        "description": "Ab wheel rollout."
+      }
+    },
+    "limitations": {
+      "none": {
+        "label": "Sin limitaciones",
+        "description": "Puedo hacer cualquier ejercicio sin restricciones."
+      },
+      "shoulder": {
+        "label": "Hombro / Trapecio",
+        "description": "Molestias en hombro, manguito rotador o trapecio."
+      },
+      "lower_back": {
+        "label": "Zona lumbar",
+        "description": "Problemas en la zona baja de la espalda."
+      },
+      "knee": {
+        "label": "Rodilla",
+        "description": "Molestias en rodilla o menisco."
+      }
+    },
+    "progressionModels": {
+      "double_progression": {
+        "label": "Doble progresión",
+        "description": "Llegas al máximo de reps → subes peso → vuelves al mínimo. El más habitual."
+      },
+      "linear": {
+        "label": "Progresión lineal",
+        "description": "Subes peso fijo cada sesión. Clásico en programas de fuerza como Starting Strength."
+      },
+      "reps_progression": {
+        "label": "Por repeticiones",
+        "description": "El peso no cambia, solo subes reps cada sesión."
+      }
+    },
+    "disabledReasons": {
+      "notForDiscipline": "No disponible para {{discipline}}",
+      "requiresIntermediate": "Requiere nivel intermedio",
+      "requiresAdvanced": "Requiere nivel avanzado"
+    },
+    "upperLowerOptions": {
+      "2sessions": "2 sesiones",
+      "2sessionsDesc": "A (superior) + B (inferior). Más sencillo, repite el ciclo.",
+      "4sessions": "4 sesiones",
+      "4sessionsDesc": "A1 + B1 + A2 + B2. Más variedad de ejercicios por ciclo."
+    },
+    "pplSessions": {
+      "push": "Sesión A — Empuje",
+      "pull": "Sesión B — Tracción",
+      "legs": "Sesión C — Pierna"
+    }
+  },
+  "dayCard": {
+    "noRecords": "Sin registros",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "daysAgo": "Hace {{count}} días",
+    "oneWeekAgo": "Hace 1 semana",
+    "inProgress": "● EN CURSO"
+  },
+  "stats": {
+    "title": "PROGRESIÓN",
+    "selectedOf": "{{selected}} de {{total}} ejercicios seleccionados",
+    "allExercises": "Todos los ejercicios ({{count}})",
+    "selectedCount_one": "{{count}} seleccionado",
+    "selectedCount_other": "{{count}} seleccionados",
+    "clearSelection": "Limpiar selección",
+    "needsSession": "Necesitas al menos una sesión\npara ver la progresión.",
+    "noData": "Sin datos para este filtro."
+  },
+  "filterBar": {
+    "scopeProgram": "Programa actual",
+    "scopeAll": "Todo",
+    "period7d": "7 días",
+    "period30d": "30 días",
+    "periodAll": "Sin límite"
+  },
+  "errors": {
+    "cannotReadFile": "No se pudo leer el archivo"
+  },
+  "editor": {
+    "titleEdit": "EDITAR PROGRAMA",
+    "titleEditClient": "EDITAR PROGRAMA DE CLIENTE",
+    "stageName": "Nombre de la etapa",
+    "stageWeeks": "sem.",
+    "stageActivate": "Activar",
+    "stageAddHint": "Añadir etapa",
+    "addSession": "＋ Añadir sesión",
+    "addSessionToStage": "＋ Añadir sesión a esta etapa",
+    "convertToStages": "⊞ Convertir a programa por etapas",
+    "changesHint": "Los cambios se aplican a todas las sesiones futuras. Puedes restaurar cualquier día a sus valores originales.",
+    "toastStageAdded": "✓ Etapa añadida",
+    "toastStageDeleted": "✓ Etapa eliminada",
+    "toastStageActivated": "✓ {{name}} activada",
+    "deleteStageConfirm": "¿Eliminar \"{{name}}\"? Las sesiones de esta etapa se perderán.",
+    "saveChanges": "GUARDAR CAMBIOS",
+    "dayLabel": "DÍA {{label}} · {{name}}",
+    "exerciseCount_one": "{{count}} ejercicio",
+    "exerciseCount_other": "{{count}} ejercicios",
+    "edited": "Editado",
+    "dropToDelete": "Suelta para eliminar",
+    "setsRest": "{{sets}} series · {{rest}}s descanso",
+    "close": "Cerrar",
+    "addExercise": "＋ Añadir ejercicio",
+    "restore": "↩ Restaurar",
+    "resetConfirm": "¿Restaurar este día a los valores originales?",
+    "toastReset": "✓ Día restaurado",
+    "toastExDeleted": "✓ Ejercicio eliminado",
+    "toastExAdded": "✓ Ejercicio añadido"
+  },
+  "exerciseSelector": {
+    "title": "SELECCIONAR EJERCICIO",
+    "searchPlaceholder": "Buscar ejercicio...",
+    "tabSimilar": "Similar",
+    "tabComplementary": "Complementario",
+    "tabPattern": "Patrón",
+    "tabMuscle": "Músculo",
+    "allPatterns": "Todos los patrones",
+    "allMuscles": "Todos los músculos",
+    "noResults": "Sin resultados",
+    "createExercise": "＋ Crear ejercicio",
+    "exerciseCount_one": "{{count}} EJERCICIO",
+    "exerciseCount_other": "{{count}} EJERCICIOS",
+    "levelIntermediate": "Intermedio",
+    "levelBeginner": "Principiante",
+    "patterns": {
+      "vertical_pull": "Tracción vertical",
+      "horizontal_pull": "Tracción horizontal",
+      "vertical_push": "Empuje vertical",
+      "horizontal_push": "Empuje horizontal",
+      "squat": "Pierna (rodilla)",
+      "hip_hinge": "Pierna (cadera)",
+      "core": "Core",
+      "carry_grip": "Agarre / Carga",
+      "calf_raise": "Gemelos"
+    },
+    "muscles": {
+      "latissimus_dorsi": "Espalda (dorsal)",
+      "biceps": "Bíceps",
+      "rear_deltoid": "Deltoides posterior",
+      "rhomboids": "Romboides",
+      "mid_trapezius": "Trapecio medio",
+      "pectoralis": "Pectoral",
+      "triceps": "Tríceps",
+      "anterior_deltoid": "Deltoides anterior",
+      "deltoid": "Hombro",
+      "hamstrings": "Isquiotibiales",
+      "glutes": "Glúteos",
+      "erector_spinae": "Erector espinal",
+      "quadriceps": "Cuádriceps",
+      "rectus_abdominis": "Abdominales",
+      "hip_flexors": "Flexores de cadera",
+      "forearms": "Antebrazos",
+      "serratus": "Serrato"
+    }
+  },
+  "exerciseEditor": {
+    "progressionType": "Tipo de progresión",
+    "fieldSets": "Series",
+    "fieldRest": "Descanso (s)",
+    "fieldMinTime": "Tiempo mín (s)",
+    "fieldMaxTime": "Tiempo máx (s)",
+    "fieldMinReps": "Reps mín",
+    "fieldMaxReps": "Reps máx",
+    "submaxHint": "Submáximo: el atleta trabaja hasta 2 reps del fallo. Sin rango fijo.",
+    "substituteBtn": "⇄ Sustituir",
+    "saveBtn": "Guardar",
+    "toastUpdated": "✓ Ejercicio actualizado",
+    "toastSubstituted": "✓ Ejercicio sustituido",
+    "progressionModels": {
+      "double_progression": {
+        "label": "Doble progresión",
+        "desc": "Peso + reps"
+      },
+      "time_progression": {
+        "label": "Tiempo",
+        "desc": "Segundos"
+      },
+      "submax": {
+        "label": "Submáximo",
+        "desc": "RIR / RPE"
+      }
+    }
+  },
+  "clients": {
+    "title": "Clientes",
+    "newBtn": "＋ NUEVO",
+    "searchPlaceholder": "Buscar cliente...",
+    "filterActive": "Activos",
+    "filterInactive": "Inactivos",
+    "filterAll": "Todos",
+    "noClients": "Sin clientes todavía.",
+    "programCount_one": "{{count}} programa",
+    "programCount_other": "{{count}} programas",
+    "deleteClientConfirm": "¿Eliminar cliente y todos sus programas e historial?",
+    "importBtn": "↓ Importar",
+    "noPrograms": "Sin programas. Crea uno o importa.",
+    "activeLabel": "ACTIVO",
+    "activeStarLabel": "Activo",
+    "activateStarLabel": "Activar",
+    "removeActiveTitle": "Quitar como activo",
+    "setActiveTitle": "Marcar como activo",
+    "deleteProgramConfirm": "¿Eliminar este programa?",
+    "toastDownloaded": "↓ Programa descargado",
+    "tabs": {
+      "programs": "Programas",
+      "history": "Historial",
+      "progress": "Progresión",
+      "info": "Info"
+    },
+    "scope": {
+      "active": "Programa activo",
+      "all": "Todos los programas"
+    },
+    "period": {
+      "7d": "7 días",
+      "30d": "30 días",
+      "all": "Todo"
+    },
+    "noSessionsFilter": "Sin sesiones para este filtro.",
+    "noProgressFilter": "Sin datos de progresión para este filtro.",
+    "contextExport": "↑ Exportar archivo",
+    "contextDelete": "✕ Eliminar",
+    "actionView": "Ver",
+    "actionEdit": "Editar",
+    "actionShare": "Compartir",
+    "sessionsLastActivity": "{{count}} sesiones · Última: {{date}}",
+    "sessionsOnly": "{{count}} sesiones",
+    "statusLabel": "Estado",
+    "statusActive": "Activo",
+    "statusPaused": "En pausa",
+    "statusInactive": "Inactivo",
+    "personalData": "👤 Datos personales",
+    "bodyWeight": "⚖️ Peso corporal",
+    "billing": "💳 Facturación",
+    "fieldFirstName": "Nombre de pila",
+    "fieldFullName": "Nombre completo",
+    "fieldPhone": "Teléfono",
+    "fieldEmail": "Email",
+    "fieldNotes": "Notas",
+    "notesPlaceholder": "Objetivos, lesiones, preferencias, observaciones...",
+    "notesSavedHint": "Se guarda al salir del campo.",
+    "noWeightData": "Sin datos todavía.",
+    "noBillingData": "Sin entradas todavía.",
+    "billedLabel": "Facturado",
+    "receivedLabel": "Cobrado",
+    "pendingLabel": "Pendiente",
+    "billConceptPlaceholder": "Concepto (ej: Mensualidad junio)",
+    "billPaid": "✓ Pagado",
+    "billPending": "Pendiente",
+    "billDeleteConfirm": "¿Eliminar esta factura?",
+    "globalBilling": "Facturación global",
+    "statusBilled": "Facturado",
+    "statusPaid": "Pagado",
+    "periodThisMonth": "Este mes",
+    "periodLast3Months": "Últimos 3 meses",
+    "noBillingEntries": "Sin entradas para este filtro.",
+    "newClientModal": {
+      "title": "NUEVO CLIENTE",
+      "namePlaceholder": "Nombre del cliente",
+      "createBtn": "CREAR"
+    },
+    "newProgramModal": {
+      "title": "NUEVO PROGRAMA",
+      "tabBlank": "Vacío",
+      "tabTemplate": "Desde plantilla",
+      "namePlaceholder": "Nombre del programa",
+      "sessionsLabel": "Sesiones",
+      "templateLabel": "Plantilla",
+      "createBtn": "CREAR Y EDITAR",
+      "assignBtn": "ASIGNAR"
+    },
+    "importModal": {
+      "title": "IMPORTAR ARCHIVO",
+      "replaceLabel": "Reemplazar",
+      "replaceDesc": "Sustituye el programa con el mismo ID y añade las sesiones.",
+      "addProgramLabel": "Añadir programa",
+      "addProgramDesc": "Añade el programa como nuevo al cliente.",
+      "mergeLogLabel": "Actualizar historial",
+      "mergeLogDesc": "Solo añade las sesiones del archivo."
+    }
+  },
+  "templates": {
+    "title": "Plantillas",
+    "newBtn": "＋ NUEVA",
+    "empty": "Sin plantillas todavía.\nCrea plantillas para asignarlas\nrápidamente a tus clientes.",
+    "deleteConfirm": "¿Eliminar esta plantilla?",
+    "toastDuplicated": "✓ Plantilla duplicada",
+    "badge": "PLANTILLA",
+    "contextUseWithClient": "👥 Usar con cliente",
+    "contextDuplicate": "⧉ Duplicar",
+    "contextExport": "↑ Exportar archivo",
+    "contextDelete": "✕ Eliminar",
+    "actionView": "Ver",
+    "actionEdit": "Editar",
+    "copyNameSuffix": " (copia)",
+    "newModal": {
+      "title": "NUEVA PLANTILLA",
+      "namePlaceholder": "Nombre de la plantilla",
+      "sessionsLabel": "Sesiones",
+      "createBtn": "CREAR Y EDITAR"
+    },
+    "assignModal": {
+      "title": "ASIGNAR A CLIENTE",
+      "desc": "Se creará una copia del programa para el cliente seleccionado. La plantilla original no se modifica.",
+      "noClients": "Sin clientes todavía.\nCrea un cliente primero desde el tab Clientes.",
+      "clientLabel": "Cliente",
+      "programNameLabel": "Nombre del programa",
+      "programNamePlaceholder": "Nombre del programa para este cliente",
+      "assignBtn": "ASIGNAR"
+    }
+  },
+  "print": {
+    "viewerTitle": "VISOR DEL PROGRAMA",
+    "exportPdf": "↓ EXPORTAR PDF",
+    "trainingProgram": "Programa de Entrenamiento",
+    "metaDays": "Días / semana",
+    "metaStructure": "Estructura",
+    "metaTotalSets": "Series totales",
+    "metaDaysValue": "{{count}} días",
+    "metaSetsValue": "{{count}} series",
+    "legendKey": "KEY = ejercicio principal del día",
+    "legendRest": "Descanso mínimo entre sesiones: 1 día",
+    "legendWarmup": "Calentamiento: 8–10 min movilidad + activación escapular",
+    "tableNum": "#",
+    "tableExercise": "Ejercicio",
+    "tableSetsReps": "Series × Reps",
+    "tableRest": "Descanso",
+    "sessionLabel": "Sesión {{label}} · {{name}}",
+    "submax": "submáx",
+    "perSide": "c/p"
+  },
+  "restTimer": {
+    "remaining": "{{count}}s restantes",
+    "go": "¡Adelante!",
+    "skip": "Saltar ›"
+  },
+  "progression": {
+    "time_allHitMax": "Objetivo superado. Progresa a {{next}}s por serie la próxima vez.",
+    "time_allOk": "Bien. Consolida el rango {{min}}–{{max}}s antes de subir.",
+    "time_keep": "Sigue trabajando en el rango {{min}}–{{max}}s. Sin prisa.",
+    "submax_weight": "Sesión anterior: {{total}} reps en {{sets}} series · {{weight}}kg. Supera esa marca hoy.",
+    "submax_noweight": "Sesión anterior: {{total}} reps en {{sets}} series. Supera esa marca hoy.",
+    "decrease_lastAssist": "¡Excelente! Todas las series al máximo con {{assist}}kg de asistencia. La próxima vez intenta sin asistencia.",
+    "decrease_allHit": "Todas las series al máximo. Reduce la asistencia a {{next}}kg la próxima vez.",
+    "decrease_free": "¡Todas las series sin asistencia! Es hora de pasar a la versión lastrada.",
+    "decrease_mostHit": "Bien. Consolida con {{assistStr}} y busca más reps.",
+    "decrease_struggling": "No llegaste al mínimo. Aumenta la asistencia a {{next}}kg.",
+    "decrease_hold": "Sigue con {{assistStr}} y foco en la técnica.",
+    "normal_allHit": "Todas las series al máximo. Sube a {{next}}kg la próxima vez.",
+    "normal_mostHit": "Bien ejecutado. Mantén {{weightStr}} y busca más reps dentro del rango.",
+    "normal_struggling": "No llegaste al mínimo de reps. Prueba con {{next}}kg para consolidar técnica.",
+    "normal_hold": "Sigue con {{weightStr}} y foco en la técnica.",
+    "withAssist": "{{kg}}kg de asistencia",
+    "noAssist": "sin asistencia",
+    "withWeight": "{{kg}}kg",
+    "sameWeight": "el mismo peso"
+  }
+}

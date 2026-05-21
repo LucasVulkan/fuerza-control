@@ -26,6 +26,7 @@ export const EXERCISE_LIBRARY = {
   pull_up_weighted: {
     id: 'pull_up_weighted',
     name: 'Dominadas lastradas',
+    nameEn: 'Weighted Pull-ups',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -44,12 +45,18 @@ export const EXERCISE_LIBRARY = {
       'Baja en 3 segundos, sube controlado. No uses impulso.',
       'El lastre cuelga del cinturón, no lo sujetes con las manos.',
     ],
+    tipsEn: [
+      'Retract and depress your scapulae before pulling — don\'t start with shrugged shoulders.',
+      'Lower in 3 seconds, controlled pull-up. No momentum.',
+      'The weight hangs from the belt — don\'t grip it with your hands.',
+    ],
     warmup: ['10 retracciones escapulares en barra', '10 rotaciones de hombro con banda', '2 series de dominadas con banda al 50%'],
   },
 
   pull_up_weighted_barbell: {
     id: 'pull_up_weighted_barbell',
     name: 'Dominadas sin lastre',
+    nameEn: 'Pull-ups (bodyweight)',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -68,12 +75,18 @@ export const EXERCISE_LIBRARY = {
       'Baja en 3 segundos, sube controlado.',
       'Cuando domines 8 reps limpias, pasa a la versión lastrada.',
     ],
+    tipsEn: [
+      'Scapulae retracted and depressed before pulling.',
+      'Lower in 3 seconds, controlled ascent.',
+      'When you master 8 clean reps, move to the weighted version.',
+    ],
     warmup: ['10 retracciones escapulares en barra', 'Dead hang activo 20s'],
   },
 
   pull_up_assisted: {
     id: 'pull_up_assisted',
     name: 'Dominadas asistidas',
+    nameEn: 'Assisted Pull-ups',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps'],
@@ -91,12 +104,17 @@ export const EXERCISE_LIBRARY = {
       'La banda reduce el peso — el número registrado es la resistencia de la banda.',
       'Cuando completes todas las series al máximo, baja a una banda con menos resistencia.',
     ],
+    tipsEn: [
+      'The band reduces your weight — the number logged is the band resistance.',
+      'When you complete all sets at max reps, switch to a lighter band.',
+    ],
     warmup: ['10 retracciones escapulares en barra', 'Dead hang pasivo 20s'],
   },
 
   pull_up_neutral: {
     id: 'pull_up_neutral',
     name: 'Dominadas agarre neutro',
+    nameEn: 'Neutral-grip Pull-ups',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'brachialis'],
@@ -114,12 +132,17 @@ export const EXERCISE_LIBRARY = {
       'Agarre neutro (palmas enfrentadas) — más amigable para el codo y el hombro.',
       'Misma técnica que las dominadas normales: escápulas abajo, bajada controlada.',
     ],
+    tipsEn: [
+      'Neutral grip (palms facing each other) — easier on the elbow and shoulder.',
+      'Same technique as regular pull-ups: scapulae down, controlled descent.',
+    ],
     warmup: [],
   },
 
   pulldown_neutral: {
     id: 'pulldown_neutral',
     name: 'Pull-down agarre neutro',
+    nameEn: 'Neutral-grip Pulldown',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps'],
@@ -134,6 +157,7 @@ export const EXERCISE_LIBRARY = {
     assistedVariantId: null,
     relatedVariants: [],
     tips: ['Tira hacia el pecho, no detrás de la cabeza.', 'Escápulas abajo y atrás al final del recorrido.'],
+    tipsEn: ['Pull toward your chest, not behind your head.', 'Scapulae down and back at the end of the movement.'],
     warmup: [],
   },
 
@@ -141,6 +165,7 @@ export const EXERCISE_LIBRARY = {
   cable_row: {
     id: 'cable_row',
     name: 'Remo en polea baja',
+    nameEn: 'Cable Row (low pulley)',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['rhomboids', 'mid_trapezius', 'biceps'],
@@ -159,12 +184,18 @@ export const EXERCISE_LIBRARY = {
       'Al final del movimiento, aprieta las escápulas.',
       'El torso se queda recto durante todo el recorrido, sin balanceo.',
     ],
+    tipsEn: [
+      'Pull with your elbows, not your hands — biceps are secondary.',
+      'Squeeze your scapulae together at the end of the movement.',
+      'Torso stays upright throughout — no swinging.',
+    ],
     warmup: [],
   },
 
   seated_row_neutral: {
     id: 'seated_row_neutral',
     name: 'Remo polea sentada agarre neutro',
+    nameEn: 'Seated Cable Row (neutral grip)',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['rhomboids', 'mid_trapezius', 'biceps'],
@@ -185,6 +216,7 @@ export const EXERCISE_LIBRARY = {
   dip: {
     id: 'dip',
     name: 'Fondos en paralelas',
+    nameEn: 'Parallel Bar Dips',
     pattern: 'vertical_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -204,12 +236,19 @@ export const EXERCISE_LIBRARY = {
       'Escápulas deprimidas durante todo el movimiento.',
       'Bajada en 2–3 segundos, subida controlada.',
     ],
+    tipsEn: [
+      'Slight forward lean to engage more chest.',
+      'Lower until your shoulder is at elbow height — no lower.',
+      'Scapulae depressed throughout the movement.',
+      'Lower in 2–3 seconds, controlled ascent.',
+    ],
     warmup: ['10 fondos de hombros en paralelas', '10 rotaciones de hombro', '5 dips con peso corporal sin bajar del todo'],
   },
 
   dip_assisted: {
     id: 'dip_assisted',
     name: 'Fondos asistidos (banda)',
+    nameEn: 'Assisted Dips (band)',
     pattern: 'vertical_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -227,12 +266,17 @@ export const EXERCISE_LIBRARY = {
       'La banda reduce el peso — el número registrado es la asistencia.',
       'Misma técnica que los fondos normales: torso inclinado, escápulas abajo.',
     ],
+    tipsEn: [
+      'The band reduces your weight — the number logged is the assistance.',
+      'Same technique as regular dips: torso leaning forward, scapulae down.',
+    ],
     warmup: ['10 fondos de hombros en paralelas', '10 rotaciones de hombro'],
   },
 
   shoulder_press_db: {
     id: 'shoulder_press_db',
     name: 'Press de hombro mancuernas',
+    nameEn: 'Dumbbell Shoulder Press',
     pattern: 'vertical_push',
     primaryGroup: 'shoulders',
     muscles: ['deltoid', 'triceps', 'upper_trapezius'],
@@ -251,12 +295,18 @@ export const EXERCISE_LIBRARY = {
       'Codos a 45° del torso al bajar.',
       'Sube hasta casi extender pero sin bloquear el codo.',
     ],
+    tipsEn: [
+      'Core braced throughout — don\'t arch your lower back.',
+      'Elbows at 45° from your torso on the way down.',
+      'Press up until nearly fully extended but don\'t lock the elbow.',
+    ],
     warmup: [],
   },
 
   shoulder_press_machine: {
     id: 'shoulder_press_machine',
     name: 'Press de hombro en máquina',
+    nameEn: 'Machine Shoulder Press',
     pattern: 'vertical_push',
     primaryGroup: 'shoulders',
     muscles: ['deltoid', 'triceps'],
@@ -274,6 +324,10 @@ export const EXERCISE_LIBRARY = {
       'Ajusta el asiento para que los codos queden a 90° al inicio.',
       'No bloquees los codos arriba — mantén tensión constante.',
     ],
+    tipsEn: [
+      'Adjust the seat so your elbows are at 90° at the start.',
+      'Don\'t lock your elbows at the top — maintain constant tension.',
+    ],
     warmup: [],
   },
 
@@ -281,6 +335,7 @@ export const EXERCISE_LIBRARY = {
   push_up: {
     id: 'push_up',
     name: 'Flexiones (progresiva)',
+    nameEn: 'Push-ups (progressive)',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -299,12 +354,18 @@ export const EXERCISE_LIBRARY = {
       'Cuerpo rígido como una tabla: glúteos apretados, core activo.',
       'Objetivo: superar el total de reps de la sesión anterior.',
     ],
+    tipsEn: [
+      'Stop when your form breaks, not when it "hurts".',
+      'Body rigid as a plank: glutes squeezed, core active.',
+      'Goal: beat your total reps from the previous session.',
+    ],
     warmup: [],
   },
 
   chest_press_machine: {
     id: 'chest_press_machine',
     name: 'Press pecho en máquina',
+    nameEn: 'Machine Chest Press',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -325,6 +386,7 @@ export const EXERCISE_LIBRARY = {
   romanian_deadlift: {
     id: 'romanian_deadlift',
     name: 'Peso muerto rumano (barra)',
+    nameEn: 'Romanian Deadlift (barbell)',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings', 'glutes', 'erector_spinae'],
@@ -343,12 +405,18 @@ export const EXERCISE_LIBRARY = {
       'La barra roza las piernas durante todo el recorrido.',
       'Espalda neutra en todo momento, nunca redondees la lumbar.',
     ],
+    tipsEn: [
+      'It\'s a hip hinge, not a squat — knees slightly bent and fixed.',
+      'The bar grazes your legs throughout the movement.',
+      'Neutral spine at all times — never round your lower back.',
+    ],
     warmup: ['10 buenos días sin peso', '5 reps técnicas con barra vacía'],
   },
 
   romanian_deadlift_db: {
     id: 'romanian_deadlift_db',
     name: 'Peso muerto rumano (mancuernas)',
+    nameEn: 'Romanian Deadlift (dumbbells)',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings', 'glutes', 'erector_spinae'],
@@ -366,12 +434,17 @@ export const EXERCISE_LIBRARY = {
       'Misma mecánica que el rumano con barra.',
       'Mantén las mancuernas pegadas a las piernas durante el recorrido.',
     ],
+    tipsEn: [
+      'Same mechanics as the barbell Romanian deadlift.',
+      'Keep the dumbbells close to your legs throughout.',
+    ],
     warmup: [],
   },
 
   kettlebell_swing: {
     id: 'kettlebell_swing',
     name: 'Swing con kettlebell',
+    nameEn: 'Kettlebell Swing',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings', 'glutes', 'erector_spinae'],
@@ -390,12 +463,18 @@ export const EXERCISE_LIBRARY = {
       'En la posición alta, glúteos completamente contraídos y cuerpo recto.',
       'Respira: inhala al bajar, exhala fuerte al extender la cadera.',
     ],
+    tipsEn: [
+      'The movement is driven by the hips, not the arms — explosive hip hinge.',
+      'At the top, glutes fully contracted and body upright.',
+      'Breathe: inhale on the way down, exhale forcefully on hip extension.',
+    ],
     warmup: [],
   },
 
   hip_thrust: {
     id: 'hip_thrust',
     name: 'Hip thrust',
+    nameEn: 'Hip Thrust',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['glutes', 'hamstrings'],
@@ -414,12 +493,18 @@ export const EXERCISE_LIBRARY = {
       'Empuja el suelo con los talones, no con la punta del pie.',
       'En la posición alta, el cuerpo forma una línea recta de hombros a rodillas.',
     ],
+    tipsEn: [
+      'The bar rests on your hips, not your abdomen.',
+      'Drive through your heels, not your toes.',
+      'At the top, your body forms a straight line from shoulders to knees.',
+    ],
     warmup: [],
   },
 
   glute_bridge_unilateral: {
     id: 'glute_bridge_unilateral',
     name: 'Puente glúteo unilateral',
+    nameEn: 'Unilateral Glute Bridge',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['glutes', 'hamstrings'],
@@ -440,6 +525,7 @@ export const EXERCISE_LIBRARY = {
   leg_curl_lying: {
     id: 'leg_curl_lying',
     name: 'Curl isquios tumbada',
+    nameEn: 'Lying Leg Curl',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings'],
@@ -460,6 +546,7 @@ export const EXERCISE_LIBRARY = {
   squat_barbell: {
     id: 'squat_barbell',
     name: 'Sentadilla con barra',
+    nameEn: 'Barbell Back Squat',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes', 'hamstrings', 'erector_spinae'],
@@ -479,12 +566,19 @@ export const EXERCISE_LIBRARY = {
       'Pecho arriba, espalda neutra.',
       'Baja hasta que los muslos queden paralelos al suelo.',
     ],
+    tipsEn: [
+      'Feet shoulder-width apart, toes slightly out.',
+      'Knees track over toes throughout the movement.',
+      'Chest up, neutral spine.',
+      'Lower until your thighs are parallel to the floor.',
+    ],
     warmup: ['10 sentadillas de activación sin peso', '5 reps técnicas con barra vacía'],
   },
 
   bulgarian_split_squat: {
     id: 'bulgarian_split_squat',
     name: 'Sentadilla búlgara',
+    nameEn: 'Bulgarian Split Squat',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes', 'hamstrings'],
@@ -504,12 +598,18 @@ export const EXERCISE_LIBRARY = {
       'La rodilla delantera no sobrepasa demasiado la punta del pie.',
       'Completa todas las series de una pierna antes de cambiar.',
     ],
+    tipsEn: [
+      'The rear foot rests on the bench — it doesn\'t push, just balances.',
+      'Front knee doesn\'t travel too far past your toes.',
+      'Complete all sets on one leg before switching.',
+    ],
     warmup: [],
   },
 
   split_squat_static: {
     id: 'split_squat_static',
     name: 'Zancada estática (split squat)',
+    nameEn: 'Static Split Squat',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes'],
@@ -530,6 +630,7 @@ export const EXERCISE_LIBRARY = {
   walking_lunge: {
     id: 'walking_lunge',
     name: 'Zancada caminando',
+    nameEn: 'Walking Lunge',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes', 'hamstrings'],
@@ -549,12 +650,18 @@ export const EXERCISE_LIBRARY = {
       'El torso se mantiene erguido durante todo el movimiento.',
       'Las reps son por pierna.',
     ],
+    tipsEn: [
+      'Long stride — rear knee drops almost to the floor.',
+      'Torso stays upright throughout the movement.',
+      'Reps are per leg.',
+    ],
     warmup: [],
   },
 
   leg_press_standard: {
     id: 'leg_press_standard',
     name: 'Prensa (pies centrados)',
+    nameEn: 'Leg Press (feet centered)',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes'],
@@ -573,12 +680,18 @@ export const EXERCISE_LIBRARY = {
       'No bloquees las rodillas arriba.',
       'Baja hasta que las rodillas formen 90°.',
     ],
+    tipsEn: [
+      'Feet shoulder-width apart, toes slightly out.',
+      'Don\'t lock your knees at the top.',
+      'Lower until your knees reach 90°.',
+    ],
     warmup: [],
   },
 
   leg_press_high: {
     id: 'leg_press_high',
     name: 'Prensa (pies altos)',
+    nameEn: 'Leg Press (high feet)',
     pattern: 'squat',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['glutes', 'hamstrings', 'quadriceps'],
@@ -598,6 +711,7 @@ export const EXERCISE_LIBRARY = {
   goblet_squat: {
     id: 'goblet_squat',
     name: 'Sentadilla goblet',
+    nameEn: 'Goblet Squat',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes'],
@@ -617,6 +731,7 @@ export const EXERCISE_LIBRARY = {
   hip_abduction_machine: {
     id: 'hip_abduction_machine',
     name: 'Abducción en máquina',
+    nameEn: 'Hip Abduction Machine',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['glutes', 'hip_abductors'],
@@ -636,6 +751,7 @@ export const EXERCISE_LIBRARY = {
   leg_extension: {
     id: 'leg_extension',
     name: 'Extensión cuádriceps',
+    nameEn: 'Leg Extension',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps'],
@@ -656,6 +772,7 @@ export const EXERCISE_LIBRARY = {
   bicep_curl_supination: {
     id: 'bicep_curl_supination',
     name: 'Curl bíceps supinación',
+    nameEn: 'Bicep Curl (supination)',
     pattern: 'vertical_pull',
     primaryGroup: 'arms',
     muscles: ['biceps', 'brachialis'],
@@ -674,6 +791,11 @@ export const EXERCISE_LIBRARY = {
       'El codo queda fijo al costado del torso.',
       'Bajada lenta — 2 a 3 segundos.',
     ],
+    tipsEn: [
+      'Supinate your wrist as you curl — activates more bicep.',
+      'Elbow stays fixed at the side of your torso.',
+      'Slow lowering — 2 to 3 seconds.',
+    ],
     warmup: [],
   },
 
@@ -681,6 +803,7 @@ export const EXERCISE_LIBRARY = {
   hollow_body_hold: {
     id: 'hollow_body_hold',
     name: 'Hollow body hold',
+    nameEn: 'Hollow Body Hold',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors'],
@@ -699,12 +822,18 @@ export const EXERCISE_LIBRARY = {
       'Brazos pegados a las orejas, piernas juntas y bajas.',
       'Si no aguantas, flexiona las rodillas.',
     ],
+    tipsEn: [
+      'Lower back pressed into the floor throughout the hold.',
+      'Arms by your ears, legs together and low.',
+      'If you can\'t hold it, bend your knees.',
+    ],
     warmup: [],
   },
 
   l_sit: {
     id: 'l_sit',
     name: 'L-sit en paralelas',
+    nameEn: 'L-Sit on Parallettes',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['hip_flexors', 'rectus_abdominis', 'triceps'],
@@ -722,12 +851,17 @@ export const EXERCISE_LIBRARY = {
       'Progresión: tuck hold → single leg → L-sit completo.',
       'Empuja las paralelas hacia abajo activamente.',
     ],
+    tipsEn: [
+      'Progression: tuck hold → single leg → full L-sit.',
+      'Push actively down into the parallettes.',
+    ],
     warmup: [],
   },
 
   plank: {
     id: 'plank',
     name: 'Plancha frontal',
+    nameEn: 'Plank',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'transverse_abdominis', 'shoulders'],
@@ -747,6 +881,7 @@ export const EXERCISE_LIBRARY = {
   dead_bug: {
     id: 'dead_bug',
     name: 'Dead bug',
+    nameEn: 'Dead Bug',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors'],
@@ -766,6 +901,7 @@ export const EXERCISE_LIBRARY = {
   ab_wheel_rollout: {
     id: 'ab_wheel_rollout',
     name: 'Ab wheel rollout',
+    nameEn: 'Ab Wheel Rollout',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors', 'latissimus_dorsi'],
@@ -783,12 +919,17 @@ export const EXERCISE_LIBRARY = {
       'Core completamente apretado — no arqueés la lumbar.',
       'La vuelta (recogida) es donde más trabaja el core.',
     ],
+    tipsEn: [
+      'Core fully braced — don\'t let your lower back sag.',
+      'The return (pulling back) is where your core works hardest.',
+    ],
     warmup: [],
   },
 
   leg_raise_lying: {
     id: 'leg_raise_lying',
     name: 'Elevación de piernas tumbada',
+    nameEn: 'Lying Leg Raise',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors'],
@@ -809,6 +950,7 @@ export const EXERCISE_LIBRARY = {
   dead_hang: {
     id: 'dead_hang',
     name: 'Dead hang activo',
+    nameEn: 'Active Dead Hang',
     pattern: 'carry_grip',
     primaryGroup: 'grip',
     muscles: ['latissimus_dorsi', 'serratus', 'forearms'],
@@ -826,6 +968,10 @@ export const EXERCISE_LIBRARY = {
       '"Activo" significa escápulas deprimidas — no cuelgues pasivo.',
       'Mejora el agarre y la salud del hombro.',
     ],
+    tipsEn: [
+      '"Active" means scapulae depressed — don\'t hang passively.',
+      'Improves grip strength and shoulder health.',
+    ],
     warmup: [],
   },
 
@@ -833,6 +979,7 @@ export const EXERCISE_LIBRARY = {
   bench_press_db: {
     id: 'bench_press_db',
     name: 'Press de banca con mancuernas',
+    nameEn: 'Dumbbell Bench Press',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -851,12 +998,18 @@ export const EXERCISE_LIBRARY = {
       'Baja las mancuernas hasta que los codos queden a 90°.',
       'Empuja hacia arriba y ligeramente hacia dentro — no hacia fuera.',
     ],
+    tipsEn: [
+      'Scapulae retracted and braced against the bench throughout.',
+      'Lower dumbbells until your elbows reach 90°.',
+      'Press up and slightly inward — not outward.',
+    ],
     warmup: [],
   },
 
   bench_press_barbell: {
     id: 'bench_press_barbell',
     name: 'Press de banca con barra',
+    nameEn: 'Barbell Bench Press',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'triceps', 'anterior_deltoid'],
@@ -875,12 +1028,18 @@ export const EXERCISE_LIBRARY = {
       'Escápulas retraídas y pies apoyados en el suelo.',
       'Baja la barra al pecho de forma controlada — no la dejes caer.',
     ],
+    tipsEn: [
+      'Grip slightly wider than shoulder-width.',
+      'Scapulae retracted and feet flat on the floor.',
+      'Lower the bar to your chest in a controlled manner — don\'t drop it.',
+    ],
     warmup: ['5 reps con barra vacía', '1 serie al 50% del peso de trabajo'],
   },
 
   chest_fly_machine: {
     id: 'chest_fly_machine',
     name: 'Aperturas en máquina (pec deck)',
+    nameEn: 'Machine Chest Fly (Pec Deck)',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis'],
@@ -899,12 +1058,18 @@ export const EXERCISE_LIBRARY = {
       'El movimiento es de abrazar — no de empujar.',
       'Contrae el pectoral al cerrar.',
     ],
+    tipsEn: [
+      'Elbows slightly bent throughout the movement.',
+      'The motion is like hugging — not pushing.',
+      'Contract your chest at the closed position.',
+    ],
     warmup: [],
   },
 
   chest_fly_db: {
     id: 'chest_fly_db',
     name: 'Aperturas con mancuernas',
+    nameEn: 'Dumbbell Chest Fly',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis'],
@@ -922,12 +1087,17 @@ export const EXERCISE_LIBRARY = {
       'Codos ligeramente flexionados — no los bloquees.',
       'Abre hasta sentir el estiramiento del pectoral, sin forzar el hombro.',
     ],
+    tipsEn: [
+      'Elbows slightly bent — don\'t lock them.',
+      'Open until you feel a chest stretch, without forcing the shoulder.',
+    ],
     warmup: [],
   },
 
   bench_dip: {
     id: 'bench_dip',
     name: 'Fondos en banco',
+    nameEn: 'Bench Dip',
     pattern: 'vertical_push',
     primaryGroup: 'chest',
     muscles: ['triceps', 'anterior_deltoid', 'pectoralis'],
@@ -946,6 +1116,11 @@ export const EXERCISE_LIBRARY = {
       'Baja hasta que los codos formen 90°.',
       'Mantén el cuerpo cerca del banco durante todo el movimiento.',
     ],
+    tipsEn: [
+      'Hands on the edge of the bench, fingers pointing forward.',
+      'Lower until your elbows reach 90°.',
+      'Keep your body close to the bench throughout.',
+    ],
     warmup: [],
   },
 
@@ -953,6 +1128,7 @@ export const EXERCISE_LIBRARY = {
   lateral_raise_db: {
     id: 'lateral_raise_db',
     name: 'Elevaciones laterales',
+    nameEn: 'Lateral Raises',
     pattern: 'vertical_push',
     primaryGroup: 'shoulders',
     muscles: ['deltoid'],
@@ -971,6 +1147,11 @@ export const EXERCISE_LIBRARY = {
       'Sube hasta que los brazos queden paralelos al suelo — no más.',
       'Control total en la bajada — no dejes caer.',
     ],
+    tipsEn: [
+      'Elbows slightly bent throughout.',
+      'Raise until your arms are parallel to the floor — no higher.',
+      'Full control on the way down — don\'t drop.',
+    ],
     warmup: [],
   },
 
@@ -978,6 +1159,7 @@ export const EXERCISE_LIBRARY = {
   db_row_unilateral: {
     id: 'db_row_unilateral',
     name: 'Remo con mancuerna (unilateral)',
+    nameEn: 'Dumbbell Row (unilateral)',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'rhomboids', 'biceps'],
@@ -997,12 +1179,18 @@ export const EXERCISE_LIBRARY = {
       'Tira del codo hacia arriba y atrás — no hacia el lado.',
       'Completa todas las series de un lado antes de cambiar.',
     ],
+    tipsEn: [
+      'Support the same-side knee and hand on the bench.',
+      'Pull your elbow up and back — not to the side.',
+      'Complete all sets on one side before switching.',
+    ],
     warmup: [],
   },
 
   barbell_row: {
     id: 'barbell_row',
     name: 'Remo con barra',
+    nameEn: 'Barbell Row',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'rhomboids', 'mid_trapezius', 'biceps'],
@@ -1021,12 +1209,18 @@ export const EXERCISE_LIBRARY = {
       'Tira la barra hacia el abdomen bajo, no hacia el pecho.',
       'Espalda neutra durante todo el recorrido.',
     ],
+    tipsEn: [
+      'Torso angled at 45° — not fully horizontal.',
+      'Pull the bar toward your lower abdomen, not your chest.',
+      'Neutral spine throughout the movement.',
+    ],
     warmup: [],
   },
 
   australian_row: {
     id: 'australian_row',
     name: 'Remo australiano (barra baja)',
+    nameEn: 'Australian Row (barbell)',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['rhomboids', 'mid_trapezius', 'biceps', 'rear_deltoid'],
@@ -1045,12 +1239,18 @@ export const EXERCISE_LIBRARY = {
       'Tira el pecho hacia la barra, no la barbilla.',
       'Cuanto más horizontal el cuerpo, más difícil.',
     ],
+    tipsEn: [
+      'Body rigid as a plank — glutes and core braced.',
+      'Pull your chest to the bar, not your chin.',
+      'The more horizontal your body, the harder it is.',
+    ],
     warmup: [],
   },
 
   face_pull: {
     id: 'face_pull',
     name: 'Face pull en polea',
+    nameEn: 'Face Pull (cable)',
     pattern: 'horizontal_pull',
     primaryGroup: 'shoulders',
     muscles: ['rear_deltoid', 'mid_trapezius', 'external_rotators'],
@@ -1069,6 +1269,11 @@ export const EXERCISE_LIBRARY = {
       'Tira hacia la cara separando los codos — como si apuntaras hacia fuera.',
       'Excelente para la salud del hombro y el manguito rotador.',
     ],
+    tipsEn: [
+      'Cable at eye level or slightly above.',
+      'Pull toward your face, separating your elbows — as if aiming outward.',
+      'Excellent for shoulder health and the rotator cuff.',
+    ],
     warmup: [],
   },
 
@@ -1076,6 +1281,7 @@ export const EXERCISE_LIBRARY = {
   pull_up_supine: {
     id: 'pull_up_supine',
     name: 'Dominadas agarre supino (chin-up)',
+    nameEn: 'Supine-grip Pull-up (Chin-up)',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps'],
@@ -1093,6 +1299,10 @@ export const EXERCISE_LIBRARY = {
       'Agarre supino (palmas hacia ti) — más activación de bíceps.',
       'Misma técnica que las dominadas: escápulas abajo, bajada controlada.',
     ],
+    tipsEn: [
+      'Supine grip (palms toward you) — more bicep activation.',
+      'Same technique as pull-ups: scapulae down, controlled descent.',
+    ],
     warmup: [],
   },
 
@@ -1100,6 +1310,7 @@ export const EXERCISE_LIBRARY = {
   hack_squat: {
     id: 'hack_squat',
     name: 'Hack squat',
+    nameEn: 'Hack Squat',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes'],
@@ -1118,12 +1329,18 @@ export const EXERCISE_LIBRARY = {
       'Rodillas siguen la dirección de los pies.',
       'Baja hasta que los muslos queden paralelos a la plataforma.',
     ],
+    tipsEn: [
+      'Feet shoulder-width or slightly closer.',
+      'Knees track over toes.',
+      'Lower until your thighs are parallel to the platform.',
+    ],
     warmup: [],
   },
 
   step_up_db: {
     id: 'step_up_db',
     name: 'Step up con mancuernas',
+    nameEn: 'Dumbbell Step-up',
     pattern: 'squat',
     primaryGroup: 'quads',
     muscles: ['quadriceps', 'glutes', 'hamstrings'],
@@ -1143,12 +1360,18 @@ export const EXERCISE_LIBRARY = {
       'Empuja a través del talón del pie que está arriba.',
       'El torso se mantiene erguido durante todo el movimiento.',
     ],
+    tipsEn: [
+      'Place your full foot on the step — not just your toes.',
+      'Drive through the heel of the foot that\'s on top.',
+      'Torso stays upright throughout.',
+    ],
     warmup: [],
   },
 
   good_morning: {
     id: 'good_morning',
     name: 'Good morning',
+    nameEn: 'Good Morning',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings', 'glutes', 'erector_spinae'],
@@ -1167,12 +1390,18 @@ export const EXERCISE_LIBRARY = {
       'Bisagra de cadera — rodillas ligeramente flexionadas, espalda neutra.',
       'Baja hasta sentir el estiramiento de isquios, no más.',
     ],
+    tipsEn: [
+      'Bar on your upper back, like in a squat.',
+      'Hip hinge — slightly bent knees, neutral spine.',
+      'Lower until you feel your hamstrings stretch, no further.',
+    ],
     warmup: [],
   },
 
   cable_kickback: {
     id: 'cable_kickback',
     name: 'Patada de glúteo en polea',
+    nameEn: 'Cable Glute Kickback',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['glutes'],
@@ -1192,6 +1421,11 @@ export const EXERCISE_LIBRARY = {
       'Extiende la pierna hacia atrás contrayendo el glúteo — sin arquear la lumbar.',
       'Completa todas las reps de un lado antes de cambiar.',
     ],
+    tipsEn: [
+      'Support yourself on the cable machine with both hands.',
+      'Extend your leg backward contracting the glute — without arching your lower back.',
+      'Complete all reps on one side before switching.',
+    ],
     warmup: [],
   },
 
@@ -1199,6 +1433,7 @@ export const EXERCISE_LIBRARY = {
   hammer_curl: {
     id: 'hammer_curl',
     name: 'Curl martillo',
+    nameEn: 'Hammer Curl',
     pattern: 'vertical_pull',
     primaryGroup: 'arms',
     muscles: ['brachialis', 'biceps', 'forearms'],
@@ -1216,12 +1451,17 @@ export const EXERCISE_LIBRARY = {
       'Agarre neutro (pulgar arriba) durante todo el recorrido.',
       'Codo fijo al costado — no lo adelantes al subir.',
     ],
+    tipsEn: [
+      'Neutral grip (thumb up) throughout.',
+      'Elbow fixed at your side — don\'t swing it forward on the way up.',
+    ],
     warmup: [],
   },
 
   tricep_pushdown: {
     id: 'tricep_pushdown',
     name: 'Extensión tríceps en polea',
+    nameEn: 'Tricep Pushdown',
     pattern: 'vertical_push',
     primaryGroup: 'arms',
     muscles: ['triceps'],
@@ -1240,12 +1480,18 @@ export const EXERCISE_LIBRARY = {
       'Extiende completamente el codo al bajar.',
       'Control total en la subida — no dejes que la polea te arrastre.',
     ],
+    tipsEn: [
+      'Elbows glued to your body throughout.',
+      'Fully extend your elbow at the bottom.',
+      'Full control on the way up — don\'t let the cable pull you.',
+    ],
     warmup: [],
   },
 
   skull_crusher: {
     id: 'skull_crusher',
     name: 'Press francés (skull crusher)',
+    nameEn: 'Skull Crusher',
     pattern: 'vertical_push',
     primaryGroup: 'arms',
     muscles: ['triceps'],
@@ -1264,6 +1510,11 @@ export const EXERCISE_LIBRARY = {
       'Baja la barra hacia la frente de forma controlada.',
       'Solo se mueven los antebrazos — la parte superior del brazo queda fija.',
     ],
+    tipsEn: [
+      'Elbows pointing at the ceiling throughout — don\'t flare them.',
+      'Lower the bar toward your forehead in a controlled manner.',
+      'Only your forearms move — upper arms stay fixed.',
+    ],
     warmup: [],
   },
 
@@ -1271,6 +1522,7 @@ export const EXERCISE_LIBRARY = {
   crunch: {
     id: 'crunch',
     name: 'Crunch',
+    nameEn: 'Crunch',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis'],
@@ -1289,12 +1541,18 @@ export const EXERCISE_LIBRARY = {
       'El movimiento es pequeño — solo despega los omóplatos del suelo.',
       'Exhala al contraer.',
     ],
+    tipsEn: [
+      'Hands behind your head without pulling your neck.',
+      'Small range of motion — just lift your shoulder blades off the floor.',
+      'Exhale as you contract.',
+    ],
     warmup: [],
   },
 
   cable_crunch: {
     id: 'cable_crunch',
     name: 'Crunch en polea',
+    nameEn: 'Cable Crunch',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis'],
@@ -1313,12 +1571,18 @@ export const EXERCISE_LIBRARY = {
       'Flexiona la columna hacia abajo — no es un hip hinge.',
       'El movimiento viene del abdomen, no de los codos.',
     ],
+    tipsEn: [
+      'Kneeling facing the cable, rope behind your head.',
+      'Flex your spine downward — it\'s not a hip hinge.',
+      'Movement comes from your abs, not your elbows.',
+    ],
     warmup: [],
   },
 
   russian_twist: {
     id: 'russian_twist',
     name: 'Russian twist',
+    nameEn: 'Russian Twist',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['obliques', 'rectus_abdominis'],
@@ -1337,12 +1601,18 @@ export const EXERCISE_LIBRARY = {
       'El movimiento viene de la rotación del torso, no de los brazos.',
       'Mantén la espalda recta — no te desplomes.',
     ],
+    tipsEn: [
+      'Feet elevated for more difficulty.',
+      'Movement comes from trunk rotation, not your arms.',
+      'Keep your back straight — don\'t slouch.',
+    ],
     warmup: [],
   },
 
   hanging_leg_raise: {
     id: 'hanging_leg_raise',
     name: 'Elevación de piernas en barra',
+    nameEn: 'Hanging Leg Raise',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors'],
@@ -1361,12 +1631,18 @@ export const EXERCISE_LIBRARY = {
       'Sube las piernas rectas hasta los 90° — sin balanceo.',
       'Baja de forma controlada — no dejes que la inercia te lleve.',
     ],
+    tipsEn: [
+      'Hang from the bar with a double overhand grip.',
+      'Raise straight legs to 90° — no swinging.',
+      'Lower in a controlled way — don\'t let inertia take you.',
+    ],
     warmup: [],
   },
 
   hanging_knee_raise: {
     id: 'hanging_knee_raise',
     name: 'Elevación de rodillas en barra',
+    nameEn: 'Hanging Knee Raise',
     pattern: 'core',
     primaryGroup: 'core',
     muscles: ['rectus_abdominis', 'hip_flexors'],
@@ -1385,6 +1661,11 @@ export const EXERCISE_LIBRARY = {
       'Sube las rodillas al pecho contrayendo el abdomen.',
       'Sin balanceo — el movimiento es controlado.',
     ],
+    tipsEn: [
+      'Easier version than hanging straight leg raise.',
+      'Raise your knees to your chest contracting your abs.',
+      'No swinging — controlled movement.',
+    ],
     warmup: [],
   },
   // ─── NUEVOS PARA TEMPLATES ───────────────────────────────────────
@@ -1392,6 +1673,7 @@ export const EXERCISE_LIBRARY = {
   incline_press_db: {
     id: 'incline_press_db',
     name: 'Press banca inclinado (mancuernas)',
+    nameEn: 'Incline Dumbbell Press',
     pattern: 'horizontal_push',
     primaryGroup: 'chest',
     muscles: ['pectoralis', 'anterior_deltoid', 'triceps'],
@@ -1410,12 +1692,18 @@ export const EXERCISE_LIBRARY = {
       'Escápulas retraídas durante todo el movimiento.',
       'Mayor activación del pectoral superior que el press plano.',
     ],
+    tipsEn: [
+      'Bench inclined at 30–45°.',
+      'Scapulae retracted throughout.',
+      'More upper chest activation than flat press.',
+    ],
     warmup: [],
   },
 
   overhead_press_barbell: {
     id: 'overhead_press_barbell',
     name: 'Press militar con barra',
+    nameEn: 'Overhead Press (barbell)',
     pattern: 'vertical_push',
     primaryGroup: 'shoulders',
     muscles: ['deltoid', 'triceps', 'upper_trapezius'],
@@ -1434,12 +1722,18 @@ export const EXERCISE_LIBRARY = {
       'Core apretado, glúteos contraídos — no arquees la lumbar.',
       'La barra sube en línea recta — mueve la cabeza ligeramente hacia atrás al pasar.',
     ],
+    tipsEn: [
+      'Standing or seated. Standing engages more core.',
+      'Core braced, glutes squeezed — don\'t arch your lower back.',
+      'The bar travels in a straight line — move your head slightly back as it passes.',
+    ],
     warmup: ['10 rotaciones de hombro', '5 reps con barra vacía'],
   },
 
   deadlift_conventional: {
     id: 'deadlift_conventional',
     name: 'Peso muerto convencional',
+    nameEn: 'Conventional Deadlift',
     pattern: 'hip_hinge',
     primaryGroup: 'glutes_hamstrings',
     muscles: ['hamstrings', 'glutes', 'erector_spinae', 'quadriceps', 'forearms'],
@@ -1459,12 +1753,19 @@ export const EXERCISE_LIBRARY = {
       'Empuja el suelo hacia abajo, no tires de la barra hacia arriba.',
       'La barra roza las piernas durante todo el recorrido.',
     ],
+    tipsEn: [
+      'Feet hip-width apart, bar over mid-foot.',
+      'Neutral spine before lifting — never round your lower back.',
+      'Push the floor down, don\'t pull the bar up.',
+      'The bar grazes your legs throughout.',
+    ],
     warmup: ['10 buenos días sin peso', '3 series progresivas al 40/60/80%'],
   },
 
   bicep_curl_barbell: {
     id: 'bicep_curl_barbell',
     name: 'Curl de bíceps con barra',
+    nameEn: 'Barbell Bicep Curl',
     pattern: 'vertical_pull',
     primaryGroup: 'arms',
     muscles: ['biceps', 'brachialis'],
@@ -1483,12 +1784,18 @@ export const EXERCISE_LIBRARY = {
       'Agarre supino, anchura de hombros.',
       'Bajada lenta — 2 a 3 segundos.',
     ],
+    tipsEn: [
+      'Elbows glued to your body throughout.',
+      'Supine grip, shoulder-width.',
+      'Slow lowering — 2 to 3 seconds.',
+    ],
     warmup: [],
   },
 
   pulldown_pronated: {
     id: 'pulldown_pronated',
     name: 'Jalón al pecho agarre prono',
+    nameEn: 'Pronated-grip Pulldown',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -1507,12 +1814,18 @@ export const EXERCISE_LIBRARY = {
       'Tira hacia el pecho — no detrás de la cabeza.',
       'Escápulas abajo y atrás al final del recorrido.',
     ],
+    tipsEn: [
+      'Pronated grip (palms away) slightly wider than shoulder-width.',
+      'Pull toward your chest — not behind your head.',
+      'Scapulae down and back at the end.',
+    ],
     warmup: [],
   },
 
   pulldown_supinated: {
     id: 'pulldown_supinated',
     name: 'Jalón al pecho agarre supino',
+    nameEn: 'Supinated-grip Pulldown',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps'],
@@ -1531,12 +1844,18 @@ export const EXERCISE_LIBRARY = {
       'Mayor activación de bíceps que el agarre prono.',
       'Tira hacia el pecho, escápulas abajo.',
     ],
+    tipsEn: [
+      'Supinated grip (palms toward you) at shoulder-width.',
+      'More bicep activation than pronated grip.',
+      'Pull toward your chest, scapulae down.',
+    ],
     warmup: [],
   },
 
   calf_raise_machine: {
     id: 'calf_raise_machine',
     name: 'Elevación de gemelos en máquina',
+    nameEn: 'Machine Calf Raise',
     pattern: 'calf_raise',
     primaryGroup: 'legs_lower',
     muscles: ['gastrocnemius', 'soleus'],
@@ -1555,12 +1874,18 @@ export const EXERCISE_LIBRARY = {
       'Pausa de 1 segundo arriba contrayendo el gemelo.',
       'Movimiento lento y controlado — no uses impulso.',
     ],
+    tipsEn: [
+      'Full range — lower until you feel your calf stretch.',
+      '1-second pause at the top contracting your calf.',
+      'Slow and controlled — no momentum.',
+    ],
     warmup: [],
   },
 
   calf_raise_standing: {
     id: 'calf_raise_standing',
     name: 'Elevación de gemelos de pie',
+    nameEn: 'Standing Calf Raise',
     pattern: 'calf_raise',
     primaryGroup: 'legs_lower',
     muscles: ['gastrocnemius', 'soleus'],
@@ -1578,6 +1903,11 @@ export const EXERCISE_LIBRARY = {
       'Apóyate en una pared o barra para el equilibrio.',
       'Sube lo más alto que puedas en la punta del pie.',
       'Baja lentamente hasta el estiramiento completo.',
+    ],
+    tipsEn: [
+      'Support yourself on a wall or bar for balance.',
+      'Rise as high as you can on your toes.',
+      'Lower slowly to a full stretch.',
     ],
     warmup: [],
   },

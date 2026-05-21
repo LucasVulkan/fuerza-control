@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
 export default function ArchivedProgramsView() {
+  const { t } = useTranslation();
   const navigate         = useStore((s) => s.navigate);
   const programs         = useStore((s) => s.programs);
   const restoreProgram   = useStore((s) => s.restoreProgram);
@@ -42,7 +44,7 @@ export default function ArchivedProgramsView() {
       >
         <span style={{ color: 'var(--muted)', fontSize: 22 }}>‹</span>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>
-          PROGRAMAS ARCHIVADOS
+          {t('archived.title')}
         </div>
       </div>
 
@@ -50,7 +52,7 @@ export default function ArchivedProgramsView() {
         {archived.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
             <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>🗂</span>
-            No hay programas archivados.
+            {t('archived.empty')}
           </div>
         ) : (
           archived.map((program) => {
@@ -64,15 +66,15 @@ export default function ArchivedProgramsView() {
                 <div style={{ padding: '14px 16px', borderBottom: 'var(--border-width) solid var(--border)' }}>
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{program.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
-                    Archivado: {program.archivedAt ?? '—'} · {sessions} sesiones registradas
+                    {t('archived.archivedOn', { date: program.archivedAt ?? '—', count: sessions })}
                   </div>
                 </div>
 
                 {/* Acciones */}
                 <div style={{ display: 'flex', borderTop: 'var(--border-width) solid var(--border)' }}>
-                  <ActionBtn label="Exportar" onClick={() => exportFullBackup()} />
+                  <ActionBtn label={t('archived.export')} onClick={() => exportFullBackup()} />
                   <div style={{ width: 1, background: 'var(--border)' }} />
-                  <ActionBtn label="Eliminar" onClick={() => setDeleteModal(program.id)} danger />
+                  <ActionBtn label={t('archived.delete')} onClick={() => setDeleteModal(program.id)} danger />
                 </div>
               </div>
             );
@@ -91,20 +93,20 @@ export default function ArchivedProgramsView() {
             width: 'calc(100% - 40px)', maxWidth: 380, padding: '20px',
           }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>
-              ELIMINAR PROGRAMA
+              {t('archived.deleteModal.title')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
-              Esta acción es permanente e irreversible.
+              {t('archived.deleteModal.desc')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <DeleteOption
-                label="Eliminar programa"
-                desc="El historial de sesiones se conserva."
+                label={t('archived.deleteModal.keepHistory')}
+                desc={t('archived.deleteModal.keepHistoryDesc')}
                 onClick={() => handleDelete(deleteModal, false)}
               />
               <DeleteOption
-                label="Eliminar programa e historial"
-                desc="Se elimina también el historial. No hay vuelta atrás."
+                label={t('archived.deleteModal.withHistory')}
+                desc={t('archived.deleteModal.withHistoryDesc')}
                 onClick={() => handleDelete(deleteModal, true)}
                 danger
               />
@@ -117,7 +119,7 @@ export default function ArchivedProgramsView() {
                   padding: '10px', cursor: 'pointer', marginTop: 4,
                 }}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>

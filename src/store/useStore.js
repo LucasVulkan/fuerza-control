@@ -19,6 +19,7 @@ import { SESSION_TEMPLATES, PROGRAMS } from '../data/programs';
 import { getProgression } from '../utils/progression';
 import { generateId } from '../utils/formatters';
 import { exportFullBackup, exportProgramWithLog, downloadJSON, parseImportFile, readFileAsText } from '../utils/storage';
+import i18n from '../i18n.js';
 
 // ─── Estado inicial ───────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ const INITIAL_PROFILE = {
   bodyWeight: null,
   theme: 'dark',
   isPro: true,  // dev: true para ver todas las features
+  language: 'es',
 };
 
 const INITIAL_ACTIVE_SESSION = {
@@ -90,6 +92,11 @@ export const useStore = create(
 
       setProfile: (updates) =>
         set((state) => ({ profile: { ...state.profile, ...updates } })),
+
+      setLanguage: (lang) => {
+        set((state) => ({ profile: { ...state.profile, language: lang } }));
+        i18n.changeLanguage(lang);
+      },
 
       setActiveProgram: (programId) =>
         set((state) => ({ profile: { ...state.profile, activeProgramId: programId } })),

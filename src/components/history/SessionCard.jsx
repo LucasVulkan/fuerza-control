@@ -1,6 +1,8 @@
 ﻿import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/formatters';
 import { useStore } from '../../store/useStore';
+import { useExerciseName } from '../../hooks/useExerciseName';
 
 const DAY_COLORS = {
   A: 'var(--day1)', B: 'var(--day2)', C: 'var(--day3)',
@@ -8,6 +10,8 @@ const DAY_COLORS = {
 };
 
 export default function SessionCard({ session, onDelete }) {
+  const { t } = useTranslation();
+  const getExName = useExerciseName();
   const [open, setOpen] = useState(false);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
@@ -53,7 +57,7 @@ export default function SessionCard({ session, onDelete }) {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: 1, color }}>
-            DÍA {label} · {name.toUpperCase()}
+            {t('common.day')} {label} · {name.toUpperCase()}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDate(session.timestamp)}</span>
@@ -61,10 +65,10 @@ export default function SessionCard({ session, onDelete }) {
               <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {stageName}</span>
             )}
             {session.notes?.trim() && (
-              <span style={{ fontSize: 9, background: 'var(--accent-tint)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 3, color: 'var(--accent)', padding: '1px 5px', letterSpacing: 0.5 }}>📝 nota</span>
+              <span style={{ fontSize: 9, background: 'var(--accent-tint)', border: 'var(--border-width) solid var(--accent-tint-border)', borderRadius: 3, color: 'var(--accent)', padding: '1px 5px', letterSpacing: 0.5 }}>{t('history.noteTag')}</span>
             )}
             {session.exercises?.some((e) => e.isAdHoc) && (
-              <span style={{ fontSize: 9, background: 'rgba(126,184,255,0.08)', border: '1px solid rgba(126,184,255,0.2)', borderRadius: 3, color: 'var(--accent3)', padding: '1px 5px', letterSpacing: 0.5 }}>＋ modificado</span>
+              <span style={{ fontSize: 9, background: 'rgba(126,184,255,0.08)', border: '1px solid rgba(126,184,255,0.2)', borderRadius: 3, color: 'var(--accent3)', padding: '1px 5px', letterSpacing: 0.5 }}>{t('history.modifiedTag')}</span>
             )}
           </div>
         </div>
@@ -101,7 +105,7 @@ export default function SessionCard({ session, onDelete }) {
               background: 'var(--accent-tint)',
               borderLeft: '2px solid var(--accent-tint-border)',
             }}>
-              <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, opacity: 0.8 }}>Nota</div>
+              <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, opacity: 0.8 }}>{t('history.noteLabel')}</div>
               <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{session.notes}</div>
             </div>
           )}
@@ -116,7 +120,7 @@ export default function SessionCard({ session, onDelete }) {
                 borderTop: 'var(--border-width) solid var(--border)',
               }}>
                 <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
-                  {def?.name ?? ex.exerciseId}
+                  {def ? getExName(def) : ex.exerciseId}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {ex.sets.map((s, i) => {

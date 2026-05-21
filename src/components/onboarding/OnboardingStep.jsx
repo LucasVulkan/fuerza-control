@@ -1,7 +1,4 @@
-/**
- * OnboardingStep — contenedor reutilizable para cada pantalla del onboarding.
- * Muestra título, subtítulo, opciones y botones de navegación.
- */
+import { useTranslation } from 'react-i18next';
 
 export default function OnboardingStep({
   title,
@@ -9,11 +6,11 @@ export default function OnboardingStep({
   children,
   onNext,
   onBack,
-  nextLabel = 'Siguiente',
   nextDisabled = false,
   showBack = true,
   isLast = false,
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px 20px 32px' }}>
       {/* Título */}
@@ -56,7 +53,7 @@ export default function OnboardingStep({
               cursor: 'pointer',
             }}
           >
-            ‹ Atrás
+            {t('common.back')}
           </button>
         )}
         <button
@@ -76,7 +73,7 @@ export default function OnboardingStep({
             transition: 'background 0.2s',
           }}
         >
-          {isLast ? '🏋️ GENERAR PROGRAMA' : nextLabel + ' ›'}
+          {isLast ? t('onboarding.generateProgram') : t('common.next') + ' ›'}
         </button>
       </div>
     </div>

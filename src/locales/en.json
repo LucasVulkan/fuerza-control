@@ -1,0 +1,678 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "back": "‹ Back",
+    "next": "Next",
+    "save": "Save",
+    "delete": "Delete",
+    "export": "Export",
+    "import": "Import",
+    "merge": "Merge",
+    "replace": "Replace",
+    "sessions": "sessions",
+    "session_one": "{{count}} session",
+    "session_other": "{{count}} sessions",
+    "exercises_one": "{{count}} exercise",
+    "exercises_other": "{{count}} exercises",
+    "clients_one": "{{count}} client",
+    "clients_other": "{{count}} clients",
+    "day": "DAY"
+  },
+  "header": {
+    "newProgram": "＋ New program",
+    "archivedPrograms": "🗂 Archived programs",
+    "exportSection": "Export",
+    "fullBackup": "↑ Full backup",
+    "programAndHistory": "↑ Program and history",
+    "importSection": "Import",
+    "importFile": "↓ Import file",
+    "developer": "Developer",
+    "plan": "Plan:",
+    "switchToFree": "Switch to FREE",
+    "switchToPro": "Switch to PRO",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "tabs": {
+    "session": "Session",
+    "history": "History",
+    "progress": "Progress",
+    "clients": "Clients",
+    "templates": "Templates"
+  },
+  "home": {
+    "noActiveProgram": "No active program.",
+    "newProgram": "＋ NEW PROGRAM",
+    "activeProgram": "Active program",
+    "selectSession": "Select today's session",
+    "program": "Program",
+    "viewProgram": "View program",
+    "edit": "Edit",
+    "archive": "Archive",
+    "stageProgress": "{{completed}} / {{total}} sessions",
+    "stageCount": "{{current}} / {{total}} stages",
+    "selectStage": "SELECT STAGE",
+    "activeStage": "Active",
+    "stageCompleted": "Stage complete!",
+    "stageAdvanceText": "You've finished {{current}}. Start {{next}}?",
+    "advanceTo": "ADVANCE TO {{name}}",
+    "continueStage": "Continue",
+    "archiveModal": {
+      "title": "ARCHIVE PROGRAM",
+      "desc": "The archived program can be viewed in \"Archived programs\" in the menu, but cannot be reactivated (free version).",
+      "keepHistory": "Archive program",
+      "keepHistoryDesc": "Session history is kept.",
+      "clearHistory": "Archive and clear history",
+      "clearHistoryDesc": "Session history for this program will also be deleted."
+    }
+  },
+  "workout": {
+    "addedThisSession": "Added this session",
+    "addExercise": "Add exercise",
+    "saveSession": "SAVE SESSION",
+    "discardSession": "Discard session",
+    "discardConfirm": "Discard current session? All entered data will be lost.",
+    "sessionSaved": "✓ Session saved",
+    "sessionNotes": "SESSION NOTES",
+    "notesPlaceholder": "Note how the session went, feelings, adjustments for next time...",
+    "notesSavedWith": "Saved with the session when you press SAVE SESSION.",
+    "addedLabel": "Added · This session",
+    "addSet": "＋ set",
+    "submax": "submax",
+    "perSide": "ea.",
+    "collapse": "→ collapse",
+    "exerciseLabel": "EX",
+    "previous": "Previous",
+    "timeSec": "Sec",
+    "kg": "Kg",
+    "reps": "Reps",
+    "seconds": "Seconds",
+    "assistance": "Assistance"
+  },
+  "history": {
+    "title": "HISTORY",
+    "currentProgram": "Current program",
+    "all": "All",
+    "allStages": "All ✕",
+    "noSessions": "No sessions for this filter.",
+    "deleteConfirm": "Delete this session?",
+    "noteLabel": "Note",
+    "noteTag": "📝 note",
+    "modifiedTag": "＋ modified"
+  },
+  "archived": {
+    "title": "ARCHIVED PROGRAMS",
+    "empty": "No archived programs.",
+    "archivedOn": "Archived: {{date}} · {{count}} sessions recorded",
+    "export": "Export",
+    "delete": "Delete",
+    "deleteModal": {
+      "title": "DELETE PROGRAM",
+      "desc": "This action is permanent and irreversible.",
+      "keepHistory": "Delete program",
+      "keepHistoryDesc": "Session history is kept.",
+      "withHistory": "Delete program and history",
+      "withHistoryDesc": "Session history will also be deleted. No going back."
+    }
+  },
+  "import": {
+    "title": "IMPORT FILE",
+    "typeFullBackup": "Full backup",
+    "typeProgramWithLog": "Program + history",
+    "typeProgram": "Program",
+    "warning": "⚠️ Selected data will replace existing data. This action cannot be undone.",
+    "sectionProgram": "Personal program",
+    "sectionProgramDesc": "Replaces the active program",
+    "sectionLog": "Session history",
+    "sectionCustomExercises": "Custom exercises",
+    "sectionClients": "Clients and managed programs",
+    "sectionTemplates": "Templates",
+    "sectionTemplatesDesc": "Template-type programs",
+    "mergeModeLabel": "Merge",
+    "replaceModeLabel": "Replace all",
+    "importBtn": "IMPORT",
+    "replaceProgram": "Replace program",
+    "replaceProgramDesc": "Imports the program and merges history. Becomes your active program.",
+    "addLogOnly": "Add history only",
+    "addLogOnlyDesc": "Adds sessions from the file without changing the active program.",
+    "programOnly": "Program only",
+    "programOnlyDesc": "Imports the program without touching your current history."
+  },
+  "summary": {
+    "ready": "Your program is ready",
+    "daysReview": "{{count}} days · Review the plan before starting",
+    "sets": "{{count}} sets",
+    "customize": "✎ Customize",
+    "start": "START",
+    "patternPull": "PULL",
+    "patternPush": "PUSH",
+    "patternLegs": "LEGS",
+    "patternCore": "CORE",
+    "patternGrip": "GRIP",
+    "patternCalves": "CALVES",
+    "patternAccessory": "ACCESSORY"
+  },
+  "onboarding": {
+    "generating": "GENERATING PROGRAM",
+    "buildingPlan": "Building your personalized plan...",
+    "appName": "FUERZA & CONTROL",
+    "newProgram": "NEW PROGRAM",
+    "howToCreate": "How do you want to create your program?",
+    "modeAuto": "Generate automatically",
+    "modeAutoDesc": "Answer a few questions and the system creates the program. You can edit it afterwards.",
+    "modeManual": "Build manually",
+    "modeManualDesc": "Choose how many sessions you want and add your own exercises.",
+    "modeImport": "Import program",
+    "modeImportDesc": "Open a file exported from this app.",
+    "manualProgram": "MANUAL PROGRAM",
+    "programName": "Program name",
+    "programNamePlaceholder": "E.g.: Lucas - Full Body",
+    "numberOfSessions": "Number of sessions",
+    "addMoreFromEditor": "You can add more sessions from the editor.",
+    "emptySessionsHint": "{{count}} empty sessions will be created. Add exercises to each from the program editor.",
+    "createAndEdit": "CREATE AND EDIT ›",
+    "stepIndicator": "STEP {{current}} OF {{total}}",
+    "stepLevel": {
+      "title": "What's your level?",
+      "subtitle": "This determines which exercises and structures will be included in your program."
+    },
+    "stepDiscipline": {
+      "title": "What's your focus?",
+      "subtitle": "Define what type of training and exercises you want to prioritize."
+    },
+    "stepDistribution": {
+      "title": "How do you split your days?",
+      "subtitle": "The split defines the structure of each session."
+    },
+    "stepDays": {
+      "titleUpperLower": "Sessions per cycle",
+      "subtitleUpperLower": "Upper/Lower has 2 or 4 distinct sessions. You can repeat them as often as you want.",
+      "titlePPL": "Sessions per cycle",
+      "subtitlePPL": "Push/Pull/Legs uses 3 distinct sessions. You can repeat the cycle as often as you want.",
+      "titleFullBody": "How many sessions?",
+      "subtitleFullBody": "Number of distinct sessions per cycle. More sessions means more exercise variety and patterns.",
+      "pplCycleHint": "Alternate A → B → C → A → B → C at your own pace",
+      "ulCycleHint": "You can do 2 sessions per week with 4 distinct sessions — just alternate the cycle.",
+      "sessionsCount": "{{count}} session per cycle",
+      "sessionsCount_other": "{{count}} sessions per cycle",
+      "allGroupsHint": "All muscle groups in each session",
+      "moreVarietyHint": "More exercise variety and patterns"
+    },
+    "stepGoal": {
+      "title": "What's your goal?",
+      "subtitle": "Determines the rep range and rest between sets."
+    },
+    "stepEquipment": {
+      "title": "What equipment do you have?",
+      "subtitle": "Select everything you have available on a regular basis."
+    },
+    "stepLimitations": {
+      "title": "Do you have any limitations?",
+      "subtitle": "Exercises that could aggravate these areas will be avoided as main exercises."
+    },
+    "stepProgression": {
+      "title": "Progression model",
+      "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
+    },
+    "generateProgram": "🏋️ GENERATE PROGRAM",
+    "levels": {
+      "beginner": {
+        "label": "Beginner",
+        "description": "Less than 1 year training or returning after a long break.",
+        "detail": "Machine-guided exercises, basic bodyweight and dumbbell patterns. Simple and safe progression."
+      },
+      "intermediate": {
+        "label": "Intermediate",
+        "description": "1–3 years of consistent training.",
+        "detail": "Dumbbells, cables, kettlebell and technical bodyweight exercises like pull-ups or dips. Double progression."
+      },
+      "advanced": {
+        "label": "Advanced",
+        "description": "3+ years with solid technique in free movements.",
+        "detail": "Barbell, weighted exercises, periodization. Requires good technique in squat, deadlift and press."
+      }
+    },
+    "disciplines": {
+      "standard": {
+        "label": "Standard",
+        "description": "Hypertrophy and general strength. The most complete and versatile approach.",
+        "detail": "Covers all movement patterns with the best exercises for each goal."
+      },
+      "calisthenics": {
+        "label": "Calisthenics / Functional",
+        "description": "Bodyweight, grip and core. With transfer to sports and aerial disciplines.",
+        "detail": "Pull-ups, dips, L-sit, hollow body. Relative strength and body control."
+      },
+      "glutes_legs": {
+        "label": "Legs & Glutes",
+        "description": "Maximum emphasis on glutes, hamstrings and legs. Popular in female programs.",
+        "detail": "Hip thrust, Romanian deadlift, leg press and squat variations as central exercises."
+      },
+      "strength": {
+        "label": "Strength / Powerlifting",
+        "description": "Move more weight. Squat, deadlift and press as the core.",
+        "detail": "3–6 rep ranges, long rests and load progression as priority."
+      }
+    },
+    "distributions": {
+      "full_body": {
+        "label": "Full Body",
+        "description": "All muscle groups in each session. 2–6 days."
+      },
+      "upper_lower": {
+        "label": "Upper / Lower",
+        "description": "Upper body one day, lower the next. 2 distinct sessions."
+      },
+      "push_pull_legs": {
+        "label": "Push / Pull / Legs",
+        "description": "One push day, one pull day, one legs day. 3 sessions."
+      }
+    },
+    "goals": {
+      "hypertrophy": {
+        "label": "Hypertrophy",
+        "description": "Build muscle mass. 8–12 reps per set."
+      },
+      "endurance": {
+        "label": "Endurance",
+        "description": "Last longer. 12–20 reps, short rests."
+      },
+      "strength": {
+        "label": "Strength",
+        "description": "Move more weight. 5–8 reps, long rests."
+      },
+      "max_strength": {
+        "label": "Max strength",
+        "description": "Peak performance. 3–5 reps, advanced only."
+      }
+    },
+    "equipment": {
+      "machines": {
+        "label": "Machines",
+        "description": "Leg press, cable, curl, extension..."
+      },
+      "dumbbells": {
+        "label": "Dumbbells",
+        "description": "Adjustable or fixed."
+      },
+      "barbell": {
+        "label": "Barbell",
+        "description": "Olympic barbell with plates."
+      },
+      "pullup_bar": {
+        "label": "Pull-up bar",
+        "description": "Wall-mounted or door frame."
+      },
+      "parallettes": {
+        "label": "Parallettes / Dip bar",
+        "description": "For dips and L-sit."
+      },
+      "kettlebell": {
+        "label": "Kettlebell",
+        "description": "One or more."
+      },
+      "resistance_band": {
+        "label": "Resistance bands",
+        "description": "For assistance or activation."
+      },
+      "ab_wheel": {
+        "label": "Ab wheel",
+        "description": "Ab wheel rollout."
+      }
+    },
+    "limitations": {
+      "none": {
+        "label": "No limitations",
+        "description": "I can do any exercise without restrictions."
+      },
+      "shoulder": {
+        "label": "Shoulder / Trapezius",
+        "description": "Discomfort in shoulder, rotator cuff or trapezius."
+      },
+      "lower_back": {
+        "label": "Lower back",
+        "description": "Problems in the lower back area."
+      },
+      "knee": {
+        "label": "Knee",
+        "description": "Discomfort in knee or meniscus."
+      }
+    },
+    "progressionModels": {
+      "double_progression": {
+        "label": "Double progression",
+        "description": "Reach max reps → increase weight → return to min. The most common."
+      },
+      "linear": {
+        "label": "Linear progression",
+        "description": "Add a fixed weight each session. Classic in strength programs like Starting Strength."
+      },
+      "reps_progression": {
+        "label": "Rep progression",
+        "description": "Weight stays the same, only reps increase each session."
+      }
+    },
+    "disabledReasons": {
+      "notForDiscipline": "Not available for {{discipline}}",
+      "requiresIntermediate": "Requires intermediate level",
+      "requiresAdvanced": "Requires advanced level"
+    },
+    "upperLowerOptions": {
+      "2sessions": "2 sessions",
+      "2sessionsDesc": "A (upper) + B (lower). Simpler, repeat the cycle.",
+      "4sessions": "4 sessions",
+      "4sessionsDesc": "A1 + B1 + A2 + B2. More exercise variety per cycle."
+    },
+    "pplSessions": {
+      "push": "Session A — Push",
+      "pull": "Session B — Pull",
+      "legs": "Session C — Legs"
+    }
+  },
+  "dayCard": {
+    "noRecords": "No records",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "oneWeekAgo": "1 week ago",
+    "inProgress": "● IN PROGRESS"
+  },
+  "stats": {
+    "title": "PROGRESS",
+    "selectedOf": "{{selected}} of {{total}} exercises selected",
+    "allExercises": "All exercises ({{count}})",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "clearSelection": "Clear selection",
+    "needsSession": "You need at least one session\nto view progress.",
+    "noData": "No data for this filter."
+  },
+  "filterBar": {
+    "scopeProgram": "Current program",
+    "scopeAll": "All",
+    "period7d": "7 days",
+    "period30d": "30 days",
+    "periodAll": "No limit"
+  },
+  "errors": {
+    "cannotReadFile": "Could not read the file"
+  },
+  "editor": {
+    "titleEdit": "EDIT PROGRAM",
+    "titleEditClient": "EDIT CLIENT PROGRAM",
+    "stageName": "Stage name",
+    "stageWeeks": "wk",
+    "stageActivate": "Activate",
+    "stageAddHint": "Add stage",
+    "addSession": "＋ Add session",
+    "addSessionToStage": "＋ Add session to this stage",
+    "convertToStages": "⊞ Convert to staged program",
+    "changesHint": "Changes apply to all future sessions. You can restore any day to its original values.",
+    "toastStageAdded": "✓ Stage added",
+    "toastStageDeleted": "✓ Stage deleted",
+    "toastStageActivated": "✓ {{name}} activated",
+    "deleteStageConfirm": "Delete \"{{name}}\"? Sessions in this stage will be lost.",
+    "saveChanges": "SAVE CHANGES",
+    "dayLabel": "DAY {{label}} · {{name}}",
+    "exerciseCount_one": "{{count}} exercise",
+    "exerciseCount_other": "{{count}} exercises",
+    "edited": "Edited",
+    "dropToDelete": "Drop to delete",
+    "setsRest": "{{sets}} sets · {{rest}}s rest",
+    "close": "Close",
+    "addExercise": "＋ Add exercise",
+    "restore": "↩ Restore",
+    "resetConfirm": "Restore this day to original values?",
+    "toastReset": "✓ Day restored",
+    "toastExDeleted": "✓ Exercise deleted",
+    "toastExAdded": "✓ Exercise added"
+  },
+  "exerciseSelector": {
+    "title": "SELECT EXERCISE",
+    "searchPlaceholder": "Search exercise...",
+    "tabSimilar": "Similar",
+    "tabComplementary": "Complementary",
+    "tabPattern": "Pattern",
+    "tabMuscle": "Muscle",
+    "allPatterns": "All patterns",
+    "allMuscles": "All muscles",
+    "noResults": "No results",
+    "createExercise": "＋ Create exercise",
+    "exerciseCount_one": "{{count}} EXERCISE",
+    "exerciseCount_other": "{{count}} EXERCISES",
+    "levelIntermediate": "Intermediate",
+    "levelBeginner": "Beginner",
+    "patterns": {
+      "vertical_pull": "Vertical pull",
+      "horizontal_pull": "Horizontal pull",
+      "vertical_push": "Vertical push",
+      "horizontal_push": "Horizontal push",
+      "squat": "Legs (knee)",
+      "hip_hinge": "Legs (hip)",
+      "core": "Core",
+      "carry_grip": "Grip / Carry",
+      "calf_raise": "Calves"
+    },
+    "muscles": {
+      "latissimus_dorsi": "Back (lats)",
+      "biceps": "Biceps",
+      "rear_deltoid": "Rear deltoid",
+      "rhomboids": "Rhomboids",
+      "mid_trapezius": "Mid trapezius",
+      "pectoralis": "Chest",
+      "triceps": "Triceps",
+      "anterior_deltoid": "Front deltoid",
+      "deltoid": "Shoulder",
+      "hamstrings": "Hamstrings",
+      "glutes": "Glutes",
+      "erector_spinae": "Erector spinae",
+      "quadriceps": "Quadriceps",
+      "rectus_abdominis": "Abs",
+      "hip_flexors": "Hip flexors",
+      "forearms": "Forearms",
+      "serratus": "Serratus"
+    }
+  },
+  "exerciseEditor": {
+    "progressionType": "Progression type",
+    "fieldSets": "Sets",
+    "fieldRest": "Rest (s)",
+    "fieldMinTime": "Min time (s)",
+    "fieldMaxTime": "Max time (s)",
+    "fieldMinReps": "Min reps",
+    "fieldMaxReps": "Max reps",
+    "submaxHint": "Submax: athlete works to 2 reps from failure. No fixed range.",
+    "substituteBtn": "⇄ Substitute",
+    "saveBtn": "Save",
+    "toastUpdated": "✓ Exercise updated",
+    "toastSubstituted": "✓ Exercise substituted",
+    "progressionModels": {
+      "double_progression": {
+        "label": "Double progression",
+        "desc": "Weight + reps"
+      },
+      "time_progression": {
+        "label": "Time",
+        "desc": "Seconds"
+      },
+      "submax": {
+        "label": "Submax",
+        "desc": "RIR / RPE"
+      }
+    }
+  },
+  "clients": {
+    "title": "Clients",
+    "newBtn": "＋ NEW",
+    "searchPlaceholder": "Search client...",
+    "filterActive": "Active",
+    "filterInactive": "Inactive",
+    "filterAll": "All",
+    "noClients": "No clients yet.",
+    "programCount_one": "{{count}} program",
+    "programCount_other": "{{count}} programs",
+    "deleteClientConfirm": "Delete client and all their programs and history?",
+    "importBtn": "↓ Import",
+    "noPrograms": "No programs. Create one or import.",
+    "activeLabel": "ACTIVE",
+    "activeStarLabel": "Active",
+    "activateStarLabel": "Activate",
+    "removeActiveTitle": "Remove as active",
+    "setActiveTitle": "Set as active",
+    "deleteProgramConfirm": "Delete this program?",
+    "toastDownloaded": "↓ Program downloaded",
+    "tabs": {
+      "programs": "Programs",
+      "history": "History",
+      "progress": "Progress",
+      "info": "Info"
+    },
+    "scope": {
+      "active": "Active program",
+      "all": "All programs"
+    },
+    "period": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "all": "All"
+    },
+    "noSessionsFilter": "No sessions for this filter.",
+    "noProgressFilter": "No progress data for this filter.",
+    "contextExport": "↑ Export file",
+    "contextDelete": "✕ Delete",
+    "actionView": "View",
+    "actionEdit": "Edit",
+    "actionShare": "Share",
+    "sessionsLastActivity": "{{count}} sessions · Last: {{date}}",
+    "sessionsOnly": "{{count}} sessions",
+    "statusLabel": "Status",
+    "statusActive": "Active",
+    "statusPaused": "On pause",
+    "statusInactive": "Inactive",
+    "personalData": "👤 Personal data",
+    "bodyWeight": "⚖️ Body weight",
+    "billing": "💳 Billing",
+    "fieldFirstName": "First name",
+    "fieldFullName": "Full name",
+    "fieldPhone": "Phone",
+    "fieldEmail": "Email",
+    "fieldNotes": "Notes",
+    "notesPlaceholder": "Goals, injuries, preferences, observations...",
+    "notesSavedHint": "Saved when leaving the field.",
+    "noWeightData": "No data yet.",
+    "noBillingData": "No entries yet.",
+    "billedLabel": "Billed",
+    "receivedLabel": "Received",
+    "pendingLabel": "Pending",
+    "billConceptPlaceholder": "Concept (e.g.: June membership)",
+    "billPaid": "✓ Paid",
+    "billPending": "Pending",
+    "billDeleteConfirm": "Delete this invoice?",
+    "globalBilling": "Global billing",
+    "statusBilled": "Billed",
+    "statusPaid": "Paid",
+    "periodThisMonth": "This month",
+    "periodLast3Months": "Last 3 months",
+    "noBillingEntries": "No entries for this filter.",
+    "newClientModal": {
+      "title": "NEW CLIENT",
+      "namePlaceholder": "Client name",
+      "createBtn": "CREATE"
+    },
+    "newProgramModal": {
+      "title": "NEW PROGRAM",
+      "tabBlank": "Blank",
+      "tabTemplate": "From template",
+      "namePlaceholder": "Program name",
+      "sessionsLabel": "Sessions",
+      "templateLabel": "Template",
+      "createBtn": "CREATE AND EDIT",
+      "assignBtn": "ASSIGN"
+    },
+    "importModal": {
+      "title": "IMPORT FILE",
+      "replaceLabel": "Replace",
+      "replaceDesc": "Replaces the program with the same ID and adds sessions.",
+      "addProgramLabel": "Add program",
+      "addProgramDesc": "Adds the program as new to the client.",
+      "mergeLogLabel": "Update history",
+      "mergeLogDesc": "Only adds sessions from the file."
+    }
+  },
+  "templates": {
+    "title": "Templates",
+    "newBtn": "＋ NEW",
+    "empty": "No templates yet.\nCreate templates to assign them\nquickly to your clients.",
+    "deleteConfirm": "Delete this template?",
+    "toastDuplicated": "✓ Template duplicated",
+    "badge": "TEMPLATE",
+    "contextUseWithClient": "👥 Use with client",
+    "contextDuplicate": "⧉ Duplicate",
+    "contextExport": "↑ Export file",
+    "contextDelete": "✕ Delete",
+    "actionView": "View",
+    "actionEdit": "Edit",
+    "copyNameSuffix": " (copy)",
+    "newModal": {
+      "title": "NEW TEMPLATE",
+      "namePlaceholder": "Template name",
+      "sessionsLabel": "Sessions",
+      "createBtn": "CREATE AND EDIT"
+    },
+    "assignModal": {
+      "title": "ASSIGN TO CLIENT",
+      "desc": "A copy of the program will be created for the selected client. The original template is not modified.",
+      "noClients": "No clients yet.\nCreate a client first from the Clients tab.",
+      "clientLabel": "Client",
+      "programNameLabel": "Program name",
+      "programNamePlaceholder": "Program name for this client",
+      "assignBtn": "ASSIGN"
+    }
+  },
+  "print": {
+    "viewerTitle": "PROGRAM VIEWER",
+    "exportPdf": "↓ EXPORT PDF",
+    "trainingProgram": "Training Program",
+    "metaDays": "Days / week",
+    "metaStructure": "Structure",
+    "metaTotalSets": "Total sets",
+    "metaDaysValue": "{{count}} days",
+    "metaSetsValue": "{{count}} sets",
+    "legendKey": "KEY = main exercise of the day",
+    "legendRest": "Minimum rest between sessions: 1 day",
+    "legendWarmup": "Warm-up: 8–10 min mobility + scapular activation",
+    "tableNum": "#",
+    "tableExercise": "Exercise",
+    "tableSetsReps": "Sets × Reps",
+    "tableRest": "Rest",
+    "sessionLabel": "Session {{label}} · {{name}}",
+    "submax": "submax",
+    "perSide": "ea."
+  },
+  "restTimer": {
+    "remaining": "{{count}}s remaining",
+    "go": "Go!",
+    "skip": "Skip ›"
+  },
+  "progression": {
+    "time_allHitMax": "Goal crushed. Progress to {{next}}s per set next time.",
+    "time_allOk": "Good. Consolidate the {{min}}–{{max}}s range before increasing.",
+    "time_keep": "Keep working in the {{min}}–{{max}}s range. Take your time.",
+    "submax_weight": "Last session: {{total}} reps in {{sets}} sets · {{weight}}kg. Beat that today.",
+    "submax_noweight": "Last session: {{total}} reps in {{sets}} sets. Beat that today.",
+    "decrease_lastAssist": "Excellent! All sets maxed with {{assist}}kg assistance. Next time try without assistance.",
+    "decrease_allHit": "All sets maxed. Reduce assistance to {{next}}kg next time.",
+    "decrease_free": "All sets unassisted! Time to move to the weighted version.",
+    "decrease_mostHit": "Good. Consolidate with {{assistStr}} and aim for more reps.",
+    "decrease_struggling": "Did not hit the minimum. Increase assistance to {{next}}kg.",
+    "decrease_hold": "Keep going with {{assistStr}} and focus on technique.",
+    "normal_allHit": "All sets maxed. Go up to {{next}}kg next time.",
+    "normal_mostHit": "Well done. Keep {{weightStr}} and aim for more reps in range.",
+    "normal_struggling": "Did not hit the minimum reps. Try {{next}}kg to consolidate technique.",
+    "normal_hold": "Keep going with {{weightStr}} and focus on technique.",
+    "withAssist": "{{kg}}kg assistance",
+    "noAssist": "no assistance",
+    "withWeight": "{{kg}}kg",
+    "sameWeight": "same weight"
+  }
+}

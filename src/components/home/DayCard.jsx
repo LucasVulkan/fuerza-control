@@ -1,26 +1,36 @@
-﻿import { formatDate } from '../../utils/formatters';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/formatters';
 
 const DAY_COLORS = {
   A: 'var(--day1)', B: 'var(--day2)', C: 'var(--day3)',
   D: 'var(--day4)', E: 'var(--day5)', F: 'var(--day6)',
 };
 
-function relativeTime(ts) {
-  if (!ts) return 'Sin registros';
-  const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days === 0) return 'Hoy';
-  if (days === 1) return 'Ayer';
-  if (days < 7)  return `Hace ${days} días`;
-  if (days < 14) return 'Hace 1 semana';
-  return formatDate(ts);
+function useRelativeTime() {
+  const { t } = useTranslation();
+  return (ts) => {
+    if (!ts) return t('dayCard.noRecords');
+    const days = Math.floor((Date.now() - ts) / 86400000);
+    if (days === 0) return t('dayCard.today');
+    if (days === 1) return t('dayCard.yesterday');
+    if (days < 7)  return t('dayCard.daysAgo', { count: days });
+    if (days < 14) return t('dayCard.oneWeekAgo');
+    return formatDate(ts);
+  };
 }
 
 export default function DayCard({ template, lastSession, exerciseLibrary = {}, onClick, isActive = false }) {
+  const { t, i18n } = useTranslation();
+  const relativeTime = useRelativeTime();
   const color = template.color ?? DAY_COLORS[template.label] ?? 'var(--accent)';
   const lastText = relativeTime(lastSession?.timestamp);
 
   const focus = template.exercises
-    .map(({ exerciseId }) => exerciseLibrary[exerciseId]?.name ?? exerciseId)
+    .map(({ exerciseId }) => {
+      const ex = exerciseLibrary[exerciseId];
+      if (!ex) return exerciseId;
+      return i18n.language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
+    })
     .join(' · ');
 
   return (
@@ -40,14 +50,10 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
       onPointerUp={(e) => e.currentTarget.style.background = 'var(--surface)'}
       onPointerLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
     >
-      {/* Fila superior: letra + fecha/píldora */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 2 }}>
         <div style={{
           fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 44,
-          lineHeight: 1,
-          color,
-          flexShrink: 0,
+          fontSize: 44, lineHeight: 1, color, flexShrink: 0,
         }}>
           {template.label}
         </div>
@@ -60,7 +66,7 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
             background: 'rgba(255,255,255,0.04)',
             fontWeight: 500, whiteSpace: 'nowrap', marginTop: 4,
           }}>
-            ● EN CURSO
+            {t('dayCard.inProgress')}
           </div>
         ) : (
           <div style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap', marginTop: 4 }}>
@@ -69,21 +75,14 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
         )}
       </div>
 
-      {/* Nombre */}
       <div style={{
         fontFamily: "'Bebas Neue', sans-serif",
-        fontSize: 17,
-        letterSpacing: 0.5,
-        color,
-        lineHeight: 1.1,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
+        fontSize: 17, letterSpacing: 0.5, color, lineHeight: 1.1,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {template.name.toUpperCase()}
       </div>
 
-      {/* Ejercicios */}
       <div style={{
         fontSize: 11, color: 'var(--muted)', marginTop: 3,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -93,5 +92,3 @@ export default function DayCard({ template, lastSession, exerciseLibrary = {}, o
     </div>
   );
 }
-
-

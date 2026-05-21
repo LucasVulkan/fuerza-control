@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import DayEditor from './DayEditor';
 
 export default function ProgramEditorView() {
+  const { t } = useTranslation();
   const navigate               = useStore((s) => s.navigate);
   const programs               = useStore((s) => s.programs);
   const profile                = useStore((s) => s.profile);
@@ -31,7 +33,6 @@ export default function ProgramEditorView() {
   const [nameValue, setNameValue]               = useState(activeProgram?.name ?? '');
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
 
-  // Inline stage meta editing state — se sincroniza al cambiar de tab
   const selectedStage = hasStages ? (activeProgram?.stages?.[selectedStageIdx] ?? null) : null;
   const [stageName, setStageName]   = useState(selectedStage?.name ?? '');
   const [stageWeeks, setStageWeeks] = useState(String(selectedStage?.durationWeeks ?? 4));
@@ -40,7 +41,6 @@ export default function ProgramEditorView() {
     beginEditSession();
   }, []);
 
-  // Sync stage meta inputs when switching tabs
   useEffect(() => {
     if (selectedStage) {
       setStageName(selectedStage.name);
@@ -48,7 +48,6 @@ export default function ProgramEditorView() {
     }
   }, [selectedStageIdx, activeProgram?.stages?.length]);
 
-  // Clamp selectedStageIdx when stages are removed
   useEffect(() => {
     if (hasStages) {
       const max = (activeProgram?.stages?.length ?? 1) - 1;
@@ -92,14 +91,14 @@ export default function ProgramEditorView() {
     addStageToProgram(editingId);
     const newIdx = wasStaged ? (activeProgram?.stages?.length ?? 1) : 1;
     setSelectedStageIdx(newIdx);
-    showToast('✓ Etapa añadida');
+    showToast(t('editor.toastStageAdded'));
   }
 
   function handleDeleteStage() {
-    if (!window.confirm(`¿Eliminar "${selectedStage?.name}"? Las sesiones de esta etapa se perderán.`)) return;
+    if (!window.confirm(t('editor.deleteStageConfirm', { name: selectedStage?.name }))) return;
     removeStageFromProgram(editingId, selectedStageIdx);
     setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
-    showToast('✓ Etapa eliminada');
+    showToast(t('editor.toastStageDeleted'));
   }
 
   return (
@@ -108,7 +107,7 @@ export default function ProgramEditorView() {
       {/* Header */}
       <div style={{ padding: '20px 20px 14px', borderBottom: 'var(--border-width) solid var(--border)' }}>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1, color: 'var(--text)' }}>
-          {isFromClients ? 'EDITAR PROGRAMA DE CLIENTE' : 'EDITAR PROGRAMA'}
+          {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
         </div>
         {activeProgram && (
           <div style={{ marginTop: 6 }}>
@@ -187,14 +186,14 @@ export default function ProgramEditorView() {
               color: 'var(--muted)', fontSize: 16,
               cursor: 'pointer', lineHeight: 1,
             }}
-            title="Añadir etapa"
+            title={t('editor.stageAddHint')}
           >
             ＋
           </button>
         </div>
       )}
 
-      {/* Stage meta row — nombre, semanas, activar, eliminar */}
+      {/* Stage meta row */}
       {hasStages && selectedStage && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -202,13 +201,12 @@ export default function ProgramEditorView() {
           background: 'var(--surface2)',
           borderBottom: 'var(--border-width) solid var(--border)',
         }}>
-          {/* Nombre de la etapa */}
           <input
             value={stageName}
             onChange={(e) => setStageName(e.target.value)}
             onBlur={commitStageName}
             onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setStageName(selectedStage.name); }}
-            placeholder="Nombre de la etapa"
+            placeholder={t('editor.stageName')}
             style={{
               flex: 1, minWidth: 0,
               background: 'transparent', border: 'none',
@@ -216,7 +214,6 @@ export default function ProgramEditorView() {
               fontSize: 12, fontWeight: 500, outline: 'none',
             }}
           />
-          {/* Semanas */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
             <input
               type="number" min="1" max="52"
@@ -232,12 +229,11 @@ export default function ProgramEditorView() {
                 fontSize: 12, padding: '3px 0', textAlign: 'center', outline: 'none',
               }}
             />
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>sem.</span>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{t('editor.stageWeeks')}</span>
           </div>
-          {/* Activar (si no es la etapa activa actual) */}
           {selectedStageIdx !== (activeProgram.currentStageIndex ?? 0) && (
             <button
-              onClick={() => { setCurrentStage(editingId, selectedStageIdx); showToast(`✓ ${selectedStage.name} activada`); }}
+              onClick={() => { setCurrentStage(editingId, selectedStageIdx); showToast(t('editor.toastStageActivated', { name: selectedStage.name })); }}
               style={{
                 background: 'var(--accent-tint-active)',
                 border: 'var(--border-width) solid var(--accent-tint-border)',
@@ -246,10 +242,9 @@ export default function ProgramEditorView() {
                 padding: '4px 10px', cursor: 'pointer', flexShrink: 0,
               }}
             >
-              Activar
+              {t('editor.stageActivate')}
             </button>
           )}
-          {/* Eliminar etapa */}
           {activeProgram.stages.length > 1 && (
             <button
               onClick={handleDeleteStage}
@@ -269,7 +264,7 @@ export default function ProgramEditorView() {
       <div style={{ padding: '14px 20px 102px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {!hasStages && (
           <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 4 }}>
-            Los cambios se aplican a todas las sesiones futuras. Puedes restaurar cualquier día a sus valores originales.
+            {t('editor.changesHint')}
           </p>
         )}
 
@@ -292,10 +287,9 @@ export default function ProgramEditorView() {
             fontSize: 13, padding: '14px 0', cursor: 'pointer', marginTop: 4,
           }}
         >
-          ＋ Añadir sesión{hasStages ? ' a esta etapa' : ''}
+          {hasStages ? t('editor.addSessionToStage') : t('editor.addSession')}
         </button>
 
-        {/* Convertir a programa por etapas (solo si no hay etapas) */}
         {!hasStages && (
           <button
             onClick={handleAddStage}
@@ -306,7 +300,7 @@ export default function ProgramEditorView() {
               fontSize: 12, padding: '12px 0', cursor: 'pointer', marginTop: 4,
             }}
           >
-            ⊞ Convertir a programa por etapas
+            {t('editor.convertToStages')}
           </button>
         )}
       </div>
@@ -327,7 +321,7 @@ export default function ProgramEditorView() {
             fontSize: 13, padding: '13px 8px', cursor: 'pointer',
           }}
         >
-          Cancelar
+          {t('common.cancel')}
         </button>
         <button
           onClick={() => confirmEditSession(backDest, backTab)}
@@ -337,7 +331,7 @@ export default function ProgramEditorView() {
             fontSize: 20, letterSpacing: 1.5, padding: '13px 8px', cursor: 'pointer',
           }}
         >
-          GUARDAR CAMBIOS
+          {t('editor.saveChanges')}
         </button>
       </div>
     </div>

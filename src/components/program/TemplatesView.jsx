@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
 export default function TemplatesView() {
+  const { t } = useTranslation();
   const programs                = useStore((s) => s.programs);
   const sessionTemplates        = useStore((s) => s.sessionTemplates);
   const userPrograms            = useStore((s) => s.userPrograms);
@@ -17,7 +19,6 @@ export default function TemplatesView() {
   const showToast               = useStore((s) => s.showToast);
   const exportSpecificProgram   = useStore((s) => s.exportSpecificProgram);
 
-  // Derivar en useMemo para no crear array nuevo en cada render (evita bucle infinito)
   const templatePrograms = useMemo(
     () => Object.values(programs ?? {})
       .filter((p) => p.mode === 'template')
@@ -28,8 +29,8 @@ export default function TemplatesView() {
   const [showNew, setShowNew]         = useState(false);
   const [newName, setNewName]         = useState('');
   const [newSessions, setNewSessions] = useState(3);
-  const [contextMenu, setContextMenu] = useState(null); // { programId, x, y }
-  const [assignModal, setAssignModal] = useState(null); // { programId }
+  const [contextMenu, setContextMenu] = useState(null);
+  const [assignModal, setAssignModal] = useState(null);
   const [assignClientId, setAssignClientId] = useState('');
   const [assignName, setAssignName]   = useState('');
 
@@ -53,7 +54,7 @@ export default function TemplatesView() {
   }
 
   function handleDelete(programId) {
-    if (window.confirm('¿Eliminar esta plantilla?')) {
+    if (window.confirm(t('templates.deleteConfirm'))) {
       deleteProgram(programId, false);
       setContextMenu(null);
     }
@@ -62,8 +63,8 @@ export default function TemplatesView() {
   function handleDuplicate(programId) {
     const src = programs[programId];
     if (!src) return;
-    cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + ' (copia)' });
-    showToast('✓ Plantilla duplicada');
+    cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + t('templates.copyNameSuffix') });
+    showToast(t('templates.toastDuplicated'));
     setContextMenu(null);
   }
 
@@ -92,11 +93,11 @@ export default function TemplatesView() {
     <div>
       {/* Header */}
       <div style={{ padding: '16px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Plantillas</p>
+        <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>{t('templates.title')}</p>
         <button
           onClick={() => setShowNew(true)}
           style={{ background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, padding: '8px 18px', cursor: 'pointer' }}
-        >＋ NUEVA</button>
+        >{t('templates.newBtn')}</button>
       </div>
 
       {/* Lista */}
@@ -104,32 +105,28 @@ export default function TemplatesView() {
         {templatePrograms.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
             <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>📐</span>
-            Sin plantillas todavía.<br />
-            Crea plantillas para asignarlas<br />rápidamente a tus clientes.
+            {t('templates.empty').split('\n').map((line, i) => <span key={i}>{line}{i < 2 && <br />}</span>)}
           </div>
         ) : templatePrograms.map((program) => {
           const exCount = getExerciseCount(program);
           return (
             <div key={program.id} style={{ background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, overflow: 'hidden' }}>
-              {/* Info */}
               <div style={{ padding: '13px 16px', borderBottom: 'var(--border-width) solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{program.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                    {program.days.length} sesión{program.days.length !== 1 ? 'es' : ''}
-                    {exCount > 0 && ` · ${exCount} ejercicio${exCount !== 1 ? 's' : ''}`}
+                    {t('common.session', { count: program.days.length })}
+                    {exCount > 0 && ` · ${t('common.exercises', { count: exCount })}`}
                   </div>
                 </div>
-                {/* Badge PRO */}
                 <span style={{ fontSize: 9, letterSpacing: 1, background: 'var(--accent-tint)', color: 'var(--accent)', border: '1px solid var(--accent-tint-border)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
-                  PLANTILLA
+                  {t('templates.badge')}
                 </span>
               </div>
-              {/* Acciones */}
               <div style={{ display: 'flex' }}>
-                <TplBtn label="Ver" onClick={() => setPrintingProgram(program.id)} />
+                <TplBtn label={t('templates.actionView')} onClick={() => setPrintingProgram(program.id)} />
                 <TplDivider />
-                <TplBtn label="Editar" onClick={() => setEditingProgram(program.id)} />
+                <TplBtn label={t('templates.actionEdit')} onClick={() => setEditingProgram(program.id)} />
                 <TplDivider />
                 <TplBtn label="⋯" onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -153,19 +150,19 @@ export default function TemplatesView() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           }}>
             <button onClick={() => openAssign(contextMenu.programId)} style={menuItemStyle}>
-              👥 Usar con cliente
+              {t('templates.contextUseWithClient')}
             </button>
             <button onClick={() => handleDuplicate(contextMenu.programId)} style={menuItemStyle}>
-              ⧉ Duplicar
+              {t('templates.contextDuplicate')}
             </button>
             <button onClick={() => { exportSpecificProgram(contextMenu.programId); setContextMenu(null); }} style={menuItemStyle}>
-              ↑ Exportar archivo
+              {t('templates.contextExport')}
             </button>
             <button
               onClick={() => handleDelete(contextMenu.programId)}
               style={{ ...menuItemStyle, color: 'var(--red)', borderBottom: 'none' }}
             >
-              ✕ Eliminar
+              {t('templates.contextDelete')}
             </button>
           </div>
         </>,
@@ -177,9 +174,9 @@ export default function TemplatesView() {
         <>
           <div onClick={() => setShowNew(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
           <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>NUEVA PLANTILLA</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 14 }}>{t('templates.newModal.title')}</div>
             <input
-              autoFocus type="text" placeholder="Nombre de la plantilla"
+              autoFocus type="text" placeholder={t('templates.newModal.namePlaceholder')}
               value={newName} onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               style={inputStyle}
@@ -187,7 +184,7 @@ export default function TemplatesView() {
               onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
             />
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Sesiones</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('templates.newModal.sessionsLabel')}</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {[2, 3, 4, 5, 6].map((n) => (
                   <button key={n} onClick={() => setNewSessions(n)} style={{ flex: 1, height: 40, borderRadius: 6, border: 'var(--border-width) solid', borderColor: newSessions === n ? 'var(--accent-tint-border)' : 'var(--border)', background: newSessions === n ? 'var(--accent-tint-active)' : 'var(--surface2)', color: newSessions === n ? 'var(--accent)' : 'var(--text)', fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, cursor: 'pointer' }}>{n}</button>
@@ -195,8 +192,8 @@ export default function TemplatesView() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 2, background: !newName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newName.trim() ? 'not-allowed' : 'pointer' }}>CREAR Y EDITAR</button>
+              <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
+              <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 2, background: !newName.trim() ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !newName.trim() ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !newName.trim() ? 'not-allowed' : 'pointer' }}>{t('templates.newModal.createBtn')}</button>
             </div>
           </div>
         </>
@@ -207,19 +204,19 @@ export default function TemplatesView() {
         <>
           <div onClick={() => setAssignModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
           <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--surface)', border: 'var(--border-width) solid var(--border-card)', borderRadius: 10, zIndex: 50, width: 'calc(100% - 40px)', maxWidth: 360, padding: '20px' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>ASIGNAR A CLIENTE</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>{t('templates.assignModal.title')}</div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
-              Se creará una copia del programa para el cliente seleccionado. La plantilla original no se modifica.
+              {t('templates.assignModal.desc')}
             </div>
 
             {clientList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.7 }}>
-                Sin clientes todavía.<br />Crea un cliente primero desde el tab Clientes.
+                {t('templates.assignModal.noClients').split('\n').map((line, i) => <span key={i}>{line}{i === 0 && <br />}</span>)}
               </div>
             ) : (
               <>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Cliente</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('templates.assignModal.clientLabel')}</div>
                   <select
                     value={assignClientId}
                     onChange={(e) => setAssignClientId(e.target.value)}
@@ -233,11 +230,11 @@ export default function TemplatesView() {
                   </select>
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Nombre del programa</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{t('templates.assignModal.programNameLabel')}</div>
                   <input
                     type="text" value={assignName}
                     onChange={(e) => setAssignName(e.target.value)}
-                    placeholder="Nombre del programa para este cliente"
+                    placeholder={t('templates.assignModal.programNamePlaceholder')}
                     style={inputStyle}
                     onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                     onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
@@ -247,9 +244,9 @@ export default function TemplatesView() {
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setAssignModal(null)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setAssignModal(null)} style={{ flex: 1, background: 'none', border: 'var(--border-width) solid var(--border-card)', borderRadius: 8, color: 'var(--muted)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, padding: '11px', cursor: 'pointer' }}>{t('common.cancel')}</button>
               {clientList.length > 0 && (
-                <button onClick={handleAssign} disabled={!assignClientId} style={{ flex: 2, background: !assignClientId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !assignClientId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !assignClientId ? 'not-allowed' : 'pointer' }}>ASIGNAR</button>
+                <button onClick={handleAssign} disabled={!assignClientId} style={{ flex: 2, background: !assignClientId ? 'var(--surface2)' : 'var(--accent)', border: 'none', borderRadius: 8, color: !assignClientId ? 'var(--muted)' : '#0d0d0d', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, padding: '11px', cursor: !assignClientId ? 'not-allowed' : 'pointer' }}>{t('templates.assignModal.assignBtn')}</button>
               )}
             </div>
           </div>

@@ -1,7 +1,7 @@
 {
   "name": "fuerza-control",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,8 +14,10 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.3.0",
+    "i18next": "^26.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-i18next": "^17.0.8",
     "recharts": "^3.8.1",
     "tailwindcss": "^4.3.0",
     "zustand": "^5.0.13"

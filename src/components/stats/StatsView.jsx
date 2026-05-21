@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import ExerciseStatCard from './ExerciseStatCard';
 import FilterBar, { filterLog } from '../ui/FilterBar';
 
 export default function StatsView({ embedded = false }) {
+  const { t } = useTranslation();
   const navigate        = useStore((s) => s.navigate);
   const workoutLog      = useStore((s) => s.workoutLog);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
@@ -100,7 +102,7 @@ export default function StatsView({ embedded = false }) {
         >
           <span style={{ color: 'var(--muted)', fontSize: 22, lineHeight: 1 }}>‹</span>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>
-            PROGRESIÓN
+            {t('stats.title')}
           </div>
         </div>
       )}
@@ -126,8 +128,8 @@ export default function StatsView({ embedded = false }) {
           >
             <span>
               {selectedIds.size > 0
-                ? `${selectedIds.size} de ${exercisesWithLogs.length} ejercicios seleccionados`
-                : `Todos los ejercicios (${exercisesWithLogs.length})`}
+                ? t('stats.selectedOf', { selected: selectedIds.size, total: exercisesWithLogs.length })
+                : t('stats.allExercises', { count: exercisesWithLogs.length })}
             </span>
             <span style={{
               fontSize: 11, transition: 'transform 0.2s',
@@ -181,7 +183,7 @@ export default function StatsView({ embedded = false }) {
                   background: 'var(--surface)',
                 }}>
                   <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                    {t('stats.selectedCount', { count: selectedIds.size })}
                   </span>
                   <button
                     onClick={() => setSelectedIds(new Set())}
@@ -191,7 +193,7 @@ export default function StatsView({ embedded = false }) {
                       fontSize: 11, cursor: 'pointer', padding: 0,
                     }}
                   >
-                    Limpiar selección
+                    {t('stats.clearSelection')}
                   </button>
                 </div>
               )}
@@ -205,8 +207,8 @@ export default function StatsView({ embedded = false }) {
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
             <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>📈</span>
             {workoutLog.length === 0
-              ? <>Necesitas al menos una sesión<br />para ver la progresión.</>
-              : <>Sin datos para este filtro.</>
+              ? <>{t('stats.needsSession').split('\n').map((line, i) => <span key={i}>{line}{i === 0 && <br />}</span>)}</>
+              : <>{t('stats.noData')}</>
             }
           </div>
         ) : visibleExercises.map((exerciseId) => {

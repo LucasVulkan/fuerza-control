@@ -1,18 +1,19 @@
-// FilterBar — filtros combinables de scope (programa/todo) y tiempo
-// Uso: <FilterBar scope={scope} period={period} onScope={setScope} onPeriod={setPeriod} />
-
-const SCOPE_OPTIONS  = [
-  { id: 'program', label: 'Programa actual' },
-  { id: 'all',     label: 'Todo' },
-];
-
-const PERIOD_OPTIONS = [
-  { id: '7d',  label: '7 días' },
-  { id: '30d', label: '30 días' },
-  { id: 'all', label: 'Sin límite' },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function FilterBar({ scope, period, onScope, onPeriod }) {
+  const { t } = useTranslation();
+
+  const SCOPE_OPTIONS = [
+    { id: 'program', label: t('filterBar.scopeProgram') },
+    { id: 'all',     label: t('filterBar.scopeAll') },
+  ];
+
+  const PERIOD_OPTIONS = [
+    { id: '7d',  label: t('filterBar.period7d') },
+    { id: '30d', label: t('filterBar.period30d') },
+    { id: 'all', label: t('filterBar.periodAll') },
+  ];
+
   return (
     <div style={{ padding: '10px 20px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
       <FilterRow options={SCOPE_OPTIONS}  value={scope}  onChange={onScope} />
@@ -55,13 +56,6 @@ function FilterRow({ options, value, onChange }) {
 
 // ─── Helpers de filtrado ─────────────────────────────────────────────────────
 
-/**
- * Filtra el workoutLog según scope y period.
- * @param {object[]} log
- * @param {'program'|'all'} scope
- * @param {'7d'|'30d'|'all'} period
- * @param {Set<string>} programTemplateIds — IDs de templates del programa activo
- */
 export function filterLog(log, scope, period, programTemplateIds) {
   let filtered = [...log];
 

@@ -1,18 +1,17 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-/**
- * ImportModal — modal inteligente de importación.
- *
- * Para backups completos (exportType: 'full'):
- *   Muestra toggles individuales por sección (programa, historial, ejercicios, clientes, plantillas).
- *
- * Para archivos de programa (exportType: 'program' | 'program_with_log'):
- *   Muestra los tres modos clásicos (reemplazar / nuevo programa / solo historial).
- */
 export default function ImportModal({ fileName, parsedData, onImport, onClose }) {
+  const { t } = useTranslation();
   const exportType = parsedData?.exportType ?? 'program';
   const isBackup   = exportType === 'full';
   const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
+
+  const typeLabel = isBackup
+    ? t('import.typeFullBackup')
+    : hasLog
+    ? t('import.typeProgramWithLog')
+    : t('import.typeProgram');
 
   return (
     <>
@@ -26,7 +25,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
         padding: '20px', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, marginBottom: 4 }}>
-          IMPORTAR ARCHIVO
+          {t('import.title')}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
           <strong style={{ color: 'var(--text)', fontSize: 12 }}>{fileName}</strong>
@@ -37,7 +36,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
             border: 'var(--border-width) solid var(--accent-tint-border)',
             borderRadius: 4, padding: '1px 6px',
           }}>
-            {isBackup ? 'Backup completo' : hasLog ? 'Programa + historial' : 'Programa'}
+            {typeLabel}
           </span>
         </div>
 
@@ -50,14 +49,17 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   );
 }
 
-// ── Backup completo: toggles por sección ─────────────────────────────────────
-
 function BackupSections({ parsedData, onImport, onClose }) {
+  const { t } = useTranslation();
   const hasPrograms        = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog             = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustomExercises = Object.keys(parsedData?.customExercises ?? {}).length > 0;
   const hasClients         = Object.keys(parsedData?.clients ?? {}).length > 0;
   const hasTemplates       = Object.values(parsedData?.programs ?? {}).some((p) => p.mode === 'template');
+
+  const logCount  = (parsedData?.workoutLog ?? []).length;
+  const exCount   = Object.keys(parsedData?.customExercises ?? {}).length;
+  const cliCount  = Object.keys(parsedData?.clients ?? {}).length;
 
   const [sections, setSections] = useState({
     program:         hasPrograms,
@@ -76,47 +78,45 @@ function BackupSections({ parsedData, onImport, onClose }) {
 
   return (
     <>
-      {/* Warning general */}
       <div style={{
         background: 'rgba(248,113,113,0.08)',
         border: 'var(--border-width) solid rgba(248,113,113,0.3)',
         borderRadius: 8, padding: '8px 12px', marginBottom: 12,
         fontSize: 11, color: 'var(--red, #f87171)', lineHeight: 1.5,
       }}>
-        ⚠️ Los datos seleccionados reemplazarán los actuales. Esta acción no se puede deshacer.
+        {t('import.warning')}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
         <SectionToggle
-          label="Programa personal"
-          desc="Reemplaza el programa activo"
+          label={t('import.sectionProgram')}
+          desc={t('import.sectionProgramDesc')}
           active={sections.program}
           disabled={!hasPrograms}
           onToggle={() => toggle('program')}
         />
         <SectionToggle
-          label="Historial de sesiones"
-          desc={`${(parsedData?.workoutLog ?? []).length} sesiones`}
+          label={t('import.sectionLog')}
+          desc={t('common.session_other', { count: logCount })}
           active={sections.log}
           disabled={!hasLog}
           onToggle={() => toggle('log')}
         />
         <SectionToggle
-          label="Ejercicios personalizados"
-          desc={`${Object.keys(parsedData?.customExercises ?? {}).length} ejercicios`}
+          label={t('import.sectionCustomExercises')}
+          desc={t('common.exercises_other', { count: exCount })}
           active={sections.customExercises}
           disabled={!hasCustomExercises}
           onToggle={() => toggle('customExercises')}
         />
         <SectionToggle
-          label="Clientes y programas gestionados"
-          desc={`${Object.keys(parsedData?.clients ?? {}).length} clientes`}
+          label={t('import.sectionClients')}
+          desc={t('common.clients_other', { count: cliCount })}
           active={sections.clients}
           disabled={!hasClients}
           onToggle={() => toggle('clients')}
         />
 
-        {/* Plantillas — con botones de modo integrados dentro */}
         <div style={{
           background: sections.templates ? 'var(--accent-tint)' : 'var(--surface2)',
           border: 'var(--border-width) solid',
@@ -126,8 +126,8 @@ function BackupSections({ parsedData, onImport, onClose }) {
           transition: 'all 0.15s',
         }}>
           <SectionToggle
-            label="Plantillas"
-            desc="Programas de tipo plantilla"
+            label={t('import.sectionTemplates')}
+            desc={t('import.sectionTemplatesDesc')}
             active={sections.templates}
             disabled={!hasTemplates}
             onToggle={() => toggle('templates')}
@@ -150,7 +150,7 @@ function BackupSections({ parsedData, onImport, onClose }) {
                     padding: '6px 0', cursor: 'pointer',
                   }}
                 >
-                  {mode === 'merge' ? 'Fusionar' : 'Reemplazar todas'}
+                  {mode === 'merge' ? t('import.mergeModeLabel') : t('import.replaceModeLabel')}
                 </button>
               ))}
             </div>
@@ -159,7 +159,7 @@ function BackupSections({ parsedData, onImport, onClose }) {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onClose} style={cancelBtnStyle}>Cancelar</button>
+        <button onClick={onClose} style={cancelBtnStyle}>{t('common.cancel')}</button>
         <button
           onClick={() => onImport(parsedData, sections)}
           disabled={nothingSelected}
@@ -172,41 +172,38 @@ function BackupSections({ parsedData, onImport, onClose }) {
             padding: '11px', cursor: nothingSelected ? 'not-allowed' : 'pointer',
           }}
         >
-          IMPORTAR
+          {t('import.importBtn')}
         </button>
       </div>
     </>
   );
 }
 
-// ── Archivo de programa: 3 modos clásicos ────────────────────────────────────
-
 function ProgramModes({ parsedData, hasLog, onImport, onClose }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <ModeBtn
-        label="Reemplazar programa"
-        desc="Importa el programa y fusiona el historial. Pasa a ser tu programa activo."
+        label={t('import.replaceProgram')}
+        desc={t('import.replaceProgramDesc')}
         onClick={() => onImport(parsedData, { program: true, log: true })}
       />
       {hasLog && (
         <ModeBtn
-          label="Solo añadir historial"
-          desc="Añade las sesiones del archivo sin cambiar el programa activo."
+          label={t('import.addLogOnly')}
+          desc={t('import.addLogOnlyDesc')}
           onClick={() => onImport(parsedData, { program: false, log: true })}
         />
       )}
       <ModeBtn
-        label="Solo el programa"
-        desc="Importa el programa sin tocar tu historial actual."
+        label={t('import.programOnly')}
+        desc={t('import.programOnlyDesc')}
         onClick={() => onImport(parsedData, { program: true, log: false })}
       />
-      <button onClick={onClose} style={{ ...cancelBtnStyle, marginTop: 4 }}>Cancelar</button>
+      <button onClick={onClose} style={{ ...cancelBtnStyle, marginTop: 4 }}>{t('common.cancel')}</button>
     </div>
   );
 }
-
-// ── Componentes auxiliares ────────────────────────────────────────────────────
 
 function SectionToggle({ label, desc, active, disabled, onToggle, noBorder = false }) {
   return (
@@ -224,7 +221,6 @@ function SectionToggle({ label, desc, active, disabled, onToggle, noBorder = fal
         transition: 'all 0.15s',
       }}
     >
-      {/* Toggle pill */}
       <div style={{
         width: 36, height: 20, borderRadius: 10, flexShrink: 0,
         background: active ? 'var(--accent)' : 'var(--border)',

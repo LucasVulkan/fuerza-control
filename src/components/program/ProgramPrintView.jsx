@@ -1,18 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 
-const PATTERN_LABEL = {
-  vertical_pull:   'Tracción',
-  horizontal_pull: 'Tracción',
-  vertical_push:   'Empuje',
-  horizontal_push: 'Empuje',
-  squat:           'Pierna',
-  hip_hinge:       'Pierna',
-  core:            'Core',
-  carry_grip:      'Agarre',
-  calf_raise:      'Gemelos',
-};
-
-function buildTarget(def, exConfig) {
+function buildTarget(def, exConfig, t) {
   const model    = def.progressionModel;
   const minTime  = exConfig?.minTime  ?? def.minTime;
   const maxTime  = exConfig?.maxTime  ?? def.maxTime;
@@ -24,10 +13,10 @@ function buildTarget(def, exConfig) {
 
   let reps;
   if (model === 'time_progression') reps = `${minTime}–${maxTime} s`;
-  else if (model === 'submax')      reps = 'submáx';
+  else if (model === 'submax')      reps = t('print.submax');
   else if (minReps === maxReps)     reps = `${minReps} reps`;
   else                              reps = `${minReps}–${maxReps} reps`;
-  if (def.isUnilateral)             reps += ' c/p';
+  if (def.isUnilateral)             reps += ` ${t('print.perSide')}`;
 
   return { sets, reps, restText };
 }
@@ -35,6 +24,7 @@ function buildTarget(def, exConfig) {
 const DAY_COLORS = ['#e8ff47', '#ff6b35', '#7eb8ff'];
 
 export default function ProgramPrintView() {
+  const { t, i18n } = useTranslation();
   const navigate             = useStore((s) => s.navigate);
   const programs             = useStore((s) => s.programs);
   const profile              = useStore((s) => s.profile);
@@ -43,18 +33,17 @@ export default function ProgramPrintView() {
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
 
-  // Si venimos del área de clientes (_viewingProgramId), mostramos ese programa
   const programId     = ui._viewingProgramId ?? profile.activeProgramId;
   const fromClients   = !!ui._viewingProgramId;
   const activeProgram = programs[programId];
   const allExercises  = { ...exerciseLibrary, ...customExercises };
 
+  const locale = i18n.language === 'en' ? 'en-US' : 'es-ES';
+
   function handleBack() {
-    // Limpiar _viewingProgramId y volver
     useStore.setState((s) => ({ ui: { ...s.ui, _viewingProgramId: null } }));
     navigate(fromClients ? 'home' : 'home');
     if (fromClients) {
-      // Restaurar tab de clientes
       useStore.setState((s) => ({ ui: { ...s.ui, homeTab: 'clients', _viewingProgramId: null } }));
     }
   }
@@ -72,9 +61,16 @@ export default function ProgramPrintView() {
     acc + template.exercises.reduce((a, ex) => a + (ex.sets ?? 3), 0), 0
   );
 
+  function getExName(def) {
+    return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
+  }
+
+  function getPatternLabel(pattern) {
+    return t(`exerciseSelector.patterns.${pattern}`, pattern);
+  }
+
   return (
     <>
-      {/* ── Estilos de impresión ── */}
       <style>{`
         @media print {
           body { background: #0d0d0d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -94,7 +90,7 @@ export default function ProgramPrintView() {
 
       <div className="print-page">
 
-        {/* ── Toolbar (no se imprime) ── */}
+        {/* Toolbar */}
         <div className="no-print" style={{
           position: 'sticky', top: 0, zIndex: 50,
           background: '#161616',
@@ -109,7 +105,7 @@ export default function ProgramPrintView() {
             ‹
           </button>
           <span style={{ flex: 1, fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1, color: '#f0f0f0' }}>
-            VISOR DEL PROGRAMA
+            {t('print.viewerTitle')}
           </span>
           <button
             onClick={() => window.print()}
@@ -119,17 +115,16 @@ export default function ProgramPrintView() {
               fontSize: 16, letterSpacing: 1, padding: '8px 20px', cursor: 'pointer',
             }}
           >
-            ↓ EXPORTAR PDF
+            {t('print.exportPdf')}
           </button>
         </div>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <header style={{
           padding: '48px 40px 36px',
           borderBottom: '1px solid #2a2a2a',
           position: 'relative', overflow: 'hidden',
         }}>
-          {/* Glow decorativo */}
           <div style={{
             position: 'absolute', top: -60, right: -80,
             width: 400, height: 400,
@@ -138,7 +133,7 @@ export default function ProgramPrintView() {
           }} />
 
           <p style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#888', marginBottom: 14 }}>
-            Programa de Entrenamiento
+            {t('print.trainingProgram')}
           </p>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(48px, 8vw, 88px)', lineHeight: 0.9, letterSpacing: 2, color: '#f0f0f0' }}>
             FUERZA<br /><span style={{ color: '#e8ff47' }}>& CONTROL</span>
@@ -149,31 +144,30 @@ export default function ProgramPrintView() {
             </p>
           )}
 
-          {/* Meta */}
           <div style={{ display: 'flex', gap: 32, marginTop: 28, flexWrap: 'wrap' }}>
-            <MetaItem label="Días / semana" value={`${activeProgram.days.length} días`} />
-            <MetaItem label="Estructura"    value={activeProgram.structure ?? '—'} />
-            <MetaItem label="Series totales" value={`${totalSets} series`} />
+            <MetaItem label={t('print.metaDays')} value={t('print.metaDaysValue', { count: activeProgram.days.length })} />
+            <MetaItem label={t('print.metaStructure')} value={activeProgram.structure ?? '—'} />
+            <MetaItem label={t('print.metaTotalSets')} value={t('print.metaSetsValue', { count: totalSets })} />
           </div>
         </header>
 
-        {/* ── Leyenda ── */}
+        {/* Leyenda */}
         <div style={{
           background: '#161616', borderBottom: '1px solid #2a2a2a',
           padding: '16px 40px', display: 'flex', gap: 24, flexWrap: 'wrap',
         }}>
           {[
-            'KEY = ejercicio principal del día',
-            'Descanso mínimo entre sesiones: 1 día',
-            'Calentamiento: 8–10 min movilidad + activación escapular',
-          ].map((t) => (
-            <span key={t} style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#e8ff47', fontWeight: 700 }}>—</span> {t}
+            t('print.legendKey'),
+            t('print.legendRest'),
+            t('print.legendWarmup'),
+          ].map((text) => (
+            <span key={text} style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#e8ff47', fontWeight: 700 }}>—</span> {text}
             </span>
           ))}
         </div>
 
-        {/* ── Días ── */}
+        {/* Días */}
         <main style={{ padding: '0 40px 60px', maxWidth: 1100 }}>
           {days.map(({ template, color, index }) => (
             <section key={template.id} style={{ marginTop: 52 }}>
@@ -193,7 +187,7 @@ export default function ProgramPrintView() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#888', marginBottom: 4 }}>
-                    Sesión {template.label} · {template.name}
+                    {t('print.sessionLabel', { label: template.label, name: template.name })}
                   </p>
                   <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 1, lineHeight: 1, color }}>
                     {template.name.toUpperCase()}
@@ -210,7 +204,7 @@ export default function ProgramPrintView() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
-                    {['#', 'Ejercicio', 'Series × Reps', 'Descanso'].map((h) => (
+                    {[t('print.tableNum'), t('print.tableExercise'), t('print.tableSetsReps'), t('print.tableRest')].map((h) => (
                       <th key={h} style={{
                         textAlign: 'left', fontSize: 9, letterSpacing: 2.5,
                         textTransform: 'uppercase', color: '#888',
@@ -225,12 +219,11 @@ export default function ProgramPrintView() {
                   {template.exercises.map((exConfig, i) => {
                     const def = allExercises[exConfig.exerciseId];
                     if (!def) return null;
-                    const { sets, reps, restText } = buildTarget(def, exConfig);
-                    const patternLabel = PATTERN_LABEL[exConfig.pattern ?? def.pattern];
+                    const { sets, reps, restText } = buildTarget(def, exConfig, t);
+                    const patternLabel = getPatternLabel(exConfig.pattern ?? def.pattern);
 
                     return (
                       <tr key={exConfig.exerciseId} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                        {/* Número */}
                         <td style={{
                           fontFamily: "'Bebas Neue', sans-serif",
                           fontSize: 18, color: '#888', opacity: 0.4,
@@ -239,14 +232,13 @@ export default function ProgramPrintView() {
                           {i + 1}
                         </td>
 
-                        {/* Nombre + tags + nota */}
                         <td style={{ padding: '14px 16px 14px 0', verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             {exConfig.isKey && (
                               <Tag label="KEY" bg="rgba(232,255,71,0.1)" border="rgba(232,255,71,0.3)" color="#e8ff47" />
                             )}
                             <span style={{ fontSize: 15, fontWeight: 500, color: '#f0f0f0' }}>
-                              {def.name}
+                              {getExName(def)}
                             </span>
                             {patternLabel && (
                               <Tag label={patternLabel.toUpperCase()} bg="rgba(255,255,255,0.04)" border="#2a2a2a" color="#888" />
@@ -259,13 +251,11 @@ export default function ProgramPrintView() {
                           )}
                         </td>
 
-                        {/* Series × Reps */}
                         <td style={{ padding: '14px 16px 14px 0', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <strong style={{ fontSize: 14, color: '#f0f0f0' }}>{sets}</strong>
                           <span style={{ fontSize: 13, color: '#888' }}> × {reps}</span>
                         </td>
 
-                        {/* Descanso */}
                         <td style={{ padding: '14px 0', verticalAlign: 'middle', fontSize: 13, color: '#888', whiteSpace: 'nowrap' }}>
                           {restText}
                         </td>
@@ -278,7 +268,7 @@ export default function ProgramPrintView() {
           ))}
         </main>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <footer style={{
           borderTop: '1px solid #2a2a2a',
           padding: '20px 40px',
@@ -286,7 +276,7 @@ export default function ProgramPrintView() {
           fontSize: 11, color: '#555', letterSpacing: 1,
         }}>
           <span>FUERZA & CONTROL</span>
-          <span>{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</span>
+          <span>{new Date().toLocaleDateString(locale, { year: 'numeric', month: 'long' })}</span>
         </footer>
 
       </div>

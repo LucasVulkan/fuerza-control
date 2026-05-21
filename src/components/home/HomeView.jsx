@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import DayCard from './DayCard';
 import HistoryView from '../history/HistoryView';
@@ -6,25 +7,26 @@ import StatsView from '../stats/StatsView';
 import ClientsView from '../program/ClientsView';
 import TemplatesView from '../program/TemplatesView';
 
-const TABS = [
-  { id: 'session',   label: 'Sesión',    icon: '🏋️' },
-  { id: 'history',   label: 'Historial', icon: '📋' },
-  { id: 'progress',  label: 'Progresión',icon: '📈' },
-  { id: 'clients',   label: 'Clientes',  icon: '👥' }, // PRO FEATURE
-  { id: 'templates', label: 'Plantillas',icon: '📐' }, // PRO FEATURE
-];
-
 const BOTTOM_BAR_HEIGHT = 64;
 
 export default function HomeView() {
+  const { t } = useTranslation();
   const ui = useStore((s) => s.ui);
   const [activeTab, setActiveTab] = useState(ui.homeTab ?? 'session');
   const [archiveModal, setArchiveModal] = useState(false);
   const [clientsKey, setClientsKey] = useState(0);
 
+  const TABS = [
+    { id: 'session',   label: t('tabs.session'),   icon: '🏋️' },
+    { id: 'history',   label: t('tabs.history'),   icon: '📋' },
+    { id: 'progress',  label: t('tabs.progress'),  icon: '📈' },
+    { id: 'clients',   label: t('tabs.clients'),   icon: '👥' },
+    { id: 'templates', label: t('tabs.templates'), icon: '📐' },
+  ];
+
   function handleTabClick(tabId) {
     if (tabId === 'clients' && activeTab === 'clients') {
-      setClientsKey((k) => k + 1); // fuerza remount de ClientsView → vuelve a lista
+      setClientsKey((k) => k + 1);
     }
     setActiveTab(tabId);
   }
@@ -105,7 +107,6 @@ export default function HomeView() {
         })}
       </div>
 
-      {/* Modal de archivar */}
       {archiveModal && (
         <ArchiveModal
           programName={activeProgram?.name}
@@ -118,6 +119,7 @@ export default function HomeView() {
 }
 
 function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, startSession, navigate, activeSession, onArchive, allExercises }) {
+  const { t } = useTranslation();
   const advanceStage        = useStore((s) => s.advanceStage);
   const dismissStageAdvance = useStore((s) => s.dismissStageAdvance);
   const setCurrentStage     = useStore((s) => s.setCurrentStage);
@@ -128,7 +130,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
         <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>🏋️</span>
-        No hay programa activo.
+        {t('home.noActiveProgram')}
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 240, margin: '20px auto 0' }}>
           <button
             onClick={() => navigate('onboarding')}
@@ -138,7 +140,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
               fontSize: 18, letterSpacing: 1, padding: '13px 24px', cursor: 'pointer',
             }}
           >
-            ＋ NUEVO PROGRAMA
+            {t('home.newProgram')}
           </button>
         </div>
       </div>
@@ -158,7 +160,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
   return (
     <div style={{ borderTop: 'var(--border-width) solid var(--border)' }}>
       <div style={{ padding: '12px 20px 4px' }}>
-        <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>Programa activo</p>
+        <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)' }}>{t('home.activeProgram')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', margin: 0, flex: 1, minWidth: 0 }}>{activeProgram.name}</p>
           {hasStages && (
@@ -182,10 +184,10 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 10, color: 'var(--muted)' }}>
-                {sessionsCompleted} / {threshold} sesiones
+                {t('home.stageProgress', { completed: sessionsCompleted, total: threshold })}
               </span>
               <span style={{ fontSize: 10, color: 'var(--muted)' }}>
-                {currentStageIdx + 1} / {activeProgram.stages.length} etapas
+                {t('home.stageCount', { current: currentStageIdx + 1, total: activeProgram.stages.length })}
               </span>
             </div>
             <div style={{ height: 3, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' }}>
@@ -212,7 +214,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
             padding: '18px', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
           }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: 1, marginBottom: 12 }}>
-              SELECCIONAR ETAPA
+              {t('home.selectStage')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {activeProgram.stages.map((stage, idx) => {
@@ -238,7 +240,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
                         {stage.name}
                       </span>
                       {isActive && (
-                        <span style={{ fontSize: 9, letterSpacing: 1, color: 'var(--accent)', textTransform: 'uppercase' }}>Activa</span>
+                        <span style={{ fontSize: 9, letterSpacing: 1, color: 'var(--accent)', textTransform: 'uppercase' }}>{t('home.activeStage')}</span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
@@ -257,12 +259,11 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
                 padding: '10px', cursor: 'pointer',
               }}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
           </div>
         </>
       )}
-
 
       {/* Banner de avance de etapa */}
       {activeProgram.stageAdvancePending && nextStage && (
@@ -273,10 +274,10 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
           borderRadius: 10, padding: '14px 16px',
         }}>
           <div style={{ fontSize: 10, color: 'var(--accent)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-            ¡Etapa completada!
+            {t('home.stageCompleted')}
           </div>
           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>
-            Has terminado {currentStage?.name}. ¿Empezar {nextStage.name}?
+            {t('home.stageAdvanceText', { current: currentStage?.name, next: nextStage.name })}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -287,7 +288,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
                 fontSize: 15, letterSpacing: 1, padding: '10px 0', cursor: 'pointer',
               }}
             >
-              AVANZAR A {nextStage.name.toUpperCase()}
+              {t('home.advanceTo', { name: nextStage.name.toUpperCase() })}
             </button>
             <button
               onClick={() => dismissStageAdvance(activeProgram.id)}
@@ -299,7 +300,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
                 padding: '10px 0', cursor: 'pointer',
               }}
             >
-              Continuar
+              {t('home.continueStage')}
             </button>
           </div>
         </div>
@@ -307,7 +308,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
 
       <div style={{ padding: '8px 20px 4px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-          Selecciona sesión de hoy
+          {t('home.selectSession')}
         </p>
         {activeProgram.days.map(({ sessionTemplateId }) => {
           const template = getEffectiveTemplate(sessionTemplateId);
@@ -328,11 +329,11 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
       </div>
 
       <div style={{ padding: '12px 20px 80px' }}>
-        <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>Programa</p>
+        <p style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>{t('home.program')}</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <ProgramBtn label="Ver programa" onClick={() => navigate('programPrint')} accent />
-          <ProgramBtn label="Editar" onClick={() => navigate('programEditor')} accent />
-          <ProgramBtn label="Archivar" onClick={onArchive} danger />
+          <ProgramBtn label={t('home.viewProgram')} onClick={() => navigate('programPrint')} accent />
+          <ProgramBtn label={t('home.edit')} onClick={() => navigate('programEditor')} accent />
+          <ProgramBtn label={t('home.archive')} onClick={onArchive} danger />
         </div>
       </div>
     </div>
@@ -340,6 +341,7 @@ function SessionTab({ activeProgram, getEffectiveTemplate, getLastSession, start
 }
 
 function ArchiveModal({ programName, onConfirm, onClose }) {
+  const { t } = useTranslation();
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 49 }} />
@@ -351,22 +353,22 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: 1, marginBottom: 6 }}>
-          ARCHIVAR PROGRAMA
+          {t('home.archiveModal.title')}
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
           <strong style={{ color: 'var(--text)' }}>{programName}</strong>
-          <br />El programa archivado se puede ver en "Programas archivados" del menú, pero no se puede volver a activar (versión gratuita).
+          <br />{t('home.archiveModal.desc')}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <ArchiveOption
-            label="Archivar programa"
-            desc="El historial de sesiones se conserva."
+            label={t('home.archiveModal.keepHistory')}
+            desc={t('home.archiveModal.keepHistoryDesc')}
             onClick={() => onConfirm(false)}
           />
           <ArchiveOption
-            label="Archivar y limpiar historial"
-            desc="Se elimina también el historial de este programa."
+            label={t('home.archiveModal.clearHistory')}
+            desc={t('home.archiveModal.clearHistoryDesc')}
             onClick={() => onConfirm(true)}
             danger
           />
@@ -379,7 +381,7 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
               padding: '10px', cursor: 'pointer', marginTop: 4,
             }}
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
         </div>
       </div>

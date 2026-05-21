@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import SessionCard from './SessionCard';
 import { filterLog } from '../ui/FilterBar';
 
 export default function HistoryView({ embedded = false }) {
+  const { t } = useTranslation();
   const workoutLog     = useStore((s) => s.workoutLog);
   const deleteLogEntry = useStore((s) => s.deleteLogEntry);
   const navigate       = useStore((s) => s.navigate);
@@ -64,7 +66,7 @@ export default function HistoryView({ embedded = false }) {
     .sort((a, b) => b.timestamp - a.timestamp);
 
   function handleDelete(id) {
-    if (window.confirm('¿Eliminar esta sesión?')) deleteLogEntry(id);
+    if (window.confirm(t('history.deleteConfirm'))) deleteLogEntry(id);
   }
 
   return (
@@ -81,7 +83,7 @@ export default function HistoryView({ embedded = false }) {
         >
           <span style={{ color: 'var(--muted)', fontSize: 22, lineHeight: 1 }}>‹</span>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 1 }}>
-            HISTORIAL
+            {t('history.title')}
           </div>
         </div>
       )}
@@ -89,8 +91,8 @@ export default function HistoryView({ embedded = false }) {
       {/* Scope selector */}
       <div style={{ padding: '10px 20px 0', display: 'flex', gap: 6 }}>
         {[
-          { id: 'program', label: 'Programa actual' },
-          { id: 'all',     label: 'Todo' },
+          { id: 'program', label: t('history.currentProgram') },
+          { id: 'all',     label: t('history.all') },
         ].map(({ id, label }) => {
           const active = scope === id;
           return (
@@ -148,7 +150,7 @@ export default function HistoryView({ embedded = false }) {
                 fontSize: 11, padding: '4px 8px', cursor: 'pointer',
               }}
             >
-              Todas ✕
+              {t('history.allStages')}
             </button>
           )}
         </div>
@@ -158,7 +160,7 @@ export default function HistoryView({ embedded = false }) {
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
             <span style={{ display: 'block', fontSize: 32, marginBottom: 12 }}>📭</span>
-            Sin sesiones para este filtro.
+            {t('history.noSessions')}
           </div>
         ) : (
           filtered.map((session) => (

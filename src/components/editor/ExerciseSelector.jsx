@@ -1,48 +1,18 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import CustomExerciseForm from './CustomExerciseForm';
 
-// Etiquetas legibles para los patrones
-const PATTERN_LABELS = {
-  vertical_pull:   'Tracción vertical',
-  horizontal_pull: 'Tracción horizontal',
-  vertical_push:   'Empuje vertical',
-  horizontal_push: 'Empuje horizontal',
-  squat:           'Pierna (rodilla)',
-  hip_hinge:       'Pierna (cadera)',
-  core:            'Core',
-  carry_grip:      'Agarre / Carga',
-  calf_raise:      'Gemelos',
-};
-
-const MUSCLE_LABELS = {
-  latissimus_dorsi: 'Espalda (dorsal)',
-  biceps: 'Bíceps',
-  rear_deltoid: 'Deltoides posterior',
-  rhomboids: 'Romboides',
-  mid_trapezius: 'Trapecio medio',
-  pectoralis: 'Pectoral',
-  triceps: 'Tríceps',
-  anterior_deltoid: 'Deltoides anterior',
-  deltoid: 'Hombro',
-  hamstrings: 'Isquiotibiales',
-  glutes: 'Glúteos',
-  erector_spinae: 'Erector espinal',
-  quadriceps: 'Cuádriceps',
-  rectus_abdominis: 'Abdominales',
-  hip_flexors: 'Flexores de cadera',
-  forearms: 'Antebrazos',
-  serratus: 'Serrato',
-};
-
 export default function ExerciseSelector({ currentExerciseId, templateId, existingPatterns = [], onSelect, onClose }) {
+  const { t } = useTranslation();
+  const language = useStore((s) => s.profile.language);
+
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
   const allLibrary = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const currentDef = currentExerciseId ? allLibrary[currentExerciseId] : null;
   const [showCreate, setShowCreate] = useState(false);
 
-  // Modo añadir: si no hay currentExerciseId, empezamos en 'complementary' si hay patrones existentes
   const defaultMode = !currentExerciseId && existingPatterns.length > 0 ? 'complementary' : 'similar';
 
   const [search, setSearch] = useState('');
@@ -52,6 +22,10 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
 
   const allExercises = Object.values(allLibrary);
 
+  function getExName(ex) {
+    return language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
+  }
+
   const filtered = useMemo(() => {
     let results = currentExerciseId
       ? allExercises.filter((ex) => ex.id !== currentExerciseId)
@@ -59,8 +33,9 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      return results.filter((ex) => ex.name.toLowerCase().includes(q))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      return results
+        .filter((ex) => getExName(ex).toLowerCase().includes(q))
+        .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     }
 
     if (filterMode === 'similar' && currentDef) {
@@ -68,15 +43,13 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
         (ex) => ex.pattern === currentDef.pattern && ex.level === currentDef.level
       );
     } else if (filterMode === 'complementary') {
-      // Patrones que NO están en el día — priorizarlos
       const missing = results.filter((ex) => !existingPatterns.includes(ex.pattern));
       const present = results.filter((ex) => existingPatterns.includes(ex.pattern));
       return [...missing, ...present].sort((a, b) => {
-        // Dentro de cada grupo, ordenar por nombre
         const aMissing = !existingPatterns.includes(a.pattern);
         const bMissing = !existingPatterns.includes(b.pattern);
         if (aMissing !== bMissing) return aMissing ? -1 : 1;
-        return a.name.localeCompare(b.name);
+        return getExName(a).localeCompare(getExName(b));
       });
     } else if (filterMode === 'pattern' && selectedPattern) {
       results = results.filter((ex) => ex.pattern === selectedPattern);
@@ -84,18 +57,17 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
       results = results.filter((ex) => ex.muscles?.includes(selectedMuscle));
     }
 
-    return results.sort((a, b) => a.name.localeCompare(b.name));
-  }, [search, filterMode, selectedPattern, selectedMuscle, allExercises, currentExerciseId, existingPatterns]);
+    return results.sort((a, b) => getExName(a).localeCompare(getExName(b)));
+  }, [search, filterMode, selectedPattern, selectedMuscle, allExercises, currentExerciseId, existingPatterns, language]);
 
   const patterns = [...new Set(allExercises.map((e) => e.pattern))].sort();
   const muscles = [...new Set(allExercises.flatMap((e) => e.muscles ?? []))].sort();
 
-  // Tabs disponibles según contexto
   const tabs = [
-    ...(currentDef ? [{ id: 'similar', label: 'Similar' }] : []),
-    ...(existingPatterns.length > 0 ? [{ id: 'complementary', label: 'Complementario' }] : []),
-    { id: 'pattern', label: 'Patrón' },
-    { id: 'muscle', label: 'Músculo' },
+    ...(currentDef ? [{ id: 'similar', label: t('exerciseSelector.tabSimilar') }] : []),
+    ...(existingPatterns.length > 0 ? [{ id: 'complementary', label: t('exerciseSelector.tabComplementary') }] : []),
+    { id: 'pattern', label: t('exerciseSelector.tabPattern') },
+    { id: 'muscle', label: t('exerciseSelector.tabMuscle') },
   ];
 
   return (
@@ -126,7 +98,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
           flexShrink: 0,
         }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>
-            SELECCIONAR EJERCICIO
+            {t('exerciseSelector.title')}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
@@ -135,7 +107,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
         <div style={{ padding: '12px 20px 0', flexShrink: 0 }}>
           <input
             type="text"
-            placeholder="Buscar ejercicio..."
+            placeholder={t('exerciseSelector.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -154,10 +126,9 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
           />
         </div>
 
-        {/* Filtros — solo visibles si no hay búsqueda de texto */}
+        {/* Filtros */}
         {!search.trim() && (
           <div style={{ padding: '10px 20px 0', flexShrink: 0 }}>
-            {/* Tabs de modo */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
               {tabs.map((tab) => (
                 <button
@@ -181,7 +152,6 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
               ))}
             </div>
 
-            {/* Selector de patrón */}
             {filterMode === 'pattern' && (
               <select
                 value={selectedPattern}
@@ -198,14 +168,13 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                   marginBottom: 4,
                 }}
               >
-                <option value="">Todos los patrones</option>
+                <option value="">{t('exerciseSelector.allPatterns')}</option>
                 {patterns.map((p) => (
-                  <option key={p} value={p}>{PATTERN_LABELS[p] ?? p}</option>
+                  <option key={p} value={p}>{t(`exerciseSelector.patterns.${p}`, p)}</option>
                 ))}
               </select>
             )}
 
-            {/* Selector de músculo */}
             {filterMode === 'muscle' && (
               <select
                 value={selectedMuscle}
@@ -222,9 +191,9 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
                   marginBottom: 4,
                 }}
               >
-                <option value="">Todos los músculos</option>
+                <option value="">{t('exerciseSelector.allMuscles')}</option>
                 {muscles.map((m) => (
-                  <option key={m} value={m}>{MUSCLE_LABELS[m] ?? m}</option>
+                  <option key={m} value={m}>{t(`exerciseSelector.muscles.${m}`, m)}</option>
                 ))}
               </select>
             )}
@@ -234,7 +203,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
         {/* Contador + botón crear */}
         <div style={{ padding: '8px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <span style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 1 }}>
-            {filtered.length} EJERCICIO{filtered.length !== 1 ? 'S' : ''}
+            {t('exerciseSelector.exerciseCount', { count: filtered.length })}
           </span>
           <button
             onClick={() => setShowCreate(true)}
@@ -249,7 +218,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
               fontFamily: "'DM Sans', sans-serif",
             }}
           >
-            ＋ Crear ejercicio
+            {t('exerciseSelector.createExercise')}
           </button>
         </div>
 
@@ -257,13 +226,20 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
         <div style={{ overflowY: 'auto', flex: 1, padding: '0 20px 24px' }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>
-              Sin resultados
+              {t('exerciseSelector.noResults')}
             </div>
           ) : (
             filtered.map((ex) => (
               <ExerciseOption
                 key={ex.id}
                 ex={ex}
+                exName={getExName(ex)}
+                patternLabel={t(`exerciseSelector.patterns.${ex.pattern}`, ex.pattern)}
+                levelLabel={
+                  ex.level === 'intermediate' ? t('exerciseSelector.levelIntermediate')
+                  : ex.level === 'beginner' ? t('exerciseSelector.levelBeginner')
+                  : ''
+                }
                 onSelect={() => onSelect(ex.id)}
               />
             ))
@@ -275,7 +251,7 @@ export default function ExerciseSelector({ currentExerciseId, templateId, existi
   );
 }
 
-function ExerciseOption({ ex, onSelect }) {
+function ExerciseOption({ ex, exName, patternLabel, levelLabel, onSelect }) {
   return (
     <div
       onClick={onSelect}
@@ -291,7 +267,7 @@ function ExerciseOption({ ex, onSelect }) {
     >
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>{ex.name}</span>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{exName}</span>
           {ex.isCustom && (
             <span style={{
               fontSize: 9, letterSpacing: 1,
@@ -303,8 +279,8 @@ function ExerciseOption({ ex, onSelect }) {
           )}
         </div>
         <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
-          {PATTERN_LABELS[ex.pattern] ?? ex.pattern}
-          {ex.level === 'intermediate' ? ' · Intermedio' : ex.level === 'beginner' ? ' · Principiante' : ''}
+          {patternLabel}
+          {levelLabel ? ` · ${levelLabel}` : ''}
         </div>
       </div>
       <span style={{ color: 'var(--muted)', fontSize: 18, flexShrink: 0 }}>›</span>

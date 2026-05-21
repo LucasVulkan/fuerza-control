@@ -1,21 +1,23 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import ExerciseSelector from './ExerciseSelector';
 
-const PROGRESSION_MODELS = [
-  { id: 'double_progression', label: 'Doble progresión', desc: 'Peso + reps' },
-  { id: 'time_progression',   label: 'Tiempo',           desc: 'Segundos' },
-  { id: 'submax',             label: 'Submáximo',         desc: 'RIR / RPE' },
-];
-
 export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
+  const { t } = useTranslation();
+
+  const PROGRESSION_MODELS = [
+    { id: 'double_progression', label: t('exerciseEditor.progressionModels.double_progression.label'), desc: t('exerciseEditor.progressionModels.double_progression.desc') },
+    { id: 'time_progression',   label: t('exerciseEditor.progressionModels.time_progression.label'),   desc: t('exerciseEditor.progressionModels.time_progression.desc') },
+    { id: 'submax',             label: t('exerciseEditor.progressionModels.submax.label'),             desc: t('exerciseEditor.progressionModels.submax.desc') },
+  ];
+
   const [sets, setSets] = useState(exConfig.sets);
   const [restSec, setRestSec] = useState(exConfig.restSec);
   const [minReps, setMinReps] = useState(exConfig.minReps ?? def?.minReps ?? '');
   const [maxReps, setMaxReps] = useState(exConfig.maxReps ?? def?.maxReps ?? '');
   const [minTime, setMinTime] = useState(exConfig.minTime ?? def?.minTime ?? '');
   const [maxTime, setMaxTime] = useState(exConfig.maxTime ?? def?.maxTime ?? '');
-  // El modelo puede venir del exConfig (override), del def, o por defecto double_progression
   const [progressionModel, setProgressionModel] = useState(
     exConfig.progressionModel ?? def?.progressionModel ?? 'double_progression'
   );
@@ -37,24 +39,22 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
     if (isTime) {
       updates.minTime = parseInt(minTime);
       updates.maxTime = parseInt(maxTime);
-      // Limpiar reps si cambiamos a tiempo
       updates.minReps = null;
       updates.maxReps = null;
     } else if (!isSubmax) {
       updates.minReps = parseInt(minReps);
       updates.maxReps = parseInt(maxReps);
-      // Limpiar tiempo si cambiamos a reps
       updates.minTime = null;
       updates.maxTime = null;
     }
     updateExerciseParams(templateId, exConfig.exerciseId, updates);
-    showToast('✓ Ejercicio actualizado');
+    showToast(t('exerciseEditor.toastUpdated'));
     onClose();
   }
 
   function handleReplace(newExerciseId) {
     replaceExercise(templateId, exConfig.exerciseId, newExerciseId);
-    showToast('✓ Ejercicio sustituido');
+    showToast(t('exerciseEditor.toastSubstituted'));
     setShowSelector(false);
     onClose();
   }
@@ -76,7 +76,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
         {def?.isCustom && (
         <div>
           <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
-            Tipo de progresión
+            {t('exerciseEditor.progressionType')}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {PROGRESSION_MODELS.map((m) => (
@@ -108,24 +108,24 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
 
         {/* Series y descanso */}
         <div style={{ display: 'flex', gap: 10 }}>
-          <EditorField label="Series" value={sets} onChange={setSets} min={1} max={8} />
-          <EditorField label="Descanso (s)" value={restSec} onChange={setRestSec} min={30} max={300} />
+          <EditorField label={t('exerciseEditor.fieldSets')} value={sets} onChange={setSets} min={1} max={8} />
+          <EditorField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} />
         </div>
 
         {/* Rango según modelo */}
         {isTime ? (
           <div style={{ display: 'flex', gap: 10 }}>
-            <EditorField label="Tiempo mín (s)" value={minTime} onChange={setMinTime} min={5} max={300} />
-            <EditorField label="Tiempo máx (s)" value={maxTime} onChange={setMaxTime} min={5} max={300} />
+            <EditorField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} />
+            <EditorField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} />
           </div>
         ) : !isSubmax ? (
           <div style={{ display: 'flex', gap: 10 }}>
-            <EditorField label="Reps mín" value={minReps} onChange={setMinReps} min={1} max={50} />
-            <EditorField label="Reps máx" value={maxReps} onChange={setMaxReps} min={1} max={50} />
+            <EditorField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
+            <EditorField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
           </div>
         ) : (
           <div style={{ fontSize: 11, color: 'var(--muted)', padding: '4px 0', lineHeight: 1.5 }}>
-            Submáximo: el atleta trabaja hasta 2 reps del fallo. Sin rango fijo.
+            {t('exerciseEditor.submaxHint')}
           </div>
         )}
 
@@ -140,7 +140,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
               fontSize: 12, padding: '9px 0', cursor: 'pointer',
             }}
           >
-            ⇄ Sustituir
+            {t('exerciseEditor.substituteBtn')}
           </button>
           <button
             onClick={onClose}
@@ -150,7 +150,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
               fontSize: 12, padding: '9px 14px', cursor: 'pointer',
             }}
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -160,7 +160,7 @@ export default function ExerciseEditor({ templateId, exConfig, def, onClose }) {
               fontSize: 15, letterSpacing: 1, padding: '9px 16px', cursor: 'pointer',
             }}
           >
-            Guardar
+            {t('exerciseEditor.saveBtn')}
           </button>
         </div>
       </div>
@@ -201,4 +201,3 @@ function EditorField({ label, value, onChange, min, max }) {
     </div>
   );
 }
-

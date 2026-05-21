@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   closestCenter,
@@ -22,6 +23,7 @@ import ExerciseSelector from './ExerciseSelector';
 // ─── Fila sortable individual ─────────────────────────────────────────────────
 
 function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditingExId, onRemove, isHole, swipeProgress }) {
+  const { t } = useTranslation();
   const isEditing = editingExId === exConfig.exerciseId;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: exConfig.exerciseId,
@@ -61,7 +63,9 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
             {def?.name ?? exConfig.exerciseId}
           </div>
           <div style={{ fontSize: 10, color: isDragging && canDelete ? '#ef4444' : 'var(--muted)', marginTop: 2 }}>
-            {isDragging && canDelete ? 'Suelta para eliminar' : `${exConfig.sets} series · ${exConfig.restSec}s descanso`}
+            {isDragging && canDelete
+              ? t('editor.dropToDelete')
+              : t('editor.setsRest', { sets: exConfig.sets, rest: exConfig.restSec })}
           </div>
         </div>
         <button
@@ -78,7 +82,7 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
             flexShrink: 0, touchAction: 'auto',
           }}
         >
-          {isEditing ? 'Cerrar' : '✎'}
+          {isEditing ? t('editor.close') : '✎'}
         </button>
       </div>
       {isEditing && (
@@ -93,8 +97,8 @@ function SortableExerciseRow({ exConfig, def, templateId, editingExId, setEditin
   );
 }
 
-// Clon flotante que sigue el dedo durante el drag
 function DragClone({ exConfig, def, swipeProgress }) {
+  const { t } = useTranslation();
   const canDelete = swipeProgress >= 1;
   const r = Math.round(swipeProgress * 239);
   const g = Math.round(swipeProgress * 68);
@@ -124,7 +128,9 @@ function DragClone({ exConfig, def, swipeProgress }) {
           {def?.name ?? exConfig?.exerciseId}
         </div>
         <div style={{ fontSize: 10, color: canDelete ? '#ef4444' : 'var(--muted)', marginTop: 2 }}>
-          {canDelete ? 'Suelta para eliminar' : `${exConfig?.sets} series · ${exConfig?.restSec}s descanso`}
+          {canDelete
+            ? t('editor.dropToDelete')
+            : t('editor.setsRest', { sets: exConfig?.sets, rest: exConfig?.restSec })}
         </div>
       </div>
     </div>
@@ -134,6 +140,7 @@ function DragClone({ exConfig, def, swipeProgress }) {
 // ─── DayEditor principal ──────────────────────────────────────────────────────
 
 export default function DayEditor({ templateId, onRemove }) {
+  const { t } = useTranslation();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
@@ -157,11 +164,9 @@ export default function DayEditor({ templateId, onRemove }) {
   const [editingSessionName, setEditingSessionName] = useState(false);
   const [sessionNameValue, setSessionNameValue] = useState('');
 
-  const SWIPE_START = 40;  // px donde empieza a ponerse rojo
-  const SWIPE_END   = 160; // px donde está listo para eliminar
+  const SWIPE_START = 40;
+  const SWIPE_END   = 160;
 
-  // Sensores: pointer para desktop, touch para móvil
-  // activationConstraint evita que un tap accidental active el drag
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -216,9 +221,9 @@ export default function DayEditor({ templateId, onRemove }) {
   }
 
   function handleReset() {
-    if (window.confirm('¿Restaurar este día a los valores originales?')) {
+    if (window.confirm(t('editor.resetConfirm'))) {
       resetTemplate(templateId);
-      showToast('✓ Día restaurado');
+      showToast(t('editor.toastReset'));
       setEditingExId(null);
     }
   }
@@ -226,13 +231,13 @@ export default function DayEditor({ templateId, onRemove }) {
   function handleRemove(exerciseId) {
     removeExercise(templateId, exerciseId);
     if (editingExId === exerciseId) setEditingExId(null);
-    showToast('✓ Ejercicio eliminado');
+    showToast(t('editor.toastExDeleted'));
   }
 
   function handleAdd(exerciseId) {
     addExercise(templateId, exerciseId);
     setShowAddSelector(false);
-    showToast('✓ Ejercicio añadido');
+    showToast(t('editor.toastExAdded'));
   }
 
   return (
@@ -280,12 +285,12 @@ export default function DayEditor({ templateId, onRemove }) {
             <div
               style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 1, color, cursor: 'pointer', userSelect: 'none' }}
             >
-              DÍA {template.label} · {template.name.toUpperCase()}
+              {t('editor.dayLabel', { label: template.label, name: template.name.toUpperCase() })}
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            {template.exercises.length} ejercicios
-            {isEdited && <span style={{ color: 'var(--accent)', marginLeft: 8 }}>· Editado</span>}
+            {t('editor.exerciseCount', { count: template.exercises.length })}
+            {isEdited && <span style={{ color: 'var(--accent)', marginLeft: 8 }}>· {t('editor.edited')}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -348,7 +353,7 @@ export default function DayEditor({ templateId, onRemove }) {
                 cursor: 'pointer',
               }}
             >
-              ＋ Añadir ejercicio
+              {t('editor.addExercise')}
             </button>
             {isEdited && (
               <button
@@ -364,7 +369,7 @@ export default function DayEditor({ templateId, onRemove }) {
                   cursor: 'pointer',
                 }}
               >
-                ↩ Restaurar
+                {t('editor.restore')}
               </button>
             )}
           </div>
@@ -383,4 +388,3 @@ export default function DayEditor({ templateId, onRemove }) {
     </div>
   );
 }
-
