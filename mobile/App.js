@@ -17,8 +17,12 @@ import { navigationRef } from './src/navigation/navigationRef';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 import { registerBackupTask } from './src/tasks/driveBackupTask';
+import { RC_ANDROID_API_KEY, RC_IOS_API_KEY } from './src/config/revenuecat';
+import { useStore } from './store/useStore';
 
 export default function App() {
+  const checkProStatus = useStore((s) => s.checkProStatus);
+
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     // setBackgroundColorAsync no está soportado con edge-to-edge activado.
@@ -30,6 +34,20 @@ export default function App() {
   // Register background Drive backup task (safe to call on every launch; ignored if already registered)
   useEffect(() => {
     registerBackupTask().catch(() => {});
+  }, []);
+
+  // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
+  useEffect(() => {
+    try {
+      const Purchases = require('react-native-purchases').default;
+      const { LOG_LEVEL } = require('react-native-purchases');
+      if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+      const apiKey = Platform.OS === 'ios' ? RC_IOS_API_KEY : RC_ANDROID_API_KEY;
+      Purchases.configure({ apiKey });
+      checkProStatus();
+    } catch {
+      // Expo Go or build without native module — isPro stays as persisted value
+    }
   }, []);
 
   return (

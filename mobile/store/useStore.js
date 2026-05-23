@@ -1686,6 +1686,75 @@ export const useStore = create(
         return { ok: true, fileName };
       },
 
+      // ══════════════════════════════════════════════════════════════════════
+      // REVENUECAT / PURCHASES
+      // ══════════════════════════════════════════════════════════════════════
+
+      /** Returns the Purchases instance or null if the native module isn't loaded (Expo Go). */
+      _getRC: () => {
+        try { return require('react-native-purchases').default; } catch { return null; }
+      },
+
+      /**
+       * Fetches the current entitlements from RevenueCat and syncs isPro.
+       * Call on app launch (after RC is configured) and after purchase/restore.
+       */
+      checkProStatus: async () => {
+        const RC = get()._getRC();
+        if (!RC) return get().profile.isPro;
+        try {
+          const info = await RC.getCustomerInfo();
+          const isPro = !!info.entitlements.active['pro'];
+          set((s) => ({ profile: { ...s.profile, isPro } }));
+          return isPro;
+        } catch {
+          return get().profile.isPro;
+        }
+      },
+
+      /** Fetches the current RevenueCat offering. Returns null if unavailable. */
+      getOffering: async () => {
+        const RC = get()._getRC();
+        if (!RC) return null;
+        try {
+          const offerings = await RC.getOfferings();
+          return offerings.current ?? null;
+        } catch {
+          return null;
+        }
+      },
+
+      /** Purchases a RevenueCat Package. Returns { ok, isPro } or { ok: false, cancelled, error }. */
+      purchasePackage: async (pkg) => {
+        const RC = get()._getRC();
+        if (!RC) return { ok: false, error: 'Compras no disponibles en este entorno' };
+        try {
+          const { customerInfo } = await RC.purchasePackage(pkg);
+          const isPro = !!customerInfo.entitlements.active['pro'];
+          set((s) => ({ profile: { ...s.profile, isPro } }));
+          return { ok: true, isPro };
+        } catch (e) {
+          if (e?.userCancelled) return { ok: false, cancelled: true };
+          return { ok: false, error: e?.message ?? 'Error al procesar la compra' };
+        }
+      },
+
+      /** Restores previous purchases and syncs isPro. */
+      restorePurchases: async () => {
+        const RC = get()._getRC();
+        if (!RC) return false;
+        try {
+          const info = await RC.restorePurchases();
+          const isPro = !!info.entitlements.active['pro'];
+          set((s) => ({ profile: { ...s.profile, isPro } }));
+          get().showToast(isPro ? '✓ Compra restaurada' : 'No se encontraron compras anteriores');
+          return isPro;
+        } catch {
+          get().showToast('⚠️ Error al restaurar compras');
+          return false;
+        }
+      },
+
       /** Deletes all backup files from Drive and resets lastBackup metadata. */
       deleteDriveBackups: async () => {
         const { driveBackup } = get();

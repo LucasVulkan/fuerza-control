@@ -71,9 +71,9 @@ export default function DriveBackupModal({ onClose }) {
 
   // ── OAuth setup ─────────────────────────────────────────────────────────────
 
-  // Change to makeRedirectUri({ useProxy: true }) for Expo Go testing,
-  // and register https://auth.expo.io/@lucasvulkans-organization/forma in GCC.
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'forma' });
+  // Expo proxy — works in both Expo Go and production builds.
+  // Registered URI in Google Cloud Console: https://auth.expo.io/@lucasvulkans-organization/forma
+  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {

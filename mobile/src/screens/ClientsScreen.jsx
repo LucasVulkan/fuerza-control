@@ -22,6 +22,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
+import PaywallModal from '../components/PaywallModal';
 import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
 import { summarizeSets } from '../../../src/utils/progression';
 
@@ -680,6 +681,7 @@ export default function ClientsScreen() {
   );
 
   // ── UI State ───────────────────────────────────────────────────────────────
+  const [showPaywall,      setShowPaywall]      = useState(false);
   const [view,             setView]             = useState('list'); // 'list' | 'detail' | 'billing'
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeTab,        setActiveTab]        = useState('programs');
@@ -907,8 +909,18 @@ export default function ClientsScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
           <Text style={styles.emptyTitle}>Gestión de clientes</Text>
-          <Text style={styles.emptyBody}>Disponible en el plan PRO.</Text>
+          <Text style={styles.emptyBody}>
+            Lleva el seguimiento de tus clientes, asígnales programas y controla su facturación.
+          </Text>
+          <TouchableOpacity
+            style={styles.proBtn}
+            onPress={() => setShowPaywall(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.proBtnText}>Ver planes PRO</Text>
+          </TouchableOpacity>
         </View>
+        {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       </View>
     );
   }
@@ -1561,9 +1573,23 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
   emptyBody: {
-    fontSize:  typography.sm,
-    color:     colors.muted,
-    textAlign: 'center',
+    fontSize:    typography.sm,
+    color:       colors.muted,
+    textAlign:   'center',
+    lineHeight:  typography.sm * 1.6,
+    marginBottom: spacing.lg,
+  },
+  proBtn: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.sm,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+    marginTop:       spacing.xs,
+  },
+  proBtnText: {
+    fontSize:   typography.base,
+    fontWeight: typography.bold,
+    color:      colors.bg,
   },
   emptyText: {
     fontSize:  typography.sm,
