@@ -1,0 +1,513 @@
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  Modal, TextInput, KeyboardAvoidingView,
+  Platform, StyleSheet, Animated, PanResponder,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import Svg, { Circle } from 'react-native-svg';
+import { useStore } from '../../store/useStore';
+import { useWeightUnit } from '../hooks/useWeightUnit';
+import ExerciseCard from '../components/workout/ExerciseCard';
+import { resolveColor, colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { formatSeconds } from '../../../src/utils/formatters';
+
+// ── Floating rest timer ───────────────────────────────────────────────────────
+
+const RING_SIZE      = 64;
+const RING_RADIUS    = 26;
+const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS; // ≈ 163.4
+const SWIPE_THRESHOLD = 80;
+
+function RestTimerFloat({ timer, onStop, bottomOffset }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const opacity    = useRef(new Animated.Value(0)).current;
+
+  // Slide in/out when timer activates/deactivates
+  useEffect(() => {
+    if (timer.active) {
+      translateX.setValue(0);
+      Animated.timing(opacity, {
+        toValue: 1, duration: 250, useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(opacity, {
+        toValue: 0, duration: 200, useNativeDriver: true,
+      }).start();
+    }
+  }, [timer.active]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  (_, gs) => Math.abs(gs.dx) > 5,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dx > 0) {
+          translateX.setValue(gs.dx);
+          opacity.setValue(Math.max(0, 1 - gs.dx / 160));
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx > SWIPE_THRESHOLD) {
+          Animated.parallel([
+            Animated.timing(translateX, { toValue: 500, duration: 220, useNativeDriver: true }),
+            Animated.timing(opacity,    { toValue: 0,   duration: 220, useNativeDriver: true }),
+          ]).start(() => onStop());
+        } else {
+          Animated.parallel([
+            Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 80 }),
+            Animated.timing(opacity,    { toValue: 1, duration: 120, useNativeDriver: true }),
+          ]).start();
+        }
+      },
+    })
+  ).current;
+
+  const progress    = timer.total > 0 ? timer.remaining / timer.total : 0;
+  const dashOffset  = CIRCUMFERENCE * (1 - progress);
+
+  return (
+    <Animated.View
+      pointerEvents={timer.active ? 'auto' : 'none'}
+      style={[
+        styles.timerFloat,
+        { bottom: bottomOffset, transform: [{ translateX }], opacity },
+      ]}
+      {...panResponder.panHandlers}
+    >
+      {/* Ring + countdown */}
+      <View style={styles.timerRingWrap}>
+        <Svg
+          width={RING_SIZE}
+          height={RING_SIZE}
+          style={{ transform: [{ rotate: '-90deg' }] }}
+        >
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS}
+            stroke={withOpacity(colors.accent, 0.18)}
+            strokeWidth={3.5}
+            fill="none"
+          />
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS}
+            stroke={colors.accent}
+            strokeWidth={3.5}
+            fill="none"
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+          />
+        </Svg>
+        <Text style={styles.timerCountdown}>{formatSeconds(timer.remaining)}</Text>
+      </View>
+
+      {/* Exercise name */}
+      <Text style={styles.timerExName} numberOfLines={2}>{timer.exerciseName}</Text>
+
+      {/* Skip */}
+      <TouchableOpacity style={styles.timerSkipBtn} onPress={onStop} hitSlop={8}>
+        <Text style={styles.timerSkipText}>Saltar</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+// ── Notes modal ───────────────────────────────────────────────────────────────
+
+function NotesModal({ visible, value, onChange, onClose }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalSheet}
+      >
+        <View style={styles.modalHandle} />
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>NOTAS DE SESIÓN</Text>
+          <TouchableOpacity style={styles.modalSaveBtn} onPress={onClose}>
+            <Text style={styles.modalSaveBtnText}>Guardar</Text>
+          </TouchableOpacity>
+        </View>
+        <TextInput
+          style={styles.notesInput}
+          value={value}
+          onChangeText={onChange}
+          multiline
+          autoFocus
+          placeholder="Notas sobre la sesión…"
+          placeholderTextColor={colors.muted2}
+          textAlignVertical="top"
+        />
+        <Text style={styles.notesHint}>Se guardarán junto con la sesión</Text>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ── Screen ─────────────────────────────────────────────────────────────────────
+
+export default function WorkoutScreen() {
+  const insets     = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { t }      = useTranslation();
+
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  // Store state
+  const activeSession      = useStore((s) => s.activeSession);
+  const sessionTemplates   = useStore((s) => s.sessionTemplates);
+  const userPrograms       = useStore((s) => s.userPrograms);
+  const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
+  const customExercises    = useStore((s) => s.customExercises);
+  const workoutLog         = useStore((s) => s.workoutLog);
+  const restTimer          = useStore((s) => s.ui.restTimer);
+
+  // Store actions
+  const updateSetField     = useStore((s) => s.updateSetField);
+  const toggleSetDone      = useStore((s) => s.toggleSetDone);
+  const addSetToSession    = useStore((s) => s.addSetToSession);
+  const updateSessionNotes = useStore((s) => s.updateSessionNotes);
+  const saveSession        = useStore((s) => s.saveSession);
+  const discardSession     = useStore((s) => s.discardSession);
+  const stopRestTimer      = useStore((s) => s.stopRestTimer);
+  const showToast          = useStore((s) => s.showToast);
+  const syncSessionSets    = useStore((s) => s.syncSessionSets);
+
+  // Derive template + exercises
+  const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
+  const allExercises = { ...exerciseLibrary, ...customExercises };
+
+  // Sync setsState when template exercises change (e.g. after editing the program)
+  useEffect(() => {
+    syncSessionSets();
+  }, [template?.exercises]);
+
+  // Last session for progression recommendations
+  const lastSession = workoutLog
+    .filter((e) => e.sessionTemplateId === activeSession.templateId)
+    .sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
+
+  const exercises = (template?.exercises ?? []).map((exConfig) => ({
+    exConfig,
+    def:         allExercises[exConfig.exerciseId],
+    setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
+    lastExercise: lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
+  }));
+
+  // Colors
+  const accentColor = resolveColor(template?.color ?? 'var(--accent)');
+
+  function handleSave() {
+    const result = saveSession();
+    if (!result.ok) { showToast('⚠️ ' + result.error); return; }
+    showToast(t('workout.sessionSaved'));
+    setTimeout(() => navigation.navigate('Main', { screen: 'Home' }), 800);
+  }
+
+  function handleDiscard() {
+    discardSession(); // stops timer, resets session, navigates home via store ref
+  }
+
+  if (!template) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Text style={styles.errorText}>Sin sesión activa</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.dayLabel, { color: accentColor }]} numberOfLines={1}>
+            {`DÍA ${template.label ?? ''} · ${template.name?.toUpperCase() ?? ''}`}
+          </Text>
+          {template.emphasis ? (
+            <Text style={styles.emphasis} numberOfLines={1}>{template.emphasis}</Text>
+          ) : null}
+        </View>
+        <TouchableOpacity
+          onPress={() => setNotesOpen(true)}
+          hitSlop={12}
+          style={[
+            styles.notesBtn,
+            (activeSession.notes?.trim().length > 0) && styles.notesBtnActive,
+          ]}
+        >
+          <Text style={styles.notesIcon}>📝</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Exercise list */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.top + 56}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {exercises.map(({ exConfig, def, setsState, lastExercise }) => (
+            <ExerciseCard
+              key={exConfig.exerciseId}
+              exConfig={exConfig}
+              def={def}
+              setsState={setsState}
+              lastExercise={lastExercise}
+              onFieldChange={(setIdx, field, value) =>
+                updateSetField(exConfig.exerciseId, setIdx, field, value)
+              }
+              onToggleDone={(setIdx) => toggleSetDone(exConfig.exerciseId, setIdx)}
+              onAddSet={() => addSetToSession(exConfig.exerciseId)}
+            />
+          ))}
+
+          {/* Save button */}
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.saveBtnText}>{t('workout.saveSession').toUpperCase()}</Text>
+          </TouchableOpacity>
+
+          {/* Discard */}
+          <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
+            <Text style={styles.discardText}>{t('workout.discardSession')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Notes modal */}
+      <NotesModal
+        visible={notesOpen}
+        value={activeSession.notes ?? ''}
+        onChange={updateSessionNotes}
+        onClose={() => setNotesOpen(false)}
+      />
+
+      {/* Floating rest timer — sits above everything, swipe right to dismiss */}
+      <RestTimerFloat
+        timer={restTimer}
+        onStop={stopRestTimer}
+        bottomOffset={insets.bottom + 24}
+      />
+    </View>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    flex:            1,
+    backgroundColor: colors.bg,
+  },
+  errorText: {
+    color:     colors.muted,
+    fontSize:  typography.base,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+  },
+
+  // Floating rest timer
+  timerFloat: {
+    position:          'absolute',
+    left:              spacing.lg,
+    right:             spacing.lg,
+    backgroundColor:   colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.lg,
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap:               spacing.md,
+    // Shadow (iOS)
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 4 },
+    shadowOpacity:     0.35,
+    shadowRadius:      12,
+    // Elevation (Android)
+    elevation:         10,
+  },
+  timerRingWrap: {
+    width:          RING_SIZE,
+    height:         RING_SIZE,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  timerCountdown: {
+    position:   'absolute',
+    fontSize:   typography.base,
+    fontWeight: typography.bold,
+    color:      colors.text,
+  },
+  timerExName: {
+    flex:       1,
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.text,
+    lineHeight: typography.sm * 1.4,
+  },
+  timerSkipBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs + 2,
+    borderRadius:      radius.sm,
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.35),
+    backgroundColor:   withOpacity(colors.accent, 0.08),
+  },
+  timerSkipText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
+
+  // Header
+  header: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  backBtn: { padding: spacing.xs },
+  backIcon: {
+    fontSize:   26,
+    color:      colors.muted,
+    lineHeight: 30,
+  },
+  headerCenter: {
+    flex: 1,
+    gap:  2,
+  },
+  dayLabel: {
+    fontSize:      typography.base,
+    fontWeight:    typography.bold,
+    letterSpacing: 0.5,
+  },
+  emphasis: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  notesBtn: {
+    padding:         spacing.xs + 2,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+  },
+  notesBtnActive: {
+    borderColor:     withOpacity(colors.accent, 0.4),
+    backgroundColor: withOpacity(colors.accent, 0.08),
+  },
+  notesIcon: { fontSize: 16 },
+
+  // Content
+  content: {
+    padding:       spacing.xl,
+    paddingBottom: spacing.xxl,
+    gap:           spacing.md,
+  },
+
+  // Save / discard
+  saveBtn: {
+    borderRadius:   radius.md,
+    paddingVertical: spacing.lg,
+    alignItems:     'center',
+    marginTop:      spacing.sm,
+    backgroundColor: colors.accent,
+  },
+  saveBtnText: {
+    fontSize:      typography.xl,
+    fontWeight:    typography.heavy,
+    color:         colors.onAccent,
+    letterSpacing: 1.5,
+  },
+  discardBtn: {
+    alignItems:      'center',
+    paddingVertical: spacing.md,
+  },
+  discardText: {
+    fontSize: typography.base,
+    color:    colors.muted,
+  },
+
+  // Notes modal
+  modalBackdrop: {
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius:  radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderTopWidth:  borders.thin,
+    borderTopColor:  colors.border,
+    padding:         spacing.xl,
+    paddingBottom:   spacing.xxl,
+    gap:             spacing.md,
+  },
+  modalHandle: {
+    width:           40,
+    height:          4,
+    borderRadius:    radius.full,
+    backgroundColor: colors.border,
+    alignSelf:       'center',
+    marginBottom:    spacing.sm,
+  },
+  modalHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontSize:      typography.lg,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 1,
+  },
+  modalSaveBtn: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+  },
+  modalSaveBtnText: {
+    fontSize:   typography.base,
+    fontWeight: typography.bold,
+    color:      colors.onAccent,
+  },
+  notesInput: {
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.4),
+    borderRadius:    radius.md,
+    color:           colors.text,
+    fontSize:        typography.base,
+    lineHeight:      typography.base * 1.7,
+    padding:         spacing.md,
+    minHeight:       140,
+  },
+  notesHint: {
+    fontSize: typography.xs,
+    color:    colors.muted2,
+  },
+});
