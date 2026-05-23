@@ -56,9 +56,12 @@ export default function SetupScreen() {
       { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl },
     ]}>
       {/* Brand */}
-      <Text style={styles.brand}>FUERZA{'\n'}& CONTROL</Text>
+      <View style={styles.brandRow}>
+        <Text style={styles.brandForma}>Forma</Text>
+        <Text style={styles.brandFit}> Fit</Text>
+      </View>
       <Text style={styles.tagline}>
-        {lang === 'en' ? 'Your strength training app' : 'Tu app de entrenamiento de fuerza'}
+        {lang === 'en' ? 'Your workout tracker' : 'Tu app de entrenamiento'}
       </Text>
 
       <View style={styles.spacer} />
@@ -100,12 +103,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxl,
   },
 
-  brand: {
+  brandRow: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+  },
+  brandForma: {
+    fontSize:      52,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 1,
+  },
+  brandFit: {
     fontSize:      52,
     fontWeight:    typography.heavy,
     color:         colors.accent,
-    lineHeight:    56,
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   tagline: {
     fontSize:  typography.lg,

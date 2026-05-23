@@ -1324,7 +1324,7 @@ export const useStore = create(
         const json     = JSON.stringify({
           version: '2', exportType: 'full',
           exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Fuerza & Control',
+          appName: 'Forma Fit',
           profile: s.profile,
           workoutLog: s.workoutLog,
           userPrograms: s.userPrograms,
@@ -1384,7 +1384,7 @@ export const useStore = create(
         const json = JSON.stringify({
           version: '2', exportType: 'program_with_log',
           exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Fuerza & Control',
+          appName: 'Forma Fit',
           program: { ...program, mode: 'personal', status: 'active' },
           sessionTemplates: relTpl,
           userPrograms: relUP,
@@ -1455,7 +1455,7 @@ export const useStore = create(
             version: '2',
             exportType: withLog ? 'program_with_log' : 'program',
             exportDate: new Date().toISOString().split('T')[0],
-            appName: 'Fuerza & Control',
+            appName: 'Forma Fit',
             program: { ...program, mode: 'personal', status: 'active' },
             sessionTemplates: relTpl,
             userPrograms: relUP,
@@ -1655,7 +1655,7 @@ export const useStore = create(
         const json = JSON.stringify({
           version: '2', exportType: 'full',
           exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Fuerza & Control',
+          appName: 'Forma Fit',
           profile: s.profile,
           workoutLog: s.workoutLog,
           userPrograms: s.userPrograms,

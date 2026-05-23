@@ -1,6 +1,6 @@
 /**
  * AppHeader — shared header for all main tabs.
- * Shows F&C logo + settings menu (≡).
+ * Shows Forma Fit logo + settings menu (≡).
  * Self-contained: manages settings sheet + import logic internally.
  */
 
@@ -298,7 +298,10 @@ export default function AppHeader() {
   return (
     <>
       <View style={styles.header}>
-        <Text style={styles.appName}>F&C</Text>
+        <View style={styles.appNameContainer}>
+          <Text style={styles.appNameForma}>Forma</Text>
+          <Text style={styles.appNameFit}> Fit</Text>
+        </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
         <TouchableOpacity
           onPress={() => setSettingsOpen(true)}
@@ -349,12 +352,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
   },
-  appName: {
+  appNameContainer: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+    minWidth:      88,
+  },
+  appNameForma: {
+    fontSize:      typography.xl,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 0.5,
+  },
+  appNameFit: {
     fontSize:      typography.xl,
     fontWeight:    typography.heavy,
     color:         colors.accent,
-    letterSpacing: 2,
-    minWidth:      36,
+    letterSpacing: 0.5,
   },
   clockText: {
     flex:       1,

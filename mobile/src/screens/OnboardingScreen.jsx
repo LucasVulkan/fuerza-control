@@ -243,7 +243,7 @@ export default function OnboardingScreen() {
           <ModeCard
             icon="📥"
             title={t('onboarding.modeImport', 'Importar archivo')}
-            desc={t('onboarding.modeImportDesc', 'Carga un archivo .json exportado desde Fuerza & Control.')}
+            desc={t('onboarding.modeImportDesc', 'Carga un archivo .json exportado desde Forma Fit.')}
             onPress={handlePickFile}
           />
         </ScrollView>
