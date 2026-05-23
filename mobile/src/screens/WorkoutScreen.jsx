@@ -170,15 +170,18 @@ export default function WorkoutScreen() {
   const restTimer          = useStore((s) => s.ui.restTimer);
 
   // Store actions
-  const updateSetField     = useStore((s) => s.updateSetField);
-  const toggleSetDone      = useStore((s) => s.toggleSetDone);
-  const addSetToSession    = useStore((s) => s.addSetToSession);
-  const updateSessionNotes = useStore((s) => s.updateSessionNotes);
-  const saveSession        = useStore((s) => s.saveSession);
-  const discardSession     = useStore((s) => s.discardSession);
-  const stopRestTimer      = useStore((s) => s.stopRestTimer);
-  const showToast          = useStore((s) => s.showToast);
-  const syncSessionSets    = useStore((s) => s.syncSessionSets);
+  const updateSetField      = useStore((s) => s.updateSetField);
+  const toggleSetDone       = useStore((s) => s.toggleSetDone);
+  const addSetToSession     = useStore((s) => s.addSetToSession);
+  const updateSessionNotes  = useStore((s) => s.updateSessionNotes);
+  const saveSession         = useStore((s) => s.saveSession);
+  const discardSession      = useStore((s) => s.discardSession);
+  const stopRestTimer       = useStore((s) => s.stopRestTimer);
+  const showToast           = useStore((s) => s.showToast);
+  const syncSessionSets     = useStore((s) => s.syncSessionSets);
+  const updateAdHocSet      = useStore((s) => s.updateAdHocSet);
+  const toggleAdHocSetDone  = useStore((s) => s.toggleAdHocSetDone);
+  const addAdHocSet         = useStore((s) => s.addAdHocSet);
 
   // Derive template + exercises
   const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
@@ -275,6 +278,47 @@ export default function WorkoutScreen() {
               onAddSet={() => addSetToSession(exConfig.exerciseId)}
             />
           ))}
+
+          {/* Ad-hoc exercises added during this session */}
+          {(activeSession.adHocExercises ?? []).map((adHoc) => {
+            const def = allExercises[adHoc.exerciseId];
+            const adHocConfig = {
+              exerciseId: adHoc.exerciseId,
+              sets:       adHoc.setsState.length,
+              minReps:    def?.minReps ?? 8,
+              maxReps:    def?.maxReps ?? 12,
+              restSec:    def?.restSec ?? 90,
+              isKey:      false,
+            };
+            return (
+              <ExerciseCard
+                key={adHoc.exerciseId}
+                exConfig={adHocConfig}
+                def={def}
+                setsState={adHoc.setsState}
+                lastExercise={null}
+                onFieldChange={(setIdx, field, value) =>
+                  updateAdHocSet(adHoc.exerciseId, setIdx, field, value)
+                }
+                onToggleDone={(setIdx) => toggleAdHocSetDone(adHoc.exerciseId, setIdx)}
+                onAddSet={() => addAdHocSet(adHoc.exerciseId)}
+              />
+            );
+          })}
+
+          {/* Add exercise to session (ad-hoc) */}
+          <TouchableOpacity
+            style={styles.addExBtn}
+            onPress={() => navigation.navigate('ExerciseSelector', {
+              sessionMode: true,
+              existingPatterns: (template?.exercises ?? [])
+                .map((e) => allExercises[e.exerciseId]?.pattern)
+                .filter(Boolean),
+            })}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.addExBtnText}>+ Añadir ejercicio</Text>
+          </TouchableOpacity>
 
           {/* Save button */}
           <TouchableOpacity
@@ -425,6 +469,24 @@ const styles = StyleSheet.create({
     padding:       spacing.xl,
     paddingBottom: spacing.xxl,
     gap:           spacing.md,
+  },
+
+  // Add exercise (ad-hoc)
+  addExBtn: {
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.3),
+    borderStyle:     'dashed',
+    borderRadius:    radius.md,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+    backgroundColor: withOpacity(colors.accent, 0.04),
+    marginTop:       spacing.xs,
+  },
+  addExBtnText: {
+    fontSize:      typography.base,
+    fontWeight:    typography.medium,
+    color:         colors.accent,
+    letterSpacing: 0.5,
   },
 
   // Save / discard

@@ -29,14 +29,16 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     templateId,
     currentExerciseId = null,
     existingPatterns = [],
+    sessionMode = false,   // true → add to active session (adHoc), not to the template
   } = route.params ?? {};
 
   const language = useStore((s) => s.profile.language);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
-  const addExercise = useStore((s) => s.addExercise);
-  const replaceExercise = useStore((s) => s.replaceExercise);
-  const showToast = useStore((s) => s.showToast);
+  const addExercise      = useStore((s) => s.addExercise);
+  const replaceExercise  = useStore((s) => s.replaceExercise);
+  const addAdHocExercise = useStore((s) => s.addAdHocExercise);
+  const showToast        = useStore((s) => s.showToast);
 
   const allLibrary = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const currentDef = currentExerciseId ? allLibrary[currentExerciseId] : null;
@@ -81,7 +83,10 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   }, [search, filterMode, selectedPattern, allExercises, currentExerciseId, existingPatterns, language]);
 
   function handleSelect(exerciseId) {
-    if (currentExerciseId) {
+    if (sessionMode) {
+      addAdHocExercise(exerciseId);
+      showToast('Ejercicio añadido a la sesión');
+    } else if (currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, exerciseId);
       showToast(t('exerciseEditor.toastSubstituted'));
     } else {

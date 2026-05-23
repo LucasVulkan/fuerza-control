@@ -107,12 +107,17 @@ export default function OnboardingScreen() {
   const generateAndActivateProgram = useStore((s) => s.generateAndActivateProgram);
   const createEmptyProgram         = useStore((s) => s.createEmptyProgram);
   const importData                 = useStore((s) => s.importData);
+  const exerciseLibrary            = useStore((s) => s.exerciseLibrary);
+  const customExercises            = useStore((s) => s.customExercises);
+  const storeNavigate              = useStore((s) => s.navigate);
+  const language                   = useStore((s) => s.profile?.language ?? 'es');
 
   const [mode,             setMode]            = useState(null);
   const [step,             setStep]            = useState(0);
   const [loading,          setLoading]         = useState(false);
   const [importState,      setImportState]     = useState(null);
   const [generatedProgram, setGeneratedProgram]= useState(null); // { program, sessionTemplates }
+  const [expandedSessions, setExpandedSessions]= useState(new Set());
   const [manualSessions,   setManualSessions]  = useState(3);
   const [manualName,       setManualName]      = useState('');
 
@@ -151,6 +156,20 @@ export default function OnboardingScreen() {
     } else {
       navigation.replace('Main');
     }
+  }
+
+  function handleEditProgram() {
+    navigation.replace('Main');
+    setTimeout(() => storeNavigate('programEditor'), 150);
+  }
+
+  function toggleSession(tplId) {
+    setExpandedSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(tplId)) next.delete(tplId);
+      else next.add(tplId);
+      return next;
+    });
   }
 
   async function handleFinish() {
@@ -243,29 +262,66 @@ export default function OnboardingScreen() {
           <Text style={styles.previewMeta}>{days.length} sesiones por ciclo</Text>
         </View>
 
-        {/* Sesiones */}
+        {/* Sesiones expandibles */}
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
           {uniqueTemplates.map((tpl, i) => {
-            const accent = resolveColor(tpl.color ?? 'var(--day1)');
+            const accent     = resolveColor(tpl.color ?? 'var(--day1)');
+            const isExpanded = expandedSessions.has(tpl.id);
+            const allEx      = { ...exerciseLibrary, ...customExercises };
             return (
-              <View key={tpl.id} style={[styles.previewSession, { borderLeftColor: accent }]}>
+              <TouchableOpacity
+                key={tpl.id}
+                style={[styles.previewSession, { borderLeftColor: accent }]}
+                onPress={() => toggleSession(tpl.id)}
+                activeOpacity={0.75}
+              >
                 <Text style={[styles.previewSessionLabel, { color: accent }]}>
                   {tpl.label ?? String.fromCharCode(65 + i)}
                 </Text>
                 <View style={styles.previewSessionInfo}>
-                  <Text style={styles.previewSessionName}>{tpl.name}</Text>
+                  <View style={styles.previewSessionHeader}>
+                    <Text style={styles.previewSessionName}>{tpl.name}</Text>
+                    <Text style={styles.previewChevron}>{isExpanded ? '▲' : '▼'}</Text>
+                  </View>
                   <Text style={styles.previewSessionMeta}>
                     {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
                     {(tpl.exercises ?? []).length} ejercicios
                   </Text>
+                  {isExpanded && (
+                    <View style={styles.previewExList}>
+                      {(tpl.exercises ?? []).map((exCfg, idx) => {
+                        const def  = allEx[exCfg.exerciseId];
+                        const name = def
+                          ? (language === 'en' ? (def.nameEn ?? def.name) : def.name)
+                          : exCfg.exerciseId;
+                        return (
+                          <View key={idx} style={styles.previewExItem}>
+                            <Text style={styles.previewExOrder}>{exCfg.order ?? idx + 1}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.previewExName}>{name}</Text>
+                              <Text style={styles.previewExMeta}>
+                                {exCfg.sets} series
+                                {exCfg.minReps && exCfg.maxReps
+                                  ? ` · ${exCfg.minReps}–${exCfg.maxReps} reps`
+                                  : ''}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Footer */}
+        {/* Footer — Editar + Empezar */}
         <View style={styles.previewFooter}>
+          <TouchableOpacity style={styles.editBtn} onPress={handleEditProgram} activeOpacity={0.85}>
+            <Text style={styles.editBtnText}>EDITAR</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.startBtn} onPress={finish} activeOpacity={0.85}>
             <Text style={styles.startBtnText}>EMPEZAR →</Text>
           </TouchableOpacity>
@@ -789,48 +845,109 @@ const styles = StyleSheet.create({
     gap:               spacing.sm,
   },
   previewSession: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    backgroundColor:  colors.surface,
-    borderWidth:      borders.thin,
-    borderColor:      colors.border,
-    borderLeftWidth:  3,
-    borderRadius:     radius.md,
-    padding:          spacing.md,
-    gap:              spacing.md,
+    flexDirection:   'row',
+    alignItems:      'flex-start',
+    backgroundColor: colors.surface,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderLeftWidth: 3,
+    borderRadius:    radius.md,
+    padding:         spacing.md,
+    gap:             spacing.md,
   },
   previewSessionLabel: {
-    fontSize:   24,
+    fontSize:   22,
     fontWeight: typography.heavy,
     width:      28,
     textAlign:  'center',
-    lineHeight: 28,
+    lineHeight: 24,
+    paddingTop: 2,
   },
   previewSessionInfo: { flex: 1 },
+  previewSessionHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
   previewSessionName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
     color:      colors.text,
+    flex:       1,
+  },
+  previewChevron: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginLeft: spacing.xs,
   },
   previewSessionMeta: {
     fontSize:  typography.xs,
     color:     colors.muted,
     marginTop: 2,
   },
+  previewExList: {
+    marginTop:      spacing.sm,
+    paddingTop:     spacing.sm,
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+    gap:            spacing.xs,
+  },
+  previewExItem: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+  },
+  previewExOrder: {
+    fontSize:  typography.xs,
+    color:     colors.muted2,
+    width:     16,
+    textAlign: 'right',
+    paddingTop: 2,
+  },
+  previewExName: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  previewExMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 1,
+  },
   previewFooter: {
+    flexDirection:     'row',
+    gap:               spacing.sm,
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.lg,
     borderTopWidth:    borders.thin,
     borderTopColor:    colors.border,
   },
+  editBtn: {
+    flex:            1,
+    borderRadius:    radius.md,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface,
+  },
+  editBtnText: {
+    fontSize:      typography.base,
+    fontWeight:    typography.heavy,
+    letterSpacing: 1,
+    color:         colors.muted,
+  },
   startBtn: {
+    flex:            2,
     backgroundColor: colors.accent,
     borderRadius:    radius.md,
-    paddingVertical: 14,
+    paddingVertical: spacing.md,
     alignItems:      'center',
+    justifyContent:  'center',
   },
   startBtnText: {
-    fontSize:      20,
+    fontSize:      typography.lg,
     fontWeight:    typography.heavy,
     letterSpacing: 1.5,
     color:         colors.onAccent,
