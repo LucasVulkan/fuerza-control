@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
@@ -128,6 +129,7 @@ function ArchivedProgramsModal({ onClose }) {
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive }) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [exporting, setExporting] = useState(null); // 'full' | 'log'
 
   const profile              = useStore((s) => s.profile);
@@ -154,7 +156,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.settingsSheet}>
+      <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl) }]}>
         <View style={styles.sheetHandle} />
         <Text style={styles.settingsTitle}>AJUSTES</Text>
 

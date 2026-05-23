@@ -23,7 +23,7 @@ function typeLabel(exportType, hasLog) {
   return 'Programa';
 }
 
-// ── Full-backup section toggles ────────────────────────────────────────────────
+// ── Section toggle row ────────────────────────────────────────────────────────
 
 function SectionRow({ label, desc, enabled, disabled, onToggle }) {
   return (
@@ -47,32 +47,17 @@ function SectionRow({ label, desc, enabled, disabled, onToggle }) {
   );
 }
 
-function BackupSections({ parsedData, onImport, onClose }) {
+// ── Scrollable section list (no actions here) ─────────────────────────────────
+
+function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) {
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
   const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
   const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => p.mode === 'template');
 
-  const [sections, setSections] = useState({
-    program:         hasPrograms,
-    log:             hasLog,
-    customExercises: hasCustEx,
-    clients:         hasClients,
-    templates:       hasTemplates,
-    templatesMode:   'merge',
-  });
-
-  const nothingSelected = !sections.program && !sections.log && !sections.customExercises
-    && !sections.clients && !sections.templates;
-
-  function toggle(key) {
-    setSections((s) => ({ ...s, [key]: !s[key] }));
-  }
-
   return (
     <>
-      {/* Warning */}
       <View style={styles.warning}>
         <Text style={styles.warningText}>
           Los datos importados sobreescribirán los existentes en cada sección seleccionada.
@@ -85,37 +70,35 @@ function BackupSections({ parsedData, onImport, onClose }) {
           desc={hasPrograms ? 'Activa el programa importado' : 'No disponible'}
           enabled={sections.program}
           disabled={!hasPrograms}
-          onToggle={() => toggle('program')}
+          onToggle={() => onToggle('program')}
         />
         <SectionRow
           label="Historial de sesiones"
           desc={hasLog ? `${(parsedData.workoutLog ?? []).length} sesiones` : 'No disponible'}
           enabled={sections.log}
           disabled={!hasLog}
-          onToggle={() => toggle('log')}
+          onToggle={() => onToggle('log')}
         />
         <SectionRow
           label="Ejercicios personalizados"
           desc={hasCustEx ? `${Object.keys(parsedData.customExercises ?? {}).length} ejercicios` : 'No disponible'}
           enabled={sections.customExercises}
           disabled={!hasCustEx}
-          onToggle={() => toggle('customExercises')}
+          onToggle={() => onToggle('customExercises')}
         />
         <SectionRow
           label="Clientes"
           desc={hasClients ? `${Object.keys(parsedData.clients ?? {}).length} clientes` : 'No disponible'}
           enabled={sections.clients}
           disabled={!hasClients}
-          onToggle={() => toggle('clients')}
+          onToggle={() => onToggle('clients')}
         />
-        {/* Template section — mode buttons live inside the same card */}
-        <View style={[
-          styles.templateCard,
-          sections.templates && hasTemplates && styles.templateCardActive,
-        ]}>
+
+        {/* Template section — mode buttons inside same card */}
+        <View style={[styles.templateCard, sections.templates && hasTemplates && styles.templateCardActive]}>
           <TouchableOpacity
             style={styles.templateCardRow}
-            onPress={hasTemplates ? () => toggle('templates') : undefined}
+            onPress={hasTemplates ? () => onToggle('templates') : undefined}
             activeOpacity={hasTemplates ? 0.7 : 1}
           >
             <View style={styles.sectionInfo}>
@@ -128,7 +111,7 @@ function BackupSections({ parsedData, onImport, onClose }) {
             </View>
             <Switch
               value={sections.templates && hasTemplates}
-              onValueChange={hasTemplates ? () => toggle('templates') : undefined}
+              onValueChange={hasTemplates ? () => onToggle('templates') : undefined}
               disabled={!hasTemplates}
               trackColor={{ false: colors.border, true: colors.accent }}
               thumbColor={sections.templates && hasTemplates ? colors.bg : colors.muted}
@@ -140,12 +123,9 @@ function BackupSections({ parsedData, onImport, onClose }) {
                 <TouchableOpacity
                   key={mode}
                   style={[styles.modeBtn, sections.templatesMode === mode && styles.modeBtnActive]}
-                  onPress={() => setSections((s) => ({ ...s, templatesMode: mode }))}
+                  onPress={() => onSetTemplatesMode(mode)}
                 >
-                  <Text style={[
-                    styles.modeBtnText,
-                    sections.templatesMode === mode && styles.modeBtnTextActive,
-                  ]}>
+                  <Text style={[styles.modeBtnText, sections.templatesMode === mode && styles.modeBtnTextActive]}>
                     {mode === 'merge' ? 'Combinar' : 'Reemplazar'}
                   </Text>
                 </TouchableOpacity>
@@ -153,21 +133,6 @@ function BackupSections({ parsedData, onImport, onClose }) {
             </View>
           )}
         </View>
-      </View>
-
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelText}>Cancelar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.importBtn, nothingSelected && styles.importBtnDisabled]}
-          onPress={nothingSelected ? undefined : () => onImport(parsedData, sections)}
-          activeOpacity={nothingSelected ? 1 : 0.8}
-        >
-          <Text style={[styles.importBtnText, nothingSelected && styles.importBtnTextDisabled]}>
-            IMPORTAR
-          </Text>
-        </TouchableOpacity>
       </View>
     </>
   );
@@ -219,6 +184,29 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
   const badge      = typeLabel(exportType, hasLog);
 
+  // Sections state lives here so actions row (outside ScrollView) can read it
+  const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
+  const hasLogData   = (parsedData?.workoutLog ?? []).length > 0;
+  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
+  const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
+  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => p.mode === 'template');
+
+  const [sections, setSections] = useState({
+    program:         hasPrograms,
+    log:             hasLogData,
+    customExercises: hasCustEx,
+    clients:         hasClients,
+    templates:       hasTemplates,
+    templatesMode:   'merge',
+  });
+
+  const nothingSelected = !sections.program && !sections.log
+    && !sections.customExercises && !sections.clients && !sections.templates;
+
+  function toggle(key) {
+    setSections((s) => ({ ...s, [key]: !s[key] }));
+  }
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
@@ -227,8 +215,8 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
         style={styles.centeredOuter}
       >
         <View style={styles.sheet}>
+          {/* ── Header ── */}
           <Text style={styles.title}>Importar archivo</Text>
-
           <View style={styles.fileRow}>
             <Text style={styles.fileName} numberOfLines={1}>{fileName}</Text>
             <View style={styles.badge}>
@@ -236,12 +224,49 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+          {/* ── Scrollable content ── */}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+          >
             {isBackup
-              ? <BackupSections parsedData={parsedData} onImport={onImport} onClose={onClose} />
-              : <ProgramModes parsedData={parsedData} hasLog={hasLog} onImport={onImport} onClose={onClose} />
+              ? (
+                <BackupSections
+                  parsedData={parsedData}
+                  sections={sections}
+                  onToggle={toggle}
+                  onSetTemplatesMode={(mode) => setSections((s) => ({ ...s, templatesMode: mode }))}
+                />
+              )
+              : (
+                <ProgramModes
+                  parsedData={parsedData}
+                  hasLog={hasLog}
+                  onImport={onImport}
+                  onClose={onClose}
+                />
+              )
             }
           </ScrollView>
+
+          {/* ── Actions — always visible, outside scroll ── */}
+          {isBackup && (
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importBtn, nothingSelected && styles.importBtnDisabled]}
+                onPress={nothingSelected ? undefined : () => onImport(parsedData, sections)}
+                activeOpacity={nothingSelected ? 1 : 0.8}
+              >
+                <Text style={[styles.importBtnText, nothingSelected && styles.importBtnTextDisabled]}>
+                  IMPORTAR
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -251,7 +276,6 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  // Centered modal layout
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -268,6 +292,7 @@ const styles = StyleSheet.create({
     borderColor:     colors.borderCard,
     padding:         spacing.xl,
     gap:             spacing.md,
+    maxHeight:       '88%',
   },
   title: {
     fontSize:      typography.lg,
@@ -279,12 +304,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
-    marginBottom:  spacing.xs,
   },
   fileName: {
-    flex:       1,
-    fontSize:   typography.sm,
-    color:      colors.muted,
+    flex:     1,
+    fontSize: typography.sm,
+    color:    colors.muted,
   },
   badge: {
     backgroundColor: withOpacity(colors.accent, 0.1),
@@ -301,6 +325,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  // Scroll area
+  scroll: {
+    flexShrink: 1,
+  },
+  scrollContent: {
+    gap: spacing.sm,
+  },
+
   // Warning
   warning: {
     backgroundColor: 'rgba(248,113,113,0.08)',
@@ -308,7 +340,7 @@ const styles = StyleSheet.create({
     borderColor:     'rgba(248,113,113,0.3)',
     borderRadius:    radius.sm,
     padding:         spacing.sm,
-    marginBottom:    spacing.sm,
+    marginBottom:    spacing.xs,
   },
   warningText: {
     fontSize:   typography.xs,
@@ -346,7 +378,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Template section — card that contains toggle + mode buttons
+  // Template card
   templateCard: {
     backgroundColor: colors.surface2,
     borderWidth:     borders.thin,
@@ -372,14 +404,6 @@ const styles = StyleSheet.create({
     borderTopWidth: borders.thin,
     borderTopColor: colors.border,
   },
-
-  // Merge/replace mode (legacy, kept for non-template uses if any)
-  modeRow: {
-    flexDirection:     'row',
-    gap:               spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingBottom:     spacing.xs,
-  },
   modeBtn: {
     flex:            1,
     paddingVertical: spacing.xs + 2,
@@ -402,11 +426,11 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
 
-  // Actions
+  // Actions (always visible, outside ScrollView)
   actions: {
     flexDirection: 'row',
     gap:           spacing.sm,
-    marginTop:     spacing.sm,
+    paddingTop:    spacing.xs,
   },
   cancelBtn: {
     flex:            1,
@@ -458,9 +482,9 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
   modeOptionDesc: {
-    fontSize:  typography.xs,
-    color:     colors.muted,
-    marginTop: 3,
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    marginTop:  3,
     lineHeight: typography.xs * 1.6,
   },
 });

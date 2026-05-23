@@ -46,7 +46,13 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarBackground: () => <TabBarBackground />,
-        tabBarStyle: [styles.tabBar, { paddingBottom: insets.bottom }],
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            paddingBottom: insets.bottom + 4,
+            height:        56 + insets.bottom,
+          },
+        ],
         tabBarActiveTintColor:   colors.accent,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: styles.tabLabel,
@@ -152,8 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   tabLabel: {
-    fontSize:  10,
-    marginTop: 2,
+    fontSize: 9,
   },
   scene: {
     backgroundColor: colors.bg,
