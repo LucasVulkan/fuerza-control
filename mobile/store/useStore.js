@@ -146,7 +146,8 @@ export const useStore = create(
           },
           ui: { ...s.ui, view: 'home' },
         }));
-        get().navigate('home');
+        // Return program so caller can show a preview before navigating
+        return { program, sessionTemplates };
       },
 
       archiveProgram: (programId, clearHistory = false) => {

@@ -27,7 +27,7 @@ import ImportModal from '../components/ImportModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
 import OnboardingStep from '../components/onboarding/OnboardingStep';
 import OptionCard from '../components/onboarding/OptionCard';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
@@ -65,6 +65,17 @@ function parseImportFile(jsonString) {
   }
 }
 
+// ─── Brand tag two-tone ───────────────────────────────────────────────────────
+
+function BrandTag() {
+  return (
+    <View style={styles.brandTag}>
+      <Text style={styles.brandTagForma}>Forma</Text>
+      <Text style={styles.brandTagFit}> Fit</Text>
+    </View>
+  );
+}
+
 // ─── Tarjeta de modo ──────────────────────────────────────────────────────────
 
 function ModeCard({ icon, title, desc, onPress, accent = false }) {
@@ -97,12 +108,13 @@ export default function OnboardingScreen() {
   const createEmptyProgram         = useStore((s) => s.createEmptyProgram);
   const importData                 = useStore((s) => s.importData);
 
-  const [mode,           setMode]          = useState(null);
-  const [step,           setStep]          = useState(0);
-  const [loading,        setLoading]       = useState(false);
-  const [importState,    setImportState]   = useState(null); // { parsedData }
-  const [manualSessions, setManualSessions]= useState(3);
-  const [manualName,     setManualName]    = useState('');
+  const [mode,             setMode]            = useState(null);
+  const [step,             setStep]            = useState(0);
+  const [loading,          setLoading]         = useState(false);
+  const [importState,      setImportState]     = useState(null);
+  const [generatedProgram, setGeneratedProgram]= useState(null); // { program, sessionTemplates }
+  const [manualSessions,   setManualSessions]  = useState(3);
+  const [manualName,       setManualName]      = useState('');
 
   const [answers, setAnswers] = useState({
     level:            null,
@@ -144,10 +156,15 @@ export default function OnboardingScreen() {
   async function handleFinish() {
     setLoading(true);
     try {
-      await generateAndActivateProgram(answers);
-      // generateAndActivateProgram navega a Main vía store.
-      // Si venimos desde dentro de la app, volvemos atrás además.
-      if (fromApp) navigation.goBack();
+      const result = await generateAndActivateProgram(answers);
+      if (fromApp) {
+        // Desde dentro de la app: volver atrás sin mostrar preview
+        navigation.goBack();
+      } else {
+        // Primera vez: mostrar preview del programa generado
+        setGeneratedProgram(result);
+        setLoading(false);
+      }
     } catch (err) {
       console.error('Error generando programa:', err);
       Alert.alert('Error', 'No se pudo generar el programa. Inténtalo de nuevo.');
@@ -197,6 +214,66 @@ export default function OnboardingScreen() {
   }
   function prevStep() { setStep((s) => Math.max(0, s - 1)); }
 
+  // ── Preview del programa generado ────────────────────────────────────────────
+  if (generatedProgram) {
+    const { program, sessionTemplates: generatedTemplates } = generatedProgram;
+    const days = program.stages?.length > 0
+      ? program.stages[0].days
+      : program.days ?? [];
+
+    // Sesiones únicas en orden de aparición
+    const uniqueTemplates = [];
+    const seen = new Set();
+    for (const day of days) {
+      const tid = day.sessionTemplateId;
+      if (!seen.has(tid)) {
+        seen.add(tid);
+        const tpl = generatedTemplates[tid];
+        if (tpl) uniqueTemplates.push(tpl);
+      }
+    }
+
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* Header */}
+        <View style={styles.previewHeader}>
+          <BrandTag />
+          <Text style={styles.previewReady}>✓ PROGRAMA LISTO</Text>
+          <Text style={styles.previewTitle}>{program.name}</Text>
+          <Text style={styles.previewMeta}>{days.length} sesiones por ciclo</Text>
+        </View>
+
+        {/* Sesiones */}
+        <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
+          {uniqueTemplates.map((tpl, i) => {
+            const accent = resolveColor(tpl.color ?? 'var(--day1)');
+            return (
+              <View key={tpl.id} style={[styles.previewSession, { borderLeftColor: accent }]}>
+                <Text style={[styles.previewSessionLabel, { color: accent }]}>
+                  {tpl.label ?? String.fromCharCode(65 + i)}
+                </Text>
+                <View style={styles.previewSessionInfo}>
+                  <Text style={styles.previewSessionName}>{tpl.name}</Text>
+                  <Text style={styles.previewSessionMeta}>
+                    {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
+                    {(tpl.exercises ?? []).length} ejercicios
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        {/* Footer */}
+        <View style={styles.previewFooter}>
+          <TouchableOpacity style={styles.startBtn} onPress={finish} activeOpacity={0.85}>
+            <Text style={styles.startBtnText}>EMPEZAR →</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -218,7 +295,7 @@ export default function OnboardingScreen() {
               <Text style={styles.backIconText}>‹</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.appName}>{t('onboarding.appName', 'FUERZA & CONTROL')}</Text>
+          <BrandTag />
           <Text style={styles.modeHeadline}>{t('onboarding.newProgram', 'Nuevo programa')}</Text>
           <Text style={styles.modeSubtitle}>{t('onboarding.howToCreate', '¿Cómo quieres crear tu programa?')}</Text>
         </View>
@@ -266,7 +343,7 @@ export default function OnboardingScreen() {
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* Cabecera */}
         <View style={styles.modeHeader}>
-          <Text style={styles.appName}>{t('onboarding.appName', 'FUERZA & CONTROL')}</Text>
+          <BrandTag />
           <Text style={styles.manualTag}>{t('onboarding.manualProgram', 'PROGRAMA MANUAL')}</Text>
         </View>
 
@@ -661,6 +738,104 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
 
+  // Brand tag
+  brandTag: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+  },
+  brandTagForma: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.bold,
+    color:         colors.text,
+    letterSpacing: 1,
+  },
+  brandTagFit: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.bold,
+    color:         colors.accent,
+    letterSpacing: 1,
+  },
+
+  // Preview del programa generado
+  previewHeader: {
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.xl,
+    paddingBottom:     spacing.lg,
+    gap:               4,
+  },
+  previewReady: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.green,
+    letterSpacing: 1,
+    marginTop:     spacing.sm,
+  },
+  previewTitle: {
+    fontSize:      28,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 0.5,
+    lineHeight:    32,
+    marginTop:     4,
+  },
+  previewMeta: {
+    fontSize:  typography.base,
+    color:     colors.muted,
+    marginTop: 4,
+  },
+  previewList: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.sm,
+  },
+  previewSession: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    backgroundColor:  colors.surface,
+    borderWidth:      borders.thin,
+    borderColor:      colors.border,
+    borderLeftWidth:  3,
+    borderRadius:     radius.md,
+    padding:          spacing.md,
+    gap:              spacing.md,
+  },
+  previewSessionLabel: {
+    fontSize:   24,
+    fontWeight: typography.heavy,
+    width:      28,
+    textAlign:  'center',
+    lineHeight: 28,
+  },
+  previewSessionInfo: { flex: 1 },
+  previewSessionName: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  previewSessionMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 2,
+  },
+  previewFooter: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.lg,
+    borderTopWidth:    borders.thin,
+    borderTopColor:    colors.border,
+  },
+  startBtn: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.md,
+    paddingVertical: 14,
+    alignItems:      'center',
+  },
+  startBtnText: {
+    fontSize:      20,
+    fontWeight:    typography.heavy,
+    letterSpacing: 1.5,
+    color:         colors.onAccent,
+  },
+
   // Loading
   loadingScreen: {
     flex:            1,
@@ -687,12 +862,6 @@ const styles = StyleSheet.create({
   },
   backIcon:     { marginBottom: spacing.sm },
   backIconText: { fontSize: 24, color: colors.muted },
-  appName: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
-    color:         colors.accent,
-    letterSpacing: 1,
-  },
   modeHeadline: {
     fontSize:      28,
     fontWeight:    typography.heavy,
