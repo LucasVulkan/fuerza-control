@@ -234,12 +234,12 @@ export default function WorkoutScreen() {
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.dayLabel, { color: accentColor }]} numberOfLines={1}>
-            {`DÍA ${template.label ?? ''} · ${template.name?.toUpperCase() ?? ''}`}
+          <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
+            {`Sesión ${template.label ?? ''}`}
           </Text>
-          {template.emphasis ? (
-            <Text style={styles.emphasis} numberOfLines={1}>{template.emphasis}</Text>
-          ) : null}
+          <Text style={styles.sesName} numberOfLines={1}>
+            {template.name ?? ''}
+          </Text>
         </View>
         <TouchableOpacity
           onPress={() => setNotesOpen(true)}
@@ -443,14 +443,17 @@ const styles = StyleSheet.create({
     flex: 1,
     gap:  2,
   },
-  dayLabel: {
-    fontSize:      typography.base,
+  sesTag: {
+    fontSize:      10,
     fontWeight:    typography.bold,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
-  emphasis: {
-    fontSize: typography.xs,
-    color:    colors.muted,
+  sesName: {
+    fontSize:   typography.base,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: typography.base * 1.2,
   },
   notesBtn: {
     padding:         spacing.xs + 2,

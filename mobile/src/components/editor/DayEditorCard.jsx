@@ -188,6 +188,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
   const removeExercise   = useStore((s) => s.removeExercise);
   const reorderExercise  = useStore((s) => s.reorderExercise);
   const renameSession    = useStore((s) => s.renameSession);
+  const restoreSession   = useStore((s) => s.restoreSession);
   const showToast        = useStore((s) => s.showToast);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
@@ -315,6 +316,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
         activeOpacity={0.7}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.sesTag}>{`Sesión ${template.label ?? ''}`}</Text>
           {editingName ? (
             <TextInput
               autoFocus
@@ -322,11 +324,11 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
               onChangeText={setNameValue}
               onBlur={commitName}
               onSubmitEditing={commitName}
-              style={[styles.dayLabel, { color, borderBottomWidth: 1, borderBottomColor: colors.accent }]}
+              style={[styles.sesName, { color, borderBottomWidth: 1, borderBottomColor: colors.accent }]}
             />
           ) : (
-            <Text style={[styles.dayLabel, { color }]} numberOfLines={1}>
-              {`DÍA ${template.label ?? ''} · ${(template.name ?? '').toUpperCase()}`}
+            <Text style={[styles.sesName, { color }]} numberOfLines={1}>
+              {template.name ?? ''}
             </Text>
           )}
           <Text style={styles.subLabel}>
@@ -414,10 +416,23 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
             </Animated.View>
           )}
 
-          {/* Add exercise */}
-          <TouchableOpacity style={styles.addExBtn} onPress={handleAddExercise}>
-            <Text style={styles.addExBtnText}>{t('editor.addExercise')}</Text>
-          </TouchableOpacity>
+          {/* Add exercise + Restore */}
+          <View style={styles.bodyActions}>
+            <TouchableOpacity style={[styles.addExBtn, { flex: 1 }]} onPress={handleAddExercise}>
+              <Text style={styles.addExBtnText}>{t('editor.addExercise')}</Text>
+            </TouchableOpacity>
+            {isEdited && (
+              <TouchableOpacity
+                style={styles.restoreBtn}
+                onPress={() => {
+                  restoreSession(templateId);
+                  showToast('Sesión restaurada');
+                }}
+              >
+                <Text style={styles.restoreBtnText}>Restaurar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
     </View>
@@ -439,9 +454,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
-  dayLabel: {
+  sesTag: {
+    fontSize: 9, fontWeight: typography.bold,
+    color: colors.muted2, letterSpacing: 1,
+    textTransform: 'uppercase', marginBottom: 1,
+  },
+  sesName: {
     fontSize: typography.base, fontWeight: typography.bold,
-    letterSpacing: 0.5, lineHeight: typography.base * 1.2,
+    lineHeight: typography.base * 1.2,
   },
   subLabel: { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
   headerBtns: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
@@ -458,8 +478,13 @@ const styles = StyleSheet.create({
     padding: spacing.md, textAlign: 'center',
   },
   inlineEditorWrap: { paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
+  bodyActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    margin: spacing.md,
+  },
   addExBtn: {
-    margin: spacing.md, paddingVertical: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: radius.sm,
     borderWidth: 1, borderStyle: 'dashed',
     borderColor: withOpacity(colors.accent, 0.4),
@@ -467,6 +492,16 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.04),
   },
   addExBtnText: { fontSize: typography.sm, color: colors.accent },
+  restoreBtn: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: borders.thin,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restoreBtnText: { fontSize: typography.xs, color: colors.muted },
 
   overlayRow: {
     position: 'absolute', left: 0, right: 0,

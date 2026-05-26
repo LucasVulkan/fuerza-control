@@ -1,11 +1,9 @@
 /**
  * ExerciseCard — port fiel del original web.
- * Referencia: src/components/workout/ExerciseCard.jsx
  *
- * - buildTarget: exConfig override + def fallback (igual que web)
- * - hintSetIndex: avanza la fila que muestra las flechas ‹ › de swipe
- * - Colapso automático cuando todas las series están hechas
- * - Vista colapsada: nombre + píldoras por serie + botón añadir
+ * inputType: 'weight_reps' | 'reps' | 'time' | 'weight_time'
+ *   Se lee de exConfig.inputType (nuevo campo flexible).
+ *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
@@ -19,40 +17,45 @@ import { colors, spacing, typography, radius, borders, withOpacity } from '../..
 // ── Progression chip colors ────────────────────────────────────────────────────
 
 const CHIP_COLORS = {
-  up:   { bg: withOpacity(colors.green,  0.1), border: withOpacity(colors.green,  0.3), text: colors.green },
-  down: { bg: 'rgba(248,113,113,0.1)',         border: 'rgba(248,113,113,0.3)',         text: colors.red   },
+  up:   { bg: withOpacity(colors.green,  0.1), border: withOpacity(colors.green,  0.3), text: colors.green  },
+  down: { bg: 'rgba(248,113,113,0.1)',         border: 'rgba(248,113,113,0.3)',         text: colors.red    },
   hold: { bg: withOpacity(colors.accent, 0.08), border: withOpacity(colors.accent, 0.3), text: colors.accent },
   info: { bg: colors.surface2,                  border: colors.border,                   text: colors.muted  },
 };
 
-// ── buildTarget (fiel al original) ────────────────────────────────────────────
-// exConfig puede sobreescribir los valores del def (igual que en la web)
+// ── buildTarget ───────────────────────────────────────────────────────────────
 
 function buildTarget(def, exConfig, t) {
   if (!def) return '';
-  const model   = def.progressionModel;
-  const sets    = exConfig.sets ?? 0;
-  const minTime = exConfig.minTime ?? def.minTime;
-  const maxTime = exConfig.maxTime ?? def.maxTime;
-  const minReps = exConfig.minReps ?? def.minReps;
-  const maxReps = exConfig.maxReps ?? def.maxReps;
+  const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+  const model      = def.progressionModel;
+  const sets       = exConfig.sets ?? 0;
+  const minReps    = exConfig.minReps ?? def.minReps;
+  const maxReps    = exConfig.maxReps ?? def.maxReps;
+  const minTime    = exConfig.minTime ?? def.minTime;
+  const maxTime    = exConfig.maxTime ?? def.maxTime;
+  const unilateral = (exConfig.isUnilateral ?? def.isUnilateral)
+    ? ` ${t('workout.perSide', 'por lado')}`
+    : '';
 
-  if (model === 'time_progression') {
-    return `${sets} × ${minTime}–${maxTime} s`;
+  if (model === 'submax') return `${sets} × ${t('workout.submax', 'submáx')}`;
+
+  if (inputType === 'reps') {
+    const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
+    return `${sets} × ${r} reps${unilateral}`;
   }
-  if (model === 'submax') {
-    return `${sets} × ${t('workout.submax', 'submáx')}`;
+  if (inputType === 'time' || inputType === 'weight_time') {
+    return `${sets} × ${minTime}–${maxTime} s${unilateral}`;
   }
-  const repsText = minReps === maxReps
-    ? `${minReps} reps`
-    : `${minReps}–${maxReps} reps`;
-  const unilateral = def.isUnilateral ? ` ${t('workout.perSide', 'por lado')}` : '';
-  return `${sets} × ${repsText}${unilateral}`;
+  // weight_reps (default)
+  const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
+  return `${sets} × ${r} reps${unilateral}`;
 }
 
-// ── buildSetLabel (para las píldoras en modo colapsado) ───────────────────────
+// ── buildSetLabel (collapsed pills) ──────────────────────────────────────────
 
 function buildSetLabel(set, index, fmt) {
+  if (set.time && set.weight) return `${fmt(set.weight)}×${set.time}s`;
   if (set.time)               return `${set.time}s`;
   if (set.weight && set.reps) return `${fmt(set.weight)}×${set.reps}`;
   if (set.reps)               return `${set.reps} reps`;
@@ -60,7 +63,7 @@ function buildSetLabel(set, index, fmt) {
   return `S${index + 1}`;
 }
 
-// ── Collapsed pill ────────────────────────────────────────────────────────────
+// ── SetPill ───────────────────────────────────────────────────────────────────
 
 function SetPill({ set, index, fmt }) {
   return (
@@ -70,30 +73,33 @@ function SetPill({ set, index, fmt }) {
   );
 }
 
-// ── Main card ─────────────────────────────────────────────────────────────────
+// ── ExerciseCard ──────────────────────────────────────────────────────────────
 
 export default function ExerciseCard({
-  exConfig,        // { exerciseId, sets, restSec, minReps, maxReps, isKey, order }
-  def,             // exercise definition from library
-  setsState,       // [{ weight, reps, time, done }]
-  lastExercise,    // last session's exercise data (for progression)
-  onFieldChange,   // (setIndex, field, value) => void
-  onToggleDone,    // (setIndex) => void
-  onAddSet,        // () => void
+  exConfig,
+  def,
+  setsState,
+  lastExercise,
+  onFieldChange,
+  onToggleDone,
+  onAddSet,
 }) {
   const { t, i18n } = useTranslation();
   const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
 
-  const isTime = def?.progressionModel === 'time_progression';
-  const name   = def
+  // Derive inputType — new field with fallback for existing exercises
+  const inputType = exConfig.inputType
+    ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+
+  const hasTimer = inputType === 'time' || inputType === 'weight_time';
+
+  const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
 
-  // hintSetIndex: qué fila muestra las flechas ‹ › de swipe (avanza al rellenar)
   const [hintSetIndex, setHintSetIndex] = useState(0);
 
-  // Auto-collapse cuando todas las series están marcadas
-  const allDone = setsState.length > 0 && setsState.every((s) => s.done);
+  const allDone     = setsState.length > 0 && setsState.every((s) => s.done);
   const [manualOpen, setManualOpen] = useState(false);
   const isCollapsed = allDone && !manualOpen;
 
@@ -101,14 +107,12 @@ export default function ExerciseCard({
     if (!allDone) setManualOpen(false);
   }, [allDone]);
 
-  // Progression chip
   const progression = (() => {
     if (!lastExercise?.sets?.length) return null;
     try { return getProgression(def, lastExercise.sets, exConfig.sets, t); }
     catch { return null; }
   })();
-  const chipStyle = progression ? (CHIP_COLORS[progression.type] ?? CHIP_COLORS.info) : null;
-
+  const chipStyle  = progression ? (CHIP_COLORS[progression.type] ?? CHIP_COLORS.info) : null;
   const targetLabel = buildTarget(def, exConfig, t);
 
   // ── Collapsed ──────────────────────────────────────────────────────────────
@@ -133,7 +137,6 @@ export default function ExerciseCard({
               </View>
             </View>
           </View>
-
           <TouchableOpacity
             style={styles.addSetBtnSmall}
             onPress={(e) => {
@@ -153,14 +156,31 @@ export default function ExerciseCard({
   // ── Expanded ───────────────────────────────────────────────────────────────
   return (
     <View style={styles.card}>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {exConfig.isKey && <Text style={styles.keyBadge}>CLAVE</Text>}
-          <Text style={styles.name}>{name}</Text>
-          {targetLabel ? <Text style={styles.target}>{targetLabel}</Text> : null}
+
+          {/* Name row — badge inline to the right */}
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={2}>{name}</Text>
+            {exConfig.isKey && <Text style={styles.keyBadge}>CLAVE</Text>}
+          </View>
+
+          {/* Target + tempo inline: "3 × 8–12 reps · 3010" */}
+          {(targetLabel || exConfig.tempo) ? (
+            <Text style={styles.target}>
+              {targetLabel}
+              {targetLabel && exConfig.tempo
+                ? <Text style={styles.tempoInline}>{` · ${exConfig.tempo}`}</Text>
+                : exConfig.tempo
+                  ? <Text style={styles.tempoInline}>{exConfig.tempo}</Text>
+                  : null}
+            </Text>
+          ) : null}
+
         </View>
-        {/* Botón colapsar si se abrió manualmente */}
+
         {manualOpen && (
           <TouchableOpacity onPress={() => setManualOpen(false)} hitSlop={8}>
             <Text style={styles.collapseBtn}>{t('workout.collapse', 'Colapsar')}</Text>
@@ -168,7 +188,7 @@ export default function ExerciseCard({
         )}
       </View>
 
-      {/* Chip de progresión */}
+      {/* Progression chip */}
       {progression?.msg ? (
         <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderColor: chipStyle.border }]}>
           <Text style={[styles.chipText, { color: chipStyle.text }]}>
@@ -177,43 +197,48 @@ export default function ExerciseCard({
         </View>
       ) : null}
 
-      {/* Cabecera de columnas */}
+      {/* Column headers */}
       <View style={styles.colHeader}>
         <View style={{ width: 28 }} />
-        {isTime ? (
+        {inputType === 'reps' ? (
+          <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>REPS</Text>
+        ) : inputType === 'time' ? (
           <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>SEG</Text>
-        ) : (
+        ) : inputType === 'weight_time' ? (
           <>
-            <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>
-              {weightLabel.toUpperCase()}
-            </Text>
+            <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
+            <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>SEG</Text>
+          </>
+        ) : (
+          // weight_reps (default)
+          <>
+            <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
             <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>REPS</Text>
           </>
         )}
+        {/* Timer btn spacer */}
+        {hasTimer && <View style={{ width: 36 }} />}
+        {/* Done btn spacer */}
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Filas de series */}
+      {/* Sets */}
       <View style={styles.setList}>
         {setsState.map((set, i) => {
           const lastSet = lastExercise?.sets?.[i];
-          // Prev values ya en unidades de display (para mostrar como hint)
           const prevWeightDisplay = lastSet?.weight != null && lastSet?.weight !== ''
-            ? String(toDisplay(lastSet.weight))
-            : '';
+            ? String(toDisplay(lastSet.weight)) : '';
           const prevReps = lastSet?.reps != null && lastSet?.reps !== ''
-            ? String(lastSet.reps)
-            : '';
+            ? String(lastSet.reps) : '';
           const prevTime = lastSet?.time != null && lastSet?.time !== ''
-            ? String(lastSet.time)
-            : '';
+            ? String(lastSet.time) : '';
 
           return (
             <SetRow
               key={i}
               index={i}
               set={set}
-              isTime={isTime}
+              inputType={inputType}
               weightDisplay={
                 set.weight !== '' && set.weight != null
                   ? String(toDisplay(set.weight))
@@ -237,19 +262,22 @@ export default function ExerciseCard({
                 if (v !== '' && i >= hintSetIndex) setHintSetIndex(i + 1);
               }}
               onToggleDone={() => {
-                // ✓ manual: auto-rellenar campos vacíos desde la última sesión, luego togglear
                 if (!set.done && lastSet) {
-                  if (!isTime) {
-                    if ((set.weight === '' || set.weight == null) && lastSet.weight != null && lastSet.weight !== '') {
-                      onFieldChange(i, 'weight', String(lastSet.weight));
-                    }
-                    if ((set.reps === '' || set.reps == null) && lastSet.reps != null && lastSet.reps !== '') {
-                      onFieldChange(i, 'reps', String(lastSet.reps));
-                    }
-                  } else {
-                    if ((set.time === '' || set.time == null) && lastSet.time != null && lastSet.time !== '') {
-                      onFieldChange(i, 'time', String(lastSet.time));
-                    }
+                  const needsWeight = inputType === 'weight_reps' || inputType === 'weight_time';
+                  const needsReps   = inputType === 'weight_reps' || inputType === 'reps';
+                  const needsTime   = inputType === 'time'        || inputType === 'weight_time';
+
+                  if (needsWeight && (set.weight === '' || set.weight == null)
+                      && lastSet.weight != null && lastSet.weight !== '') {
+                    onFieldChange(i, 'weight', String(lastSet.weight));
+                  }
+                  if (needsReps && (set.reps === '' || set.reps == null)
+                      && lastSet.reps != null && lastSet.reps !== '') {
+                    onFieldChange(i, 'reps', String(lastSet.reps));
+                  }
+                  if (needsTime && (set.time === '' || set.time == null)
+                      && lastSet.time != null && lastSet.time !== '') {
+                    onFieldChange(i, 'time', String(lastSet.time));
                   }
                 }
                 onToggleDone(i);
@@ -263,6 +291,7 @@ export default function ExerciseCard({
       <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
         <Text style={styles.addSetText}>+ Añadir serie</Text>
       </TouchableOpacity>
+
     </View>
   );
 }
@@ -291,8 +320,20 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   headerLeft: { flex: 1, gap: 3 },
+
+  nameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    flexWrap:      'wrap',
+  },
+  name: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      colors.text,
+    flexShrink: 1,
+  },
   keyBadge: {
-    alignSelf:         'flex-start',
     fontSize:          typography.xs,
     fontWeight:        typography.bold,
     color:             colors.accent,
@@ -303,14 +344,14 @@ const styles = StyleSheet.create({
     overflow:          'hidden',
     letterSpacing:     0.5,
   },
-  name: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      colors.text,
-  },
   target: {
     fontSize: typography.xs,
     color:    colors.muted,
+  },
+  tempoInline: {
+    fontSize:      typography.xs,
+    color:         colors.muted2,
+    letterSpacing: 2,
   },
   collapseBtn: {
     fontSize:  typography.xs,
@@ -351,7 +392,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
 
-  // Add set (expanded)
+  // Add set
   addSetBtn: {
     marginTop:        spacing.sm,
     marginHorizontal: spacing.md,
@@ -370,10 +411,10 @@ const styles = StyleSheet.create({
 
   // Collapsed
   collapsedRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    padding:        spacing.md,
-    gap:            spacing.sm,
+    flexDirection: 'row',
+    alignItems:    'center',
+    padding:       spacing.md,
+    gap:           spacing.sm,
   },
   collapsedLeft: {
     flex:          1,

@@ -31,7 +31,11 @@ import * as SecureStore  from 'expo-secure-store';
 
 import { useStore }                                       from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups } from '../services/driveService';
-import { GOOGLE_CLIENT_ID }                               from '../config/google';
+import {
+  GOOGLE_WEB_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
+  ANDROID_REDIRECT_URI,
+}                                                         from '../config/google';
 import { colors, spacing, typography, borders, radius }   from '../theme';
 
 // Required so the in-app browser can redirect back after OAuth
@@ -70,14 +74,23 @@ export default function DriveBackupModal({ onClose }) {
   const [showFiles, setShowFiles] = useState(false);
 
   // ── OAuth setup ─────────────────────────────────────────────────────────────
+  //
+  // Dev / Expo Go  → web client + Expo proxy redirect.
+  //                  Registered in GCC as https://auth.expo.io/@lucasvulkans-organization/forma
+  //
+  // Production APK → Android client + reversed-scheme redirect.
+  //                  Validated by Google via SHA-1 + package name (no GCC config needed).
+  //                  Redirect: com.googleusercontent.apps.<id>:/oauth2redirect
+  //                  Also declared in app.json > scheme so Android can intercept it.
 
-  // Expo proxy — works in both Expo Go and production builds.
-  // Registered URI in Google Cloud Console: https://auth.expo.io/@lucasvulkans-organization/forma
-  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
+  const clientId    = __DEV__ ? GOOGLE_WEB_CLIENT_ID     : GOOGLE_ANDROID_CLIENT_ID;
+  const redirectUri = __DEV__
+    ? AuthSession.makeRedirectUri({ useProxy: true })
+    : ANDROID_REDIRECT_URI;
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId:     GOOGLE_CLIENT_ID,
+      clientId,
       scopes:       SCOPES,
       responseType: AuthSession.ResponseType.Code,
       usePKCE:      true,
@@ -101,7 +114,7 @@ export default function DriveBackupModal({ onClose }) {
           code:         response.params.code,
           codeVerifier: requestRef.current?.codeVerifier,
           redirectUri,
-          clientId:     GOOGLE_CLIENT_ID,
+          clientId,
         });
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);

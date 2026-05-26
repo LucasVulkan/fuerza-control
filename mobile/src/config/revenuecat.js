@@ -5,8 +5,8 @@
  * Each platform has its own key.
  */
 
-// Android key (test_ prefix = sandbox)
-export const RC_ANDROID_API_KEY = 'test_lYEeoeODgouBHPtBMSRGoCMqpiD';
+// Android key — production
+export const RC_ANDROID_API_KEY = 'goog_pJopTvjCRGKAhbzhpZPiaZnvTgq';
 
 // iOS key — fill in when you add the iOS app in RevenueCat
 export const RC_IOS_API_KEY = 'YOUR_IOS_API_KEY';

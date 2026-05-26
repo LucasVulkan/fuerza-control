@@ -9,84 +9,289 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
-import { colors, spacing, typography, radius, borders, resolveColor, withOpacity } from '../theme';
+import {
+  colors, spacing, typography, radius, borders,
+  resolveColor, withOpacity,
+} from '../theme';
 import { formatDate } from '../../../src/utils/formatters';
 
-// ── Relative time ──────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function relativeTime(ts) {
-  if (!ts) return 'Sin registros';
+  if (!ts) return null;
   const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days === 0) return 'Hoy';
-  if (days === 1) return 'Ayer';
+  if (days === 0)  return 'Hoy';
+  if (days === 1)  return 'Ayer';
   if (days < 7)   return `Hace ${days} días`;
   if (days < 14)  return 'Hace 1 semana';
+  if (days < 30)  return `Hace ${Math.floor(days / 7)} semanas`;
   return formatDate(ts);
 }
 
-// ── DayCard ────────────────────────────────────────────────────────────────────
+function lastTimeText(status, lastSession) {
+  if (status === 'active') return 'En curso ahora';
+  const rel = relativeTime(lastSession?.timestamp);
+  return rel ? `Última vez: ${rel}` : 'Primera vez';
+}
 
-function DayCard({ template, lastSession, allExercises, isActive, onPress }) {
-  const { i18n } = useTranslation();
+/**
+ * Global "week" counter = total sessions logged for this program / sessions-per-cycle.
+ * "Semana" in this app = one complete rotation through the session templates.
+ */
+function computeWeekNum(program, workoutLog) {
+  const hasStages     = (program.stages?.length ?? 0) > 0;
+  const stageIdx      = program.currentStageIndex ?? 0;
+  const currentDays   = hasStages
+    ? (program.stages[stageIdx]?.days ?? [])
+    : (program.days ?? []);
+  const sessionsPerCycle = Math.max(1, currentDays.length);
+
+  // Collect ALL template IDs ever associated with this program (all stages)
+  const allIds = new Set();
+  if (hasStages) {
+    program.stages.forEach((s) => s.days?.forEach((d) => allIds.add(d.sessionTemplateId)));
+  } else {
+    program.days?.forEach((d) => allIds.add(d.sessionTemplateId));
+  }
+
+  const total = workoutLog.filter((e) => allIds.has(e.sessionTemplateId)).length;
+  return Math.floor(total / sessionsPerCycle) + 1;
+}
+
+/**
+ * How many sessions have been completed in the CURRENT cycle (0-indexed),
+ * and how many sessions are in one cycle.
+ */
+function computeCycleProgress(program) {
+  const hasStages   = (program.stages?.length ?? 0) > 0;
+  const stageIdx    = program.currentStageIndex ?? 0;
+  const currentDays = hasStages
+    ? (program.stages[stageIdx]?.days ?? [])
+    : (program.days ?? []);
+  const sessionsPerCycle = Math.max(1, currentDays.length);
+  const doneInCycle      = (program.stageSessionsCompleted ?? 0) % sessionsPerCycle;
+  return { doneInCycle, sessionsPerCycle };
+}
+
+/**
+ * Data for the stage card (null when there are no stages).
+ */
+function computeStageInfo(program) {
+  if ((program.stages?.length ?? 0) === 0) return null;
+  const stageIdx         = program.currentStageIndex ?? 0;
+  const stage            = program.stages[stageIdx];
+  if (!stage) return null;
+  const sessionsPerCycle = Math.max(1, stage.days?.length ?? 1);
+  const totalWeeks       = stage.durationWeeks ?? 4;
+  const sessionsCompleted = program.stageSessionsCompleted ?? 0;
+  const weekInStage      = Math.min(
+    Math.floor(sessionsCompleted / sessionsPerCycle) + 1,
+    totalWeeks,
+  );
+  const progressRatio    = Math.min(1, sessionsCompleted / (totalWeeks * sessionsPerCycle));
+  return {
+    stageLabel:    `Etapa ${stageIdx + 1}`,
+    stageName:     stage.name ?? `Etapa ${stageIdx + 1}`,
+    weekInStage,
+    totalWeeks,
+    progressRatio,
+  };
+}
+
+/**
+ * Determines the display status of each session slot in the current cycle.
+ * Sessions are assumed to be completed in template order (A→B→C→A…).
+ *
+ *   'active'  — session is currently in progress
+ *   'next'    — next in rotation (not yet started this cycle)
+ *   'done'    — already completed this cycle
+ *   'pending' — not yet reached this cycle
+ */
+function getSessionStatus(dayIndex, doneInCycle, activeTemplateId, templateId) {
+  if (activeTemplateId && activeTemplateId === templateId) return 'active';
+  if (dayIndex < doneInCycle)  return 'done';
+  if (dayIndex === doneInCycle) return 'next';
+  return 'pending';
+}
+
+// ── ProgressHeader ─────────────────────────────────────────────────────────────
+
+function DotsRow({ doneInCycle, sessionsPerCycle }) {
+  return (
+    <View style={styles.phDots}>
+      {Array.from({ length: sessionsPerCycle }, (_, i) => {
+        const state = i < doneInCycle ? 'done'
+                    : i === doneInCycle ? 'pending'
+                    : 'idle';
+        return (
+          <View
+            key={i}
+            style={[
+              styles.phDot,
+              state === 'done'    && styles.phDotDone,
+              state === 'pending' && styles.phDotPending,
+              state === 'idle'    && styles.phDotIdle,
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onChangeStage }) {
+  const weekLabel = String(weekNum).padStart(2, '0');
+
+  if (stageInfo) {
+    // ── With stages: stage card (left) + week card (right) ──
+    return (
+      <View style={styles.progressHeader}>
+
+        {/* Stage card */}
+        <View style={[styles.phCard, styles.phStage]}>
+          <View style={styles.phStageRow1}>
+            <Text style={styles.phStageLabel}>{stageInfo.stageLabel}</Text>
+            <TouchableOpacity
+              onPress={onChangeStage}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 4 }}
+            >
+              <Text style={styles.phStageMenu}>···</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.phStageName} numberOfLines={1}>
+            {stageInfo.stageName}
+          </Text>
+          <Text style={styles.phStageWeek}>
+            {`Semana ${stageInfo.weekInStage} de ${stageInfo.totalWeeks}`}
+          </Text>
+          <View style={styles.phBar}>
+            <View
+              style={[styles.phBarFill, { width: `${Math.round(stageInfo.progressRatio * 100)}%` }]}
+            />
+          </View>
+        </View>
+
+        {/* Week card */}
+        <View style={[styles.phCard, styles.phWeekSq]}>
+          <Text style={styles.phWkTop}>Semana</Text>
+          <Text style={styles.phWkNum}>{weekLabel}</Text>
+          <View style={styles.phWeekBottom}>
+            <Text style={styles.phWkSes}>Sesiones</Text>
+            <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
+          </View>
+        </View>
+
+      </View>
+    );
+  }
+
+  // ── Without stages: horizontal pill ──
+  return (
+    <View style={[styles.phCard, styles.phPill]}>
+      <View style={styles.phPillLeft}>
+        <Text style={styles.phPillLabel}>Semana</Text>
+        <Text style={styles.phPillNum}>{weekLabel}</Text>
+      </View>
+      <View style={styles.phPillDivider} />
+      <View style={styles.phPillRight}>
+        <Text style={styles.phWkSes}>Sesiones</Text>
+        <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
+      </View>
+    </View>
+  );
+}
+
+// ── SessionCard ────────────────────────────────────────────────────────────────
+
+function SessionCard({ template, lastSession, allExercises, status, onPress, language }) {
   const accent = resolveColor(template?.color ?? 'var(--day1)');
-  const lastText = relativeTime(lastSession?.timestamp);
 
-  const focus = (template?.exercises ?? [])
+  // First 2 exercise names
+  const exerciseNames = (template?.exercises ?? [])
+    .slice(0, 2)
     .map(({ exerciseId }) => {
       const ex = allExercises[exerciseId];
-      if (!ex) return exerciseId;
-      return i18n.language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
+      if (!ex) return null;
+      return language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
     })
+    .filter(Boolean)
     .join(' · ');
+
+  // Status text (replaces pills)
+  const statusText = {
+    active:  { label: 'En curso',   color: colors.accent },
+    next:    { label: 'Siguiente',  color: colors.accent },
+    done:    { label: 'Completada', color: colors.green  },
+    pending: { label: 'Pendiente',  color: colors.muted  },
+  }[status];
+
+  // Button config
+  const btn = {
+    active:  { label: 'CONTINUAR', style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
+    next:    { label: 'EMPEZAR',   style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
+    done:    { label: 'Repetir',   style: styles.btnRepeat,  textStyle: styles.btnRepeatText  },
+    pending: { label: 'Hacer',     style: styles.btnOther,   textStyle: styles.btnOtherText   },
+  }[status];
+
+  const timeText = lastTimeText(status, lastSession);
+  const timeStyle = status === 'active' ? styles.sesLastActive : styles.sesLast;
 
   return (
     <TouchableOpacity
-      style={[styles.dayCard, { borderLeftColor: accent }]}
+      style={[styles.sesCard, { borderLeftColor: accent }]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      <View style={styles.dayCardTop}>
-        {/* Big letter */}
-        <Text style={[styles.dayLetter, { color: accent }]}>
-          {template?.label ?? '?'}
+      {/* Left info block */}
+      <View style={styles.sesInfo}>
+
+        {/* SESIÓN A — colored, bigger */}
+        <Text style={[styles.sesTag, { color: accent }]}>
+          {`Sesión ${template?.label ?? ''}`}
         </Text>
 
-        {/* Right: badge or last time */}
-        {isActive ? (
-          <View style={[styles.inProgressBadge, { borderColor: accent }]}>
-            <Text style={[styles.inProgressText, { color: accent }]}>EN CURSO</Text>
-          </View>
-        ) : (
-          <Text style={styles.lastTime}>{lastText}</Text>
-        )}
+        {/* Session name — white */}
+        <Text style={styles.sesName} numberOfLines={1}>
+          {template?.name ?? ''}
+        </Text>
+
+        {/* Status text */}
+        <Text style={[styles.sesStatus, { color: statusText.color }]}>
+          {statusText.label}
+        </Text>
+
+        {/* Exercises */}
+        {exerciseNames ? (
+          <Text style={styles.sesEx} numberOfLines={1}>{exerciseNames}</Text>
+        ) : null}
+
+        {/* Last time */}
+        <Text style={timeStyle}>{timeText}</Text>
+
       </View>
 
-      {/* Name */}
-      <Text style={[styles.dayName, { color: accent }]} numberOfLines={1}>
-        {(template?.name ?? '').toUpperCase()}
-      </Text>
-
-      {/* Exercise focus */}
-      {focus ? (
-        <Text style={styles.dayFocus} numberOfLines={1}>{focus}</Text>
-      ) : null}
+      {/* CTA button */}
+      <View style={styles.sesCta}>
+        <View style={btn.style}>
+          <Text style={btn.textStyle}>{btn.label}</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
 
-// ── Archive modal ──────────────────────────────────────────────────────────────
+// ── ArchiveModal ───────────────────────────────────────────────────────────────
 
 function ArchiveModal({ programName, onConfirm, onClose }) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.centerSheet}>
-        <Text style={styles.archiveTitle}>Archivar programa</Text>
+      <View style={styles.bottomSheet}>
+        <Text style={styles.sheetTitle}>Archivar programa</Text>
         <Text style={styles.archiveDesc}>
-          <Text style={{ color: colors.text, fontWeight: '600' }}>{programName}</Text>
+          <Text style={{ color: colors.text, fontWeight: typography.semibold }}>{programName}</Text>
           {'\n'}Se guardará en archivados. Podrás restaurarlo después.
         </Text>
-
         <ArchiveOption
           label="Mantener historial"
           desc="El programa se archiva, el historial de sesiones se conserva"
@@ -98,7 +303,6 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
           onPress={() => onConfirm(true)}
           danger
         />
-
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
           <Text style={styles.cancelBtnText}>Cancelar</Text>
         </TouchableOpacity>
@@ -120,29 +324,95 @@ function ArchiveOption({ label, desc, onPress, danger }) {
   );
 }
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
+// ── StagePickerModal ───────────────────────────────────────────────────────────
+
+function StagePickerModal({ program, onSelect, onClose }) {
+  const currentIdx = program.currentStageIndex ?? 0;
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={styles.bottomSheet}>
+        <Text style={styles.sheetTitle}>Seleccionar etapa</Text>
+        <View style={styles.stageList}>
+          {program.stages.map((stage, idx) => {
+            const isActive = idx === currentIdx;
+            return (
+              <TouchableOpacity
+                key={stage.id ?? idx}
+                style={[styles.stageOption, isActive && styles.stageOptionActive]}
+                onPress={() => onSelect(idx)}
+                activeOpacity={isActive ? 1 : 0.7}
+              >
+                <View style={styles.stageOptionHeader}>
+                  <Text style={[styles.stageOptionName, isActive && styles.stageOptionNameActive]}>
+                    {stage.name}
+                  </Text>
+                  {isActive && <Text style={styles.stageActiveLabel}>ACTIVA</Text>}
+                </View>
+                <Text style={styles.stageOptionDesc}>
+                  {`${stage.durationWeeks ?? 4} sem · ${stage.days?.length ?? 0} sesiones/ciclo`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+          <Text style={styles.cancelBtnText}>Cancelar</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+// ── ProgramBtn ─────────────────────────────────────────────────────────────────
+
+function ProgramBtn({ label, onPress, accent, danger }) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.programBtn,
+        accent && styles.programBtnAccent,
+        danger && styles.programBtnDanger,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={[
+        styles.programBtnText,
+        accent && styles.programBtnTextAccent,
+        danger && styles.programBtnTextDanger,
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── HomeScreen ─────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { i18n }   = useTranslation();
 
-  const [archiveOpen,  setArchiveOpen]  = useState(false);
-  const [stagePicker,  setStagePicker]  = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [stagePicker, setStagePicker] = useState(false);
 
-  const activeProgram     = useStore(selectActiveProgram);
-  const activeSession     = useStore((s) => s.activeSession);
-  const exerciseLibrary   = useStore((s) => s.exerciseLibrary);
-  const customExercises   = useStore((s) => s.customExercises);
-  const sessionTemplates  = useStore((s) => s.sessionTemplates);   // subscribe for reactivity
-  const userPrograms      = useStore((s) => s.userPrograms);        // subscribe for reactivity
+  const activeProgram        = useStore(selectActiveProgram);
+  const activeSession        = useStore((s) => s.activeSession);
+  const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
+  const customExercises      = useStore((s) => s.customExercises);
+  const workoutLog           = useStore((s) => s.workoutLog);
+  const sessionTemplates     = useStore((s) => s.sessionTemplates);   // reactivity
+  const userPrograms         = useStore((s) => s.userPrograms);        // reactivity
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
-  const getLastSession    = useStore((s) => s.getLastSession);
-  const startSession      = useStore((s) => s.startSession);
-  const navigate          = useStore((s) => s.navigate);
-  const archiveProgram    = useStore((s) => s.archiveProgram);
-  const advanceStage        = useStore((s) => s.advanceStage);
-  const dismissStageAdvance = useStore((s) => s.dismissStageAdvance);
-  const setCurrentStage     = useStore((s) => s.setCurrentStage);
+  const getLastSession       = useStore((s) => s.getLastSession);
+  const startSession         = useStore((s) => s.startSession);
+  const navigate             = useStore((s) => s.navigate);
+  const archiveProgram       = useStore((s) => s.archiveProgram);
+  const advanceStage         = useStore((s) => s.advanceStage);
+  const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
+  const setCurrentStage      = useStore((s) => s.setCurrentStage);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
@@ -153,7 +423,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Shared header: F&C + settings menu */}
       <AppHeader />
 
       <ScrollView
@@ -161,59 +430,32 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {activeProgram ? (() => {
-          const hasStages       = (activeProgram.stages?.length ?? 0) > 0;
-          const currentStageIdx = activeProgram.currentStageIndex ?? 0;
-          const currentStage    = hasStages ? activeProgram.stages[currentStageIdx] : null;
-          const nextStage       = hasStages ? activeProgram.stages[currentStageIdx + 1] : null;
-          const sessionsCompleted = activeProgram.stageSessionsCompleted ?? 0;
-          const threshold         = currentStage
-            ? currentStage.durationWeeks * (currentStage.days?.length || 1)
-            : 0;
-          const progress = threshold > 0 ? Math.min(1, sessionsCompleted / threshold) : 0;
+          const hasStages   = (activeProgram.stages?.length ?? 0) > 0;
+          const stageIdx    = activeProgram.currentStageIndex ?? 0;
+          const currentStage = hasStages ? activeProgram.stages[stageIdx] : null;
+          const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
+
+          // Computed values for progress header
+          const stageInfo                  = computeStageInfo(activeProgram);
+          const weekNum                    = computeWeekNum(activeProgram, workoutLog);
+          const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
+
+          // Current session templates in cycle order
+          const currentDays = activeProgram.days ?? [];
 
           return (
             <>
-              {/* Program label + stage chip */}
-              <View style={styles.programMeta}>
-                <Text style={styles.programMetaLabel}>PROGRAMA ACTIVO</Text>
-                <View style={styles.programNameRow}>
-                  <Text style={styles.programName}>{activeProgram.name}</Text>
-                  {hasStages && (
-                    <TouchableOpacity
-                      style={styles.stageChip}
-                      onPress={() => setStagePicker(true)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.stageChipText}>
-                        {currentStage?.name ?? `Etapa ${currentStageIdx + 1}`}
-                        {'  ▾'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+              {/* Program name label */}
+              <Text style={styles.progLabel}>{activeProgram.name}</Text>
 
-                {/* Progress bar */}
-                {hasStages && threshold > 0 && (
-                  <View style={styles.progressSection}>
-                    <View style={styles.progressLabels}>
-                      <Text style={styles.progressLabel}>
-                        {sessionsCompleted}/{threshold} sesiones
-                      </Text>
-                      <Text style={styles.progressLabel}>
-                        {currentStageIdx + 1}/{activeProgram.stages.length} etapas
-                      </Text>
-                    </View>
-                    <View style={styles.progressBarBg}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          { width: `${Math.round(progress * 100)}%` },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                )}
-              </View>
+              {/* Progress header (stage + week / pill) */}
+              <ProgressHeader
+                weekNum={weekNum}
+                doneInCycle={doneInCycle}
+                sessionsPerCycle={sessionsPerCycle}
+                stageInfo={stageInfo}
+                onChangeStage={() => setStagePicker(true)}
+              />
 
               {/* Stage advance banner */}
               {activeProgram.stageAdvancePending && nextStage && (
@@ -237,47 +479,52 @@ export default function HomeScreen() {
                       onPress={() => dismissStageAdvance(activeProgram.id)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.stageBannerContinueBtnText}>Continuar</Text>
+                      <Text style={styles.stageBannerContinueBtnText}>Seguir en esta</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
 
-              {/* Day cards */}
-              <Text style={styles.sectionCaption}>SELECCIONAR SESIÓN</Text>
-              <View style={styles.dayList}>
-                {(activeProgram.days ?? []).map(({ sessionTemplateId }) => {
-                  const tpl = getEffectiveTemplate(sessionTemplateId);
+              {/* Session cards */}
+              <View style={styles.sesList}>
+                {currentDays.map(({ sessionTemplateId }, dayIndex) => {
+                  const tpl    = getEffectiveTemplate(sessionTemplateId);
                   if (!tpl) return null;
-                  const last = getLastSession(sessionTemplateId);
-                  const isActive = activeSession?.templateId === sessionTemplateId;
+                  const last   = getLastSession(sessionTemplateId);
+                  const status = getSessionStatus(
+                    dayIndex,
+                    doneInCycle,
+                    activeSession?.templateId,
+                    sessionTemplateId,
+                  );
                   return (
-                    <DayCard
+                    <SessionCard
                       key={sessionTemplateId}
                       template={tpl}
                       lastSession={last}
                       allExercises={allExercises}
-                      isActive={isActive}
-                      onPress={isActive
-                        ? () => navigation.navigate('Workout')
-                        : () => startSession(sessionTemplateId)
+                      status={status}
+                      language={i18n.language}
+                      onPress={
+                        status === 'active'
+                          ? () => navigation.navigate('Workout')
+                          : () => startSession(sessionTemplateId)
                       }
                     />
                   );
                 })}
               </View>
 
-              {/* Program action buttons */}
-              <Text style={styles.sectionCaption}>PROGRAMA</Text>
+              {/* Program actions */}
               <View style={styles.programActions}>
-                <ProgramBtn label="Ver" onPress={() => navigate('programPrint')} accent />
-                <ProgramBtn label="Editar" onPress={() => navigate('programEditor')} accent />
-                <ProgramBtn label="Archivar" onPress={() => setArchiveOpen(true)} danger />
+                <ProgramBtn label="Ver"     onPress={() => navigate('programPrint')}  accent />
+                <ProgramBtn label="Editar"  onPress={() => navigate('programEditor')} accent />
+                <ProgramBtn label="Archivar" onPress={() => setArchiveOpen(true)}     danger />
               </View>
             </>
           );
         })() : (
-          /* Empty state */
+          /* ── Empty state ── */
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🏋️</Text>
             <Text style={styles.emptyText}>
@@ -302,8 +549,7 @@ export default function HomeScreen() {
           onClose={() => setArchiveOpen(false)}
         />
       )}
-
-      {stagePicker && activeProgram?.stages?.length > 0 && (
+      {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
         <StagePickerModal
           program={activeProgram}
           onSelect={(idx) => {
@@ -319,239 +565,282 @@ export default function HomeScreen() {
   );
 }
 
-function StagePickerModal({ program, onSelect, onClose }) {
-  const currentStageIdx = program.currentStageIndex ?? 0;
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.stagePickerSheet}>
-        <Text style={styles.stagePickerTitle}>SELECCIONAR ETAPA</Text>
-        <View style={styles.stageList}>
-          {program.stages.map((stage, idx) => {
-            const isActive = idx === currentStageIdx;
-            return (
-              <TouchableOpacity
-                key={stage.id ?? idx}
-                style={[styles.stageOption, isActive && styles.stageOptionActive]}
-                onPress={() => onSelect(idx)}
-                activeOpacity={isActive ? 1 : 0.7}
-              >
-                <View style={styles.stageOptionHeader}>
-                  <Text style={[styles.stageOptionName, isActive && styles.stageOptionNameActive]}>
-                    {stage.name}
-                  </Text>
-                  {isActive && (
-                    <Text style={styles.stageActiveLabel}>ACTIVA</Text>
-                  )}
-                </View>
-                <Text style={styles.stageOptionDesc}>
-                  {`${stage.durationWeeks ?? 4} sem · ${stage.days?.length ?? 0} sesiones/semana`}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>Cancelar</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
-}
-
-function ProgramBtn({ label, onPress, accent, danger }) {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.programBtn,
-        danger && styles.programBtnDanger,
-        accent && styles.programBtnAccent,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={[
-        styles.programBtnText,
-        danger && styles.programBtnTextDanger,
-        accent && styles.programBtnTextAccent,
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+
   container: {
     flex:            1,
     backgroundColor: colors.bg,
   },
-
-  // Content
   content: {
     padding:       spacing.xl,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl * 2,
     gap:           spacing.lg,
   },
 
-  // Program meta
-  programMeta: { gap: 2 },
-  programMetaLabel: {
-    fontSize:      typography.xs,
+  // ── Program label ────────────────────────────────────────────────────────────
+  progLabel: {
+    fontSize:      8,
     fontWeight:    typography.bold,
-    color:         colors.muted,
     letterSpacing: 2,
-  },
-  programName: {
-    fontSize:   typography.md,
-    fontWeight: typography.medium,
-    color:      colors.text,
+    color:         colors.muted2,
+    textTransform: 'uppercase',
+    paddingLeft:   2,
   },
 
-  sectionCaption: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         colors.muted,
-    letterSpacing: 2,
-    marginBottom:  -spacing.xs,
+  // ── Progress header ──────────────────────────────────────────────────────────
+  progressHeader: {
+    flexDirection: 'row',
+    gap:           8,
   },
-
-  // Day list
-  dayList: { gap: spacing.sm },
-
-  // DayCard
-  dayCard: {
-    backgroundColor: colors.surface,
+  phCard: {
+    backgroundColor: colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderLeftWidth: 3,
+    borderColor:     '#242424',
     borderRadius:    radius.md,
-    padding:         spacing.md,
-    paddingLeft:     spacing.md - 1,
   },
-  dayCardTop: {
+
+  // Stage card (left, wider)
+  phStage: {
+    flex:    1.6,
+    padding: spacing.md,
+  },
+  phStageRow1: {
     flexDirection:  'row',
-    alignItems:     'flex-start',
     justifyContent: 'space-between',
-    marginBottom:   spacing.xs,
+    alignItems:     'flex-start',
+    marginBottom:   3,
   },
-  dayLetter: {
-    fontSize:   20,
-    fontWeight: '900',
-    lineHeight: 20,
+  phStageLabel: {
+    fontSize:      11,
+    fontWeight:    typography.semibold,
+    color:         colors.muted,
+    letterSpacing: 0.2,
   },
-  inProgressBadge: {
-    borderWidth:       borders.thin,
-    borderRadius:      radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
-    marginTop:         spacing.xs,
-    backgroundColor:   'rgba(255,255,255,0.04)',
-  },
-  inProgressText: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+  phStageMenu: {
+    fontSize:      16,
+    color:         colors.muted,
+    lineHeight:    16,
     letterSpacing: 1,
   },
-  lastTime: {
-    fontSize:  typography.xs,
-    color:     colors.muted,
-    marginTop: spacing.xs,
+  phStageName: {
+    fontSize:     15,
+    fontWeight:   typography.bold,
+    color:        colors.text,
+    lineHeight:   15 * 1.2,
+    marginBottom: 3,
   },
-  dayName: {
-    fontSize:      typography.base,
-    fontWeight:    typography.bold,
-    letterSpacing: 0.5,
-    lineHeight:    typography.base * 1.1,
+  phStageWeek: {
+    fontSize:     10,
+    fontWeight:   typography.regular,
+    color:        colors.muted,
+    marginBottom: spacing.sm,
   },
-  dayFocus: {
-    fontSize:  typography.sm,
-    color:     colors.muted,
-    marginTop: spacing.xs,
-  },
-
-  // Program action buttons
-  programActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
-  programBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    alignItems:      'center',
-    backgroundColor: colors.surface,
-  },
-  programBtnAccent: {
-    backgroundColor: withOpacity(colors.accent, 0.07),
-    borderColor:     withOpacity(colors.accent, 0.3),
-  },
-  programBtnDanger: {
-    backgroundColor: 'rgba(248,113,113,0.07)',
-    borderColor:     'rgba(248,113,113,0.3)',
-  },
-  programBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      colors.muted,
-  },
-  programBtnTextAccent: { color: colors.accent },
-  programBtnTextDanger: { color: colors.red },
-
-  // Program name row (name + stage chip)
-  programNameRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
-    marginTop:      2,
-  },
-  stageChip: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.3),
-    borderRadius:    radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    flexShrink: 0,
-  },
-  stageChipText: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         colors.accent,
-    letterSpacing: 0.5,
-  },
-
-  // Progress bar
-  progressSection: {
-    marginTop: spacing.sm,
-    gap:       4,
-  },
-  progressLabels: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-  },
-  progressLabel: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
-  progressBarBg: {
-    height:          3,
-    backgroundColor: colors.surface2,
-    borderRadius:    radius.full,
+  phBar: {
+    height:          4,
+    backgroundColor: colors.border,
+    borderRadius:    2,
     overflow:        'hidden',
   },
-  progressBarFill: {
+  phBarFill: {
     height:          '100%',
     backgroundColor: colors.accent,
-    borderRadius:    radius.full,
+    borderRadius:    2,
   },
 
-  // Stage advance banner
+  // Week card (right, squarish)
+  phWeekSq: {
+    flex:           1,
+    padding:        11,
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
+  phWkTop: {
+    fontSize:      11,
+    fontWeight:    typography.semibold,
+    color:         colors.muted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  phWkNum: {
+    fontSize:      22,
+    fontWeight:    typography.bold,
+    color:         colors.text,
+    lineHeight:    22,
+    letterSpacing: -0.5,
+  },
+  phWeekBottom: {
+    alignItems: 'center',
+    gap:        4,
+  },
+  phWkSes: {
+    fontSize:  9,
+    fontWeight: typography.regular,
+    color:     colors.muted,
+    textAlign: 'center',
+  },
+  phDots: {
+    flexDirection:  'row',
+    gap:            5,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  phDot: {
+    width:        8,
+    height:       8,
+    borderRadius: 4,
+  },
+  phDotDone: {
+    backgroundColor: colors.accent,
+  },
+  phDotPending: {
+    backgroundColor: withOpacity(colors.accent, 0.15),
+    borderWidth:     1.5,
+    borderColor:     withOpacity(colors.accent, 0.5),
+  },
+  phDotIdle: {
+    backgroundColor: '#333333',
+  },
+
+  // Week pill (no stages, full width)
+  phPill: {
+    flex:           1,
+    height:         54,
+    flexDirection:  'row',
+    alignItems:     'center',
+    paddingHorizontal: spacing.lg,
+  },
+  phPillLeft: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'baseline',
+    gap:           7,
+  },
+  phPillLabel: {
+    fontSize:      11,
+    fontWeight:    typography.semibold,
+    color:         colors.muted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  phPillNum: {
+    fontSize:      22,
+    fontWeight:    typography.bold,
+    color:         colors.text,
+    letterSpacing: -0.5,
+    lineHeight:    22,
+  },
+  phPillDivider: {
+    width:           1,
+    height:          26,
+    backgroundColor: colors.border,
+    marginRight:     spacing.lg,
+  },
+  phPillRight: {
+    alignItems: 'flex-end',
+    gap:        4,
+  },
+
+  // ── Session cards ─────────────────────────────────────────────────────────────
+  sesList: {
+    gap: 7,
+  },
+  sesCard: {
+    backgroundColor:  colors.surface,
+    borderWidth:      borders.thin,
+    borderColor:      colors.borderCard,
+    borderLeftWidth:  3,
+    borderRadius:     radius.md,
+    padding:          spacing.md - 2,
+    paddingLeft:      spacing.md,
+    paddingRight:     spacing.sm + 3,
+    flexDirection:    'row',
+    gap:              spacing.sm + 2,
+    alignItems:       'stretch',
+  },
+  sesInfo: {
+    flex:     1,
+    minWidth: 0,
+    gap:      2,
+  },
+  sesTag: {
+    fontSize:      11,
+    fontWeight:    typography.bold,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  7,
+  },
+  sesName: {
+    fontSize:   15,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: 15 * 1.1,
+  },
+  sesStatus: {
+    fontSize:   10,
+    fontWeight: typography.medium,
+    marginTop:  1,
+  },
+  sesEx: {
+    fontSize:  10,
+    color:     '#555555',
+    marginTop: 1,
+  },
+  sesLast: {
+    fontSize:  9,
+    color:     '#484848',
+    marginTop: 1,
+  },
+  sesLastActive: {
+    fontSize:  9,
+    color:     withOpacity(colors.accent, 0.5),
+    marginTop: 1,
+  },
+  sesCta: {
+    alignItems:    'center',
+    justifyContent: 'center',
+    flexShrink:    0,
+  },
+
+  // Buttons
+  btnPrimary: {
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.sm,
+    paddingHorizontal: 11,
+    paddingVertical:   8,
+  },
+  btnPrimaryText: {
+    fontSize:   10.5,
+    fontWeight: typography.bold,
+    color:      colors.onAccent,
+  },
+  btnRepeat: {
+    borderWidth:       1.5,
+    borderColor:       '#383838',
+    borderRadius:      radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical:   7,
+  },
+  btnRepeatText: {
+    fontSize:   10.5,
+    fontWeight: typography.semibold,
+    color:      '#c0c0c0',
+  },
+  btnOther: {
+    borderWidth:       1.5,
+    borderColor:       '#2e2e2e',
+    borderRadius:      radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical:   7,
+  },
+  btnOtherText: {
+    fontSize:   10.5,
+    fontWeight: typography.semibold,
+    color:      '#888888',
+  },
+
+  // ── Stage advance banner ──────────────────────────────────────────────────────
   stageBanner: {
     backgroundColor: withOpacity(colors.accent, 0.06),
     borderWidth:     borders.thin,
@@ -604,8 +893,69 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // Stage picker modal
-  stagePickerSheet: {
+  // ── Program action buttons ────────────────────────────────────────────────────
+  programActions: {
+    flexDirection: 'row',
+    gap:           spacing.sm,
+  },
+  programBtn: {
+    flex:            1,
+    paddingVertical: spacing.sm,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    alignItems:      'center',
+    backgroundColor: colors.surface,
+  },
+  programBtnAccent: {
+    backgroundColor: withOpacity(colors.accent, 0.07),
+    borderColor:     withOpacity(colors.accent, 0.3),
+  },
+  programBtnDanger: {
+    backgroundColor: 'rgba(248,113,113,0.07)',
+    borderColor:     'rgba(248,113,113,0.3)',
+  },
+  programBtnText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  programBtnTextAccent: { color: colors.accent },
+  programBtnTextDanger: { color: colors.red },
+
+  // ── Empty state ───────────────────────────────────────────────────────────────
+  emptyState: {
+    alignItems:      'center',
+    paddingVertical: spacing.xxl * 2,
+    gap:             spacing.lg,
+  },
+  emptyIcon: { fontSize: 40 },
+  emptyText: {
+    fontSize:   typography.base,
+    color:      colors.muted,
+    textAlign:  'center',
+    lineHeight: typography.base * 1.7,
+  },
+  newProgramBtn: {
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.md,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical:   spacing.lg,
+    marginTop:         spacing.sm,
+  },
+  newProgramBtnText: {
+    fontSize:      typography.lg,
+    fontWeight:    typography.heavy,
+    color:         colors.bg,
+    letterSpacing: 1,
+  },
+
+  // ── Modals ────────────────────────────────────────────────────────────────────
+  backdrop: {
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  bottomSheet: {
     backgroundColor:      colors.surface,
     borderTopLeftRadius:  radius.lg,
     borderTopRightRadius: radius.lg,
@@ -615,13 +965,55 @@ const styles = StyleSheet.create({
     paddingBottom:        spacing.xxl,
     gap:                  spacing.sm,
   },
-  stagePickerTitle: {
+  sheetTitle: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
     color:         colors.text,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginBottom:  spacing.xs,
   },
+  archiveDesc: {
+    fontSize:     typography.sm,
+    color:        colors.muted,
+    lineHeight:   typography.sm * 1.6,
+    marginBottom: spacing.xs,
+  },
+  archiveOption: {
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     colors.borderCard,
+    borderRadius:    radius.sm,
+    padding:         spacing.md,
+  },
+  archiveOptionDanger: {
+    borderColor:     'rgba(248,113,113,0.3)',
+    backgroundColor: 'rgba(248,113,113,0.05)',
+  },
+  archiveOptionLabel: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  archiveOptionDesc: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 3,
+  },
+  cancelBtn: {
+    paddingVertical: spacing.md,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    alignItems:      'center',
+    marginTop:       spacing.xs,
+  },
+  cancelBtnText: {
+    fontSize:   typography.base,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
+
+  // Stage picker
   stageList: {
     gap: spacing.sm,
   },
@@ -660,95 +1052,4 @@ const styles = StyleSheet.create({
     fontSize: typography.xs,
     color:    colors.muted,
   },
-
-  // Empty state
-  emptyState: {
-    alignItems:     'center',
-    paddingVertical: spacing.xxl * 2,
-    gap:             spacing.lg,
-  },
-  emptyIcon: { fontSize: 40 },
-  emptyText: {
-    fontSize:  typography.base,
-    color:     colors.muted,
-    textAlign: 'center',
-    lineHeight: typography.base * 1.7,
-  },
-  newProgramBtn: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.md,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical:   spacing.lg,
-    marginTop:         spacing.sm,
-  },
-  newProgramBtnText: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         colors.bg,
-    letterSpacing: 1,
-  },
-
-  // Modals shared
-  backdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-
-  // Archive modal
-  centerSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
-    padding:         spacing.xl,
-    paddingBottom:   spacing.xxl,
-    gap:             spacing.sm,
-  },
-  archiveTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         colors.text,
-    letterSpacing: 0.5,
-    marginBottom:  spacing.xs,
-  },
-  archiveDesc: {
-    fontSize:   typography.sm,
-    color:      colors.muted,
-    lineHeight: typography.sm * 1.6,
-    marginBottom: spacing.xs,
-  },
-  archiveOption: {
-    backgroundColor: colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
-    padding:         spacing.md,
-  },
-  archiveOptionDanger: {
-    borderColor: 'rgba(248,113,113,0.3)',
-    backgroundColor: 'rgba(248,113,113,0.05)',
-  },
-  archiveOptionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      colors.text,
-  },
-  archiveOptionDesc: {
-    fontSize:  typography.xs,
-    color:     colors.muted,
-    marginTop: 3,
-  },
-  cancelBtn: {
-    paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    alignItems:      'center',
-    marginTop:       spacing.xs,
-  },
-  cancelBtnText: {
-    fontSize:   typography.base,
-    color:      colors.muted,
-    fontWeight: typography.medium,
-  },
-
 });

@@ -2,7 +2,10 @@
   "expo": {
     "name": "Forma Fit",
     "slug": "forma",
-    "scheme": "forma",
+    "scheme": [
+      "forma",
+      "com.googleusercontent.apps.75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

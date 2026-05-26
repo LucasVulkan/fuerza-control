@@ -19,10 +19,12 @@ import { useTranslation } from 'react-i18next';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
+import TrainerSyncModal from '../components/TrainerSyncModal';
 import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
 import { summarizeSets } from '../../../src/utils/progression';
 
@@ -669,7 +671,8 @@ export default function ClientsScreen() {
   const deleteLogEntry         = useStore((s) => s.deleteLogEntry);
   const showToast              = useStore((s) => s.showToast);
 
-  const isPro = profile.isPro ?? true;
+  const isPro        = profile.isPro ?? true;
+  const trainerSync  = useStore((s) => s.trainerSync);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
@@ -714,6 +717,10 @@ export default function ClientsScreen() {
 
   // Import
   const [importState, setImportState] = useState(null); // { fileName, parsedData }
+
+  // Sync mode modal — shown on first visit (mode === null) or from hamburger menu
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const isFirstTimeSync = trainerSync.mode === null;
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
@@ -781,6 +788,14 @@ export default function ClientsScreen() {
     });
     return unsub;
   }, [navigation]);
+
+  // ── Auto-open sync modal on first visit ────────────────────────────────────
+
+  useEffect(() => {
+    if (isPro && trainerSync.mode === null) {
+      setShowSyncModal(true);
+    }
+  }, [isPro]); // run once when screen mounts as PRO user
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -1383,6 +1398,8 @@ export default function ClientsScreen() {
             const progCount   = (client.programIds ?? []).filter((id) => programs[id]).length;
             const statusColor = STATUS_COLORS[client.status ?? 'active'];
 
+            const clientCode = client.syncCode; // set when trainer shares via Supabase
+
             return (
               <View style={styles.clientCard}>
                 <TouchableOpacity
@@ -1407,11 +1424,34 @@ export default function ClientsScreen() {
                     <Text style={styles.clientInfoBtn}>ℹ</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
+
+                {/* Copy client code — only shown in connected modes */}
+                {trainerSync.mode !== 'offline' && trainerSync.mode !== null && clientCode && (
+                  <TouchableOpacity
+                    style={styles.clientCodeRow}
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(clientCode);
+                      showToast('✓ Código copiado');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.clientCodeLabel}>Código cliente:</Text>
+                    <Text style={styles.clientCodeValue}>{clientCode}</Text>
+                    <Text style={styles.clientCodeCopy}>Copiar</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           }}
         />
       )}
+
+      {/* Trainer sync mode modal */}
+      <TrainerSyncModal
+        visible={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        isFirstTime={isFirstTimeSync}
+      />
 
       {/* New client modal */}
       <Modal visible={showNewClient} transparent animationType="fade" onRequestClose={() => setShowNewClient(false)}>
@@ -1556,6 +1596,34 @@ const styles = StyleSheet.create({
     width:        7,
     height:       7,
     borderRadius: 4,
+  },
+
+  // Client code row (copy magic code)
+  clientCodeRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 2,
+    borderTopWidth:    borders.thin,
+    borderTopColor:    colors.border,
+    backgroundColor:   withOpacity(colors.accent, 0.04),
+    gap:               spacing.xs,
+  },
+  clientCodeLabel: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  clientCodeValue: {
+    flex:       1,
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.text,
+    letterSpacing: 1,
+  },
+  clientCodeCopy: {
+    fontSize: typography.xs,
+    color:    colors.accent,
+    fontWeight: typography.medium,
   },
 
   // ── Empty ──

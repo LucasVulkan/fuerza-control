@@ -10,6 +10,7 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
 // Componentes SVG animados — creados una sola vez a nivel de módulo.
@@ -161,6 +162,19 @@ function computeOverallImprovement(workoutLog, allExercises) {
   }
   if (!improvements.length) return null;
   return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length);
+}
+
+function computeExerciseImprovement(logs, def) {
+  if (!logs || logs.length < 2) return null;
+  const model  = def?.progressionModel;
+  const metric = model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg';
+  const firstVal = computeValue(logs[0].exercise?.sets, metric)
+                ?? computeValue(logs[0].exercise?.sets, 'reps');
+  const lastVal  = computeValue(logs[logs.length - 1].exercise?.sets, metric)
+                ?? computeValue(logs[logs.length - 1].exercise?.sets, 'reps');
+  if (!firstVal || !lastVal || firstVal === 0) return null;
+  const pct = ((lastVal - firstVal) / firstVal) * 100;
+  return Math.round(Math.max(-100, Math.min(200, pct)));
 }
 
 function computeWeekStreak(workoutLog) {
@@ -426,7 +440,8 @@ function StatTile({ value, label, valueColor }) {
 
 // ── ExerciseStatCard ───────────────────────────────────────────────────────────
 
-function ExerciseStatCard({ def, logs, allLogs }) {
+function ExerciseStatCard({ exerciseId, def, logs, allLogs, periodLogs }) {
+  const navigation = useNavigation();
   const { i18n } = useTranslation();
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
 
@@ -446,6 +461,7 @@ function ExerciseStatCard({ def, logs, allLogs }) {
   const metricLabel  = metrics.find((m) => m.id === activeMetric)?.label ?? '';
   const totals       = useMemo(() => computeTotals(def, effectiveLogs, fmtWeight), [def, effectiveLogs, fmtWeight]);
   const tableLogs    = useMemo(() => [...(logs ?? [])].reverse(), [logs]);
+  const improvePct   = useMemo(() => computeExerciseImprovement(periodLogs ?? effectiveLogs, def), [periodLogs, effectiveLogs, def]);
 
   const chartData = useMemo(() => {
     let filtered = [...effectiveLogs];
@@ -475,10 +491,24 @@ function ExerciseStatCard({ def, logs, allLogs }) {
     <View style={styles.exCard}>
       {/* Header */}
       <View style={styles.exHeader}>
-        <View style={styles.exHeaderLeft}>
-          <Text style={styles.exName}>{name}</Text>
+        <TouchableOpacity
+          style={styles.exHeaderLeft}
+          onPress={() => exerciseId && navigation.push('ExerciseHistory', { exerciseId })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.exNameRow}>
+            <Text style={styles.exName} numberOfLines={1}>{name}</Text>
+            {improvePct !== null && (
+              <Text style={[
+                styles.exImproveBadge,
+                improvePct >= 0 ? styles.exImproveBadgePos : styles.exImproveBadgeNeg,
+              ]}>
+                {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
+              </Text>
+            )}
+          </View>
           {totals ? <Text style={styles.exTotals}>{totals}</Text> : null}
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.expandBtn, expanded && styles.expandBtnActive]}
           onPress={() => setExpanded((v) => !v)}
@@ -582,17 +612,6 @@ export default function StatsScreen() {
   // ── Stat tiles ─────────────────────────────────────────────────────────────
   const totalSessions = workoutLog.length;
 
-  const improvePct = useMemo(
-    () => computeOverallImprovement(workoutLog, allExercises),
-    [workoutLog]
-  );
-  const improveLabel = improvePct === null
-    ? '—'
-    : `${improvePct > 0 ? '+' : ''}${improvePct}%`;
-  const improveColor = improvePct === null
-    ? colors.muted
-    : improvePct >= 0 ? colors.green : colors.red;
-
   const weekStreak = useMemo(() => computeWeekStreak(workoutLog), [workoutLog]);
 
   // ── Template IDs ───────────────────────────────────────────────────────────
@@ -623,6 +642,18 @@ export default function StatsScreen() {
     () => filterLog(workoutLog, scope, 'all', programTemplateIds),
     [workoutLog, scope, programTemplateIds]
   );
+
+  // ── Overall improvement (needs filteredLog) ────────────────────────────────
+  const improvePct = useMemo(
+    () => computeOverallImprovement(filteredLog, allExercises),
+    [filteredLog]
+  );
+  const improveLabel = improvePct === null
+    ? '—'
+    : `${improvePct > 0 ? '+' : ''}${improvePct}%`;
+  const improveColor = improvePct === null
+    ? colors.muted
+    : improvePct >= 0 ? colors.green : colors.red;
 
   // ── Exercises with data ────────────────────────────────────────────────────
   const exercisesWithLogs = useMemo(() => {
@@ -765,11 +796,12 @@ export default function StatsScreen() {
           </View>
         ) : (
           displayedExercises.map((exerciseId) => {
-            const def     = allExercises[exerciseId];
-            const logs    = getExerciseLogsFrom(exerciseId, filteredLog).slice(-6);
-            const allLogs = getExerciseLogsFrom(exerciseId, filteredLogScope);
+            const def         = allExercises[exerciseId];
+            const periodLogs  = getExerciseLogsFrom(exerciseId, filteredLog);
+            const logs        = periodLogs.slice(-6);
+            const allLogs     = getExerciseLogsFrom(exerciseId, filteredLogScope);
             return (
-              <ExerciseStatCard key={exerciseId} def={def} logs={logs} allLogs={allLogs} />
+              <ExerciseStatCard key={exerciseId} exerciseId={exerciseId} def={def} logs={logs} allLogs={allLogs} periodLogs={periodLogs} />
             );
           })
         )}
@@ -960,11 +992,24 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   exHeaderLeft: { flex: 1, gap: 3 },
+  exNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
   exName: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
+    flexShrink: 1,
   },
+  exImproveBadge: {
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    flexShrink: 0,
+  },
+  exImproveBadgePos: { color: colors.green },
+  exImproveBadgeNeg: { color: colors.red },
   exTotals: {
     fontSize: typography.xs,
     color:    colors.muted,

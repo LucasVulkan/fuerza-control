@@ -98,6 +98,13 @@ export const useStore = create(
       customExercises: {},
       _editSnapshot: null,
 
+      // ── Trainer / client Supabase sync ────────────────────────────────────
+      trainerSync: {
+        mode:   null,   // null | 'offline' | 'code' | 'google'
+        code:   null,   // string — trainer recovery code (only when mode === 'code')
+        userId: null,   // Supabase user.id once authenticated
+      },
+
       // Static references (not persisted)
       exerciseLibrary: EXERCISE_LIBRARY,
       sessionTemplates: SESSION_TEMPLATES,
@@ -590,6 +597,13 @@ export const useStore = create(
             [programId]: { ...s.programs[programId], name: newName },
           },
         }));
+      },
+
+      restoreSession: (templateId) => {
+        set((s) => {
+          const { [templateId]: _removed, ...rest } = s.userPrograms;
+          return { userPrograms: rest };
+        });
       },
 
       renameSession: (templateId, newName) => {
@@ -1686,6 +1700,35 @@ export const useStore = create(
         await get()._syncDriveConfigToSecureStore();
         return { ok: true, fileName };
       },
+
+      // ══════════════════════════════════════════════════════════════════════
+      // TRAINER SYNC (Supabase)
+      // ══════════════════════════════════════════════════════════════════════
+
+      /**
+       * Sets the trainer sync mode and persists auth state.
+       * mode: 'offline' | 'code' | 'google'
+       * Payload: { code?, userId? }
+       */
+      setTrainerSyncMode: (mode, payload = {}) =>
+        set((state) => ({
+          trainerSync: {
+            ...state.trainerSync,
+            mode,
+            code:   payload.code   ?? state.trainerSync.code,
+            userId: payload.userId ?? state.trainerSync.userId,
+          },
+        })),
+
+      /** Updates only the userId (e.g. after session restore). */
+      setTrainerSyncUserId: (userId) =>
+        set((state) => ({
+          trainerSync: { ...state.trainerSync, userId },
+        })),
+
+      /** Resets sync mode (e.g. when switching modes). */
+      resetTrainerSync: () =>
+        set(() => ({ trainerSync: { mode: null, code: null, userId: null } })),
 
       // ══════════════════════════════════════════════════════════════════════
       // REVENUECAT / PURCHASES

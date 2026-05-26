@@ -1,16 +1,16 @@
 /**
  * SetRow — fila de una serie individual.
- * Referencia: src/components/workout/SetRow.jsx (web original)
  *
- * Gestos en InputCell:
- *   onStartShouldSetPanResponder: false  → nunca captura en start
- *                                          → ScrollView puede scrollear siempre
- *   onMoveShouldSetPanResponder: true    → solo si claramente horizontal (>12px, dx>2·dy)
- *                                          → el Pressable cede el responder (yieldsTermination)
- *                                          → ScrollView retiene el gesto si es vertical
+ * inputType: 'weight_reps' | 'reps' | 'time' | 'weight_time'
  *
- * Anti-lag: durante el swipe solo actualiza localValue (state local, sin Zustand).
- *           Al soltar el dedo se hace un único commit al store.
+ * Layouts:
+ *   weight_reps  →  [S1] [peso] [reps] [✓]
+ *   reps         →  [S1] [reps]        [✓]
+ *   time         →  [S1] [seg]  [▶]    [✓]
+ *   weight_time  →  [S1] [peso] [seg]  [▶] [✓]
+ *
+ * El botón ▶/⏸ arranca un cronómetro local que rellena el campo
+ * de tiempo en vivo. Pausa/reanuda sin perder el tiempo acumulado.
  */
 
 import {
@@ -21,13 +21,58 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
 
 const STEP_PX  = 8;
-const H_THRESH = 12; // px mínimo horizontal para activar swipe
+const H_THRESH = 12;
+
+// ── TimerButton ───────────────────────────────────────────────────────────────
+
+function TimerButton({ onTime }) {
+  const [running,  setRunning]  = useState(false);
+  const baseRef    = useRef(0);      // accumulated seconds before current segment
+  const startRef   = useRef(null);   // Date.now() when current segment started
+  const intervalRef = useRef(null);
+  const onTimeRef  = useRef(onTime);
+
+  useEffect(() => { onTimeRef.current = onTime; }, [onTime]);
+  useEffect(() => () => clearInterval(intervalRef.current), []);
+
+  function toggle() {
+    if (running) {
+      // Pause — accumulate elapsed and commit
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      const segSec = Math.round((Date.now() - startRef.current) / 1000);
+      baseRef.current += segSec;
+      setRunning(false);
+      onTimeRef.current(String(baseRef.current));
+    } else {
+      // Start / resume
+      startRef.current = Date.now();
+      intervalRef.current = setInterval(() => {
+        const total = Math.round((Date.now() - startRef.current) / 1000) + baseRef.current;
+        onTimeRef.current(String(total));
+      }, 500);
+      setRunning(true);
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.timerBtn, running && styles.timerBtnRunning]}
+      onPress={toggle}
+      hitSlop={6}
+    >
+      <Text style={[styles.timerBtnIcon, running && styles.timerBtnIconRunning]}>
+        {running ? '▐▐' : '▶'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 // ── InputCell ─────────────────────────────────────────────────────────────────
 
 function InputCell({
   value,
-  prevValue  = '',   // valor de la última sesión (ya en unidades de display)
+  prevValue  = '',
   onChangeText,
   keyboardType,
   scrollStep = 1,
@@ -38,27 +83,23 @@ function InputCell({
   const [editing,      setEditing]      = useState(false);
   const [scrollActive, setScrollActive] = useState(false);
 
-  // Valor local durante el swipe (evita re-renders de Zustand en cada paso)
   const [localValue, setLocalValue] = useState(
     value !== null && value !== undefined && value !== '' ? String(value) : '',
   );
 
-  const editingRef      = useRef(false);
-  const isSwiping       = useRef(false);
-  // Si el valor actual está vacío, partimos del valor previo al swipear
-  const localValueRef   = useRef(
+  const editingRef    = useRef(false);
+  const isSwiping     = useRef(false);
+  const localValueRef = useRef(
     parseFloat(value !== '' && value != null ? value : prevValue) || 0,
   );
-  const onChangeRef     = useRef(onChangeText);
-  const scrollStepRef   = useRef(scrollStep);
-  const lastDxRef       = useRef(0);
+  const onChangeRef   = useRef(onChangeText);
+  const scrollStepRef = useRef(scrollStep);
+  const lastDxRef     = useRef(0);
 
-  // Sync local display con el valor externo cuando NO estamos arrastrando
   useEffect(() => {
     if (!isSwiping.current) {
       const str = value !== null && value !== undefined && value !== '' ? String(value) : '';
       setLocalValue(str);
-      // Swipe parte del prev si el campo está vacío
       localValueRef.current = parseFloat(value !== '' && value != null ? value : prevValue) || 0;
     }
   }, [value, prevValue]);
@@ -79,23 +120,18 @@ function InputCell({
 
   const panResponder = useRef(
     PanResponder.create({
-      // ── Nunca capturar en start: ScrollView siempre puede scrollear ──────
       onStartShouldSetPanResponder:        () => false,
       onStartShouldSetPanResponderCapture: () => false,
-
-      // ── Capturar solo swipes claramente horizontales ─────────────────────
       onMoveShouldSetPanResponder: (_, gs) =>
         !editingRef.current
         && Math.abs(gs.dx) > H_THRESH
         && Math.abs(gs.dx) > Math.abs(gs.dy) * 2,
-
       onPanResponderGrant: () => {
-        Keyboard.dismiss();          // cierra el editor abierto en cualquier otra celda
+        Keyboard.dismiss();
         isSwiping.current = true;
         lastDxRef.current = 0;
         setScrollActive(true);
       },
-
       onPanResponderMove: (_, gs) => {
         const currSteps = Math.trunc(gs.dx / STEP_PX);
         const lastSteps = Math.trunc(lastDxRef.current / STEP_PX);
@@ -106,22 +142,17 @@ function InputCell({
             Math.round((localValueRef.current + delta * scrollStepRef.current) * 100) / 100,
           );
           localValueRef.current = next;
-          // Solo estado local → sin Zustand → sin re-render del árbol
           setLocalValue(String(next));
           lastDxRef.current = gs.dx;
         }
       },
-
       onPanResponderRelease: () => {
-        // Quitar el outline verde inmediatamente (antes de que Zustand re-renderice)
         isSwiping.current = false;
         setScrollActive(false);
         lastDxRef.current = 0;
-        // Commit al store en el siguiente frame → la UI ya actualizó el estilo
         const val = localValueRef.current;
         requestAnimationFrame(() => { onChangeRef.current(String(val)); });
       },
-
       onPanResponderTerminate: () => {
         isSwiping.current = false;
         setScrollActive(false);
@@ -132,7 +163,6 @@ function InputCell({
     })
   ).current;
 
-  // ── Modo edición: TextInput real con autoFocus ───────────────────────────
   if (editing) {
     return (
       <View style={styles.inputCell}>
@@ -141,10 +171,7 @@ function InputCell({
           style={[styles.input, styles.inputEditing]}
           autoFocus
           value={localValue}
-          onChangeText={(v) => {
-            setLocalValue(v);
-            onChangeText(v);
-          }}
+          onChangeText={(v) => { setLocalValue(v); onChangeText(v); }}
           keyboardType={keyboardType}
           placeholder="—"
           placeholderTextColor={colors.muted2}
@@ -158,18 +185,12 @@ function InputCell({
     );
   }
 
-  // ── Modo display: Pressable + Text (sin TextInput activo → sin conflicto) ─
   const displayStr = localValue !== '' ? localValue : '';
-  // Si no hay valor propio, mostrar el de la última sesión en gris
   const showPrev   = displayStr === '' && prevValue !== '';
   const renderStr  = showPrev ? String(prevValue) : displayStr;
 
-  // Separar parte entera y decimal para que el punto decimal esté fijo
-  // y el número no salte al añadir/quitar decimales durante el swipe
   const dotIdx = renderStr.indexOf('.');
-  const intStr = renderStr
-    ? (dotIdx >= 0 ? renderStr.slice(0, dotIdx) : renderStr)
-    : '';
+  const intStr = renderStr ? (dotIdx >= 0 ? renderStr.slice(0, dotIdx) : renderStr) : '';
   const decStr = dotIdx >= 0 ? renderStr.slice(dotIdx) : '';
 
   return (
@@ -185,7 +206,6 @@ function InputCell({
       >
         {renderStr ? (
           <View style={styles.numRow}>
-            {/* spacer espejo: mismo ancho que decPart → entero siempre centrado */}
             <View style={styles.decPart} />
             <Text style={[styles.valueText, showPrev && styles.valueTextPrev]}>{intStr}</Text>
             <Text style={[styles.valueText, styles.decPart, showPrev && styles.valueTextPrev]}>{decStr}</Text>
@@ -194,7 +214,6 @@ function InputCell({
           <Text style={styles.placeholder}>—</Text>
         )}
       </Pressable>
-
       {(scrollActive || showHint) && (
         <View style={styles.arrowOverlay} pointerEvents="none">
           <Text style={[styles.arrow, scrollActive && styles.arrowActive]}>‹</Text>
@@ -210,11 +229,11 @@ function InputCell({
 export default function SetRow({
   index,
   set,
-  isTime,
+  inputType,           // 'weight_reps' | 'reps' | 'time' | 'weight_time'
   weightDisplay,
-  prevWeightDisplay,   // valor de peso de la última sesión (en unidades de display)
-  prevReps,            // reps de la última sesión
-  prevTime,            // segundos de la última sesión
+  prevWeightDisplay,
+  prevReps,
+  prevTime,
   onWeightChange,
   onRepsChange,
   onTimeChange,
@@ -226,17 +245,8 @@ export default function SetRow({
     <View style={styles.row}>
       <Text style={styles.setNum}>S{index + 1}</Text>
 
-      {isTime ? (
-        <InputCell
-          value={set.time ?? ''}
-          prevValue={prevTime ?? ''}
-          onChangeText={onTimeChange}
-          keyboardType="numeric"
-          scrollStep={5}
-          showHint={showHint}
-          isDone={set.done}
-        />
-      ) : (
+      {/* ── weight_reps ── */}
+      {inputType === 'weight_reps' && (
         <>
           <InputCell
             value={weightDisplay}
@@ -259,6 +269,61 @@ export default function SetRow({
         </>
       )}
 
+      {/* ── reps only ── */}
+      {inputType === 'reps' && (
+        <InputCell
+          value={set.reps ?? ''}
+          prevValue={prevReps ?? ''}
+          onChangeText={onRepsChange}
+          keyboardType="numeric"
+          scrollStep={1}
+          showHint={showHint}
+          isDone={set.done}
+        />
+      )}
+
+      {/* ── time only ── */}
+      {inputType === 'time' && (
+        <>
+          <InputCell
+            value={set.time ?? ''}
+            prevValue={prevTime ?? ''}
+            onChangeText={onTimeChange}
+            keyboardType="numeric"
+            scrollStep={5}
+            showHint={showHint}
+            isDone={set.done}
+          />
+          <TimerButton onTime={onTimeChange} />
+        </>
+      )}
+
+      {/* ── weight + time ── */}
+      {inputType === 'weight_time' && (
+        <>
+          <InputCell
+            value={weightDisplay}
+            prevValue={prevWeightDisplay ?? ''}
+            onChangeText={onWeightChange}
+            keyboardType="decimal-pad"
+            scrollStep={weightScrollStep ?? 0.5}
+            showHint={showHint}
+            isDone={set.done}
+          />
+          <InputCell
+            value={set.time ?? ''}
+            prevValue={prevTime ?? ''}
+            onChangeText={onTimeChange}
+            keyboardType="numeric"
+            scrollStep={5}
+            showHint={showHint}
+            isDone={set.done}
+          />
+          <TimerButton onTime={onTimeChange} />
+        </>
+      )}
+
+      {/* ── Done ── */}
       <TouchableOpacity
         style={[styles.doneBtn, set.done && styles.doneBtnActive]}
         onPress={() => { Keyboard.dismiss(); onToggleDone(); }}
@@ -301,7 +366,6 @@ const styles = StyleSheet.create({
     justifyContent:    'center',
   },
   inputEditing: {
-    // TextInput real — misma apariencia, añadir borde accent
     backgroundColor:   colors.surface2,
     borderWidth:       borders.thin,
     borderColor:       colors.accent,
@@ -341,13 +405,12 @@ const styles = StyleSheet.create({
     textAlign:  'center',
   },
 
-  // Parte entera + decimal con punto fijo para que no salte al swipear
   numRow: {
     flexDirection: 'row',
     alignItems:    'center',
   },
   decPart: {
-    width:     22,   // reservado para ".5" — el View espejo izq. tiene el mismo ancho
+    width:     22,
     textAlign: 'left',
   },
 
@@ -362,8 +425,10 @@ const styles = StyleSheet.create({
   arrow:       { fontSize: 11, color: colors.muted,  opacity: 0.55, lineHeight: 13 },
   arrowActive: { color: colors.accent, opacity: 1 },
 
+  // Done button
   doneBtn: {
-    width: 36, height: 36,
+    width:           36,
+    height:          36,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
@@ -377,4 +442,30 @@ const styles = StyleSheet.create({
   },
   doneMark:       { fontSize: 16, color: colors.muted },
   doneMarkActive: { color: colors.green },
+
+  // Timer button
+  timerBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  timerBtnRunning: {
+    borderColor:     withOpacity(colors.accent, 0.5),
+    backgroundColor: withOpacity(colors.accent, 0.1),
+  },
+  timerBtnIcon: {
+    fontSize:           13,
+    color:              colors.muted,
+    lineHeight:         13,
+    includeFontPadding: false,
+    textAlign:          'center',
+  },
+  timerBtnIconRunning: {
+    color: colors.accent,
+  },
 });

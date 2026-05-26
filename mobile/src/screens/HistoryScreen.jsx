@@ -1,7 +1,11 @@
 /**
- * HistoryScreen — port fiel de HistoryView + SessionCard web.
- * Filtros: "Este programa" / "Todos" + pills de etapas.
- * SessionCard expandible: muestra ejercicios y series.
+ * HistoryScreen — historial de sesiones + calendario visual de entrenamientos.
+ *
+ * Novedades:
+ *  - Calendario de las últimas 5 semanas en la cabecera (cuadrados por día)
+ *  - Tarjeta de sesión con formato "Sesión A / nombre" (igual que HomeScreen)
+ *  - Pills: verde = completada en rango, naranja = por debajo del rango, gris = sin completar
+ *  - buildSetLabel cubre todas las combinaciones: weight×reps, weight×time, reps, time
  */
 import { useState, useMemo } from 'react';
 import {
@@ -16,15 +20,249 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import { resolveColor, colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 import { formatDate } from '../../../src/utils/formatters';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── buildSetLabel ──────────────────────────────────────────────────────────────
 
-function buildSetLabel(set, index, fmtWeight) {
-  if (set.time)               return `${set.time}s`;
-  if (set.weight && set.reps) return `${fmtWeight(set.weight)}×${set.reps}`;
-  if (set.reps)               return `${set.reps} reps`;
-  if (set.weight)             return fmtWeight(set.weight);
-  return `S${index + 1}`;
+function buildSetLabel(s, i, fmtWeight) {
+  const hasW = s.weight && Number(s.weight) > 0;
+  const hasR = s.reps   && Number(s.reps)   > 0;
+  const hasT = s.time   && Number(s.time)   > 0;
+  if (hasW && hasR) return `${fmtWeight(s.weight)}×${s.reps}`;
+  if (hasW && hasT) return `${fmtWeight(s.weight)}×${s.time}s`;
+  if (hasR)         return `${s.reps} reps`;
+  if (hasT)         return `${s.time}s`;
+  if (hasW)         return fmtWeight(s.weight);
+  return `S${i + 1}`;
 }
+
+// ── getPillVariant ─────────────────────────────────────────────────────────────
+// 'done' = verde, 'partial' = naranja, 'empty' = gris
+
+function getPillVariant(s, exConfig) {
+  const hasData = (s.weight && Number(s.weight) > 0)
+               || (s.reps   && Number(s.reps)   > 0)
+               || (s.time   && Number(s.time)   > 0);
+  if (!hasData)       return 'empty';
+  if (s.done === false) return 'partial'; // explicitly not done (new entries only)
+
+  // Compare to target range when available
+  if (exConfig) {
+    const inputType   = exConfig.inputType ?? 'weight_reps';
+    const isTimeBased = inputType === 'time' || inputType === 'weight_time';
+    if (isTimeBased && exConfig.minTime && Number(s.time) < Number(exConfig.minTime)) return 'partial';
+    if (!isTimeBased && exConfig.minReps && Number(s.reps) < Number(exConfig.minReps)) return 'partial';
+  }
+
+  return 'done';
+}
+
+// ── Calendar constants ─────────────────────────────────────────────────────────
+const CELL_H  = 30;
+const CELL_GAP = 3;
+
+// Pure helper — computes grid weeks + trained-day map for any year/month
+function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
+  const daysInM = new Date(y, m + 1, 0).getDate();
+  let   startDow = new Date(y, m, 1).getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1; // Mon-aligned
+  const cells = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: daysInM }, (_, i) => i + 1),
+  ];
+  while (cells.length < 42) cells.push(null);
+  const weeks = Array.from({ length: 6 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+
+  const trainedDays = {};
+  workoutLog.forEach((entry) => {
+    const d = new Date(entry.timestamp);
+    if (d.getFullYear() !== y || d.getMonth() !== m) return;
+    const day  = d.getDate();
+    const tmpl = userPrograms[entry.sessionTemplateId] ?? sessionTemplates[entry.sessionTemplateId];
+    const lbl  = tmpl?.label ?? '·';
+    if (!trainedDays[day]) trainedDays[day] = [];
+    if (!trainedDays[day].includes(lbl)) trainedDays[day].push(lbl);
+  });
+  return { weeks, trainedDays };
+}
+
+const MONTHS_ES = [
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+];
+
+// ── WorkoutCalendar ────────────────────────────────────────────────────────────
+
+function WorkoutCalendar({ onDayPress, selectedDate }) {
+  const workoutLog       = useStore((s) => s.workoutLog);
+  const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const userPrograms     = useStore((s) => s.userPrograms);
+
+  const today = new Date();
+  const [year,  setYear]  = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
+
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+
+  function prevMonth() {
+    if (month === 0) { setYear((y) => y - 1); setMonth(11); }
+    else               setMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (isCurrentMonth) return;
+    if (month === 11) { setYear((y) => y + 1); setMonth(0); }
+    else               setMonth((m) => m + 1);
+  }
+
+  const { weeks, trainedDays } = useMemo(
+    () => getMonthData(year, month, workoutLog, sessionTemplates, userPrograms),
+    [year, month, workoutLog, sessionTemplates, userPrograms],
+  );
+
+  return (
+    <View style={cal.wrap}>
+      {/* Navigation */}
+      <View style={cal.nav}>
+        <TouchableOpacity onPress={prevMonth} hitSlop={12} style={cal.navBtn}>
+          <Text style={cal.navIcon}>{'‹'}</Text>
+        </TouchableOpacity>
+        <Text style={cal.monthLabel}>{`${MONTHS_ES[month]} ${year}`}</Text>
+        <TouchableOpacity
+          onPress={nextMonth}
+          hitSlop={12}
+          style={[cal.navBtn, isCurrentMonth && cal.navBtnOff]}
+          disabled={isCurrentMonth}
+        >
+          <Text style={[cal.navIcon, isCurrentMonth && cal.navIconOff]}>{'›'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Day-of-week headers */}
+      <View style={cal.header}>
+        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
+          <Text key={d} style={cal.hDay}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Grid — always 6 rows, arrow buttons navigate months */}
+      <View style={cal.grid}>
+        {weeks.map((week, wi) => (
+          <View key={wi} style={cal.week}>
+            {week.map((day, di) => {
+              if (day === null) return <View key={di} style={cal.cellBlank} />;
+              const labels  = trainedDays[day] ?? [];
+              const trained = labels.length > 0;
+              const isToday = isCurrentMonth && day === today.getDate();
+              const isSel   = trained
+                && selectedDate?.year  === year
+                && selectedDate?.month === month
+                && selectedDate?.day   === day;
+              return (
+                <TouchableOpacity
+                  key={di}
+                  style={[
+                    cal.cell,
+                    trained && cal.cellTrained,
+                    isToday && !trained && cal.cellToday,
+                    isSel   && cal.cellSel,
+                  ]}
+                  onPress={() => trained && onDayPress?.({ year, month, day })}
+                  activeOpacity={trained ? 0.72 : 1}
+                >
+                  <Text
+                    style={[
+                      cal.dayNum,
+                      trained             && cal.dayNumTrained,
+                      isToday && !trained && cal.dayNumToday,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                  {trained && (
+                    <Text style={cal.sesLetter} numberOfLines={1}>{labels[0]}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const cal = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.md,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+
+  // Navigation row
+  nav: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    marginBottom:   spacing.sm,
+  },
+  navBtn:     { padding: 4 },
+  navBtnOff:  { opacity: 0.25 },
+  navIcon:    { fontSize: 24, color: colors.muted, lineHeight: 28 },
+  navIconOff: { color: colors.muted2 },
+  monthLabel: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.bold,
+    color:         colors.text,
+    letterSpacing: 0.5,
+  },
+
+  // Day-of-week header
+  header: {
+    flexDirection: 'row',
+    gap:           CELL_GAP,
+    marginBottom:  4,
+  },
+  hDay: {
+    flex:          1,
+    textAlign:     'center',
+    fontSize:      9,
+    color:         colors.muted2,
+    letterSpacing: 0.5,
+  },
+
+  // Grid
+  grid: { gap: CELL_GAP },
+  week: { flexDirection: 'row', gap: CELL_GAP },
+
+  cellBlank: { flex: 1, height: CELL_H },
+
+  cell: {
+    flex:           1,
+    height:         CELL_H,
+    borderRadius:   radius.xs + 1,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  cellTrained: { backgroundColor: colors.accent },
+  cellToday:   { borderWidth: 1, borderColor: withOpacity(colors.accent, 0.55) },
+  // Selected trained day — green so it's clearly distinct from unselected yellow
+  cellSel:     { backgroundColor: colors.green },
+
+  dayNum:        { fontSize: 10, color: colors.muted2 },
+  dayNumTrained: { fontSize: 11, fontWeight: typography.bold, color: colors.onAccent },
+  dayNumToday:   { color: colors.accent, fontWeight: typography.medium },
+
+  // Tiny session-label overlay — bottom-right corner of trained cell
+  sesLetter: {
+    position:   'absolute',
+    bottom:     1,
+    right:      2,
+    fontSize:   7,
+    fontWeight: typography.bold,
+    color:      colors.onAccent,
+    lineHeight: 8,
+  },
+});
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
@@ -39,12 +277,19 @@ function SessionCard({ session, onDelete }) {
   const programs             = useStore((s) => s.programs);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const template  = getEffectiveTemplate(session.sessionTemplateId);
-  const label     = template?.label ?? '?';
-  const name      = template?.name  ?? session.sessionTemplateId;
-  const accent    = resolveColor(template?.color ?? 'var(--accent)');
+  const template = getEffectiveTemplate(session.sessionTemplateId);
+  const label    = template?.label ?? '?';
+  const name     = template?.name  ?? session.sessionTemplateId;
+  const accent   = resolveColor(template?.color ?? 'var(--accent)');
 
-  // Nombre de etapa (si aplica)
+  // exConfig lookup for pill range comparisons
+  const exConfigs = useMemo(() => {
+    const map = {};
+    (template?.exercises ?? []).forEach((ec) => { map[ec.exerciseId] = ec; });
+    return map;
+  }, [template]);
+
+  // Stage name (if applicable)
   const stageName = useMemo(() => {
     if (!template?.programId) return null;
     const program = programs[template.programId];
@@ -73,46 +318,45 @@ function SessionCard({ session, onDelete }) {
 
   return (
     <View style={styles.card}>
-      {/* Header — tap para expandir */}
+      {/* Header — tap to expand */}
       <TouchableOpacity
         style={[styles.cardHeader, { borderLeftColor: accent }]}
         onPress={() => setOpen((o) => !o)}
         activeOpacity={0.75}
       >
         <View style={styles.cardHeaderLeft}>
-          <Text style={[styles.cardDayLabel, { color: accent }]} numberOfLines={1}>
-            {`DÍA ${label} · ${name.toUpperCase()}`}
+          {/* "Sesión A" tag in accent color */}
+          <Text style={[styles.cardSesTag, { color: accent }]} numberOfLines={1}>
+            {`Sesión ${label}`}
           </Text>
+          {/* Session name in white */}
+          <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
+          {/* Meta: date · stage · duration · nota */}
           <View style={styles.cardMeta}>
             <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-            {stageName ? <Text style={styles.cardMetaSep}>·</Text> : null}
-            {stageName ? <Text style={styles.cardDate}>{stageName}</Text> : null}
+            {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
+            {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
             {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-            {durationMin ? <Text style={styles.cardDate}>{durationMin} min</Text> : null}
-            {hasNotes ? (
+            {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
+            {hasNotes && (
               <View style={styles.noteTag}>
                 <Text style={styles.noteTagText}>NOTA</Text>
               </View>
-            ) : null}
+            )}
           </View>
         </View>
 
         <View style={styles.cardHeaderRight}>
-          <TouchableOpacity
-            onPress={handleDelete}
-            hitSlop={8}
-            style={styles.deleteBtn}
-          >
+          <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
             <Text style={styles.deleteBtnText}>✕</Text>
           </TouchableOpacity>
           <Text style={[styles.chevron, open && styles.chevronOpen]}>▾</Text>
         </View>
       </TouchableOpacity>
 
-      {/* Detalle expandido */}
+      {/* Expanded detail */}
       {open && (
         <View style={styles.detail}>
-          {/* Nota */}
           {hasNotes && (
             <View style={styles.noteSection}>
               <Text style={styles.noteSectionLabel}>NOTA</Text>
@@ -120,32 +364,48 @@ function SessionCard({ session, onDelete }) {
             </View>
           )}
 
-          {/* Ejercicios */}
           {(session.exercises ?? []).map((ex) => {
             const def    = allExercises[ex.exerciseId];
             const exName = def
               ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
               : ex.exerciseId;
 
-            // Solo mostrar el ejercicio si al menos una serie tiene datos reales
             const hasSets = (ex.sets ?? []).some(
               (s) => s.done || s.weight || s.reps || s.time,
             );
             if (!hasSets) return null;
 
+            const exCfg = exConfigs[ex.exerciseId];
+
             return (
               <View key={ex.exerciseId} style={styles.exSection}>
                 <Text style={styles.exName}>{exName}</Text>
                 <View style={styles.setPills}>
-                  {/* Sets registrados → pill verde con valor */}
-                  {(ex.sets ?? []).map((s, i) => (
-                    <View key={`done-${i}`} style={[styles.setPill, styles.setPillDone]}>
-                      <Text style={[styles.setPillText, styles.setPillTextDone]}>
-                        {buildSetLabel(s, i, fmtWeight)}
-                      </Text>
-                    </View>
-                  ))}
-                  {/* Sets no registrados → pill gris con guión */}
+                  {/* Logged sets */}
+                  {(ex.sets ?? []).map((s, i) => {
+                    const variant = getPillVariant(s, exCfg);
+                    return (
+                      <View
+                        key={`set-${i}`}
+                        style={[
+                          styles.setPill,
+                          variant === 'done'    && styles.setPillDone,
+                          variant === 'partial' && styles.setPillPartial,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.setPillText,
+                            variant === 'done'    && styles.setPillTextDone,
+                            variant === 'partial' && styles.setPillTextPartial,
+                          ]}
+                        >
+                          {buildSetLabel(s, i, fmtWeight)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  {/* Planned but not started */}
                   {Array.from({
                     length: Math.max(0, (ex.totalSets ?? ex.sets?.length ?? 0) - (ex.sets?.length ?? 0)),
                   }).map((_, i) => (
@@ -177,24 +437,32 @@ export default function HistoryScreen() {
 
   const [scope,            setScope]            = useState('all');
   const [selectedStageIds, setSelectedStageIds] = useState(new Set());
+  const [selectedDate,     setSelectedDate]     = useState(null); // { year, month, day }
 
   const hasStages = (activeProgram?.stages?.length ?? 0) > 0;
 
   function handleScope(newScope) {
     setScope(newScope);
     setSelectedStageIds(new Set());
+    setSelectedDate(null);
+  }
+
+  function handleDayPress({ year, month, day }) {
+    setSelectedDate((prev) =>
+      prev?.year === year && prev?.month === month && prev?.day === day
+        ? null          // tap again to deselect
+        : { year, month, day },
+    );
   }
 
   function toggleStage(stageId) {
     setSelectedStageIds((prev) => {
       const next = new Set(prev);
-      if (next.has(stageId)) next.delete(stageId);
-      else next.add(stageId);
+      if (next.has(stageId)) next.delete(stageId); else next.add(stageId);
       return next;
     });
   }
 
-  // IDs de templates del programa activo (todas las etapas)
   const programTemplateIds = useMemo(() => {
     const ids = new Set();
     if (!activeProgram) return ids;
@@ -206,17 +474,11 @@ export default function HistoryScreen() {
     return ids;
   }, [activeProgram]);
 
-  // Si hay etapas seleccionadas → filtrar por ellas
   const effectiveTemplateIds = useMemo(() => {
-    if (scope !== 'program' || !hasStages || selectedStageIds.size === 0) {
-      return programTemplateIds;
-    }
+    if (scope !== 'program' || !hasStages || selectedStageIds.size === 0) return programTemplateIds;
     const ids = new Set();
     activeProgram.stages.forEach((st, idx) => {
-      const stageId = st.id ?? idx;
-      if (selectedStageIds.has(stageId)) {
-        st.days.forEach((d) => ids.add(d.sessionTemplateId));
-      }
+      if (selectedStageIds.has(st.id ?? idx)) st.days.forEach((d) => ids.add(d.sessionTemplateId));
     });
     return ids;
   }, [activeProgram, scope, selectedStageIds, programTemplateIds, hasStages]);
@@ -226,12 +488,39 @@ export default function HistoryScreen() {
     if (scope === 'program' && effectiveTemplateIds.size > 0) {
       list = list.filter((e) => effectiveTemplateIds.has(e.sessionTemplateId));
     }
+    if (selectedDate) {
+      list = list.filter((e) => {
+        const d = new Date(e.timestamp);
+        return (
+          d.getFullYear() === selectedDate.year &&
+          d.getMonth()    === selectedDate.month &&
+          d.getDate()     === selectedDate.day
+        );
+      });
+    }
     return list.sort((a, b) => b.timestamp - a.timestamp);
-  }, [workoutLog, scope, effectiveTemplateIds]);
+  }, [workoutLog, scope, effectiveTemplateIds, selectedDate]);
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppHeader />
+  // Rendered inline so it closes over scope/hasStages/selectedStageIds state
+  const listHeader = (
+    <>
+      <WorkoutCalendar onDayPress={handleDayPress} selectedDate={selectedDate} />
+
+      {/* Date filter chip — shown when a calendar day is selected */}
+      {selectedDate && (
+        <View style={styles.dateFilterRow}>
+          <Text style={styles.dateFilterLabel}>
+            {`${selectedDate.day} de ${MONTHS_ES[selectedDate.month]}`}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setSelectedDate(null)}
+            hitSlop={8}
+            style={styles.dateFilterClose}
+          >
+            <Text style={styles.dateFilterCloseText}>{'✕'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Scope selector */}
       <View style={styles.scopeRow}>
@@ -258,7 +547,11 @@ export default function HistoryScreen() {
       {/* Stage pills */}
       {scope === 'program' && hasStages && (
         <View style={styles.stagePillsRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stagePillsContent}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stagePillsContent}
+          >
             {activeProgram.stages.map((stage, idx) => {
               const stageId  = stage.id ?? idx;
               const isActive = selectedStageIds.size === 0 || selectedStageIds.has(stageId);
@@ -287,31 +580,37 @@ export default function HistoryScreen() {
           </ScrollView>
         </View>
       )}
+    </>
+  );
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📭</Text>
-          <Text style={styles.emptyText}>
-            {scope === 'program'
-              ? 'No hay sesiones registradas para este programa.'
-              : 'Completa tu primera sesión para verla aquí.'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: spacing.xxl + insets.bottom },
-          ]}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <SessionCard item={item} session={item} onDelete={deleteLogEntry} />
-          )}
-        />
-      )}
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <AppHeader />
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={() => listHeader}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: spacing.xxl + insets.bottom },
+        ]}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <SessionCard session={item} onDelete={deleteLogEntry} />
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyText}>
+              {selectedDate
+                ? `No hay sesiones registradas el ${selectedDate.day} de ${MONTHS_ES[selectedDate.month]}.`
+                : scope === 'program'
+                  ? 'No hay sesiones registradas para este programa.'
+                  : 'Completa tu primera sesión para verla aquí.'}
+            </Text>
+          </View>
+        }
+      />
     </View>
   );
 }
@@ -329,17 +628,17 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     gap:               spacing.sm,
     paddingHorizontal: spacing.xl,
-    paddingTop:        spacing.xl,
+    paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
   },
   scopeBtn: {
-    flex:              1,
-    paddingVertical:   spacing.sm,
-    borderRadius:      radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
-    alignItems:        'center',
+    flex:            1,
+    paddingVertical: spacing.sm,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface,
+    alignItems:      'center',
   },
   scopeBtnActive: {
     backgroundColor: withOpacity(colors.accent, 0.08),
@@ -383,27 +682,20 @@ const styles = StyleSheet.create({
     color:      colors.muted,
     fontWeight: typography.medium,
   },
-  stagePillTextActive: {
-    color: colors.accent,
-  },
+  stagePillTextActive: { color: colors.accent },
   stagePillReset: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs,
   },
-  stagePillResetText: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
+  stagePillResetText: { fontSize: typography.xs, color: colors.muted },
 
   // List
   listContent: {
-    padding: spacing.xl,
-    gap:     spacing.sm,
+    gap: spacing.sm,
   },
 
   // Empty state
   emptyState: {
-    flex:           1,
     alignItems:     'center',
     justifyContent: 'center',
     padding:        spacing.xxl,
@@ -417,35 +709,49 @@ const styles = StyleSheet.create({
     lineHeight: typography.base * 1.7,
   },
 
-  // SessionCard
+  // ── SessionCard ──────────────────────────────────────────────────────────────
   card: {
     backgroundColor: colors.surface,
     borderWidth:     borders.thin,
     borderColor:     colors.borderCard,
     borderRadius:    radius.md,
     overflow:        'hidden',
+    marginHorizontal: spacing.xl,
   },
   cardHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    padding:        spacing.md,
+    flexDirection:   'row',
+    alignItems:      'center',
+    padding:         spacing.md,
     borderLeftWidth: 3,
-    gap:            spacing.sm,
+    gap:             spacing.sm,
   },
   cardHeaderLeft: {
     flex: 1,
-    gap:  3,
+    gap:  2,
   },
-  cardDayLabel: {
-    fontSize:      typography.base,
+
+  // "Sesión A" tag line
+  cardSesTag: {
+    fontSize:      10,
     fontWeight:    typography.bold,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  4,
   },
+  // Session name
+  cardSesName: {
+    fontSize:   typography.base,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: typography.base * 1.2,
+  },
+
   cardMeta: {
     flexDirection: 'row',
     alignItems:    'center',
     flexWrap:      'wrap',
     gap:           spacing.xs,
+    marginTop:     3,
   },
   cardDate: {
     fontSize: typography.xs,
@@ -475,20 +781,13 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
     flexShrink:    0,
   },
-  deleteBtn: {
-    padding: spacing.xs,
-  },
-  deleteBtnText: {
-    fontSize: typography.base,
-    color:    colors.muted2,
-  },
+  deleteBtn:     { padding: spacing.xs },
+  deleteBtnText: { fontSize: typography.base, color: colors.muted2 },
   chevron: {
     fontSize: typography.base,
     color:    colors.muted,
   },
-  chevronOpen: {
-    transform: [{ rotate: '180deg' }],
-  },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
 
   // Detail
   detail: {
@@ -515,10 +814,10 @@ const styles = StyleSheet.create({
     lineHeight: typography.sm * 1.6,
   },
   exSection: {
-    padding:         spacing.md,
-    borderTopWidth:  borders.thin,
-    borderTopColor:  colors.border,
-    gap:             spacing.xs,
+    padding:        spacing.md,
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+    gap:            spacing.xs,
   },
   exName: {
     fontSize:   typography.sm,
@@ -530,6 +829,8 @@ const styles = StyleSheet.create({
     flexWrap:      'wrap',
     gap:           spacing.xs,
   },
+
+  // Pills — base (gray = not done)
   setPill: {
     backgroundColor:   colors.surface2,
     borderWidth:       borders.thin,
@@ -538,9 +839,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
   },
+  // Green — done and within range
   setPillDone: {
     backgroundColor: 'rgba(74,222,128,0.08)',
     borderColor:     'rgba(74,222,128,0.3)',
+  },
+  // Orange — done but below range
+  setPillPartial: {
+    backgroundColor: 'rgba(251,146,60,0.10)',
+    borderColor:     'rgba(251,146,60,0.35)',
   },
   setPillText: {
     fontSize: typography.xs,
@@ -548,5 +855,36 @@ const styles = StyleSheet.create({
   },
   setPillTextDone: {
     color: colors.green,
+  },
+  setPillTextPartial: {
+    color: '#fb923c',
+  },
+
+  // ── Date filter chip ─────────────────────────────────────────────────────────
+  dateFilterRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.sm,
+    gap:               spacing.xs,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+    backgroundColor:   withOpacity(colors.accent, 0.06),
+  },
+  dateFilterLabel: {
+    flex:       1,
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
+  dateFilterClose: {
+    padding:         4,
+    borderRadius:    radius.sm,
+    backgroundColor: withOpacity(colors.accent, 0.12),
+  },
+  dateFilterCloseText: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontWeight: typography.bold,
   },
 });
