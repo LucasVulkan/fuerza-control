@@ -42,17 +42,21 @@ function computeWeekNum(program, workoutLog) {
   const hasStages = (program.stages?.length ?? 0) > 0;
 
   if (hasStages) {
-    // Staged programs: use stageSessionsCompleted so the counter resets
-    // correctly when advancing stages (avoids cross-stage session count bleed).
-    const stageIdx         = program.currentStageIndex ?? 0;
-    const currentDays      = program.stages[stageIdx]?.days ?? [];
-    const sessionsPerCycle = Math.max(1, currentDays.length);
-    return Math.floor((program.stageSessionsCompleted ?? 0) / sessionsPerCycle) + 1;
+    // Sum completed weeks across ALL stages independently.
+    // Each stage has unique sessionTemplateIds, so counts don't overlap.
+    // The stage card has its own "week within stage" counter — this one is global.
+    let totalWeeks = 0;
+    program.stages.forEach((stage) => {
+      const stageIds         = new Set((stage.days ?? []).map((d) => d.sessionTemplateId));
+      const sessionsPerCycle = Math.max(1, stage.days?.length ?? 1);
+      const stageSessions    = workoutLog.filter((e) => stageIds.has(e.sessionTemplateId)).length;
+      totalWeeks            += Math.floor(stageSessions / sessionsPerCycle);
+    });
+    return totalWeeks + 1;
   }
 
   // Non-staged programs: count matching entries in the workoutLog.
-  const allIds = new Set();
-  (program.days ?? []).forEach((d) => allIds.add(d.sessionTemplateId));
+  const allIds = new Set((program.days ?? []).map((d) => d.sessionTemplateId));
   const sessionsPerCycle = Math.max(1, program.days?.length ?? 1);
   const total = workoutLog.filter((e) => allIds.has(e.sessionTemplateId)).length;
   return Math.floor(total / sessionsPerCycle) + 1;
