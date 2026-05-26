@@ -42,20 +42,12 @@ function computeWeekNum(program, workoutLog) {
   const hasStages = (program.stages?.length ?? 0) > 0;
 
   if (hasStages) {
-    // Sum completed weeks across ALL stages independently.
-    // Each stage has unique sessionTemplateIds, so counts don't overlap.
-    // The stage card has its own "week within stage" counter — this one is global.
-    let totalWeeks = 0;
-    program.stages.forEach((stage) => {
-      const stageIds         = new Set((stage.days ?? []).map((d) => d.sessionTemplateId));
-      const sessionsPerCycle = Math.max(1, stage.days?.length ?? 1);
-      const stageSessions    = workoutLog.filter((e) => stageIds.has(e.sessionTemplateId)).length;
-      totalWeeks            += Math.floor(stageSessions / sessionsPerCycle);
-    });
-    return totalWeeks + 1;
+    // totalWeeksCompleted is incremented on the program each time a full cycle
+    // is completed, regardless of stage. Stage changes don't reset it.
+    return (program.totalWeeksCompleted ?? 0) + 1;
   }
 
-  // Non-staged programs: count matching entries in the workoutLog.
+  // Non-staged programs: count completed cycles from the workoutLog.
   const allIds = new Set((program.days ?? []).map((d) => d.sessionTemplateId));
   const sessionsPerCycle = Math.max(1, program.days?.length ?? 1);
   const total = workoutLog.filter((e) => allIds.has(e.sessionTemplateId)).length;

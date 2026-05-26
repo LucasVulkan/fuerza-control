@@ -1220,10 +1220,14 @@ export const useStore = create(
             const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
             const threshold = stage.durationWeeks * stage.days.length;
             const isLast = stageIdx >= ownerProgram.stages.length - 1;
+            // Increment totalWeeksCompleted each time a full cycle is done
+            const cycleSize = stage.days.length;
+            const cycleCompleted = newCount % cycleSize === 0;
             stageUpdate = {
               programId: ownerProgramId,
               stageSessionsCompleted: newCount,
               stageAdvancePending: (newCount >= threshold && !isLast) || (ownerProgram.stageAdvancePending ?? false),
+              totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
             };
           }
         }
@@ -1238,7 +1242,8 @@ export const useStore = create(
               [stageUpdate.programId]: {
                 ...s.programs[stageUpdate.programId],
                 stageSessionsCompleted: stageUpdate.stageSessionsCompleted,
-                stageAdvancePending: stageUpdate.stageAdvancePending,
+                stageAdvancePending:    stageUpdate.stageAdvancePending,
+                totalWeeksCompleted:    stageUpdate.totalWeeksCompleted,
               },
             },
           } : {}),
