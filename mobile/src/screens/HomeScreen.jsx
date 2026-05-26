@@ -440,8 +440,10 @@ export default function HomeScreen() {
           const weekNum                    = computeWeekNum(activeProgram, workoutLog);
           const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
 
-          // Current session templates in cycle order
-          const currentDays = activeProgram.days ?? [];
+          // Current session templates in cycle order (handles both flat and staged programs)
+          const currentDays = hasStages
+            ? (activeProgram.stages[stageIdx]?.days ?? [])
+            : (activeProgram.days ?? []);
 
           return (
             <>

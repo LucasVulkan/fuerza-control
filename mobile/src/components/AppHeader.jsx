@@ -139,6 +139,8 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const navigate             = useStore((s) => s.navigate);
   const exportFullBackup     = useStore((s) => s.exportFullBackup);
   const exportProgramWithLog = useStore((s) => s.exportProgramWithLog);
+  const clientSync           = useStore((s) => s.clientSync);
+  const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
 
   const lang  = profile.language   ?? 'es';
   const unit  = profile.weightUnit ?? 'kg';
@@ -166,6 +168,12 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
         <SettingsBtn label="Nuevo programa"           onPress={() => { onClose(); navigate('onboarding'); }} />
         <SettingsBtn label="Programas archivados"     onPress={() => { onClose(); onShowArchived(); }} />
         <SettingsBtn label="Conectar con entrenador"  onPress={() => { onClose(); onConnectTrainer(); }} />
+        {clientSync?.slotId && (
+          <SettingsBtn
+            label="Desconectarse del entrenador"
+            onPress={() => { unlinkFromTrainer(); onClose(); }}
+          />
+        )}
 
         {/* Exportar */}
         <SectionLabel label="Exportar" />

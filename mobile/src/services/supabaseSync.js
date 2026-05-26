@@ -129,6 +129,19 @@ export async function linkClientToSlot(slotId, clientUserId) {
 }
 
 /**
+ * Permanently deletes a client slot from Supabase.
+ * Called when the trainer deletes a client — invalidates the client code entirely.
+ */
+export async function deleteClientSlot(slotId) {
+  const { error } = await supabase
+    .from('trainer_clients')
+    .delete()
+    .eq('id', slotId);
+
+  if (error) throw error;
+}
+
+/**
  * Marks a slot as disconnected (client switched trainers or unlinked).
  */
 export async function disconnectClientSlot(slotId) {

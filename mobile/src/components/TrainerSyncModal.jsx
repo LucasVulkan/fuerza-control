@@ -241,12 +241,14 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                 })}
               </ScrollView>
 
-              {/* Recovery link — only visible if no mode set yet */}
-              {!currentMode && (
-                <TouchableOpacity onPress={() => setScreen('recovery')} style={s.recoveryLink}>
-                  <Text style={s.recoveryLinkText}>¿Ya tienes un código? Recuperar cuenta →</Text>
-                </TouchableOpacity>
-              )}
+              {/* Recovery link — visible when no mode set, or to re-auth with a different code */}
+              <TouchableOpacity onPress={() => setScreen('recovery')} style={s.recoveryLink}>
+                <Text style={s.recoveryLinkText}>
+                  {currentMode === 'code'
+                    ? 'Volver a autenticarse con código →'
+                    : '¿Ya tienes un código? Recuperar cuenta →'}
+                </Text>
+              </TouchableOpacity>
 
               <View style={s.actions}>
                 {!isFirstTime && (

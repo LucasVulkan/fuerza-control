@@ -20,7 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot } from '../src/services/supabaseSync';
 
 // Shared data & utilities (resolved by Metro watchFolders)
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
@@ -282,6 +282,11 @@ export const useStore = create(
       },
 
       deleteClient: (clientId) => {
+        const client = get().clients[clientId];
+        // Delete Supabase slot silently if it exists (invalidates client code)
+        if (client?.syncSlotId) {
+          deleteClientSlot(client.syncSlotId).catch(() => {});
+        }
         set((s) => {
           const nextClients = { ...s.clients };
           const client = s.clients[clientId];
@@ -1765,6 +1770,27 @@ export const useStore = create(
        * Uploads a program to the client's Supabase slot.
        * Uses the same JSON format as the existing file export.
        */
+      /**
+       * Creates a Supabase slot for an existing client that was created before
+       * the sync system. Assigns syncSlotId and syncCode to the client object.
+       */
+      connectClientToCloud: async (clientId) => {
+        const { clients, trainerSync } = get();
+        const client = clients[clientId];
+        if (!client) throw new Error('Cliente no encontrado.');
+        if (client.syncSlotId) throw new Error('Este cliente ya está conectado a la nube.');
+        if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
+
+        const { slotId, clientCode } = await createClientSlot(trainerSync.userId, client.name);
+
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode },
+          },
+        }));
+      },
+
       uploadProgramToClient: async (clientId, programId) => {
         const { clients } = get();
         const client = clients[clientId];
@@ -1842,16 +1868,20 @@ export const useStore = create(
         // 3. Link userId to slot
         await linkClientToSlot(slot.id, userId);
 
-        // 4. Import the program using existing logic (same format as file export)
+        // 4. Save previous activeProgramId so we can restore it on unlink
+        const previousActiveProgramId = get().profile.activeProgramId ?? null;
+
+        // 5. Import the program using existing logic (same format as file export)
         get().importData(slot.program_json, { program: true, log: false });
 
-        // 5. Save client sync state
+        // 6. Save client sync state
         set(() => ({
           clientSync: {
-            slotId:         slot.id,
-            clientCode:     code.trim().toUpperCase(),
-            supabaseUserId: userId,
-            pendingUpload:  false,
+            slotId:                slot.id,
+            clientCode:            code.trim().toUpperCase(),
+            supabaseUserId:        userId,
+            pendingUpload:         false,
+            previousActiveProgramId,
           },
         }));
       },
@@ -1875,10 +1905,28 @@ export const useStore = create(
       },
 
       /** Disconnects the client from their trainer. */
-      unlinkFromTrainer: () =>
+      unlinkFromTrainer: async () => {
+        const { clientSync, trainerSync } = get();
+
+        // Restore previous activeProgramId if we saved one on link
+        if (clientSync.previousActiveProgramId) {
+          set((s) => ({
+            profile: { ...s.profile, activeProgramId: clientSync.previousActiveProgramId },
+          }));
+        }
+
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false },
-        })),
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, previousActiveProgramId: null },
+        }));
+
+        // Restore trainer session automatically if we have the code
+        if (trainerSync.mode === 'code' && trainerSync.code) {
+          try {
+            const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
+            await recoverWithTrainerCode(trainerSync.code);
+          } catch { /* silent — trainer can re-auth manually if needed */ }
+        }
+      },
 
       // ══════════════════════════════════════════════════════════════════════
       // REVENUECAT / PURCHASES

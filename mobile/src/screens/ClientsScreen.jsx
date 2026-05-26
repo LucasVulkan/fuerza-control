@@ -677,6 +677,7 @@ export default function ClientsScreen() {
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
+  const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
 
   const isPro        = profile.isPro ?? true;
   const trainerSync  = useStore((s) => s.trainerSync);
@@ -1401,7 +1402,7 @@ export default function ClientsScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.billingBtnText}>↓</Text>
+              <Text style={styles.billingBtnText}>⬇️</Text>
             </TouchableOpacity>
           )}
           <AccentBtn label="＋ Nuevo" onPress={() => setShowNewClient(true)} small />
@@ -1466,35 +1467,53 @@ export default function ClientsScreen() {
                 {/* Copy client code + Actualizar — only shown in connected modes */}
                 {trainerSync.mode !== 'offline' && trainerSync.mode !== null && (
                   <View style={styles.clientSyncRow}>
-                    {clientCode ? (
+                    {!client.syncSlotId ? (
+                      /* Cliente antiguo sin slot — botón para conectar a la nube */
                       <TouchableOpacity
-                        style={styles.clientCodeBtn}
-                        onPress={async () => {
-                          await Clipboard.setStringAsync(clientCode);
-                          showToast('✓ Código copiado');
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.clientCodeLabel}>🔑 {clientCode}</Text>
-                        <Text style={styles.clientCodeCopy}>Copiar</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                    {client.syncSlotId ? (
-                      <TouchableOpacity
-                        style={styles.clientUpdateBtn}
+                        style={styles.clientConnectBtn}
                         onPress={async () => {
                           try {
-                            const { merged } = await downloadClientHistory(client.id);
-                            showToast(merged > 0 ? `✓ ${merged} sesiones nuevas` : '✓ Sin novedades');
+                            await connectClientToCloud(client.id);
+                            showToast('✓ Cliente conectado a la nube');
                           } catch (err) {
-                            Alert.alert('Error', err.message ?? 'No se pudo actualizar.');
+                            Alert.alert('Error', err.message ?? 'No se pudo conectar.');
                           }
                         }}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.clientUpdateBtnText}>↓ Actualizar</Text>
+                        <Text style={styles.clientConnectBtnText}>☁️ Conectar a la nube</Text>
                       </TouchableOpacity>
-                    ) : null}
+                    ) : (
+                      <>
+                        {clientCode && (
+                          <TouchableOpacity
+                            style={styles.clientCodeBtn}
+                            onPress={async () => {
+                              await Clipboard.setStringAsync(clientCode);
+                              showToast('✓ Código copiado');
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.clientCodeLabel}>🔑 {clientCode}</Text>
+                            <Text style={styles.clientCodeCopy}>Copiar</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.clientUpdateBtn}
+                          onPress={async () => {
+                            try {
+                              const { merged } = await downloadClientHistory(client.id);
+                              showToast(merged > 0 ? `✓ ${merged} sesiones nuevas` : '✓ Sin novedades');
+                            } catch (err) {
+                              Alert.alert('Error', err.message ?? 'No se pudo actualizar.');
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.clientUpdateBtnText}>↓ Actualizar</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
                 )}
               </View>
@@ -1696,6 +1715,21 @@ const styles = StyleSheet.create({
     fontSize:   typography.xs,
     fontWeight: typography.medium,
     color:      colors.green,
+  },
+  clientConnectBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 2,
+    backgroundColor:   withOpacity(colors.accent, 0.06),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.3),
+    borderRadius:      spacing.xs,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  clientConnectBtnText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.accent,
   },
 
   // ── Empty ──

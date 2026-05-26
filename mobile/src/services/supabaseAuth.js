@@ -15,7 +15,7 @@ import { supabase } from '../config/supabase';
 
 // Domain used to build fake emails for code-based trainer accounts.
 // Must NOT be a real deliverable domain so Supabase never sends real emails.
-const CODE_EMAIL_DOMAIN = 'trainer.fuerzacontrol.internal';
+const CODE_EMAIL_DOMAIN = 'noreply.fuerzacontrol.com';
 
 /** Turns a trainer code into a deterministic email. */
 function codeToEmail(code) {
@@ -38,17 +38,26 @@ export function generateTrainerCode() {
 
 /**
  * Sets up "code" mode for a trainer.
- * Creates a Supabase account (email+password) using the generated code as credentials.
- * Requires "Confirm email" to be DISABLED in Supabase Auth settings.
+ * Calls the Edge Function to create the user via admin API (no email sent, no rate limit).
+ * Then signs in with email+password to get a real session.
  *
- * Returns { code, session }.
+ * Returns { code, session, userId }.
  */
 export async function setupTrainerCodeAccount() {
   const code     = generateTrainerCode();
   const email    = codeToEmail(code);
   const password = code;
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  // Create user via Edge Function (uses admin API — no email, no rate limit)
+  const { data: fnData, error: fnError } = await supabase.functions.invoke(
+    'create-trainer-account',
+    { body: { code } },
+  );
+  if (fnError) throw fnError;
+  if (fnData?.error) throw new Error(fnData.error);
+
+  // Sign in to get a real session
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 
   // Create trainer profile row
