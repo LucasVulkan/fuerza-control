@@ -24,6 +24,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { useStore } from '../../store/useStore';
 import ImportModal from '../components/ImportModal';
+import ClientCodeModal from '../components/ClientCodeModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
 import OnboardingStep from '../components/onboarding/OnboardingStep';
 import OptionCard from '../components/onboarding/OptionCard';
@@ -113,6 +114,7 @@ export default function OnboardingScreen() {
   const language                   = useStore((s) => s.profile?.language ?? 'es');
 
   const [mode,             setMode]            = useState(null);
+  const [showClientCode,   setShowClientCode]  = useState(false);
   const [step,             setStep]            = useState(0);
   const [loading,          setLoading]         = useState(false);
   const [importState,      setImportState]     = useState(null);
@@ -379,6 +381,12 @@ export default function OnboardingScreen() {
             desc={t('onboarding.modeImportDesc', 'Carga un archivo .json exportado desde Forma Fit.')}
             onPress={handlePickFile}
           />
+          <ModeCard
+            icon="👤"
+            title="Tengo un entrenador"
+            desc="Introduce el código de tu entrenador para recibir tu programa y mantenerlo sincronizado."
+            onPress={() => setShowClientCode(true)}
+          />
         </ScrollView>
 
         {importState && (
@@ -389,6 +397,11 @@ export default function OnboardingScreen() {
             onClose={() => setImportState(null)}
           />
         )}
+
+        <ClientCodeModal
+          visible={showClientCode}
+          onClose={() => setShowClientCode(false)}
+        />
       </View>
     );
   }

@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
 import DriveBackupModal from './DriveBackupModal';
+import ClientCodeModal from './ClientCodeModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ function ArchivedProgramsModal({ onClose }) {
 
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive }) {
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [exporting, setExporting] = useState(null); // 'full' | 'log'
@@ -162,8 +163,9 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
         {/* Programa */}
         <SectionLabel label="Programa" />
-        <SettingsBtn label="Nuevo programa"        onPress={() => { onClose(); navigate('onboarding'); }} />
-        <SettingsBtn label="Programas archivados"  onPress={() => { onClose(); onShowArchived(); }} />
+        <SettingsBtn label="Nuevo programa"           onPress={() => { onClose(); navigate('onboarding'); }} />
+        <SettingsBtn label="Programas archivados"     onPress={() => { onClose(); onShowArchived(); }} />
+        <SettingsBtn label="Conectar con entrenador"  onPress={() => { onClose(); onConnectTrainer(); }} />
 
         {/* Exportar */}
         <SectionLabel label="Exportar" />
@@ -246,16 +248,33 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 // ── AppHeader ──────────────────────────────────────────────────────────────────
 
 export default function AppHeader() {
-  const [settingsOpen,   setSettingsOpen]   = useState(false);
-  const [importState,    setImportState]    = useState(null); // { fileName, parsedData }
-  const [picking,        setPicking]        = useState(false);
-  const [showArchived,   setShowArchived]   = useState(false);
-  const [showDrive,      setShowDrive]      = useState(false);
-  const [now,            setNow]            = useState(() => new Date());
+  const [settingsOpen,      setSettingsOpen]      = useState(false);
+  const [importState,       setImportState]       = useState(null);
+  const [picking,           setPicking]           = useState(false);
+  const [showArchived,      setShowArchived]       = useState(false);
+  const [showDrive,         setShowDrive]          = useState(false);
+  const [showClientCode,    setShowClientCode]     = useState(false);
+  const [now,               setNow]               = useState(() => new Date());
 
-  const importData = useStore((s) => s.importData);
-  const showToast  = useStore((s) => s.showToast);
-  const language   = useStore((s) => s.profile?.language ?? 'es');
+  const importData            = useStore((s) => s.importData);
+  const showToast             = useStore((s) => s.showToast);
+  const language              = useStore((s) => s.profile?.language ?? 'es');
+  const pendingUpload         = useStore((s) => s.clientSync.pendingUpload);
+  const uploadHistoryToTrainer = useStore((s) => s.uploadHistoryToTrainer);
+
+  const [retrying, setRetrying] = useState(false);
+
+  async function handleRetryUpload() {
+    setRetrying(true);
+    try {
+      await uploadHistoryToTrainer();
+      showToast('✓ Historial sincronizado');
+    } catch {
+      showToast('⚠️ No se pudo sincronizar');
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 10_000);
@@ -312,12 +331,27 @@ export default function AppHeader() {
         </TouchableOpacity>
       </View>
 
+      {/* Pending upload banner — shown when client's last history upload failed */}
+      {pendingUpload && (
+        <TouchableOpacity
+          style={styles.pendingBanner}
+          onPress={handleRetryUpload}
+          activeOpacity={0.8}
+          disabled={retrying}
+        >
+          <Text style={styles.pendingBannerText}>
+            {retrying ? 'Sincronizando…' : '⚠️ Última sesión no enviada al entrenador — Toca para reintentar'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onImport={handlePickFile}
         onShowArchived={() => setShowArchived(true)}
         onShowDrive={() => setShowDrive(true)}
+        onConnectTrainer={() => setShowClientCode(true)}
       />
 
       {showArchived && (
@@ -327,6 +361,11 @@ export default function AppHeader() {
       {showDrive && (
         <DriveBackupModal onClose={() => setShowDrive(false)} />
       )}
+
+      <ClientCodeModal
+        visible={showClientCode}
+        onClose={() => setShowClientCode(false)}
+      />
 
       {importState && (
         <ImportModal
@@ -385,6 +424,21 @@ const styles = StyleSheet.create({
     fontSize:   26,
     color:      colors.muted,
     lineHeight: 28,
+  },
+
+  // Pending upload banner
+  pendingBanner: {
+    backgroundColor:   `${colors.orange}1e`,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: `${colors.orange}4d`,
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.sm,
+  },
+  pendingBannerText: {
+    fontSize:   typography.xs,
+    color:      colors.orange,
+    textAlign:  'center',
+    lineHeight: typography.xs * 1.5,
   },
 
   // Settings sheet

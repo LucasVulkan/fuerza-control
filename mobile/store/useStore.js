@@ -20,6 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
+import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory } from '../src/services/supabaseSync';
 
 // Shared data & utilities (resolved by Metro watchFolders)
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
@@ -103,6 +104,14 @@ export const useStore = create(
         mode:   null,   // null | 'offline' | 'code' | 'google'
         code:   null,   // string — trainer recovery code (only when mode === 'code')
         userId: null,   // Supabase user.id once authenticated
+      },
+
+      // ── Client sync (when user is a client connected to a trainer) ────────
+      clientSync: {
+        slotId:        null,  // trainer_clients row id
+        clientCode:    null,  // the code the client entered
+        supabaseUserId: null, // anonymous Supabase user id
+        pendingUpload: false, // true when last session upload failed
       },
 
       // Static references (not persisted)
@@ -232,20 +241,37 @@ export const useStore = create(
       // CLIENTS (PRO)
       // ══════════════════════════════════════════════════════════════════════
 
-      createClient: (name) => {
+      createClient: async (name) => {
         const id = generateId('client');
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [id]: {
-              id, name: name.trim(),
-              createdAt: new Date().toISOString().split('T')[0],
-              programIds: [], activeProgramId: null,
-              fullName: '', phone: '', email: '', notes: '',
-              bodyWeight: [], billing: [], status: 'active',
-            },
-          },
-        }));
+        const clientBase = {
+          id, name: name.trim(),
+          createdAt: new Date().toISOString().split('T')[0],
+          programIds: [], activeProgramId: null,
+          fullName: '', phone: '', email: '', notes: '',
+          bodyWeight: [], billing: [], status: 'active',
+          syncCode: null,   // client_code shown to the trainer
+          syncSlotId: null, // trainer_clients row id in Supabase
+        };
+
+        set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
+
+        // If trainer is in connected mode, create the Supabase slot
+        const { trainerSync } = get();
+        if (trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
+          try {
+            const { slotId, clientCode } = await createClientSlot(trainerSync.userId, name.trim());
+            set((s) => ({
+              clients: {
+                ...s.clients,
+                [id]: { ...s.clients[id], syncCode: clientCode, syncSlotId: slotId },
+              },
+            }));
+          } catch (err) {
+            console.warn('[createClient] Supabase slot creation failed:', err.message);
+            // Non-fatal — client still created locally
+          }
+        }
+
         return id;
       },
 
@@ -1221,6 +1247,11 @@ export const useStore = create(
           get().performDriveBackup().catch(() => {});
         }
 
+        // Upload history to trainer if client is connected (fire and forget)
+        if (get().clientSync.slotId) {
+          get().uploadHistoryToTrainer().catch(() => {});
+        }
+
         return { ok: true };
       },
 
@@ -1729,6 +1760,125 @@ export const useStore = create(
       /** Resets sync mode (e.g. when switching modes). */
       resetTrainerSync: () =>
         set(() => ({ trainerSync: { mode: null, code: null, userId: null } })),
+
+      /**
+       * Uploads a program to the client's Supabase slot.
+       * Uses the same JSON format as the existing file export.
+       */
+      uploadProgramToClient: async (clientId, programId) => {
+        const { clients } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        const payload = get()._buildProgramJson(programId, false);
+        if (!payload) throw new Error('Programa no encontrado.');
+        await uploadProgram(client.syncSlotId, JSON.parse(payload.json));
+      },
+
+      /**
+       * Downloads and merges a client's workout history from Supabase.
+       * Uses the existing mergeWorkoutLog logic to avoid duplicates.
+       */
+      downloadClientHistory: async (clientId) => {
+        const { clients } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+
+        const { history, updatedAt } = await downloadHistory(client.syncSlotId);
+        if (!history?.length) return { merged: 0 };
+
+        // Merge into the trainer's local workoutLog using existing dedup logic
+        const existing = get().workoutLog;
+        const existingIds = new Set(existing.map((e) => e.id));
+        const newEntries = history.filter((e) => !existingIds.has(e.id));
+
+        if (newEntries.length > 0) {
+          set((s) => ({
+            workoutLog: [...s.workoutLog, ...newEntries]
+              .sort((a, b) => b.timestamp - a.timestamp),
+          }));
+        }
+
+        // Update last-sync timestamp on the client object
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], lastHistorySync: updatedAt },
+          },
+        }));
+
+        return { merged: newEntries.length };
+      },
+
+      /**
+       * Validates a client code and returns slot info WITHOUT linking.
+       * Used in step 1 of the modal to show "Programa encontrado".
+       */
+      validateClientCode: async (code) => {
+        const slot = await getSlotByClientCode(code);
+        if (!slot) throw new Error('Código no encontrado. Comprueba que lo has escrito bien.');
+        if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
+        return {
+          slotId:      slot.id,
+          programName: slot.program_json?.program?.name ?? 'Programa',
+          alreadyLinked: !!slot.client_id,
+        };
+      },
+
+      /**
+       * Links the client to a trainer slot and imports the program.
+       * Flow: anonymous sign-in → link slot → import program → save state.
+       */
+      linkToTrainer: async (code) => {
+        const { signInAnonymously } = require('../src/services/supabaseAuth');
+
+        // 1. Anonymous Supabase session
+        const { userId } = await signInAnonymously();
+
+        // 2. Look up slot
+        const slot = await getSlotByClientCode(code);
+        if (!slot) throw new Error('Código no encontrado.');
+        if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
+
+        // 3. Link userId to slot
+        await linkClientToSlot(slot.id, userId);
+
+        // 4. Import the program using existing logic (same format as file export)
+        get().importData(slot.program_json, { program: true, log: false });
+
+        // 5. Save client sync state
+        set(() => ({
+          clientSync: {
+            slotId:         slot.id,
+            clientCode:     code.trim().toUpperCase(),
+            supabaseUserId: userId,
+            pendingUpload:  false,
+          },
+        }));
+      },
+
+      /**
+       * Uploads the client's full workout log to their trainer slot.
+       * Called after each session save. Sets pendingUpload on failure.
+       */
+      uploadHistoryToTrainer: async () => {
+        const { clientSync, workoutLog } = get();
+        if (!clientSync.slotId) return; // not linked to a trainer
+
+        try {
+          await uploadHistory(clientSync.slotId, workoutLog);
+          if (get().clientSync.pendingUpload) {
+            set((s) => ({ clientSync: { ...s.clientSync, pendingUpload: false } }));
+          }
+        } catch {
+          set((s) => ({ clientSync: { ...s.clientSync, pendingUpload: true } }));
+        }
+      },
+
+      /** Disconnects the client from their trainer. */
+      unlinkFromTrainer: () =>
+        set(() => ({
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false },
+        })),
 
       // ══════════════════════════════════════════════════════════════════════
       // REVENUECAT / PURCHASES

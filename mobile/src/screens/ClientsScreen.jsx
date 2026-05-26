@@ -258,7 +258,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
 
 // ── Program card (programs tab) ────────────────────────────────────────────────
 
-function ProgramCard({ program, isActive, sessionCount, lastActivity, onToggleActive, onView, onEdit, onShare, onExport, onDelete }) {
+function ProgramCard({ program, isActive, sessionCount, lastActivity, onToggleActive, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const locale = 'es-ES';
@@ -317,6 +317,11 @@ function ProgramCard({ program, isActive, sessionCount, lastActivity, onToggleAc
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
         <View style={styles.contextMenu}>
+          {onUpload && (
+            <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onUpload(); }}>
+              <Text style={styles.contextMenuText}>↑ Subir a cliente</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
             <Text style={styles.contextMenuText}>Exportar</Text>
           </TouchableOpacity>
@@ -667,9 +672,11 @@ export default function ClientsScreen() {
   const removeClientBilling    = useStore((s) => s.removeClientBilling);
   const addClientBodyWeight    = useStore((s) => s.addClientBodyWeight);
   const removeClientBodyWeight = useStore((s) => s.removeClientBodyWeight);
-  const importForClient        = useStore((s) => s.importForClient);
-  const deleteLogEntry         = useStore((s) => s.deleteLogEntry);
-  const showToast              = useStore((s) => s.showToast);
+  const importForClient          = useStore((s) => s.importForClient);
+  const deleteLogEntry           = useStore((s) => s.deleteLogEntry);
+  const showToast                = useStore((s) => s.showToast);
+  const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
+  const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
 
   const isPro        = profile.isPro ?? true;
   const trainerSync  = useStore((s) => s.trainerSync);
@@ -817,11 +824,11 @@ export default function ClientsScreen() {
     setView('detail');
   }
 
-  function handleCreateClient() {
+  async function handleCreateClient() {
     if (!newClientName.trim()) return;
-    createClient(newClientName.trim());
     setNewClientName('');
     setShowNewClient(false);
+    await createClient(newClientName.trim());
   }
 
   function handleDeleteClient(clientId) {
@@ -1029,6 +1036,18 @@ export default function ClientsScreen() {
                 onEdit={() => setEditingProgram(program.id)}
                 onShare={() => shareSpecificProgram(program.id, true)}
                 onExport={() => exportSpecificProgram(program.id, true)}
+                onUpload={
+                  trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId
+                    ? async () => {
+                        try {
+                          await uploadProgramToClient(selectedClientId, program.id);
+                          showToast('✓ Programa subido al cliente');
+                        } catch (err) {
+                          Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
+                        }
+                      }
+                    : undefined
+                }
                 onDelete={() => Alert.alert('Eliminar programa', `¿Eliminar "${program.name}"?`, [
                   { text: 'Cancelar', style: 'cancel' },
                   { text: 'Eliminar', style: 'destructive', onPress: () => deleteProgram(program.id, false) },
@@ -1366,6 +1385,25 @@ export default function ClientsScreen() {
           <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
             <Text style={styles.billingBtnText}>💳</Text>
           </TouchableOpacity>
+          {trainerSync.mode !== 'offline' && trainerSync.mode !== null && (
+            <TouchableOpacity
+              style={styles.billingBtn}
+              onPress={async () => {
+                let total = 0;
+                for (const client of clientList) {
+                  if (!client.syncSlotId) continue;
+                  try {
+                    const { merged } = await downloadClientHistory(client.id);
+                    total += merged;
+                  } catch {}
+                }
+                showToast(total > 0 ? `✓ ${total} sesiones nuevas` : '✓ Todo al día');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.billingBtnText}>↓</Text>
+            </TouchableOpacity>
+          )}
           <AccentBtn label="＋ Nuevo" onPress={() => setShowNewClient(true)} small />
         </View>
 
@@ -1425,20 +1463,39 @@ export default function ClientsScreen() {
                   </TouchableOpacity>
                 </TouchableOpacity>
 
-                {/* Copy client code — only shown in connected modes */}
-                {trainerSync.mode !== 'offline' && trainerSync.mode !== null && clientCode && (
-                  <TouchableOpacity
-                    style={styles.clientCodeRow}
-                    onPress={async () => {
-                      await Clipboard.setStringAsync(clientCode);
-                      showToast('✓ Código copiado');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.clientCodeLabel}>Código cliente:</Text>
-                    <Text style={styles.clientCodeValue}>{clientCode}</Text>
-                    <Text style={styles.clientCodeCopy}>Copiar</Text>
-                  </TouchableOpacity>
+                {/* Copy client code + Actualizar — only shown in connected modes */}
+                {trainerSync.mode !== 'offline' && trainerSync.mode !== null && (
+                  <View style={styles.clientSyncRow}>
+                    {clientCode ? (
+                      <TouchableOpacity
+                        style={styles.clientCodeBtn}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(clientCode);
+                          showToast('✓ Código copiado');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.clientCodeLabel}>🔑 {clientCode}</Text>
+                        <Text style={styles.clientCodeCopy}>Copiar</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    {client.syncSlotId ? (
+                      <TouchableOpacity
+                        style={styles.clientUpdateBtn}
+                        onPress={async () => {
+                          try {
+                            const { merged } = await downloadClientHistory(client.id);
+                            showToast(merged > 0 ? `✓ ${merged} sesiones nuevas` : '✓ Sin novedades');
+                          } catch (err) {
+                            Alert.alert('Error', err.message ?? 'No se pudo actualizar.');
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.clientUpdateBtnText}>↓ Actualizar</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 )}
               </View>
             );
@@ -1598,32 +1655,47 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Client code row (copy magic code)
-  clientCodeRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
+  // Client sync row (code + update button)
+  clientSyncRow: {
+    flexDirection:  'row',
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+    overflow:       'hidden',
+  },
+  clientCodeBtn: {
+    flex:           1,
+    flexDirection:  'row',
+    alignItems:     'center',
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs + 2,
-    borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
     backgroundColor:   withOpacity(colors.accent, 0.04),
     gap:               spacing.xs,
   },
   clientCodeLabel: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
-  clientCodeValue: {
     flex:       1,
     fontSize:   typography.xs,
     fontWeight: typography.medium,
     color:      colors.text,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   clientCodeCopy: {
-    fontSize: typography.xs,
-    color:    colors.accent,
+    fontSize:   typography.xs,
+    color:      colors.accent,
     fontWeight: typography.medium,
+  },
+  clientUpdateBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 2,
+    backgroundColor:   withOpacity(colors.green, 0.06),
+    borderLeftWidth:   borders.thin,
+    borderLeftColor:   colors.border,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  clientUpdateBtnText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.green,
   },
 
   // ── Empty ──
