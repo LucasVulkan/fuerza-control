@@ -39,21 +39,21 @@ function lastTimeText(status, lastSession) {
  * "Semana" in this app = one complete rotation through the session templates.
  */
 function computeWeekNum(program, workoutLog) {
-  const hasStages     = (program.stages?.length ?? 0) > 0;
-  const stageIdx      = program.currentStageIndex ?? 0;
-  const currentDays   = hasStages
-    ? (program.stages[stageIdx]?.days ?? [])
-    : (program.days ?? []);
-  const sessionsPerCycle = Math.max(1, currentDays.length);
+  const hasStages = (program.stages?.length ?? 0) > 0;
 
-  // Collect ALL template IDs ever associated with this program (all stages)
-  const allIds = new Set();
   if (hasStages) {
-    program.stages.forEach((s) => s.days?.forEach((d) => allIds.add(d.sessionTemplateId)));
-  } else {
-    program.days?.forEach((d) => allIds.add(d.sessionTemplateId));
+    // Staged programs: use stageSessionsCompleted so the counter resets
+    // correctly when advancing stages (avoids cross-stage session count bleed).
+    const stageIdx         = program.currentStageIndex ?? 0;
+    const currentDays      = program.stages[stageIdx]?.days ?? [];
+    const sessionsPerCycle = Math.max(1, currentDays.length);
+    return Math.floor((program.stageSessionsCompleted ?? 0) / sessionsPerCycle) + 1;
   }
 
+  // Non-staged programs: count matching entries in the workoutLog.
+  const allIds = new Set();
+  (program.days ?? []).forEach((d) => allIds.add(d.sessionTemplateId));
+  const sessionsPerCycle = Math.max(1, program.days?.length ?? 1);
   const total = workoutLog.filter((e) => allIds.has(e.sessionTemplateId)).length;
   return Math.floor(total / sessionsPerCycle) + 1;
 }
