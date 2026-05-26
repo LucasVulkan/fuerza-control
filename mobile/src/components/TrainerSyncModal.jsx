@@ -82,6 +82,17 @@ function RecoveryScreen({ onSuccess, onBack }) {
   const [code,    setCode]    = useState('');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
+  const [pasted,  setPasted]  = useState(false);
+
+  async function handlePaste() {
+    const text = await Clipboard.getStringAsync();
+    if (text?.trim()) {
+      setCode(text.trim().toUpperCase());
+      setError(null);
+      setPasted(true);
+      setTimeout(() => setPasted(false), 1500);
+    }
+  }
 
   const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
 
@@ -116,6 +127,9 @@ function RecoveryScreen({ onSuccess, onBack }) {
         returnKeyType="done"
         onSubmitEditing={handleRecover}
       />
+      <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.7}>
+        <Text style={s.pasteBtnText}>{pasted ? '✓ Pegado' : '📋 Pegar'}</Text>
+      </TouchableOpacity>
 
       {error && <Text style={s.errorText}>{error}</Text>}
 
@@ -477,6 +491,16 @@ const s = StyleSheet.create({
     fontSize:  typography.xs,
     color:     colors.red,
     textAlign: 'center',
+  },
+  pasteBtn: {
+    alignSelf:         'flex-end',
+    marginTop:         -spacing.xs,
+    paddingVertical:   spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  pasteBtnText: {
+    fontSize: typography.xs,
+    color:    colors.accent,
   },
   backLink: { alignItems: 'center', paddingVertical: spacing.xs },
   backLinkText: {

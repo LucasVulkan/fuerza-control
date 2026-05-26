@@ -16,10 +16,11 @@ import {
   View, Text, Modal, TouchableOpacity, TextInput,
   ActivityIndicator, StyleSheet, Platform, KeyboardAvoidingView, Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../../store/useStore';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 
-export default function ClientCodeModal({ visible, onClose }) {
+export default function ClientCodeModal({ visible, onClose, onSuccess }) {
   const validateClientCode = useStore((s) => s.validateClientCode);
   const linkToTrainer      = useStore((s) => s.linkToTrainer);
   const clientSync         = useStore((s) => s.clientSync);
@@ -29,6 +30,17 @@ export default function ClientCodeModal({ visible, onClose }) {
   const [slotInfo,    setSlotInfo]    = useState(null); // { slotId, programName, alreadyLinked }
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState(null);
+  const [pasted,      setPasted]      = useState(false);
+
+  async function handlePaste() {
+    const text = await Clipboard.getStringAsync();
+    if (text?.trim()) {
+      setCode(text.trim().toUpperCase());
+      setError(null);
+      setPasted(true);
+      setTimeout(() => setPasted(false), 1500);
+    }
+  }
 
   function handleClose() {
     setStep('enter');
@@ -59,6 +71,7 @@ export default function ClientCodeModal({ visible, onClose }) {
     try {
       await linkToTrainer(code);
       handleClose();
+      onSuccess?.();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -97,6 +110,9 @@ export default function ClientCodeModal({ visible, onClose }) {
                 onSubmitEditing={handleValidate}
                 autoFocus
               />
+              <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.7}>
+                <Text style={s.pasteBtnText}>{pasted ? '✓ Pegado' : '📋 Pegar'}</Text>
+              </TouchableOpacity>
 
               {error && <Text style={s.errorText}>{error}</Text>}
 
@@ -219,6 +235,16 @@ const s = StyleSheet.create({
     fontWeight:        typography.heavy,
     letterSpacing:     4,
     textAlign:         'center',
+  },
+  pasteBtn: {
+    alignSelf:   'flex-end',
+    marginTop:   -spacing.xs,
+    paddingVertical:   spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  pasteBtnText: {
+    fontSize: typography.xs,
+    color:    colors.accent,
   },
   errorText: {
     fontSize:  typography.xs,

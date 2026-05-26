@@ -401,6 +401,7 @@ export default function OnboardingScreen() {
         <ClientCodeModal
           visible={showClientCode}
           onClose={() => setShowClientCode(false)}
+          onSuccess={() => navigation.replace('Main')}
         />
       </View>
     );

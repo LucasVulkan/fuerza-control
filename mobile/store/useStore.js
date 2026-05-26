@@ -1803,6 +1803,13 @@ export const useStore = create(
         const payload = get()._buildProgramJson(programId, false);
         if (!payload) throw new Error('Programa no encontrado.');
         await uploadProgram(client.syncSlotId, JSON.parse(payload.json));
+        // Clear pending-upload flag after successful push
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], programDirty: false, programUploadedAt: new Date().toISOString() },
+          },
+        }));
       },
 
       /**
@@ -1829,15 +1836,29 @@ export const useStore = create(
           }));
         }
 
-        // Update last-sync timestamp on the client object
+        // Update last-sync timestamp + new-activity flag on the client object
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], lastHistorySync: updatedAt },
+            [clientId]: {
+              ...s.clients[clientId],
+              lastHistorySync: updatedAt,
+              ...(newEntries.length > 0 ? { historyHasNew: true } : {}),
+            },
           },
         }));
 
         return { merged: newEntries.length };
+      },
+
+      /** Marks client history as viewed (clears the "new activity" badge). */
+      markHistoryViewed: (clientId) => {
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], historyHasNew: false },
+          },
+        }));
       },
 
       /**

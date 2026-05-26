@@ -165,14 +165,15 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
         {/* Programa */}
         <SectionLabel label="Programa" />
-        <SettingsBtn label="Nuevo programa"           onPress={() => { onClose(); navigate('onboarding'); }} />
-        <SettingsBtn label="Programas archivados"     onPress={() => { onClose(); onShowArchived(); }} />
-        <SettingsBtn label="Conectar con entrenador"  onPress={() => { onClose(); onConnectTrainer(); }} />
-        {clientSync?.slotId && (
-          <SettingsBtn
-            label="Desconectarse del entrenador"
-            onPress={() => { unlinkFromTrainer(); onClose(); }}
-          />
+        <SettingsBtn label="Nuevo programa"          onPress={() => { onClose(); navigate('onboarding'); }} />
+        <SettingsBtn label="Programas archivados"    onPress={() => { onClose(); onShowArchived(); }} />
+        {clientSync?.slotId ? (
+          <>
+            <SettingsBtn label="Cambiar de entrenador"       onPress={() => { onClose(); onConnectTrainer(); }} />
+            <SettingsBtn label="Desconectarse del entrenador" onPress={() => { unlinkFromTrainer(); onClose(); }} />
+          </>
+        ) : (
+          <SettingsBtn label="Conectar con entrenador" onPress={() => { onClose(); onConnectTrainer(); }} />
         )}
 
         {/* Exportar */}

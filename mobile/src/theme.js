@@ -31,6 +31,7 @@ export const colors = {
   green:      '#4ade80',
   orange:     '#fb923c',
   red:        '#f87171',
+  blue:       '#57a8ff',
 
   // Session / day colors (match web CSS vars)
   day1: '#e8ff47',
@@ -53,10 +54,11 @@ export const spacing = {
 
 // ─── Border radius ────────────────────────────────────────────────────────────
 export const radius = {
-  xs:  4,
-  sm:  6,
-  md:  10,
-  lg:  16,
+  xs:   4,
+  sm:   6,
+  md:   10,
+  lg:   16,
+  xl:   22,
   full: 9999,
 };
 

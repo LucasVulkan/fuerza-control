@@ -640,6 +640,201 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
   );
 }
 
+// ── Client info sheet (⋯ modal) ────────────────────────────────────────────────
+
+function ClientInfoSheet({ client, onClose, onConnectCloud }) {
+  const showToast = useStore((s) => s.showToast);
+  const [copied,  setCopied]  = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleCopy() {
+    if (!client.syncCode) return;
+    await Clipboard.setStringAsync(client.syncCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+    showToast('✓ Código copiado');
+  }
+
+  async function handleConnect() {
+    setLoading(true);
+    try {
+      await onConnectCloud();
+      showToast('✓ Cliente conectado a la nube');
+      onClose();
+    } catch (err) {
+      Alert.alert('Error', err.message ?? 'No se pudo conectar.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+      <View style={styles.infoSheet}>
+        <View style={styles.infoSheetHandle} />
+        <Text style={styles.infoSheetName}>{client.name}</Text>
+
+        {client.syncSlotId ? (
+          client.syncCode ? (
+            <View style={styles.infoCodeRow}>
+              <View style={styles.infoCodeBox}>
+                <Text style={styles.infoCodeLabel}>CÓDIGO CLIENTE</Text>
+                <Text style={styles.infoCodeText}>{client.syncCode}</Text>
+              </View>
+              <TouchableOpacity style={styles.infoCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
+                <Text style={styles.infoCopyBtnText}>{copied ? '✓' : '📋'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.infoCodeBox}>
+              <Text style={styles.infoCodeLabel}>SINCRONIZACIÓN EN LA NUBE</Text>
+              <Text style={styles.infoCodeSub}>Conectado · sin código local</Text>
+            </View>
+          )
+        ) : (
+          <TouchableOpacity
+            style={[styles.infoSheetBtnAccent, loading && { opacity: 0.6 }]}
+            onPress={handleConnect}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.infoSheetBtnTextAccent}>
+              {loading ? 'Conectando…' : '☁️ Conectar a la nube'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+// ── Client list card ───────────────────────────────────────────────────────────
+
+function ClientListCard({
+  client, activeProgram, lastActivityTs, isConnected,
+  onPress, onOpenEditor, onUploadProgram,
+  onViewProgress, onViewHistory,
+  onShowInfo,   // 🔑 → info sheet (código, conectar, eliminar)
+  onGoInfo,     // ⋯ → navega al tab de info directamente
+}) {
+  const historyHasNew = client.historyHasNew ?? false;
+  const programDirty  = client.programDirty  ?? false;
+
+  const showBlue   = isConnected && historyHasNew;
+  const showYellow = isConnected && programDirty;
+
+  // Last session label
+  let lastStr = null;
+  if (lastActivityTs) {
+    const diffMs   = Date.now() - lastActivityTs;
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays === 0)      lastStr = 'Entrenó hoy';
+    else if (diffDays === 1) lastStr = 'Última sesión ayer';
+    else                     lastStr = `Última sesión hace ${diffDays} días`;
+  }
+
+  const clientStatus = client.status ?? 'active';
+  const statusDotColor = clientStatus === 'paused' ? colors.orange : clientStatus === 'inactive' ? colors.red : null;
+  const statusText     = clientStatus === 'paused' ? 'En pausa' : clientStatus === 'inactive' ? 'Inactivo' : null;
+
+  const dayCount = activeProgram
+    ? (activeProgram.stages?.length > 0
+        ? activeProgram.stages.flatMap((st) => st.days ?? []).length
+        : (activeProgram.days ?? []).length)
+    : 0;
+
+  return (
+    <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
+
+      {/* ── Top: name + key button ── */}
+      <View style={styles.cCardTop}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.cCardName} numberOfLines={1}>{client.name}</Text>
+          {(statusText || lastStr) && (
+            <View style={styles.cCardMetaRow}>
+              {statusText && (
+                <>
+                  <View style={[styles.cCardMetaDot, { backgroundColor: statusDotColor }]} />
+                  <Text style={[styles.cCardMetaStatus, { color: statusDotColor }]}>{statusText}</Text>
+                  {lastStr && <Text style={styles.cCardMetaSep}>·</Text>}
+                </>
+              )}
+              {lastStr && <Text style={styles.cCardMeta}>{lastStr}</Text>}
+            </View>
+          )}
+        </View>
+        {/* 🔑 opens info sheet */}
+        <TouchableOpacity style={styles.cIconBtn} onPress={onShowInfo} hitSlop={8} activeOpacity={0.7}>
+          <Text style={styles.cIconBtnText}>🔑</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Activity indicator — subtle, only shown when historyHasNew ── */}
+      {showBlue && (
+        <View style={styles.cActivityBadge}>
+          <View style={styles.cActivityDot} />
+          <Text style={styles.cActivityText}>Nueva actividad disponible</Text>
+        </View>
+      )}
+
+      {/* ── Program box ── */}
+      {activeProgram ? (
+        <View style={styles.cProgramBox}>
+          <View style={styles.cProgramHeader}>
+            <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
+            <View style={[styles.cProgramBadge, showYellow && styles.cProgramBadgeDirty]}>
+              <Text style={[styles.cProgramBadgeText, showYellow && styles.cProgramBadgeTextDirty]}>
+                {showYellow ? '⚠ Pendiente' : '✓ Publicado'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
+          <Text style={styles.cProgramMeta}>
+            {dayCount} sesión{dayCount !== 1 ? 'es' : ''} por ciclo
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.cProgramBox}>
+          <Text style={styles.cProgramLabel}>SIN PROGRAMA ACTIVO</Text>
+          <Text style={styles.cProgramMeta}>Asigna un programa desde la vista de detalle</Text>
+        </View>
+      )}
+
+      {/* ── Action buttons (CSS-mockup style, inside card) ── */}
+      <View style={styles.cActions}>
+        {/* Editar / Subir cambios */}
+        <TouchableOpacity
+          style={[styles.cBtnSecondary, showYellow && styles.cBtnPrimary]}
+          onPress={showYellow ? onUploadProgram : onOpenEditor}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
+            {showYellow ? '▲ Subir cambios' : 'Editar programa'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Ver progreso / Ver actividad */}
+        <TouchableOpacity
+          style={[styles.cBtnSecondary, showBlue && styles.cBtnBlue]}
+          onPress={showBlue ? onViewHistory : onViewProgress}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.cBtnText, showBlue && styles.cBtnTextBlue]}>
+            {showBlue ? '● Ver actividad' : 'Ver progreso'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* ⋯ → ir al tab de info */}
+        <TouchableOpacity style={styles.cBtnIcon} onPress={onGoInfo} activeOpacity={0.7}>
+          <Text style={styles.cBtnIconText}>⋯</Text>
+        </TouchableOpacity>
+      </View>
+
+    </TouchableOpacity>
+  );
+}
+
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function ClientsScreen() {
@@ -678,6 +873,7 @@ export default function ClientsScreen() {
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
   const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
+  const markHistoryViewed        = useStore((s) => s.markHistoryViewed);
 
   const isPro        = profile.isPro ?? true;
   const trainerSync  = useStore((s) => s.trainerSync);
@@ -729,6 +925,9 @@ export default function ClientsScreen() {
   // Sync mode modal — shown on first visit (mode === null) or from hamburger menu
   const [showSyncModal, setShowSyncModal] = useState(false);
   const isFirstTimeSync = trainerSync.mode === null;
+
+  // Client info sheet (⋯ button on card)
+  const [infoSheetClientId, setInfoSheetClientId] = useState(null);
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
@@ -819,6 +1018,25 @@ export default function ClientsScreen() {
   function handleSelectClientInfo(clientId) {
     setSelectedClientId(clientId);
     setActiveTab('info');
+    setScopeFilter('active');
+    setPeriodFilter('all');
+    setOpenSections({ personal: true, weight: false, billing: false });
+    setView('detail');
+  }
+
+  function handleSelectClientProgress(clientId) {
+    setSelectedClientId(clientId);
+    setActiveTab('progress');
+    setScopeFilter('active');
+    setPeriodFilter('all');
+    setOpenSections({ personal: true, weight: false, billing: false });
+    setView('detail');
+  }
+
+  function handleSelectClientHistory(clientId) {
+    markHistoryViewed(clientId);
+    setSelectedClientId(clientId);
+    setActiveTab('history');
     setScopeFilter('active');
     setPeriodFilter('all');
     setOpenSections({ personal: true, weight: false, billing: false });
@@ -1386,25 +1604,6 @@ export default function ClientsScreen() {
           <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
             <Text style={styles.billingBtnText}>💳</Text>
           </TouchableOpacity>
-          {trainerSync.mode !== 'offline' && trainerSync.mode !== null && (
-            <TouchableOpacity
-              style={styles.billingBtn}
-              onPress={async () => {
-                let total = 0;
-                for (const client of clientList) {
-                  if (!client.syncSlotId) continue;
-                  try {
-                    const { merged } = await downloadClientHistory(client.id);
-                    total += merged;
-                  } catch {}
-                }
-                showToast(total > 0 ? `✓ ${total} sesiones nuevas` : '✓ Todo al día');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.billingBtnText}>⬇️</Text>
-            </TouchableOpacity>
-          )}
           <AccentBtn label="＋ Nuevo" onPress={() => setShowNewClient(true)} small />
         </View>
 
@@ -1432,91 +1631,54 @@ export default function ClientsScreen() {
         <FlatList
           data={clientList}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl + insets.bottom }}
+          contentContainerStyle={{ padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl + insets.bottom }}
           renderItem={({ item: client }) => {
-            const progCount   = (client.programIds ?? []).filter((id) => programs[id]).length;
-            const statusColor = STATUS_COLORS[client.status ?? 'active'];
-
-            const clientCode = client.syncCode; // set when trainer shares via Supabase
+            const activeProgram   = programs[client.activeProgramId];
+            const isConnected     = trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!client.syncSlotId;
+            // Last activity across ALL client programs
+            const allTemplateIds  = new Set(
+              (client.programIds ?? [])
+                .map((id) => programs[id])
+                .filter(Boolean)
+                .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
+            );
+            const clientSessions  = workoutLog.filter((e) => allTemplateIds.has(e.sessionTemplateId));
+            const lastActivityTs  = clientSessions.length ? Math.max(...clientSessions.map((e) => e.timestamp)) : null;
 
             return (
-              <View style={styles.clientCard}>
-                <TouchableOpacity
-                  style={styles.clientCardMain}
+              <>
+                <ClientListCard
+                  client={client}
+                  activeProgram={activeProgram}
+                  lastActivityTs={lastActivityTs}
+                  isConnected={isConnected}
                   onPress={() => handleSelectClient(client.id)}
-                  activeOpacity={0.75}
-                >
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {statusColor && <View style={[styles.statusDotSmall, { backgroundColor: statusColor }]} />}
-                      <Text style={styles.clientName}>{client.name}</Text>
-                    </View>
-                    <Text style={styles.clientMeta}>
-                      {progCount} programa{progCount !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.clientInfoBox}
-                    onPress={() => handleSelectClientInfo(client.id)}
-                    hitSlop={8}
-                  >
-                    <Text style={styles.clientInfoBtn}>ℹ</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-
-                {/* Copy client code + Actualizar — only shown in connected modes */}
-                {trainerSync.mode !== 'offline' && trainerSync.mode !== null && (
-                  <View style={styles.clientSyncRow}>
-                    {!client.syncSlotId ? (
-                      /* Cliente antiguo sin slot — botón para conectar a la nube */
-                      <TouchableOpacity
-                        style={styles.clientConnectBtn}
-                        onPress={async () => {
-                          try {
-                            await connectClientToCloud(client.id);
-                            showToast('✓ Cliente conectado a la nube');
-                          } catch (err) {
-                            Alert.alert('Error', err.message ?? 'No se pudo conectar.');
-                          }
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.clientConnectBtnText}>☁️ Conectar a la nube</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <>
-                        {clientCode && (
-                          <TouchableOpacity
-                            style={styles.clientCodeBtn}
-                            onPress={async () => {
-                              await Clipboard.setStringAsync(clientCode);
-                              showToast('✓ Código copiado');
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.clientCodeLabel}>🔑 {clientCode}</Text>
-                            <Text style={styles.clientCodeCopy}>Copiar</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={styles.clientUpdateBtn}
-                          onPress={async () => {
-                            try {
-                              const { merged } = await downloadClientHistory(client.id);
-                              showToast(merged > 0 ? `✓ ${merged} sesiones nuevas` : '✓ Sin novedades');
-                            } catch (err) {
-                              Alert.alert('Error', err.message ?? 'No se pudo actualizar.');
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.clientUpdateBtnText}>↓ Actualizar</Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
+                  onOpenEditor={() => {
+                    if (client.activeProgramId) setEditingProgram(client.activeProgramId);
+                    else handleSelectClient(client.id);
+                  }}
+                  onViewProgress={() => handleSelectClientProgress(client.id)}
+                  onViewHistory={() => handleSelectClientHistory(client.id)}
+                  onUploadProgram={async () => {
+                    if (!client.activeProgramId) return;
+                    try {
+                      await uploadProgramToClient(client.id, client.activeProgramId);
+                      showToast('✓ Programa subido al cliente');
+                    } catch (err) {
+                      Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
+                    }
+                  }}
+                  onShowInfo={() => setInfoSheetClientId(client.id)}
+                  onGoInfo={() => handleSelectClientInfo(client.id)}
+                />
+                {infoSheetClientId === client.id && (
+                  <ClientInfoSheet
+                    client={client}
+                    onClose={() => setInfoSheetClientId(null)}
+                    onConnectCloud={() => connectClientToCloud(client.id)}
+                  />
                 )}
-              </View>
+              </>
             );
           }}
         />
@@ -1629,108 +1791,7 @@ const styles = StyleSheet.create({
   },
   chipTextActive: { color: colors.accent },
 
-  // ── Client card (list) ──
-  clientCard: {
-    backgroundColor: colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
-    overflow:        'hidden',
-  },
-  clientCardMain: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    padding:           spacing.md,
-  },
-  clientName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      colors.text,
-  },
-  clientMeta: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-    marginTop: 2,
-  },
-  clientInfoBox: {
-    backgroundColor: colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  clientInfoBtn: {
-    fontSize:   typography.base,
-    color:      colors.muted,
-    lineHeight: 18,
-  },
-  statusDotSmall: {
-    width:        7,
-    height:       7,
-    borderRadius: 4,
-  },
-
-  // Client sync row (code + update button)
-  clientSyncRow: {
-    flexDirection:  'row',
-    borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
-    overflow:       'hidden',
-  },
-  clientCodeBtn: {
-    flex:           1,
-    flexDirection:  'row',
-    alignItems:     'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-    backgroundColor:   withOpacity(colors.accent, 0.04),
-    gap:               spacing.xs,
-  },
-  clientCodeLabel: {
-    flex:       1,
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      colors.text,
-    letterSpacing: 0.5,
-  },
-  clientCodeCopy: {
-    fontSize:   typography.xs,
-    color:      colors.accent,
-    fontWeight: typography.medium,
-  },
-  clientUpdateBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-    backgroundColor:   withOpacity(colors.green, 0.06),
-    borderLeftWidth:   borders.thin,
-    borderLeftColor:   colors.border,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  clientUpdateBtnText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      colors.green,
-  },
-  clientConnectBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-    backgroundColor:   withOpacity(colors.accent, 0.06),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.3),
-    borderRadius:      spacing.xs,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  clientConnectBtnText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      colors.accent,
-  },
+  // (old client card styles removed — replaced by cCard* styles above)
 
   // ── Empty ──
   emptyState: {
@@ -1770,6 +1831,276 @@ const styles = StyleSheet.create({
     color:     colors.muted,
     textAlign: 'center',
     paddingVertical: spacing.xl,
+  },
+
+  // ── Client info sheet ──
+  infoSheet: {
+    position:             'absolute',
+    bottom:               0,
+    left:                 0,
+    right:                0,
+    backgroundColor:      colors.surface,
+    borderTopLeftRadius:  radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderTopWidth:       borders.thin,
+    borderTopColor:       colors.borderCard,
+    paddingHorizontal:    spacing.xl,
+    paddingBottom:        spacing.xxl,
+    paddingTop:           spacing.sm,
+    gap:                  spacing.sm,
+  },
+  infoSheetHandle: {
+    width:           36,
+    height:          4,
+    backgroundColor: colors.border,
+    borderRadius:    2,
+    alignSelf:       'center',
+    marginBottom:    spacing.sm,
+  },
+  infoSheetName: {
+    fontSize:   typography.md,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    marginBottom: spacing.xs,
+  },
+  infoCodeRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  infoCodeBox: {
+    flex:              1,
+    backgroundColor:   withOpacity(colors.accent, 0.06),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.2),
+    borderRadius:      radius.md,
+    padding:           spacing.md,
+    gap:               3,
+  },
+  infoCodeLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.accent,
+    letterSpacing: 1,
+  },
+  infoCodeText: {
+    fontSize:      typography.md,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 3,
+  },
+  infoCodeSub: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  infoCopyBtn: {
+    width:           44,
+    height:          44,
+    borderRadius:    radius.md,
+    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.2),
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  infoCopyBtnText: { fontSize: 20 },
+  infoSheetBtnAccent: {
+    backgroundColor:   withOpacity(colors.accent, 0.08),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.25),
+    borderRadius:      radius.md,
+    alignItems:        'center',
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  infoSheetBtnTextAccent: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
+
+  // ── Client list card (new design) ──
+  cCard: {
+    backgroundColor: colors.surface,
+    borderWidth:     borders.thin,
+    borderColor:     colors.borderCard,
+    borderRadius:    radius.lg,
+    overflow:        'hidden',
+    padding:         spacing.md,
+    gap:             spacing.md,
+  },
+  cCardTop: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+  },
+  cCardName: {
+    fontSize:   typography.xl,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: typography.xl * 1.1,
+  },
+  cCardMetaRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    marginTop:     4,
+    flexWrap:      'wrap',
+  },
+  cCardMetaDot: {
+    width:        5,
+    height:       5,
+    borderRadius: 3,
+    flexShrink:   0,
+  },
+  cCardMetaStatus: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+  },
+  cCardMetaSep: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  cCardMeta: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  cIconBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.md,
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginTop:       2,
+  },
+  cIconBtnText: {
+    fontSize:   15,
+    lineHeight: 17,
+  },
+
+  // Activity indicator (subtle)
+  cActivityBadge: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    marginTop:     -spacing.xs, // tighten gap after top
+  },
+  cActivityDot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: colors.blue,
+    flexShrink:      0,
+  },
+  cActivityText: {
+    fontSize:   typography.xs,
+    color:      colors.blue,
+    fontWeight: typography.medium,
+  },
+
+  // Program box
+  cProgramBox: {
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.md,
+    padding:         spacing.md,
+    gap:             4,
+  },
+  cProgramHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.xs,
+  },
+  cProgramLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.muted,
+    letterSpacing: 1,
+  },
+  cProgramBadge: {
+    borderRadius:      radius.xs,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical:   2,
+    backgroundColor:   withOpacity(colors.green, 0.1),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.green, 0.25),
+  },
+  cProgramBadgeDirty: {
+    backgroundColor: withOpacity(colors.orange, 0.1),
+    borderColor:     withOpacity(colors.orange, 0.25),
+  },
+  cProgramBadgeText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    color:      colors.green,
+  },
+  cProgramBadgeTextDirty: {
+    color: colors.orange,
+  },
+  cProgramName: {
+    fontSize:   typography.base,
+    fontWeight: typography.semibold,
+    color:      colors.text,
+  },
+  cProgramMeta: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+
+  // Action buttons (CSS-mockup style)
+  cActions: {
+    flexDirection: 'row',
+    gap:           spacing.sm,
+  },
+  cBtnSecondary: {
+    flex:            1,
+    height:          44,
+    borderRadius:    radius.md,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: spacing.sm,
+  },
+  cBtnPrimary: {
+    backgroundColor: withOpacity(colors.orange, 0.1),
+    borderColor:     withOpacity(colors.orange, 0.35),
+  },
+  cBtnBlue: {
+    backgroundColor: withOpacity(colors.blue, 0.1),
+    borderColor:     withOpacity(colors.blue, 0.35),
+  },
+  cBtnText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.muted,
+  },
+  cBtnTextPrimary: {
+    color: colors.orange,
+  },
+  cBtnTextBlue: {
+    color: colors.blue,
+  },
+  cBtnIcon: {
+    width:           44,
+    height:          44,
+    borderRadius:    radius.md,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  cBtnIconText: {
+    fontSize:   18,
+    color:      colors.muted,
+    lineHeight: 20,
   },
 
   // ── Detail header ──
