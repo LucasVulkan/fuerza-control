@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto'; // Required for Supabase (URL API polyfill)
 import 'react-native-gesture-handler'; // Must be first import
 import './src/i18n';                   // Initialize i18n before rendering
 
