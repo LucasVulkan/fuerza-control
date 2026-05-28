@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
 
   // ── Program label ────────────────────────────────────────────────────────────
   progLabel: {
-    fontSize:      8,
+    fontSize:      typography.sm,
     fontWeight:    typography.bold,
     letterSpacing: 2,
     color:         colors.muted2,

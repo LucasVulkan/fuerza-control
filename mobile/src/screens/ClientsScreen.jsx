@@ -25,6 +25,7 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
+import ProgressTab from '../components/stats/ProgressTab';
 import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
 import { summarizeSets } from '../../../src/utils/progression';
 
@@ -1036,6 +1037,12 @@ export default function ClientsScreen() {
     return new Set(getAllProgramDays(activeProg).map((d) => d.sessionTemplateId));
   }, [selectedClient, programs]);
 
+  // All sessions for this client (no scope/period filter) — for ProgressTab
+  const clientBaseLog = useMemo(() => {
+    if (!allClientTemplateIds.size) return [];
+    return workoutLog.filter((e) => allClientTemplateIds.has(e.sessionTemplateId));
+  }, [workoutLog, allClientTemplateIds]);
+
   const filteredLog = useMemo(() => {
     const templateIds = scopeFilter === 'active' ? activeClientTemplateIds : allClientTemplateIds;
     let log = workoutLog.filter((e) => templateIds.has(e.sessionTemplateId));
@@ -1380,31 +1387,11 @@ export default function ClientsScreen() {
 
         {/* ── Tab: Progresión ── */}
         {activeTab === 'progress' && (
-          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
-            {/* Filters */}
-            <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
-              <View style={styles.chipRow}>
-                {[{ id: 'active', label: 'Programa activo' }, { id: 'all', label: 'Todos' }].map(({ id, label }) => (
-                  <FilterChip key={id} label={label} active={scopeFilter === id} onPress={() => setScopeFilter(id)} />
-                ))}
-              </View>
-              <View style={styles.chipRow}>
-                {PERIOD_OPTIONS.map(({ id, label }) => (
-                  <FilterChip key={id} label={label} active={periodFilter === id} onPress={() => setPeriodFilter(id)} />
-                ))}
-              </View>
-            </View>
-
-            {exercisesWithLogs.length === 0 ? (
-              <Text style={styles.emptyText}>Sin datos de progresión para este filtro</Text>
-            ) : exercisesWithLogs.map((exerciseId) => (
-              <ExerciseMiniCard
-                key={exerciseId}
-                exerciseId={exerciseId}
-                logs={getExerciseLogs(exerciseId)}
-              />
-            ))}
-          </ScrollView>
+          <ProgressTab
+            baseLog={clientBaseLog}
+            programTemplateIds={activeClientTemplateIds}
+            allExercises={allExercises}
+          />
         )}
 
         {/* ── Tab: Info ── */}

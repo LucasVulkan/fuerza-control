@@ -8,6 +8,11 @@ WebBrowser.maybeCompleteAuthSession();
 
 import { useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
+import {
+  setForegroundNotificationHandler,
+  setupNotificationChannels,
+  requestNotificationPermissions,
+} from './src/services/timerNotification';
 import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -23,6 +28,13 @@ import { useStore } from './store/useStore';
 
 export default function App() {
   const checkProStatus = useStore((s) => s.checkProStatus);
+
+  // ── Notification setup ──────────────────────────────────────────────────────
+  useEffect(() => {
+    setForegroundNotificationHandler();
+    setupNotificationChannels().catch(() => {});
+    requestNotificationPermissions().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;

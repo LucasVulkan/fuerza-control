@@ -450,10 +450,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   sesName: {
-    fontSize:   typography.base,
+    fontSize:   typography.xl,
     fontWeight: typography.heavy,
     color:      colors.text,
-    lineHeight: typography.base * 1.2,
+    lineHeight: typography.xl * 1.2,
   },
   notesBtn: {
     padding:         spacing.xs + 2,

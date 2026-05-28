@@ -10,7 +10,7 @@
  *  - Import (document picker): not yet implemented — stubbed
  */
 
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,6 +21,12 @@ import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot } from '../src/services/supabaseSync';
+import {
+  showCountdownNotification,
+  dismissCountdownNotification,
+  scheduleOsDoneNotification,
+  cancelScheduledDoneNotification,
+} from '../src/services/timerNotification';
 
 // Shared data & utilities (resolved by Metro watchFolders)
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
@@ -66,7 +72,7 @@ const INITIAL_ACTIVE_SESSION = {
 const INITIAL_UI = {
   view: 'home',
   toast: null,
-  restTimer: { active: false, remaining: 0, total: 0, exerciseName: '' },
+  restTimer: { active: false, remaining: 0, total: 0, exerciseName: '', endAt: 0 },
   _editingProgramId: null,
   _viewingProgramId: null,
   homeTab: 'session',
@@ -1347,45 +1353,102 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       startRestTimer: (seconds, exerciseName) => {
-        const { _restInterval } = get();
+        // Clean up any previous timer
+        const { _restInterval, _appStateSub } = get();
         if (_restInterval) clearInterval(_restInterval);
+        if (_appStateSub) _appStateSub.remove();
+
+        const endAt = Date.now() + seconds * 1000;
 
         set((s) => ({
           ui: {
             ...s.ui,
-            restTimer: { active: true, remaining: seconds, total: seconds, exerciseName },
+            restTimer: { active: true, remaining: seconds, total: seconds, exerciseName, endAt },
           },
         }));
 
+        // Show initial countdown notification (Android)
+        // Schedule OS-level "done" notification — fires at the right time even if app is killed
+        showCountdownNotification(seconds, seconds, exerciseName).catch(() => {});
+        scheduleOsDoneNotification(seconds, exerciseName).catch(() => {});
+
+        // Helper: fire the "done" side-effects when the timer expires
+        function fireDone() {
+          cancelScheduledDoneNotification().catch(() => {}); // cancel OS notification (timer ended in foreground)
+          dismissCountdownNotification().catch(() => {});
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          get().showToast('¡Siguiente serie!');
+        }
+
+        // AppState listener: re-sync when the app comes back to the foreground.
+        // setInterval is throttled/paused in the background (especially in Expo Go),
+        // so we recalculate remaining from the absolute endAt timestamp on resume.
+        const appStateSub = AppState.addEventListener('change', (nextState) => {
+          if (nextState !== 'active') return;
+          const { ui } = get();
+          if (!ui.restTimer.active) return; // timer was already stopped
+
+          const remaining = Math.max(0, Math.round((ui.restTimer.endAt - Date.now()) / 1000));
+
+          if (remaining <= 0) {
+            // Timer expired while we were in the background
+            const { _restInterval: iv, _appStateSub: sub } = get();
+            if (iv) clearInterval(iv);
+            if (sub) sub.remove();
+            set((s) => ({
+              _restInterval: null,
+              _appStateSub: null,
+              ui: { ...s.ui, restTimer: { ...s.ui.restTimer, active: false, remaining: 0 } },
+            }));
+            fireDone();
+          } else {
+            // Still running — correct the displayed time and refresh the countdown notification
+            set((s) => ({
+              ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
+            }));
+            showCountdownNotification(remaining, seconds, exerciseName).catch(() => {});
+          }
+        });
+
+        // Tick every second. Uses endAt (wall-clock) instead of decrementing so any
+        // background pause is automatically corrected when the interval resumes.
         const interval = setInterval(() => {
           const { ui } = get();
-          const next = ui.restTimer.remaining - 1;
-          if (next <= 0) {
+          const remaining = Math.max(0, Math.round((ui.restTimer.endAt - Date.now()) / 1000));
+
+          if (remaining <= 0) {
+            const { _appStateSub: sub } = get();
+            if (sub) sub.remove();
             clearInterval(get()._restInterval);
             set((s) => ({
               _restInterval: null,
+              _appStateSub: null,
               ui: { ...s.ui, restTimer: { ...s.ui.restTimer, active: false, remaining: 0 } },
             }));
-            // Haptic feedback instead of navigator.vibrate
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            get().showToast('¡Siguiente serie!');
+            fireDone();
             return;
           }
+
           set((s) => ({
-            ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining: next } },
+            ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
           }));
+          showCountdownNotification(remaining, ui.restTimer.total, exerciseName).catch(() => {});
         }, 1000);
 
-        set({ _restInterval: interval });
+        set({ _restInterval: interval, _appStateSub: appStateSub });
       },
 
       stopRestTimer: () => {
-        const { _restInterval } = get();
+        const { _restInterval, _appStateSub } = get();
         if (_restInterval) clearInterval(_restInterval);
+        if (_appStateSub) _appStateSub.remove();
         set((s) => ({
           _restInterval: null,
-          ui: { ...s.ui, restTimer: { active: false, remaining: 0, total: 0, exerciseName: '' } },
+          _appStateSub: null,
+          ui: { ...s.ui, restTimer: { active: false, remaining: 0, total: 0, exerciseName: '', endAt: 0 } },
         }));
+        dismissCountdownNotification().catch(() => {});
+        cancelScheduledDoneNotification().catch(() => {});
       },
 
       // ══════════════════════════════════════════════════════════════════════

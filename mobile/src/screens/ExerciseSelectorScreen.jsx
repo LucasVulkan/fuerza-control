@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, SafeAreaView, Alert,
+  ScrollView, StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { colors, spacing, typography, radius, borders } from '../theme';
@@ -158,43 +159,49 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         </View>
       )}
 
-      {/* Pattern picker */}
+      {/* Pattern picker — wrapper View evita clipping vertical en Android */}
       {!search.trim() && filterMode === 'pattern' && (
-        <View style={styles.patternPicker}>
-          <TouchableOpacity
-            style={[styles.patternChip, !selectedPattern && styles.patternChipActive]}
-            onPress={() => setSelectedPattern('')}
+        <View style={styles.patternPickerWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.patternPicker}
           >
-            <Text style={[styles.patternChipText, !selectedPattern && styles.patternChipTextActive]}>
-              {t('exerciseSelector.allPatterns')}
-            </Text>
-          </TouchableOpacity>
-          {PATTERNS.map((p) => (
             <TouchableOpacity
-              key={p.value}
-              style={[styles.patternChip, selectedPattern === p.value && styles.patternChipActive]}
-              onPress={() => setSelectedPattern(p.value)}
+              style={[styles.patternChip, !selectedPattern && styles.patternChipActive]}
+              onPress={() => setSelectedPattern('')}
             >
-              <Text style={[styles.patternChipText, selectedPattern === p.value && styles.patternChipTextActive]}>
-                {p.label}
+              <Text style={[styles.patternChipText, !selectedPattern && styles.patternChipTextActive]}>
+                {t('exerciseSelector.allPatterns')}
               </Text>
             </TouchableOpacity>
-          ))}
+            {PATTERNS.map((p) => (
+              <TouchableOpacity
+                key={p.value}
+                style={[styles.patternChip, selectedPattern === p.value && styles.patternChipActive]}
+                onPress={() => setSelectedPattern(p.value)}
+              >
+                <Text style={[styles.patternChipText, selectedPattern === p.value && styles.patternChipTextActive]}>
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
 
-      {/* Count + create button */}
+      {/* Recuento + botón crear (debajo de filtros, encima de la lista) */}
       <View style={styles.countRow}>
         <Text style={styles.countText}>
           {t('exerciseSelector.exerciseCount', { count: filtered.length })}
         </Text>
-        <TouchableOpacity
-          style={styles.createBtn}
-          onPress={() => navigation.navigate('CustomExercise', { templateId, currentExerciseId })}
-        >
-          <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
-        </TouchableOpacity>
       </View>
+      <TouchableOpacity
+        style={styles.createBtn}
+        onPress={() => navigation.navigate('CustomExercise', { templateId, currentExerciseId })}
+      >
+        <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
+      </TouchableOpacity>
 
       {/* List */}
       <FlatList
@@ -215,34 +222,46 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
     borderBottomWidth: borders.thin, borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: typography.xl, color: colors.text, fontFamily: 'BebasNeue_400Regular', letterSpacing: 1 },
-  closeBtn: { fontSize: 22, color: colors.muted },
-  searchWrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  headerTitle: {
+    fontSize: typography.md, fontWeight: typography.bold,
+    color: colors.text, letterSpacing: 0.3,
+  },
+  closeBtn: { fontSize: 18, color: colors.muted, padding: spacing.xs },
+
+  searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   searchInput: {
     backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.md, color: colors.text, fontSize: typography.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md, color: colors.text, fontSize: typography.base,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
   },
+
   tabsRow: {
     flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs,
-    paddingHorizontal: spacing.xl, paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
   },
   tab: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 1,
+    paddingHorizontal: spacing.sm + 2, paddingVertical: 4,
     backgroundColor: colors.surface2, borderRadius: radius.sm,
     borderWidth: borders.thin, borderColor: colors.border,
   },
   tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   tabText: { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
   tabTextActive: { color: colors.onAccent },
+
+  // Wrapper View con padding — evita el clipping vertical de Android en horizontal ScrollView
+  patternPickerWrap: {
+    paddingVertical: spacing.xs,
+  },
   patternPicker: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs,
-    paddingHorizontal: spacing.xl, paddingTop: spacing.xs,
+    flexDirection: 'row', gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
   },
   patternChip: {
     paddingHorizontal: spacing.sm, paddingVertical: 4,
@@ -252,31 +271,37 @@ const styles = StyleSheet.create({
   patternChipActive: { backgroundColor: `rgba(232,255,71,0.12)`, borderColor: `rgba(232,255,71,0.4)` },
   patternChipText: { fontSize: typography.xs, color: colors.muted },
   patternChipTextActive: { color: colors.accent },
+
   countRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs,
   },
-  countText: { fontSize: typography.xs, color: colors.muted, letterSpacing: 1 },
+  countText: { fontSize: typography.xs, color: colors.muted2, letterSpacing: 0.5 },
+
+  // Botón crear — fila dashed accent
   createBtn: {
-    borderWidth: borders.thin, borderColor: `rgba(232,255,71,0.4)`,
-    borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4,
+    marginHorizontal: spacing.lg, marginBottom: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderWidth: borders.thin, borderColor: `rgba(232,255,71,0.45)`,
+    borderStyle: 'dashed', borderRadius: radius.sm,
+    alignItems: 'center',
   },
-  createBtnText: { fontSize: typography.xs, color: colors.accent },
-  listContent: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  createBtnText: { fontSize: typography.xs, color: colors.accent, fontWeight: typography.medium },
+
+  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   exerciseRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: spacing.sm + 3,
+    paddingVertical: spacing.sm,
     borderBottomWidth: borders.thin, borderBottomColor: colors.border,
   },
   exerciseName: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
   exerciseMeta: { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
   customBadge: {
     backgroundColor: `rgba(232,255,71,0.1)`, borderWidth: borders.thin,
-    borderColor: `rgba(232,255,71,0.3)`, borderRadius: 4,
+    borderColor: `rgba(232,255,71,0.3)`, borderRadius: radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
-  customBadgeText: { fontSize: 9, color: colors.accent, letterSpacing: 1 },
-  chevron: { fontSize: 18, color: colors.muted, marginLeft: spacing.xs },
+  customBadgeText: { fontSize: 9, color: colors.accent, letterSpacing: 0.8 },
+  chevron: { fontSize: 16, color: colors.muted, marginLeft: spacing.xs },
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { fontSize: typography.base, color: colors.muted },
 });
