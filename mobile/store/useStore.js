@@ -95,6 +95,7 @@ export const useStore = create(
       },
 
       clients: {},
+      tagRegistry: [],   // [{ id, name }] — global tag list
       userPrograms: {},
       customExercises: {},
       _editSnapshot: null,
@@ -278,6 +279,31 @@ export const useStore = create(
       updateClientInfo: (clientId, fields) => {
         set((s) => ({
           clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...fields } },
+        }));
+      },
+
+      // ── Tag registry ──────────────────────────────────────────────────────
+      createTag: (name) => {
+        const id = generateId('tag');
+        set((s) => ({ tagRegistry: [...s.tagRegistry, { id, name: name.trim() }] }));
+        return id;
+      },
+
+      renameTag: (id, name) => {
+        set((s) => ({
+          tagRegistry: s.tagRegistry.map((t) => t.id === id ? { ...t, name: name.trim() } : t),
+        }));
+      },
+
+      deleteTag: (id) => {
+        set((s) => ({
+          tagRegistry: s.tagRegistry.filter((t) => t.id !== id),
+          clients: Object.fromEntries(
+            Object.entries(s.clients).map(([cid, c]) => [
+              cid,
+              { ...c, tags: (c.tags ?? []).filter((tid) => tid !== id) },
+            ])
+          ),
         }));
       },
 
@@ -2051,6 +2077,7 @@ export const useStore = create(
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,
+        tagRegistry: state.tagRegistry,
         driveBackup: state.driveBackup,
       }),
       onRehydrateStorage: () => (state) => {
@@ -2059,6 +2086,27 @@ export const useStore = create(
         // Apply language from persisted profile
         if (state.profile?.language) {
           i18n.changeLanguage(state.profile.language);
+        }
+
+        // Migrate string tags → tagRegistry IDs
+        if (!state.tagRegistry) state.tagRegistry = [];
+        const needsTagMigration = Object.values(state.clients ?? {}).some(
+          (c) => (c.tags ?? []).some((t) => !String(t).startsWith('tag_'))
+        );
+        if (needsTagMigration) {
+          const nameToId = {};
+          Object.values(state.clients ?? {}).forEach((c) => {
+            (c.tags ?? []).forEach((t) => {
+              if (!String(t).startsWith('tag_') && !nameToId[t]) {
+                const id = 'tag_' + Math.random().toString(36).slice(2, 10);
+                state.tagRegistry.push({ id, name: String(t) });
+                nameToId[t] = id;
+              }
+            });
+          });
+          Object.values(state.clients ?? {}).forEach((c) => {
+            if (c.tags?.length) c.tags = c.tags.map((t) => nameToId[t] ?? t);
+          });
         }
 
         // Migrate hex colors → CSS vars

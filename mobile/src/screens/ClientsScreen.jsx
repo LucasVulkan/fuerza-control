@@ -712,7 +712,7 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
 // ── Client list card ───────────────────────────────────────────────────────────
 
 function ClientListCard({
-  client, activeProgram, lastActivityTs, isConnected, weeksTraining,
+  client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
   onPress, onOpenEditor, onUploadProgram,
   onViewProgress, onViewHistory,
   onShowInfo,   // 🔑 → info sheet
@@ -751,13 +751,13 @@ function ClientListCard({
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.cCardNameRow}>
             <Text style={[styles.cCardName, { flex: 1 }]} numberOfLines={1}>{client.name}</Text>
-            {(client.tags ?? []).slice(0, 2).map((tag) => (
-              <View key={tag} style={styles.cTagInlineChip}>
-                <Text style={styles.cTagInlineChipText} numberOfLines={1}>{tag}</Text>
+            {(tagNames ?? []).slice(0, 2).map((name) => (
+              <View key={name} style={styles.cTagInlineChip}>
+                <Text style={styles.cTagInlineChipText} numberOfLines={1}>{name}</Text>
               </View>
             ))}
-            {(client.tags ?? []).length > 2 && (
-              <Text style={styles.cTagInlineMore}>+{(client.tags ?? []).length - 2}</Text>
+            {(tagNames ?? []).length > 2 && (
+              <Text style={styles.cTagInlineMore}>+{(tagNames ?? []).length - 2}</Text>
             )}
           </View>
           {(statusText || lastStr) && (
@@ -887,6 +887,12 @@ export default function ClientsScreen() {
   const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
   const markHistoryViewed        = useStore((s) => s.markHistoryViewed);
 
+  // Tag registry
+  const tagRegistry  = useStore((s) => s.tagRegistry ?? []);
+  const createTag    = useStore((s) => s.createTag);
+  const renameTag    = useStore((s) => s.renameTag);
+  const deleteTag    = useStore((s) => s.deleteTag);
+
   const isPro        = profile.isPro ?? true;
   const trainerSync  = useStore((s) => s.trainerSync);
 
@@ -917,6 +923,13 @@ export default function ClientsScreen() {
 
   // Detail - tags input
   const [newTag,           setNewTag]           = useState('');
+
+  // Tag manager
+  const [showTagManager,   setShowTagManager]   = useState(false);
+  const [tagRenameId,      setTagRenameId]      = useState(null);
+  const [tagRenameText,    setTagRenameText]    = useState('');
+  const [tagCreateText,    setTagCreateText]    = useState('');
+  const [tagSearchText,    setTagSearchText]    = useState('');
 
   // Detail - programs tab
   const [showNewProgram,   setShowNewProgram]   = useState(false);
@@ -984,11 +997,8 @@ export default function ClientsScreen() {
     return list;
   }, [clients, search, statusFilter, tagFilter, sortBy, sortDir, programs, workoutLog]);
 
-  const allTags = useMemo(() => {
-    const tagSet = new Set();
-    Object.values(clients ?? {}).forEach((c) => (c.tags ?? []).forEach((t) => tagSet.add(t)));
-    return [...tagSet].sort();
-  }, [clients]);
+  // tagRegistry is the source of truth — no useMemo needed
+  const allTags = tagRegistry;
 
   const selectedClient = selectedClientId ? clients?.[selectedClientId] : null;
 
@@ -1421,41 +1431,43 @@ export default function ClientsScreen() {
                   <Text style={styles.fieldLabel}>ETIQUETAS</Text>
                   {allTags.length > 0 && (
                     <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
-                      {allTags.map((tag) => {
-                        const active = (selectedClient.tags ?? []).includes(tag);
+                      {allTags.map(({ id, name }) => {
+                        const active = (selectedClient.tags ?? []).includes(id);
                         return (
                           <TouchableOpacity
-                            key={tag}
+                            key={id}
                             style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
                             onPress={() => {
                               const current = selectedClient.tags ?? [];
                               updateClientInfo(selectedClientId, {
-                                tags: active ? current.filter((t) => t !== tag) : [...current, tag],
+                                tags: active ? current.filter((tid) => tid !== id) : [...current, id],
                               });
                             }}
                             activeOpacity={0.7}
                           >
                             {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
                             <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
-                              {tag}
+                              {name}
                             </Text>
                           </TouchableOpacity>
                         );
                       })}
                     </View>
                   )}
+                  {/* Inline create (escape hatch) */}
                   <View style={styles.addRow}>
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
-                      placeholder="Nueva etiqueta…"
+                      placeholder="Crear nueva etiqueta…"
                       placeholderTextColor={colors.muted}
                       value={newTag}
                       onChangeText={setNewTag}
                       returnKeyType="done"
                       onSubmitEditing={() => {
-                        const t = newTag.trim().toLowerCase();
-                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        const t = newTag.trim();
+                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
+                        const newId = createTag(t);
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
                         setNewTag('');
                       }}
                     />
@@ -1464,14 +1476,15 @@ export default function ClientsScreen() {
                       small
                       disabled={!newTag.trim()}
                       onPress={() => {
-                        const t = newTag.trim().toLowerCase();
-                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        const t = newTag.trim();
+                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
+                        const newId = createTag(t);
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
                         setNewTag('');
                       }}
                     />
                   </View>
-                  <Text style={styles.fieldHint}>Toca para asignar · ＋ para crear nueva</Text>
+                  <Text style={styles.fieldHint}>Toca para asignar · Escribe para crear nueva</Text>
                 </View>
               </Accordion>
 
@@ -1802,11 +1815,16 @@ export default function ClientsScreen() {
             const weeksTraining   = firstActiveTs
               ? Math.max(1, Math.ceil((Date.now() - firstActiveTs) / (7 * 24 * 60 * 60 * 1000)))
               : null;
+            // Resolve tag IDs → names for display
+            const clientTagNames = (client.tags ?? [])
+              .map((id) => tagRegistry.find((t) => t.id === id)?.name)
+              .filter(Boolean);
 
             return (
               <>
                 <ClientListCard
                   client={client}
+                  tagNames={clientTagNames}
                   activeProgram={activeProgram}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
@@ -1856,36 +1874,197 @@ export default function ClientsScreen() {
         <View style={styles.tagSheet}>
           <View style={styles.infoSheetHandle} />
           <View style={styles.tagSheetHeader}>
-            <Text style={styles.tagSheetTitle}>Filtrar por etiqueta</Text>
-            {tagFilter.length > 0 && (
-              <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={8} activeOpacity={0.7}>
-                <Text style={styles.tagSheetClear}>Limpiar todo</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
-            {allTags.map((tag) => {
-              const selected = tagFilter.includes(tag);
-              return (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}
-                  onPress={() => setTagFilter((prev) =>
-                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                  )}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
-                    {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.tagSheetItemText, selected && { color: colors.accent }]}>{tag}</Text>
+            <Text style={styles.tagSheetTitle}>Etiquetas</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              {tagFilter.length > 0 && (
+                <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={8} activeOpacity={0.7}>
+                  <Text style={styles.tagSheetClear}>Limpiar</Text>
                 </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => { setShowTagSheet(false); setShowTagManager(true); }} hitSlop={8} activeOpacity={0.7}>
+                <Text style={styles.tagSheetManage}>Gestionar ›</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Search + inline create */}
+          <View style={styles.tagSheetSearch}>
+            <TextInput
+              style={styles.tagSheetSearchInput}
+              placeholder="Buscar etiqueta…"
+              placeholderTextColor={colors.muted}
+              value={tagSearchText}
+              onChangeText={setTagSearchText}
+              returnKeyType="search"
+            />
+          </View>
+
+          <ScrollView style={{ maxHeight: 260 }} keyboardShouldPersistTaps="handled">
+            {(() => {
+              const filtered = tagSearchText.trim()
+                ? allTags.filter((t) => t.name.toLowerCase().includes(tagSearchText.toLowerCase()))
+                : allTags;
+              const exactMatch = allTags.some(
+                (t) => t.name.toLowerCase() === tagSearchText.trim().toLowerCase()
+              );
+              return (
+                <>
+                  {filtered.map(({ id, name }) => {
+                    const selected = tagFilter.includes(id);
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}
+                        onPress={() => setTagFilter((prev) =>
+                          prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+                        )}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
+                          {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
+                        </View>
+                        <Text style={[styles.tagSheetItemText, selected && { color: colors.accent }]}>{name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {tagSearchText.trim() && !exactMatch && (
+                    <TouchableOpacity
+                      style={styles.tagSheetCreateRow}
+                      onPress={() => {
+                        const newId = createTag(tagSearchText.trim());
+                        setTagFilter((prev) => [...prev, newId]);
+                        setTagSearchText('');
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.tagSheetCreateText}>＋ Crear «{tagSearchText.trim()}»</Text>
+                    </TouchableOpacity>
+                  )}
+                  {filtered.length === 0 && !tagSearchText.trim() && (
+                    <Text style={[styles.emptyText, { paddingHorizontal: spacing.xl }]}>
+                      Sin etiquetas. Créalas desde el perfil de un cliente.
+                    </Text>
+                  )}
+                </>
+              );
+            })()}
+          </ScrollView>
+
+          <TouchableOpacity style={styles.tagSheetApply} onPress={() => { setShowTagSheet(false); setTagSearchText(''); }} activeOpacity={0.85}>
+            <Text style={styles.tagSheetApplyText}>Aplicar</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Tag manager bottom sheet */}
+      <Modal visible={showTagManager} transparent animationType="slide" onRequestClose={() => setShowTagManager(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowTagManager(false)} />
+        <View style={styles.tagSheet}>
+          <View style={styles.infoSheetHandle} />
+          <View style={styles.tagSheetHeader}>
+            <Text style={styles.tagSheetTitle}>Gestionar etiquetas</Text>
+          </View>
+
+          {/* Create new tag */}
+          <View style={styles.tagMgrCreateRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Nueva etiqueta…"
+              placeholderTextColor={colors.muted}
+              value={tagCreateText}
+              onChangeText={setTagCreateText}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const t = tagCreateText.trim();
+                if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) return;
+                createTag(t);
+                setTagCreateText('');
+              }}
+            />
+            <AccentBtn
+              label="＋"
+              small
+              disabled={!tagCreateText.trim() || allTags.some((tag) => tag.name.toLowerCase() === tagCreateText.trim().toLowerCase())}
+              onPress={() => {
+                const t = tagCreateText.trim();
+                if (!t) return;
+                createTag(t);
+                setTagCreateText('');
+              }}
+            />
+          </View>
+
+          <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
+            {allTags.length === 0 ? (
+              <Text style={[styles.emptyText, { paddingHorizontal: spacing.xl }]}>Sin etiquetas creadas aún</Text>
+            ) : allTags.map(({ id, name }) => {
+              const isRenaming = tagRenameId === id;
+              const usedBy = Object.values(clients ?? {}).filter((c) => (c.tags ?? []).includes(id)).length;
+              return (
+                <View key={id} style={styles.tagMgrItem}>
+                  {isRenaming ? (
+                    <>
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        value={tagRenameText}
+                        onChangeText={setTagRenameText}
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={() => {
+                          const t = tagRenameText.trim();
+                          if (t) renameTag(id, t);
+                          setTagRenameId(null);
+                        }}
+                      />
+                      <TouchableOpacity
+                        style={styles.tagMgrActionBtn}
+                        onPress={() => { const t = tagRenameText.trim(); if (t) renameTag(id, t); setTagRenameId(null); }}
+                        hitSlop={8}
+                      >
+                        <Text style={[styles.tagMgrActionText, { color: colors.accent }]}>✓</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.tagMgrActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
+                        <Text style={styles.tagMgrActionText}>✕</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.tagMgrName}>{name}</Text>
+                        {usedBy > 0 && (
+                          <Text style={styles.tagMgrMeta}>{usedBy} cliente{usedBy > 1 ? 's' : ''}</Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.tagMgrActionBtn}
+                        onPress={() => { setTagRenameId(id); setTagRenameText(name); }}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.tagMgrActionText}>✎</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.tagMgrActionBtn}
+                        onPress={() => {
+                          if (usedBy === 0) { deleteTag(id); return; }
+                          Alert.alert(
+                            'Eliminar etiqueta',
+                            `«${name}» está asignada a ${usedBy} cliente${usedBy > 1 ? 's' : ''}. ¿Eliminarla de todos?`,
+                            [
+                              { text: 'Cancelar', style: 'cancel' },
+                              { text: 'Eliminar', style: 'destructive', onPress: () => deleteTag(id) },
+                            ]
+                          );
+                        }}
+                        hitSlop={8}
+                      >
+                        <Text style={[styles.tagMgrActionText, { color: colors.red }]}>✕</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               );
             })}
           </ScrollView>
-          <TouchableOpacity style={styles.tagSheetApply} onPress={() => setShowTagSheet(false)} activeOpacity={0.85}>
-            <Text style={styles.tagSheetApplyText}>Aplicar</Text>
-          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -2047,9 +2226,39 @@ const styles = StyleSheet.create({
     fontWeight: typography.semibold,
     color:      colors.text,
   },
+  tagSheetManage: {
+    fontSize:   typography.sm,
+    color:      colors.accent,
+    fontWeight: typography.medium,
+  },
   tagSheetClear: {
     fontSize: typography.sm,
     color:    colors.red,
+  },
+  tagSheetSearch: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom:     spacing.sm,
+  },
+  tagSheetSearchInput: {
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    color:             colors.text,
+    fontSize:          typography.base,
+  },
+  tagSheetCreateRow: {
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  tagSheetCreateText: {
+    fontSize:   typography.base,
+    color:      colors.accent,
+    fontWeight: typography.medium,
   },
   tagSheetItem: {
     flexDirection:     'row',
@@ -2101,6 +2310,47 @@ const styles = StyleSheet.create({
     fontWeight:    typography.heavy,
     color:         colors.bg,
     letterSpacing: 1,
+  },
+
+  // ── Tag manager ──
+  tagMgrCreateRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingBottom:     spacing.md,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  tagMgrItem: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+    gap:               spacing.sm,
+  },
+  tagMgrName: {
+    fontSize:   typography.base,
+    color:      colors.text,
+    fontWeight: typography.medium,
+  },
+  tagMgrMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 2,
+  },
+  tagMgrActionBtn: {
+    width:  32,
+    height: 32,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  tagMgrActionText: {
+    fontSize:   16,
+    color:      colors.muted,
+    lineHeight: 20,
   },
 
   // (old client card styles removed — replaced by cCard* styles above)
