@@ -17,42 +17,58 @@ import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 
-// ── Template card ──────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-function TemplateCard({ program, exerciseCount, onView, onEdit, onMenu }) {
-  return (
-    <View style={styles.card}>
-      {/* Info row */}
-      <View style={styles.cardHeader}>
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardName} numberOfLines={1}>{program.name}</Text>
-          <Text style={styles.cardMeta}>
-            {program.days?.length ?? 0} sesiones
-            {exerciseCount > 0 ? ` · ${exerciseCount} ejercicios` : ''}
-          </Text>
-        </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>PLANTILLA</Text>
-        </View>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.cardActions}>
-        <CardBtn label="Ver"   onPress={onView} />
-        <View style={styles.cardDivider} />
-        <CardBtn label="Editar" onPress={onEdit} />
-        <View style={styles.cardDivider} />
-        <CardBtn label="···"   onPress={onMenu} />
-      </View>
-    </View>
-  );
+function getAllProgramDays(program) {
+  if (program.stages?.length > 0) return program.stages.flatMap((s) => s.days ?? []);
+  return program.days ?? [];
 }
 
-function CardBtn({ label, onPress }) {
+// ── Template card ──────────────────────────────────────────────────────────────
+
+function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
+  const dayCount   = getAllProgramDays(program).length;
+  const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
+  const structureStr = stageCount
+    ? `${stageCount} etapas · ${dayCount} días/ciclo`
+    : dayCount > 0 ? `${dayCount} días/ciclo` : null;
+
   return (
-    <TouchableOpacity style={styles.cardBtn} onPress={onPress} activeOpacity={0.6}>
-      <Text style={styles.cardBtnText}>{label}</Text>
-    </TouchableOpacity>
+    <View style={styles.card}>
+      {/* Top: name + badge + share icon */}
+      <View style={styles.cardTop}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={styles.cardNameRow}>
+            <Text style={styles.cardName} numberOfLines={1}>{program.name}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>plantilla</Text>
+            </View>
+          </View>
+          {structureStr && (
+            <Text style={styles.cardMeta}>{structureStr}</Text>
+          )}
+        </View>
+        <TouchableOpacity style={styles.cardIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
+          <Text style={styles.cardShareIcon}>📤</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Actions: Ver · Editar · Asignar · ⋯ */}
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onView} activeOpacity={0.85}>
+          <Text style={styles.cardBtnText}>Ver</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onEdit} activeOpacity={0.85}>
+          <Text style={styles.cardBtnText}>Editar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onAssign} activeOpacity={0.85}>
+          <Text style={styles.cardBtnText}>Asignar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cardBtnIcon} onPress={onMenu} activeOpacity={0.7}>
+          <Text style={styles.cardBtnIconText}>⋯</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -348,9 +364,10 @@ export default function ProgramScreen() {
             <TemplateCard
               key={program.id}
               program={program}
-              exerciseCount={getExerciseCount(program)}
               onView={() => setPrintingProgram(program.id)}
               onEdit={() => setEditingProgram(program.id)}
+              onAssign={() => { setAssignTarget(program.id); setShowAssign(true); }}
+              onShare={() => shareSpecificProgram(program.id)}
               onMenu={() => setContextTarget(program.id)}
             />
           ))}
@@ -442,23 +459,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth:     borders.thin,
     borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
-    overflow:        'hidden',
-  },
-  cardHeader: {
-    flexDirection:   'row',
-    alignItems:      'center',
+    borderRadius:    radius.lg,
     padding:         spacing.md,
-    paddingBottom:   spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
     gap:             spacing.sm,
   },
-  cardInfo: { flex: 1 },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+  },
+  cardNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
   cardName: {
     fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      colors.text,
+    fontWeight: typography.semibold,
+    color:      '#b0b0b0',
   },
   cardMeta: {
     fontSize:  typography.xs,
@@ -469,33 +487,63 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
     borderWidth:     borders.thin,
     borderColor:     withOpacity(colors.accent, 0.25),
-    borderRadius:    radius.sm,
+    borderRadius:    radius.xs,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
   },
   badgeText: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         colors.accent,
-    letterSpacing: 0.5,
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    color:      colors.accent,
+  },
+  cardIconBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.md,
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  cardShareIcon: {
+    fontSize:   18,
+    lineHeight: 22,
   },
   cardActions: {
     flexDirection: 'row',
+    gap:           spacing.sm,
   },
-  cardBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    alignItems:      'center',
+  cardBtnSecondary: {
+    flex:              1,
+    height:            36,
+    borderRadius:      radius.md,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface2,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: spacing.sm,
   },
   cardBtnText: {
     fontSize:   typography.sm,
+    fontWeight: typography.semibold,
     color:      colors.muted,
-    fontWeight: typography.medium,
   },
-  cardDivider: {
-    width:           1,
-    backgroundColor: colors.border,
-    marginVertical:  spacing.xs,
+  cardBtnIcon: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.md,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  cardBtnIconText: {
+    fontSize:   18,
+    color:      colors.muted,
+    lineHeight: 20,
   },
 
   // Empty state
