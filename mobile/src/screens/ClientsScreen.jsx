@@ -1393,7 +1393,8 @@ export default function ClientsScreen() {
                 open={openSections.status}
                 onToggle={() => setOpenSections((s) => ({ ...s, status: !s.status }))}
               >
-                <View style={{ marginBottom: spacing.sm }}>
+                {/* Status buttons */}
+                <View style={{ marginBottom: spacing.md }}>
                   <View style={styles.statusRow}>
                     {[
                       { id: 'active',   label: 'Activo',   color: colors.green },
@@ -1413,6 +1414,64 @@ export default function ClientsScreen() {
                       );
                     })}
                   </View>
+                </View>
+
+                {/* Tags */}
+                <View style={{ marginBottom: spacing.sm }}>
+                  <Text style={styles.fieldLabel}>ETIQUETAS</Text>
+                  {allTags.length > 0 && (
+                    <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
+                      {allTags.map((tag) => {
+                        const active = (selectedClient.tags ?? []).includes(tag);
+                        return (
+                          <TouchableOpacity
+                            key={tag}
+                            style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
+                            onPress={() => {
+                              const current = selectedClient.tags ?? [];
+                              updateClientInfo(selectedClientId, {
+                                tags: active ? current.filter((t) => t !== tag) : [...current, tag],
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
+                            <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
+                              {tag}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                  <View style={styles.addRow}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      placeholder="Nueva etiqueta…"
+                      placeholderTextColor={colors.muted}
+                      value={newTag}
+                      onChangeText={setNewTag}
+                      returnKeyType="done"
+                      onSubmitEditing={() => {
+                        const t = newTag.trim().toLowerCase();
+                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        setNewTag('');
+                      }}
+                    />
+                    <AccentBtn
+                      label="＋"
+                      small
+                      disabled={!newTag.trim()}
+                      onPress={() => {
+                        const t = newTag.trim().toLowerCase();
+                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        setNewTag('');
+                      }}
+                    />
+                  </View>
+                  <Text style={styles.fieldHint}>Toca para asignar · ＋ para crear nueva</Text>
                 </View>
               </Accordion>
 
@@ -1454,66 +1513,6 @@ export default function ClientsScreen() {
                     onEndEditing={(e) => updateClientInfo(selectedClientId, { notes: e.nativeEvent.text })}
                   />
                   <Text style={styles.fieldHint}>Se guarda al perder el foco</Text>
-                </View>
-
-                {/* Tags */}
-                <View style={{ marginBottom: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>ETIQUETAS</Text>
-                  {/* Known tags — selectable chips */}
-                  {allTags.length > 0 && (
-                    <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
-                      {allTags.map((tag) => {
-                        const active = (selectedClient.tags ?? []).includes(tag);
-                        return (
-                          <TouchableOpacity
-                            key={tag}
-                            style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
-                            onPress={() => {
-                              const current = selectedClient.tags ?? [];
-                              updateClientInfo(selectedClientId, {
-                                tags: active ? current.filter((t) => t !== tag) : [...current, tag],
-                              });
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
-                            <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
-                              {tag}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-                  {/* Add new tag */}
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Nueva etiqueta…"
-                      placeholderTextColor={colors.muted}
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      returnKeyType="done"
-                      onSubmitEditing={() => {
-                        const t = newTag.trim().toLowerCase();
-                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
-                        setNewTag('');
-                      }}
-                    />
-                    <AccentBtn
-                      label="＋"
-                      small
-                      disabled={!newTag.trim()}
-                      onPress={() => {
-                        const t = newTag.trim().toLowerCase();
-                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
-                        setNewTag('');
-                      }}
-                    />
-                  </View>
-                  <Text style={styles.fieldHint}>Toca para asignar · ＋ para crear nueva</Text>
                 </View>
               </Accordion>
 
