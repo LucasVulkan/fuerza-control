@@ -2530,7 +2530,7 @@ const styles = StyleSheet.create({
     backgroundColor:   `${colors.accent}14`,
     borderWidth:       borders.thin,
     borderColor:       `${colors.accent}30`,
-    borderRadius:      radius.full,
+    borderRadius:      radius.xs,
     paddingHorizontal: 6,
     paddingVertical:   1,
     flexShrink:        0,
@@ -2898,9 +2898,9 @@ const styles = StyleSheet.create({
     flexWrap:      'wrap',
   },
   progCardName: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      colors.text,
+    fontSize:   typography.base,
+    fontWeight: typography.semibold,
+    color:      '#b0b0b0',
   },
   progCardMeta: {
     fontSize:  typography.xs,
