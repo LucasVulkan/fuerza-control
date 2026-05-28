@@ -2735,7 +2735,7 @@ const styles = StyleSheet.create({
   },
   cBtnSecondary: {
     flex:            1,
-    height:          44,
+    height:          36,
     borderRadius:    radius.md,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
@@ -2771,8 +2771,8 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   cBtnIcon: {
-    width:           44,
-    height:          44,
+    width:           36,
+    height:          36,
     borderRadius:    radius.md,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
