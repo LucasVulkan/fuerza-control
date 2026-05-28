@@ -15,7 +15,7 @@
 
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, PanResponder, Keyboard, Pressable,
+  StyleSheet, PanResponder, Keyboard, Pressable, Animated,
 } from 'react-native';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
@@ -95,6 +95,8 @@ function InputCell({
   const onChangeRef   = useRef(onChangeText);
   const scrollStepRef = useRef(scrollStep);
   const lastDxRef     = useRef(0);
+  // Animated value for the accent overlay — fades in when scroll starts, out when it ends
+  const accentAnim    = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!isSwiping.current) {
@@ -118,6 +120,13 @@ function InputCell({
     setEditing(false);
   }, []);
 
+  const fadeIn  = useCallback(() => {
+    Animated.timing(accentAnim, { toValue: 1, duration: 80,  useNativeDriver: true }).start();
+  }, []);
+  const fadeOut = useCallback(() => {
+    Animated.timing(accentAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+  }, []);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder:        () => false,
@@ -131,6 +140,7 @@ function InputCell({
         isSwiping.current = true;
         lastDxRef.current = 0;
         setScrollActive(true);
+        fadeIn();
       },
       onPanResponderMove: (_, gs) => {
         const currSteps = Math.trunc(gs.dx / STEP_PX);
@@ -152,6 +162,7 @@ function InputCell({
         lastDxRef.current = 0;
         const val = localValueRef.current;
         requestAnimationFrame(() => { onChangeRef.current(String(val)); });
+        fadeOut();
       },
       onPanResponderTerminate: () => {
         isSwiping.current = false;
@@ -159,6 +170,7 @@ function InputCell({
         lastDxRef.current = 0;
         const val = localValueRef.current;
         requestAnimationFrame(() => { onChangeRef.current(String(val)); });
+        fadeOut();
       },
     })
   ).current;
@@ -199,7 +211,6 @@ function InputCell({
         onPress={openEditor}
         style={[
           styles.input,
-          scrollActive && styles.inputScrollActive,
           isDone && !scrollActive && styles.inputDone,
           showPrev && styles.inputPrev,
         ]}
@@ -214,6 +225,13 @@ function InputCell({
           <Text style={styles.placeholder}>—</Text>
         )}
       </Pressable>
+
+      {/* Accent outline — fades in on scroll start, out on release */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.inputAccentOverlay, { opacity: accentAnim }]}
+      />
+
       {(scrollActive || showHint) && (
         <View style={styles.arrowOverlay} pointerEvents="none">
           <Text style={[styles.arrow, scrollActive && styles.arrowActive]}>‹</Text>
@@ -379,6 +397,14 @@ const styles = StyleSheet.create({
   },
   inputScrollActive: {
     borderColor:     colors.accent,
+    backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  inputAccentOverlay: {
+    position:        'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderWidth:     borders.thin,
+    borderColor:     colors.accent,
+    borderRadius:    radius.sm,
     backgroundColor: withOpacity(colors.accent, 0.06),
   },
   inputDone: {

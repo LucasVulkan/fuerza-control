@@ -6,8 +6,8 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -100,12 +100,33 @@ export default function ExerciseCard({
   const [hintSetIndex, setHintSetIndex] = useState(0);
 
   const allDone     = setsState.length > 0 && setsState.every((s) => s.done);
-  const [manualOpen, setManualOpen] = useState(false);
-  const isCollapsed = allDone && !manualOpen;
+  const [manualOpen,      setManualOpen]      = useState(false);
+  const [displayCollapsed, setDisplayCollapsed] = useState(false);
+  const collapseAnim = useRef(new Animated.Value(1)).current;
+  const isCollapsed  = allDone && !manualOpen;
 
   useEffect(() => {
     if (!allDone) setManualOpen(false);
   }, [allDone]);
+
+  // Animate the expanded card fading out before switching to the collapsed view.
+  // On expand, reset immediately so there's no stale state.
+  useEffect(() => {
+    if (isCollapsed) {
+      collapseAnim.setValue(1);
+      Animated.timing(collapseAnim, { toValue: 0, duration: 150, useNativeDriver: true })
+        .start(({ finished }) => {
+          if (finished) {
+            setDisplayCollapsed(true);
+            collapseAnim.setValue(1);
+          }
+        });
+    } else {
+      collapseAnim.stopAnimation();
+      collapseAnim.setValue(1);
+      setDisplayCollapsed(false);
+    }
+  }, [isCollapsed]);
 
   const progression = (() => {
     if (!lastExercise?.sets?.length) return null;
@@ -116,7 +137,7 @@ export default function ExerciseCard({
   const targetLabel = buildTarget(def, exConfig, t);
 
   // ── Collapsed ──────────────────────────────────────────────────────────────
-  if (isCollapsed) {
+  if (displayCollapsed) {
     return (
       <TouchableOpacity
         style={[styles.card, styles.cardCollapsed]}
@@ -153,8 +174,9 @@ export default function ExerciseCard({
     );
   }
 
-  // ── Expanded ───────────────────────────────────────────────────────────────
+  // ── Expanded (wrapped for fade-out animation on collapse) ─────────────────
   return (
+    <Animated.View style={{ opacity: collapseAnim }}>
     <View style={styles.card}>
 
       {/* Header */}
@@ -293,6 +315,7 @@ export default function ExerciseCard({
       </TouchableOpacity>
 
     </View>
+    </Animated.View>
   );
 }
 
