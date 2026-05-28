@@ -804,22 +804,19 @@ function ClientListCard({
         </View>
       )}
 
-      {/* ── Program section — flat, sin tarjeta anidada ── */}
+      {/* ── Program section ── */}
       <View style={styles.cProgramSection}>
         {activeProgram ? (
           <>
-            <View style={styles.cProgramHeaderRow}>
-              <View style={styles.cProgramHeaderLeft}>
-                <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
-                  {showYellow ? '▲' : '✓'}
-                </Text>
-                <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
-              </View>
+            <View style={styles.cProgramNameRow}>
+              <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
+                {showYellow ? '▲' : '✓'}
+              </Text>
+              <Text style={[styles.cProgramName, { flex: 1 }]} numberOfLines={1}>{activeProgram.name}</Text>
               {weeksTraining != null && (
                 <Text style={styles.cProgramWeeks}>{weeksTraining} sem</Text>
               )}
             </View>
-            <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
             {activeProgram.stages?.length > 1 ? (
               <Text style={styles.cProgramMeta}>{activeProgram.stages.length} etapas · {dayCount} ses/ciclo</Text>
             ) : dayCount > 0 ? (
@@ -832,33 +829,6 @@ function ClientListCard({
             <Text style={styles.cProgramMeta}>Asigna un programa desde la vista de detalle</Text>
           </>
         )}
-      </View>
-
-      {/* ── Action buttons ── */}
-      <View style={styles.cActions}>
-        <TouchableOpacity
-          style={[styles.cBtnSecondary, showYellow && styles.cBtnPrimary]}
-          onPress={showYellow ? onUploadProgram : onOpenEditor}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
-            {showYellow ? '▲ Subir cambios' : 'Editar programa'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.cBtnSecondary, showBlue && styles.cBtnBlue]}
-          onPress={showBlue ? onViewHistory : onViewProgress}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.cBtnText, showBlue && styles.cBtnTextBlue]}>
-            {showBlue ? '● Ver actividad' : 'Ver progreso'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.cBtnIcon} onPress={onGoInfo} activeOpacity={0.7}>
-          <Text style={styles.cBtnIconText}>⋯</Text>
-        </TouchableOpacity>
       </View>
 
     </TouchableOpacity>
@@ -2612,23 +2582,10 @@ const styles = StyleSheet.create({
 
   // Program section — flat (sin tarjeta anidada)
   cProgramSection: {
-    gap:             3,
-    paddingTop:      spacing.sm,
-    borderTopWidth:  borders.thin,
-    borderTopColor:  colors.border,
+    gap:        3,
+    paddingTop: spacing.sm,
   },
-  cProgramHeaderRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.xs,
-  },
-  cProgramHeaderRight: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  cProgramHeaderLeft: {
+  cProgramNameRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.xs,
@@ -2652,7 +2609,7 @@ const styles = StyleSheet.create({
   cProgramName: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      '#b0b0b0',
   },
   cProgramMeta: {
     fontSize: typography.xs,
