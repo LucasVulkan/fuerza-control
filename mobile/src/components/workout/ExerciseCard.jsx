@@ -6,8 +6,13 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { useState, useEffect } from 'react';
+
+// LayoutAnimation on Android requires this flag (no-op on iOS / newer RN)
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -99,33 +104,22 @@ export default function ExerciseCard({
 
   const [hintSetIndex, setHintSetIndex] = useState(0);
 
-  const allDone     = setsState.length > 0 && setsState.every((s) => s.done);
-  const [manualOpen,      setManualOpen]      = useState(false);
+  const allDone      = setsState.length > 0 && setsState.every((s) => s.done);
+  const [manualOpen,       setManualOpen]       = useState(false);
   const [displayCollapsed, setDisplayCollapsed] = useState(false);
-  const collapseAnim = useRef(new Animated.Value(1)).current;
   const isCollapsed  = allDone && !manualOpen;
 
   useEffect(() => {
     if (!allDone) setManualOpen(false);
   }, [allDone]);
 
-  // Animate the expanded card fading out before switching to the collapsed view.
-  // On expand, reset immediately so there's no stale state.
+  // LayoutAnimation animates the height change as the card switches layouts.
+  // configureNext must be called synchronously before the state change.
   useEffect(() => {
-    if (isCollapsed) {
-      collapseAnim.setValue(1);
-      Animated.timing(collapseAnim, { toValue: 0, duration: 150, useNativeDriver: true })
-        .start(({ finished }) => {
-          if (finished) {
-            setDisplayCollapsed(true);
-            collapseAnim.setValue(1);
-          }
-        });
-    } else {
-      collapseAnim.stopAnimation();
-      collapseAnim.setValue(1);
-      setDisplayCollapsed(false);
-    }
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(200, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
+    );
+    setDisplayCollapsed(isCollapsed);
   }, [isCollapsed]);
 
   const progression = (() => {
@@ -174,9 +168,8 @@ export default function ExerciseCard({
     );
   }
 
-  // ── Expanded (wrapped for fade-out animation on collapse) ─────────────────
+  // ── Expanded ───────────────────────────────────────────────────────────────
   return (
-    <Animated.View style={{ opacity: collapseAnim }}>
     <View style={styles.card}>
 
       {/* Header */}
@@ -315,7 +308,6 @@ export default function ExerciseCard({
       </TouchableOpacity>
 
     </View>
-    </Animated.View>
   );
 }
 
