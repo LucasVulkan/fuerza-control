@@ -2098,6 +2098,7 @@ export const useStore = create(
         clients:     state.clients,
         tagRegistry: state.tagRegistry,
         driveBackup: state.driveBackup,
+        trainerSync: state.trainerSync,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
