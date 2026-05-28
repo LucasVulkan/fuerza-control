@@ -712,11 +712,11 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
 // ── Client list card ───────────────────────────────────────────────────────────
 
 function ClientListCard({
-  client, activeProgram, lastActivityTs, isConnected,
+  client, activeProgram, lastActivityTs, isConnected, weeksTraining,
   onPress, onOpenEditor, onUploadProgram,
   onViewProgress, onViewHistory,
-  onShowInfo,   // 🔑 → info sheet (código, conectar, eliminar)
-  onGoInfo,     // ⋯ → navega al tab de info directamente
+  onShowInfo,   // 🔑 → info sheet
+  onGoInfo,     // ⋯ → tab de info
 }) {
   const historyHasNew = client.historyHasNew ?? false;
   const programDirty  = client.programDirty  ?? false;
@@ -724,17 +724,16 @@ function ClientListCard({
   const showBlue   = isConnected && historyHasNew;
   const showYellow = isConnected && programDirty;
 
-  // Last session label
+  // Last session label — compact
   let lastStr = null;
   if (lastActivityTs) {
-    const diffMs   = Date.now() - lastActivityTs;
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0)      lastStr = 'Entrenó hoy';
-    else if (diffDays === 1) lastStr = 'Última sesión ayer';
-    else                     lastStr = `Última sesión hace ${diffDays} días`;
+    const diffDays = Math.floor((Date.now() - lastActivityTs) / 86400000);
+    if (diffDays === 0)      lastStr = 'Hoy';
+    else if (diffDays === 1) lastStr = 'Ayer';
+    else                     lastStr = `Hace ${diffDays} días`;
   }
 
-  const clientStatus = client.status ?? 'active';
+  const clientStatus   = client.status ?? 'active';
   const statusDotColor = clientStatus === 'paused' ? colors.orange : clientStatus === 'inactive' ? colors.red : null;
   const statusText     = clientStatus === 'paused' ? 'En pausa' : clientStatus === 'inactive' ? 'Inactivo' : null;
 
@@ -764,13 +763,12 @@ function ClientListCard({
             </View>
           )}
         </View>
-        {/* 🔑 opens info sheet */}
         <TouchableOpacity style={styles.cIconBtn} onPress={onShowInfo} hitSlop={8} activeOpacity={0.7}>
           <Text style={styles.cIconBtnText}>🔑</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── Activity indicator — subtle, only shown when historyHasNew ── */}
+      {/* ── Activity indicator ── */}
       {showBlue && (
         <View style={styles.cActivityBadge}>
           <View style={styles.cActivityDot} />
@@ -778,32 +776,31 @@ function ClientListCard({
         </View>
       )}
 
-      {/* ── Program box ── */}
-      {activeProgram ? (
-        <View style={styles.cProgramBox}>
-          <View style={styles.cProgramHeader}>
-            <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
-            <View style={[styles.cProgramBadge, showYellow && styles.cProgramBadgeDirty]}>
-              <Text style={[styles.cProgramBadgeText, showYellow && styles.cProgramBadgeTextDirty]}>
-                {showYellow ? '⚠ Pendiente' : '✓ Publicado'}
+      {/* ── Program section — flat, sin tarjeta anidada ── */}
+      <View style={styles.cProgramSection}>
+        {activeProgram ? (
+          <>
+            <View style={styles.cProgramHeaderRow}>
+              <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
+              <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
+                {showYellow ? '▲' : '✓'}
               </Text>
             </View>
-          </View>
-          <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
-          <Text style={styles.cProgramMeta}>
-            {dayCount} sesión{dayCount !== 1 ? 'es' : ''} por ciclo
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.cProgramBox}>
-          <Text style={styles.cProgramLabel}>SIN PROGRAMA ACTIVO</Text>
-          <Text style={styles.cProgramMeta}>Asigna un programa desde la vista de detalle</Text>
-        </View>
-      )}
+            <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
+            <Text style={styles.cProgramMeta}>
+              {dayCount} ses/ciclo{weeksTraining ? ` · ${weeksTraining} sem` : ''}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.cProgramLabel}>SIN PROGRAMA ACTIVO</Text>
+            <Text style={styles.cProgramMeta}>Asigna un programa desde la vista de detalle</Text>
+          </>
+        )}
+      </View>
 
-      {/* ── Action buttons (CSS-mockup style, inside card) ── */}
+      {/* ── Action buttons ── */}
       <View style={styles.cActions}>
-        {/* Editar / Subir cambios */}
         <TouchableOpacity
           style={[styles.cBtnSecondary, showYellow && styles.cBtnPrimary]}
           onPress={showYellow ? onUploadProgram : onOpenEditor}
@@ -814,7 +811,6 @@ function ClientListCard({
           </Text>
         </TouchableOpacity>
 
-        {/* Ver progreso / Ver actividad */}
         <TouchableOpacity
           style={[styles.cBtnSecondary, showBlue && styles.cBtnBlue]}
           onPress={showBlue ? onViewHistory : onViewProgress}
@@ -825,7 +821,6 @@ function ClientListCard({
           </Text>
         </TouchableOpacity>
 
-        {/* ⋯ → ir al tab de info */}
         <TouchableOpacity style={styles.cBtnIcon} onPress={onGoInfo} activeOpacity={0.7}>
           <Text style={styles.cBtnIconText}>⋯</Text>
         </TouchableOpacity>
@@ -1644,6 +1639,15 @@ export default function ClientsScreen() {
             );
             const clientSessions  = workoutLog.filter((e) => allTemplateIds.has(e.sessionTemplateId));
             const lastActivityTs  = clientSessions.length ? Math.max(...clientSessions.map((e) => e.timestamp)) : null;
+            // Weeks training on the active program (from first logged session)
+            const activeTplIds    = activeProgram
+              ? new Set(getAllProgramDays(activeProgram).map((d) => d.sessionTemplateId))
+              : new Set();
+            const activeSessions  = workoutLog.filter((e) => activeTplIds.has(e.sessionTemplateId));
+            const firstActiveTs   = activeSessions.length ? Math.min(...activeSessions.map((e) => e.timestamp)) : null;
+            const weeksTraining   = firstActiveTs
+              ? Math.max(1, Math.ceil((Date.now() - firstActiveTs) / (7 * 24 * 60 * 60 * 1000)))
+              : null;
 
             return (
               <>
@@ -1652,6 +1656,7 @@ export default function ClientsScreen() {
                   activeProgram={activeProgram}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
+                  weeksTraining={weeksTraining}
                   onPress={() => handleSelectClient(client.id)}
                   onOpenEditor={() => {
                     if (client.activeProgramId) setEditingProgram(client.activeProgramId);
@@ -1927,7 +1932,7 @@ const styles = StyleSheet.create({
     borderRadius:    radius.lg,
     overflow:        'hidden',
     padding:         spacing.md,
-    gap:             spacing.md,
+    gap:             spacing.sm,
   },
   cCardTop: {
     flexDirection: 'row',
@@ -1935,10 +1940,10 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   cCardName: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
+    fontSize:   typography.lg,
+    fontWeight: typography.semibold,
     color:      colors.text,
-    lineHeight: typography.xl * 1.1,
+    lineHeight: typography.lg * 1.2,
   },
   cCardMetaRow: {
     flexDirection: 'row',
@@ -2001,46 +2006,28 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // Program box
-  cProgramBox: {
-    backgroundColor: colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
-    padding:         spacing.md,
-    gap:             4,
+  // Program section — flat (sin tarjeta anidada)
+  cProgramSection: {
+    gap:             3,
+    paddingTop:      spacing.sm,
+    borderTopWidth:  borders.thin,
+    borderTopColor:  colors.border,
   },
-  cProgramHeader: {
+  cProgramHeaderRow: {
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
-    gap:            spacing.xs,
   },
   cProgramLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
-    letterSpacing: 1,
+    color:         colors.muted2,
+    letterSpacing: 0.8,
   },
-  cProgramBadge: {
-    borderRadius:      radius.xs,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical:   2,
-    backgroundColor:   withOpacity(colors.green, 0.1),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.green, 0.25),
-  },
-  cProgramBadgeDirty: {
-    backgroundColor: withOpacity(colors.orange, 0.1),
-    borderColor:     withOpacity(colors.orange, 0.25),
-  },
-  cProgramBadgeText: {
-    fontSize:   typography.xs,
+  cProgramStatusIcon: {
+    fontSize:   typography.sm,
     fontWeight: typography.bold,
-    color:      colors.green,
-  },
-  cProgramBadgeTextDirty: {
-    color: colors.orange,
+    lineHeight: typography.sm * 1.2,
   },
   cProgramName: {
     fontSize:   typography.base,
