@@ -831,30 +831,30 @@ function ClientListCard({
         )}
       </View>
 
-      {/* ── Action buttons — flat, sin contenedor ── */}
+      {/* ── Action buttons ── */}
       <View style={styles.cActions}>
         <TouchableOpacity
-          style={[styles.cBtnFlat, showYellow && styles.cBtnFlatPrimary]}
+          style={[styles.cBtnSecondary, showYellow && styles.cBtnPrimary]}
           onPress={showYellow ? onUploadProgram : onOpenEditor}
-          activeOpacity={0.6}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.cBtnFlatText, showYellow && styles.cBtnTextPrimary]}>
+          <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
             {showYellow ? '▲ Subir cambios' : 'Editar programa'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.cBtnFlat, showBlue && styles.cBtnFlatBlue]}
+          style={[styles.cBtnSecondary, showBlue && styles.cBtnBlue]}
           onPress={showBlue ? onViewHistory : onViewProgress}
-          activeOpacity={0.6}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.cBtnFlatText, showBlue && styles.cBtnTextBlue]}>
+          <Text style={[styles.cBtnText, showBlue && styles.cBtnTextBlue]}>
             {showBlue ? '● Ver actividad' : 'Ver progreso'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cBtnFlatIcon} onPress={onGoInfo} activeOpacity={0.6}>
-          <Text style={styles.cBtnFlatIconText}>⋯</Text>
+        <TouchableOpacity style={styles.cBtnIcon} onPress={onGoInfo} activeOpacity={0.7}>
+          <Text style={styles.cBtnIconText}>⋯</Text>
         </TouchableOpacity>
       </View>
 
@@ -2610,7 +2610,7 @@ const styles = StyleSheet.create({
   // Program section — flat (sin tarjeta anidada)
   cProgramSection: {
     gap:        3,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
   },
   cProgramNameRow: {
     flexDirection: 'row',
