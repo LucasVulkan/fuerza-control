@@ -347,9 +347,28 @@ export const useStore = create(
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], activeProgramId: programId },
+            // Fresh assignment always clears the dirty flag — the client now has the latest version.
+            [clientId]: { ...s.clients[clientId], activeProgramId: programId, programDirty: false },
           },
         }));
+      },
+
+      /**
+       * Mark programDirty = true for every client that has this program as their active one
+       * and has a sync slot configured. Call this after saving/editing a program.
+       */
+      markProgramDirtyForClients: (programId) => {
+        set((s) => {
+          const updated = {};
+          Object.entries(s.clients).forEach(([cid, c]) => {
+            if (c.activeProgramId === programId && c.syncSlotId) {
+              updated[cid] = { ...c, programDirty: true };
+            }
+          });
+          return Object.keys(updated).length > 0
+            ? { clients: { ...s.clients, ...updated } }
+            : {};
+        });
       },
 
       addClientBilling: (clientId, entry) => {

@@ -258,7 +258,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
 
 // ── Program card (programs tab) ────────────────────────────────────────────────
 
-function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
+function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeassign, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const lastStr = lastActivity
@@ -271,6 +271,13 @@ function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, 
   const structureStr = stageCount
     ? `${stageCount} etapas · ${dayCount} días/ciclo`
     : dayCount > 0 ? `${dayCount} días/ciclo` : null;
+
+  // 3rd button state machine
+  const assignBtn = isActive
+    ? dirty
+      ? { label: '↑ Subir', extraStyle: styles.cBtnPrimary, extraTextStyle: styles.cBtnTextPrimary, onPress: onUpload }
+      : { label: '✓ Asignado', extraStyle: styles.cBtnAssignActive, extraTextStyle: styles.cBtnTextAssignActive, onPress: null }
+    : { label: 'Asignar', extraStyle: null, extraTextStyle: null, onPress: onAssign };
 
   return (
     <View style={[styles.progCard, isActive && styles.progCardActive]}>
@@ -295,11 +302,11 @@ function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, 
         </View>
         {/* Share icon — top right, like 🔑 on client cards */}
         <TouchableOpacity style={styles.cIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
-          <Text style={styles.progShareIcon}>↑</Text>
+          <Text style={styles.progShareIcon}>📤</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Actions: Ver · Editar · Asignar · ⋯ */}
+      {/* Actions: Ver · Editar · [Asignar|✓ Asignado|↑ Subir] · ⋯ */}
       <View style={styles.progCardActions}>
         <TouchableOpacity style={styles.cBtnSecondary} onPress={onView} activeOpacity={0.85}>
           <Text style={styles.cBtnText}>Ver</Text>
@@ -308,13 +315,11 @@ function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, 
           <Text style={styles.cBtnText}>Editar</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.cBtnSecondary, isActive && styles.cBtnAssignActive]}
-          onPress={onToggleActive}
-          activeOpacity={0.85}
+          style={[styles.cBtnSecondary, assignBtn.extraStyle]}
+          onPress={assignBtn.onPress ?? undefined}
+          activeOpacity={assignBtn.onPress ? 0.85 : 1}
         >
-          <Text style={[styles.cBtnText, isActive && styles.cBtnTextAssignActive]}>
-            {isActive ? '★ Activo' : 'Asignar'}
-          </Text>
+          <Text style={[styles.cBtnText, assignBtn.extraTextStyle]}>{assignBtn.label}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cBtnIcon} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
           <Text style={styles.cBtnIconText}>⋯</Text>
@@ -327,7 +332,12 @@ function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, 
         <View style={styles.contextMenu}>
           {onUpload && (
             <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onUpload(); }}>
-              <Text style={styles.contextMenuText}>↑ Subir a cliente</Text>
+              <Text style={styles.contextMenuText}>📤 Subir a cliente</Text>
+            </TouchableOpacity>
+          )}
+          {isActive && onDeassign && (
+            <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDeassign(); }}>
+              <Text style={styles.contextMenuText}>Quitar asignación</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
@@ -1304,38 +1314,41 @@ export default function ClientsScreen() {
               <View style={styles.emptyState}>
                 <Text style={styles.emptyBody}>Sin programas. Pulsa ＋ para añadir uno.</Text>
               </View>
-            ) : clientPrograms.map((program) => (
+            ) : clientPrograms.map((program) => {
+              const progIsActive = selectedClient.activeProgramId === program.id;
+              const syncEnabled  = trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId;
+              const doUpload = async () => {
+                try {
+                  await uploadProgramToClient(selectedClientId, program.id);
+                  showToast('✓ Programa subido al cliente');
+                } catch (err) {
+                  Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
+                }
+              };
+              return (
               <ProgramCard
                 key={program.id}
                 program={program}
-                isActive={selectedClient.activeProgramId === program.id}
+                isActive={progIsActive}
+                dirty={progIsActive && (selectedClient.programDirty ?? false)}
                 lastActivity={getLastActivity(program)}
-                onToggleActive={() => setClientActiveProgram(
-                  selectedClientId,
-                  selectedClient.activeProgramId === program.id ? null : program.id
-                )}
+                onAssign={async () => {
+                  setClientActiveProgram(selectedClientId, program.id);
+                  if (syncEnabled) await doUpload();
+                }}
+                onDeassign={() => setClientActiveProgram(selectedClientId, null)}
                 onView={() => setPrintingProgram(program.id)}
                 onEdit={() => setEditingProgram(program.id)}
                 onShare={() => shareSpecificProgram(program.id, true)}
                 onExport={() => exportSpecificProgram(program.id, true)}
-                onUpload={
-                  trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId
-                    ? async () => {
-                        try {
-                          await uploadProgramToClient(selectedClientId, program.id);
-                          showToast('✓ Programa subido al cliente');
-                        } catch (err) {
-                          Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
-                        }
-                      }
-                    : undefined
-                }
+                onUpload={syncEnabled ? doUpload : undefined}
                 onDelete={() => Alert.alert('Eliminar programa', `¿Eliminar "${program.name}"?`, [
                   { text: 'Cancelar', style: 'cancel' },
                   { text: 'Eliminar', style: 'destructive', onPress: () => deleteProgram(program.id, false) },
                 ])}
               />
-            ))}
+              );
+            })}
           </ScrollView>
         )}
 
@@ -2901,8 +2914,7 @@ const styles = StyleSheet.create({
   },
   progShareIcon: {
     fontSize:   18,
-    color:      colors.muted,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   activeBadge: {
     backgroundColor: `${colors.accent}18`,
