@@ -156,16 +156,14 @@ function MenuOption({ label, onPress, danger }) {
   );
 }
 
-function ContextMenu({ visible, onClose, onDuplicate, onExport, onShare, onAssign, onDelete }) {
+function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.contextMenu}>
-        <MenuOption label="Duplicar"          onPress={() => { onClose(); onDuplicate(); }} />
-        <MenuOption label="Exportar"          onPress={() => { onClose(); onExport(); }} />
-        <MenuOption label="Compartir"         onPress={() => { onClose(); onShare(); }} />
-        <MenuOption label="Asignar a cliente" onPress={() => { onClose(); onAssign(); }} />
-        <MenuOption label="Eliminar"          onPress={() => { onClose(); onDelete(); }} danger />
+        <MenuOption label="Duplicar" onPress={() => { onClose(); onDuplicate(); }} />
+        <MenuOption label="Exportar" onPress={() => { onClose(); onExport(); }} />
+        <MenuOption label="Eliminar" onPress={() => { onClose(); onDelete(); }} danger />
       </View>
     </Modal>
   );
@@ -387,12 +385,6 @@ export default function ProgramScreen() {
         onClose={() => setContextTarget(null)}
         onDuplicate={() => handleDuplicate(contextTarget)}
         onExport={() => exportSpecificProgram(contextTarget)}
-        onShare={() => shareSpecificProgram(contextTarget)}
-        onAssign={() => {
-          // Capture the target BEFORE onClose() nulls contextTarget (same React batch)
-          setAssignTarget(contextTarget);
-          setShowAssign(true);
-        }}
         onDelete={() => handleDelete(contextTarget)}
       />
 
