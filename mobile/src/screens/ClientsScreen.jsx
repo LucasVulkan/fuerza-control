@@ -782,14 +782,21 @@ function ClientListCard({
           <>
             <View style={styles.cProgramHeaderRow}>
               <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
-              <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
-                {showYellow ? '▲' : '✓'}
-              </Text>
+              <View style={styles.cProgramHeaderRight}>
+                {weeksTraining != null && (
+                  <Text style={styles.cProgramWeeks}>{weeksTraining} sem</Text>
+                )}
+                <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
+                  {showYellow ? '▲' : '✓'}
+                </Text>
+              </View>
             </View>
             <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
-            <Text style={styles.cProgramMeta}>
-              {dayCount} ses/ciclo{weeksTraining ? ` · ${weeksTraining} sem` : ''}
-            </Text>
+            {activeProgram.stages?.length > 1 ? (
+              <Text style={styles.cProgramMeta}>{activeProgram.stages.length} etapas · {dayCount} ses/ciclo</Text>
+            ) : dayCount > 0 ? (
+              <Text style={styles.cProgramMeta}>{dayCount} ses/ciclo</Text>
+            ) : null}
           </>
         ) : (
           <>
@@ -2017,6 +2024,17 @@ const styles = StyleSheet.create({
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
+    gap:            spacing.xs,
+  },
+  cProgramHeaderRight: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  cProgramWeeks: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.muted,
   },
   cProgramLabel: {
     fontSize:      typography.xs,
