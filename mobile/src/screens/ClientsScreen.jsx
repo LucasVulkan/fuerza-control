@@ -749,7 +749,17 @@ function ClientListCard({
       {/* ── Top: name + key button ── */}
       <View style={styles.cCardTop}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.cCardName} numberOfLines={1}>{client.name}</Text>
+          <View style={styles.cCardNameRow}>
+            <Text style={[styles.cCardName, { flex: 1 }]} numberOfLines={1}>{client.name}</Text>
+            {(client.tags ?? []).slice(0, 2).map((tag) => (
+              <View key={tag} style={styles.cTagInlineChip}>
+                <Text style={styles.cTagInlineChipText} numberOfLines={1}>{tag}</Text>
+              </View>
+            ))}
+            {(client.tags ?? []).length > 2 && (
+              <Text style={styles.cTagInlineMore}>+{(client.tags ?? []).length - 2}</Text>
+            )}
+          </View>
           {(statusText || lastStr) && (
             <View style={styles.cCardMetaRow}>
               {statusText && (
@@ -767,20 +777,6 @@ function ClientListCard({
           <Text style={styles.cIconBtnText}>🔑</Text>
         </TouchableOpacity>
       </View>
-
-      {/* ── Tags ── */}
-      {(client.tags ?? []).length > 0 && (
-        <View style={styles.cTagRow}>
-          {(client.tags ?? []).slice(0, 3).map((tag) => (
-            <View key={tag} style={styles.cTagChip}>
-              <Text style={styles.cTagChipText}>{tag}</Text>
-            </View>
-          ))}
-          {(client.tags ?? []).length > 3 && (
-            <Text style={styles.cTagMore}>+{(client.tags ?? []).length - 3}</Text>
-          )}
-        </View>
-      )}
 
       {/* ── Activity indicator ── */}
       {showBlue && (
@@ -912,8 +908,10 @@ export default function ClientsScreen() {
   // List
   const [search,           setSearch]           = useState('');
   const [statusFilter,     setStatusFilter]     = useState('active');
-  const [tagFilter,        setTagFilter]        = useState(null);   // null = all
+  const [tagFilter,        setTagFilter]        = useState([]);    // string[] — multi-select
+  const [showTagSheet,     setShowTagSheet]     = useState(false);
   const [sortBy,           setSortBy]           = useState('name'); // 'name' | 'lastSession'
+  const [sortDir,          setSortDir]          = useState('desc'); // 'desc' | 'asc'
   const [showNewClient,    setShowNewClient]     = useState(false);
   const [newClientName,    setNewClientName]     = useState('');
 
@@ -928,7 +926,7 @@ export default function ClientsScreen() {
   const [periodFilter,  setPeriodFilter]  = useState('all');
 
   // Detail - info accordion
-  const [openSections,  setOpenSections]  = useState({ personal: true, weight: false, billing: false });
+  const [openSections,  setOpenSections]  = useState({ status: false, personal: true, weight: false, billing: false });
 
   // Detail - body weight
   const [weightDate,  setWeightDate]  = useState(new Date().toISOString().split('T')[0]);
@@ -961,7 +959,7 @@ export default function ClientsScreen() {
         if (statusFilter === 'inactive') return s === 'inactive';
         return true;
       })
-      .filter((c) => !tagFilter || (c.tags ?? []).includes(tagFilter));
+      .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
 
     if (sortBy === 'lastSession') {
       const lastTs = {};
@@ -975,13 +973,16 @@ export default function ClientsScreen() {
         const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
         lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
       });
-      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0));
+      list.sort((a, b) => sortDir === 'desc'
+        ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
+        : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)
+      );
     } else {
       list.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortBy, programs, workoutLog]);
+  }, [clients, search, statusFilter, tagFilter, sortBy, sortDir, programs, workoutLog]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set();
@@ -1056,7 +1057,7 @@ export default function ClientsScreen() {
     setActiveTab('programs');
     setScopeFilter('active');
     setPeriodFilter('all');
-    setOpenSections({ personal: true, weight: false, billing: false });
+    setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
   }
 
@@ -1065,7 +1066,7 @@ export default function ClientsScreen() {
     setActiveTab('info');
     setScopeFilter('active');
     setPeriodFilter('all');
-    setOpenSections({ personal: true, weight: false, billing: false });
+    setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
   }
 
@@ -1074,7 +1075,7 @@ export default function ClientsScreen() {
     setActiveTab('progress');
     setScopeFilter('active');
     setPeriodFilter('all');
-    setOpenSections({ personal: true, weight: false, billing: false });
+    setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
   }
 
@@ -1084,7 +1085,7 @@ export default function ClientsScreen() {
     setActiveTab('history');
     setScopeFilter('active');
     setPeriodFilter('all');
-    setOpenSections({ personal: true, weight: false, billing: false });
+    setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
   }
 
@@ -1386,19 +1387,17 @@ export default function ClientsScreen() {
               contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
               keyboardShouldPersistTaps="handled"
             >
-              {/* ── Personal data ── */}
+              {/* ── Estado ── */}
               <Accordion
-                label="Datos personales"
-                open={openSections.personal}
-                onToggle={() => setOpenSections((s) => ({ ...s, personal: !s.personal }))}
+                label="Estado"
+                open={openSections.status}
+                onToggle={() => setOpenSections((s) => ({ ...s, status: !s.status }))}
               >
-                {/* Status */}
-                <View style={{ marginBottom: spacing.md }}>
-                  <Text style={styles.fieldLabel}>ESTADO</Text>
+                <View style={{ marginBottom: spacing.sm }}>
                   <View style={styles.statusRow}>
                     {[
-                      { id: 'active',   label: 'Activo',  color: colors.green },
-                      { id: 'paused',   label: 'Pausa',   color: colors.orange },
+                      { id: 'active',   label: 'Activo',   color: colors.green },
+                      { id: 'paused',   label: 'En pausa', color: colors.orange },
                       { id: 'inactive', label: 'Inactivo', color: colors.red },
                     ].map(({ id, label, color }) => {
                       const isSel = (selectedClient.status ?? 'active') === id;
@@ -1415,7 +1414,14 @@ export default function ClientsScreen() {
                     })}
                   </View>
                 </View>
+              </Accordion>
 
+              {/* ── Personal data ── */}
+              <Accordion
+                label="Datos personales"
+                open={openSections.personal}
+                onToggle={() => setOpenSections((s) => ({ ...s, personal: !s.personal }))}
+              >
                 {/* Fields */}
                 {[
                   { key: 'name',     label: 'NOMBRE / ALIAS',   placeholder: 'Lucas' },
@@ -1453,23 +1459,33 @@ export default function ClientsScreen() {
                 {/* Tags */}
                 <View style={{ marginBottom: spacing.sm }}>
                   <Text style={styles.fieldLabel}>ETIQUETAS</Text>
-                  {(selectedClient.tags ?? []).length > 0 && (
+                  {/* Known tags — selectable chips */}
+                  {allTags.length > 0 && (
                     <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
-                      {(selectedClient.tags ?? []).map((tag) => (
-                        <TouchableOpacity
-                          key={tag}
-                          style={styles.cTagChipRemovable}
-                          onPress={() => updateClientInfo(selectedClientId, {
-                            tags: (selectedClient.tags ?? []).filter((t) => t !== tag),
-                          })}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.cTagChipText}>{tag}</Text>
-                          <Text style={styles.cTagChipRemove}>✕</Text>
-                        </TouchableOpacity>
-                      ))}
+                      {allTags.map((tag) => {
+                        const active = (selectedClient.tags ?? []).includes(tag);
+                        return (
+                          <TouchableOpacity
+                            key={tag}
+                            style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
+                            onPress={() => {
+                              const current = selectedClient.tags ?? [];
+                              updateClientInfo(selectedClientId, {
+                                tags: active ? current.filter((t) => t !== tag) : [...current, tag],
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
+                            <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
+                              {tag}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
+                  {/* Add new tag */}
                   <View style={styles.addRow}>
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
@@ -1497,6 +1513,7 @@ export default function ClientsScreen() {
                       }}
                     />
                   </View>
+                  <Text style={styles.fieldHint}>Toca para asignar · ＋ para crear nueva</Text>
                 </View>
               </Accordion>
 
@@ -1714,34 +1731,40 @@ export default function ClientsScreen() {
 
         {/* Sort + tag filter */}
         <View style={styles.sortTagRow}>
+          {/* Sort by date toggle */}
           <TouchableOpacity
-            style={styles.sortBtn}
-            onPress={() => setSortBy((s) => s === 'name' ? 'lastSession' : 'name')}
+            style={[styles.sortBtn, sortBy === 'lastSession' && styles.sortBtnActive]}
+            onPress={() => {
+              if (sortBy === 'name') { setSortBy('lastSession'); setSortDir('desc'); }
+              else { setSortDir((d) => d === 'desc' ? 'asc' : 'desc'); }
+            }}
             activeOpacity={0.7}
           >
-            <Text style={styles.sortBtnText}>
-              {sortBy === 'name' ? '↕ A–Z' : '↕ Recientes'}
+            <Text style={[styles.sortBtnText, sortBy === 'lastSession' && styles.sortBtnTextActive]}>
+              {sortBy === 'name' ? 'Recientes' : sortDir === 'desc' ? '↓ Recientes' : '↑ Antiguos'}
             </Text>
           </TouchableOpacity>
+
+          {/* Tag filter dropdown button (only if tags exist) */}
           {allTags.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ flexDirection: 'row', gap: spacing.xs }}
+            <TouchableOpacity
+              style={[styles.sortBtn, tagFilter.length > 0 && styles.sortBtnActive]}
+              onPress={() => setShowTagSheet(true)}
+              activeOpacity={0.7}
             >
-              {[null, ...allTags].map((tag) => (
-                <TouchableOpacity
-                  key={tag ?? '__all__'}
-                  style={[styles.tagFilterChip, tagFilter === tag && styles.tagFilterChipActive]}
-                  onPress={() => setTagFilter(tag)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.tagFilterChipText, tagFilter === tag && styles.tagFilterChipTextActive]}>
-                    {tag ?? 'Todos'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              <Text style={[styles.sortBtnText, tagFilter.length > 0 && styles.sortBtnTextActive]}>
+                {tagFilter.length === 0
+                  ? '▾ Etiquetas'
+                  : `▾ ${tagFilter.length} etiqueta${tagFilter.length > 1 ? 's' : ''}`}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Clear active tag filter */}
+          {tagFilter.length > 0 && (
+            <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={10} activeOpacity={0.7}>
+              <Text style={styles.sortTagClear}>✕</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -1827,6 +1850,45 @@ export default function ClientsScreen() {
         onClose={() => setShowSyncModal(false)}
         isFirstTime={isFirstTimeSync}
       />
+
+      {/* Tag filter bottom sheet */}
+      <Modal visible={showTagSheet} transparent animationType="slide" onRequestClose={() => setShowTagSheet(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowTagSheet(false)} />
+        <View style={styles.tagSheet}>
+          <View style={styles.infoSheetHandle} />
+          <View style={styles.tagSheetHeader}>
+            <Text style={styles.tagSheetTitle}>Filtrar por etiqueta</Text>
+            {tagFilter.length > 0 && (
+              <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={8} activeOpacity={0.7}>
+                <Text style={styles.tagSheetClear}>Limpiar todo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+            {allTags.map((tag) => {
+              const selected = tagFilter.includes(tag);
+              return (
+                <TouchableOpacity
+                  key={tag}
+                  style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}
+                  onPress={() => setTagFilter((prev) =>
+                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                  )}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
+                    {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
+                  </View>
+                  <Text style={[styles.tagSheetItemText, selected && { color: colors.accent }]}>{tag}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <TouchableOpacity style={styles.tagSheetApply} onPress={() => setShowTagSheet(false)} activeOpacity={0.85}>
+            <Text style={styles.tagSheetApplyText}>Aplicar</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       {/* New client modal */}
       <Modal visible={showNewClient} transparent animationType="fade" onRequestClose={() => setShowNewClient(false)}>
@@ -1932,7 +1994,7 @@ const styles = StyleSheet.create({
   sortTagRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.sm,
+    gap:           spacing.xs,
   },
   sortBtn: {
     paddingHorizontal: spacing.sm,
@@ -1943,29 +2005,104 @@ const styles = StyleSheet.create({
     backgroundColor:   colors.surface,
     flexShrink:        0,
   },
+  sortBtnActive: {
+    borderColor:     `${colors.accent}50`,
+    backgroundColor: `${colors.accent}12`,
+  },
   sortBtnText: {
     fontSize:   typography.xs,
     color:      colors.muted,
     fontWeight: typography.medium,
   },
-  tagFilterChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 1,
-    borderRadius:      radius.full,
-    borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
+  sortBtnTextActive: { color: colors.accent },
+  sortTagClear: {
+    fontSize:   typography.sm,
+    color:      colors.muted2,
+    lineHeight: 20,
+    paddingHorizontal: 2,
   },
-  tagFilterChipActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+
+  // ── Tag filter bottom sheet ──
+  tagSheet: {
+    position:             'absolute',
+    bottom:               0,
+    left:                 0,
+    right:                0,
+    backgroundColor:      colors.surface,
+    borderTopLeftRadius:  radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderTopWidth:       borders.thin,
+    borderTopColor:       colors.borderCard,
+    paddingBottom:        spacing.xxl,
+    paddingTop:           spacing.sm,
   },
-  tagFilterChipText: {
-    fontSize:   typography.xs,
-    color:      colors.muted,
-    fontWeight: typography.medium,
+  tagSheetHeader: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingBottom:     spacing.md,
   },
-  tagFilterChipTextActive: { color: colors.accent },
+  tagSheetTitle: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      colors.text,
+  },
+  tagSheetClear: {
+    fontSize: typography.sm,
+    color:    colors.red,
+  },
+  tagSheetItem: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  tagSheetItemActive: {
+    backgroundColor: `${colors.accent}08`,
+  },
+  tagSheetCheck: {
+    width:           20,
+    height:          20,
+    borderRadius:    4,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  tagSheetCheckActive: {
+    backgroundColor: colors.accent,
+    borderColor:     colors.accent,
+  },
+  tagSheetCheckMark: {
+    fontSize:   11,
+    color:      colors.bg,
+    fontWeight: typography.bold,
+    lineHeight: 14,
+  },
+  tagSheetItemText: {
+    fontSize: typography.base,
+    color:    colors.muted,
+  },
+  tagSheetApply: {
+    margin:          spacing.xl,
+    marginBottom:    spacing.sm,
+    backgroundColor: colors.accent,
+    borderRadius:    radius.sm,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+  },
+  tagSheetApplyText: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.heavy,
+    color:         colors.bg,
+    letterSpacing: 1,
+  },
 
   // (old client card styles removed — replaced by cCard* styles above)
 
@@ -2110,11 +2247,38 @@ const styles = StyleSheet.create({
     alignItems:    'flex-start',
     gap:           spacing.sm,
   },
+  cCardNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    overflow:      'hidden',
+  },
   cCardName: {
     fontSize:   typography.lg,
     fontWeight: typography.semibold,
     color:      colors.text,
     lineHeight: typography.lg * 1.2,
+  },
+  // Inline tag chips (next to name on card)
+  cTagInlineChip: {
+    backgroundColor:   `${colors.accent}14`,
+    borderWidth:       borders.thin,
+    borderColor:       `${colors.accent}30`,
+    borderRadius:      radius.full,
+    paddingHorizontal: 6,
+    paddingVertical:   1,
+    flexShrink:        0,
+    maxWidth:          72,
+  },
+  cTagInlineChipText: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontWeight: typography.medium,
+  },
+  cTagInlineMore: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    flexShrink: 0,
   },
   cCardMetaRow: {
     flexDirection: 'row',
@@ -2268,6 +2432,32 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
     alignSelf:  'center',
   },
+  // Selectable tags in info tab
+  cTagSelectable: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs,
+    borderRadius:      radius.full,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface2,
+  },
+  cTagSelectableActive: {
+    backgroundColor: `${colors.accent}14`,
+    borderColor:     `${colors.accent}40`,
+  },
+  cTagSelectableTick: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontWeight: typography.bold,
+  },
+  cTagSelectableText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
+  cTagSelectableTextActive: { color: colors.accent },
 
   // Action buttons (CSS-mockup style)
   cActions: {
