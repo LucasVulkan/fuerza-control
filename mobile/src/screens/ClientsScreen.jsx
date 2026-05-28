@@ -258,18 +258,25 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
 
 // ── Program card (programs tab) ────────────────────────────────────────────────
 
-function ProgramCard({ program, isActive, sessionCount, lastActivity, onToggleActive, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
+function ProgramCard({ program, isActive, lastActivity, onToggleActive, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const locale = 'es-ES';
   const lastStr = lastActivity
-    ? new Date(lastActivity).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+    ? new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
     : null;
+
+  const dayCount   = getAllProgramDays(program).length;
+  const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
+
+  const structureStr = stageCount
+    ? `${stageCount} etapas · ${dayCount} días/ciclo`
+    : dayCount > 0 ? `${dayCount} días/ciclo` : null;
 
   return (
     <View style={[styles.progCard, isActive && styles.progCardActive]}>
-      {/* Header */}
-      <View style={styles.progCardHead}>
+
+      {/* Top: name + structure + share icon */}
+      <View style={styles.progCardTop}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.progCardNameRow}>
             <Text style={styles.progCardName} numberOfLines={1}>{program.name}</Text>
@@ -279,41 +286,42 @@ function ProgramCard({ program, isActive, sessionCount, lastActivity, onToggleAc
               </View>
             )}
           </View>
-          <Text style={styles.progCardMeta}>
-            {sessionCount} sesiones{lastStr ? ` · última: ${lastStr}` : ''}
-          </Text>
+          {structureStr && (
+            <Text style={styles.progCardStructure}>{structureStr}</Text>
+          )}
+          {lastStr && (
+            <Text style={styles.progCardLastSession}>Última sesión: {lastStr}</Text>
+          )}
         </View>
+        {/* Share icon — top right, like 🔑 on client cards */}
+        <TouchableOpacity style={styles.cIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
+          <Text style={styles.progShareIcon}>↑</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Actions: Ver · Editar · Asignar · ⋯ */}
+      <View style={styles.progCardActions}>
+        <TouchableOpacity style={styles.cBtnSecondary} onPress={onView} activeOpacity={0.85}>
+          <Text style={styles.cBtnText}>Ver</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cBtnSecondary} onPress={onEdit} activeOpacity={0.85}>
+          <Text style={styles.cBtnText}>Editar</Text>
+        </TouchableOpacity>
         <TouchableOpacity
-          style={styles.starBtn}
+          style={[styles.cBtnSecondary, isActive && styles.cBtnAssignActive]}
           onPress={onToggleActive}
-          hitSlop={8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.starIcon, isActive && { color: colors.accent }]}>
-            {isActive ? '★' : '☆'}
+          <Text style={[styles.cBtnText, isActive && styles.cBtnTextAssignActive]}>
+            {isActive ? '★ Activo' : 'Asignar'}
           </Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.progCardActions}>
-        <TouchableOpacity style={styles.progCardActionBtn} onPress={onView} activeOpacity={0.6}>
-          <Text style={styles.progCardActionText}>Ver</Text>
-        </TouchableOpacity>
-        <View style={styles.progCardActionDivider} />
-        <TouchableOpacity style={styles.progCardActionBtn} onPress={onEdit} activeOpacity={0.6}>
-          <Text style={styles.progCardActionText}>Editar</Text>
-        </TouchableOpacity>
-        <View style={styles.progCardActionDivider} />
-        <TouchableOpacity style={styles.progCardActionBtn} onPress={onShare} activeOpacity={0.6}>
-          <Text style={styles.progCardActionText}>Compartir</Text>
-        </TouchableOpacity>
-        <View style={styles.progCardActionDivider} />
-        <TouchableOpacity style={styles.progCardActionBtn} onPress={() => setMenuOpen(true)} activeOpacity={0.6}>
-          <Text style={styles.progCardActionText}>⋯</Text>
+        <TouchableOpacity style={styles.cBtnIcon} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
+          <Text style={styles.cBtnIconText}>⋯</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Context menu modal */}
+      {/* ⋯ context menu */}
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
         <View style={styles.contextMenu}>
@@ -1301,7 +1309,6 @@ export default function ClientsScreen() {
                 key={program.id}
                 program={program}
                 isActive={selectedClient.activeProgramId === program.id}
-                sessionCount={getSessionCount(program)}
                 lastActivity={getLastActivity(program)}
                 onToggleActive={() => setClientActiveProgram(
                   selectedClientId,
@@ -2743,6 +2750,13 @@ const styles = StyleSheet.create({
   cBtnTextBlue: {
     color: colors.blue,
   },
+  cBtnAssignActive: {
+    backgroundColor: withOpacity(colors.accent, 0.12),
+    borderColor:     withOpacity(colors.accent, 0.4),
+  },
+  cBtnTextAssignActive: {
+    color: colors.accent,
+  },
   cBtnIcon: {
     width:           44,
     height:          44,
@@ -2838,8 +2852,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth:     borders.thin,
     borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderRadius:    radius.lg,
     overflow:        'hidden',
+    padding:         spacing.md,
+    gap:             spacing.sm,
   },
   progCardActive: {
     borderColor: `${colors.accent}50`,
@@ -2868,6 +2884,26 @@ const styles = StyleSheet.create({
     color:     colors.muted,
     marginTop: 2,
   },
+  progCardTop: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+  },
+  progCardStructure: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 2,
+  },
+  progCardLastSession: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 1,
+  },
+  progShareIcon: {
+    fontSize:   18,
+    color:      colors.muted,
+    lineHeight: 20,
+  },
   activeBadge: {
     backgroundColor: `${colors.accent}18`,
     borderWidth:     borders.thin,
@@ -2889,6 +2925,7 @@ const styles = StyleSheet.create({
   },
   progCardActions: {
     flexDirection: 'row',
+    gap:           spacing.sm,
   },
   progCardActionBtn: {
     flex:            1,
