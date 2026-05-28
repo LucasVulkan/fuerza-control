@@ -831,6 +831,33 @@ function ClientListCard({
         )}
       </View>
 
+      {/* ── Action buttons — flat, sin contenedor ── */}
+      <View style={styles.cActions}>
+        <TouchableOpacity
+          style={[styles.cBtnFlat, showYellow && styles.cBtnFlatPrimary]}
+          onPress={showYellow ? onUploadProgram : onOpenEditor}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.cBtnFlatText, showYellow && styles.cBtnTextPrimary]}>
+            {showYellow ? '▲ Subir cambios' : 'Editar programa'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.cBtnFlat, showBlue && styles.cBtnFlatBlue]}
+          onPress={showBlue ? onViewHistory : onViewProgress}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.cBtnFlatText, showBlue && styles.cBtnTextBlue]}>
+            {showBlue ? '● Ver actividad' : 'Ver progreso'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.cBtnFlatIcon} onPress={onGoInfo} activeOpacity={0.6}>
+          <Text style={styles.cBtnFlatIconText}>⋯</Text>
+        </TouchableOpacity>
+      </View>
+
     </TouchableOpacity>
   );
 }
@@ -2689,6 +2716,32 @@ const styles = StyleSheet.create({
   cActions: {
     flexDirection: 'row',
     gap:           spacing.sm,
+  },
+  // Flat (borderless) variants — used on client list cards
+  cBtnFlat: {
+    flex:            1,
+    height:          32,
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: spacing.sm,
+  },
+  cBtnFlatPrimary: {},   // color comes from cBtnTextPrimary
+  cBtnFlatBlue:    {},   // color comes from cBtnTextBlue
+  cBtnFlatText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.muted,
+  },
+  cBtnFlatIcon: {
+    width:           32,
+    height:          32,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  cBtnFlatIconText: {
+    fontSize:   18,
+    color:      colors.muted,
+    lineHeight: 20,
   },
   cBtnSecondary: {
     flex:            1,
