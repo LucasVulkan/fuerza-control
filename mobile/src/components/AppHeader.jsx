@@ -268,7 +268,7 @@ export default function AppHeader() {
   const importData            = useStore((s) => s.importData);
   const showToast             = useStore((s) => s.showToast);
   const language              = useStore((s) => s.profile?.language ?? 'es');
-  const pendingUpload         = useStore((s) => s.clientSync.pendingUpload);
+  const pendingUpload         = useStore((s) => s.clientSync?.pendingUpload);
   const uploadHistoryToTrainer = useStore((s) => s.uploadHistoryToTrainer);
 
   const [retrying, setRetrying] = useState(false);
