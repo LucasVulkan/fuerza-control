@@ -2719,7 +2719,6 @@ const styles = StyleSheet.create({
   },
   // Flat (borderless) variants — used on client list cards
   cBtnFlat: {
-    flex:            1,
     height:          32,
     alignItems:      'center',
     justifyContent:  'center',
@@ -2737,6 +2736,7 @@ const styles = StyleSheet.create({
     height:          32,
     alignItems:      'center',
     justifyContent:  'center',
+    marginLeft:      'auto',
   },
   cBtnFlatIconText: {
     fontSize:   18,
