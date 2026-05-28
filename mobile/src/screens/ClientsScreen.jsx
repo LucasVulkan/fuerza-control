@@ -768,6 +768,20 @@ function ClientListCard({
         </TouchableOpacity>
       </View>
 
+      {/* ── Tags ── */}
+      {(client.tags ?? []).length > 0 && (
+        <View style={styles.cTagRow}>
+          {(client.tags ?? []).slice(0, 3).map((tag) => (
+            <View key={tag} style={styles.cTagChip}>
+              <Text style={styles.cTagChipText}>{tag}</Text>
+            </View>
+          ))}
+          {(client.tags ?? []).length > 3 && (
+            <Text style={styles.cTagMore}>+{(client.tags ?? []).length - 3}</Text>
+          )}
+        </View>
+      )}
+
       {/* ── Activity indicator ── */}
       {showBlue && (
         <View style={styles.cActivityBadge}>
@@ -781,15 +795,15 @@ function ClientListCard({
         {activeProgram ? (
           <>
             <View style={styles.cProgramHeaderRow}>
-              <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
-              <View style={styles.cProgramHeaderRight}>
-                {weeksTraining != null && (
-                  <Text style={styles.cProgramWeeks}>{weeksTraining} sem</Text>
-                )}
+              <View style={styles.cProgramHeaderLeft}>
                 <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
                   {showYellow ? '▲' : '✓'}
                 </Text>
+                <Text style={styles.cProgramLabel}>PROGRAMA ACTIVO</Text>
               </View>
+              {weeksTraining != null && (
+                <Text style={styles.cProgramWeeks}>{weeksTraining} sem</Text>
+              )}
             </View>
             <Text style={styles.cProgramName} numberOfLines={1}>{activeProgram.name}</Text>
             {activeProgram.stages?.length > 1 ? (
@@ -898,8 +912,13 @@ export default function ClientsScreen() {
   // List
   const [search,           setSearch]           = useState('');
   const [statusFilter,     setStatusFilter]     = useState('active');
+  const [tagFilter,        setTagFilter]        = useState(null);   // null = all
+  const [sortBy,           setSortBy]           = useState('name'); // 'name' | 'lastSession'
   const [showNewClient,    setShowNewClient]     = useState(false);
   const [newClientName,    setNewClientName]     = useState('');
+
+  // Detail - tags input
+  const [newTag,           setNewTag]           = useState('');
 
   // Detail - programs tab
   const [showNewProgram,   setShowNewProgram]   = useState(false);
@@ -933,8 +952,8 @@ export default function ClientsScreen() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
-  const clientList = useMemo(
-    () => Object.values(clients ?? {})
+  const clientList = useMemo(() => {
+    let list = Object.values(clients ?? {})
       .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
       .filter((c) => {
         const s = c.status ?? 'active';
@@ -942,9 +961,33 @@ export default function ClientsScreen() {
         if (statusFilter === 'inactive') return s === 'inactive';
         return true;
       })
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [clients, search, statusFilter]
-  );
+      .filter((c) => !tagFilter || (c.tags ?? []).includes(tagFilter));
+
+    if (sortBy === 'lastSession') {
+      const lastTs = {};
+      list.forEach((c) => {
+        const ids = new Set(
+          (c.programIds ?? [])
+            .map((id) => programs[id])
+            .filter(Boolean)
+            .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
+        );
+        const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+        lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
+      });
+      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0));
+    } else {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return list;
+  }, [clients, search, statusFilter, tagFilter, sortBy, programs, workoutLog]);
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
+    Object.values(clients ?? {}).forEach((c) => (c.tags ?? []).forEach((t) => tagSet.add(t)));
+    return [...tagSet].sort();
+  }, [clients]);
 
   const selectedClient = selectedClientId ? clients?.[selectedClientId] : null;
 
@@ -1406,6 +1449,55 @@ export default function ClientsScreen() {
                   />
                   <Text style={styles.fieldHint}>Se guarda al perder el foco</Text>
                 </View>
+
+                {/* Tags */}
+                <View style={{ marginBottom: spacing.sm }}>
+                  <Text style={styles.fieldLabel}>ETIQUETAS</Text>
+                  {(selectedClient.tags ?? []).length > 0 && (
+                    <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
+                      {(selectedClient.tags ?? []).map((tag) => (
+                        <TouchableOpacity
+                          key={tag}
+                          style={styles.cTagChipRemovable}
+                          onPress={() => updateClientInfo(selectedClientId, {
+                            tags: (selectedClient.tags ?? []).filter((t) => t !== tag),
+                          })}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.cTagChipText}>{tag}</Text>
+                          <Text style={styles.cTagChipRemove}>✕</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <View style={styles.addRow}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      placeholder="Nueva etiqueta…"
+                      placeholderTextColor={colors.muted}
+                      value={newTag}
+                      onChangeText={setNewTag}
+                      returnKeyType="done"
+                      onSubmitEditing={() => {
+                        const t = newTag.trim().toLowerCase();
+                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        setNewTag('');
+                      }}
+                    />
+                    <AccentBtn
+                      label="＋"
+                      small
+                      disabled={!newTag.trim()}
+                      onPress={() => {
+                        const t = newTag.trim().toLowerCase();
+                        if (!t || (selectedClient.tags ?? []).includes(t)) { setNewTag(''); return; }
+                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), t] });
+                        setNewTag('');
+                      }}
+                    />
+                  </View>
+                </View>
               </Accordion>
 
               {/* ── Body weight ── */}
@@ -1619,6 +1711,39 @@ export default function ClientsScreen() {
             <FilterChip key={id} label={label} active={statusFilter === id} onPress={() => setStatusFilter(id)} />
           ))}
         </View>
+
+        {/* Sort + tag filter */}
+        <View style={styles.sortTagRow}>
+          <TouchableOpacity
+            style={styles.sortBtn}
+            onPress={() => setSortBy((s) => s === 'name' ? 'lastSession' : 'name')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sortBtnText}>
+              {sortBy === 'name' ? '↕ A–Z' : '↕ Recientes'}
+            </Text>
+          </TouchableOpacity>
+          {allTags.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ flexDirection: 'row', gap: spacing.xs }}
+            >
+              {[null, ...allTags].map((tag) => (
+                <TouchableOpacity
+                  key={tag ?? '__all__'}
+                  style={[styles.tagFilterChip, tagFilter === tag && styles.tagFilterChipActive]}
+                  onPress={() => setTagFilter(tag)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tagFilterChipText, tagFilter === tag && styles.tagFilterChipTextActive]}>
+                    {tag ?? 'Todos'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
       </View>
 
       {/* Client list */}
@@ -1802,6 +1927,45 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
   chipTextActive: { color: colors.accent },
+
+  // ── Sort + tag filter row ──
+  sortTagRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  sortBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs + 1,
+    borderRadius:      radius.xs,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface,
+    flexShrink:        0,
+  },
+  sortBtnText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
+  tagFilterChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs + 1,
+    borderRadius:      radius.full,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface,
+  },
+  tagFilterChipActive: {
+    borderColor:     `${colors.accent}50`,
+    backgroundColor: `${colors.accent}12`,
+  },
+  tagFilterChipText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
+  tagFilterChipTextActive: { color: colors.accent },
 
   // (old client card styles removed — replaced by cCard* styles above)
 
@@ -2031,6 +2195,11 @@ const styles = StyleSheet.create({
     alignItems:    'center',
     gap:           spacing.xs,
   },
+  cProgramHeaderLeft: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
   cProgramWeeks: {
     fontSize:   typography.xs,
     fontWeight: typography.medium,
@@ -2055,6 +2224,49 @@ const styles = StyleSheet.create({
   cProgramMeta: {
     fontSize: typography.xs,
     color:    colors.muted,
+  },
+
+  // Tags on card
+  cTagRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+  },
+  cTagChip: {
+    backgroundColor:   `${colors.accent}12`,
+    borderWidth:       borders.thin,
+    borderColor:       `${colors.accent}30`,
+    borderRadius:      radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   2,
+  },
+  cTagChipRemovable: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               4,
+    backgroundColor:   `${colors.accent}12`,
+    borderWidth:       borders.thin,
+    borderColor:       `${colors.accent}30`,
+    borderRadius:      radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   2,
+  },
+  cTagChipText: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontWeight: typography.medium,
+  },
+  cTagChipRemove: {
+    fontSize:  9,
+    color:     colors.accent,
+    opacity:   0.6,
+    lineHeight: 12,
+  },
+  cTagMore: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+    alignSelf:  'center',
   },
 
   // Action buttons (CSS-mockup style)
