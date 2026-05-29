@@ -124,7 +124,7 @@ function Accordion({ label, open, onToggle, children }) {
 // ── Session card (history tab) ─────────────────────────────────────────────────
 
 function ClientSessionCard({ session, onDelete }) {
-  const { i18n }       = useTranslation();
+  const { i18n, t }    = useTranslation();
   const { fmt: fmtW }  = useWeightUnit();
   const [open, setOpen] = useState(false);
 
@@ -135,7 +135,7 @@ function ClientSessionCard({ session, onDelete }) {
 
   const template = getEffectiveTemplate(session.sessionTemplateId);
   const label    = template?.label ?? '?';
-  const name     = template?.name  ?? 'Sesión';
+  const name     = template?.name  ?? t('clients.sessionFallback');
   const accent   = resolveColor(template?.color ?? 'var(--accent)');
 
   const date    = new Date(session.timestamp).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -248,6 +248,7 @@ function ExerciseMiniCard({ exerciseId, logs }) {
 // ── Client import modal ────────────────────────────────────────────────────────
 
 function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
+  const { t } = useTranslation();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
@@ -257,9 +258,9 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
           <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
           <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
             {[
-              { mode: 'replace',     label: 'Reemplazar',         desc: 'Sustituye programa e historial existentes' },
-              { mode: 'add_program', label: 'Añadir programa',    desc: 'Añade el programa sin tocar el historial' },
-              { mode: 'merge_log',   label: 'Fusionar historial', desc: 'Solo importa las sesiones' },
+              { mode: 'replace',     label: t('clients.importModal.replaceLabel'),     desc: t('clients.importModal.replaceDesc') },
+              { mode: 'add_program', label: t('clients.importModal.addProgramLabel'),  desc: t('clients.importModal.addProgramDesc') },
+              { mode: 'merge_log',   label: t('clients.importModal.mergeLogLabel'),    desc: t('clients.importModal.mergeLogDesc') },
             ].map(({ mode, label, desc }) => (
               <TouchableOpacity
                 key={mode}
@@ -282,6 +283,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
 // ── Program card (programs tab) ────────────────────────────────────────────────
 
 function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeassign, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const lastStr = lastActivity
@@ -300,7 +302,7 @@ function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeass
     ? dirty
       ? { label: '↑ Subir', extraStyle: styles.cBtnPrimary, extraTextStyle: styles.cBtnTextPrimary, onPress: onUpload }
       : { label: '✓ Asignado', extraStyle: styles.cBtnAssignActive, extraTextStyle: styles.cBtnTextAssignActive, onPress: null }
-    : { label: 'Asignar', extraStyle: null, extraTextStyle: null, onPress: onAssign };
+    : { label: t('clients.newProgramModal.assignBtn'), extraStyle: null, extraTextStyle: null, onPress: onAssign };
 
   return (
     <View style={[styles.progCard, isActive && styles.progCardActive]}>
@@ -378,6 +380,7 @@ function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeass
 // ── New program modal ──────────────────────────────────────────────────────────
 
 function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
+  const { t } = useTranslation();
   const [tab,              setTab]              = useState(templatePrograms.length > 0 ? 'blank' : 'blank');
   const [name,             setName]             = useState('');
   const [numSessions,      setNumSessions]      = useState(3);
@@ -393,7 +396,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
 
           {templatePrograms.length > 0 && (
             <View style={styles.tabRow}>
-              {[{ id: 'blank', label: 'En blanco' }, { id: 'template', label: 'Desde plantilla' }].map(({ id, label }) => (
+              {[{ id: 'blank', label: t('clients.newProgramModal.tabBlank') }, { id: 'template', label: t('clients.newProgramModal.tabTemplate') }].map(({ id, label }) => (
                 <TouchableOpacity
                   key={id}
                   style={[styles.tabBtn, tab === id && styles.tabBtnActive]}
@@ -450,7 +453,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
               </ScrollView>
               <TextInput
                 style={styles.input}
-                placeholder={fromTemplateName || 'Nombre (opcional)'}
+                placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
                 placeholderTextColor={colors.muted}
                 value={fromTemplateName}
                 onChangeText={setFromTemplateName}
@@ -475,6 +478,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
 // ── Global add billing modal ──────────────────────────────────────────────────
 
 function GlobalAddBillingModal({ clients, onClose }) {
+  const { t } = useTranslation();
   const addClientBilling = useStore((s) => s.addClientBilling);
   const showToast        = useStore((s) => s.showToast);
 
@@ -560,7 +564,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
               onPress={() => setStatus((s) => s === 'paid' ? 'pending' : 'paid')}
             >
               <Text style={[styles.billStatusText, status === 'paid' && styles.billStatusTextPaid]}>
-                {status === 'paid' ? 'Pagado' : 'Pendiente'}
+                {status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -578,6 +582,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
 // ── Global billing view ────────────────────────────────────────────────────────
 
 function GlobalBillingView({ clients, onClose, onSelectClient }) {
+  const { t } = useTranslation();
   const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
   const [statusFilter, setStatusFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all');
@@ -642,12 +647,12 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
         {/* Filters */}
         <View style={{ gap: spacing.xs }}>
           <View style={styles.chipRow}>
-            {[{ id: 'all', label: 'Todos' }, { id: 'pending', label: 'Pendiente' }, { id: 'paid', label: 'Pagado' }].map(({ id, label }) => (
+            {[{ id: 'all', label: t('clients.filterAll') }, { id: 'pending', label: t('clients.billPending') }, { id: 'paid', label: t('clients.statusPaid') }].map(({ id, label }) => (
               <FilterChip key={id} label={label} active={statusFilter === id} onPress={() => setStatusFilter(id)} />
             ))}
           </View>
           <View style={styles.chipRow}>
-            {[{ id: 'all', label: 'Siempre' }, { id: '1m', label: 'Este mes' }, { id: '3m', label: 'Últimos 3m' }].map(({ id, label }) => (
+            {[{ id: 'all', label: t('clients.periodAll') }, { id: '1m', label: t('clients.periodThisMonth') }, { id: '3m', label: t('clients.periodLast3Months') }].map(({ id, label }) => (
               <FilterChip key={id} label={label} active={periodFilter === id} onPress={() => setPeriodFilter(id)} />
             ))}
           </View>
@@ -671,7 +676,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
               onPress={() => updateClientBillingStatus(entry.clientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
             >
               <Text style={[styles.billStatusText, entry.status === 'paid' && styles.billStatusTextPaid]}>
-                {entry.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -684,6 +689,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
 // ── Client info sheet (⋯ modal) ────────────────────────────────────────────────
 
 function ClientInfoSheet({ client, onClose, onConnectCloud }) {
+  const { t } = useTranslation();
   const showToast = useStore((s) => s.showToast);
   const [copied,  setCopied]  = useState(false);
   const [loading, setLoading] = useState(false);
@@ -741,7 +747,7 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
             activeOpacity={0.85}
           >
             <Text style={styles.infoSheetBtnTextAccent}>
-              {loading ? 'Conectando…' : '☁️ Conectar a la nube'}
+              {loading ? t('clients.connecting') : t('clients.connectCloud')}
             </Text>
           </TouchableOpacity>
         )}
@@ -773,6 +779,7 @@ function ClientListCard({
   onShowInfo,   // 🔑 → info sheet
   onGoInfo,     // ⋯ → tab de info
 }) {
+  const { t } = useTranslation();
   const historyHasNew = client.historyHasNew ?? false;
   const programDirty  = client.programDirty  ?? false;
 
@@ -789,14 +796,14 @@ function ClientListCard({
   let lastStr = null;
   if (lastActivityTs) {
     const diffDays = Math.floor((Date.now() - lastActivityTs) / 86400000);
-    if (diffDays === 0)      lastStr = 'Hoy';
-    else if (diffDays === 1) lastStr = 'Ayer';
+    if (diffDays === 0)      lastStr = t('dayCard.today');
+    else if (diffDays === 1) lastStr = t('dayCard.yesterday');
     else                     lastStr = `Hace ${diffDays} días`;
   }
 
   const clientStatus   = client.status ?? 'active';
   const statusDotColor = clientStatus === 'paused' ? colors.orange : clientStatus === 'inactive' ? colors.red : null;
-  const statusText     = clientStatus === 'paused' ? 'En pausa' : clientStatus === 'inactive' ? 'Inactivo' : null;
+  const statusText     = clientStatus === 'paused' ? t('clients.statusPaused') : clientStatus === 'inactive' ? t('clients.statusInactive') : null;
 
   const dayCount = activeProgram
     ? (activeProgram.stages?.length > 0
@@ -894,7 +901,7 @@ function ClientListCard({
           activeOpacity={0.85}
         >
           <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
-            {showYellow ? '▲ Subir cambios' : activeProgram ? 'Editar programa' : 'Añadir programa'}
+            {showYellow ? t('clients.btnUploadChanges') : activeProgram ? t('clients.btnEditProgram') : t('clients.btnAddProgram')}
           </Text>
         </TouchableOpacity>
 
@@ -904,7 +911,7 @@ function ClientListCard({
           activeOpacity={0.85}
         >
           <Text style={[styles.cBtnText, showBlue && styles.cBtnTextBlue]}>
-            {showBlue ? '● Ver actividad' : 'Ver progreso'}
+            {showBlue ? t('clients.btnViewActivity') : t('clients.btnViewProgress')}
           </Text>
         </TouchableOpacity>
 
@@ -920,6 +927,7 @@ function ClientListCard({
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function ClientsScreen() {
+  const { t } = useTranslation();
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -1192,8 +1200,8 @@ export default function ClientsScreen() {
 
   function handleDeleteClient(clientId) {
     Alert.alert(
-      'Eliminar cliente',
-      '¿Eliminar este cliente y todos sus programas e historial?',
+      t('clients.deleteClientTitle'),
+      t('clients.deleteClientConfirm'),
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => {
@@ -1212,7 +1220,7 @@ export default function ClientsScreen() {
 
   function handleCreateFromTemplate(templateId, customName) {
     if (!selectedClientId) return;
-    const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? 'Programa';
+    const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? t('clients.programFallback');
     cloneProgramFromTemplate(templateId, {
       mode: 'managed',
       clientId: selectedClientId,
@@ -1254,7 +1262,7 @@ export default function ClientsScreen() {
       markHistoryViewed(selectedClientId);
       showToast(merged > 0 ? `✓ ${merged} sesión${merged !== 1 ? 'es' : ''} nuevas` : '✓ Historial actualizado');
     } catch (err) {
-      showToast(`⚠️ ${err?.message ?? 'Error al actualizar historial'}`);
+      showToast(`⚠️ ${err?.message ?? t('clients.errorUpdateHistory')}`);
     } finally {
       setRefreshingHistory(false);
     }
@@ -1344,15 +1352,15 @@ export default function ClientsScreen() {
 
   if (view === 'detail' && selectedClient) {
     const TABS = [
-      { id: 'programs',  label: 'Programas',  icon: '🏋️' },
-      { id: 'history',   label: 'Historial',  icon: '📋' },
-      { id: 'progress',  label: 'Progresión', icon: '📈' },
-      { id: 'info',      label: 'Info',       icon: '📝' },
+      { id: 'programs',  label: t('clients.tabs.programs'),  icon: '🏋️' },
+      { id: 'history',   label: t('clients.tabs.history'),   icon: '📋' },
+      { id: 'progress',  label: t('clients.tabs.progress'),  icon: '📈' },
+      { id: 'info',      label: t('clients.tabs.info'),      icon: '📝' },
     ];
     const PERIOD_OPTIONS = [
-      { id: '7d',  label: '7 días' },
-      { id: '30d', label: '30 días' },
-      { id: 'all', label: 'Todo' },
+      { id: '7d',  label: t('clients.period.7d') },
+      { id: '30d', label: t('clients.period.30d') },
+      { id: 'all', label: t('clients.period.all') },
     ];
 
     return (
@@ -1444,14 +1452,14 @@ export default function ClientsScreen() {
                 disabled={refreshingHistory}
               >
                 <Text style={styles.refreshHistoryBtnText}>
-                  {refreshingHistory ? 'Actualizando…' : '↓ Actualizar historial del cliente'}
+                  {refreshingHistory ? t('clients.refreshingHistory') : t('clients.refreshHistory')}
                 </Text>
               </TouchableOpacity>
             )}
             {/* Filters */}
             <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
               <View style={styles.chipRow}>
-                {[{ id: 'active', label: 'Programa activo' }, { id: 'all', label: 'Todos' }].map(({ id, label }) => (
+                {[{ id: 'active', label: t('clients.scope.active') }, { id: 'all', label: t('clients.scope.all') }].map(({ id, label }) => (
                   <FilterChip key={id} label={label} active={scopeFilter === id} onPress={() => setScopeFilter(id)} />
                 ))}
               </View>
@@ -1500,9 +1508,9 @@ export default function ClientsScreen() {
                 <View style={{ marginBottom: spacing.md }}>
                   <View style={styles.statusRow}>
                     {[
-                      { id: 'active',   label: 'Activo',   color: colors.green },
-                      { id: 'paused',   label: 'En pausa', color: colors.orange },
-                      { id: 'inactive', label: 'Inactivo', color: colors.red },
+                      { id: 'active',   label: t('clients.statusActive'),   color: colors.green },
+                      { id: 'paused',   label: t('clients.statusPaused'),   color: colors.orange },
+                      { id: 'inactive', label: t('clients.statusInactive'), color: colors.red },
                     ].map(({ id, label, color }) => {
                       const isSel = (selectedClient.status ?? 'active') === id;
                       return (
@@ -1589,8 +1597,8 @@ export default function ClientsScreen() {
               >
                 {/* Fields */}
                 {[
-                  { key: 'name',     label: 'NOMBRE / ALIAS',   placeholder: 'Lucas' },
-                  { key: 'fullName', label: 'NOMBRE COMPLETO',  placeholder: 'Lucas García Martínez' },
+                  { key: 'name',     label: t('clients.fieldNameAlias'),                       placeholder: 'Lucas' },
+                  { key: 'fullName', label: t('clients.fieldFullName').toUpperCase(),          placeholder: 'Lucas García Martínez' },
                   { key: 'phone',    label: 'TELÉFONO',         placeholder: '+34 600 000 000' },
                   { key: 'email',    label: 'EMAIL',            placeholder: 'lucas@email.com' },
                 ].map(({ key, label, placeholder }) => (
@@ -1727,7 +1735,7 @@ export default function ClientsScreen() {
                       onPress={() => setBillStatus((s) => s === 'paid' ? 'pending' : 'paid')}
                     >
                       <Text style={[styles.billStatusText, billStatus === 'paid' && styles.billStatusTextPaid]}>
-                        {billStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                        {billStatus === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
                       </Text>
                     </TouchableOpacity>
                     <AccentBtn label="＋" onPress={handleAddBilling} disabled={!billConcept.trim() || !billAmount} small />
@@ -1750,7 +1758,7 @@ export default function ClientsScreen() {
                           onPress={() => updateClientBillingStatus(selectedClientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
                         >
                           <Text style={[styles.billStatusText, entry.status === 'paid' && styles.billStatusTextPaid]}>
-                            {entry.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                            {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => Alert.alert('Eliminar entrada', '¿Eliminar esta entrada de facturación?', [
@@ -1771,7 +1779,7 @@ export default function ClientsScreen() {
                 onPress={() => handleDeleteClient(selectedClientId)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.deleteClientBtnText}>Eliminar cliente</Text>
+                <Text style={styles.deleteClientBtnText}>{t('clients.deleteClientTitle')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -1859,7 +1867,7 @@ export default function ClientsScreen() {
               active={sortBy === 'lastSession'}
             />
             <Text style={[styles.sortBtnText, sortBy === 'lastSession' && styles.sortBtnTextActive]}>
-              {sortBy === 'name' ? 'Recientes' : sortDir === 'desc' ? 'Recientes ↓' : 'Antiguos ↑'}
+              {sortBy === 'name' ? t('clients.sortRecent') : sortDir === 'desc' ? t('clients.sortRecentDesc') : t('clients.sortOldAsc')}
             </Text>
           </TouchableOpacity>
 
@@ -1877,8 +1885,8 @@ export default function ClientsScreen() {
               />
               <Text style={[styles.sortBtnText, tagFilter.length > 0 && styles.sortBtnTextActive]}>
                 {tagFilter.length === 0
-                  ? 'Etiquetas'
-                  : `${tagFilter.length} etiqueta${tagFilter.length > 1 ? 's' : ''}`}
+                  ? t('clients.filterTags')
+                  : t('clients.filterTagsCount', { count: tagFilter.length })}
               </Text>
             </TouchableOpacity>
           )}
@@ -1901,16 +1909,16 @@ export default function ClientsScreen() {
             <View style={styles.syncTextWrap}>
               <Text style={styles.syncLabel}>
                 {trainerSync.mode === 'google' || trainerSync.mode === 'code'
-                  ? 'Sincronizado:'
+                  ? t('clients.syncActive')
                   : trainerSync.mode === 'offline'
-                  ? 'Sin sync:'
-                  : 'Configurar'}
+                  ? t('clients.syncOff')
+                  : t('clients.syncSetup')}
               </Text>
               {trainerSync.mode != null && (
                 <Text style={styles.syncMode}>
                   {trainerSync.mode === 'google'  ? 'Google' :
-                   trainerSync.mode === 'code'    ? 'Código' :
-                   'Manual'}
+                   trainerSync.mode === 'code'    ? t('clients.syncModeCode') :
+                   t('clients.syncModeManual')}
                 </Text>
               )}
             </View>
@@ -1924,7 +1932,7 @@ export default function ClientsScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
           <Text style={styles.emptyBody}>
-            {search ? 'Sin resultados para esa búsqueda' : 'Sin clientes. Pulsa ＋ Nuevo para añadir uno.'}
+            {search ? t('clients.noResults') : t('clients.noClientsEmpty')}
           </Text>
         </View>
       ) : (
@@ -2185,11 +2193,11 @@ export default function ClientsScreen() {
                         onPress={() => {
                           if (usedBy === 0) { deleteTag(id); return; }
                           Alert.alert(
-                            'Eliminar etiqueta',
-                            `«${name}» está asignada a ${usedBy} cliente${usedBy > 1 ? 's' : ''}. ¿Eliminarla de todos?`,
+                            t('clients.deleteTagTitle'),
+                            t('clients.deleteTagConfirm', { name, count: usedBy }),
                             [
-                              { text: 'Cancelar', style: 'cancel' },
-                              { text: 'Eliminar', style: 'destructive', onPress: () => deleteTag(id) },
+                              { text: t('common.cancel'), style: 'cancel' },
+                              { text: t('common.delete'), style: 'destructive', onPress: () => deleteTag(id) },
                             ]
                           );
                         }}
