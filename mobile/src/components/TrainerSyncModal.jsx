@@ -22,6 +22,7 @@ import Constants        from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../../store/useStore';
 import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer, signOut as supabaseSignOut } from '../services/supabaseAuth';
+import { claimTrainerSlots } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
@@ -178,12 +179,23 @@ const GOOGLE_DISCOVERY = {
 
 export default function TrainerSyncModal({ visible, onClose, isFirstTime = true }) {
   const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
+  const setTrainerName     = useStore((s) => s.setTrainerName);
   const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [selected,  setSelected]  = useState(trainerSync.mode ?? 'google');
-  const [loading,   setLoading]   = useState(false);
-  const [screen,    setScreen]    = useState('select'); // 'select' | 'code_reveal' | 'recovery'
-  const [newCode,   setNewCode]   = useState(null);
+  const [selected,     setSelected]     = useState(trainerSync.mode ?? 'google');
+  const [loading,      setLoading]      = useState(false);
+  const [screen,       setScreen]       = useState('select'); // 'select' | 'code_reveal' | 'recovery'
+  const [newCode,      setNewCode]      = useState(null);
+  const [nameInput,    setNameInput]    = useState(trainerSync.trainerName ?? '');
+
+  // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN)
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (visible) {
+      setNameInput(trainerSync.trainerName ?? '');
+      setSelected(trainerSync.mode ?? 'google');
+      setScreen('select');
+    }
+  }, [visible]);
 
   // ── Google OAuth setup ───────────────────────────────────────────────────────
   //
@@ -258,9 +270,24 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     if (selected === 'code') {
       setLoading(true);
       try {
+        // Collect existing slot IDs BEFORE signing out so we can re-claim them
+        const existingSlotIds = Object.values(
+          useStore.getState().clients ?? {}
+        ).map((c) => c.syncSlotId).filter(Boolean);
+
         await supabaseSignOut().catch(() => {});
         const { code, userId } = await setupTrainerCodeAccount();
         setTrainerSyncMode('code', { code, userId });
+
+        // Re-associate any existing client slots with the new trainer userId.
+        // Requires the claim_trainer_slots SQL function in Supabase.
+        if (existingSlotIds.length > 0) {
+          await claimTrainerSlots(existingSlotIds).catch(() => {
+            // Non-fatal: SQL function may not be deployed yet.
+            // Trainer will see RLS errors on old slots until it is.
+          });
+        }
+
         setNewCode(code);
         setScreen('code_reveal');
       } catch (err) {
@@ -360,10 +387,38 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                       {active && mode.warn && (
                         <Text style={s.optionWarn}>{mode.warn}</Text>
                       )}
+                      {/* Safety: if code already exists, warn before creating a new one */}
+                      {active && mode.id === 'code' && trainerSync.code && (
+                        <View style={s.existingCodeWarn}>
+                          <Text style={s.existingCodeWarnText}>
+                            Ya tienes el código{' '}
+                            <Text style={s.existingCodeValue}>{trainerSync.code}</Text>
+                            {' '}guardado.{'\n'}
+                            Si lo has perdido, usa «Recuperar cuenta» en lugar de crear uno nuevo — los programas de tus clientes quedarán huérfanos si cambias de cuenta.
+                          </Text>
+                          <TouchableOpacity onPress={() => setScreen('recovery')} style={s.existingCodeBtn}>
+                            <Text style={s.existingCodeBtnText}>Usar mi código →</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
+
+              {/* Trainer display name — shown to clients on their programs */}
+              <View style={s.nameRow}>
+                <Text style={s.nameLabel}>TU NOMBRE (PARA CLIENTES)</Text>
+                <TextInput
+                  style={s.nameInput}
+                  placeholder="Ej. Lucas García"
+                  placeholderTextColor={colors.muted}
+                  value={nameInput}
+                  onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
+                  returnKeyType="done"
+                  autoCorrect={false}
+                />
+              </View>
 
               {/* Recovery link — visible when no mode set, or to re-auth with a different code */}
               <TouchableOpacity onPress={() => setScreen('recovery')} style={s.recoveryLink}>
@@ -492,6 +547,32 @@ const s = StyleSheet.create({
     lineHeight: typography.xs * 1.5,
     marginTop:  spacing.xs,
   },
+  existingCodeWarn: {
+    marginTop:         spacing.xs,
+    backgroundColor:   withOpacity(colors.orange, 0.08),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.orange, 0.3),
+    borderRadius:      radius.sm,
+    padding:           spacing.sm,
+    gap:               spacing.xs,
+  },
+  existingCodeWarnText: {
+    fontSize:   typography.xs,
+    color:      colors.orange,
+    lineHeight: typography.xs * 1.6,
+  },
+  existingCodeValue: {
+    fontWeight:    typography.heavy,
+    letterSpacing: 1,
+  },
+  existingCodeBtn: {
+    alignSelf: 'flex-start',
+  },
+  existingCodeBtnText: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontWeight: typography.semibold,
+  },
 
   // Radio button
   radio: {
@@ -511,6 +592,25 @@ const s = StyleSheet.create({
     height:          8,
     borderRadius:    4,
     backgroundColor: colors.accent,
+  },
+
+  // Trainer name
+  nameRow: { gap: 5 },
+  nameLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.muted,
+    letterSpacing: 0.8,
+  },
+  nameInput: {
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    color:             colors.text,
+    fontSize:          typography.base,
   },
 
   // Recovery link

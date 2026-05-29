@@ -20,6 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
+import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -49,14 +50,35 @@ function parseImportFile(jsonString) {
 
 // ── Shared small components ────────────────────────────────────────────────────
 
-function FilterChip({ label, active, onPress }) {
+// ── Inline SVG icon helper ─────────────────────────────────────────────────────
+
+function HeaderIcon({ d, size = 14, active = false }) {
+  const stroke = active ? colors.accent : colors.muted;
+  return (
+    <Svg viewBox="0 0 24 24" width={size} height={size} fill="none"
+      stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d={d} />
+    </Svg>
+  );
+}
+
+// ── Filter chip ────────────────────────────────────────────────────────────────
+
+function FilterChip({ label, active, onPress, count }) {
   return (
     <TouchableOpacity
       style={[styles.chip, active && styles.chipActive]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Text style={[styles.chipText, active && styles.chipTextActive, { flex: 1, textAlign: 'center' }]}>
+        {label}
+      </Text>
+      {count != null && (
+        <View style={[styles.chipCountBadge, active && styles.chipCountBadgeActive]}>
+          <Text style={[styles.chipCountText, active && styles.chipCountTextActive]}>{count}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -953,6 +975,13 @@ export default function ClientsScreen() {
     [programs]
   );
 
+  const clientCounts = useMemo(() => {
+    const all      = Object.values(clients ?? {});
+    const active   = all.filter((c) => (c.status ?? 'active') !== 'inactive').length;
+    const inactive = all.filter((c) => (c.status ?? 'active') === 'inactive').length;
+    return { active, inactive, total: all.length };
+  }, [clients]);
+
   // ── UI State ───────────────────────────────────────────────────────────────
   const [showPaywall,      setShowPaywall]      = useState(false);
   const [view,             setView]             = useState('list'); // 'list' | 'detail' | 'billing'
@@ -1749,9 +1778,25 @@ export default function ClientsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
 
-      {/* Search + billing button */}
+      {/* ── List header ── */}
       <View style={styles.listHeader}>
-        <View style={styles.searchRow}>
+
+        {/* Title + action buttons */}
+        <View style={styles.listTitleRow}>
+          <Text style={styles.listTitle}>CLIENTES</Text>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
+            <Text style={styles.billingBtnText}>💳</Text>
+          </TouchableOpacity>
+          <AccentBtn label="＋ Nuevo cliente" onPress={() => setShowNewClient(true)} small />
+        </View>
+
+        {/* Search bar */}
+        <View style={styles.searchBarRow}>
+          <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+            stroke={colors.muted2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+          </Svg>
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar cliente…"
@@ -1760,24 +1805,16 @@ export default function ClientsScreen() {
             onChangeText={setSearch}
             returnKeyType="search"
           />
-          <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
-            <Text style={styles.billingBtnText}>💳</Text>
-          </TouchableOpacity>
-          <AccentBtn label="＋ Nuevo" onPress={() => setShowNewClient(true)} small />
         </View>
 
-        {/* Status filter */}
+        {/* Status chips with counts */}
         <View style={styles.chipRow}>
-          {[
-            { id: 'active',   label: 'Activos' },
-            { id: 'inactive', label: 'Inactivos' },
-            { id: 'all',      label: 'Todos' },
-          ].map(({ id, label }) => (
-            <FilterChip key={id} label={label} active={statusFilter === id} onPress={() => setStatusFilter(id)} />
-          ))}
+          <FilterChip label="Activos"   count={clientCounts.active}   active={statusFilter === 'active'}   onPress={() => setStatusFilter('active')} />
+          <FilterChip label="Inactivos" count={clientCounts.inactive} active={statusFilter === 'inactive'} onPress={() => setStatusFilter('inactive')} />
+          <FilterChip label="Todos"     count={clientCounts.total}    active={statusFilter === 'all'}      onPress={() => setStatusFilter('all')} />
         </View>
 
-        {/* Sort + tag filter */}
+        {/* Sort + sync row */}
         <View style={styles.sortTagRow}>
           {/* Sort by date toggle */}
           <TouchableOpacity
@@ -1788,33 +1825,70 @@ export default function ClientsScreen() {
             }}
             activeOpacity={0.7}
           >
+            {/* Clock icon */}
+            <HeaderIcon
+              d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
+              active={sortBy === 'lastSession'}
+            />
             <Text style={[styles.sortBtnText, sortBy === 'lastSession' && styles.sortBtnTextActive]}>
-              {sortBy === 'name' ? 'Recientes' : sortDir === 'desc' ? '↓ Recientes' : '↑ Antiguos'}
+              {sortBy === 'name' ? 'Recientes' : sortDir === 'desc' ? 'Recientes ↓' : 'Antiguos ↑'}
             </Text>
           </TouchableOpacity>
 
-          {/* Tag filter dropdown button (only if tags exist) */}
+          {/* Tag filter */}
           {allTags.length > 0 && (
             <TouchableOpacity
               style={[styles.sortBtn, tagFilter.length > 0 && styles.sortBtnActive]}
               onPress={() => setShowTagSheet(true)}
               activeOpacity={0.7}
             >
+              {/* Tag icon */}
+              <HeaderIcon
+                d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"
+                active={tagFilter.length > 0}
+              />
               <Text style={[styles.sortBtnText, tagFilter.length > 0 && styles.sortBtnTextActive]}>
                 {tagFilter.length === 0
-                  ? '▾ Etiquetas'
-                  : `▾ ${tagFilter.length} etiqueta${tagFilter.length > 1 ? 's' : ''}`}
+                  ? 'Etiquetas'
+                  : `${tagFilter.length} etiqueta${tagFilter.length > 1 ? 's' : ''}`}
               </Text>
             </TouchableOpacity>
           )}
 
-          {/* Clear active tag filter */}
           {tagFilter.length > 0 && (
             <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={10} activeOpacity={0.7}>
               <Text style={styles.sortTagClear}>✕</Text>
             </TouchableOpacity>
           )}
+
+          {/* Spacer — pushes sync to the right */}
+          <View style={{ flex: 1 }} />
+
+          {/* Sync indicator — tap to change mode */}
+          <TouchableOpacity style={styles.syncIndicator} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
+            <View style={[
+              styles.syncDot,
+              (trainerSync.mode === 'google' || trainerSync.mode === 'code') && styles.syncDotActive,
+            ]} />
+            <View style={styles.syncTextWrap}>
+              <Text style={styles.syncLabel}>
+                {trainerSync.mode === 'google' || trainerSync.mode === 'code'
+                  ? 'Sincronizado:'
+                  : trainerSync.mode === 'offline'
+                  ? 'Sin sync:'
+                  : 'Configurar'}
+              </Text>
+              {trainerSync.mode != null && (
+                <Text style={styles.syncMode}>
+                  {trainerSync.mode === 'google'  ? 'Google' :
+                   trainerSync.mode === 'code'    ? 'Código' :
+                   'Manual'}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
+
       </View>
 
       {/* Client list */}
@@ -2142,28 +2216,44 @@ const styles = StyleSheet.create({
   // ── List header ──
   listHeader: {
     paddingHorizontal: spacing.xl,
-    paddingTop:        spacing.xl,
-    paddingBottom:     spacing.sm,
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.md,
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
-    gap:               spacing.sm,
+    gap:               spacing.md,
   },
-  searchRow: {
+
+  // Title row
+  listTitleRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  searchInput: {
-    flex:              1,
+  listTitle: {
+    fontSize:      typography.base,
+    fontWeight:    typography.heavy,
+    color:         colors.muted,
+    letterSpacing: 2,
+  },
+
+  // Search bar
+  searchBarRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
     backgroundColor:   colors.surface,
     borderWidth:       borders.thin,
     borderColor:       colors.border,
     borderRadius:      radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    color:             colors.text,
-    fontSize:          typography.base,
+    gap:               spacing.sm,
   },
+  searchInput: {
+    flex:            1,
+    paddingVertical: spacing.sm,
+    color:           colors.text,
+    fontSize:        typography.base,
+  },
+
   billingBtn: {
     backgroundColor:   colors.surface,
     borderWidth:       borders.thin,
@@ -2182,38 +2272,99 @@ const styles = StyleSheet.create({
   // ── Filter chips ──
   chipRow: {
     flexDirection: 'row',
-    gap:           spacing.xs,
+    gap:           spacing.sm,
   },
   chip: {
     flex:              1,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius:      radius.full,   // fully rounded pill
     borderWidth:       borders.thin,
     borderColor:       colors.border,
     backgroundColor:   colors.surface,
-    alignItems:        'center',
+    gap:               spacing.xs,
   },
   chipActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+    borderColor:     `${colors.accent}70`,
+    backgroundColor: `${colors.accent}10`,
   },
   chipText: {
-    fontSize:  typography.xs,
-    color:     colors.muted,
+    fontSize:   typography.xs,
+    color:      colors.muted,
     fontWeight: typography.medium,
   },
   chipTextActive: { color: colors.accent },
+  // Non-active: dim gray badge
+  chipCountBadge: {
+    backgroundColor:   colors.surface2,
+    borderRadius:      radius.full,
+    paddingHorizontal: 6,
+    paddingVertical:   1,
+    minWidth:          20,
+    alignItems:        'center',
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+  },
+  chipCountText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    color:      colors.muted,
+  },
+  // Active: yellow badge + dark text
+  chipCountBadgeActive: {
+    backgroundColor: colors.accent,
+    borderColor:     colors.accent,
+  },
+  chipCountTextActive: {
+    color: colors.bg,
+  },
+
+  // ── Sync indicator ──
+  syncIndicator: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    flexShrink:    0,
+  },
+  syncDot: {
+    width:        7,
+    height:       7,
+    borderRadius: 4,
+    backgroundColor: colors.muted2,
+    flexShrink:   0,
+  },
+  syncDotActive: {
+    backgroundColor: colors.green,
+  },
+  syncTextWrap: { gap: 1 },
+  syncLabel: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+    lineHeight: 14,
+  },
+  syncMode: {
+    fontSize:   typography.xs,
+    color:      colors.muted2,
+    lineHeight: 13,
+  },
 
   // ── Sort + tag filter row ──
   sortTagRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
+    gap:           spacing.sm,
   },
   sortBtn: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 1,
-    borderRadius:      radius.xs,
+    paddingVertical:   spacing.xs + 2,
+    borderRadius:      radius.sm,
     borderWidth:       borders.thin,
     borderColor:       colors.border,
     backgroundColor:   colors.surface,

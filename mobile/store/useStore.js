@@ -20,7 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -45,6 +45,23 @@ import i18n from '../src/i18n';
 import { navigateTo } from '../src/navigation/navigationRef';
 
 // ─── Initial state ─────────────────────────────────────────────────────────────
+
+// ── Trainer session guard ──────────────────────────────────────────────────────
+// Before any RLS-protected Supabase write, verify the session is active.
+// If not: auto-recover using the stored code (handles app restart / token expiry).
+// If the trainer used a different code in a past session, this also re-authenticates
+// to the current code's account — preventing the "New row violates RLS" error.
+async function _ensureTrainerSession(trainerSync) {
+  const { supabase } = require('../src/config/supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) return; // already authenticated, nothing to do
+  if (trainerSync.mode === 'code' && trainerSync.code) {
+    const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
+    await recoverWithTrainerCode(trainerSync.code);
+  } else if (trainerSync.mode === 'google') {
+    throw new Error('Sesión de Google expirada. Ve a Sincronización y vuelve a iniciar sesión con Google.');
+  }
+}
 
 const INITIAL_PROFILE = {
   name: 'Usuario',
@@ -108,9 +125,10 @@ export const useStore = create(
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
       trainerSync: {
-        mode:   null,   // null | 'offline' | 'code' | 'google'
-        code:   null,   // string — trainer recovery code (only when mode === 'code')
-        userId: null,   // Supabase user.id once authenticated
+        mode:        null,   // null | 'offline' | 'code' | 'google'
+        code:        null,   // string — trainer recovery code (only when mode === 'code')
+        userId:      null,   // Supabase user.id once authenticated
+        trainerName: null,   // string — display name shown to clients on their programs
       },
 
       // ── Client sync (when user is a client connected to a trainer) ────────
@@ -1900,9 +1918,15 @@ export const useStore = create(
           trainerSync: { ...state.trainerSync, userId },
         })),
 
+      /** Updates only the trainer display name (preserved across mode switches). */
+      setTrainerName: (name) =>
+        set((state) => ({
+          trainerSync: { ...state.trainerSync, trainerName: name ?? null },
+        })),
+
       /** Resets sync mode (e.g. when switching modes). */
       resetTrainerSync: () =>
-        set(() => ({ trainerSync: { mode: null, code: null, userId: null } })),
+        set((state) => ({ trainerSync: { mode: null, code: null, userId: null, trainerName: state.trainerSync.trainerName } })),
 
       /**
        * Uploads a program to the client's Supabase slot.
@@ -1919,6 +1943,9 @@ export const useStore = create(
         if (client.syncSlotId) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
 
+        // Ensure auth session is active — may have expired after app restart
+        await _ensureTrainerSession(trainerSync);
+
         const { slotId, clientCode } = await createClientSlot(trainerSync.userId, client.name);
 
         set((s) => ({
@@ -1930,12 +1957,26 @@ export const useStore = create(
       },
 
       uploadProgramToClient: async (clientId, programId) => {
-        const { clients } = get();
+        const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+
+        // Ensure auth session is active
+        await _ensureTrainerSession(trainerSync);
         const payload = get()._buildProgramJson(programId, false);
         if (!payload) throw new Error('Programa no encontrado.');
-        await uploadProgram(client.syncSlotId, JSON.parse(payload.json));
+        const programData   = JSON.parse(payload.json);
+        const trainerName   = get().trainerSync.trainerName;
+        if (trainerName?.trim()) {
+          // Stamp trainerName into every session template so clients see attribution
+          Object.values(programData.sessionTemplates ?? {}).forEach((tpl) => {
+            tpl.trainerName = trainerName.trim();
+          });
+          Object.values(programData.userPrograms ?? {}).forEach((tpl) => {
+            tpl.trainerName = trainerName.trim();
+          });
+        }
+        await uploadProgram(client.syncSlotId, programData);
         // Clear pending-upload flag after successful push
         set((s) => ({
           clients: {

@@ -177,6 +177,7 @@ export default function WorkoutScreen() {
   const customExercises    = useStore((s) => s.customExercises);
   const workoutLog         = useStore((s) => s.workoutLog);
   const restTimer          = useStore((s) => s.ui.restTimer);
+  const driveBackup        = useStore((s) => s.driveBackup);
 
   // Store actions
   const updateSetField      = useStore((s) => s.updateSetField);
@@ -246,9 +247,19 @@ export default function WorkoutScreen() {
           <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
             {`Sesión ${template.label ?? ''}`}
           </Text>
-          <Text style={styles.sesName} numberOfLines={1}>
-            {template.name ?? ''}
-          </Text>
+          <View style={styles.sesNameRow}>
+            <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
+              {template.name ?? ''}
+            </Text>
+            {driveBackup.needsReconnect ? (
+              <Text style={[styles.driveIcon, { color: colors.orange }]}>⚠ ☁</Text>
+            ) : driveBackup.enabled ? (
+              <Text style={styles.driveIcon}>☁</Text>
+            ) : null}
+          </View>
+          {template.trainerName ? (
+            <Text style={styles.trainerCredit}>por {template.trainerName}</Text>
+          ) : null}
         </View>
         <TouchableOpacity
           onPress={() => setNotesOpen(true)}
@@ -458,11 +469,27 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
+  sesNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
   sesName: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
     color:      colors.text,
     lineHeight: typography.xl * 1.2,
+  },
+  driveIcon: {
+    fontSize:   12,
+    color:      colors.green,
+    lineHeight: typography.xl * 1.2,
+    opacity:    0.75,
+  },
+  trainerCredit: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontStyle:  'italic',
   },
   notesBtn: {
     padding:         spacing.xs + 2,
