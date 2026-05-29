@@ -180,8 +180,24 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const unit  = profile.weightUnit ?? 'kg';
   const isPro = profile.isPro      ?? true;
 
+  // ── Easter egg: 5 taps rápidos en "Plan actual" para toggle Pro (testing en prod) ──
+  const planTapCount = useRef(0);
+  const planTapTimer = useRef(null);
+  const showToast    = useStore((s) => s.showToast);
+  function handlePlanTap() {
+    planTapCount.current += 1;
+    clearTimeout(planTapTimer.current);
+    if (planTapCount.current >= 5) {
+      planTapCount.current = 0;
+      setProfile({ isPro: !isPro });
+      showToast(isPro ? 'Plan: FREE (test)' : 'Plan: PRO (test)');
+    } else {
+      planTapTimer.current = setTimeout(() => { planTapCount.current = 0; }, 1500);
+    }
+  }
+
   // ── Drag-to-close ────────────────────────────────────────────────────────────
-  const translateY    = useRef(new Animated.Value(0)).current;
+  const translateY      = useRef(new Animated.Value(900)).current;
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
   });
@@ -205,8 +221,15 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
     })
   ).current;
 
+  // Slide-in al abrir (animationType="none" en el Modal — evita conflicto entre
+  // la animación nativa del Modal y el transform nativo de Animated)
   useEffect(() => {
-    if (visible) translateY.setValue(0);
+    if (visible) {
+      translateY.setValue(900);
+      Animated.spring(translateY, {
+        toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
+      }).start();
+    }
   }, [visible]);
 
   async function handleExport(type) {
@@ -220,18 +243,24 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      {/* Backdrop — opacidad sincronizada con el gesto de arrastre */}
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}>
-        {/* Handle area — captures drag-to-close, aislado del ScrollView */}
-        <View {...panResponder.panHandlers}>
-          <View style={styles.dragHandleWrap}>
-            <View style={styles.sheetHandle} />
+      {/* Layout shell — posiciona el sheet en la parte inferior */}
+      <View style={styles.sheetOverlay} pointerEvents="box-none">
+        <Animated.View
+          style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}
+          onStartShouldSetResponder={() => true}
+        >
+          {/* Drag handle */}
+          <View {...panResponder.panHandlers}>
+            <View style={styles.dragHandleWrap}>
+              <View style={styles.sheetHandle} />
+            </View>
+            <Text style={styles.settingsTitle}>AJUSTES</Text>
           </View>
-          <Text style={styles.settingsTitle}>AJUSTES</Text>
-        </View>
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
@@ -337,6 +366,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               icon={<Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />}
               label="Plan actual"
               badge={isPro ? 'PRO' : 'FREE'}
+              onPress={handlePlanTap}
             />
             <MenuItem
               icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
@@ -368,7 +398,8 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           )}
 
         </ScrollView>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -582,11 +613,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
+  sheetOverlay: {
+    flex:           1,
+    justifyContent: 'flex-end',
+  },
   settingsSheet: {
-    position:             'absolute',
-    bottom:               0,
-    left:                 0,
-    right:                0,
     maxHeight:            '88%',
     backgroundColor:      colors.surface,
     borderTopLeftRadius:  radius.lg,
