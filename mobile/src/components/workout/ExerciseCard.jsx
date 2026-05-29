@@ -105,25 +105,39 @@ export default function ExerciseCard({
   const isCollapsed          = collapsed && !manualOpen;
 
   // ── Animated.Value height + opacity (React Native built-in, Expo Go safe) ──
-  const maxH        = useRef(new Animated.Value(2000)).current;
+  //
+  // KEY DESIGN: maxH is UNCONSTRAINED (3000) whenever the card is fully expanded.
+  // This lets the card grow naturally when sets are added without ever clipping.
+  // Only during collapse/expand ANIMATIONS does maxH take a specific value.
+  //
+  //   Idle-expanded : maxH = 3000  (content drives height, no clip)
+  //   Collapsing    : maxH animates  expandedH → collapsedH
+  //   Idle-collapsed: maxH = collapsedH (snapped to real measured value)
+  //   Expanding     : maxH animates  collapsedH → expandedH, then reset to 3000
+  //
+  const UNCONSTRAINED = 3000;
+  const maxH        = useRef(new Animated.Value(UNCONSTRAINED)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const expandedH   = useRef(0);
   const collapsedH  = useRef(80);
   const isCollapsedRef = useRef(false);
   isCollapsedRef.current = isCollapsed;
 
-  // Solo guarda el máximo histórico → no se sobreescribe con valores más pequeños
-  // durante la animación de colapso (onLayout dispara muchas veces mientras baja maxH)
   const onCardLayout = useCallback((e) => {
     const h = e.nativeEvent.layout.height;
     if (isCollapsedRef.current) {
+      // Collapsed: track real collapsed height and snap maxH to it.
+      // Needed because the collapse animation may target the 80px default
+      // before the collapsed view has been rendered and measured.
       collapsedH.current = h;
-      // First collapse may have animated to the 80px default before the collapsed
-      // view was rendered and measured. Snap to the real height immediately.
       if (Math.abs(maxH._value - h) > 2) maxH.setValue(h);
-    } else if (h > expandedH.current) {
-      expandedH.current = h;
-      if (maxH._value >= 1999) maxH.setValue(h);
+    } else {
+      // Expanded: just track the natural content height for the next collapse.
+      // DO NOT constrain maxH — keeping it at UNCONSTRAINED lets the card grow
+      // freely whenever sets are added (the old maxH.setValue(h) here caused the
+      // card to clip on every set addition because onLayout would then report the
+      // clamped height instead of the true content height).
+      if (h > expandedH.current) expandedH.current = h;
     }
   }, [maxH]);
 
@@ -132,6 +146,8 @@ export default function ExerciseCard({
 
   // Collapse: fade out + aplasta altura, cambia contenido al terminar (opacity sigue en 0)
   const startCollapse = useCallback((onDone) => {
+    // maxH may be UNCONSTRAINED (3000) — snap to actual content height first
+    // so the animation starts from the real size with no visual jump.
     const from = expandedH.current  > 0 ? expandedH.current  : 400;
     const to   = collapsedH.current > 0 ? collapsedH.current : 80;
     maxH.setValue(from);
@@ -153,13 +169,16 @@ export default function ExerciseCard({
     prevIsCollapsedRef.current = isCollapsed;
   }, [isCollapsed]);
 
-  // Expand: cambia contenido primero, fade in + sube altura
+  // Expand: cambia contenido primero, fade in + sube altura; libera maxH al terminar
   const startExpand = useCallback(() => {
     const from = collapsedH.current > 0 ? collapsedH.current : 80;
     const to   = expandedH.current  > 0 ? expandedH.current  : 600;
     maxH.setValue(from);
     contentOpacity.setValue(0);
-    Animated.timing(maxH,           { ...HEIGHT_CFG,  toValue: to }).start();
+    Animated.timing(maxH, { ...HEIGHT_CFG, toValue: to }).start(({ finished }) => {
+      // Release the constraint so the card can grow freely if sets are added.
+      if (finished) maxH.setValue(UNCONSTRAINED);
+    });
     Animated.timing(contentOpacity, { ...OPACITY_CFG, toValue: 1 }).start();
   }, []);
 
