@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
 
-const PROGRESSION_MODELS = [
-  { id: 'double_progression', label: 'Doble progresión', desc: 'Peso + reps' },
-  { id: 'time_progression',   label: 'Tiempo',           desc: 'Progresión temporal' },
-  { id: 'submax',             label: 'Submáximo',        desc: 'RIR / esfuerzo' },
-];
+function getProgressionModels(t) {
+  return [
+    { id: 'double_progression', label: t('exerciseEditor.progressionModels.double_progression.label'), desc: t('exerciseEditor.progressionModels.double_progression.desc') },
+    { id: 'time_progression',   label: t('exerciseEditor.progressionModels.time_progression.label'),   desc: t('exerciseEditor.progressionModels.time_progression.desc')   },
+    { id: 'submax',             label: t('exerciseEditor.progressionModels.submax.label'),             desc: t('exerciseEditor.progressionModels.submax.desc')             },
+  ];
+}
 
 // ─── StepField ────────────────────────────────────────────────────────────────
 
@@ -241,9 +243,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       {/* ── Progresión (solo custom) ── */}
       {def?.isCustom && (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>PROGRESIÓN</Text>
+          <Text style={styles.sectionLabel}>{t('exerciseEditor.progressionType').toUpperCase()}</Text>
           <View style={styles.modelRow}>
-            {PROGRESSION_MODELS.map((m) => (
+            {getProgressionModels(t).map((m) => (
               <TouchableOpacity
                 key={m.id}
                 style={[styles.modelBtn, progressionModel === m.id && styles.modelBtnActive]}

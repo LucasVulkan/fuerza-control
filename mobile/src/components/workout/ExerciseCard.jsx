@@ -337,7 +337,7 @@ export default function ExerciseCard({
               {/* Name row — badge inline to the right */}
               <View style={styles.nameRow}>
                 <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                {exConfig.isKey && <Text style={styles.keyBadge}>CLAVE</Text>}
+                {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
               </View>
 
               {/* Target + tempo inline: "3 × 8–12 reps · 3010" */}
@@ -374,19 +374,19 @@ export default function ExerciseCard({
           <View style={styles.colHeader}>
             <View style={{ width: 28 }} />
             {inputType === 'reps' ? (
-              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>REPS</Text>
+              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
             ) : inputType === 'time' ? (
-              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>SEG</Text>
+              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.timeSec').toUpperCase()}</Text>
             ) : inputType === 'weight_time' ? (
               <>
                 <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>SEG</Text>
+                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.timeSec').toUpperCase()}</Text>
               </>
             ) : (
               // weight_reps (default)
               <>
                 <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>REPS</Text>
+                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
               </>
             )}
             {/* Timer btn spacer */}
@@ -462,7 +462,7 @@ export default function ExerciseCard({
 
           {/* Añadir serie */}
           <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
-            <Text style={styles.addSetText}>+ Añadir serie</Text>
+            <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
           </TouchableOpacity>
         </>
 

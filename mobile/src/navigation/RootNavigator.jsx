@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { colors, borders } from '../theme';
 import HomeScreen       from '../screens/HomeScreen';
@@ -42,6 +43,7 @@ function TabBarBackground() {
 // ── Bottom tab navigator ───────────────────────────────────────────────────────
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { t }  = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -63,27 +65,27 @@ function MainTabs() {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ tabBarLabel: 'Sesión',    tabBarIcon: tabIcon('barbell') }}
+        options={{ tabBarLabel: t('tabs.session'),   tabBarIcon: tabIcon('barbell') }}
       />
       <Tab.Screen
         name="History"
         component={HistoryScreen}
-        options={{ tabBarLabel: 'Historial', tabBarIcon: tabIcon('time') }}
+        options={{ tabBarLabel: t('tabs.history'),   tabBarIcon: tabIcon('time') }}
       />
       <Tab.Screen
         name="Stats"
         component={StatsScreen}
-        options={{ tabBarLabel: 'Progreso',  tabBarIcon: tabIcon('stats-chart') }}
+        options={{ tabBarLabel: t('tabs.progress'),  tabBarIcon: tabIcon('stats-chart') }}
       />
       <Tab.Screen
         name="Clients"
         component={ClientsScreen}
-        options={{ tabBarLabel: 'Clientes',  tabBarIcon: tabIcon('people') }}
+        options={{ tabBarLabel: t('tabs.clients'),   tabBarIcon: tabIcon('people') }}
       />
       <Tab.Screen
         name="Program"
         component={ProgramScreen}
-        options={{ tabBarLabel: 'Programas', tabBarIcon: tabIcon('layers') }}
+        options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('layers') }}
       />
     </Tab.Navigator>
   );

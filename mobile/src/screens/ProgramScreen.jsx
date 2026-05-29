@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
@@ -27,6 +28,7 @@ function getAllProgramDays(program) {
 // ── Template card ──────────────────────────────────────────────────────────────
 
 function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
+  const { t }      = useTranslation();
   const dayCount   = getAllProgramDays(program).length;
   const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
   const structureStr = stageCount
@@ -56,13 +58,13 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
       {/* Actions: Ver · Editar · Asignar · ⋯ */}
       <View style={styles.cardActions}>
         <TouchableOpacity style={styles.cardBtnSecondary} onPress={onView} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>Ver</Text>
+          <Text style={styles.cardBtnText}>{t('templates.actionView')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cardBtnSecondary} onPress={onEdit} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>Editar</Text>
+          <Text style={styles.cardBtnText}>{t('templates.actionEdit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cardBtnSecondary} onPress={onAssign} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>Asignar</Text>
+          <Text style={styles.cardBtnText}>{t('clients.newProgramModal.assignBtn')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cardBtnIcon} onPress={onMenu} activeOpacity={0.7}>
           <Text style={styles.cardBtnIconText}>⋯</Text>
@@ -75,6 +77,7 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
 // ── Create modal ───────────────────────────────────────────────────────────────
 
 function CreateModal({ visible, onClose, onCreate }) {
+  const { t }          = useTranslation();
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
 
@@ -94,20 +97,20 @@ function CreateModal({ visible, onClose, onCreate }) {
         style={{ flex: 1, justifyContent: 'center' }}
       >
         <View style={styles.centerModal}>
-          <Text style={styles.modalTitle}>NUEVA PLANTILLA</Text>
+          <Text style={styles.modalTitle}>{t('templates.newModal.title')}</Text>
 
           <TextInput
             style={styles.nameInput}
             value={name}
             onChangeText={setName}
-            placeholder="Nombre de la plantilla…"
+            placeholder={t('templates.newModal.namePlaceholder')}
             placeholderTextColor={colors.muted2}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={handleCreate}
           />
 
-          <Text style={styles.fieldLabel}>SESIONES</Text>
+          <Text style={styles.fieldLabel}>{t('templates.newModal.sessionsLabel').toUpperCase()}</Text>
           <View style={styles.sessionPicker}>
             {[2, 3, 4, 5, 6].map((n) => (
               <TouchableOpacity
@@ -124,7 +127,7 @@ function CreateModal({ visible, onClose, onCreate }) {
 
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.createBtn, !name.trim() && styles.createBtnDisabled]}
@@ -132,7 +135,7 @@ function CreateModal({ visible, onClose, onCreate }) {
               disabled={!name.trim()}
             >
               <Text style={[styles.createBtnText, !name.trim() && styles.createBtnTextDisabled]}>
-                CREAR
+                {t('templates.newModal.createBtn')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -157,14 +160,15 @@ function MenuOption({ label, onPress, danger }) {
 }
 
 function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
+  const { t }  = useTranslation();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={[styles.contextMenu, { paddingBottom: insets.bottom }]}>
-        <MenuOption label="Duplicar" onPress={() => { onClose(); onDuplicate(); }} />
-        <MenuOption label="Exportar" onPress={() => { onClose(); onExport(); }} />
-        <MenuOption label="Eliminar" onPress={() => { onClose(); onDelete(); }} danger />
+        <MenuOption label={t('templates.contextDuplicate')} onPress={() => { onClose(); onDuplicate(); }} />
+        <MenuOption label={t('templates.contextExport')}    onPress={() => { onClose(); onExport(); }} />
+        <MenuOption label={t('templates.contextDelete')}    onPress={() => { onClose(); onDelete(); }} danger />
       </View>
     </Modal>
   );
@@ -173,6 +177,7 @@ function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
 // ── Assign to client modal ─────────────────────────────────────────────────────
 
 function AssignToClientModal({ program, clients, onAssign, onClose }) {
+  const { t }      = useTranslation();
   const clientList = useMemo(
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
@@ -191,12 +196,12 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
       <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalWrap}>
         <View style={styles.assignModal}>
-          <Text style={styles.modalTitle}>ASIGNAR A CLIENTE</Text>
+          <Text style={styles.modalTitle}>{t('templates.assignModal.title')}</Text>
           <Text style={styles.modalSub}>{program.name}</Text>
 
           {/* Client list */}
           {clientList.length === 0 ? (
-            <Text style={styles.emptyText}>Sin clientes. Crea uno primero.</Text>
+            <Text style={styles.emptyText}>{t('templates.assignModal.noClients')}</Text>
           ) : (
             <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
               {clientList.map((c) => {
@@ -223,7 +228,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
           {/* Optional custom name */}
           <TextInput
             style={styles.nameInput}
-            placeholder={`Nombre (por defecto: ${program.name})`}
+            placeholder={t('templates.assignModal.programNamePlaceholder')}
             placeholderTextColor={colors.muted2}
             value={customName}
             onChangeText={setCustomName}
@@ -232,7 +237,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
 
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.createBtn, !clientId && styles.createBtnDisabled]}
@@ -240,7 +245,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
               disabled={!clientId}
             >
               <Text style={[styles.createBtnText, !clientId && styles.createBtnTextDisabled]}>
-                ASIGNAR
+                {t('templates.assignModal.assignBtn')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -253,6 +258,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function ProgramScreen() {
+  const { t }  = useTranslation();
   const insets = useSafeAreaInsets();
 
   const [showCreate,    setShowCreate]    = useState(false);
@@ -289,14 +295,14 @@ export default function ProgramScreen() {
 
   function handleCreate(name, numSessions) {
     createEmptyProgram(numSessions, name, 'template');
-    showToast('✓ Plantilla creada');
+    showToast(t('templates.toastCreated'));
   }
 
   function handleDuplicate(programId) {
     const src = programs[programId];
     if (!src) return;
-    cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + ' (copia)' });
-    showToast('✓ Plantilla duplicada');
+    cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + t('templates.copyNameSuffix') });
+    showToast(t('templates.toastDuplicated'));
   }
 
   function handleAssignToClient(clientId, programName) {
@@ -306,22 +312,21 @@ export default function ProgramScreen() {
     });
     if (newId) {
       setEditingProgram(newId);
-      showToast('✓ Asignado — abriendo editor');
+      showToast(t('templates.toastAssigned'));
     }
     setShowAssign(false);
     setAssignTarget(null);
   }
 
   function handleDelete(programId) {
-    const name = programs[programId]?.name ?? 'esta plantilla';
     Alert.alert(
-      'Eliminar plantilla',
-      `¿Eliminar "${name}"? Esta acción no se puede deshacer.`,
+      t('templates.deleteTitle'),
+      t('templates.deleteConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar', style: 'destructive',
-          onPress: () => { deleteProgram(programId, false); showToast('Plantilla eliminada'); },
+          text: t('common.delete'), style: 'destructive',
+          onPress: () => { deleteProgram(programId, false); showToast(t('templates.toastDeleted')); },
         },
       ]
     );
@@ -333,13 +338,13 @@ export default function ProgramScreen() {
 
       {/* Sub-header: title + action */}
       <View style={styles.subHeader}>
-        <Text style={styles.title}>PLANTILLAS</Text>
+        <Text style={styles.title}>{t('templates.title').toUpperCase()}</Text>
         <TouchableOpacity
           style={styles.newBtn}
           onPress={() => setShowCreate(true)}
           activeOpacity={0.8}
         >
-          <Text style={styles.newBtnText}>＋ Nueva</Text>
+          <Text style={styles.newBtnText}>{t('templates.newBtn')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -347,17 +352,14 @@ export default function ProgramScreen() {
       {templateList.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📐</Text>
-          <Text style={styles.emptyTitle}>Sin plantillas</Text>
-          <Text style={styles.emptyBody}>
-            Crea plantillas de programa reutilizables.{'\n'}
-            Podrás asignarlas a clientes o usarlas como base para nuevos programas.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('templates.title')}</Text>
+          <Text style={styles.emptyBody}>{t('templates.empty')}</Text>
           <TouchableOpacity
             style={styles.newBtnLarge}
             onPress={() => setShowCreate(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.newBtnLargeText}>CREAR PLANTILLA</Text>
+            <Text style={styles.newBtnLargeText}>{t('templates.newModal.createBtn')}</Text>
           </TouchableOpacity>
         </View>
       ) : (

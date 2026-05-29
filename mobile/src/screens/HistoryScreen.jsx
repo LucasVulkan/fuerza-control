@@ -84,14 +84,11 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
   return { weeks, trainedDays };
 }
 
-const MONTHS_ES = [
-  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
-];
 
 // ── WorkoutCalendar ────────────────────────────────────────────────────────────
 
 function WorkoutCalendar({ onDayPress, selectedDate }) {
+  const { t }            = useTranslation();
   const workoutLog       = useStore((s) => s.workoutLog);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const userPrograms     = useStore((s) => s.userPrograms);
@@ -124,7 +121,7 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
         <TouchableOpacity onPress={prevMonth} hitSlop={12} style={cal.navBtn}>
           <Text style={cal.navIcon}>{'‹'}</Text>
         </TouchableOpacity>
-        <Text style={cal.monthLabel}>{`${MONTHS_ES[month]} ${year}`}</Text>
+        <Text style={cal.monthLabel}>{`${(t('months', { returnObjects: true }))[month]} ${year}`}</Text>
         <TouchableOpacity
           onPress={nextMonth}
           hitSlop={12}
@@ -267,7 +264,7 @@ const cal = StyleSheet.create({
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
 function SessionCard({ session, onDelete }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { fmt: fmtWeight } = useWeightUnit();
   const [open, setOpen] = useState(false);
 
@@ -307,11 +304,11 @@ function SessionCard({ session, onDelete }) {
 
   function handleDelete() {
     Alert.alert(
-      'Eliminar sesión',
-      '¿Eliminar esta sesión del historial? No se puede deshacer.',
+      t('history.deleteTitle'),
+      t('history.deleteConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => onDelete(session.id) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(session.id) },
       ],
     );
   }
@@ -327,7 +324,7 @@ function SessionCard({ session, onDelete }) {
         <View style={styles.cardHeaderLeft}>
           {/* "Sesión A" tag in accent color */}
           <Text style={[styles.cardSesTag, { color: accent }]} numberOfLines={1}>
-            {`Sesión ${label}`}
+            {t('workout.sessionLabel', { label })}
           </Text>
           {/* Session name in white */}
           <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
@@ -510,7 +507,7 @@ export default function HistoryScreen() {
       {selectedDate && (
         <View style={styles.dateFilterRow}>
           <Text style={styles.dateFilterLabel}>
-            {`${selectedDate.day} de ${MONTHS_ES[selectedDate.month]}`}
+            {`${selectedDate.day} de ${(t('months', { returnObjects: true }))[selectedDate.month]}`}
           </Text>
           <TouchableOpacity
             onPress={() => setSelectedDate(null)}
@@ -525,8 +522,8 @@ export default function HistoryScreen() {
       {/* Scope selector */}
       <View style={styles.scopeRow}>
         {[
-          { id: 'program', label: 'Este programa' },
-          { id: 'all',     label: 'Todos' },
+          { id: 'program', label: t('history.currentProgram') },
+          { id: 'all',     label: t('history.all') },
         ].map(({ id, label }) => {
           const active = scope === id;
           return (
@@ -574,7 +571,7 @@ export default function HistoryScreen() {
                 onPress={() => setSelectedStageIds(new Set())}
                 activeOpacity={0.7}
               >
-                <Text style={styles.stagePillResetText}>Todas ✕</Text>
+                <Text style={styles.stagePillResetText}>{t('history.allStages')}</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -603,10 +600,13 @@ export default function HistoryScreen() {
             <Text style={styles.emptyIcon}>📭</Text>
             <Text style={styles.emptyText}>
               {selectedDate
-                ? `No hay sesiones registradas el ${selectedDate.day} de ${MONTHS_ES[selectedDate.month]}.`
+                ? t('history.noSessionsDate', {
+                    day: selectedDate.day,
+                    month: (t('months', { returnObjects: true }))[selectedDate.month],
+                  })
                 : scope === 'program'
-                  ? 'No hay sesiones registradas para este programa.'
-                  : 'Completa tu primera sesión para verla aquí.'}
+                  ? t('history.noSessionsProgram')
+                  : t('history.noSessionsEmpty')}
             </Text>
           </View>
         }

@@ -22,6 +22,7 @@ const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS; // ≈ 163.4
 const SWIPE_THRESHOLD = 80;
 
 function RestTimerFloat({ timer, onStop, bottomOffset }) {
+  const { t }      = useTranslation();
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
 
@@ -112,7 +113,7 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 
       {/* Skip */}
       <TouchableOpacity style={styles.timerSkipBtn} onPress={onStop} hitSlop={8}>
-        <Text style={styles.timerSkipText}>Saltar</Text>
+        <Text style={styles.timerSkipText}>{t('restTimer.skip')}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -121,6 +122,7 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 // ── Notes modal ───────────────────────────────────────────────────────────────
 
 function NotesModal({ visible, value, onChange, onClose }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {/*
@@ -138,9 +140,9 @@ function NotesModal({ visible, value, onChange, onClose }) {
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>NOTAS DE SESIÓN</Text>
+            <Text style={styles.modalTitle}>{t('workout.sessionNotes')}</Text>
             <TouchableOpacity style={styles.modalSaveBtn} onPress={onClose}>
-              <Text style={styles.modalSaveBtnText}>Guardar</Text>
+              <Text style={styles.modalSaveBtnText}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
           <TextInput
@@ -149,11 +151,11 @@ function NotesModal({ visible, value, onChange, onClose }) {
             onChangeText={onChange}
             multiline
             autoFocus
-            placeholder="Notas sobre la sesión…"
+            placeholder={t('workout.notesPlaceholder')}
             placeholderTextColor={colors.muted2}
             textAlignVertical="top"
           />
-          <Text style={styles.notesHint}>Se guardarán junto con la sesión</Text>
+          <Text style={styles.notesHint}>{t('workout.notesSavedWith')}</Text>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -245,7 +247,7 @@ export default function WorkoutScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
-            {`Sesión ${template.label ?? ''}`}
+            {t('workout.sessionLabel', { label: template.label ?? '' })}
           </Text>
           <View style={styles.sesNameRow}>
             <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
@@ -258,7 +260,7 @@ export default function WorkoutScreen() {
             ) : null}
           </View>
           {template.trainerName ? (
-            <Text style={styles.trainerCredit}>por {template.trainerName}</Text>
+            <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
           ) : null}
         </View>
         <TouchableOpacity
@@ -337,7 +339,7 @@ export default function WorkoutScreen() {
             })}
             activeOpacity={0.75}
           >
-            <Text style={styles.addExBtnText}>+ Añadir ejercicio</Text>
+            <Text style={styles.addExBtnText}>+ {t('workout.addExercise')}</Text>
           </TouchableOpacity>
 
           {/* Save button */}

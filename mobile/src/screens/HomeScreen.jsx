@@ -72,7 +72,7 @@ function computeCycleProgress(program) {
 /**
  * Data for the stage card (null when there are no stages).
  */
-function computeStageInfo(program) {
+function computeStageInfo(program, t) {
   if ((program.stages?.length ?? 0) === 0) return null;
   const stageIdx         = program.currentStageIndex ?? 0;
   const stage            = program.stages[stageIdx];
@@ -85,9 +85,10 @@ function computeStageInfo(program) {
     totalWeeks,
   );
   const progressRatio    = Math.min(1, sessionsCompleted / (totalWeeks * sessionsPerCycle));
+  const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
-    stageLabel:    `Etapa ${stageIdx + 1}`,
-    stageName:     stage.name ?? `Etapa ${stageIdx + 1}`,
+    stageLabel:    defaultLabel,
+    stageName:     stage.name ?? defaultLabel,
     weekInStage,
     totalWeeks,
     progressRatio,
@@ -136,6 +137,7 @@ function DotsRow({ doneInCycle, sessionsPerCycle }) {
 }
 
 function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onChangeStage }) {
+  const { t }     = useTranslation();
   const weekLabel = String(weekNum).padStart(2, '0');
 
   if (stageInfo) {
@@ -158,7 +160,7 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
             {stageInfo.stageName}
           </Text>
           <Text style={styles.phStageWeek}>
-            {`Semana ${stageInfo.weekInStage} de ${stageInfo.totalWeeks}`}
+            {t('home.weekProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
           </Text>
           <View style={styles.phBar}>
             <View
@@ -169,10 +171,10 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
 
         {/* Week card */}
         <View style={[styles.phCard, styles.phWeekSq]}>
-          <Text style={styles.phWkTop}>Semana</Text>
+          <Text style={styles.phWkTop}>{t('home.week')}</Text>
           <Text style={styles.phWkNum}>{weekLabel}</Text>
           <View style={styles.phWeekBottom}>
-            <Text style={styles.phWkSes}>Sesiones</Text>
+            <Text style={styles.phWkSes}>{t('home.sessions')}</Text>
             <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
           </View>
         </View>
@@ -185,12 +187,12 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
   return (
     <View style={[styles.phCard, styles.phPill]}>
       <View style={styles.phPillLeft}>
-        <Text style={styles.phPillLabel}>Semana</Text>
+        <Text style={styles.phPillLabel}>{t('home.week')}</Text>
         <Text style={styles.phPillNum}>{weekLabel}</Text>
       </View>
       <View style={styles.phPillDivider} />
       <View style={styles.phPillRight}>
-        <Text style={styles.phWkSes}>Sesiones</Text>
+        <Text style={styles.phWkSes}>{t('home.sessions')}</Text>
         <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
       </View>
     </View>
@@ -244,7 +246,7 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
 
         {/* SESIÓN A — colored, bigger */}
         <Text style={[styles.sesTag, { color: accent }]}>
-          {`Sesión ${template?.label ?? ''}`}
+          {t('workout.sessionLabel', { label: template?.label ?? '' })}
         </Text>
 
         {/* Session name + cloud icon */}
@@ -259,7 +261,7 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
           ) : null}
         </View>
         {template?.trainerName ? (
-          <Text style={styles.trainerCredit}>por {template.trainerName}</Text>
+          <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
         ) : null}
 
         {/* Status text */}
@@ -335,12 +337,13 @@ function ArchiveOption({ label, desc, onPress, danger }) {
 // ── StagePickerModal ───────────────────────────────────────────────────────────
 
 function StagePickerModal({ program, onSelect, onClose }) {
+  const { t }      = useTranslation();
   const currentIdx = program.currentStageIndex ?? 0;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.bottomSheet}>
-        <Text style={styles.sheetTitle}>Seleccionar etapa</Text>
+        <Text style={styles.sheetTitle}>{t('home.selectStage')}</Text>
         <View style={styles.stageList}>
           {program.stages.map((stage, idx) => {
             const isActive = idx === currentIdx;
@@ -365,7 +368,7 @@ function StagePickerModal({ program, onSelect, onClose }) {
           })}
         </View>
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>Cancelar</Text>
+          <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -445,7 +448,7 @@ export default function HomeScreen() {
           const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
 
           // Computed values for progress header
-          const stageInfo                  = computeStageInfo(activeProgram);
+          const stageInfo                  = computeStageInfo(activeProgram, t);
           const weekNum                    = computeWeekNum(activeProgram, workoutLog);
           const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
 
@@ -471,9 +474,12 @@ export default function HomeScreen() {
               {/* Stage advance banner */}
               {activeProgram.stageAdvancePending && nextStage && (
                 <View style={styles.stageBanner}>
-                  <Text style={styles.stageBannerLabel}>ETAPA COMPLETADA</Text>
+                  <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
                   <Text style={styles.stageBannerText}>
-                    {`Has completado ${currentStage?.name ?? 'la etapa actual'}. ¿Avanzar a ${nextStage.name}?`}
+                    {t('home.stageAdvanceText', {
+                      current: currentStage?.name ?? t('home.currentStageDefault'),
+                      next: nextStage.name,
+                    })}
                   </Text>
                   <View style={styles.stageBannerBtns}>
                     <TouchableOpacity
@@ -482,7 +488,7 @@ export default function HomeScreen() {
                       activeOpacity={0.85}
                     >
                       <Text style={styles.stageBannerAdvanceBtnText}>
-                        {`AVANZAR A ${(nextStage.name ?? '').toUpperCase()}`}
+                        {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -490,7 +496,7 @@ export default function HomeScreen() {
                       onPress={() => dismissStageAdvance(activeProgram.id)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.stageBannerContinueBtnText}>Seguir en esta</Text>
+                      <Text style={styles.stageBannerContinueBtnText}>{t('home.continueStage')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -540,14 +546,14 @@ export default function HomeScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🏋️</Text>
             <Text style={styles.emptyText}>
-              Aún no tienes un programa activo.{'\n'}Crea uno nuevo para empezar.
+              {t('home.noActiveProgram')}
             </Text>
             <TouchableOpacity
               style={styles.newProgramBtn}
               onPress={() => navigate('onboarding')}
               activeOpacity={0.85}
             >
-              <Text style={styles.newProgramBtnText}>NUEVO PROGRAMA</Text>
+              <Text style={styles.newProgramBtnText}>{t('home.newProgram')}</Text>
             </TouchableOpacity>
           </View>
         )}

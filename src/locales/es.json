@@ -73,6 +73,11 @@
     "viewProgram": "Ver programa",
     "edit": "Editar",
     "archive": "Archivar",
+    "week": "Semana",
+    "sessions": "Sesiones",
+    "weekProgress": "Semana {{current}} de {{total}}",
+    "stageDefault": "Etapa {{n}}",
+    "currentStageDefault": "la etapa actual",
     "stageProgress": "{{completed}} / {{total}} sesiones",
     "stageCount": "{{current}} / {{total}} etapas",
     "selectStage": "SELECCIONAR ETAPA",
@@ -123,7 +128,11 @@
     "kg": "Kg",
     "reps": "Reps",
     "seconds": "Segundos",
-    "assistance": "Asistencia"
+    "assistance": "Asistencia",
+    "sessionLabel": "Sesión {{label}}",
+    "trainerCredit": "por {{name}}",
+    "addSetBtn": "Añadir serie",
+    "keyBadge": "CLAVE"
   },
   "history": {
     "title": "HISTORIAL",
@@ -132,6 +141,10 @@
     "allStages": "Todas ✕",
     "noSessions": "Sin sesiones para este filtro.",
     "deleteConfirm": "¿Eliminar esta sesión?",
+    "deleteTitle": "Eliminar sesión",
+    "noSessionsProgram": "No hay sesiones registradas para este programa.",
+    "noSessionsEmpty": "Completa tu primera sesión para verla aquí.",
+    "noSessionsDate": "No hay sesiones registradas el {{day}} de {{month}}.",
     "noteLabel": "Nota",
     "noteTag": "📝 nota",
     "modifiedTag": "＋ modificado"
@@ -433,6 +446,7 @@
     "period30d": "30 días",
     "periodAll": "Sin límite"
   },
+  "months": ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
   "errors": {
     "cannotReadFile": "No se pudo leer el archivo"
   },
@@ -643,6 +657,10 @@
     "newBtn": "＋ NUEVA",
     "empty": "Sin plantillas todavía.\nCrea plantillas para asignarlas\nrápidamente a tus clientes.",
     "deleteConfirm": "¿Eliminar esta plantilla?",
+    "deleteTitle": "Eliminar plantilla",
+    "toastDeleted": "Plantilla eliminada",
+    "toastCreated": "✓ Plantilla creada",
+    "toastAssigned": "✓ Asignado — abriendo editor",
     "toastDuplicated": "✓ Plantilla duplicada",
     "badge": "PLANTILLA",
     "contextUseWithClient": "👥 Usar con cliente",

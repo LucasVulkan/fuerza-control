@@ -73,6 +73,11 @@
     "viewProgram": "View program",
     "edit": "Edit",
     "archive": "Archive",
+    "week": "Week",
+    "sessions": "Sessions",
+    "weekProgress": "Week {{current}} of {{total}}",
+    "stageDefault": "Stage {{n}}",
+    "currentStageDefault": "the current stage",
     "stageProgress": "{{completed}} / {{total}} sessions",
     "stageCount": "{{current}} / {{total}} stages",
     "selectStage": "SELECT STAGE",
@@ -123,7 +128,11 @@
     "kg": "Kg",
     "reps": "Reps",
     "seconds": "Seconds",
-    "assistance": "Assistance"
+    "assistance": "Assistance",
+    "sessionLabel": "Session {{label}}",
+    "trainerCredit": "by {{name}}",
+    "addSetBtn": "Add set",
+    "keyBadge": "KEY"
   },
   "history": {
     "title": "HISTORY",
@@ -132,6 +141,10 @@
     "allStages": "All ✕",
     "noSessions": "No sessions for this filter.",
     "deleteConfirm": "Delete this session?",
+    "deleteTitle": "Delete session",
+    "noSessionsProgram": "No sessions recorded for this program.",
+    "noSessionsEmpty": "Complete your first session to see it here.",
+    "noSessionsDate": "No sessions recorded on {{day}} of {{month}}.",
     "noteLabel": "Note",
     "noteTag": "📝 note",
     "modifiedTag": "＋ modified"
@@ -433,6 +446,7 @@
     "period30d": "30 days",
     "periodAll": "No limit"
   },
+  "months": ["January","February","March","April","May","June","July","August","September","October","November","December"],
   "errors": {
     "cannotReadFile": "Could not read the file"
   },
@@ -643,6 +657,10 @@
     "newBtn": "＋ NEW",
     "empty": "No templates yet.\nCreate templates to assign them\nquickly to your clients.",
     "deleteConfirm": "Delete this template?",
+    "deleteTitle": "Delete template",
+    "toastDeleted": "Template deleted",
+    "toastCreated": "✓ Template created",
+    "toastAssigned": "✓ Assigned — opening editor",
     "toastDuplicated": "✓ Template duplicated",
     "badge": "TEMPLATE",
     "contextUseWithClient": "👥 Use with client",
