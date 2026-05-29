@@ -36,8 +36,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-notifications",
-      "react-native-purchases"
+      "expo-notifications"
     ],
     "extra": {
       "eas": {
