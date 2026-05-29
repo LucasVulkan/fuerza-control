@@ -1,21 +1,20 @@
 /**
  * Google OAuth configuration.
  *
- * TWO clients are needed:
+ * We use a single WEB CLIENT for all environments (Expo Go, preview APK, production).
  *
- * 1. WEB CLIENT  (dev / Expo Go)
- *    Type: Web application in Google Cloud Console
- *    Authorized redirect URIs:
- *      https://auth.expo.io/@lucasvulkans-organization/forma   ← Expo proxy
- *    Used when: __DEV__ === true (routes through auth.expo.io proxy)
+ * Why not the Android client?
+ *   Android-type OAuth clients in Google Cloud Console are designed for the
+ *   native Google Sign-In SDK. Using them in a browser-based flow (Custom Tabs /
+ *   expo-auth-session) returns "Error 400: invalid_request" from Google.
  *
- * 2. ANDROID CLIENT  (production APK)
- *    Type: Android in Google Cloud Console
- *    SHA-1 fingerprint: the production keystore SHA-1 (already added ✓)
- *    Package name: com.lucasgomez.fuerzacontrol
- *    No redirect URI registration needed — Google verifies via SHA-1 + package name.
- *    Redirect URI used by the app: com.googleusercontent.apps.<id>:/oauth2redirect
- *    Used when: __DEV__ === false (production / preview EAS builds)
+ * WEB CLIENT setup in Google Cloud Console:
+ *   Type: Web application
+ *   Authorized redirect URIs:
+ *     https://auth.expo.io/@lucasvulkans-organization/forma   ← Expo proxy
+ *   The proxy handles both Expo Go (exp://) and native builds (forma://).
+ *
+ * The Android client below is kept for reference but is no longer used.
  */
 
 // ── Client IDs ─────────────────────────────────────────────────────────────────
@@ -23,19 +22,12 @@
 export const GOOGLE_WEB_CLIENT_ID =
   '75583717433-hd224i1ev6v179fuqoljmjqmpgk3dqop.apps.googleusercontent.com';
 
+// Kept for reference — not used (Android clients block browser-based OAuth).
 export const GOOGLE_ANDROID_CLIENT_ID =
   '75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1.apps.googleusercontent.com';
 
 /**
- * The redirect URI for the Android client.
- * Format: com.googleusercontent.apps.<clientId>:/oauth2redirect
- * This reverse-DNS scheme must also be listed in app.json > scheme.
+ * Active client used everywhere (auth flow + token refresh).
+ * Always the web client — works in all build environments via the Expo proxy.
  */
-export const ANDROID_REDIRECT_URI =
-  'com.googleusercontent.apps.75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1:/oauth2redirect';
-
-/**
- * Active client for the current build environment.
- * Import this wherever a single client ID is needed (e.g. token refresh in the store).
- */
-export const GOOGLE_CLIENT_ID = __DEV__ ? GOOGLE_WEB_CLIENT_ID : GOOGLE_ANDROID_CLIENT_ID;
+export const GOOGLE_CLIENT_ID = GOOGLE_WEB_CLIENT_ID;

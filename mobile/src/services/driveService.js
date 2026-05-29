@@ -114,8 +114,10 @@ export async function exchangeCodeForTokens({ code, codeVerifier, redirectUri, c
 
 /**
  * Refreshes the access token using the stored refresh token.
- * Only works if clientId is a native (Android/iOS) type — not web client.
- * For web clients this will fail; user needs to re-authenticate.
+ * Works with the web client when the initial auth used access_type=offline + PKCE
+ * (Google issues a refresh_token and accepts refresh requests without client_secret
+ * for public PKCE clients). If the token is truly expired / revoked the store
+ * catches the error and prompts the user to reconnect.
  */
 export async function refreshAccessToken(refreshToken, clientId) {
   const res = await fetch('https://oauth2.googleapis.com/token', {
