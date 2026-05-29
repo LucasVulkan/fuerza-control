@@ -1997,9 +1997,12 @@ export const useStore = create(
        * Uses the existing mergeWorkoutLog logic to avoid duplicates.
        */
       downloadClientHistory: async (clientId) => {
-        const { clients } = get();
+        const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+
+        // Ensure trainer session is active (may have expired after app restart)
+        await _ensureTrainerSession(trainerSync);
 
         try {
           const { history, updatedAt } = await downloadHistory(client.syncSlotId);
@@ -2290,6 +2293,7 @@ export const useStore = create(
         tagRegistry: state.tagRegistry,
         driveBackup: state.driveBackup,
         trainerSync: state.trainerSync,
+        clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

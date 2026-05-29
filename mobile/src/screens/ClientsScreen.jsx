@@ -1014,6 +1014,7 @@ export default function ClientsScreen() {
   // Detail - history / progress filters
   const [scopeFilter,   setScopeFilter]   = useState('active');
   const [periodFilter,  setPeriodFilter]  = useState('all');
+  const [refreshingHistory, setRefreshingHistory] = useState(false);
 
   // Detail - info accordion
   const [openSections,  setOpenSections]  = useState({ status: false, personal: true, weight: false, billing: false });
@@ -1245,6 +1246,20 @@ export default function ClientsScreen() {
     setImportState(null);
   }
 
+  async function handleRefreshHistory() {
+    if (!selectedClientId || refreshingHistory) return;
+    setRefreshingHistory(true);
+    try {
+      const { merged } = await downloadClientHistory(selectedClientId);
+      markHistoryViewed(selectedClientId);
+      showToast(merged > 0 ? `✓ ${merged} sesión${merged !== 1 ? 'es' : ''} nuevas` : '✓ Historial actualizado');
+    } catch (err) {
+      showToast(`⚠️ ${err?.message ?? 'Error al actualizar historial'}`);
+    } finally {
+      setRefreshingHistory(false);
+    }
+  }
+
   function getSessionCount(program) {
     const ids = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
     return workoutLog.filter((e) => ids.has(e.sessionTemplateId)).length;
@@ -1420,6 +1435,19 @@ export default function ClientsScreen() {
         {/* ── Tab: Historial ── */}
         {activeTab === 'history' && (
           <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+            {/* Sync button — only shown when client is connected to cloud */}
+            {selectedClient?.syncSlotId && (
+              <TouchableOpacity
+                style={styles.refreshHistoryBtn}
+                onPress={handleRefreshHistory}
+                activeOpacity={0.75}
+                disabled={refreshingHistory}
+              >
+                <Text style={styles.refreshHistoryBtnText}>
+                  {refreshingHistory ? 'Actualizando…' : '↓ Actualizar historial del cliente'}
+                </Text>
+              </TouchableOpacity>
+            )}
             {/* Filters */}
             <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
               <View style={styles.chipRow}>
@@ -3049,6 +3077,21 @@ const styles = StyleSheet.create({
   tabBarUnderlineActive: { backgroundColor: colors.accent },
 
   // ── Tab content ──
+  refreshHistoryBtn: {
+    backgroundColor: `${colors.accent}18`,
+    borderWidth:     1,
+    borderColor:     `${colors.accent}40`,
+    borderRadius:    radius.sm,
+    paddingVertical:   spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    alignItems:        'center',
+    marginBottom:      spacing.sm,
+  },
+  refreshHistoryBtnText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
   tabContent: {
     padding: spacing.xl,
     gap:     spacing.sm,

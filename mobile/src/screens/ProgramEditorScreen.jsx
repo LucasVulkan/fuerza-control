@@ -19,7 +19,8 @@ export default function ProgramEditorScreen({ navigation, route }) {
   const beginEditSession      = useStore((s) => s.beginEditSession);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
   const removeSessionFromProgram = useStore((s) => s.removeSessionFromProgram);
-  const renameProgram         = useStore((s) => s.renameProgram);
+  const renameProgram              = useStore((s) => s.renameProgram);
+  const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const addStageToProgram     = useStore((s) => s.addStageToProgram);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
   const updateStage           = useStore((s) => s.updateStage);
@@ -129,6 +130,8 @@ export default function ProgramEditorScreen({ navigation, route }) {
     commitName();
     commitStageName();
     commitStageWeeks();
+    // Mark any clients that have this program assigned as needing a re-upload
+    markProgramDirtyForClients(editingId);
     useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
     navigation.goBack();
   }
