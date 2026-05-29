@@ -8,10 +8,10 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
@@ -54,21 +54,53 @@ function parseImportFile(jsonString) {
   }
 }
 
-// ── Settings sub-components ────────────────────────────────────────────────────
+// ── Icon ───────────────────────────────────────────────────────────────────────
 
-function SectionLabel({ label }) {
-  return <Text style={styles.sectionLabel}>{label.toUpperCase()}</Text>;
+function Icon({ d, size = 18 }) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={colors.accent}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d={d} />
+    </Svg>
+  );
 }
 
-function SettingsBtn({ label, onPress, disabled }) {
+// ── MenuItem ──────────────────────────────────────────────────────────────────
+
+function MenuItem({ icon, label, onPress, disabled, badge }) {
   return (
     <TouchableOpacity
-      style={[styles.settingsBtn, disabled && { opacity: 0.5 }]}
+      style={[styles.menuItem, disabled && styles.menuItemDisabled]}
       onPress={disabled ? undefined : onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.65}
     >
-      <Text style={styles.settingsBtnText}>{label}</Text>
+      <View style={styles.menuItemIcon}>{icon}</View>
+      <Text style={styles.menuItemText}>{label}</Text>
+      {badge != null && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      )}
     </TouchableOpacity>
+  );
+}
+
+// ── CategoryCard ──────────────────────────────────────────────────────────────
+
+function CategoryCard({ title, children }) {
+  return (
+    <View style={styles.category}>
+      <Text style={styles.categoryTitle}>{title}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -129,9 +161,8 @@ function ArchivedProgramsModal({ onClose }) {
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer }) {
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const [exporting, setExporting] = useState(null); // 'full' | 'log'
+  const insets        = useSafeAreaInsets();
+  const [exporting, setExporting] = useState(null);
 
   const profile              = useStore((s) => s.profile);
   const setProfile           = useStore((s) => s.setProfile);
@@ -163,96 +194,131 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
         <View style={styles.sheetHandle} />
         <Text style={styles.settingsTitle}>AJUSTES</Text>
 
-        {/* Programa */}
-        <SectionLabel label="Programa" />
-        <SettingsBtn label="Nuevo programa"          onPress={() => { onClose(); navigate('onboarding'); }} />
-        <SettingsBtn label="Programas archivados"    onPress={() => { onClose(); onShowArchived(); }} />
-        {clientSync?.slotId ? (
-          <>
-            <SettingsBtn label="Cambiar de entrenador"       onPress={() => { onClose(); onConnectTrainer(); }} />
-            <SettingsBtn label="Desconectarse del entrenador" onPress={() => { unlinkFromTrainer(); onClose(); }} />
-          </>
-        ) : (
-          <SettingsBtn label="Conectar con entrenador" onPress={() => { onClose(); onConnectTrainer(); }} />
-        )}
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
-        {/* Exportar */}
-        <SectionLabel label="Exportar" />
-        <SettingsBtn
-          label={exporting === 'full' ? 'Exportando…' : 'Backup completo (.json)'}
-          onPress={() => handleExport('full')}
-          disabled={!!exporting}
-        />
-        <SettingsBtn
-          label={exporting === 'log' ? 'Exportando…' : 'Programa + historial (.json)'}
-          onPress={() => handleExport('log')}
-          disabled={!!exporting}
-        />
+          {/* ── PROGRAMAS ── */}
+          <CategoryCard title="PROGRAMAS">
+            <MenuItem
+              icon={<Icon d="M12 5v14M5 12h14" />}
+              label="Nuevo programa"
+              onPress={() => { onClose(); navigate('onboarding'); }}
+            />
+            <MenuItem
+              icon={<Icon d="M4 6h16M4 10h16M4 14h10" />}
+              label="Programas archivados"
+              onPress={() => { onClose(); onShowArchived(); }}
+            />
+            {clientSync?.slotId ? (
+              <>
+                <MenuItem
+                  icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />}
+                  label="Cambiar de entrenador"
+                  onPress={() => { onClose(); onConnectTrainer(); }}
+                />
+                <MenuItem
+                  icon={<Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />}
+                  label="Desconectarse del entrenador"
+                  onPress={() => { unlinkFromTrainer(); onClose(); }}
+                />
+              </>
+            ) : (
+              <MenuItem
+                icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" />}
+                label="Conectar con entrenador"
+                onPress={() => { onClose(); onConnectTrainer(); }}
+              />
+            )}
+          </CategoryCard>
 
-        {/* Importar */}
-        <SectionLabel label="Importar" />
-        <SettingsBtn label="Importar archivo .json" onPress={() => { onClose(); onImport(); }} />
+          {/* ── DATOS ── */}
+          <CategoryCard title="DATOS">
+            <MenuItem
+              icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
+              label={exporting === 'full' ? 'Exportando…' : 'Backup completo'}
+              onPress={() => handleExport('full')}
+              disabled={!!exporting}
+            />
+            <MenuItem
+              icon={<Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />}
+              label={exporting === 'log' ? 'Exportando…' : 'Programa + historial'}
+              onPress={() => handleExport('log')}
+              disabled={!!exporting}
+            />
+            <MenuItem
+              icon={<Icon d="M12 15V3m0 0L8 7m4-4l4 4M3 20h18" />}
+              label="Importar archivo"
+              onPress={() => { onClose(); onImport(); }}
+            />
+            <MenuItem
+              icon={<Icon d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />}
+              label="Google Drive backup"
+              onPress={() => { onClose(); onShowDrive(); }}
+            />
+          </CategoryCard>
 
-        {/* Drive backup */}
-        <SectionLabel label="Backup en la nube" />
-        <SettingsBtn label="Google Drive backup" onPress={() => { onClose(); onShowDrive(); }} />
-
-        {/* Configuración */}
-        <SectionLabel label="Configuración" />
-
-        {/* Language */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Idioma</Text>
-          <View style={styles.toggleBtns}>
-            {['es', 'en'].map((l) => (
-              <TouchableOpacity
-                key={l}
-                style={[styles.toggleBtn, lang === l && styles.toggleBtnActive]}
-                onPress={() => { if (lang !== l) setLanguage(l); }}
-              >
-                <Text style={[styles.toggleBtnText, lang === l && styles.toggleBtnTextActive]}>
-                  {l === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Weight unit */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Unidad de peso</Text>
-          <View style={styles.toggleBtns}>
-            {['kg', 'lb'].map((u) => (
-              <TouchableOpacity
-                key={u}
-                style={[styles.toggleBtn, unit === u && styles.toggleBtnActive]}
-                onPress={() => { if (unit !== u) setProfile({ weightUnit: u }); }}
-              >
-                <Text style={[styles.toggleBtnText, unit === u && styles.toggleBtnTextActive]}>
-                  {u.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* PRO toggle — only visible in development builds */}
-        {__DEV__ && (
-          <>
-            <SectionLabel label="Desarrollador" />
+          {/* ── CONFIGURACIÓN ── */}
+          <CategoryCard title="CONFIGURACIÓN">
             <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Plan: {isPro ? 'PRO' : 'FREE'}</Text>
-              <TouchableOpacity
-                style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
-                onPress={() => setProfile({ isPro: !isPro })}
-              >
-                <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
-                  {isPro ? 'Cambiar a FREE' : 'Cambiar a PRO'}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.toggleLabel}>Idioma</Text>
+              <View style={styles.toggleBtns}>
+                {['es', 'en'].map((l) => (
+                  <TouchableOpacity
+                    key={l}
+                    style={[styles.toggleBtn, lang === l && styles.toggleBtnActive]}
+                    onPress={() => { if (lang !== l) setLanguage(l); }}
+                  >
+                    <Text style={[styles.toggleBtnText, lang === l && styles.toggleBtnTextActive]}>
+                      {l === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </>
-        )}
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>Unidad de peso</Text>
+              <View style={styles.toggleBtns}>
+                {['kg', 'lb'].map((u) => (
+                  <TouchableOpacity
+                    key={u}
+                    style={[styles.toggleBtn, unit === u && styles.toggleBtnActive]}
+                    onPress={() => { if (unit !== u) setProfile({ weightUnit: u }); }}
+                  >
+                    <Text style={[styles.toggleBtnText, unit === u && styles.toggleBtnTextActive]}>
+                      {u.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </CategoryCard>
+
+          {/* ── CUENTA ── */}
+          <CategoryCard title="CUENTA">
+            <MenuItem
+              icon={<Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />}
+              label="Plan actual"
+              badge={isPro ? 'PRO' : 'FREE'}
+            />
+          </CategoryCard>
+
+          {/* ── DESARROLLADOR — solo en dev builds ── */}
+          {__DEV__ && (
+            <CategoryCard title="DESARROLLADOR">
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>Plan: {isPro ? 'PRO' : 'FREE'}</Text>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
+                  onPress={() => setProfile({ isPro: !isPro })}
+                >
+                  <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
+                    {isPro ? 'Cambiar a FREE' : 'Cambiar a PRO'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </CategoryCard>
+          )}
+
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -460,16 +526,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   settingsSheet: {
-    position:        'absolute',
-    bottom:          0,
-    left:            0,
-    right:           0,
-    backgroundColor: colors.surface,
+    position:             'absolute',
+    bottom:               0,
+    left:                 0,
+    right:                0,
+    maxHeight:            '88%',
+    backgroundColor:      colors.surface,
     borderTopLeftRadius:  radius.lg,
     borderTopRightRadius: radius.lg,
-    paddingHorizontal: spacing.xl,
-    paddingBottom:     spacing.xxl,
-    paddingTop:        spacing.sm,
+    paddingHorizontal:    spacing.lg,
+    paddingTop:           spacing.sm,
   },
   sheetHandle: {
     width:           40,
@@ -486,23 +552,68 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom:  spacing.md,
   },
-  sectionLabel: {
+
+  // Category card
+  category: {
+    backgroundColor: 'rgba(28, 28, 36, 0.7)',
+    borderWidth:     1,
+    borderColor:     `${colors.accent}2e`,
+    borderRadius:    radius.lg,
+    padding:         spacing.md,
+    marginBottom:    spacing.sm,
+    gap:             6,
+  },
+  categoryTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
-    letterSpacing: 1.5,
-    marginTop:     spacing.md,
-    marginBottom:  spacing.xs,
+    color:         colors.accent,
+    letterSpacing: 2,
+    marginBottom:  2,
   },
-  settingsBtn: {
+
+  // Menu item
+  menuItem: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            spacing.sm,
     paddingVertical:   spacing.sm + 2,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    borderRadius:   radius.md,
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderWidth:    1,
+    borderColor:    'rgba(255,255,255,0.05)',
   },
-  settingsBtnText: {
-    fontSize: typography.base,
-    color:    colors.text,
+  menuItemDisabled: {
+    opacity: 0.45,
   },
+  menuItemIcon: {
+    width:           24,
+    height:          24,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  menuItemText: {
+    flex:       1,
+    fontSize:   typography.base,
+    color:      colors.text,
+  },
+
+  // Badge
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   3,
+    borderRadius:      999,
+    borderWidth:       1,
+    borderColor:       `${colors.accent}59`,
+    backgroundColor:   `${colors.accent}0f`,
+  },
+  badgeText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    color:      colors.accent,
+  },
+
+  // Toggles (inside category cards)
   toggleRow: {
     flexDirection:     'row',
     alignItems:        'center',
