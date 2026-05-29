@@ -1,33 +1,33 @@
 /**
- * Google OAuth configuration.
+ * Google OAuth configuration — two clients, each for its environment.
  *
- * We use a single WEB CLIENT for all environments (Expo Go, preview APK, production).
+ * ── Production / standalone APK ────────────────────────────────────────────────
+ * Client type : Android (in Google Cloud Console)
+ * Redirect URI: com.googleusercontent.apps.{id}:/oauth2redirect
+ *               Google registers this automatically for Android clients.
+ *               The reverse-client-ID scheme is listed in app.json "scheme" so
+ *               the OS routes the OAuth redirect back to the app.
+ * No client_secret needed (public client; PKCE is used).
  *
- * Why not the Android client?
- *   Android-type OAuth clients in Google Cloud Console are designed for the
- *   native Google Sign-In SDK. Using them in a browser-based flow (Custom Tabs /
- *   expo-auth-session) returns "Error 400: invalid_request" from Google.
+ * This IS supported for browser-based flows (Custom Tabs / expo-auth-session).
+ * The "Error 400: invalid_request" seen previously happened because the
+ * redirect URI in the request didn't match what GCC registered — not because
+ * Android clients are incompatible with browser flows.
  *
- * WEB CLIENT setup in Google Cloud Console:
- *   Type: Web application
- *   Authorized redirect URIs:
- *     https://auth.expo.io/@lucasvulkans-organization/forma   ← Expo proxy
- *   The proxy handles both Expo Go (exp://) and native builds (forma://).
- *
- * The Android client below is kept for reference but is no longer used.
+ * ── Expo Go (development) ──────────────────────────────────────────────────────
+ * Client type : Web application (in Google Cloud Console)
+ * Redirect URI: https://auth.expo.io/@lucasvulkans-organization/forma
+ *               Must be added to the Web client's "Authorized redirect URIs".
+ * Reason      : Expo Go does not have access to custom URI schemes, so we route
+ *               through the Expo auth proxy instead.
  */
 
 // ── Client IDs ─────────────────────────────────────────────────────────────────
 
-export const GOOGLE_WEB_CLIENT_ID =
-  '75583717433-hd224i1ev6v179fuqoljmjqmpgk3dqop.apps.googleusercontent.com';
-
-// Kept for reference — not used (Android clients block browser-based OAuth).
+/** Used for production / standalone builds (Android OAuth client). */
 export const GOOGLE_ANDROID_CLIENT_ID =
   '75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1.apps.googleusercontent.com';
 
-/**
- * Active client used everywhere (auth flow + token refresh).
- * Always the web client — works in all build environments via the Expo proxy.
- */
-export const GOOGLE_CLIENT_ID = GOOGLE_WEB_CLIENT_ID;
+/** Used for Expo Go development (Web application OAuth client + Expo proxy). */
+export const GOOGLE_WEB_CLIENT_ID =
+  '75583717433-hd224i1ev6v179fuqoljmjqmpgk3dqop.apps.googleusercontent.com';

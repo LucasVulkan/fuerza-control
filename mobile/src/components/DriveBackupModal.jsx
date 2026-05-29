@@ -28,10 +28,11 @@ import {
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import * as SecureStore  from 'expo-secure-store';
+import Constants         from 'expo-constants';
 
 import { useStore }                                       from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups } from '../services/driveService';
-import { GOOGLE_WEB_CLIENT_ID }                           from '../config/google';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, borders, radius }   from '../theme';
 
 // Required so the in-app browser can redirect back after OAuth
@@ -71,24 +72,40 @@ export default function DriveBackupModal({ onClose }) {
 
   // ── OAuth setup ─────────────────────────────────────────────────────────────
   //
-  // Always use the Web client + Expo auth proxy for ALL builds (dev and production).
+  // Two different clients depending on the execution environment:
   //
-  // Android-type OAuth clients in Google Cloud Console are designed for the
-  // native Google Sign-In SDK, not for browser-based flows (Custom Tabs).
-  // Using an Android client ID in a browser flow → "Error 400: invalid_request".
+  //   Expo Go  (executionEnvironment === 'storeClient')
+  //     • Web client + Expo auth proxy
+  //     • redirectUri: https://auth.expo.io/@lucasvulkans-organization/forma
+  //     • Reason: Expo Go has no access to custom URI schemes, so we must route
+  //       through the proxy.  The proxy URL must be in the Web client's
+  //       "Authorized redirect URIs" list in Google Cloud Console.
   //
-  // The Expo proxy (auth.expo.io) works in both Expo Go and production APKs:
-  //   • Expo Go   → proxy redirects back via exp://…
-  //   • Native    → proxy redirects back via forma:// (registered in app.json scheme)
+  //   Standalone / preview build  (EAS-built APK / AAB)
+  //     • Android OAuth client (GCC client type: Android)
+  //     • redirectUri: com.googleusercontent.apps.{id}:/oauth2redirect
+  //     • Google registers this redirect URI automatically for Android clients.
+  //     • The reverse-client-ID scheme is declared in app.json so the OS routes
+  //       the OAuth browser redirect back to the app.
+  //     • No client_secret needed (public client; PKCE is used).
+  //     • access_type=offline + prompt=consent → Google returns a refresh_token.
   //
-  // Registered in Google Cloud Console (Web client) Authorized redirect URIs:
-  //   https://auth.expo.io/@lucasvulkans-organization/forma
-  //
-  // access_type=offline → Google returns a refresh_token so the session persists
-  // across access-token expiry without forcing re-authentication.
+  // The previous approach (Web client + proxy for all environments) failed in
+  // production because the proxy URL was not registered in GCC for the web
+  // client, and the Expo auth proxy is not reliable for standalone EAS builds.
 
-  const clientId    = GOOGLE_WEB_CLIENT_ID;
-  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
+  const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+  const clientId = isExpoGo ? GOOGLE_WEB_CLIENT_ID : GOOGLE_ANDROID_CLIENT_ID;
+
+  // For the Android client the redirect URI is the reverse-client-ID scheme with
+  // a single slash (:/path, no authority component) — exactly what GCC registers.
+  const androidRedirectUri =
+    `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+
+  const redirectUri = isExpoGo
+    ? AuthSession.makeRedirectUri({ useProxy: true })
+    : androidRedirectUri;
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
