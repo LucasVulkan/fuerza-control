@@ -63,7 +63,10 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     if (search.trim()) {
       const q = search.toLowerCase();
       return results
-        .filter((ex) => getExName(ex).toLowerCase().includes(q))
+        .filter((ex) => {
+          const haystack = [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase();
+          return haystack.includes(q);
+        })
         .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     }
 

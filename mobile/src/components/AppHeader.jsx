@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { useTranslation } from 'react-i18next';
+
 import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
 import DriveBackupModal from './DriveBackupModal';
@@ -109,6 +111,7 @@ function CategoryCard({ title, children }) {
 // ── Archived programs modal ───────────────────────────────────────────────────
 
 function ArchivedProgramsModal({ onClose }) {
+  const { t }          = useTranslation();
   const programs       = useStore((s) => s.programs);
   const restoreProgram = useStore((s) => s.restoreProgram);
   const showToast      = useStore((s) => s.showToast);
@@ -125,10 +128,10 @@ function ArchivedProgramsModal({ onClose }) {
       <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.archivedOuter}>
         <View style={styles.archivedModal}>
-          <Text style={styles.archivedTitle}>PROGRAMAS ARCHIVADOS</Text>
+          <Text style={styles.archivedTitle}>{t('archived.title')}</Text>
 
           {archivedList.length === 0 ? (
-            <Text style={styles.archivedEmpty}>No hay programas archivados</Text>
+            <Text style={styles.archivedEmpty}>{t('archived.empty')}</Text>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
               {archivedList.map((p) => (
@@ -141,10 +144,10 @@ function ArchivedProgramsModal({ onClose }) {
                   </View>
                   <TouchableOpacity
                     style={styles.restoreBtn}
-                    onPress={() => { restoreProgram(p.id); showToast('✓ Programa restaurado'); onClose(); }}
+                    onPress={() => { restoreProgram(p.id); showToast(t('header.toastRestored')); onClose(); }}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.restoreBtnText}>Restaurar</Text>
+                    <Text style={styles.restoreBtnText}>{t('archived.restore')}</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -152,7 +155,7 @@ function ArchivedProgramsModal({ onClose }) {
           )}
 
           <TouchableOpacity style={styles.archivedCloseBtn} onPress={onClose}>
-            <Text style={styles.archivedCloseBtnText}>Cerrar</Text>
+            <Text style={styles.archivedCloseBtnText}>{t('archived.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -163,6 +166,7 @@ function ArchivedProgramsModal({ onClose }) {
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode }) {
+  const { t }         = useTranslation();
   const insets        = useSafeAreaInsets();
   const [exporting, setExporting] = useState(null);
 
@@ -259,75 +263,75 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
             <View style={styles.dragHandleWrap}>
               <View style={styles.sheetHandle} />
             </View>
-            <Text style={styles.settingsTitle}>AJUSTES</Text>
+            <Text style={styles.settingsTitle}>{t('header.settings')}</Text>
           </View>
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
           {/* ── PROGRAMAS ── */}
-          <CategoryCard title="PROGRAMAS">
+          <CategoryCard title={t('header.sectionPrograms')}>
             <MenuItem
               icon={<Icon d="M12 5v14M5 12h14" />}
-              label="Nuevo programa"
+              label={t('header.newProgramItem')}
               onPress={() => { onClose(); navigate('onboarding'); }}
             />
             <MenuItem
               icon={<Icon d="M4 6h16M4 10h16M4 14h10" />}
-              label="Programas archivados"
+              label={t('header.archivedProgramsItem')}
               onPress={() => { onClose(); onShowArchived(); }}
             />
             {clientSync?.slotId ? (
               <>
                 <MenuItem
                   icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />}
-                  label="Cambiar de entrenador"
+                  label={t('header.changeTrainer')}
                   onPress={() => { onClose(); onConnectTrainer(); }}
                 />
                 <MenuItem
                   icon={<Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />}
-                  label="Desconectarse del entrenador"
+                  label={t('header.disconnectTrainer')}
                   onPress={() => { unlinkFromTrainer(); onClose(); }}
                 />
               </>
             ) : (
               <MenuItem
                 icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" />}
-                label="Conectar con entrenador"
+                label={t('header.connectTrainer')}
                 onPress={() => { onClose(); onConnectTrainer(); }}
               />
             )}
           </CategoryCard>
 
           {/* ── DATOS ── */}
-          <CategoryCard title="DATOS">
+          <CategoryCard title={t('header.sectionData')}>
             <MenuItem
               icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
-              label={exporting === 'full' ? 'Exportando…' : 'Exportar backup'}
+              label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
               onPress={() => handleExport('full')}
               disabled={!!exporting}
             />
             <MenuItem
               icon={<Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />}
-              label={exporting === 'log' ? 'Exportando…' : 'Exportar programa + historial'}
+              label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
               onPress={() => handleExport('log')}
               disabled={!!exporting}
             />
             <MenuItem
               icon={<Icon d="M12 15V3m0 0L8 7m4-4l4 4M3 20h18" />}
-              label="Importar archivo"
+              label={t('header.importFile')}
               onPress={() => { onClose(); onImport(); }}
             />
             <MenuItem
               icon={<Icon d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />}
-              label="Google Drive backup"
+              label={t('header.driveBackup')}
               onPress={() => { onClose(); onShowDrive(); }}
             />
           </CategoryCard>
 
           {/* ── CONFIGURACIÓN ── */}
-          <CategoryCard title="CONFIGURACIÓN">
+          <CategoryCard title={t('header.sectionConfig')}>
             <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Idioma</Text>
+              <Text style={styles.toggleLabel}>{t('header.language')}</Text>
               <View style={styles.toggleBtns}>
                 {['es', 'en'].map((l) => (
                   <TouchableOpacity
@@ -343,7 +347,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               </View>
             </View>
             <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Unidad de peso</Text>
+              <Text style={styles.toggleLabel}>{t('header.units')}</Text>
               <View style={styles.toggleBtns}>
                 {['kg', 'lb'].map((u) => (
                   <TouchableOpacity
@@ -361,16 +365,16 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           </CategoryCard>
 
           {/* ── CUENTA ── */}
-          <CategoryCard title="CUENTA">
+          <CategoryCard title={t('header.sectionAccount')}>
             <MenuItem
               icon={<Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />}
-              label="Plan actual"
+              label={t('header.currentPlan')}
               badge={isPro ? 'PRO' : 'FREE'}
               onPress={handlePlanTap}
             />
             <MenuItem
               icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
-              label="Sincronización (entrenador)"
+              label={t('header.trainerSync')}
               badge={
                 trainerSync.mode === 'google'  ? 'GOOGLE' :
                 trainerSync.mode === 'code'    ? 'CÓDIGO' :
@@ -382,15 +386,15 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
           {/* ── DESARROLLADOR — solo en dev builds ── */}
           {__DEV__ && (
-            <CategoryCard title="DESARROLLADOR">
+            <CategoryCard title={t('header.sectionDeveloper')}>
               <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>Plan: {isPro ? 'PRO' : 'FREE'}</Text>
+                <Text style={styles.toggleLabel}>{t('header.plan')} {isPro ? 'PRO' : 'FREE'}</Text>
                 <TouchableOpacity
                   style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
                   onPress={() => setProfile({ isPro: !isPro })}
                 >
                   <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
-                    {isPro ? 'Cambiar a FREE' : 'Cambiar a PRO'}
+                    {isPro ? t('header.switchToFree') : t('header.switchToPro')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -407,6 +411,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 // ── AppHeader ──────────────────────────────────────────────────────────────────
 
 export default function AppHeader() {
+  const { t }                 = useTranslation();
   const [settingsOpen,      setSettingsOpen]      = useState(false);
   const [importState,       setImportState]       = useState(null);
   const [picking,           setPicking]           = useState(false);
@@ -428,9 +433,9 @@ export default function AppHeader() {
     setRetrying(true);
     try {
       await uploadHistoryToTrainer();
-      showToast('✓ Historial sincronizado');
+      showToast(t('header.toastSynced'));
     } catch {
-      showToast('⚠️ No se pudo sincronizar');
+      showToast(t('header.toastSyncFailed'));
     } finally {
       setRetrying(false);
     }
@@ -461,7 +466,7 @@ export default function AppHeader() {
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert('Error', err?.message ?? 'No se pudo leer el archivo');
+        Alert.alert('Error', err?.message ?? t('errors.cannotReadFile'));
       }
     } finally {
       setPicking(false);
@@ -471,7 +476,7 @@ export default function AppHeader() {
   function handleImport(parsedData, sections) {
     setImportState(null);
     importData(parsedData, sections);
-    showToast('✓ Datos importados');
+    showToast(t('header.toastImported'));
   }
 
   return (
@@ -500,7 +505,7 @@ export default function AppHeader() {
           disabled={retrying}
         >
           <Text style={styles.pendingBannerText}>
-            {retrying ? 'Sincronizando…' : '⚠️ Última sesión no enviada al entrenador — Toca para reintentar'}
+            {retrying ? t('header.pendingBannerSyncing') : t('header.pendingBanner')}
           </Text>
         </TouchableOpacity>
       )}

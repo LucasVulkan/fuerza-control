@@ -17,21 +17,21 @@ import { formatDate } from '../../../src/utils/formatters';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function relativeTime(ts) {
+function relativeTime(ts, t) {
   if (!ts) return null;
   const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days === 0)  return 'Hoy';
-  if (days === 1)  return 'Ayer';
-  if (days < 7)   return `Hace ${days} días`;
-  if (days < 14)  return 'Hace 1 semana';
-  if (days < 30)  return `Hace ${Math.floor(days / 7)} semanas`;
+  if (days === 0)  return t('dayCard.today');
+  if (days === 1)  return t('dayCard.yesterday');
+  if (days < 7)   return t('dayCard.daysAgo', { count: days });
+  if (days < 14)  return t('dayCard.oneWeekAgo');
+  if (days < 30)  return t('dayCard.weeksAgo', { count: Math.floor(days / 7) });
   return formatDate(ts);
 }
 
-function lastTimeText(status, lastSession) {
-  if (status === 'active') return 'En curso ahora';
-  const rel = relativeTime(lastSession?.timestamp);
-  return rel ? `Última vez: ${rel}` : 'Primera vez';
+function lastTimeText(status, lastSession, t) {
+  if (status === 'active') return t('home.sessionActiveNow');
+  const rel = relativeTime(lastSession?.timestamp, t);
+  return rel ? t('home.lastTime', { time: rel }) : t('home.firstTime');
 }
 
 /**
@@ -200,6 +200,7 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
 function SessionCard({ template, lastSession, allExercises, status, onPress, language, driveBackup }) {
+  const { t }  = useTranslation();
   const accent = resolveColor(template?.color ?? 'var(--day1)');
 
   // First 2 exercise names
@@ -213,23 +214,23 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
     .filter(Boolean)
     .join(' · ');
 
-  // Status text (replaces pills)
+  // Status text
   const statusText = {
-    active:  { label: 'En curso',   color: colors.accent },
-    next:    { label: 'Siguiente',  color: colors.accent },
-    done:    { label: 'Completada', color: colors.green  },
-    pending: { label: 'Pendiente',  color: colors.muted  },
+    active:  { label: t('home.sessionActive'),  color: colors.accent },
+    next:    { label: t('home.sessionNext'),     color: colors.accent },
+    done:    { label: t('home.sessionDone'),     color: colors.green  },
+    pending: { label: t('home.sessionPending'),  color: colors.muted  },
   }[status];
 
   // Button config
   const btn = {
-    active:  { label: 'CONTINUAR', style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
-    next:    { label: 'EMPEZAR',   style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
-    done:    { label: 'Repetir',   style: styles.btnRepeat,  textStyle: styles.btnRepeatText  },
-    pending: { label: 'Hacer',     style: styles.btnOther,   textStyle: styles.btnOtherText   },
+    active:  { label: t('home.btnContinue'), style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
+    next:    { label: t('home.btnStart'),    style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
+    done:    { label: t('home.btnRepeat'),   style: styles.btnRepeat,  textStyle: styles.btnRepeatText  },
+    pending: { label: t('home.btnDo'),       style: styles.btnOther,   textStyle: styles.btnOtherText   },
   }[status];
 
-  const timeText = lastTimeText(status, lastSession);
+  const timeText = lastTimeText(status, lastSession, t);
   const timeStyle = status === 'active' ? styles.sesLastActive : styles.sesLast;
 
   return (
@@ -289,28 +290,29 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
 // ── ArchiveModal ───────────────────────────────────────────────────────────────
 
 function ArchiveModal({ programName, onConfirm, onClose }) {
+  const { t } = useTranslation();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.bottomSheet}>
-        <Text style={styles.sheetTitle}>Archivar programa</Text>
+        <Text style={styles.sheetTitle}>{t('home.archiveModal.title')}</Text>
         <Text style={styles.archiveDesc}>
           <Text style={{ color: colors.text, fontWeight: typography.semibold }}>{programName}</Text>
-          {'\n'}Se guardará en archivados. Podrás restaurarlo después.
+          {'\n'}{t('home.archiveModal.desc')}
         </Text>
         <ArchiveOption
-          label="Mantener historial"
-          desc="El programa se archiva, el historial de sesiones se conserva"
+          label={t('home.archiveModal.keepHistory')}
+          desc={t('home.archiveModal.keepHistoryDesc')}
           onPress={() => onConfirm(false)}
         />
         <ArchiveOption
-          label="Borrar historial"
-          desc="Se eliminarán todas las sesiones registradas de este programa"
+          label={t('home.archiveModal.clearHistory')}
+          desc={t('home.archiveModal.clearHistoryDesc')}
           onPress={() => onConfirm(true)}
           danger
         />
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>Cancelar</Text>
+          <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -399,7 +401,7 @@ function ProgramBtn({ label, onPress, accent, danger }) {
 export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { i18n }   = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
@@ -527,9 +529,9 @@ export default function HomeScreen() {
 
               {/* Program actions */}
               <View style={styles.programActions}>
-                <ProgramBtn label="Ver"     onPress={() => navigate('programPrint')}  accent />
-                <ProgramBtn label="Editar"  onPress={() => navigate('programEditor')} accent />
-                <ProgramBtn label="Archivar" onPress={() => setArchiveOpen(true)}     danger />
+                <ProgramBtn label={t('home.view')}    onPress={() => navigate('programPrint')}  accent />
+                <ProgramBtn label={t('home.edit')}    onPress={() => navigate('programEditor')} accent />
+                <ProgramBtn label={t('home.archive')} onPress={() => setArchiveOpen(true)}      danger />
               </View>
             </>
           );
