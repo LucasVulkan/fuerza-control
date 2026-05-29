@@ -179,7 +179,10 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const isPro = profile.isPro      ?? true;
 
   // ── Drag-to-close ────────────────────────────────────────────────────────────
-  const translateY   = useRef(new Animated.Value(0)).current;
+  const translateY    = useRef(new Animated.Value(0)).current;
+  const backdropOpacity = translateY.interpolate({
+    inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
+  });
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -216,7 +219,9 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+      </Animated.View>
       <Animated.View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}>
         {/* Handle area — captures drag-to-close, aislado del ScrollView */}
         <View {...panResponder.panHandlers}>
