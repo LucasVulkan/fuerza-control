@@ -236,19 +236,23 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           </View>
         </View>
 
-        {/* PRO toggle (developer) */}
-        <SectionLabel label="Desarrollador" />
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Plan: {isPro ? 'PRO' : 'FREE'}</Text>
-          <TouchableOpacity
-            style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
-            onPress={() => setProfile({ isPro: !isPro })}
-          >
-            <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
-              {isPro ? 'Cambiar a FREE' : 'Cambiar a PRO'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* PRO toggle — only visible in development builds */}
+        {__DEV__ && (
+          <>
+            <SectionLabel label="Desarrollador" />
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>Plan: {isPro ? 'PRO' : 'FREE'}</Text>
+              <TouchableOpacity
+                style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
+                onPress={() => setProfile({ isPro: !isPro })}
+              >
+                <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
+                  {isPro ? 'Cambiar a FREE' : 'Cambiar a PRO'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
     </Modal>
   );

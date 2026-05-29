@@ -14,10 +14,11 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lucasgomez.fuerzacontrol"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,7 +36,8 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "react-native-purchases"
     ],
     "extra": {
       "eas": {
