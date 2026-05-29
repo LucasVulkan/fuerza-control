@@ -993,12 +993,15 @@ export const useStore = create(
             sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
           };
           if (isManaged && clientId) {
-            // Add program to client's programIds list
+            const existingClient = s.clients[clientId] ?? {};
+            const hasActiveProgram = !!(existingClient.activeProgramId && s.programs[existingClient.activeProgramId]);
+            // Add program to client's programIds list; set as active if client had none
             update.clients = {
               ...s.clients,
               [clientId]: {
-                ...s.clients[clientId],
-                programIds: [newProgramId, ...(s.clients[clientId]?.programIds ?? [])],
+                ...existingClient,
+                programIds: [newProgramId, ...(existingClient.programIds ?? [])],
+                ...(!hasActiveProgram ? { activeProgramId: newProgramId } : {}),
               },
             };
             // Open editor for the new program
@@ -1259,11 +1262,12 @@ export const useStore = create(
           ],
         };
 
-        // Stage progress tracking
+        // Stage / cycle progress tracking
         const ownerProgramId = template?.programId;
         const ownerProgram = ownerProgramId ? programs[ownerProgramId] : null;
         let stageUpdate = null;
         if (ownerProgram?.stages?.length > 0) {
+          // ── Staged program ─────────────────────────────────────────────────
           const stageIdx = ownerProgram.currentStageIndex ?? 0;
           const stage = ownerProgram.stages[stageIdx];
           const stageTplIds = new Set((stage?.days ?? []).map((d) => d.sessionTemplateId));
@@ -1278,6 +1282,20 @@ export const useStore = create(
               programId: ownerProgramId,
               stageSessionsCompleted: newCount,
               stageAdvancePending: (newCount >= threshold && !isLast) || (ownerProgram.stageAdvancePending ?? false),
+              totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
+            };
+          }
+        } else if (ownerProgram && ownerProgramId) {
+          // ── Non-staged program: track rotation counter the same way ────────
+          const tplIds = new Set((ownerProgram.days ?? []).map((d) => d.sessionTemplateId));
+          if (tplIds.has(activeSession.templateId)) {
+            const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
+            const sessionsPerCycle = Math.max(1, ownerProgram.days?.length ?? 1);
+            const cycleCompleted = newCount % sessionsPerCycle === 0;
+            stageUpdate = {
+              programId: ownerProgramId,
+              stageSessionsCompleted: newCount,
+              stageAdvancePending: ownerProgram.stageAdvancePending ?? false,
               totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
             };
           }
@@ -1706,7 +1724,10 @@ export const useStore = create(
               if (p.mode === 'template' || p.mode === 'managed') return;
               personalPrograms[id] = { ...p, mode: 'personal', status: 'active' };
             });
-            const firstId = Object.keys(personalPrograms)[0] ?? null;
+            const savedActiveId = data.profile?.activeProgramId;
+            const firstId = (savedActiveId && personalPrograms[savedActiveId])
+              ? savedActiveId
+              : Object.keys(personalPrograms)[0] ?? null;
             updates.programs = { ...(updates.programs ?? s.programs), ...personalPrograms };
             if (firstId) {
               updates.profile = { ...s.profile, activeProgramId: firstId, onboardingCompleted: true };

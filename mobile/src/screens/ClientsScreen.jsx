@@ -840,7 +840,7 @@ function ClientListCard({
           activeOpacity={0.85}
         >
           <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
-            {showYellow ? '▲ Subir cambios' : 'Editar programa'}
+            {showYellow ? '▲ Subir cambios' : activeProgram ? 'Editar programa' : 'Añadir programa'}
           </Text>
         </TouchableOpacity>
 

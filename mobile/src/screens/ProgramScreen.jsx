@@ -157,10 +157,11 @@ function MenuOption({ label, onPress, danger }) {
 }
 
 function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.contextMenu}>
+      <View style={[styles.contextMenu, { paddingBottom: insets.bottom }]}>
         <MenuOption label="Duplicar" onPress={() => { onClose(); onDuplicate(); }} />
         <MenuOption label="Exportar" onPress={() => { onClose(); onExport(); }} />
         <MenuOption label="Eliminar" onPress={() => { onClose(); onDelete(); }} danger />
@@ -198,18 +199,24 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
             <Text style={styles.emptyText}>Sin clientes. Crea uno primero.</Text>
           ) : (
             <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
-              {clientList.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.clientOption, clientId === c.id && styles.clientOptionActive]}
-                  onPress={() => setClientId(c.id)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.clientOptionText, clientId === c.id && { color: colors.accent }]}>
-                    {c.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {clientList.map((c) => {
+                const isSelected = clientId === c.id;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.clientOption, isSelected && styles.clientOptionActive]}
+                    onPress={() => setClientId(c.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.clientOptionText, isSelected && { color: colors.accent }]}>
+                      {c.name}
+                    </Text>
+                    {isSelected && (
+                      <Text style={styles.clientOptionCheck}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -725,15 +732,25 @@ const styles = StyleSheet.create({
     borderColor:       colors.border,
     backgroundColor:   colors.surface2,
     marginBottom:      spacing.xs,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
   },
   clientOptionActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+    borderColor:     colors.accent,
+    backgroundColor: withOpacity(colors.accent, 0.1),
   },
   clientOptionText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
     color:      colors.text,
+    flex:       1,
+  },
+  clientOptionCheck: {
+    fontSize:   typography.base,
+    fontWeight: typography.heavy,
+    color:      colors.accent,
+    marginLeft: spacing.sm,
   },
   emptyText: {
     fontSize:  typography.sm,

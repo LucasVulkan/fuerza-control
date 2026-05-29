@@ -123,29 +123,38 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 function NotesModal({ visible, value, onChange, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+      {/*
+        KAV wraps the whole screen (flex:1). The flex:1 backdrop acts as the
+        elastic spacer — when the keyboard appears KAV shrinks (behavior='padding'
+        adds paddingBottom equal to keyboard height) and the sheet rides up above it.
+        This works on both platforms; the old sibling-based structure meant the sheet
+        (which was the KAV itself) would squish instead of moving.
+      */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalSheet}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
       >
-        <View style={styles.modalHandle} />
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>NOTAS DE SESIÓN</Text>
-          <TouchableOpacity style={styles.modalSaveBtn} onPress={onClose}>
-            <Text style={styles.modalSaveBtnText}>Guardar</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>NOTAS DE SESIÓN</Text>
+            <TouchableOpacity style={styles.modalSaveBtn} onPress={onClose}>
+              <Text style={styles.modalSaveBtnText}>Guardar</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.notesInput}
+            value={value}
+            onChangeText={onChange}
+            multiline
+            autoFocus
+            placeholder="Notas sobre la sesión…"
+            placeholderTextColor={colors.muted2}
+            textAlignVertical="top"
+          />
+          <Text style={styles.notesHint}>Se guardarán junto con la sesión</Text>
         </View>
-        <TextInput
-          style={styles.notesInput}
-          value={value}
-          onChangeText={onChange}
-          multiline
-          autoFocus
-          placeholder="Notas sobre la sesión…"
-          placeholderTextColor={colors.muted2}
-          textAlignVertical="top"
-        />
-        <Text style={styles.notesHint}>Se guardarán junto con la sesión</Text>
       </KeyboardAvoidingView>
     </Modal>
   );

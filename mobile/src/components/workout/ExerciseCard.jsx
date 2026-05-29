@@ -118,11 +118,14 @@ export default function ExerciseCard({
     const h = e.nativeEvent.layout.height;
     if (isCollapsedRef.current) {
       collapsedH.current = h;
+      // First collapse may have animated to the 80px default before the collapsed
+      // view was rendered and measured. Snap to the real height immediately.
+      if (Math.abs(maxH._value - h) > 2) maxH.setValue(h);
     } else if (h > expandedH.current) {
       expandedH.current = h;
       if (maxH._value >= 1999) maxH.setValue(h);
     }
-  }, []);
+  }, [maxH]);
 
   const HEIGHT_CFG  = { duration: 220, easing: Easing.inOut(Easing.ease), useNativeDriver: false };
   const OPACITY_CFG = { duration: 180, easing: Easing.inOut(Easing.ease), useNativeDriver: true  };
