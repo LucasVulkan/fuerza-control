@@ -126,17 +126,16 @@ export default function ExerciseCard({
   const onCardLayout = useCallback((e) => {
     const h = e.nativeEvent.layout.height;
     if (isCollapsedRef.current) {
-      // Collapsed: track real collapsed height and snap maxH to it.
-      // Needed because the collapse animation may target the 80px default
-      // before the collapsed view has been rendered and measured.
-      collapsedH.current = h;
-      if (Math.abs(maxH._value - h) > 2) maxH.setValue(h);
+      // collapsedH.current is kept up-to-date by the hidden absolutely-positioned
+      // measurement view, so it always reflects the real natural height of the
+      // collapsed content (unaffected by maxH clamping).
+      // Just snap maxH if it drifted from the target (e.g. right after an animation).
+      const target = collapsedH.current;
+      if (target > 0 && Math.abs(maxH._value - target) > 2) maxH.setValue(target);
     } else {
-      // Expanded: just track the natural content height for the next collapse.
+      // Expanded: track the natural content height for the next collapse.
       // DO NOT constrain maxH — keeping it at UNCONSTRAINED lets the card grow
-      // freely whenever sets are added (the old maxH.setValue(h) here caused the
-      // card to clip on every set addition because onLayout would then report the
-      // clamped height instead of the true content height).
+      // freely whenever sets are added.
       if (h > expandedH.current) expandedH.current = h;
     }
   }, [maxH]);
@@ -148,8 +147,9 @@ export default function ExerciseCard({
   const startCollapse = useCallback((onDone) => {
     // maxH may be UNCONSTRAINED (3000) — snap to actual content height first
     // so the animation starts from the real size with no visual jump.
+    // collapsedH.current is always accurate thanks to the hidden measurement view.
     const from = expandedH.current  > 0 ? expandedH.current  : 400;
-    const to   = collapsedH.current > 0 ? collapsedH.current : 80;
+    const to   = collapsedH.current > 40 ? collapsedH.current : 80;
     maxH.setValue(from);
     contentOpacity.setValue(1);
     Animated.timing(maxH,           { ...HEIGHT_CFG,  toValue: to }).start(({ finished }) => {
@@ -218,6 +218,39 @@ export default function ExerciseCard({
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
   return (
     <Animated.View style={[styles.card, { maxHeight: maxH }]} onLayout={onCardLayout}>
+
+      {/*
+        Hidden off-flow measurement view.
+        position:'absolute' removes it from yoga's flex flow so the parent's
+        maxHeight does NOT constrain its layout. left/right:0 gives it the
+        card's width (same pill-wrap behaviour). top:0 + no bottom = height
+        is natural content height. onLayout always reflects the true collapsed
+        height, keeping collapsedH.current accurate before any animation starts.
+      */}
+      <View
+        pointerEvents="none"
+        style={styles.collapsedMeasurer}
+        onLayout={(e) => { collapsedH.current = e.nativeEvent.layout.height; }}
+      >
+        <View style={styles.collapsedRow}>
+          <View style={styles.collapsedLeft}>
+            <View style={styles.doneIcon}>
+              <Text style={styles.doneIconText}>✓</Text>
+            </View>
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text style={styles.name}>{name}</Text>
+              <View style={styles.pillsRow}>
+                {setsState.map((set, i) => (
+                  <SetPill key={i} set={set} index={i} fmt={fmt} />
+                ))}
+              </View>
+            </View>
+          </View>
+          {/* Spacer matching the small add-set button so width/wrap is identical */}
+          <View style={styles.addSetBtnSmall} />
+        </View>
+      </View>
+
       <Animated.View style={{ opacity: contentOpacity }}>
 
       {isCollapsed ? (
@@ -510,6 +543,15 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     color:      colors.muted,
     fontWeight: typography.medium,
+  },
+
+  // Hidden measurement view (absolutely positioned, opacity 0)
+  collapsedMeasurer: {
+    position: 'absolute',
+    opacity:  0,
+    left:     0,
+    right:    0,
+    top:      0,
   },
 
   // Collapsed
