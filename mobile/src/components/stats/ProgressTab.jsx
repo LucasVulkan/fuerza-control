@@ -525,7 +525,10 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
   const [chartMetric, setChartMetric] = useState(null);
   const [pctMode,     setPctMode]     = useState(false);
 
-  const translateY   = useRef(new Animated.Value(0)).current;
+  const translateY      = useRef(new Animated.Value(0)).current;
+  const backdropOpacity = translateY.interpolate({
+    inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
+  });
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -652,7 +655,15 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
+      {/* Backdrop — opacidad sincronizada con el gesto de arrastre */}
+      <Animated.View
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.82)', opacity: backdropOpacity }]}
+        pointerEvents="box-none"
+      >
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+      </Animated.View>
+      {/* Layout shell — posiciona el sheet en la parte inferior */}
+      <View style={styles.modalOverlay} pointerEvents="box-none">
         <Animated.View
           style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.lg, transform: [{ translateY }] }]}
           onStartShouldSetResponder={() => true}
@@ -776,7 +787,7 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
             </View>
           </ScrollView>
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -1286,9 +1297,8 @@ const styles = StyleSheet.create({
 
   // ── Modal ──────────────────────────────────────────────────────────────────
   modalOverlay: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.82)',
-    justifyContent:  'flex-end',
+    flex:           1,
+    justifyContent: 'flex-end',
   },
   modalSheet: {
     backgroundColor:      colors.bg,
@@ -1300,7 +1310,7 @@ const styles = StyleSheet.create({
   },
   dragHandleWrap: {
     paddingTop:    spacing.sm,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.md,
     alignItems:    'center',
   },
   dragHandle: {
