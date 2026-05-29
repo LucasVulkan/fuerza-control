@@ -167,11 +167,27 @@ export default function ExerciseCard({
   // guarantees that React has already swapped the rendered content before the animation
   // begins. Starting the fade-in inside startExpand caused the flicker: native-driver
   // opacity was animating upward while collapsed content was still in the tree.
+  //
+  // When switching TO collapsed we also call maxH.setValue(UNCONSTRAINED) first.
+  // Why: on navigation return the component remounts with collapsedH.current=80 (ref
+  // reset). The allDone useEffect fires synchronously (before native onLayout arrives)
+  // and runs startCollapse with to=80. By the time the animation finishes, the
+  // measurement view has usually updated collapsedH.current to the real height, but
+  // onCardLayout may not re-fire because the card height didn't change (still 80).
+  // Setting UNCONSTRAINED here forces a layout pass → onCardLayout fires → reads the
+  // now-correct collapsedH.current → snaps maxH to the real collapsed height.
+  // Content is invisible (opacity=0) throughout so the brief height change is harmless.
   const prevIsCollapsedRef = useRef(isCollapsed);
   useEffect(() => {
     const wasCollapsed = prevIsCollapsedRef.current;
     prevIsCollapsedRef.current = isCollapsed;
     if (isCollapsed === wasCollapsed) return; // no change
+
+    if (isCollapsed) {
+      // Release maxH so onCardLayout fires and can snap to the real measured height.
+      maxH.setValue(UNCONSTRAINED);
+    }
+
     // Content has just switched — fade it in from 0 (set by startCollapse/startExpand)
     Animated.timing(contentOpacity, {
       toValue: 1, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: false,
@@ -245,7 +261,17 @@ export default function ExerciseCard({
       <View
         pointerEvents="none"
         style={styles.collapsedMeasurer}
-        onLayout={(e) => { collapsedH.current = e.nativeEvent.layout.height; }}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          collapsedH.current = h;
+          // Safety snap: if the card is already collapsed and maxH is wrong
+          // (e.g. this onLayout fired after onCardLayout used a stale default),
+          // correct it now. This covers the navigation-return case where the
+          // collapse animation ends before the first native onLayout arrives.
+          if (isCollapsedRef.current && h > 0 && Math.abs(maxH._value - h) > 2) {
+            maxH.setValue(h);
+          }
+        }}
       >
         <View style={styles.collapsedRow}>
           <View style={styles.collapsedLeft}>
