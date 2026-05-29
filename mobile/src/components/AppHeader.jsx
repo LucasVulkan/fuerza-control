@@ -4,9 +4,10 @@
  * Self-contained: manages settings sheet + import logic internally.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
+  Animated, PanResponder,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -177,6 +178,32 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const unit  = profile.weightUnit ?? 'kg';
   const isPro = profile.isPro      ?? true;
 
+  // ── Drag-to-close ────────────────────────────────────────────────────────────
+  const translateY   = useRef(new Animated.Value(0)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) translateY.setValue(gs.dy);
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 120 || gs.vy > 0.8) {
+          Animated.timing(translateY, {
+            toValue: 900, duration: 240, useNativeDriver: true,
+          }).start(() => { onClose(); });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0, useNativeDriver: true, tension: 80, friction: 10,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) translateY.setValue(0);
+  }, [visible]);
+
   async function handleExport(type) {
     setExporting(type);
     try {
@@ -190,9 +217,14 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl) }]}>
-        <View style={styles.sheetHandle} />
-        <Text style={styles.settingsTitle}>AJUSTES</Text>
+      <Animated.View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}>
+        {/* Handle area — captures drag-to-close, aislado del ScrollView */}
+        <View {...panResponder.panHandlers}>
+          <View style={styles.dragHandleWrap}>
+            <View style={styles.sheetHandle} />
+          </View>
+          <Text style={styles.settingsTitle}>AJUSTES</Text>
+        </View>
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
@@ -319,7 +351,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           )}
 
         </ScrollView>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -537,13 +569,15 @@ const styles = StyleSheet.create({
     paddingHorizontal:    spacing.lg,
     paddingTop:           spacing.sm,
   },
+  dragHandleWrap: {
+    paddingVertical: spacing.sm,
+    alignItems:      'center',
+  },
   sheetHandle: {
     width:           40,
     height:          4,
     backgroundColor: colors.border,
     borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    spacing.md,
   },
   settingsTitle: {
     fontSize:      typography.sm,
