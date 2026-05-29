@@ -141,7 +141,10 @@ export default function ExerciseCard({
   }, [maxH]);
 
   const HEIGHT_CFG  = { duration: 220, easing: Easing.inOut(Easing.ease), useNativeDriver: false };
-  const OPACITY_CFG = { duration: 180, easing: Easing.inOut(Easing.ease), useNativeDriver: true  };
+  // useNativeDriver: false so that setValue(0) takes effect synchronously on the
+  // JS side — prevents the 1-frame native-thread lag that caused the flicker where
+  // collapsed content briefly reappeared during the expand animation.
+  const OPACITY_CFG = { duration: 180, easing: Easing.inOut(Easing.ease), useNativeDriver: false };
 
   // Collapse: fade out + aplasta altura, cambia contenido al terminar (opacity sigue en 0)
   const startCollapse = useCallback((onDone) => {
@@ -158,28 +161,36 @@ export default function ExerciseCard({
     Animated.timing(contentOpacity, { ...OPACITY_CFG, toValue: 0 }).start();
   }, []);
 
-  // Fade in del contenido colapsado justo después de que React lo renderice
+  // Fade in del contenido activo después de cada cambio de estado colapsado/expandido.
+  //
+  // Doing the fade-in here (post-commit) instead of inside startExpand/startCollapse
+  // guarantees that React has already swapped the rendered content before the animation
+  // begins. Starting the fade-in inside startExpand caused the flicker: native-driver
+  // opacity was animating upward while collapsed content was still in the tree.
   const prevIsCollapsedRef = useRef(isCollapsed);
   useEffect(() => {
-    if (isCollapsed && !prevIsCollapsedRef.current) {
-      Animated.timing(contentOpacity, {
-        toValue: 1, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true,
-      }).start();
-    }
+    const wasCollapsed = prevIsCollapsedRef.current;
     prevIsCollapsedRef.current = isCollapsed;
+    if (isCollapsed === wasCollapsed) return; // no change
+    // Content has just switched — fade it in from 0 (set by startCollapse/startExpand)
+    Animated.timing(contentOpacity, {
+      toValue: 1, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: false,
+    }).start();
   }, [isCollapsed]);
 
-  // Expand: cambia contenido primero, fade in + sube altura; libera maxH al terminar
+  // Expand: resetea opacidad a 0 y anima la altura. El fade-in de opacidad lo
+  // dispara el useEffect una vez que React ha confirmado el cambio de estado,
+  // evitando que el contenido colapsado reaparezca durante la animación.
   const startExpand = useCallback(() => {
     const from = collapsedH.current > 0 ? collapsedH.current : 80;
     const to   = expandedH.current  > 0 ? expandedH.current  : 600;
     maxH.setValue(from);
-    contentOpacity.setValue(0);
+    contentOpacity.setValue(0); // contenido invisible; useEffect dispara el fade-in
     Animated.timing(maxH, { ...HEIGHT_CFG, toValue: to }).start(({ finished }) => {
       // Release the constraint so the card can grow freely if sets are added.
       if (finished) maxH.setValue(UNCONSTRAINED);
     });
-    Animated.timing(contentOpacity, { ...OPACITY_CFG, toValue: 1 }).start();
+    // No opacity animation here — handled by useEffect after isCollapsed flips
   }, []);
 
   // Colapsar cuando todas las series están hechas
