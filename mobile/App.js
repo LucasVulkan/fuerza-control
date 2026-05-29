@@ -27,7 +27,8 @@ import { RC_ANDROID_API_KEY, RC_IOS_API_KEY } from './src/config/revenuecat';
 import { useStore } from './store/useStore';
 
 export default function App() {
-  const checkProStatus = useStore((s) => s.checkProStatus);
+  const checkProStatus              = useStore((s) => s.checkProStatus);
+  const checkAndPullProgramUpdates  = useStore((s) => s.checkAndPullProgramUpdates);
 
   // ── Notification setup ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -47,6 +48,12 @@ export default function App() {
   // Register background Drive backup task (safe to call on every launch; ignored if already registered)
   useEffect(() => {
     registerBackupTask().catch(() => {});
+  }, []);
+
+  // If the user is a client connected to a trainer, silently pull program updates on startup.
+  // This ensures trainerName, exercise changes, etc. are reflected without reconnecting.
+  useEffect(() => {
+    checkAndPullProgramUpdates().catch(() => {});
   }, []);
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)

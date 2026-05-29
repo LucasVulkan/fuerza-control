@@ -77,6 +77,26 @@ export async function uploadHistory(slotId, historyJson) {
 }
 
 /**
+ * Downloads the trainer's program JSON for a client slot.
+ * Called by the client on startup to check for program updates.
+ * Returns { programJson, updatedAt }.
+ */
+export async function downloadProgram(slotId) {
+  const { data, error } = await supabase
+    .from('trainer_clients')
+    .select('program_json, program_updated_at')
+    .eq('id', slotId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    programJson: data.program_json ?? null,
+    updatedAt:   data.program_updated_at ?? null,
+  };
+}
+
+/**
  * Downloads the client's workout history JSON.
  * Called by the trainer when they tap "Actualizar".
  * Returns the raw history array (parsed from JSON).

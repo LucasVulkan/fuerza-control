@@ -20,7 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -47,14 +47,19 @@ import { navigateTo } from '../src/navigation/navigationRef';
 // ─── Initial state ─────────────────────────────────────────────────────────────
 
 // ── Trainer session guard ──────────────────────────────────────────────────────
-// Before any RLS-protected Supabase write, verify the session is active.
-// If not: auto-recover using the stored code (handles app restart / token expiry).
-// If the trainer used a different code in a past session, this also re-authenticates
-// to the current code's account — preventing the "New row violates RLS" error.
+// Before any RLS-protected Supabase write, verify the session is active AND
+// belongs to the correct user (trainerSync.userId).
+// Cases handled:
+//  - No session at all (app restart, token expired) → re-auth with stored code
+//  - Session for wrong userId (trainer created a second code account) → re-auth
+//    with the stored code to switch back to the correct account
 async function _ensureTrainerSession(trainerSync) {
   const { supabase } = require('../src/config/supabase');
   const { data: { session } } = await supabase.auth.getSession();
-  if (session) return; // already authenticated, nothing to do
+
+  // Session is valid AND belongs to the expected trainer user → nothing to do
+  if (session && (!trainerSync.userId || session.user.id === trainerSync.userId)) return;
+
   if (trainerSync.mode === 'code' && trainerSync.code) {
     const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
     await recoverWithTrainerCode(trainerSync.code);
@@ -133,11 +138,12 @@ export const useStore = create(
 
       // ── Client sync (when user is a client connected to a trainer) ────────
       clientSync: {
-        slotId:         null,  // trainer_clients row id
-        clientCode:     null,  // the code the client entered
-        supabaseUserId: null,  // anonymous Supabase user id
-        pendingUpload:  false, // true when last session upload failed
-        lastSyncedAt:   null,  // ISO — timestamp of last successful upload to trainer
+        slotId:                null,  // trainer_clients row id
+        clientCode:            null,  // the code the client entered
+        supabaseUserId:        null,  // anonymous Supabase user id
+        pendingUpload:         false, // true when last sessions upload failed
+        lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
+        lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
         syncErrorAt:    null,  // ISO — timestamp of last failed upload to trainer
       },
 
@@ -2098,9 +2104,37 @@ export const useStore = create(
             pendingUpload:          false,
             lastSyncedAt:           null,
             syncErrorAt:            null,
+            lastProgramImportedAt:  new Date().toISOString(),
             previousActiveProgramId,
           },
         }));
+      },
+
+      /**
+       * Checks whether the trainer has updated the program since the client last imported it.
+       * If so, silently re-imports the new program_json.
+       * Called on app startup so clients always get the latest program (e.g. new trainerName,
+       * exercise changes, etc.) without having to disconnect and reconnect.
+       */
+      checkAndPullProgramUpdates: async () => {
+        const { clientSync } = get();
+        if (!clientSync.slotId) return; // not a client
+
+        try {
+          const { programJson, updatedAt } = await downloadProgram(clientSync.slotId);
+          if (!programJson || !updatedAt) return;
+
+          const lastImport = clientSync.lastProgramImportedAt;
+          if (lastImport && new Date(updatedAt) <= new Date(lastImport)) return; // already up to date
+
+          // Re-import: merges templates into store, updates active program
+          get().importData(programJson, { program: true, log: false });
+          set((s) => ({
+            clientSync: { ...s.clientSync, lastProgramImportedAt: new Date().toISOString() },
+          }));
+        } catch {
+          // Silent — network failure or RLS error; client keeps their local copy
+        }
       },
 
       /**
@@ -2144,7 +2178,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, previousActiveProgramId: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
         }));
 
         // Restore trainer session automatically if we have the code

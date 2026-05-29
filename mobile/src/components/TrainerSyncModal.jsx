@@ -57,6 +57,81 @@ const MODES = [
   },
 ];
 
+// ── Sub-screen: Already connected (code stored in memory) ─────────────────────
+
+function CodeStatusScreen({ code, loading, nameInput, setNameInput, setTrainerName, onReconnect, onChangeMode, onClose, isFirstTime }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleChangeMode() {
+    onChangeMode();
+  }
+
+  return (
+    <View style={s.codeStatus}>
+      <Text style={s.title}>
+        {isFirstTime ? 'Gestión de clientes' : 'Sincronización'}
+      </Text>
+
+      <View style={s.connectedRow}>
+        <View style={s.connectedDot} />
+        <Text style={s.connectedText}>Ya estás conectado</Text>
+      </View>
+
+      <Text style={s.codeStatusDesc}>
+        No pierdas el código. Podrías necesitarlo en el futuro para reconectarte.
+      </Text>
+
+      <TouchableOpacity style={[s.codeBox, s.codeBoxSm]} onPress={handleCopy} activeOpacity={0.7}>
+        <Text style={[s.codeText, s.codeTextSm]}>{code}</Text>
+        <Text style={s.codeCopyHint}>{copied ? '✓ Copiado' : 'Toca para copiar'}</Text>
+      </TouchableOpacity>
+
+      <View style={s.nameRow}>
+        <Text style={s.nameLabel}>TU NOMBRE (PARA CLIENTES)</Text>
+        <TextInput
+          style={s.nameInput}
+          placeholder="Ej. Lucas García"
+          placeholderTextColor={colors.muted}
+          value={nameInput}
+          onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
+          returnKeyType="done"
+          autoCorrect={false}
+        />
+      </View>
+
+      <View style={s.actions}>
+        {!isFirstTime && (
+          <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={s.cancelBtnText}>Cerrar</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[s.primaryBtn, { flex: 1 }, loading && { opacity: 0.5 }]}
+          onPress={onReconnect}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          {loading
+            ? <ActivityIndicator color={colors.bg} />
+            : <Text style={s.primaryBtnText}>Aceptar</Text>}
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity onPress={handleChangeMode} style={s.recoveryLink}>
+        <Text style={[s.recoveryLinkText, { color: colors.muted }]}>
+          Cambiar modo de sincronización →
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ── Sub-screen: Code generated ─────────────────────────────────────────────────
 
 function CodeRevealScreen({ code, onDone }) {
@@ -188,12 +263,14 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   const [newCode,      setNewCode]      = useState(null);
   const [nameInput,    setNameInput]    = useState(trainerSync.trainerName ?? '');
 
-  // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN)
+  // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN).
+  // If a code is already stored, jump directly to the "connected" status screen
+  // to prevent the trainer from accidentally creating a second account.
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (visible) {
       setNameInput(trainerSync.trainerName ?? '');
       setSelected(trainerSync.mode ?? 'google');
-      setScreen('select');
+      setScreen(trainerSync.code ? 'code_status' : 'select');
     }
   }, [visible]);
 
@@ -253,6 +330,34 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   }, [googleResponse]); // eslint-disable-line
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  /** Re-establishes the Supabase session using the code already stored in memory.
+   *  Also claims any local client slots that may be owned by a stale userId
+   *  (happens when a second trainer code was generated accidentally). */
+  async function handleReconnect() {
+    setLoading(true);
+    try {
+      const { userId } = await recoverWithTrainerCode(trainerSync.code);
+      setTrainerSyncMode('code', { code: trainerSync.code, userId });
+
+      // Transfer ownership of all local client slots to this userId.
+      // Requires the claim_trainer_slots SQL function (SECURITY DEFINER) in Supabase.
+      const existingSlotIds = Object.values(
+        useStore.getState().clients ?? {}
+      ).map((c) => c.syncSlotId).filter(Boolean);
+      if (existingSlotIds.length > 0) {
+        await claimTrainerSlots(existingSlotIds).catch(() => {
+          // Non-fatal if the SQL function isn't deployed yet.
+        });
+      }
+
+      onClose();
+    } catch (err) {
+      Alert.alert('Error al reconectar', err.message ?? 'No se pudo recuperar la sesión. Comprueba tu código.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function doSwitch() {
     if (selected === 'offline') {
@@ -331,6 +436,21 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       >
         <View style={s.card}>
 
+          {/* Already-connected status (code in memory → skip the mode selector) */}
+          {screen === 'code_status' && (
+            <CodeStatusScreen
+              code={trainerSync.code}
+              loading={loading}
+              nameInput={nameInput}
+              setNameInput={setNameInput}
+              setTrainerName={setTrainerName}
+              onReconnect={handleReconnect}
+              onChangeMode={() => setScreen('select')}
+              onClose={onClose}
+              isFirstTime={isFirstTime}
+            />
+          )}
+
           {/* Code revealed after setup */}
           {screen === 'code_reveal' && newCode && (
             <CodeRevealScreen code={newCode} onDone={handleRevealDone} />
@@ -384,22 +504,21 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                           </View>
                         )}
                       </View>
-                      {active && mode.warn && (
+                      {/* Warn genérico (solo cuando no hay código existente para esa opción) */}
+                      {active && mode.warn && !(mode.id === 'code' && trainerSync.code) && (
                         <Text style={s.optionWarn}>{mode.warn}</Text>
                       )}
-                      {/* Safety: if code already exists, warn before creating a new one */}
+                      {/* Código: ya tienes uno, crear otro huerfanará a los clientes */}
                       {active && mode.id === 'code' && trainerSync.code && (
-                        <View style={s.existingCodeWarn}>
-                          <Text style={s.existingCodeWarnText}>
-                            Ya tienes el código{' '}
-                            <Text style={s.existingCodeValue}>{trainerSync.code}</Text>
-                            {' '}guardado.{'\n'}
-                            Si lo has perdido, usa «Recuperar cuenta» en lugar de crear uno nuevo — los programas de tus clientes quedarán huérfanos si cambias de cuenta.
-                          </Text>
-                          <TouchableOpacity onPress={() => setScreen('recovery')} style={s.existingCodeBtn}>
-                            <Text style={s.existingCodeBtnText}>Usar mi código →</Text>
-                          </TouchableOpacity>
-                        </View>
+                        <Text style={s.optionWarn}>
+                          ⚠ Ya tienes un código. Al crear uno nuevo perderás la sincronización con tus clientes actuales.
+                        </Text>
+                      )}
+                      {/* Google: cambiar desde código huerfanará a los clientes */}
+                      {active && mode.id === 'google' && trainerSync.code && (
+                        <Text style={s.optionWarn}>
+                          ⚠ Si ya usas código personal, al cambiar a Google tus clientes quedarán vinculados a la cuenta anterior y no podrás actualizarlos.
+                        </Text>
                       )}
                     </TouchableOpacity>
                   );
@@ -502,7 +621,7 @@ const s = StyleSheet.create({
     borderColor:     colors.border,
     borderRadius:    radius.md,
     padding:         spacing.md,
-    marginBottom:    spacing.sm,
+    marginBottom:    spacing.xs,
     backgroundColor: colors.surface2,
     gap:             spacing.xs,
   },
@@ -547,33 +666,6 @@ const s = StyleSheet.create({
     lineHeight: typography.xs * 1.5,
     marginTop:  spacing.xs,
   },
-  existingCodeWarn: {
-    marginTop:         spacing.xs,
-    backgroundColor:   withOpacity(colors.orange, 0.08),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.orange, 0.3),
-    borderRadius:      radius.sm,
-    padding:           spacing.sm,
-    gap:               spacing.xs,
-  },
-  existingCodeWarnText: {
-    fontSize:   typography.xs,
-    color:      colors.orange,
-    lineHeight: typography.xs * 1.6,
-  },
-  existingCodeValue: {
-    fontWeight:    typography.heavy,
-    letterSpacing: 1,
-  },
-  existingCodeBtn: {
-    alignSelf: 'flex-start',
-  },
-  existingCodeBtnText: {
-    fontSize:   typography.xs,
-    color:      colors.accent,
-    fontWeight: typography.semibold,
-  },
-
   // Radio button
   radio: {
     width:        18,
@@ -650,6 +742,31 @@ const s = StyleSheet.create({
   },
   cancelBtnText: { fontSize: typography.base, color: colors.muted },
 
+  // Already-connected status screen
+  codeStatus: { gap: spacing.md },
+  connectedRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  connectedDot: {
+    width:           8,
+    height:          8,
+    borderRadius:    4,
+    backgroundColor: colors.green,
+  },
+  connectedText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.green,
+  },
+  codeStatusDesc: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    lineHeight: typography.xs * 1.5,
+    marginTop:  -spacing.xs,
+  },
+
   // Code reveal
   reveal: { gap: spacing.md },
   revealTitle: {
@@ -672,11 +789,20 @@ const s = StyleSheet.create({
     alignItems:        'center',
     gap:               spacing.xs,
   },
+  // Compact variant for the status screen (code + hint stacked, less padding)
+  codeBoxSm: {
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   codeText: {
     fontSize:      24,
     fontWeight:    typography.heavy,
     color:         colors.accent,
     letterSpacing: 4,
+  },
+  codeTextSm: {
+    fontSize:      typography.xl,  // 18
+    letterSpacing: 2,
   },
   codeCopyHint: {
     fontSize: typography.xs,
