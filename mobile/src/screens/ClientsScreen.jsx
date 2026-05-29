@@ -728,6 +728,20 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   );
 }
 
+// ── Sync time helper ───────────────────────────────────────────────────────────
+
+function syncAgo(isoStr) {
+  if (!isoStr) return null;
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const m  = Math.floor(ms / 60000);
+  if (m < 1)  return 'ahora';
+  if (m < 60) return `hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d}d`;
+}
+
 // ── Client list card ───────────────────────────────────────────────────────────
 
 function ClientListCard({
@@ -742,6 +756,12 @@ function ClientListCard({
 
   const showBlue   = isConnected && historyHasNew;
   const showYellow = isConnected && programDirty;
+
+  // Sync status
+  const lastSync      = client.lastHistorySync ?? null;
+  const syncErr       = client.syncErrorAt ?? null;
+  const hasSyncError  = isConnected && syncErr && (!lastSync || syncErr > lastSync);
+  const showSyncStamp = isConnected && !hasSyncError && lastSync;
 
   // Last session label — compact
   let lastStr = null;
@@ -802,6 +822,18 @@ function ClientListCard({
         <View style={styles.cActivityBadge}>
           <View style={styles.cActivityDot} />
           <Text style={styles.cActivityText}>Nueva actividad disponible</Text>
+        </View>
+      )}
+
+      {/* ── Sync status ── */}
+      {hasSyncError && (
+        <View style={styles.cSyncRow}>
+          <Text style={styles.cSyncError}>⚠ Error de sincronización</Text>
+        </View>
+      )}
+      {showSyncStamp && (
+        <View style={styles.cSyncRow}>
+          <Text style={styles.cSyncStamp}>Sin. {syncAgo(lastSync)}</Text>
         </View>
       )}
 
@@ -2592,6 +2624,20 @@ const styles = StyleSheet.create({
     fontSize:   typography.xs,
     color:      colors.blue,
     fontWeight: typography.medium,
+  },
+
+  // Sync status
+  cSyncRow: {
+    marginTop: 2,
+  },
+  cSyncError: {
+    fontSize:   typography.xs,
+    color:      colors.orange,
+    fontWeight: typography.medium,
+  },
+  cSyncStamp: {
+    fontSize: typography.xs,
+    color:    colors.muted2,
   },
 
   // Program section — flat (sin tarjeta anidada)

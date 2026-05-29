@@ -115,10 +115,12 @@ export const useStore = create(
 
       // ── Client sync (when user is a client connected to a trainer) ────────
       clientSync: {
-        slotId:        null,  // trainer_clients row id
-        clientCode:    null,  // the code the client entered
-        supabaseUserId: null, // anonymous Supabase user id
-        pendingUpload: false, // true when last session upload failed
+        slotId:         null,  // trainer_clients row id
+        clientCode:     null,  // the code the client entered
+        supabaseUserId: null,  // anonymous Supabase user id
+        pendingUpload:  false, // true when last session upload failed
+        lastSyncedAt:   null,  // ISO — timestamp of last successful upload to trainer
+        syncErrorAt:    null,  // ISO — timestamp of last failed upload to trainer
       },
 
       // Static references (not persisted)
@@ -1950,34 +1952,49 @@ export const useStore = create(
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
 
-        const { history, updatedAt } = await downloadHistory(client.syncSlotId);
-        if (!history?.length) return { merged: 0 };
+        try {
+          const { history, updatedAt } = await downloadHistory(client.syncSlotId);
+          if (!history?.length) return { merged: 0 };
 
-        // Merge into the trainer's local workoutLog using existing dedup logic
-        const existing = get().workoutLog;
-        const existingIds = new Set(existing.map((e) => e.id));
-        const newEntries = history.filter((e) => !existingIds.has(e.id));
+          // Merge into the trainer's local workoutLog using existing dedup logic
+          const existing = get().workoutLog;
+          const existingIds = new Set(existing.map((e) => e.id));
+          const newEntries = history.filter((e) => !existingIds.has(e.id));
 
-        if (newEntries.length > 0) {
+          if (newEntries.length > 0) {
+            set((s) => ({
+              workoutLog: [...s.workoutLog, ...newEntries]
+                .sort((a, b) => b.timestamp - a.timestamp),
+            }));
+          }
+
+          // Update last-sync timestamp, clear any prior error, set new-activity flag
           set((s) => ({
-            workoutLog: [...s.workoutLog, ...newEntries]
-              .sort((a, b) => b.timestamp - a.timestamp),
-          }));
-        }
-
-        // Update last-sync timestamp + new-activity flag on the client object
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              lastHistorySync: updatedAt,
-              ...(newEntries.length > 0 ? { historyHasNew: true } : {}),
+            clients: {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId],
+                lastHistorySync: updatedAt,
+                syncErrorAt:     null,
+                ...(newEntries.length > 0 ? { historyHasNew: true } : {}),
+              },
             },
-          },
-        }));
+          }));
 
-        return { merged: newEntries.length };
+          return { merged: newEntries.length };
+        } catch (err) {
+          // Record error timestamp so ClientCard can show a visual indicator
+          set((s) => ({
+            clients: {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId],
+                syncErrorAt: new Date().toISOString(),
+              },
+            },
+          }));
+          throw err;
+        }
       },
 
       /** Marks client history as viewed (clears the "new activity" badge). */
@@ -2032,10 +2049,12 @@ export const useStore = create(
         // 6. Save client sync state
         set(() => ({
           clientSync: {
-            slotId:                slot.id,
-            clientCode:            code.trim().toUpperCase(),
-            supabaseUserId:        userId,
-            pendingUpload:         false,
+            slotId:                 slot.id,
+            clientCode:             code.trim().toUpperCase(),
+            supabaseUserId:         userId,
+            pendingUpload:          false,
+            lastSyncedAt:           null,
+            syncErrorAt:            null,
             previousActiveProgramId,
           },
         }));
@@ -2051,11 +2070,22 @@ export const useStore = create(
 
         try {
           await uploadHistory(clientSync.slotId, workoutLog);
-          if (get().clientSync.pendingUpload) {
-            set((s) => ({ clientSync: { ...s.clientSync, pendingUpload: false } }));
-          }
+          set((s) => ({
+            clientSync: {
+              ...s.clientSync,
+              pendingUpload: false,
+              lastSyncedAt:  new Date().toISOString(),
+              syncErrorAt:   null,
+            },
+          }));
         } catch {
-          set((s) => ({ clientSync: { ...s.clientSync, pendingUpload: true } }));
+          set((s) => ({
+            clientSync: {
+              ...s.clientSync,
+              pendingUpload: true,
+              syncErrorAt:   new Date().toISOString(),
+            },
+          }));
         }
       },
 
@@ -2071,7 +2101,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, previousActiveProgramId: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, previousActiveProgramId: null },
         }));
 
         // Restore trainer session automatically if we have the code
