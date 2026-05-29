@@ -23,12 +23,27 @@ import { Platform } from 'react-native';
  */
 export function setForegroundNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: false,
-      shouldShowList: false,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async (notification) => {
+      const type = notification.request.content.data?.type;
+      // Countdown notifications must reach the OS notification list so they
+      // appear in the drawer even while the app is in the foreground.
+      // Everything else (including the "done" alert) is suppressed — the
+      // in-app haptic + toast handle the UX when the app is active.
+      if (type === 'countdown') {
+        return {
+          shouldShowBanner: false, // no heads-up banner (in-app widget handles it)
+          shouldShowList:  true,   // keep it in the drawer ← was false, the bug
+          shouldPlaySound: false,
+          shouldSetBadge:  false,
+        };
+      }
+      return {
+        shouldShowBanner: false,
+        shouldShowList:  false,
+        shouldPlaySound: false,
+        shouldSetBadge:  false,
+      };
+    },
   });
 }
 

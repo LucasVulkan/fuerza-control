@@ -13,7 +13,30 @@ const PROGRESSION_MODELS = [
 // ─── StepField ────────────────────────────────────────────────────────────────
 
 function StepField({ label, value, onChange, min, max }) {
+  // Local draft lets the user type freely (e.g. "6" on the way to "60").
+  // Clamping only happens on blur, not on every keystroke.
+  const [draft, setDraft] = useState(String(value));
+
+  // Sync when the external value changes (step buttons, Restore action).
+  useEffect(() => { setDraft(String(value)); }, [value]);
+
   const numVal = Number(value);
+
+  function handleChangeText(v) {
+    setDraft(v.replace(/[^0-9]/g, '')); // digits only, no clamping yet
+  }
+
+  function handleBlur() {
+    const n = parseInt(draft, 10);
+    if (!isNaN(n)) {
+      const clamped = Math.min(max, Math.max(min, n));
+      setDraft(String(clamped));
+      onChange(clamped);
+    } else {
+      setDraft(String(value)); // restore last valid value
+    }
+  }
+
   return (
     <View style={sf.wrap}>
       <Text style={sf.label}>{label}</Text>
@@ -24,11 +47,9 @@ function StepField({ label, value, onChange, min, max }) {
         <TextInput
           style={sf.valueInput}
           keyboardType="numeric"
-          value={String(value)}
-          onChangeText={(v) => {
-            const n = parseInt(v);
-            if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
-          }}
+          value={draft}
+          onChangeText={handleChangeText}
+          onBlur={handleBlur}
           selectTextOnFocus
         />
         <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))}>
