@@ -7,23 +7,39 @@
  * Three options:
  *  - 'offline'  → no Supabase, manual file sharing as before
  *  - 'code'     → anonymous Supabase account + generated recovery code
- *  - 'google'   → Google OAuth (coming soon — not yet wired to Supabase OAuth)
+ *  - 'google'   → Google OAuth via expo-auth-session → supabase.auth.signInWithIdToken
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, Modal, TouchableOpacity,
   ActivityIndicator, StyleSheet, ScrollView, Alert,
   TextInput, Platform, KeyboardAvoidingView,
 } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser  from 'expo-web-browser';
+import Constants        from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../../store/useStore';
-import { setupTrainerCodeAccount, recoverWithTrainerCode } from '../services/supabaseAuth';
+import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer, signOut as supabaseSignOut } from '../services/supabaseAuth';
+import { exchangeCodeForTokens } from '../services/driveService';
+import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+
+// Required so the in-app browser can redirect back after OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 // ── Option definitions ─────────────────────────────────────────────────────────
 
 const MODES = [
+  {
+    id:       'google',
+    icon:     '🔵',
+    title:    'Google',
+    desc:     'Inicia sesión con tu cuenta de Google. No necesitas guardar ningún código — tu cuenta de Google es tu clave de recuperación.',
+    warn:     null,
+    expoOnly: true, // disabled in Expo Go — will be checked at render time
+  },
   {
     id:    'code',
     icon:  '🔑',
@@ -151,27 +167,98 @@ function RecoveryScreen({ onSuccess, onBack }) {
   );
 }
 
+// ── Google OAuth constants ─────────────────────────────────────────────────────
+
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint:         'https://oauth2.googleapis.com/token',
+};
+
 // ── Main modal ─────────────────────────────────────────────────────────────────
 
 export default function TrainerSyncModal({ visible, onClose, isFirstTime = true }) {
   const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
   const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [selected,  setSelected]  = useState(trainerSync.mode ?? 'code');
+  const [selected,  setSelected]  = useState(trainerSync.mode ?? 'google');
   const [loading,   setLoading]   = useState(false);
   const [screen,    setScreen]    = useState('select'); // 'select' | 'code_reveal' | 'recovery'
   const [newCode,   setNewCode]   = useState(null);
 
-  async function handleConfirm() {
+  // ── Google OAuth setup ───────────────────────────────────────────────────────
+  //
+  // expo-auth-session v7: useProxy removed. In Expo Go the redirect URI is always
+  // exp://127.0.0.1:8081 (can't be registered in GCC → OAuth disabled in dev).
+  // In standalone builds, native: 'forma://oauth2redirect' is used directly.
+  // Registered in GCC as a Desktop app client redirect URI. See google.js.
+  //
+  const isExpoGo          = Constants.executionEnvironment === 'storeClient';
+  const googleClientId    = GOOGLE_ANDROID_CLIENT_ID;
+  const androidRedirectUri = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+  const googleRedirectUri  = AuthSession.makeRedirectUri({ native: androidRedirectUri });
+
+  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId:     googleClientId,
+      scopes:       ['openid', 'email', 'profile'],
+      responseType: AuthSession.ResponseType.Code,
+      usePKCE:      true,
+      redirectUri:  googleRedirectUri,
+      extraParams:  { access_type: 'online', prompt: 'select_account' },
+    },
+    GOOGLE_DISCOVERY,
+  );
+
+  // Stable ref so the async callback always reads the latest codeVerifier
+  const googleRequestRef = useRef(googleRequest);
+  useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
+
+  // Handle OAuth redirect response
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (googleResponse?.type !== 'success') return;
+    (async () => {
+      setLoading(true);
+      try {
+        const tokens = await exchangeCodeForTokens({
+          code:         googleResponse.params.code,
+          codeVerifier: googleRequestRef.current?.codeVerifier,
+          redirectUri:  googleRedirectUri,
+          clientId:     googleClientId,
+        });
+        if (!tokens.id_token) throw new Error('Google no devolvió un id_token. Inténtalo de nuevo.');
+        const { userId } = await loginWithGoogleTrainer({
+          idToken:     tokens.id_token,
+          accessToken: tokens.access_token,
+        });
+        setTrainerSyncMode('google', { userId });
+        onClose();
+      } catch (err) {
+        Alert.alert('Error', err.message ?? 'No se pudo iniciar sesión con Google.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [googleResponse]); // eslint-disable-line
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  async function doSwitch() {
     if (selected === 'offline') {
+      await supabaseSignOut().catch(() => {});
       setTrainerSyncMode('offline');
       onClose();
+      return;
+    }
+
+    if (selected === 'google') {
+      googlePromptAsync();
       return;
     }
 
     if (selected === 'code') {
       setLoading(true);
       try {
+        await supabaseSignOut().catch(() => {});
         const { code, userId } = await setupTrainerCodeAccount();
         setTrainerSyncMode('code', { code, userId });
         setNewCode(code);
@@ -182,6 +269,23 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
         setLoading(false);
       }
     }
+  }
+
+  function handleConfirm() {
+    const existingMode = trainerSync.mode;
+    // Warn when switching away from an already-configured mode
+    if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
+      Alert.alert(
+        'Cambiar modo de sincronización',
+        'Se desconectará tu cuenta actual. Tu historial de clientes queda guardado en el dispositivo.\n\n¿Continuar?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cambiar', style: 'destructive', onPress: doSwitch },
+        ],
+      );
+      return;
+    }
+    doSwitch();
   }
 
   function handleRevealDone() {
@@ -227,13 +331,14 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
               <ScrollView style={s.options} showsVerticalScrollIndicator={false}>
                 {MODES.map((mode) => {
-                  const active = selected === mode.id;
+                  const active    = selected === mode.id;
+                  const unavailable = mode.expoOnly && isExpoGo;
                   return (
                     <TouchableOpacity
                       key={mode.id}
-                      style={[s.option, active && s.optionActive]}
-                      onPress={() => setSelected(mode.id)}
-                      activeOpacity={0.75}
+                      style={[s.option, active && s.optionActive, unavailable && s.optionDisabled]}
+                      onPress={() => !unavailable && setSelected(mode.id)}
+                      activeOpacity={unavailable ? 1 : 0.75}
                     >
                       <View style={s.optionTop}>
                         <Text style={s.optionIcon}>{mode.icon}</Text>
@@ -242,10 +347,15 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                             {mode.title}
                           </Text>
                           <Text style={s.optionDesc}>{mode.desc}</Text>
+                          {unavailable && (
+                            <Text style={s.optionUnavailable}>Solo disponible en la app instalada</Text>
+                          )}
                         </View>
-                        <View style={[s.radio, active && s.radioActive]}>
-                          {active && <View style={s.radioDot} />}
-                        </View>
+                        {!unavailable && (
+                          <View style={[s.radio, active && s.radioActive]}>
+                            {active && <View style={s.radioDot} />}
+                          </View>
+                        )}
                       </View>
                       {active && mode.warn && (
                         <Text style={s.optionWarn}>{mode.warn}</Text>
@@ -271,15 +381,19 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={[s.primaryBtn, { flex: 1 }, loading && { opacity: 0.6 }]}
+                  style={[s.primaryBtn, { flex: 1 }, (loading || (selected === 'google' && isExpoGo)) && { opacity: 0.5 }]}
                   onPress={handleConfirm}
-                  disabled={loading}
+                  disabled={loading || (selected === 'google' && isExpoGo)}
                   activeOpacity={0.85}
                 >
                   {loading
                     ? <ActivityIndicator color={colors.bg} />
                     : <Text style={s.primaryBtnText}>
-                        {selected === 'offline' ? 'Continuar sin conexión' : 'Activar'}
+                        {selected === 'offline'
+                          ? 'Continuar sin conexión'
+                          : selected === 'google'
+                          ? 'Continuar con Google'
+                          : 'Activar'}
                       </Text>}
                 </TouchableOpacity>
               </View>
@@ -340,6 +454,15 @@ const s = StyleSheet.create({
   optionActive: {
     borderColor:     withOpacity(colors.accent, 0.4),
     backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  optionDisabled: {
+    opacity: 0.5,
+  },
+  optionUnavailable: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   optionTop: {
     flexDirection: 'row',

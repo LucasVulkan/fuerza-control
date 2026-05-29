@@ -1881,14 +1881,16 @@ export const useStore = create(
        * Sets the trainer sync mode and persists auth state.
        * mode: 'offline' | 'code' | 'google'
        * Payload: { code?, userId? }
+       * code/userId always reset to null unless explicitly provided so that
+       * switching modes never leaks stale credentials from the old mode.
        */
       setTrainerSyncMode: (mode, payload = {}) =>
         set((state) => ({
           trainerSync: {
             ...state.trainerSync,
             mode,
-            code:   payload.code   ?? state.trainerSync.code,
-            userId: payload.userId ?? state.trainerSync.userId,
+            code:   payload.code   ?? null,
+            userId: payload.userId ?? null,
           },
         })),
 

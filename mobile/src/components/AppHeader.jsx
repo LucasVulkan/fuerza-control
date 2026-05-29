@@ -18,6 +18,7 @@ import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
 import DriveBackupModal from './DriveBackupModal';
 import ClientCodeModal from './ClientCodeModal';
+import TrainerSyncModal from './TrainerSyncModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
@@ -161,7 +162,7 @@ function ArchivedProgramsModal({ onClose }) {
 
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer }) {
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode }) {
   const insets        = useSafeAreaInsets();
   const [exporting, setExporting] = useState(null);
 
@@ -173,6 +174,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const exportProgramWithLog = useStore((s) => s.exportProgramWithLog);
   const clientSync           = useStore((s) => s.clientSync);
   const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
+  const trainerSync          = useStore((s) => s.trainerSync);
 
   const lang  = profile.language   ?? 'es';
   const unit  = profile.weightUnit ?? 'kg';
@@ -336,6 +338,16 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               label="Plan actual"
               badge={isPro ? 'PRO' : 'FREE'}
             />
+            <MenuItem
+              icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
+              label="Sincronización (entrenador)"
+              badge={
+                trainerSync.mode === 'google'  ? 'GOOGLE' :
+                trainerSync.mode === 'code'    ? 'CÓDIGO' :
+                trainerSync.mode === 'offline' ? 'OFFLINE' : null
+              }
+              onPress={() => { onClose(); onChangeSyncMode(); }}
+            />
           </CategoryCard>
 
           {/* ── DESARROLLADOR — solo en dev builds ── */}
@@ -370,6 +382,7 @@ export default function AppHeader() {
   const [showArchived,      setShowArchived]       = useState(false);
   const [showDrive,         setShowDrive]          = useState(false);
   const [showClientCode,    setShowClientCode]     = useState(false);
+  const [showSyncMode,      setShowSyncMode]       = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
   const importData            = useStore((s) => s.importData);
@@ -468,6 +481,7 @@ export default function AppHeader() {
         onShowArchived={() => setShowArchived(true)}
         onShowDrive={() => setShowDrive(true)}
         onConnectTrainer={() => setShowClientCode(true)}
+        onChangeSyncMode={() => setShowSyncMode(true)}
       />
 
       {showArchived && (
@@ -481,6 +495,12 @@ export default function AppHeader() {
       <ClientCodeModal
         visible={showClientCode}
         onClose={() => setShowClientCode(false)}
+      />
+
+      <TrainerSyncModal
+        visible={showSyncMode}
+        onClose={() => setShowSyncMode(false)}
+        isFirstTime={false}
       />
 
       {importState && (

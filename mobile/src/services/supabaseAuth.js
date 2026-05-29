@@ -70,6 +70,34 @@ export async function setupTrainerCodeAccount() {
 }
 
 /**
+ * Signs a trainer in with a Google id_token obtained from expo-auth-session.
+ * Call this after completing the Google OAuth code-exchange flow.
+ *
+ * @param {{ idToken: string, accessToken: string }} tokens
+ * @returns {{ session, userId, email }}
+ */
+export async function loginWithGoogleTrainer({ idToken, accessToken }) {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider:     'google',
+    token:        idToken,
+    access_token: accessToken,
+  });
+  if (error) throw error;
+
+  // Upsert trainer profile row (idempotent)
+  await supabase.from('profiles').upsert({
+    id:   data.user.id,
+    role: 'trainer',
+  });
+
+  return {
+    session: data.session,
+    userId:  data.user.id,
+    email:   data.user.email ?? null,
+  };
+}
+
+/**
  * Recovers a trainer session after reinstall using their code.
  * Returns the Supabase session.
  */

@@ -32,7 +32,7 @@ import Constants         from 'expo-constants';
 
 import { useStore }                                       from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups } from '../services/driveService';
-import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
+import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, borders, radius }   from '../theme';
 
 // Required so the in-app browser can redirect back after OAuth
@@ -72,40 +72,22 @@ export default function DriveBackupModal({ onClose }) {
 
   // ── OAuth setup ─────────────────────────────────────────────────────────────
   //
-  // Two different clients depending on the execution environment:
+  // expo-auth-session v7 removed the Expo auth proxy (useProxy is gone).
   //
-  //   Expo Go  (executionEnvironment === 'storeClient')
-  //     • Web client + Expo auth proxy
-  //     • redirectUri: https://auth.expo.io/@lucasvulkans-organization/forma
-  //     • Reason: Expo Go has no access to custom URI schemes, so we must route
-  //       through the proxy.  The proxy URL must be in the Web client's
-  //       "Authorized redirect URIs" list in Google Cloud Console.
+  //   Expo Go       → makeRedirectUri() always returns exp://127.0.0.1:8081
+  //                   Google rejects this — OAuth is disabled in Expo Go.
   //
-  //   Standalone / preview build  (EAS-built APK / AAB)
-  //     • Android OAuth client (GCC client type: Android)
-  //     • redirectUri: com.googleusercontent.apps.{id}:/oauth2redirect
-  //     • Google registers this redirect URI automatically for Android clients.
-  //     • The reverse-client-ID scheme is declared in app.json so the OS routes
-  //       the OAuth browser redirect back to the app.
-  //     • No client_secret needed (public client; PKCE is used).
-  //     • access_type=offline + prompt=consent → Google returns a refresh_token.
-  //
-  // The previous approach (Web client + proxy for all environments) failed in
-  // production because the proxy URL was not registered in GCC for the web
-  // client, and the Expo auth proxy is not reliable for standalone EAS builds.
+  //   Standalone    → makeRedirectUri({ native }) returns forma://oauth2redirect
+  //                   Registered in GCC as a Desktop app client redirect URI.
+  //                   See src/config/google.js for setup steps.
 
-  const isExpoGo = Constants.executionEnvironment === 'storeClient';
-
-  const clientId = isExpoGo ? GOOGLE_WEB_CLIENT_ID : GOOGLE_ANDROID_CLIENT_ID;
-
-  // For the Android client the redirect URI is the reverse-client-ID scheme with
-  // a single slash (:/path, no authority component) — exactly what GCC registers.
-  const androidRedirectUri =
-    `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
-
-  const redirectUri = isExpoGo
-    ? AuthSession.makeRedirectUri({ useProxy: true })
-    : androidRedirectUri;
+  const isExpoGo   = Constants.executionEnvironment === 'storeClient';
+  const clientId   = GOOGLE_ANDROID_CLIENT_ID;
+  // The Android client's auto-registered custom URI scheme (reverse-client-ID).
+  // Enabled via the "Custom URI scheme" toggle in GCC → Android client settings.
+  // The scheme is listed in app.json so the OS routes the redirect back to the app.
+  const androidRedirectUri = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+  const redirectUri = AuthSession.makeRedirectUri({ native: androidRedirectUri });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -339,17 +321,26 @@ export default function DriveBackupModal({ onClose }) {
                   Guarda copias de seguridad automáticas de todos tus datos en tu Google Drive personal.
                   Los archivos se guardan en una carpeta llamada "Forma Backups".
                 </Text>
-                <TouchableOpacity
-                  style={[styles.connectBtn, (!request || loading) && { opacity: 0.5 }]}
-                  onPress={() => promptAsync()}
-                  disabled={!request || loading}
-                  activeOpacity={0.85}
-                >
-                  {loading
-                    ? <ActivityIndicator size="small" color={colors.bg} />
-                    : <Text style={styles.connectTxt}>Conectar con Google</Text>
-                  }
-                </TouchableOpacity>
+                {isExpoGo ? (
+                  <View style={styles.expoGoNote}>
+                    <Text style={styles.expoGoNoteText}>
+                      La conexión con Google no está disponible en Expo Go.{'\n'}
+                      Usa la app instalada (build EAS).
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.connectBtn, (!request || loading) && { opacity: 0.5 }]}
+                    onPress={() => promptAsync()}
+                    disabled={!request || loading}
+                    activeOpacity={0.85}
+                  >
+                    {loading
+                      ? <ActivityIndicator size="small" color={colors.bg} />
+                      : <Text style={styles.connectTxt}>Conectar con Google</Text>
+                    }
+                  </TouchableOpacity>
+                )}
               </>
             )}
 
@@ -583,6 +574,20 @@ const styles = StyleSheet.create({
     fontSize:   typography.base,
     fontWeight: typography.bold,
     color:      colors.bg,
+  },
+  expoGoNote: {
+    backgroundColor: `${colors.muted}18`,
+    borderWidth:     1,
+    borderColor:     `${colors.muted}30`,
+    borderRadius:    radius.sm,
+    padding:         spacing.md,
+    marginBottom:    spacing.sm,
+  },
+  expoGoNoteText: {
+    fontSize:   typography.sm,
+    color:      colors.muted,
+    lineHeight: typography.sm * 1.5,
+    textAlign:  'center',
   },
 
   // Loading row
