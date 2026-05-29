@@ -99,24 +99,39 @@ export default function MiniLineChart({ data, metricLabel }) {
   const dateStartX  = tooltipX - (dateText.length  * 4.5)  / 2;
   const valueStartX = tooltipX - (valueText.length * 6.5) / 2;
 
+  const prevRangeRef = useRef(null);
+
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (!chartW || !pts.length) return;
-    const sameCount = pts.length === prevLenRef.current;
-    prevLenRef.current = pts.length;
+
+    const sameCount   = pts.length === prevLenRef.current;
+    const prevRange   = prevRangeRef.current;
+    // Scale changed: switching metric (Kg→Reps etc.) — animate positions would
+    // look jarring because the coordinate systems are completely different.
+    // Instead snap positions instantly and play a clip-reveal.
+    const scaleChange = prevRange !== null && range > 0 && prevRange > 0
+      && Math.abs(range - prevRange) / Math.max(range, prevRange) > 0.4;
+
+    prevLenRef.current  = pts.length;
+    prevRangeRef.current = range;
+
     if (!initRef.current) {
+      // First render — set positions silently, clip-reveal will play via chartW effect
       pts.forEach((p, i) => yAnims[i].setValue(p.y));
       initRef.current = true;
-    } else if (sameCount) {
+    } else if (sameCount && !scaleChange) {
+      // Same metric, new session added — animate Y positions (same scale, looks good)
       Animated.parallel(
         pts.map((p, i) =>
           Animated.timing(yAnims[i], { toValue: p.y, duration: 500, useNativeDriver: false })
         )
       ).start();
     } else {
+      // Metric changed (or count changed) — snap positions, do clip-reveal
       pts.forEach((p, i) => yAnims[i].setValue(p.y));
       const startW = needsScroll ? svgW - chartW : 0;
       clipWidthAnim.setValue(startW);
-      Animated.timing(clipWidthAnim, { toValue: svgW, duration: 700, useNativeDriver: false }).start();
+      Animated.timing(clipWidthAnim, { toValue: svgW, duration: 600, useNativeDriver: false }).start();
     }
   }, [data, chartW]); // eslint-disable-line
 
