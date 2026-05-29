@@ -199,7 +199,7 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
-function SessionCard({ template, lastSession, allExercises, status, onPress, language }) {
+function SessionCard({ template, lastSession, allExercises, status, onPress, language, driveBackup }) {
   const accent = resolveColor(template?.color ?? 'var(--day1)');
 
   // First 2 exercise names
@@ -246,10 +246,20 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
           {`Sesión ${template?.label ?? ''}`}
         </Text>
 
-        {/* Session name — white */}
-        <Text style={styles.sesName} numberOfLines={1}>
-          {template?.name ?? ''}
-        </Text>
+        {/* Session name + cloud icon */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
+            {template?.name ?? ''}
+          </Text>
+          {driveBackup?.needsReconnect ? (
+            <Text style={[styles.cloudIcon, { color: colors.orange }]}>⚠ ☁</Text>
+          ) : driveBackup?.enabled ? (
+            <Text style={styles.cloudIcon}>☁</Text>
+          ) : null}
+        </View>
+        {template?.trainerName ? (
+          <Text style={styles.trainerCredit}>por {template.trainerName}</Text>
+        ) : null}
 
         {/* Status text */}
         <Text style={[styles.sesStatus, { color: statusText.color }]}>
@@ -409,6 +419,7 @@ export default function HomeScreen() {
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
   const setCurrentStage      = useStore((s) => s.setCurrentStage);
+  const driveBackup          = useStore((s) => s.driveBackup);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
@@ -503,6 +514,7 @@ export default function HomeScreen() {
                       allExercises={allExercises}
                       status={status}
                       language={i18n.language}
+                      driveBackup={driveBackup}
                       onPress={
                         status === 'active'
                           ? () => navigation.navigate('Workout')
@@ -774,6 +786,17 @@ const styles = StyleSheet.create({
     fontWeight: typography.heavy,
     color:      colors.text,
     lineHeight: 15 * 1.1,
+  },
+  cloudIcon: {
+    fontSize:   12,
+    color:      colors.green,
+    lineHeight: typography.xl * 1.2,
+    opacity:    0.75,
+  },
+  trainerCredit: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    fontStyle:  'italic',
   },
   sesStatus: {
     fontSize:   10,
