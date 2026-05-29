@@ -234,13 +234,13 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           <CategoryCard title="DATOS">
             <MenuItem
               icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
-              label={exporting === 'full' ? 'Exportando…' : 'Backup completo'}
+              label={exporting === 'full' ? 'Exportando…' : 'Exportar backup'}
               onPress={() => handleExport('full')}
               disabled={!!exporting}
             />
             <MenuItem
               icon={<Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />}
-              label={exporting === 'log' ? 'Exportando…' : 'Programa + historial'}
+              label={exporting === 'log' ? 'Exportando…' : 'Exportar programa + historial'}
               onPress={() => handleExport('log')}
               disabled={!!exporting}
             />
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
 
   // Category card
   category: {
-    backgroundColor: 'rgba(28, 28, 36, 0.7)',
+    backgroundColor: colors.surface2,
     borderWidth:     1,
     borderColor:     `${colors.accent}2e`,
     borderRadius:    radius.lg,
