@@ -200,9 +200,13 @@ export default function ExerciseCard({
     }
   }, [allDone]);
 
-  // Descolapsar cuando alguna serie se deshace
+  // Descolapsar cuando alguna serie se deshace.
+  // Guard against isCollapsed (not just collapsed) so that when the user presses
+  // "+" on a collapsed card — which sets manualOpen=true and adds an undone set
+  // in the same event batch — this effect sees isCollapsed=false and skips the
+  // second startExpand() that would reset contentOpacity to 0 and blank the card.
   useEffect(() => {
-    if (!allDone && collapsed) {
+    if (!allDone && isCollapsed) {
       setCollapsed(false);
       setManualOpen(false);
       startExpand();
