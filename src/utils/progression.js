@@ -183,17 +183,42 @@ function computeIncrement(currentValue, incrConfig, sessionCount = 0) {
 }
 
 /**
+ * Counts sets that actually met the minimum threshold.
+ *
+ * A set with logged reps < minReps (or time < minTime) counts as FAILED.
+ * A set marked done without entering reps/time counts as qualifying —
+ * the user confirmed completion but chose not to log the numbers.
+ *
+ * @param {array}  doneSets Sets with any logged data
+ * @param {object} targets  { minReps, minTime }
+ * @returns {number}
+ */
+function countQualifyingSets(doneSets, targets) {
+  const { minReps = 0, minTime = 0 } = targets;
+  return doneSets.filter((s) => {
+    const reps = parseInt(s.reps) || 0;
+    const time = parseFloat(s.time) || 0;
+    if (minTime > 0 && time > 0) return time >= minTime;
+    if (minReps > 0 && reps > 0) return reps >= minReps;
+    // No metric data entered → rely on done flag or weight presence
+    return s.done || parseFloat(s.weight) > 0;
+  }).length;
+}
+
+/**
  * Evaluates whether the session warrants progression advancement.
  *
  * @param {array}  doneSets   Sets that have any logged data
  * @param {number} totalSets  Target number of sets for this exercise
  * @param {object} evaluation evaluation sub-object from the progression config
- * @param {object} targets    { minReps, maxReps } — used only by 'all_complete'
+ * @param {object} targets    { minReps, maxReps, minTime }
  * @returns {'advance'|'hold'|'retreat'}
  */
 function evaluateCompletion(doneSets, totalSets, evaluation, targets = {}) {
-  const { minReps = 0, maxReps = 0 } = targets;
-  const completionRate = doneSets.length / Math.max(1, totalSets);
+  const { minReps = 0, maxReps = 0, minTime = 0 } = targets;
+  // Use qualifying count (sets that met the minimum) for the completion rate
+  const qualCount      = countQualifyingSets(doneSets, { minReps, minTime });
+  const completionRate = qualCount / Math.max(1, totalSets);
 
   switch (evaluation.mode) {
     case 'pct':
@@ -255,8 +280,8 @@ function chipReps(prog, doneSets, totalSets, maxReps, t) {
   return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), suggestedWeight: null, suggestedTime: null };
 }
 
-function chipWeight(prog, doneSets, totalSets, maxW, t) {
-  const result = evaluateCompletion(doneSets, totalSets, prog.evaluation);
+function chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t) {
+  const result = evaluateCompletion(doneSets, totalSets, prog.evaluation, { minReps, minTime });
   const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
 
   if (result === 'advance') {
@@ -273,11 +298,13 @@ function chipWeight(prog, doneSets, totalSets, maxW, t) {
 }
 
 function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) {
-  const rate       = doneSets.length / Math.max(1, totalSets);
-  const avgReps    = _avgReps(doneSets);
-  const allHitMax  = rate >= 1 && reps.every((r) => r >= maxReps);
-  const mostHitMin = rate >= 0.8 && avgReps >= minReps;
-  const struggling = rate < 0.6;
+  // qualRate: fraction of sets where reps >= minReps (or done without reps data)
+  const qualCount  = countQualifyingSets(doneSets, { minReps });
+  const qualRate   = qualCount / Math.max(1, totalSets);
+  // allHitMax: every set had reps >= maxReps (sets with 0 reps ignored — no data)
+  const allHitMax  = qualRate >= 1 && reps.filter((r) => r > 0).every((r) => r >= maxReps);
+  const mostHitMin = qualRate >= 0.8;
+  const struggling = qualRate < 0.6;
   const weightStr  = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
 
   if (allHitMax) {
@@ -297,11 +324,11 @@ function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) 
 }
 
 function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps, maxReps, t) {
-  const rate       = doneSets.length / Math.max(1, totalSets);
-  const avgReps    = _avgReps(doneSets);
-  const allHitMax  = rate >= 1 && reps.every((r) => r >= maxReps);
-  const mostHitMin = rate >= 0.8 && avgReps >= minReps;
-  const struggling = rate < 0.6;
+  const qualCount  = countQualifyingSets(doneSets, { minReps });
+  const qualRate   = qualCount / Math.max(1, totalSets);
+  const allHitMax  = qualRate >= 1 && reps.filter((r) => r > 0).every((r) => r >= maxReps);
+  const mostHitMin = qualRate >= 0.8;
+  const struggling = qualRate < 0.6;
   const assistStr  = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist');
 
   if (allHitMax && assistance > 0) {
@@ -370,7 +397,7 @@ export function getProgression(exConfig, def, lastSets, t) {
     return chipDoubleDecrease(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t);
   }
   if (prog.type === 'weight') {
-    return chipWeight(prog, doneSets, totalSets, maxW, t);
+    return chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t);
   }
   // double (default)
   return chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t);
