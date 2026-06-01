@@ -750,7 +750,6 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 placeholderTextColor={colors.muted}
                 value={exPickerSearch}
                 onChangeText={setExPickerSearch}
-                autoFocus
                 autoCorrect={false}
                 autoCapitalize="none"
               />
@@ -1492,7 +1491,7 @@ const styles = StyleSheet.create({
     fontSize:          typography.sm,
     color:             colors.text,
   },
-  exPickerList:     { maxHeight: 260 },
+  exPickerList:     { maxHeight: 380 },
   exPickerItem: {
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm + 3,
