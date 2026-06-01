@@ -813,14 +813,15 @@ function ClientListCard({
       <View style={styles.cRow1}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         <Text style={styles.cDate}>{lastStr}</Text>
-        <TouchableOpacity onPress={onGoInfo} hitSlop={8} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onGoInfo} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
           <Text style={styles.cInfoBtn}>Info →</Text>
         </TouchableOpacity>
       </View>
 
       {activeProgram ? (
-        <>
-          {/* ── Row 2: Status dot · Program name · Stage name ── */}
+        /* ── Program block — tighter internal gap ── */
+        <View style={styles.cProgramBlock}>
+          {/* Row 2: Status dot · Program name · Stage name */}
           <View style={styles.cRow2}>
             {showDirty ? (
               <Text style={[styles.cStatusIcon, { color: colors.orange }]}>▲</Text>
@@ -840,25 +841,19 @@ function ClientListCard({
             </Text>
           </View>
 
-          {/* ── Row 3: Program meta ── */}
+          {/* Row 3: Program meta */}
           <Text style={styles.cProgMeta}>
             {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
           </Text>
 
-          {/* ── Row 4: Counters + contextual button ── */}
+          {/* Row 4: Counters + contextual button */}
           <View style={styles.cRow4}>
             <View style={styles.cCounters}>
               <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
               <Text style={styles.cWeekLabel}> Semana</Text>
               <View style={styles.cDots}>
                 {Array.from({ length: sessPerCycle }, (_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.cDot,
-                      i < doneInCycle ? styles.cDotFull : styles.cDotEmpty,
-                    ]}
-                  />
+                  <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
                 ))}
               </View>
             </View>
@@ -877,7 +872,7 @@ function ClientListCard({
               </TouchableOpacity>
             )}
           </View>
-        </>
+        </View>
       ) : (
         /* ── No program state ── */
         <View style={styles.cNoProgramRow}>
@@ -894,7 +889,7 @@ function ClientListCard({
         </View>
       )}
 
-      {/* ── Tags row ── */}
+      {/* ── Tags row (no separator, just spacing) ── */}
       {(tagNames ?? []).length > 0 && (
         <View style={styles.cTagsRow}>
           {(tagNames ?? []).map((name) => (
@@ -2252,7 +2247,7 @@ const styles = StyleSheet.create({
     paddingBottom:     spacing.xs,
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
-    gap:               spacing.sm,
+    gap:               spacing.md,   // more breathing room between header rows
   },
 
   // Row 1: Title + sync status + buttons
@@ -2359,41 +2354,45 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 1,
+    justifyContent:    'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.xs + 2,
     borderRadius:      radius.full,
     borderWidth:       borders.thin,
     borderColor:       colors.text,
     backgroundColor:   colors.surface,
     flexShrink:        0,
+    minWidth:          100,
   },
   statusPillText: {
+    flex:       1,
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
+    textAlign:  'center',
   },
   statusPillBadge: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.full,
-    minWidth:        20,
-    height:          20,
-    alignItems:      'center',
-    justifyContent:  'center',
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.full,
+    minWidth:          20,
+    height:            20,
+    alignItems:        'center',
+    justifyContent:    'center',
     paddingHorizontal: 5,
+    flexShrink:        0,
   },
   statusPillBadgeText: {
     fontSize:   11,
     fontWeight: typography.bold,
     color:      colors.bg,
   },
-  // Tag pills in filter row
+  // Tag pills in filter row — same height as statusPill
   tagRowPill: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingLeft:       spacing.sm,
-    paddingRight:      spacing.xs,
-    paddingVertical:   spacing.xs,
+    paddingLeft:       spacing.lg,
+    paddingRight:      spacing.sm,
+    paddingVertical:   spacing.xs + 2,
     borderRadius:      radius.full,
     borderWidth:       borders.thin,
     borderColor:       colors.border,
@@ -2728,7 +2727,7 @@ const styles = StyleSheet.create({
     borderColor:     colors.borderCard,
     borderRadius:    radius.lg,
     padding:         spacing.md,
-    gap:             spacing.sm,
+    gap:             spacing.md,   // space between the three visual blocks
   },
   // Row 1: name · date · Info →
   cRow1: {
@@ -2747,12 +2746,18 @@ const styles = StyleSheet.create({
     color:     colors.muted,
     flexShrink: 0,
   },
-  cInfoBtn: {
-    fontSize:   typography.xs,
-    color:      colors.accent,
-    fontWeight: typography.medium,
+  cInfoBtnWrap: {
     marginLeft: 'auto',
     flexShrink: 0,
+  },
+  cInfoBtn: {
+    fontSize:   typography.sm,
+    color:      colors.accent,
+    fontWeight: typography.semibold,
+  },
+  // Program block — rows 2+3+4 grouped with tight gap
+  cProgramBlock: {
+    gap: 4,
   },
   // Row 2: status dot · program · stage
   cRow2: {
@@ -2803,15 +2808,15 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
   },
   cWeekNum: {
-    fontSize:   typography.xl,
+    fontSize:   typography.lg,
     fontWeight: typography.heavy,
     color:      colors.text,
-    lineHeight: typography.xl * 1.1,
+    lineHeight: typography.lg * 1.1,
   },
   cWeekLabel: {
-    fontSize:  typography.xs,
-    color:     colors.muted,
-    marginTop: 3,
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.muted,
   },
   cDots: {
     flexDirection: 'row',
@@ -2832,13 +2837,13 @@ const styles = StyleSheet.create({
     borderWidth:     1.5,
     borderColor:     colors.muted2,
   },
-  // Contextual buttons (right of row 4)
+  // Contextual buttons — all share the same base dimensions
   cBtnOutline: {
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.xs,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical:   spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 3,
     borderRadius:      radius.sm,
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
@@ -2851,8 +2856,8 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
   cBtnOrange: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical:   spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 3,
     borderRadius:      radius.sm,
     backgroundColor:   colors.orange,
     flexShrink:        0,
@@ -2863,8 +2868,8 @@ const styles = StyleSheet.create({
     color:      '#fff',
   },
   cBtnAccent: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md + 4,
+    paddingVertical:   spacing.xs + 3,
     borderRadius:      radius.sm,
     backgroundColor:   colors.accent,
     flexShrink:        0,
@@ -2899,15 +2904,11 @@ const styles = StyleSheet.create({
     marginTop:  2,
     marginLeft: 15,
   },
-  // Tags at bottom of card
+  // Tags at bottom of card — no separator, just spacing
   cTagsRow: {
     flexDirection: 'row',
     flexWrap:      'wrap',
     gap:           spacing.xs,
-    marginTop:     spacing.xs,
-    paddingTop:    spacing.xs,
-    borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
   },
   cTagPill: {
     borderWidth:       borders.thin,
