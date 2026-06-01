@@ -534,8 +534,39 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   );
 
   const [activeId,       setActiveId]       = useState(exerciseId ?? null);
-  const [exPickerOpen,   setExPickerOpen]   = useState(false);
+  const [pickerMounted,  setPickerMounted]  = useState(false);
   const [exPickerSearch, setExPickerSearch] = useState('');
+
+  // Animated values for picker open/close and content fade
+  const pickerAnim     = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+
+  const arrowRotation    = pickerAnim.interpolate({ inputRange: [0, 1], outputRange: ['90deg', '-90deg'] });
+  const pickerTranslateY = pickerAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0], extrapolate: 'clamp' });
+
+  function openPicker() {
+    setPickerMounted(true);
+    Animated.spring(pickerAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 12 }).start();
+  }
+
+  function closePicker(onDone) {
+    Animated.timing(pickerAnim, { toValue: 0, duration: 160, useNativeDriver: true })
+      .start(({ finished }) => { if (finished) setPickerMounted(false); onDone?.(); });
+  }
+
+  function togglePicker() { if (pickerMounted) closePicker(); else openPicker(); }
+
+  function switchExercise(id) {
+    // Close picker and fade content out simultaneously, then update and fade in
+    Animated.timing(pickerAnim, { toValue: 0, duration: 160, useNativeDriver: true })
+      .start(({ finished }) => { if (finished) setPickerMounted(false); });
+    Animated.timing(contentOpacity, { toValue: 0, duration: 130, useNativeDriver: true })
+      .start(() => {
+        setActiveId(id);
+        setExPickerSearch('');
+        Animated.timing(contentOpacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+      });
+  }
 
   // Reset filters when exercise switches
   useEffect(() => {
@@ -596,8 +627,10 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   useEffect(() => {
     if (visible) {
       setActiveId(exerciseId ?? null);
-      setExPickerOpen(false);
+      setPickerMounted(false);
       setExPickerSearch('');
+      pickerAnim.setValue(0);
+      contentOpacity.setValue(1);
       translateY.setValue(700);
       Animated.spring(translateY, {
         toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
@@ -726,14 +759,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             <View style={styles.modalHeader}>
               {/* Dropdown trigger — styled as a select box */}
               <TouchableOpacity
-                style={[styles.modalTitleBtn, exPickerOpen && styles.modalTitleBtnOpen]}
-                onPress={() => setExPickerOpen((v) => !v)}
+                style={[styles.modalTitleBtn, pickerMounted && styles.modalTitleBtnOpen]}
+                onPress={togglePicker}
                 activeOpacity={0.8}
               >
                 <Text style={styles.modalTitle} numberOfLines={1}>{name}</Text>
-                <Text style={[styles.modalTitleArrow, exPickerOpen && styles.modalTitleArrowOpen]}>
-                  {exPickerOpen ? '▲' : '▼'}
-                </Text>
+                <Animated.Text style={[styles.modalTitleArrow, pickerMounted && styles.modalTitleArrowOpen, { transform: [{ rotate: arrowRotation }] }]}>
+                  ›
+                </Animated.Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.modalCloseBtn}>
                 <Text style={styles.modalCloseText}>✕</Text>
@@ -742,8 +775,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
           </View>
 
           {/* Exercise picker — floats OVER the content, does not push it down */}
-          {exPickerOpen && (
-            <View style={[styles.exPicker, { top: headerH }]}>
+          {pickerMounted && (
+            <Animated.View style={[styles.exPicker, { top: headerH, opacity: pickerAnim, transform: [{ translateY: pickerTranslateY }] }]}>
               <TextInput
                 style={styles.exPickerSearch}
                 placeholder="Buscar ejercicio..."
@@ -762,7 +795,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                     <TouchableOpacity
                       key={id}
                       style={[styles.exPickerItem, isActive && styles.exPickerItemActive]}
-                      onPress={() => { setActiveId(id); setExPickerOpen(false); setExPickerSearch(''); }}
+                      onPress={() => switchExercise(id)}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.exPickerItemText, isActive && styles.exPickerItemTextActive]} numberOfLines={1}>
@@ -772,9 +805,11 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   );
                 })}
               </ScrollView>
-            </View>
+            </Animated.View>
           )}
 
+          {/* Content fades out/in when switching exercises */}
+          <Animated.View style={[styles.flex, { opacity: contentOpacity }]}>
           <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
             {/* Period + scope filters */}
             <View style={styles.modalFiltersRow}>
@@ -890,7 +925,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               )}
             </View>
           </ScrollView>
-        </Animated.View>
+          </Animated.View>{/* content opacity wrapper */}
+        </Animated.View>{/* modal sheet */}
       </View>
     </Modal>
   );
@@ -1455,9 +1491,11 @@ const styles = StyleSheet.create({
     lineHeight: typography.md * 1.3,
   },
   modalTitleArrow: {
-    fontSize:   10,
+    fontSize:   18,
+    fontWeight: typography.bold,
     color:      colors.muted,
     flexShrink: 0,
+    lineHeight: 20,
   },
   modalTitleArrowOpen: {
     color: colors.accent,
