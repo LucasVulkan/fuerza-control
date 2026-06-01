@@ -2356,7 +2356,7 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection:     'row',
     alignItems:        'center',
-    justifyContent:    'space-between',
+    gap:               spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.xs + 2,
     borderRadius:      radius.full,
@@ -2364,14 +2364,11 @@ const styles = StyleSheet.create({
     borderColor:       withOpacity(colors.text, 0.65),
     backgroundColor:   colors.surface,
     flexShrink:        0,
-    minWidth:          100,
   },
   statusPillText: {
-    flex:       1,
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
-    textAlign:  'center',
   },
   statusPillBadge: {
     backgroundColor:   colors.accent,
@@ -2382,7 +2379,6 @@ const styles = StyleSheet.create({
     justifyContent:    'center',
     paddingHorizontal: 5,
     flexShrink:        0,
-    marginLeft:        spacing.sm,  // guaranteed gap between text and badge
   },
   statusPillBadgeText: {
     fontSize:   11,
