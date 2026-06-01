@@ -335,9 +335,8 @@ function computeExSessionDeltas(logs, def) {
     const prev     = i > 0
       ? (computeValue(logs[i - 1].exercise?.sets, primaryId) ?? computeValue(logs[i - 1].exercise?.sets, 'reps'))
       : null;
-    const delta    = prev !== null && prev > 0 && val !== null
-      ? Math.round((val - prev) / prev * 100)
-      : null;
+    // Raw absolute delta (same unit as val: kg, reps, or seconds)
+    const delta    = prev !== null && val !== null ? val - prev : null;
     const isPR = val !== null && bestSoFar !== null && val > bestSoFar;
     if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val);
     return { timestamp, val, delta, isPR, metricId, exercise };
@@ -760,13 +759,23 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
                   : null;
                 const summary    = buildSessionSummary(exercise, def, fmtWeight);
                 const deltaColor = delta !== null ? (delta >= 0 ? colors.green : colors.orange) : colors.muted;
+                const deltaStr  = delta !== null ? (() => {
+                  const sign = delta > 0 ? '+' : '';
+                  if (metricId === 'kg') {
+                    const abs = Math.abs(delta);
+                    const rounded = abs % 1 === 0 ? abs : Math.round(abs * 10) / 10;
+                    return `${sign}${delta < 0 ? '-' : ''}${fmtWeight(rounded)}`;
+                  }
+                  if (metricId === 'time') return `${sign}${Math.round(delta)}s`;
+                  return `${sign}${Math.round(delta)} reps`;
+                })() : null;
                 return (
                   <View key={timestamp} style={styles.modalSesRow}>
                     <View style={styles.modalSesLeft}>
                       <Text style={styles.modalSesDate}>{formatDate(timestamp)}</Text>
-                      {delta !== null && (
+                      {deltaStr !== null && (
                         <Text style={[styles.modalSesDelta, { color: deltaColor }]}>
-                          {delta > 0 ? '+' : ''}{delta}%
+                          {deltaStr}
                         </Text>
                       )}
                     </View>
