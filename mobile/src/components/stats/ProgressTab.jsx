@@ -514,7 +514,7 @@ function MiniLineChart({ data, metricLabel }) {
 
 // ── ExerciseDetailModal ────────────────────────────────────────────────────────
 
-function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateIds }) {
+function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLogs: initRawLogs, programTemplateIds }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
@@ -523,6 +523,48 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
   const [modalScope,  setModalScope]  = useState('all');
   const [chartMetric, setChartMetric] = useState(null);
   const [pctMode,     setPctMode]     = useState(false);
+
+  // ── Exercise picker ────────────────────────────────────────────────────────
+  const workoutLog_      = useStore((s) => s.workoutLog);
+  const exerciseLibrary_ = useStore((s) => s.exerciseLibrary);
+  const customExercises_ = useStore((s) => s.customExercises);
+  const allEx = useMemo(
+    () => ({ ...exerciseLibrary_, ...customExercises_ }),
+    [exerciseLibrary_, customExercises_]
+  );
+
+  const [activeId,       setActiveId]       = useState(exerciseId ?? null);
+  const [exPickerOpen,   setExPickerOpen]   = useState(false);
+  const [exPickerSearch, setExPickerSearch] = useState('');
+
+  // Reset filters when exercise switches
+  useEffect(() => {
+    setModalPeriod('all'); setModalScope('all'); setPctMode(false); setChartMetric(null);
+  }, [activeId]);
+
+  // All exercises that have at least one log entry, sorted alphabetically
+  const pickerExercises = useMemo(() => {
+    const ids = new Set();
+    workoutLog_.forEach((e) => e.exercises?.forEach((ex) => ids.add(ex.exerciseId)));
+    const getN = (id) => { const d = allEx[id]; return d ? (i18n.language === 'en' ? (d.nameEn ?? d.name) : d.name) : id; };
+    return [...ids].sort((a, b) => getN(a).localeCompare(getN(b)));
+  }, [workoutLog_, allEx, i18n.language]);
+
+  const pickerFiltered = useMemo(() => {
+    if (!exPickerSearch.trim()) return pickerExercises;
+    const q = exPickerSearch.trim().toLowerCase();
+    const getN = (id) => { const d = allEx[id]; return d ? (i18n.language === 'en' ? (d.nameEn ?? d.name) : d.name) : id; };
+    return pickerExercises.filter((id) => getN(id).toLowerCase().includes(q));
+  }, [pickerExercises, exPickerSearch, allEx, i18n.language]);
+
+  // Shadow `def` and `rawLogs` — all downstream memos update automatically
+  const def     = useMemo(() => (activeId ? allEx[activeId] : null) ?? initDef, [activeId, allEx, initDef]);
+  const rawLogs = useMemo(
+    () => (activeId && activeId !== exerciseId)
+      ? getExerciseLogsFrom(activeId, workoutLog_)
+      : (initRawLogs ?? []),
+    [activeId, exerciseId, workoutLog_, initRawLogs]
+  );
 
   const translateY      = useRef(new Animated.Value(0)).current;
   const backdropOpacity = translateY.interpolate({
@@ -550,6 +592,9 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
 
   useEffect(() => {
     if (visible) {
+      setActiveId(exerciseId ?? null);
+      setExPickerOpen(false);
+      setExPickerSearch('');
       translateY.setValue(700);
       Animated.spring(translateY, {
         toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
@@ -673,12 +718,55 @@ function ExerciseDetailModal({ visible, onClose, def, rawLogs, programTemplateId
               <View style={styles.dragHandle} />
             </View>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle} numberOfLines={2}>{name}</Text>
+              <TouchableOpacity
+                style={styles.modalTitleBtn}
+                onPress={() => setExPickerOpen((v) => !v)}
+                activeOpacity={0.7}
+                hitSlop={4}
+              >
+                <Text style={styles.modalTitle} numberOfLines={1}>{name}</Text>
+                <Text style={styles.modalTitleArrow}>{exPickerOpen ? '▴' : '▾'}</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.modalCloseBtn}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Exercise picker — shown inline when title is tapped */}
+          {exPickerOpen && (
+            <View style={styles.exPicker}>
+              <TextInput
+                style={styles.exPickerSearch}
+                placeholder="Buscar ejercicio..."
+                placeholderTextColor={colors.muted}
+                value={exPickerSearch}
+                onChangeText={setExPickerSearch}
+                autoFocus
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              <ScrollView style={styles.exPickerList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                {pickerFiltered.map((id) => {
+                  const d = allEx[id];
+                  const exName = d ? (i18n.language === 'en' ? (d.nameEn ?? d.name) : d.name) : id;
+                  const isActive = id === activeId;
+                  return (
+                    <TouchableOpacity
+                      key={id}
+                      style={[styles.exPickerItem, isActive && styles.exPickerItemActive]}
+                      onPress={() => { setActiveId(id); setExPickerOpen(false); setExPickerSearch(''); }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.exPickerItemText, isActive && styles.exPickerItemTextActive]} numberOfLines={1}>
+                        {isActive ? '✓  ' : '    '}{exName}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
             {/* Period + scope filters */}
@@ -847,6 +935,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
       <ExerciseDetailModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
+        exerciseId={exerciseId}
         def={def}
         rawLogs={rawLogs ?? allLogs}
         programTemplateIds={programTemplateIds}
@@ -1022,6 +1111,12 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
         </View>
       </View>
 
+      {/* ── Ejercicios ────────────────────────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionLabel}>EJERCICIOS</Text>
+        <Text style={styles.sectionCount}>{exercisesWithLogs.length}</Text>
+      </View>
+
       {/* ── Búsqueda ──────────────────────────────────────────────────────── */}
       <TextInput
         style={styles.searchInput}
@@ -1032,12 +1127,6 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
         autoCorrect={false}
         autoCapitalize="none"
       />
-
-      {/* ── Ejercicios ────────────────────────────────────────────────────── */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>EJERCICIOS</Text>
-        <Text style={styles.sectionCount}>{exercisesWithLogs.length}</Text>
-      </View>
 
       {/* Selector multi-ejercicio */}
       {!search.trim() && exercisesWithLogs.length > 0 && (
@@ -1334,6 +1423,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
   },
+  modalTitleBtn: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    minWidth:      0,
+  },
   modalTitle: {
     flex:       1,
     fontSize:   typography.lg,
@@ -1341,6 +1437,41 @@ const styles = StyleSheet.create({
     color:      colors.text,
     lineHeight: typography.lg * 1.25,
   },
+  modalTitleArrow: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    flexShrink: 0,
+    marginTop:  4,
+  },
+  // Exercise picker
+  exPicker: {
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+    backgroundColor:   colors.surface,
+  },
+  exPickerSearch: {
+    marginHorizontal:  spacing.xl,
+    marginTop:         spacing.sm,
+    marginBottom:      spacing.xs,
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    fontSize:          typography.sm,
+    color:             colors.text,
+  },
+  exPickerList: { maxHeight: 230 },
+  exPickerItem: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.sm + 2,
+    borderTopWidth:    borders.thin,
+    borderTopColor:    colors.border,
+  },
+  exPickerItemActive:     { backgroundColor: withOpacity(colors.accent, 0.06) },
+  exPickerItemText:       { fontSize: typography.sm, color: colors.text },
+  exPickerItemTextActive: { color: colors.accent, fontWeight: typography.medium },
   modalCloseBtn: {
     width:           28,
     height:          28,
