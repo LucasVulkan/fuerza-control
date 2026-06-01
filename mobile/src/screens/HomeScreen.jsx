@@ -535,23 +535,21 @@ export default function HomeScreen() {
               </View>
 
               {/* Sesión libre */}
-              {activeSession.templateId === '__free__' ? (
-                <TouchableOpacity
-                  style={styles.freeSessionBtn}
-                  onPress={() => navigation.navigate('Workout')}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.freeSessionBtnText}>{t('freeSession.btnContinue')}</Text>
-                </TouchableOpacity>
-              ) : !activeSession.templateId && (
-                <TouchableOpacity
-                  style={styles.freeSessionBtn}
-                  onPress={startFreeSession}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.freeSessionBtnText}>{t('freeSession.btn')}</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.freeSessionBtn}
+                onPress={
+                  activeSession.templateId === '__free__'
+                    ? () => navigation.navigate('Workout')
+                    : startFreeSession
+                }
+                activeOpacity={0.75}
+              >
+                <Text style={styles.freeSessionBtnText}>
+                  {activeSession.templateId === '__free__'
+                    ? t('freeSession.btnContinue')
+                    : t('freeSession.btn')}
+                </Text>
+              </TouchableOpacity>
 
               {/* Program actions */}
               <View style={styles.programActions}>
