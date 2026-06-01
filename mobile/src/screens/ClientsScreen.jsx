@@ -2399,7 +2399,7 @@ const styles = StyleSheet.create({
     borderRadius:      radius.full,
     borderWidth:       borders.thin,
     borderColor:       colors.border,
-    gap:               spacing.xs,
+    gap:               spacing.sm,   // more gap between text and ×
     flexShrink:        0,
   },
   tagRowPillActive: {
@@ -2766,7 +2766,7 @@ const styles = StyleSheet.create({
   },
   cProgramInfo: {
     flex: 1,
-    gap:  4,
+    gap:  2,
   },
   // Row 2: status dot · program · stage
   cRow2: {
@@ -2812,9 +2812,9 @@ const styles = StyleSheet.create({
   cCounters: {
     flex:          1,
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'baseline',
     flexWrap:      'wrap',
-    gap:           spacing.xs,
+    gap:           3,
   },
   cWeekNum: {
     fontSize:   typography.base,
@@ -2860,7 +2860,7 @@ const styles = StyleSheet.create({
     flexShrink:        0,
   },
   cBtnOutlineText: {
-    fontSize:   typography.xs,
+    fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
   },
@@ -2872,7 +2872,7 @@ const styles = StyleSheet.create({
     flexShrink:        0,
   },
   cBtnOrangeText: {
-    fontSize:   typography.xs,
+    fontSize:   typography.sm,
     fontWeight: typography.semibold,
     color:      '#fff',
   },
