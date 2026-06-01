@@ -17,6 +17,26 @@ import { formatDate } from '../../../src/utils/formatters';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/**
+ * Formats a Drive backup timestamp into a short, precise relative string.
+ * Uses sub-hour precision for recent backups.
+ */
+function formatBackupTime(isoString) {
+  if (!isoString) return null;
+  const ms      = Date.now() - new Date(isoString).getTime();
+  const mins    = Math.floor(ms / 60000);
+  const hours   = Math.floor(ms / 3600000);
+  const days    = Math.floor(ms / 86400000);
+  if (mins  <  1) return 'ahora';
+  if (mins  < 60) return `${mins}min`;
+  if (hours < 24) return `${hours}h`;
+  if (days  <  2) return 'ayer';
+  if (days  <  7) return `${days}d`;
+  // Older than a week: show short date
+  const d = new Date(isoString);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
+
 function relativeTime(ts, t) {
   if (!ts) return null;
   const days = Math.floor((Date.now() - ts) / 86400000);
@@ -463,11 +483,18 @@ export default function HomeScreen() {
                     <Text style={styles.progTrainer}>{t('workout.trainerCredit', { name: programTrainerName })}</Text>
                   ) : null}
                 </View>
-                {driveBackup?.needsReconnect ? (
-                  <Text style={[styles.progDriveIcon, { color: colors.orange }]}>⚠ ☁</Text>
-                ) : driveBackup?.enabled ? (
-                  <Text style={styles.progDriveIcon}>☁</Text>
-                ) : null}
+                {driveBackup?.enabled && (
+                  <View style={styles.progDriveBlock}>
+                    <Text style={[styles.progDriveIcon, driveBackup.needsReconnect && { color: colors.orange }]}>
+                      {driveBackup.needsReconnect ? '⚠ ☁' : '☁'}
+                    </Text>
+                    <Text style={[styles.progDriveTime, driveBackup.needsReconnect && { color: colors.orange }]}>
+                      {driveBackup.needsReconnect
+                        ? 'Reconectar'
+                        : (formatBackupTime(driveBackup.lastBackup) ?? 'Sin backup')}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {/* Progress header (stage + week / pill) */}
@@ -641,11 +668,21 @@ const styles = StyleSheet.create({
     marginTop: 1,
     paddingLeft: 2,
   },
-  progDriveIcon: {
-    fontSize:   13,
-    color:      colors.green,
-    opacity:    0.75,
+  progDriveBlock: {
+    alignItems: 'flex-end',
     marginTop:  2,
+    gap:        1,
+  },
+  progDriveIcon: {
+    fontSize:  13,
+    color:     colors.green,
+    opacity:   0.8,
+  },
+  progDriveTime: {
+    fontSize:      typography.xs - 1,
+    color:         colors.green,
+    opacity:       0.7,
+    textAlign:     'right',
   },
 
   // ── Progress header ──────────────────────────────────────────────────────────
