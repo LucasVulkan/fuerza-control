@@ -419,6 +419,7 @@ export default function HomeScreen() {
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
+  const startFreeSession     = useStore((s) => s.startFreeSession);
   const navigate             = useStore((s) => s.navigate);
   const archiveProgram       = useStore((s) => s.archiveProgram);
   const advanceStage         = useStore((s) => s.advanceStage);
@@ -532,6 +533,25 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
+
+              {/* Sesión libre */}
+              {activeSession.templateId === '__free__' ? (
+                <TouchableOpacity
+                  style={styles.freeSessionBtn}
+                  onPress={() => navigation.navigate('Workout')}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.freeSessionBtnText}>{t('freeSession.btnContinue')}</Text>
+                </TouchableOpacity>
+              ) : !activeSession.templateId && (
+                <TouchableOpacity
+                  style={styles.freeSessionBtn}
+                  onPress={startFreeSession}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.freeSessionBtnText}>{t('freeSession.btn')}</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Program actions */}
               <View style={styles.programActions}>
@@ -732,7 +752,7 @@ const styles = StyleSheet.create({
   phPillLeft: {
     flex:          1,
     flexDirection: 'row',
-    alignItems:    'baseline',
+    alignItems:    'center',
     gap:           7,
   },
   phPillLabel: {
@@ -756,7 +776,7 @@ const styles = StyleSheet.create({
     marginRight:     spacing.lg,
   },
   phPillRight: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap:        4,
   },
 
@@ -951,6 +971,22 @@ const styles = StyleSheet.create({
   },
   programBtnTextAccent: { color: colors.accent },
   programBtnTextDanger: { color: colors.red },
+
+  // ── Sesión libre ──────────────────────────────────────────────────────────────
+  freeSessionBtn: {
+    paddingVertical:   spacing.sm + 2,
+    borderRadius:      radius.sm,
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.25),
+    backgroundColor:   withOpacity(colors.accent, 0.05),
+    alignItems:        'center',
+  },
+  freeSessionBtnText: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.medium,
+    color:         colors.accent,
+    letterSpacing: 0.3,
+  },
 
   // ── Empty state ───────────────────────────────────────────────────────────────
   emptyState: {

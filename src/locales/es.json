@@ -134,6 +134,14 @@
     "addSetBtn": "Añadir serie",
     "keyBadge": "CLAVE"
   },
+  "freeSession": {
+    "btn": "+ Sesión libre",
+    "btnContinue": "Continuar sesión libre",
+    "badge": "Sesión libre",
+    "namePlaceholder": "Nombre (opcional)",
+    "infoText": "Sesión puntual — queda guardada en tu historial ligada al programa activo, pero no modifica el progreso ni el contador de semanas.",
+    "historyLabel": "Sesión libre"
+  },
   "history": {
     "title": "HISTORIAL",
     "currentProgram": "Programa actual",

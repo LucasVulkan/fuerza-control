@@ -77,7 +77,7 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
     if (d.getFullYear() !== y || d.getMonth() !== m) return;
     const day  = d.getDate();
     const tmpl = userPrograms[entry.sessionTemplateId] ?? sessionTemplates[entry.sessionTemplateId];
-    const lbl  = tmpl?.label ?? '·';
+    const lbl  = entry.sessionTemplateId === '__free__' ? '★' : (tmpl?.label ?? '·');
     if (!trainedDays[day]) trainedDays[day] = [];
     if (!trainedDays[day].includes(lbl)) trainedDays[day].push(lbl);
   });
@@ -274,10 +274,11 @@ function SessionCard({ session, onDelete }) {
   const programs             = useStore((s) => s.programs);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const template = getEffectiveTemplate(session.sessionTemplateId);
+  const isFree   = session.sessionTemplateId === '__free__';
+  const template = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
   const label    = template?.label ?? '?';
-  const name     = template?.name  ?? session.sessionTemplateId;
-  const accent   = resolveColor(template?.color ?? 'var(--accent)');
+  const name     = session.sessionName ?? (isFree ? t('freeSession.historyLabel') : (template?.name ?? session.sessionTemplateId));
+  const accent   = isFree ? colors.muted : resolveColor(template?.color ?? 'var(--accent)');
 
   // exConfig lookup for pill range comparisons
   const exConfigs = useMemo(() => {
@@ -286,9 +287,9 @@ function SessionCard({ session, onDelete }) {
     return map;
   }, [template]);
 
-  // Stage name (if applicable)
+  // Stage name (if applicable — never for free sessions)
   const stageName = useMemo(() => {
-    if (!template?.programId) return null;
+    if (isFree || !template?.programId) return null;
     const program = programs[template.programId];
     if (!program?.stages?.length) return null;
     for (const stage of program.stages) {
@@ -322,9 +323,9 @@ function SessionCard({ session, onDelete }) {
         activeOpacity={0.75}
       >
         <View style={styles.cardHeaderLeft}>
-          {/* "Sesión A" tag in accent color */}
-          <Text style={[styles.cardSesTag, { color: accent }]} numberOfLines={1}>
-            {t('workout.sessionLabel', { label })}
+          {/* "Sesión A" tag — or "Sesión libre" badge */}
+          <Text style={[styles.cardSesTag, { color: isFree ? colors.accent : accent }]} numberOfLines={1}>
+            {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
           </Text>
           {/* Session name in white */}
           <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>

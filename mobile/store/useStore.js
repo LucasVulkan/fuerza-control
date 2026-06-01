@@ -89,6 +89,7 @@ const INITIAL_ACTIVE_SESSION = {
   startedAt: null,
   notes: '',
   adHocExercises: [],
+  freeSessionName: '',
 };
 
 const INITIAL_UI = {
@@ -1055,11 +1056,29 @@ export const useStore = create(
           }));
         });
         set({
-          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', adHocExercises: [] },
+          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', adHocExercises: [], freeSessionName: '' },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
       },
+
+      startFreeSession: () => {
+        set({
+          activeSession: {
+            templateId: '__free__',
+            setsState: {},
+            startedAt: Date.now(),
+            notes: '',
+            adHocExercises: [],
+            freeSessionName: '',
+          },
+          ui: { ...get().ui, view: 'workout' },
+        });
+        get().navigate('workout');
+      },
+
+      updateFreeSessionName: (name) =>
+        set((s) => ({ activeSession: { ...s.activeSession, freeSessionName: name } })),
 
       // Reconciles activeSession.setsState with the current template.
       // Call this when entering WorkoutScreen after editing the program:
@@ -1239,6 +1258,35 @@ export const useStore = create(
       saveSession: () => {
         const { activeSession, getEffectiveTemplate, workoutLog, programs } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
+
+        // ── Free session — no template, only ad-hoc exercises ─────────────────
+        if (activeSession.templateId === '__free__') {
+          const adHoc = activeSession.adHocExercises ?? [];
+          const hasData = adHoc.some((a) =>
+            a.setsState.some((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done)
+          );
+          if (!hasData) return { ok: false, error: 'Sin datos registrados' };
+          const logEntry = {
+            id:                generateId('log'),
+            sessionTemplateId: '__free__',
+            sessionName:       activeSession.freeSessionName?.trim() || null,
+            timestamp:         Date.now(),
+            duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
+            notes:             activeSession.notes ?? '',
+            bodyWeight:        null,
+            exercises:         adHoc.map((a) => ({
+              exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
+            })),
+          };
+          set((s) => ({
+            workoutLog:    [...s.workoutLog, logEntry],
+            activeSession: INITIAL_ACTIVE_SESSION,
+            ui:            { ...s.ui, homeTab: 'session' },
+          }));
+          return { ok: true };
+        }
+
+        // ── Regular template session ───────────────────────────────────────────
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 

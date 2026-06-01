@@ -134,6 +134,14 @@
     "addSetBtn": "Add set",
     "keyBadge": "KEY"
   },
+  "freeSession": {
+    "btn": "+ Free session",
+    "btnContinue": "Continue free session",
+    "badge": "Free session",
+    "namePlaceholder": "Name (optional)",
+    "infoText": "One-off session — saved to your history and linked to the active program, but doesn't affect progress or your week counter.",
+    "historyLabel": "Free session"
+  },
   "history": {
     "title": "HISTORY",
     "currentProgram": "Current program",

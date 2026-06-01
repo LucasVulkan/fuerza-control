@@ -256,7 +256,6 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
       <View style={styles.sheetOverlay} pointerEvents="box-none">
         <Animated.View
           style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}
-          onStartShouldSetResponder={() => true}
         >
           {/* Drag handle */}
           <View {...panResponder.panHandlers}>

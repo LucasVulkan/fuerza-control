@@ -182,18 +182,19 @@ export default function WorkoutScreen() {
   const driveBackup        = useStore((s) => s.driveBackup);
 
   // Store actions
-  const updateSetField      = useStore((s) => s.updateSetField);
-  const toggleSetDone       = useStore((s) => s.toggleSetDone);
-  const addSetToSession     = useStore((s) => s.addSetToSession);
-  const updateSessionNotes  = useStore((s) => s.updateSessionNotes);
-  const saveSession         = useStore((s) => s.saveSession);
-  const discardSession      = useStore((s) => s.discardSession);
-  const stopRestTimer       = useStore((s) => s.stopRestTimer);
-  const showToast           = useStore((s) => s.showToast);
-  const syncSessionSets     = useStore((s) => s.syncSessionSets);
-  const updateAdHocSet      = useStore((s) => s.updateAdHocSet);
-  const toggleAdHocSetDone  = useStore((s) => s.toggleAdHocSetDone);
-  const addAdHocSet         = useStore((s) => s.addAdHocSet);
+  const updateSetField        = useStore((s) => s.updateSetField);
+  const toggleSetDone         = useStore((s) => s.toggleSetDone);
+  const addSetToSession       = useStore((s) => s.addSetToSession);
+  const updateSessionNotes    = useStore((s) => s.updateSessionNotes);
+  const saveSession           = useStore((s) => s.saveSession);
+  const discardSession        = useStore((s) => s.discardSession);
+  const stopRestTimer         = useStore((s) => s.stopRestTimer);
+  const showToast             = useStore((s) => s.showToast);
+  const syncSessionSets       = useStore((s) => s.syncSessionSets);
+  const updateAdHocSet        = useStore((s) => s.updateAdHocSet);
+  const toggleAdHocSetDone    = useStore((s) => s.toggleAdHocSetDone);
+  const addAdHocSet           = useStore((s) => s.addAdHocSet);
+  const updateFreeSessionName = useStore((s) => s.updateFreeSessionName);
 
   // Derive template + exercises
   const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
@@ -216,6 +217,9 @@ export default function WorkoutScreen() {
     lastExercise: lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
   }));
 
+  // Free session flag
+  const isFree = activeSession.templateId === '__free__';
+
   // Colors
   const accentColor = resolveColor(template?.color ?? 'var(--accent)');
 
@@ -230,7 +234,7 @@ export default function WorkoutScreen() {
     discardSession(); // stops timer, resets session, navigates home via store ref
   }
 
-  if (!template) {
+  if (!template && !isFree) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <Text style={styles.errorText}>Sin sesión activa</Text>
@@ -246,22 +250,41 @@ export default function WorkoutScreen() {
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
-            {t('workout.sessionLabel', { label: template.label ?? '' })}
-          </Text>
-          <View style={styles.sesNameRow}>
-            <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
-              {template.name ?? ''}
-            </Text>
-            {driveBackup.needsReconnect ? (
-              <Text style={[styles.driveIcon, { color: colors.orange }]}>⚠ ☁</Text>
-            ) : driveBackup.enabled ? (
-              <Text style={styles.driveIcon}>☁</Text>
-            ) : null}
-          </View>
-          {template.trainerName ? (
-            <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
-          ) : null}
+          {isFree ? (
+            <>
+              <Text style={[styles.sesTag, { color: colors.accent }]}>
+                {t('freeSession.badge').toUpperCase()}
+              </Text>
+              <TextInput
+                style={styles.freeNameInput}
+                value={activeSession.freeSessionName ?? ''}
+                onChangeText={updateFreeSessionName}
+                placeholder={t('freeSession.namePlaceholder')}
+                placeholderTextColor={colors.muted}
+                returnKeyType="done"
+                maxLength={60}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
+                {t('workout.sessionLabel', { label: template.label ?? '' })}
+              </Text>
+              <View style={styles.sesNameRow}>
+                <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
+                  {template.name ?? ''}
+                </Text>
+                {driveBackup.needsReconnect ? (
+                  <Text style={[styles.driveIcon, { color: colors.orange }]}>⚠ ☁</Text>
+                ) : driveBackup.enabled ? (
+                  <Text style={styles.driveIcon}>☁</Text>
+                ) : null}
+              </View>
+              {template.trainerName ? (
+                <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
+              ) : null}
+            </>
+          )}
         </View>
         <TouchableOpacity
           onPress={() => setNotesOpen(true)}
@@ -286,6 +309,13 @@ export default function WorkoutScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Free session info banner */}
+          {isFree && (
+            <View style={styles.freeBanner}>
+              <Text style={styles.freeBannerText}>{t('freeSession.infoText')}</Text>
+            </View>
+          )}
+
           {exercises.map(({ exConfig, def, setsState, lastExercise }) => (
             <ExerciseCard
               key={exConfig.exerciseId}
@@ -492,6 +522,29 @@ const styles = StyleSheet.create({
     fontSize:   typography.xs,
     color:      colors.muted,
     fontStyle:  'italic',
+  },
+  freeNameInput: {
+    fontSize:   typography.xl,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: typography.xl * 1.2,
+    padding:    0,
+    minHeight:  typography.xl * 1.2,
+  },
+  freeBanner: {
+    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderWidth:     1,
+    borderColor:     withOpacity(colors.accent, 0.18),
+    borderRadius:    radius.sm,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom:    spacing.xs,
+  },
+  freeBannerText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    lineHeight: typography.xs * 1.6,
+    textAlign:  'center',
   },
   notesBtn: {
     padding:         spacing.xs + 2,
