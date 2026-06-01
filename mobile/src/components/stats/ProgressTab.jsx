@@ -566,6 +566,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     [activeId, exerciseId, workoutLog_, initRawLogs]
   );
 
+  // Header height — measured via onLayout so the floating picker can position correctly
+  const [headerH, setHeaderH] = useState(84);
+
   const translateY      = useRef(new Animated.Value(0)).current;
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
@@ -713,19 +716,24 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
           onStartShouldSetResponder={() => true}
         >
           {/* Drag zone: handle indicator + header */}
-          <View {...panResponder.panHandlers}>
+          <View
+            {...panResponder.panHandlers}
+            onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+          >
             <View style={styles.dragHandleWrap}>
               <View style={styles.dragHandle} />
             </View>
             <View style={styles.modalHeader}>
+              {/* Dropdown trigger — styled as a select box */}
               <TouchableOpacity
-                style={styles.modalTitleBtn}
+                style={[styles.modalTitleBtn, exPickerOpen && styles.modalTitleBtnOpen]}
                 onPress={() => setExPickerOpen((v) => !v)}
-                activeOpacity={0.7}
-                hitSlop={4}
+                activeOpacity={0.8}
               >
                 <Text style={styles.modalTitle} numberOfLines={1}>{name}</Text>
-                <Text style={styles.modalTitleArrow}>{exPickerOpen ? '▴' : '▾'}</Text>
+                <Text style={[styles.modalTitleArrow, exPickerOpen && styles.modalTitleArrowOpen]}>
+                  {exPickerOpen ? '▲' : '▼'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.modalCloseBtn}>
                 <Text style={styles.modalCloseText}>✕</Text>
@@ -733,9 +741,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             </View>
           </View>
 
-          {/* Exercise picker — shown inline when title is tapped */}
+          {/* Exercise picker — floats OVER the content, does not push it down */}
           {exPickerOpen && (
-            <View style={styles.exPicker}>
+            <View style={[styles.exPicker, { top: headerH }]}>
               <TextInput
                 style={styles.exPickerSearch}
                 placeholder="Buscar ejercicio..."
@@ -759,7 +767,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.exPickerItemText, isActive && styles.exPickerItemTextActive]} numberOfLines={1}>
-                        {isActive ? '✓  ' : '    '}{exName}
+                        {isActive ? '✓  ' : ''}{exName}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1424,35 +1432,57 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   modalTitleBtn: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    minWidth:      0,
+    flex:              1,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.xs,
+    minWidth:          0,
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical:   spacing.xs + 2,
+  },
+  modalTitleBtnOpen: {
+    borderColor: colors.accent,
+    backgroundColor: withOpacity(colors.accent, 0.06),
   },
   modalTitle: {
     flex:       1,
-    fontSize:   typography.lg,
+    fontSize:   typography.md,
     fontWeight: typography.heavy,
     color:      colors.text,
-    lineHeight: typography.lg * 1.25,
+    lineHeight: typography.md * 1.3,
   },
   modalTitleArrow: {
-    fontSize:   typography.xs,
+    fontSize:   10,
     color:      colors.muted,
     flexShrink: 0,
-    marginTop:  4,
   },
-  // Exercise picker
+  modalTitleArrowOpen: {
+    color: colors.accent,
+  },
+  // Exercise picker — floats absolutely over content
   exPicker: {
-    borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    position:          'absolute',
+    left:              spacing.lg,
+    right:             spacing.lg,
+    zIndex:            20,
     backgroundColor:   colors.surface,
+    borderRadius:      radius.md,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    overflow:          'hidden',
+    // Shadow
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 6 },
+    shadowOpacity:     0.35,
+    shadowRadius:      12,
+    elevation:         12,
   },
   exPickerSearch: {
-    marginHorizontal:  spacing.xl,
-    marginTop:         spacing.sm,
-    marginBottom:      spacing.xs,
+    margin:            spacing.sm,
     backgroundColor:   colors.surface2,
     borderWidth:       borders.thin,
     borderColor:       colors.borderCard,
@@ -1462,16 +1492,16 @@ const styles = StyleSheet.create({
     fontSize:          typography.sm,
     color:             colors.text,
   },
-  exPickerList: { maxHeight: 230 },
+  exPickerList:     { maxHeight: 260 },
   exPickerItem: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical:   spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm + 3,
     borderTopWidth:    borders.thin,
     borderTopColor:    colors.border,
   },
-  exPickerItemActive:     { backgroundColor: withOpacity(colors.accent, 0.06) },
-  exPickerItemText:       { fontSize: typography.sm, color: colors.text },
-  exPickerItemTextActive: { color: colors.accent, fontWeight: typography.medium },
+  exPickerItemActive:     { backgroundColor: withOpacity(colors.accent, 0.07) },
+  exPickerItemText:       { fontSize: typography.base, color: colors.text },
+  exPickerItemTextActive: { color: colors.accent, fontWeight: typography.semibold },
   modalCloseBtn: {
     width:           28,
     height:          28,
