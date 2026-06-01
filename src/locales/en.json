@@ -542,24 +542,42 @@
     "fieldMaxTime": "Max time (s)",
     "fieldMinReps": "Min reps",
     "fieldMaxReps": "Max reps",
-    "submaxHint": "Submax: athlete works to 2 reps from failure. No fixed range.",
+    "submaxHint": "No automatic progression — athlete decides when to advance.",
     "substituteBtn": "⇄ Substitute",
     "saveBtn": "Save",
     "toastUpdated": "✓ Exercise updated",
     "toastSubstituted": "✓ Exercise substituted",
+    "sectionProgression": "PROGRESSION",
+    "sectionEvaluation": "EVALUATION",
+    "sectionIncrement": "INCREMENT",
+    "progTypes": {
+      "double": "Double",
+      "weight": "Weight",
+      "reps": "Reps",
+      "time": "Time",
+      "none": "None"
+    },
+    "progTypeDesc": {
+      "double": "Increase reps to max, then add weight",
+      "weight": "Complete session → add weight (fixed reps)",
+      "reps": "Complete session → add reps to target",
+      "time": "Hit max time → increase time target",
+      "none": "No automatic chip — athlete decides"
+    },
+    "evalModes": {
+      "all_complete": "All done ✓",
+      "pct": "Min %"
+    },
+    "evalPctLabel": "Threshold",
+    "incrTypes": {
+      "fixed": "Fixed",
+      "pct": "Percentage"
+    },
+    "incrFixedRepsLabel": "+ reps",
     "progressionModels": {
-      "double_progression": {
-        "label": "Double progression",
-        "desc": "Weight + reps"
-      },
-      "time_progression": {
-        "label": "Time",
-        "desc": "Seconds"
-      },
-      "submax": {
-        "label": "Submax",
-        "desc": "RIR / RPE"
-      }
+      "double_progression": { "label": "Double progression", "desc": "Weight + reps" },
+      "time_progression":   { "label": "Time",               "desc": "Seconds"       },
+      "submax":             { "label": "Submax",             "desc": "RIR / RPE"     }
     }
   },
   "clients": {
@@ -754,6 +772,8 @@
     "time_allHitMax": "Goal crushed. Progress to {{next}}s per set next time.",
     "time_allOk": "Good. Consolidate the {{min}}–{{max}}s range before increasing.",
     "time_keep": "Keep working in the {{min}}–{{max}}s range. Take your time.",
+    "reps_advance": "All sets complete. Increase target to {{next}} reps next time.",
+    "reps_hold": "Hit your rep target on all sets before increasing.",
     "submax_weight": "Last session: {{total}} reps in {{sets}} sets · {{weight}}kg. Beat that today.",
     "submax_noweight": "Last session: {{total}} reps in {{sets}} sets. Beat that today.",
     "decrease_lastAssist": "Excellent! All sets maxed with {{assist}}kg assistance. Next time try without assistance.",

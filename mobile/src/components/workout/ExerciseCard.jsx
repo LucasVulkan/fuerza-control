@@ -240,7 +240,7 @@ export default function ExerciseCard({
 
   const progression = (() => {
     if (!lastExercise?.sets?.length) return null;
-    try { return getProgression(def, lastExercise.sets, exConfig.sets, t); }
+    try { return getProgression(exConfig, def, lastExercise.sets, t); }
     catch { return null; }
   })();
   const chipStyle  = progression ? (CHIP_COLORS[progression.type] ?? CHIP_COLORS.info) : null;

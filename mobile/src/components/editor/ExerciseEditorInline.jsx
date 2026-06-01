@@ -2,41 +2,22 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
+import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils/progression';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
-
-function getProgressionModels(t) {
-  return [
-    { id: 'double_progression', label: t('exerciseEditor.progressionModels.double_progression.label'), desc: t('exerciseEditor.progressionModels.double_progression.desc') },
-    { id: 'time_progression',   label: t('exerciseEditor.progressionModels.time_progression.label'),   desc: t('exerciseEditor.progressionModels.time_progression.desc')   },
-    { id: 'submax',             label: t('exerciseEditor.progressionModels.submax.label'),             desc: t('exerciseEditor.progressionModels.submax.desc')             },
-  ];
-}
 
 // ─── StepField ────────────────────────────────────────────────────────────────
 
 function StepField({ label, value, onChange, min, max }) {
-  // Local draft lets the user type freely (e.g. "6" on the way to "60").
-  // Clamping only happens on blur, not on every keystroke.
   const [draft, setDraft] = useState(String(value));
-
-  // Sync when the external value changes (step buttons, Restore action).
   useEffect(() => { setDraft(String(value)); }, [value]);
-
   const numVal = Number(value);
 
-  function handleChangeText(v) {
-    setDraft(v.replace(/[^0-9]/g, '')); // digits only, no clamping yet
-  }
-
+  function handleChangeText(v) { setDraft(v.replace(/[^0-9]/g, '')); }
   function handleBlur() {
     const n = parseInt(draft, 10);
-    if (!isNaN(n)) {
-      const clamped = Math.min(max, Math.max(min, n));
-      setDraft(String(clamped));
-      onChange(clamped);
-    } else {
-      setDraft(String(value)); // restore last valid value
-    }
+    if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); setDraft(String(c)); onChange(c); }
+    else setDraft(String(value));
   }
 
   return (
@@ -84,124 +65,206 @@ function ToggleRow({ label, value, onChange }) {
   );
 }
 
+// ─── SegPicker — horizontal pill selector ────────────────────────────────────
+
+function SegPicker({ options, value, onChange }) {
+  return (
+    <View style={styles.segRow}>
+      {options.map((opt) => (
+        <TouchableOpacity
+          key={opt.id}
+          style={[styles.segBtn, value === opt.id && styles.segBtnActive]}
+          onPress={() => onChange(opt.id)}
+        >
+          <Text style={[styles.segLabel, value === opt.id && styles.segLabelActive]}>
+            {opt.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+// ─── IncrementInput — decimal text input with unit label ─────────────────────
+
+function IncrementInput({ value, onChange, unit }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+
+  return (
+    <View style={styles.incrInputRow}>
+      <TextInput
+        style={styles.incrInput}
+        value={draft}
+        onChangeText={(v) => {
+          if (/^\d*\.?\d*$/.test(v)) setDraft(v);
+        }}
+        onBlur={() => {
+          const n = parseFloat(draft);
+          const clamped = isNaN(n) || n < 0 ? 0 : n;
+          setDraft(String(clamped));
+          onChange(clamped);
+        }}
+        keyboardType="decimal-pad"
+        selectTextOnFocus
+      />
+      <Text style={styles.incrUnit}>{unit}</Text>
+    </View>
+  );
+}
+
 // ─── ExerciseEditorInline ─────────────────────────────────────────────────────
 
 export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
-  const { t } = useTranslation();
-  const updateExerciseParams = useStore((s) => s.updateExerciseParams);
+  const { t }            = useTranslation();
+  const { label: weightLabel } = useWeightUnit();
+  const updateExerciseParams   = useStore((s) => s.updateExerciseParams);
 
-  // ── Snapshot initial config ───────────────────────────────────────────────
+  // ── Resolve current progression config ───────────────────────────────────
+  const initProg = resolveProgressionConfig(exConfig, def);
+
   const initInputType = exConfig.inputType ?? (
     (exConfig.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps'
   );
   const initMetric = initInputType === 'time' || initInputType === 'weight_time' ? 'time' : 'reps';
 
+  // ── Snapshot initial values (for isChanged + Restore) ────────────────────
   const initialRef = useRef({
-    sets:             exConfig.sets             ?? 3,
-    restSec:          exConfig.restSec          ?? 90,
-    minReps:          exConfig.minReps          ?? def?.minReps ?? 8,
-    maxReps:          exConfig.maxReps          ?? def?.maxReps ?? 12,
-    minTime:          exConfig.minTime          ?? def?.minTime ?? 20,
-    maxTime:          exConfig.maxTime          ?? def?.maxTime ?? 40,
-    progressionModel: exConfig.progressionModel ?? def?.progressionModel ?? 'double_progression',
-    metric:           initMetric,
-    isUnilateral:     exConfig.isUnilateral     ?? def?.isUnilateral ?? false,
-    tempo:            exConfig.tempo            ?? '',
+    sets:           exConfig.sets         ?? 3,
+    restSec:        exConfig.restSec      ?? 90,
+    minReps:        exConfig.minReps      ?? def?.minReps ?? 8,
+    maxReps:        exConfig.maxReps      ?? def?.maxReps ?? 12,
+    minTime:        exConfig.minTime      ?? def?.minTime ?? 20,
+    maxTime:        exConfig.maxTime      ?? def?.maxTime ?? 40,
+    metric:         initMetric,
+    isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
+    tempo:          exConfig.tempo        ?? '',
+    // Progression
+    progType:       initProg.type,
+    evalMode:       initProg.evaluation.mode,
+    evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
+    incrType:       initProg.increment.type === 'stepped' ? 'fixed' : initProg.increment.type,
+    incrFixedValue: initProg.increment.value ?? 2.5,
+    incrPctValue:   initProg.increment.pct   ?? 5,
   });
 
-  const [sets,             setSets]             = useState(initialRef.current.sets);
-  const [restSec,          setRestSec]          = useState(initialRef.current.restSec);
-  const [minReps,          setMinReps]          = useState(initialRef.current.minReps);
-  const [maxReps,          setMaxReps]          = useState(initialRef.current.maxReps);
-  const [minTime,          setMinTime]          = useState(initialRef.current.minTime);
-  const [maxTime,          setMaxTime]          = useState(initialRef.current.maxTime);
-  const [progressionModel, setProgressionModel] = useState(initialRef.current.progressionModel);
-  const [metric,           setMetric]           = useState(initialRef.current.metric);
-  const [isUnilateral,     setIsUnilateral]     = useState(initialRef.current.isUnilateral);
-  const [tempo,            setTempo]            = useState(initialRef.current.tempo);
+  const i = initialRef.current;
 
-  // ── Always-current ref for flush-on-unmount ────────────────────────────────
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [sets,           setSets]           = useState(i.sets);
+  const [restSec,        setRestSec]        = useState(i.restSec);
+  const [minReps,        setMinReps]        = useState(i.minReps);
+  const [maxReps,        setMaxReps]        = useState(i.maxReps);
+  const [minTime,        setMinTime]        = useState(i.minTime);
+  const [maxTime,        setMaxTime]        = useState(i.maxTime);
+  const [metric,         setMetric]         = useState(i.metric);
+  const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
+  const [tempo,          setTempo]          = useState(i.tempo);
+  // Progression
+  const [progType,       setProgType]       = useState(i.progType);
+  const [evalMode,       setEvalMode]       = useState(i.evalMode);
+  const [evalPct,        setEvalPct]        = useState(i.evalPct);
+  const [incrType,       setIncrType]       = useState(i.incrType);
+  const [incrFixedValue, setIncrFixedValue] = useState(i.incrFixedValue);
+  const [incrPctValue,   setIncrPctValue]   = useState(i.incrPctValue);
+
+  // ── Always-current ref for flush-on-unmount ───────────────────────────────
   const stateRef  = useRef(null);
   const dirtyRef  = useRef(false);
   const timerRef  = useRef(null);
   const updateRef = useRef(updateExerciseParams);
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
-  stateRef.current = { sets, restSec, minReps, maxReps, minTime, maxTime, progressionModel, metric, isUnilateral, tempo };
+  stateRef.current = {
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
+    progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue,
+  };
 
   // ── Commit helper ─────────────────────────────────────────────────────────
   const commitValues = useCallback((s) => {
-    const isTimeMode   = s.metric === 'time';
-    const isSubmaxMode = s.progressionModel === 'submax';
-    const inputType    = s.metric === 'time' ? 'weight_time' : 'weight_reps';
+    const isTimeMode = s.metric === 'time';
+    const isNoneType = s.progType === 'none';
+    const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
+
     const updates = {
-      sets: s.sets, restSec: s.restSec,
-      progressionModel: s.progressionModel,
+      sets:         s.sets,
+      restSec:      s.restSec,
       inputType,
       isUnilateral: s.isUnilateral,
-      tempo: s.tempo.trim() || null,
+      tempo:        s.tempo.trim() || null,
+      // Legacy field — kept for backward compatibility with any web code that still reads it
+      progressionModel: LEGACY_TYPE_MAP[s.progType] ?? 'double_progression',
+      // New progression object — full model
+      progression: {
+        type:      s.progType,
+        direction: 'increase', // 'decrease' for assisted exercises — expose in UI later
+        evaluation: {
+          mode:         s.evalMode,
+          pctThreshold: s.evalPct / 100,
+          maxRpe:       8,
+          minRir:       2,
+        },
+        increment: {
+          type:  s.incrType,
+          value: s.incrFixedValue,
+          pct:   s.incrPctValue,
+          steps: [],
+        },
+        seed: { weight: null, reps: null, time: null },
+      },
     };
+
     if (isTimeMode) {
       updates.minTime = s.minTime;
       updates.maxTime = s.maxTime;
       updates.minReps = null;
       updates.maxReps = null;
-    } else if (!isSubmaxMode) {
+    } else if (!isNoneType) {
       updates.minReps = s.minReps;
       updates.maxReps = s.maxReps;
     }
+
     updateRef.current(templateId, exConfig.exerciseId, updates);
   }, [templateId, exConfig.exerciseId]);
 
-  // ── Debounced commit on any change ────────────────────────────────────────
+  // ── Debounced commit on any state change ──────────────────────────────────
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     dirtyRef.current = true;
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      commitValues(stateRef.current);
-    }, 400);
+    timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, progressionModel, metric, isUnilateral, tempo]);
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
+      progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue]);
 
-  // ── Flush pending commit on unmount (preserves changes on top-X close) ───
+  // ── Flush on unmount ──────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      if (dirtyRef.current) {
-        clearTimeout(timerRef.current);
-        commitValues(stateRef.current);
-      }
+      if (dirtyRef.current) { clearTimeout(timerRef.current); commitValues(stateRef.current); }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── isChanged ─────────────────────────────────────────────────────────────
-  const i = initialRef.current;
   const isChanged =
     sets !== i.sets || restSec !== i.restSec ||
     minReps !== i.minReps || maxReps !== i.maxReps ||
     minTime !== i.minTime || maxTime !== i.maxTime ||
-    progressionModel !== i.progressionModel ||
-    metric !== i.metric ||
-    isUnilateral !== i.isUnilateral ||
-    tempo !== i.tempo;
+    metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
+    progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
+    incrType !== i.incrType || incrFixedValue !== i.incrFixedValue || incrPctValue !== i.incrPctValue;
 
-  // ── Restore to initial ────────────────────────────────────────────────────
+  // ── Restore ───────────────────────────────────────────────────────────────
   function handleRestore() {
     clearTimeout(timerRef.current);
-    setSets(i.sets);
-    setRestSec(i.restSec);
-    setMinReps(i.minReps);
-    setMaxReps(i.maxReps);
-    setMinTime(i.minTime);
-    setMaxTime(i.maxTime);
-    setProgressionModel(i.progressionModel);
-    setMetric(i.metric);
-    setIsUnilateral(i.isUnilateral);
-    setTempo(i.tempo);
-    // Immediately revert store (don't wait for debounce)
+    setSets(i.sets);           setRestSec(i.restSec);
+    setMinReps(i.minReps);     setMaxReps(i.maxReps);
+    setMinTime(i.minTime);     setMaxTime(i.maxTime);
+    setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
+    setProgType(i.progType);   setEvalMode(i.evalMode);         setEvalPct(i.evalPct);
+    setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue); setIncrPctValue(i.incrPctValue);
     commitValues(i);
     dirtyRef.current = false;
   }
@@ -215,8 +278,36 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     onClose();
   }
 
+  // ── Derived flags ─────────────────────────────────────────────────────────
   const isTime   = metric === 'time';
-  const isSubmax = progressionModel === 'submax';
+  const isNone   = progType === 'none';
+  const isReps   = progType === 'reps';
+  const showRepsRange  = !isTime && !isNone;
+  const showTimeRange  = isTime;
+  const showWeightIncr = progType === 'weight' || progType === 'double';
+  const showTimeIncr   = progType === 'time';
+  const showRepsIncr   = progType === 'reps';
+  const showIncrement  = showWeightIncr || showTimeIncr || showRepsIncr;
+
+  // Unit label for the increment input
+  const incrUnit = showTimeIncr ? 's' : (incrType === 'pct' ? '%' : weightLabel);
+
+  // ── Build option arrays (inside component so t() works) ───────────────────
+  const PROG_TYPES = [
+    { id: 'double', label: t('exerciseEditor.progTypes.double') },
+    { id: 'weight', label: t('exerciseEditor.progTypes.weight') },
+    { id: 'reps',   label: t('exerciseEditor.progTypes.reps')   },
+    { id: 'time',   label: t('exerciseEditor.progTypes.time')   },
+    { id: 'none',   label: t('exerciseEditor.progTypes.none')   },
+  ];
+  const EVAL_MODES = [
+    { id: 'all_complete', label: t('exerciseEditor.evalModes.all_complete') },
+    { id: 'pct',          label: t('exerciseEditor.evalModes.pct')          },
+  ];
+  const INCR_TYPES = [
+    { id: 'fixed', label: t('exerciseEditor.incrTypes.fixed') },
+    { id: 'pct',   label: t('exerciseEditor.incrTypes.pct')   },
+  ];
 
   return (
     <View style={styles.container}>
@@ -240,29 +331,6 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
         </View>
       </View>
 
-      {/* ── Progresión (solo custom) ── */}
-      {def?.isCustom && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('exerciseEditor.progressionType').toUpperCase()}</Text>
-          <View style={styles.modelRow}>
-            {getProgressionModels(t).map((m) => (
-              <TouchableOpacity
-                key={m.id}
-                style={[styles.modelBtn, progressionModel === m.id && styles.modelBtnActive]}
-                onPress={() => setProgressionModel(m.id)}
-              >
-                <Text style={[styles.modelLabel, progressionModel === m.id && styles.modelLabelActive]}>
-                  {m.label}
-                </Text>
-                <Text style={[styles.modelDesc, progressionModel === m.id && styles.modelDescActive]}>
-                  {m.desc}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
       {/* ── Series + Descanso ── */}
       <View style={styles.fieldRow}>
         <StepField label={t('exerciseEditor.fieldSets')}  value={sets}    onChange={setSets}    min={1}  max={8}   />
@@ -270,12 +338,12 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       </View>
 
       {/* ── Rango reps / tiempo ── */}
-      {isTime ? (
+      {showTimeRange ? (
         <View style={styles.fieldRow}>
           <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5}  max={300} />
           <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5}  max={300} />
         </View>
-      ) : !isSubmax ? (
+      ) : showRepsRange ? (
         <View style={styles.fieldRow}>
           <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
           <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
@@ -284,14 +352,104 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
         <Text style={styles.submaxHint}>{t('exerciseEditor.submaxHint')}</Text>
       )}
 
+      {/* ── Progresión ── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>{t('exerciseEditor.sectionProgression')}</Text>
+
+        {/* Type selector — 2 rows: 3 + 2 */}
+        <View style={[styles.segRow, { marginBottom: spacing.xs }]}>
+          {PROG_TYPES.slice(0, 3).map((pt) => (
+            <TouchableOpacity
+              key={pt.id}
+              style={[styles.segBtn, progType === pt.id && styles.segBtnActive]}
+              onPress={() => setProgType(pt.id)}
+            >
+              <Text style={[styles.segLabel, progType === pt.id && styles.segLabelActive]}>
+                {pt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.segRow}>
+          {PROG_TYPES.slice(3).map((pt) => (
+            <TouchableOpacity
+              key={pt.id}
+              style={[styles.segBtn, progType === pt.id && styles.segBtnActive]}
+              onPress={() => setProgType(pt.id)}
+            >
+              <Text style={[styles.segLabel, progType === pt.id && styles.segLabelActive]}>
+                {pt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {/* spacer so last row matches width */}
+          <View style={[styles.segBtn, { opacity: 0 }]} pointerEvents="none" />
+        </View>
+
+        {/* Type description */}
+        {!isNone && (
+          <Text style={styles.progTypeDesc}>
+            {t(`exerciseEditor.progTypeDesc.${progType}`)}
+          </Text>
+        )}
+      </View>
+
+      {/* ── Evaluación ── */}
+      {!isNone && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('exerciseEditor.sectionEvaluation')}</Text>
+          <SegPicker options={EVAL_MODES} value={evalMode} onChange={setEvalMode} />
+          {evalMode === 'pct' && (
+            <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+              <StepField
+                label={`${t('exerciseEditor.evalPctLabel')} (%)`}
+                value={evalPct}
+                onChange={setEvalPct}
+                min={50}
+                max={100}
+              />
+              <View style={{ flex: 2 }} />
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── Incremento ── */}
+      {showIncrement && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('exerciseEditor.sectionIncrement')}</Text>
+
+          {showRepsIncr ? (
+            /* Reps progression: only fixed increment makes sense */
+            <View style={[styles.fieldRow]}>
+              <StepField
+                label={t('exerciseEditor.incrFixedRepsLabel')}
+                value={incrFixedValue}
+                onChange={setIncrFixedValue}
+                min={1}
+                max={10}
+              />
+              <View style={{ flex: 2 }} />
+            </View>
+          ) : (
+            <>
+              <SegPicker options={INCR_TYPES} value={incrType} onChange={setIncrType} />
+              <View style={{ marginTop: spacing.sm }}>
+                <IncrementInput
+                  value={incrType === 'pct' ? incrPctValue : incrFixedValue}
+                  onChange={incrType === 'pct' ? setIncrPctValue : setIncrFixedValue}
+                  unit={incrType === 'pct' ? '%' : (showTimeIncr ? 's' : weightLabel)}
+                />
+              </View>
+            </>
+          )}
+        </View>
+      )}
+
       {/* ── Opciones: unilateral + tempo ── */}
       <View style={styles.optionsBlock}>
-
         <ToggleRow label="Unilateral" value={isUnilateral} onChange={setIsUnilateral} />
-
         <View style={styles.divider} />
-
-        {/* Tempo: label + hint on left, input on right */}
         <View style={styles.tempoRow}>
           <View style={styles.tempoMeta}>
             <Text style={styles.toggleLabel}>Tempo</Text>
@@ -309,10 +467,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
             returnKeyType="done"
           />
         </View>
-
       </View>
 
-      {/* ── Acciones: [Substituir] [Restaurar] ── */}
+      {/* ── Acciones ── */}
       <View style={styles.btnRow}>
         <TouchableOpacity style={styles.substituteBtn} onPress={handleSubstitute}>
           <Text style={styles.substituteBtnText}>{t('exerciseEditor.substituteBtn')}</Text>
@@ -380,31 +537,45 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
 
-  // ── Progression model ──────────────────────────────────────────────────────
-  modelRow: {
+  // ── Progression type description ───────────────────────────────────────────
+  progTypeDesc: {
+    fontSize:   typography.xs,
+    color:      colors.muted2,
+    marginTop:  spacing.xs,
+    lineHeight: typography.xs * 1.5,
+  },
+
+  // ── Increment input ────────────────────────────────────────────────────────
+  incrInputRow: {
     flexDirection: 'row',
-    gap:           spacing.xs,
+    alignItems:    'center',
+    gap:           spacing.sm,
   },
-  modelBtn: {
-    flex:            1,
-    padding:         spacing.xs + 2,
-    backgroundColor: colors.surface,
-    borderRadius:    radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    alignItems:      'flex-start',
+  incrInput: {
+    backgroundColor:   colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    height:            38,
+    fontSize:          typography.md,
+    fontWeight:        typography.medium,
+    color:             colors.text,
+    textAlign:         'center',
+    minWidth:          80,
   },
-  modelBtnActive:   { backgroundColor: 'rgba(232,255,71,0.08)', borderColor: 'rgba(232,255,71,0.3)' },
-  modelLabel:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
-  modelLabelActive: { color: colors.accent },
-  modelDesc:        { fontSize: 9, color: colors.muted2, marginTop: 2 },
-  modelDescActive:  { color: 'rgba(232,255,71,0.6)' },
+  incrUnit: {
+    fontSize:   typography.sm,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
 
   // ── Step fields ────────────────────────────────────────────────────────────
-  fieldRow:   { flexDirection: 'row', gap: spacing.sm },
-  submaxHint: { fontSize: typography.xs, color: colors.muted, lineHeight: 16 },
+  fieldRow: { flexDirection: 'row', gap: spacing.sm },
 
   // ── Options block ──────────────────────────────────────────────────────────
+  submaxHint: { fontSize: typography.xs, color: colors.muted, lineHeight: 16 },
+
   optionsBlock: {
     backgroundColor:   colors.surface,
     borderRadius:      radius.sm,
@@ -455,7 +626,7 @@ const styles = StyleSheet.create({
     transform:       [{ translateX: 18 }],
   },
 
-  // Tempo — label+hint left, input right
+  // Tempo
   tempoRow: {
     flexDirection:   'row',
     alignItems:      'center',
@@ -463,16 +634,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     gap:             spacing.sm,
   },
-  tempoMeta: {
-    flex: 1,
-    gap:  2,
-  },
-  tempoHint: {
-    fontSize:   9,
-    color:      colors.muted2,
-    lineHeight: 13,
-    marginTop:  2,
-  },
+  tempoMeta: { flex: 1, gap: 2 },
+  tempoHint: { fontSize: 9, color: colors.muted2, lineHeight: 13, marginTop: 2 },
   tempoInput: {
     backgroundColor:   colors.surface2,
     borderWidth:       borders.thin,
@@ -505,7 +668,6 @@ const styles = StyleSheet.create({
     color:      colors.text,
     fontWeight: typography.medium,
   },
-
   restoreBtn: {
     alignItems:        'center',
     justifyContent:    'center',
@@ -515,13 +677,7 @@ const styles = StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       colors.borderCard,
   },
-  restoreBtnDisabled: {
-    opacity: 0.35,
-  },
-  restoreBtnText: {
-    fontSize:   typography.sm,
-    color:      colors.muted,
-    fontWeight: typography.medium,
-  },
+  restoreBtnDisabled:     { opacity: 0.35 },
+  restoreBtnText:         { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
   restoreBtnTextDisabled: {},
 });

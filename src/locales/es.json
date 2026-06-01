@@ -542,24 +542,42 @@
     "fieldMaxTime": "Tiempo máx (s)",
     "fieldMinReps": "Reps mín",
     "fieldMaxReps": "Reps máx",
-    "submaxHint": "Submáximo: el atleta trabaja hasta 2 reps del fallo. Sin rango fijo.",
+    "submaxHint": "Sin progresión automática — el atleta decide cuándo avanzar.",
     "substituteBtn": "⇄ Sustituir",
     "saveBtn": "Guardar",
     "toastUpdated": "✓ Ejercicio actualizado",
     "toastSubstituted": "✓ Ejercicio sustituido",
+    "sectionProgression": "PROGRESIÓN",
+    "sectionEvaluation": "EVALUACIÓN",
+    "sectionIncrement": "INCREMENTO",
+    "progTypes": {
+      "double": "Doble",
+      "weight": "Peso",
+      "reps": "Reps",
+      "time": "Tiempo",
+      "none": "Ninguna"
+    },
+    "progTypeDesc": {
+      "double": "Aumenta reps hasta el máximo, luego sube peso",
+      "weight": "Completa la sesión → sube peso (reps fijas)",
+      "reps": "Completa la sesión → añade reps al objetivo",
+      "time": "Alcanza el tiempo máximo → aumenta el objetivo",
+      "none": "Sin chip automático — el atleta decide"
+    },
+    "evalModes": {
+      "all_complete": "Todas ✓",
+      "pct": "% mínimo"
+    },
+    "evalPctLabel": "Umbral",
+    "incrTypes": {
+      "fixed": "Fijo",
+      "pct": "Porcentaje"
+    },
+    "incrFixedRepsLabel": "+ reps",
     "progressionModels": {
-      "double_progression": {
-        "label": "Doble progresión",
-        "desc": "Peso + reps"
-      },
-      "time_progression": {
-        "label": "Tiempo",
-        "desc": "Segundos"
-      },
-      "submax": {
-        "label": "Submáximo",
-        "desc": "RIR / RPE"
-      }
+      "double_progression": { "label": "Doble progresión", "desc": "Peso + reps" },
+      "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    },
+      "submax":             { "label": "Submáximo",         "desc": "RIR / RPE"   }
     }
   },
   "clients": {
@@ -754,6 +772,8 @@
     "time_allHitMax": "Objetivo superado. Progresa a {{next}}s por serie la próxima vez.",
     "time_allOk": "Bien. Consolida el rango {{min}}–{{max}}s antes de subir.",
     "time_keep": "Sigue trabajando en el rango {{min}}–{{max}}s. Sin prisa.",
+    "reps_advance": "Todas las series completadas. Sube el objetivo a {{next}} reps.",
+    "reps_hold": "Alcanza el objetivo de reps en todas las series antes de subir.",
     "submax_weight": "Sesión anterior: {{total}} reps en {{sets}} series · {{weight}}kg. Supera esa marca hoy.",
     "submax_noweight": "Sesión anterior: {{total}} reps en {{sets}} series. Supera esa marca hoy.",
     "decrease_lastAssist": "¡Excelente! Todas las series al máximo con {{assist}}kg de asistencia. La próxima vez intenta sin asistencia.",
