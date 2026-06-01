@@ -807,7 +807,7 @@ function ClientListCard({
   const dotColor = showDirty ? colors.orange : colors.green;
 
   return (
-    <View style={styles.cCard}>
+    <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
 
       {/* ── Row 1: Name · date · Info → ── */}
       <View style={styles.cRow1}>
@@ -902,7 +902,7 @@ function ClientListCard({
         </View>
       )}
 
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -2808,7 +2808,7 @@ const styles = StyleSheet.create({
   cCounters: {
     flex:          1,
     flexDirection: 'row',
-    alignItems:    'baseline',
+    alignItems:    'center',
     flexWrap:      'wrap',
     gap:           3,
   },
