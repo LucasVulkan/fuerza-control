@@ -574,6 +574,8 @@
       "pct": "Percentage"
     },
     "incrFixedRepsLabel": "+ reps",
+    "incrMinLabel": "Min. available",
+    "incrMinHint": "Smallest plate available (e.g. 2.5 kg)",
     "progressionModels": {
       "double_progression": { "label": "Double progression", "desc": "Weight + reps" },
       "time_progression":   { "label": "Time",               "desc": "Seconds"       },

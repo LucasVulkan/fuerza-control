@@ -574,6 +574,8 @@
       "pct": "Porcentaje"
     },
     "incrFixedRepsLabel": "+ reps",
+    "incrMinLabel": "Mín. disponible",
+    "incrMinHint": "Placa más pequeña disponible (ej. 2.5 kg)",
     "progressionModels": {
       "double_progression": { "label": "Doble progresión", "desc": "Peso + reps" },
       "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    },

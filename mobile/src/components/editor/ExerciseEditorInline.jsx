@@ -144,8 +144,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     evalMode:       initProg.evaluation.mode,
     evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
     incrType:       initProg.increment.type === 'stepped' ? 'fixed' : initProg.increment.type,
-    incrFixedValue: initProg.increment.value ?? 2.5,
-    incrPctValue:   initProg.increment.pct   ?? 5,
+    incrFixedValue: initProg.increment.value        ?? 2.5,
+    incrPctValue:   initProg.increment.pct          ?? 5,
+    incrMin:        initProg.increment.minIncrement ?? 0,
   });
 
   const i = initialRef.current;
@@ -167,6 +168,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [incrType,       setIncrType]       = useState(i.incrType);
   const [incrFixedValue, setIncrFixedValue] = useState(i.incrFixedValue);
   const [incrPctValue,   setIncrPctValue]   = useState(i.incrPctValue);
+  const [incrMin,        setIncrMin]        = useState(i.incrMin);
 
   // ── Always-current ref for flush-on-unmount ───────────────────────────────
   const stateRef  = useRef(null);
@@ -177,7 +179,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
 
   stateRef.current = {
     sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
-    progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue,
+    progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
   };
 
   // ── Commit helper ─────────────────────────────────────────────────────────
@@ -205,10 +207,11 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
           minRir:       2,
         },
         increment: {
-          type:  s.incrType,
-          value: s.incrFixedValue,
-          pct:   s.incrPctValue,
-          steps: [],
+          type:         s.incrType,
+          value:        s.incrFixedValue,
+          pct:          s.incrPctValue,
+          steps:        [],
+          minIncrement: s.incrMin > 0 ? s.incrMin : null,
         },
         seed: { weight: null, reps: null, time: null },
       },
@@ -237,7 +240,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
-      progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue]);
+      progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
 
   // ── Flush on unmount ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -254,7 +257,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     minTime !== i.minTime || maxTime !== i.maxTime ||
     metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
-    incrType !== i.incrType || incrFixedValue !== i.incrFixedValue || incrPctValue !== i.incrPctValue;
+    incrType !== i.incrType || incrFixedValue !== i.incrFixedValue || incrPctValue !== i.incrPctValue ||
+    incrMin !== i.incrMin;
 
   // ── Restore ───────────────────────────────────────────────────────────────
   function handleRestore() {
@@ -264,7 +268,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setMinTime(i.minTime);     setMaxTime(i.maxTime);
     setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
     setProgType(i.progType);   setEvalMode(i.evalMode);         setEvalPct(i.evalPct);
-    setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue); setIncrPctValue(i.incrPctValue);
+    setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue); setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
     commitValues(i);
     dirtyRef.current = false;
   }
@@ -441,6 +445,20 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                   unit={incrType === 'pct' ? '%' : (showTimeIncr ? 's' : weightLabel)}
                 />
               </View>
+              {/* Mínimo disponible — solo visible en modo porcentaje */}
+              {incrType === 'pct' && (
+                <View style={styles.incrMinRow}>
+                  <View style={styles.incrMinMeta}>
+                    <Text style={styles.incrMinLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
+                    <Text style={styles.incrMinHint}>{t('exerciseEditor.incrMinHint')}</Text>
+                  </View>
+                  <IncrementInput
+                    value={incrMin}
+                    onChange={setIncrMin}
+                    unit={showTimeIncr ? 's' : weightLabel}
+                  />
+                </View>
+              )}
             </>
           )}
         </View>
@@ -568,6 +586,26 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     color:      colors.muted,
     fontWeight: typography.medium,
+  },
+
+  // ── Minimum increment row ──────────────────────────────────────────────────
+  incrMinRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    marginTop:      spacing.sm,
+    gap:            spacing.sm,
+  },
+  incrMinMeta: { flex: 1 },
+  incrMinLabel: {
+    fontSize:   typography.sm,
+    color:      colors.text,
+    fontWeight: typography.medium,
+  },
+  incrMinHint: {
+    fontSize:  typography.xs,
+    color:     colors.muted2,
+    marginTop: 2,
   },
 
   // ── Step fields ────────────────────────────────────────────────────────────

@@ -95,10 +95,11 @@ export function resolveProgressionConfig(exConfig, def) {
         minRir:       p.evaluation?.minRir       ?? 2,
       },
       increment: {
-        type:  p.increment?.type  ?? 'fixed',
-        value: p.increment?.value ?? d.weightStep ?? 2.5,
-        pct:   p.increment?.pct   ?? 5,
-        steps: p.increment?.steps ?? [],
+        type:         p.increment?.type         ?? 'fixed',
+        value:        p.increment?.value        ?? d.weightStep ?? 2.5,
+        pct:          p.increment?.pct          ?? 5,
+        steps:        p.increment?.steps        ?? [],
+        minIncrement: p.increment?.minIncrement ?? null,
       },
       seed: {
         weight: p.seed?.weight ?? null,
@@ -120,16 +121,32 @@ export function resolveProgressionConfig(exConfig, def) {
       minRir:       2,
     },
     increment: {
-      type:  'fixed',
-      value: d.weightStep ?? 2.5,
-      pct:   5,
-      steps: [],
+      type:         'fixed',
+      value:        d.weightStep ?? 2.5,
+      pct:          5,
+      steps:        [],
+      minIncrement: null,
     },
     seed: { weight: null, reps: null, time: null },
   };
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Floors `raw` to the nearest multiple of `minIncrement`.
+ * E.g. raw=3.2, minIncrement=2.5 → 2.5
+ *      raw=6.1, minIncrement=2.5 → 5.0
+ *      raw=2.1, minIncrement=2.5 → 2.5 (never goes below minIncrement itself)
+ *
+ * @param {number} raw
+ * @param {number|null} minIncrement  null or 0 = disabled (no rounding applied)
+ * @returns {number}
+ */
+function applyMinIncrement(raw, minIncrement) {
+  if (!minIncrement || minIncrement <= 0) return raw;
+  return Math.max(minIncrement, Math.floor(raw / minIncrement) * minIncrement);
+}
 
 /**
  * Computes the increment amount for the next step.
@@ -140,21 +157,28 @@ export function resolveProgressionConfig(exConfig, def) {
  * @returns {number}
  */
 function computeIncrement(currentValue, incrConfig, sessionCount = 0) {
+  const min = incrConfig.minIncrement ?? null;
+
   switch (incrConfig.type) {
     case 'pct': {
-      // Round to nearest 0.25 so weight increments stay on common plates
       const raw = Math.max(0, currentValue) * (incrConfig.pct / 100);
-      return Math.max(0.25, Math.round(raw / 0.25) * 0.25);
+      // Apply minIncrement if set; otherwise fall back to nearest 0.25
+      return min
+        ? applyMinIncrement(raw, min)
+        : Math.max(0.25, Math.round(raw / 0.25) * 0.25);
     }
     case 'stepped': {
       const step =
         incrConfig.steps?.find((s) => s.untilSession == null || sessionCount < s.untilSession)
         ?? incrConfig.steps?.[incrConfig.steps.length - 1];
-      return step?.value ?? incrConfig.value ?? 2.5;
+      const raw = step?.value ?? incrConfig.value ?? 2.5;
+      return min ? applyMinIncrement(raw, min) : raw;
     }
     case 'fixed':
-    default:
-      return incrConfig.value ?? 2.5;
+    default: {
+      const raw = incrConfig.value ?? 2.5;
+      return min ? applyMinIncrement(raw, min) : raw;
+    }
   }
 }
 
