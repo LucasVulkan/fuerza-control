@@ -557,14 +557,22 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   function togglePicker() { if (pickerMounted) closePicker(); else openPicker(); }
 
   function switchExercise(id) {
-    // Close picker and fade content out simultaneously, then update and fade in
+    // Close picker
     Animated.timing(pickerAnim, { toValue: 0, duration: 160, useNativeDriver: true })
       .start(({ finished }) => { if (finished) setPickerMounted(false); });
-    Animated.timing(contentOpacity, { toValue: 0, duration: 130, useNativeDriver: true })
+
+    // useNativeDriver: false keeps opacity on the JS thread, ensuring it stays at 0
+    // when React re-renders the new exercise content (no native thread race condition).
+    // requestAnimationFrame gives React one frame to commit the new content before
+    // starting the fade-in, preventing the flash.
+    Animated.timing(contentOpacity, { toValue: 0, duration: 130, useNativeDriver: false })
       .start(() => {
+        contentOpacity.setValue(0); // guarantee value is 0 before state update
         setActiveId(id);
         setExPickerSearch('');
-        Animated.timing(contentOpacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+        requestAnimationFrame(() => {
+          Animated.timing(contentOpacity, { toValue: 1, duration: 220, useNativeDriver: false }).start();
+        });
       });
   }
 
