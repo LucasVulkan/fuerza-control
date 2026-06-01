@@ -280,9 +280,6 @@ export default function WorkoutScreen() {
                   <Text style={styles.driveIcon}>☁</Text>
                 ) : null}
               </View>
-              {template.trainerName ? (
-                <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
-              ) : null}
             </>
           )}
         </View>

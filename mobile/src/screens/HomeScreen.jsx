@@ -201,7 +201,7 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
-function SessionCard({ template, lastSession, allExercises, status, onPress, language, driveBackup }) {
+function SessionCard({ template, lastSession, allExercises, status, onPress, language }) {
   const { t }  = useTranslation();
   const accent = resolveColor(template?.color ?? 'var(--day1)');
 
@@ -249,20 +249,10 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
           {t('workout.sessionLabel', { label: template?.label ?? '' })}
         </Text>
 
-        {/* Session name + cloud icon */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
-            {template?.name ?? ''}
-          </Text>
-          {driveBackup?.needsReconnect ? (
-            <Text style={[styles.cloudIcon, { color: colors.orange }]}>⚠ ☁</Text>
-          ) : driveBackup?.enabled ? (
-            <Text style={styles.cloudIcon}>☁</Text>
-          ) : null}
-        </View>
-        {template?.trainerName ? (
-          <Text style={styles.trainerCredit}>{t('workout.trainerCredit', { name: template.trainerName })}</Text>
-        ) : null}
+        {/* Session name */}
+        <Text style={styles.sesName} numberOfLines={1}>
+          {template?.name ?? ''}
+        </Text>
 
         {/* Status text */}
         <Text style={[styles.sesStatus, { color: statusText.color }]}>
@@ -458,10 +448,27 @@ export default function HomeScreen() {
             ? (activeProgram.stages[stageIdx]?.days ?? [])
             : (activeProgram.days ?? []);
 
+          // Trainer name — from the first session template that has one
+          const programTrainerName = currentDays
+            .map((d) => getEffectiveTemplate(d.sessionTemplateId)?.trainerName)
+            .find(Boolean) ?? null;
+
           return (
             <>
-              {/* Program name label */}
-              <Text style={styles.progLabel}>{activeProgram.name}</Text>
+              {/* Program name + trainer credit + drive icon */}
+              <View style={styles.progHeader}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.progLabel} numberOfLines={1}>{activeProgram.name}</Text>
+                  {programTrainerName ? (
+                    <Text style={styles.progTrainer}>{t('workout.trainerCredit', { name: programTrainerName })}</Text>
+                  ) : null}
+                </View>
+                {driveBackup?.needsReconnect ? (
+                  <Text style={[styles.progDriveIcon, { color: colors.orange }]}>⚠ ☁</Text>
+                ) : driveBackup?.enabled ? (
+                  <Text style={styles.progDriveIcon}>☁</Text>
+                ) : null}
+              </View>
 
               {/* Progress header (stage + week / pill) */}
               <ProgressHeader
@@ -523,7 +530,6 @@ export default function HomeScreen() {
                       allExercises={allExercises}
                       status={status}
                       language={i18n.language}
-                      driveBackup={driveBackup}
                       onPress={
                         status === 'active'
                           ? () => navigation.navigate('Workout')
@@ -616,6 +622,11 @@ const styles = StyleSheet.create({
   },
 
   // ── Program label ────────────────────────────────────────────────────────────
+  progHeader: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+  },
   progLabel: {
     fontSize:      typography.sm,
     fontWeight:    typography.bold,
@@ -623,6 +634,18 @@ const styles = StyleSheet.create({
     color:         colors.muted2,
     textTransform: 'uppercase',
     paddingLeft:   2,
+  },
+  progTrainer: {
+    fontSize:  typography.xs,
+    color:     colors.muted2,
+    marginTop: 1,
+    paddingLeft: 2,
+  },
+  progDriveIcon: {
+    fontSize:   13,
+    color:      colors.green,
+    opacity:    0.75,
+    marginTop:  2,
   },
 
   // ── Progress header ──────────────────────────────────────────────────────────
