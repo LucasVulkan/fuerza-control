@@ -774,26 +774,14 @@ function syncAgo(isoStr) {
 
 function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  onPress, onOpenEditor, onUploadProgram,
-  onViewProgress, onViewHistory,
-  onShowInfo,   // 🔑 → info sheet
-  onGoInfo,     // ⋯ → tab de info
+  onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo,
 }) {
   const { t } = useTranslation();
-  const historyHasNew = client.historyHasNew ?? false;
-  const programDirty  = client.programDirty  ?? false;
+  const programDirty = client.programDirty ?? false;
+  const showDirty    = isConnected && programDirty;
 
-  const showBlue   = isConnected && historyHasNew;
-  const showYellow = isConnected && programDirty;
-
-  // Sync status
-  const lastSync      = client.lastHistorySync ?? null;
-  const syncErr       = client.syncErrorAt ?? null;
-  const hasSyncError  = isConnected && syncErr && (!lastSync || syncErr > lastSync);
-  const showSyncStamp = isConnected && !hasSyncError && lastSync;
-
-  // Last session label — compact
-  let lastStr = null;
+  // Last activity label
+  let lastStr = 'Nunca';
   if (lastActivityTs) {
     const diffDays = Math.floor((Date.now() - lastActivityTs) / 86400000);
     if (diffDays === 0)      lastStr = t('dayCard.today');
@@ -801,126 +789,123 @@ function ClientListCard({
     else                     lastStr = `Hace ${diffDays} días`;
   }
 
-  const clientStatus   = client.status ?? 'active';
-  const statusDotColor = clientStatus === 'paused' ? colors.orange : clientStatus === 'inactive' ? colors.red : null;
-  const statusText     = clientStatus === 'paused' ? t('clients.statusPaused') : clientStatus === 'inactive' ? t('clients.statusInactive') : null;
-
-  const dayCount = activeProgram
-    ? (activeProgram.stages?.length > 0
-        ? activeProgram.stages.flatMap((st) => st.days ?? []).length
-        : (activeProgram.days ?? []).length)
+  // Program info
+  const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
+  const stageCount     = activeProgram?.stages?.length ?? 0;
+  const stageIdx       = activeProgram?.currentStageIndex ?? 0;
+  const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
+  const currentDays    = hasStages
+    ? (currentStage?.days ?? [])
+    : (activeProgram?.days ?? []);
+  const sessPerCycle   = Math.max(1, currentDays.length);
+  const doneInCycle    = activeProgram
+    ? (activeProgram.stageSessionsCompleted ?? 0) % sessPerCycle
     : 0;
+  const weekNum        = weeksTraining ?? 1;
+
+  // Status dot color
+  const dotColor = showDirty ? colors.orange : colors.green;
 
   return (
-    <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
+    <View style={styles.cCard}>
 
-      {/* ── Top: name + key button ── */}
-      <View style={styles.cCardTop}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={styles.cCardNameRow}>
-            <Text style={[styles.cCardName, { flex: 1 }]} numberOfLines={1}>{client.name}</Text>
-            {(tagNames ?? []).slice(0, 2).map((name) => (
-              <View key={name} style={styles.cTagInlineChip}>
-                <Text style={styles.cTagInlineChipText} numberOfLines={1}>{name}</Text>
+      {/* ── Row 1: Name · date · Info → ── */}
+      <View style={styles.cRow1}>
+        <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
+        <Text style={styles.cDate}>{lastStr}</Text>
+        <TouchableOpacity onPress={onGoInfo} hitSlop={8} activeOpacity={0.7}>
+          <Text style={styles.cInfoBtn}>Info →</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeProgram ? (
+        <>
+          {/* ── Row 2: Status dot · Program name · Stage name ── */}
+          <View style={styles.cRow2}>
+            {showDirty ? (
+              <Text style={[styles.cStatusIcon, { color: colors.orange }]}>▲</Text>
+            ) : (
+              <View style={styles.cStatusDot} />
+            )}
+            <Text
+              style={[styles.cProgName, showDirty && { color: colors.orange }]}
+              numberOfLines={1}
+            >
+              {activeProgram.name}
+              {currentStage?.name ? (
+                <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
+                  {' · '}{currentStage.name}
+                </Text>
+              ) : null}
+            </Text>
+          </View>
+
+          {/* ── Row 3: Program meta ── */}
+          <Text style={styles.cProgMeta}>
+            {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
+          </Text>
+
+          {/* ── Row 4: Counters + contextual button ── */}
+          <View style={styles.cRow4}>
+            <View style={styles.cCounters}>
+              <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
+              <Text style={styles.cWeekLabel}> Semana</Text>
+              <View style={styles.cDots}>
+                {Array.from({ length: sessPerCycle }, (_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.cDot,
+                      i < doneInCycle ? styles.cDotFull : styles.cDotEmpty,
+                    ]}
+                  />
+                ))}
               </View>
-            ))}
-            {(tagNames ?? []).length > 2 && (
-              <Text style={styles.cTagInlineMore}>+{(tagNames ?? []).length - 2}</Text>
+            </View>
+
+            {showDirty ? (
+              <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+                <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
+                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                  <Path d="M18 20V10M12 20V4M6 20v-6" />
+                </Svg>
+                <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
+              </TouchableOpacity>
             )}
           </View>
-          {(statusText || lastStr) && (
-            <View style={styles.cCardMetaRow}>
-              {statusText && (
-                <>
-                  <View style={[styles.cCardMetaDot, { backgroundColor: statusDotColor }]} />
-                  <Text style={[styles.cCardMetaStatus, { color: statusDotColor }]}>{statusText}</Text>
-                  {lastStr && <Text style={styles.cCardMetaSep}>·</Text>}
-                </>
-              )}
-              {lastStr && <Text style={styles.cCardMeta}>{lastStr}</Text>}
+        </>
+      ) : (
+        /* ── No program state ── */
+        <View style={styles.cNoProgramRow}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.cNoProgramDot} />
+              <Text style={styles.cNoProgramTitle}>Sin programa activo</Text>
             </View>
-          )}
-        </View>
-        <TouchableOpacity style={styles.cIconBtn} onPress={onShowInfo} hitSlop={8} activeOpacity={0.7}>
-          <Text style={styles.cIconBtnText}>🔑</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Activity indicator ── */}
-      {showBlue && (
-        <View style={styles.cActivityBadge}>
-          <View style={styles.cActivityDot} />
-          <Text style={styles.cActivityText}>Nueva actividad disponible</Text>
+            <Text style={styles.cNoProgramSub}>Asigna un programa al cliente</Text>
+          </View>
+          <TouchableOpacity style={styles.cBtnAccent} onPress={onOpenEditor} activeOpacity={0.85}>
+            <Text style={styles.cBtnAccentText}>+ Programa</Text>
+          </TouchableOpacity>
         </View>
       )}
 
-      {/* ── Sync status ── */}
-      {hasSyncError && (
-        <View style={styles.cSyncRow}>
-          <Text style={styles.cSyncError}>⚠ Error de sincronización</Text>
-        </View>
-      )}
-      {showSyncStamp && (
-        <View style={styles.cSyncRow}>
-          <Text style={styles.cSyncStamp}>Sin. {syncAgo(lastSync)}</Text>
-        </View>
-      )}
-
-      {/* ── Program section ── */}
-      <View style={styles.cProgramSection}>
-        {activeProgram ? (
-          <>
-            <View style={styles.cProgramNameRow}>
-              <Text style={[styles.cProgramStatusIcon, { color: showYellow ? colors.orange : colors.green }]}>
-                {showYellow ? '▲' : '✓'}
-              </Text>
-              <Text style={[styles.cProgramName, { flex: 1 }]} numberOfLines={1}>{activeProgram.name}</Text>
-              {weeksTraining != null && (
-                <Text style={styles.cProgramWeeks}>{weeksTraining} sem</Text>
-              )}
+      {/* ── Tags row ── */}
+      {(tagNames ?? []).length > 0 && (
+        <View style={styles.cTagsRow}>
+          {(tagNames ?? []).map((name) => (
+            <View key={name} style={styles.cTagPill}>
+              <Text style={styles.cTagPillText}>{name}</Text>
             </View>
-            {activeProgram.stages?.length > 1 ? (
-              <Text style={styles.cProgramMeta}>{activeProgram.stages.length} etapas · {dayCount} ses/ciclo</Text>
-            ) : dayCount > 0 ? (
-              <Text style={styles.cProgramMeta}>{dayCount} ses/ciclo</Text>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <Text style={styles.cProgramLabel}>SIN PROGRAMA ACTIVO</Text>
-            <Text style={styles.cProgramMeta}>Asigna un programa desde la vista de detalle</Text>
-          </>
-        )}
-      </View>
+          ))}
+        </View>
+      )}
 
-      {/* ── Action buttons ── */}
-      <View style={styles.cActions}>
-        <TouchableOpacity
-          style={[styles.cBtnSecondary, showYellow && styles.cBtnPrimary]}
-          onPress={showYellow ? onUploadProgram : onOpenEditor}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.cBtnText, showYellow && styles.cBtnTextPrimary]}>
-            {showYellow ? t('clients.btnUploadChanges') : activeProgram ? t('clients.btnEditProgram') : t('clients.btnAddProgram')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.cBtnSecondary, showBlue && styles.cBtnBlue]}
-          onPress={showBlue ? onViewHistory : onViewProgress}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.cBtnText, showBlue && styles.cBtnTextBlue]}>
-            {showBlue ? t('clients.btnViewActivity') : t('clients.btnViewProgress')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.cBtnIcon} onPress={onGoInfo} activeOpacity={0.7}>
-          <Text style={styles.cBtnIconText}>⋯</Text>
-        </TouchableOpacity>
-      </View>
-
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -998,11 +983,26 @@ export default function ClientsScreen() {
 
   // List
   const [search,           setSearch]           = useState('');
-  const [statusFilter,     setStatusFilter]     = useState('active');
-  const [tagFilter,        setTagFilter]        = useState([]);    // string[] — multi-select
+  const [statusFilter,     setStatusFilter]     = useState('active'); // 'active'|'inactive'|'all'
+  const [tagFilter,        setTagFilter]        = useState([]);    // active tag IDs (used in filter)
+  const [tagFilterRow,     setTagFilterRow]     = useState([]);    // all tag IDs shown in the row
   const [showTagSheet,     setShowTagSheet]     = useState(false);
-  const [sortBy,           setSortBy]           = useState('name'); // 'name' | 'lastSession'
-  const [sortDir,          setSortDir]          = useState('desc'); // 'desc' | 'asc'
+  const [sortDir,          setSortDir]          = useState('desc'); // always sort by last session
+
+  function cycleStatus() {
+    setStatusFilter((s) => s === 'active' ? 'inactive' : s === 'inactive' ? 'all' : 'active');
+  }
+  function addTagToRow(id) {
+    if (!tagFilterRow.includes(id)) setTagFilterRow((p) => [...p, id]);
+    if (!tagFilter.includes(id))    setTagFilter((p) => [...p, id]);
+  }
+  function toggleTagActive(id) {
+    setTagFilter((p) => p.includes(id) ? p.filter((t) => t !== id) : [...p, id]);
+  }
+  function removeTagFromRow(id) {
+    setTagFilterRow((p) => p.filter((t) => t !== id));
+    setTagFilter((p) => p.filter((t) => t !== id));
+  }
   const [showNewClient,    setShowNewClient]     = useState(false);
   const [newClientName,    setNewClientName]     = useState('');
 
@@ -1060,28 +1060,25 @@ export default function ClientsScreen() {
       })
       .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
 
-    if (sortBy === 'lastSession') {
-      const lastTs = {};
-      list.forEach((c) => {
-        const ids = new Set(
-          (c.programIds ?? [])
-            .map((id) => programs[id])
-            .filter(Boolean)
-            .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
-        );
-        const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
-        lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
-      });
-      list.sort((a, b) => sortDir === 'desc'
-        ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
-        : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)
+    // Always sort by last session date
+    const lastTs = {};
+    list.forEach((c) => {
+      const ids = new Set(
+        (c.programIds ?? [])
+          .map((id) => programs[id])
+          .filter(Boolean)
+          .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
       );
-    } else {
-      list.sort((a, b) => a.name.localeCompare(b.name));
-    }
+      const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+      lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
+    });
+    list.sort((a, b) => sortDir === 'desc'
+      ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
+      : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)
+    );
 
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortBy, sortDir, programs, workoutLog]);
+  }, [clients, search, statusFilter, tagFilter, sortDir, programs, workoutLog]);
 
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
@@ -1817,113 +1814,116 @@ export default function ClientsScreen() {
       {/* ── List header ── */}
       <View style={styles.listHeader}>
 
-        {/* Title + action buttons */}
+        {/* Row 1: Title + icon + New client button */}
         <View style={styles.listTitleRow}>
-          <Text style={styles.listTitle}>CLIENTES</Text>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
-            <Text style={styles.billingBtnText}>💳</Text>
-          </TouchableOpacity>
-          <AccentBtn label="＋ Nuevo cliente" onPress={() => setShowNewClient(true)} small />
-        </View>
-
-        {/* Search bar */}
-        <View style={styles.searchBarRow}>
-          <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-            stroke={colors.muted2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
-          </Svg>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar cliente…"
-            placeholderTextColor={colors.muted}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-        </View>
-
-        {/* Status chips with counts */}
-        <View style={styles.chipRow}>
-          <FilterChip label="Activos"   count={clientCounts.active}   active={statusFilter === 'active'}   onPress={() => setStatusFilter('active')} />
-          <FilterChip label="Inactivos" count={clientCounts.inactive} active={statusFilter === 'inactive'} onPress={() => setStatusFilter('inactive')} />
-          <FilterChip label="Todos"     count={clientCounts.total}    active={statusFilter === 'all'}      onPress={() => setStatusFilter('all')} />
-        </View>
-
-        {/* Sort + sync row */}
-        <View style={styles.sortTagRow}>
-          {/* Sort by date toggle */}
-          <TouchableOpacity
-            style={[styles.sortBtn, sortBy === 'lastSession' && styles.sortBtnActive]}
-            onPress={() => {
-              if (sortBy === 'name') { setSortBy('lastSession'); setSortDir('desc'); }
-              else { setSortDir((d) => d === 'desc' ? 'asc' : 'desc'); }
-            }}
-            activeOpacity={0.7}
-          >
-            {/* Clock icon */}
-            <HeaderIcon
-              d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3"
-              active={sortBy === 'lastSession'}
-            />
-            <Text style={[styles.sortBtnText, sortBy === 'lastSession' && styles.sortBtnTextActive]}>
-              {sortBy === 'name' ? t('clients.sortRecent') : sortDir === 'desc' ? t('clients.sortRecentDesc') : t('clients.sortOldAsc')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tag filter */}
-          {allTags.length > 0 && (
-            <TouchableOpacity
-              style={[styles.sortBtn, tagFilter.length > 0 && styles.sortBtnActive]}
-              onPress={() => setShowTagSheet(true)}
-              activeOpacity={0.7}
-            >
-              {/* Tag icon */}
-              <HeaderIcon
-                d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"
-                active={tagFilter.length > 0}
-              />
-              <Text style={[styles.sortBtnText, tagFilter.length > 0 && styles.sortBtnTextActive]}>
-                {tagFilter.length === 0
-                  ? t('clients.filterTags')
-                  : t('clients.filterTagsCount', { count: tagFilter.length })}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {tagFilter.length > 0 && (
-            <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={10} activeOpacity={0.7}>
-              <Text style={styles.sortTagClear}>✕</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Spacer — pushes sync to the right */}
-          <View style={{ flex: 1 }} />
-
-          {/* Sync indicator — tap to change mode */}
-          <TouchableOpacity style={styles.syncIndicator} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
-            <View style={[
-              styles.syncDot,
-              (trainerSync.mode === 'google' || trainerSync.mode === 'code') && styles.syncDotActive,
-            ]} />
-            <View style={styles.syncTextWrap}>
-              <Text style={styles.syncLabel}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.listTitle}>CLIENTES</Text>
+            {/* Sync status below title */}
+            <TouchableOpacity style={styles.syncInline} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
+              <View style={[
+                styles.syncDotInline,
+                (trainerSync.mode === 'google' || trainerSync.mode === 'code') && styles.syncDotInlineActive,
+              ]} />
+              <Text style={styles.syncLabelInline}>
                 {trainerSync.mode === 'google' || trainerSync.mode === 'code'
-                  ? t('clients.syncActive')
+                  ? `${t('clients.syncActive')}: ${trainerSync.mode === 'google' ? 'Google' : t('clients.syncModeCode')}`
                   : trainerSync.mode === 'offline'
                   ? t('clients.syncOff')
                   : t('clients.syncSetup')}
               </Text>
-              {trainerSync.mode != null && (
-                <Text style={styles.syncMode}>
-                  {trainerSync.mode === 'google'  ? 'Google' :
-                   trainerSync.mode === 'code'    ? t('clients.syncModeCode') :
-                   t('clients.syncModeManual')}
-                </Text>
-              )}
-            </View>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
+            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={colors.muted} strokeWidth={1.8} strokeLinecap="round">
+              <Path d="M3 6h18M3 10h18M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
+            </Svg>
+          </TouchableOpacity>
+          <AccentBtn label="＋ Nuevo cliente" onPress={() => setShowNewClient(true)} small />
+        </View>
+
+        {/* Row 2: Sort [↓↑] + Search + Filter [≡] */}
+        <View style={styles.searchRow}>
+          {/* Sort direction button */}
+          <TouchableOpacity
+            style={styles.searchSideBtn}
+            onPress={() => setSortDir((d) => d === 'desc' ? 'asc' : 'desc')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.searchSideBtnIcon}>{sortDir === 'desc' ? '↓' : '↑'}</Text>
+          </TouchableOpacity>
+
+          {/* Search input */}
+          <View style={styles.searchInputWrap}>
+            <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
+              stroke={colors.muted2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+            </Svg>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar cliente…"
+              placeholderTextColor={colors.muted}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+          </View>
+
+          {/* Filter / tag sheet button */}
+          <TouchableOpacity
+            style={[styles.searchSideBtn, tagFilterRow.length > 0 && styles.searchSideBtnActive]}
+            onPress={() => setShowTagSheet(true)}
+            activeOpacity={0.7}
+          >
+            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
+              stroke={tagFilterRow.length > 0 ? colors.accent : colors.muted}
+              strokeWidth={2} strokeLinecap="round">
+              <Path d="M4 6h16M7 12h10M10 18h4" />
+            </Svg>
           </TouchableOpacity>
         </View>
+
+        {/* Row 3: Status cycle + active tag pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Status cycling pill */}
+          <TouchableOpacity style={styles.statusPill} onPress={cycleStatus} activeOpacity={0.75}>
+            <Text style={styles.statusPillText}>
+              {statusFilter === 'active' ? 'Activos' : statusFilter === 'inactive' ? 'Inactivos' : 'Todos'}
+            </Text>
+            <View style={styles.statusPillBadge}>
+              <Text style={styles.statusPillBadgeText}>
+                {statusFilter === 'active'
+                  ? clientCounts.active
+                  : statusFilter === 'inactive'
+                  ? clientCounts.inactive
+                  : clientCounts.total}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Active tag pills */}
+          {tagFilterRow.map((id) => {
+            const tagName = allTags.find((tg) => tg.id === id)?.name;
+            if (!tagName) return null;
+            const isActive = tagFilter.includes(id);
+            return (
+              <View key={id} style={[styles.tagRowPill, isActive && styles.tagRowPillActive]}>
+                <TouchableOpacity onPress={() => toggleTagActive(id)} activeOpacity={0.7}>
+                  <Text style={[styles.tagRowPillText, isActive && styles.tagRowPillTextActive]}>
+                    {tagName}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeTagFromRow(id)} hitSlop={8} activeOpacity={0.7}>
+                  <Text style={[styles.tagRowPillX, isActive && styles.tagRowPillXActive]}>×</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </ScrollView>
 
       </View>
 
@@ -1981,7 +1981,6 @@ export default function ClientsScreen() {
                     else handleSelectClient(client.id);
                   }}
                   onViewProgress={() => handleSelectClientProgress(client.id)}
-                  onViewHistory={() => handleSelectClientHistory(client.id)}
                   onUploadProgram={async () => {
                     if (!client.activeProgramId) return;
                     try {
@@ -1991,7 +1990,6 @@ export default function ClientsScreen() {
                       Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
                     }
                   }}
-                  onShowInfo={() => setInfoSheetClientId(client.id)}
                   onGoInfo={() => handleSelectClientInfo(client.id)}
                 />
                 {infoSheetClientId === client.id && (
@@ -2056,20 +2054,19 @@ export default function ClientsScreen() {
               return (
                 <>
                   {filtered.map(({ id, name }) => {
-                    const selected = tagFilter.includes(id);
+                    const selected = tagFilterRow.includes(id);
                     return (
                       <TouchableOpacity
                         key={id}
                         style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}
-                        onPress={() => setTagFilter((prev) =>
-                          prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-                        )}
+                        onPress={() => selected ? removeTagFromRow(id) : addTagToRow(id)}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
                           {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
                         </View>
                         <Text style={[styles.tagSheetItemText, selected && { color: colors.accent }]}>{name}</Text>
+                        {selected && <Text style={{ color: colors.accent, fontSize: typography.sm }}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}
@@ -2251,19 +2248,19 @@ const styles = StyleSheet.create({
 
   // ── List header ──
   listHeader: {
-    paddingHorizontal: spacing.xl,
     paddingTop:        spacing.lg,
-    paddingBottom:     spacing.md,
+    paddingBottom:     spacing.xs,
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
-    gap:               spacing.md,
+    gap:               spacing.sm,
   },
 
-  // Title row
+  // Row 1: Title + sync status + buttons
   listTitleRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.xl,
   },
   listTitle: {
     fontSize:      typography.base,
@@ -2271,23 +2268,23 @@ const styles = StyleSheet.create({
     color:         colors.muted,
     letterSpacing: 2,
   },
-
-  // Search bar
-  searchBarRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    backgroundColor:   colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
-    paddingHorizontal: spacing.md,
-    gap:               spacing.sm,
+  // Sync inline (below title)
+  syncInline: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           4,
+    marginTop:     2,
   },
-  searchInput: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    color:           colors.text,
-    fontSize:        typography.base,
+  syncDotInline: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: colors.muted2,
+  },
+  syncDotInlineActive: { backgroundColor: colors.green },
+  syncLabelInline: {
+    fontSize: typography.xs,
+    color:    colors.muted2,
   },
 
   billingBtn: {
@@ -2295,8 +2292,8 @@ const styles = StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       colors.border,
     borderRadius:      radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
+    width:             32,
+    height:            32,
     alignItems:        'center',
     justifyContent:    'center',
   },
@@ -2305,123 +2302,143 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // ── Filter chips ──
-  chipRow: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
+  // Row 2: Sort + Search + Filter
+  searchRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.xl,
   },
-  chip: {
+  searchSideBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  searchSideBtnActive: {
+    borderColor:     withOpacity(colors.accent, 0.4),
+    backgroundColor: withOpacity(colors.accent, 0.08),
+  },
+  searchSideBtnIcon: {
+    fontSize:   16,
+    color:      colors.muted,
+    lineHeight: 20,
+  },
+  searchInputWrap: {
     flex:              1,
     flexDirection:     'row',
     alignItems:        'center',
-    justifyContent:    'center',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius:      radius.full,   // fully rounded pill
-    borderWidth:       borders.thin,
-    borderColor:       colors.border,
     backgroundColor:   colors.surface,
-    gap:               spacing.xs,
-  },
-  chipActive: {
-    borderColor:     `${colors.accent}70`,
-    backgroundColor: `${colors.accent}10`,
-  },
-  chipText: {
-    fontSize:   typography.xs,
-    color:      colors.muted,
-    fontWeight: typography.medium,
-  },
-  chipTextActive: { color: colors.accent },
-  // Non-active: dim gray badge
-  chipCountBadge: {
-    backgroundColor:   colors.surface2,
-    borderRadius:      radius.full,
-    paddingHorizontal: 6,
-    paddingVertical:   1,
-    minWidth:          20,
-    alignItems:        'center',
     borderWidth:       borders.thin,
     borderColor:       colors.border,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    gap:               spacing.sm,
+    height:            36,
   },
-  chipCountText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.bold,
-    color:      colors.muted,
-  },
-  // Active: yellow badge + dark text
-  chipCountBadgeActive: {
-    backgroundColor: colors.accent,
-    borderColor:     colors.accent,
-  },
-  chipCountTextActive: {
-    color: colors.bg,
+  searchInput: {
+    flex:    1,
+    color:   colors.text,
+    fontSize: typography.sm,
   },
 
-  // ── Sync indicator ──
-  syncIndicator: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    flexShrink:    0,
+  // Row 3: Filter pills row
+  filterRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
   },
-  syncDot: {
-    width:        7,
-    height:       7,
-    borderRadius: 4,
-    backgroundColor: colors.muted2,
-    flexShrink:   0,
-  },
-  syncDotActive: {
-    backgroundColor: colors.green,
-  },
-  syncTextWrap: { gap: 1 },
-  syncLabel: {
-    fontSize:   typography.xs,
-    color:      colors.muted,
-    fontWeight: typography.medium,
-    lineHeight: 14,
-  },
-  syncMode: {
-    fontSize:   typography.xs,
-    color:      colors.muted2,
-    lineHeight: 13,
-  },
-
-  // ── Sort + tag filter row ──
-  sortTagRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
-  sortBtn: {
+  // Status cycle pill
+  statusPill: {
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 1,
+    borderRadius:      radius.full,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
+    borderColor:       colors.text,
     backgroundColor:   colors.surface,
     flexShrink:        0,
   },
-  sortBtnActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+  statusPillText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.text,
   },
-  sortBtnText: {
+  statusPillBadge: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.full,
+    minWidth:        20,
+    height:          20,
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: 5,
+  },
+  statusPillBadgeText: {
+    fontSize:   11,
+    fontWeight: typography.bold,
+    color:      colors.bg,
+  },
+  // Tag pills in filter row
+  tagRowPill: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingLeft:       spacing.sm,
+    paddingRight:      spacing.xs,
+    paddingVertical:   spacing.xs,
+    borderRadius:      radius.full,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    gap:               spacing.xs,
+    flexShrink:        0,
+  },
+  tagRowPillActive: {
+    borderColor:     colors.accent,
+    backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  tagRowPillText: {
     fontSize:   typography.xs,
     color:      colors.muted,
     fontWeight: typography.medium,
   },
-  sortBtnTextActive: { color: colors.accent },
-  sortTagClear: {
-    fontSize:   typography.sm,
+  tagRowPillTextActive: { color: colors.accent },
+  tagRowPillX: {
+    fontSize:   14,
     color:      colors.muted2,
-    lineHeight: 20,
-    paddingHorizontal: 2,
+    lineHeight: 16,
   },
+  tagRowPillXActive: { color: colors.accent },
+
+  // Legacy — keep chip styles for compatibility with other views
+  chip: {},
+  chipActive: {},
+  chipText: {},
+  chipTextActive: {},
+  chipCountBadge: {},
+  chipCountText: {},
+  chipCountBadgeActive: {},
+  chipCountTextActive: {},
+  syncIndicator: {},
+  syncDot: {},
+  syncDotActive: {},
+  syncTextWrap: {},
+  syncLabel: {},
+  syncMode: {},
+  sortTagRow: {},
+  sortBtn: {},
+  sortBtnActive: {},
+  sortBtnText: {},
+  sortBtnTextActive: {},
+  sortTagClear: {},
+  chipRow: {},
 
   // ── Tag filter bottom sheet ──
   tagSheet: {
@@ -2704,207 +2721,237 @@ const styles = StyleSheet.create({
     color:      colors.accent,
   },
 
-  // ── Client list card (new design) ──
+  // ── Client list card ──────────────────────────────────────────────────────────
   cCard: {
     backgroundColor: colors.surface,
     borderWidth:     borders.thin,
     borderColor:     colors.borderCard,
     borderRadius:    radius.lg,
-    overflow:        'hidden',
     padding:         spacing.md,
     gap:             spacing.sm,
   },
-  cCardTop: {
+  // Row 1: name · date · Info →
+  cRow1: {
     flexDirection: 'row',
-    alignItems:    'flex-start',
+    alignItems:    'baseline',
     gap:           spacing.sm,
   },
-  cCardNameRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    overflow:      'hidden',
-  },
-  cCardName: {
-    fontSize:   typography.lg,
-    fontWeight: typography.semibold,
+  cName: {
+    fontSize:   typography.xl,
+    fontWeight: typography.bold,
     color:      colors.text,
-    lineHeight: typography.lg * 1.2,
+    flexShrink: 1,
   },
-  // Inline tag chips (next to name on card)
-  cTagInlineChip: {
-    backgroundColor:   `${colors.accent}14`,
-    borderWidth:       borders.thin,
-    borderColor:       `${colors.accent}30`,
-    borderRadius:      radius.xs,
-    paddingHorizontal: 6,
-    paddingVertical:   1,
-    flexShrink:        0,
-    maxWidth:          72,
-  },
-  cTagInlineChipText: {
-    fontSize:   typography.xs,
-    color:      colors.accent,
-    fontWeight: typography.medium,
-  },
-  cTagInlineMore: {
+  cDate: {
     fontSize:  typography.xs,
     color:     colors.muted,
     flexShrink: 0,
   },
-  cCardMetaRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginTop:     4,
-    flexWrap:      'wrap',
-  },
-  cCardMetaDot: {
-    width:        5,
-    height:       5,
-    borderRadius: 3,
-    flexShrink:   0,
-  },
-  cCardMetaStatus: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-  },
-  cCardMetaSep: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
-  cCardMeta: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
-  cIconBtn: {
-    width:           36,
-    height:          36,
-    borderRadius:    radius.md,
-    backgroundColor: colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    alignItems:      'center',
-    justifyContent:  'center',
-    marginTop:       2,
-  },
-  cIconBtnText: {
-    fontSize:   15,
-    lineHeight: 17,
-  },
-
-  // Activity indicator (subtle)
-  cActivityBadge: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginTop:     -spacing.xs, // tighten gap after top
-  },
-  cActivityDot: {
-    width:           6,
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: colors.blue,
-    flexShrink:      0,
-  },
-  cActivityText: {
-    fontSize:   typography.xs,
-    color:      colors.blue,
-    fontWeight: typography.medium,
-  },
-
-  // Sync status
-  cSyncRow: {
-    marginTop: 2,
-  },
-  cSyncError: {
-    fontSize:   typography.xs,
-    color:      colors.orange,
-    fontWeight: typography.medium,
-  },
-  cSyncStamp: {
-    fontSize: typography.xs,
-    color:    colors.muted2,
-  },
-
-  // Program section — flat (sin tarjeta anidada)
-  cProgramSection: {
-    gap:        3,
-    paddingTop: spacing.xs,
-  },
-  cProgramNameRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  cProgramWeeks: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      colors.muted,
-  },
-  cProgramLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         colors.muted2,
-    letterSpacing: 0.8,
-  },
-  cProgramStatusIcon: {
-    fontSize:   typography.sm,
-    fontWeight: typography.bold,
-    lineHeight: typography.sm * 1.2,
-  },
-  cProgramName: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      '#b0b0b0',
-  },
-  cProgramMeta: {
-    fontSize: typography.xs,
-    color:    colors.muted,
-  },
-
-  // Tags on card
-  cTagRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  cTagChip: {
-    backgroundColor:   `${colors.accent}12`,
-    borderWidth:       borders.thin,
-    borderColor:       `${colors.accent}30`,
-    borderRadius:      radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
-  },
-  cTagChipRemovable: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    backgroundColor:   `${colors.accent}12`,
-    borderWidth:       borders.thin,
-    borderColor:       `${colors.accent}30`,
-    borderRadius:      radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
-  },
-  cTagChipText: {
+  cInfoBtn: {
     fontSize:   typography.xs,
     color:      colors.accent,
     fontWeight: typography.medium,
+    marginLeft: 'auto',
+    flexShrink: 0,
   },
-  cTagChipRemove: {
-    fontSize:  9,
-    color:     colors.accent,
-    opacity:   0.6,
-    lineHeight: 12,
+  // Row 2: status dot · program · stage
+  cRow2: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
   },
-  cTagMore: {
+  cStatusDot: {
+    width:           8,
+    height:          8,
+    borderRadius:    4,
+    backgroundColor: colors.green,
+    flexShrink:      0,
+  },
+  cStatusIcon: {
+    fontSize:   12,
+    fontWeight: typography.bold,
+    lineHeight: 14,
+    flexShrink: 0,
+  },
+  cProgName: {
+    fontSize:   typography.base,
+    fontWeight: typography.semibold,
+    color:      colors.accent,
+    flex:       1,
+  },
+  cStageName: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
+  // Row 3: meta
+  cProgMeta: {
+    fontSize: typography.xs,
+    color:    colors.muted,
+  },
+  // Row 4: counters + button
+  cRow4: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  cCounters: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+  },
+  cWeekNum: {
+    fontSize:   typography.xl,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+    lineHeight: typography.xl * 1.1,
+  },
+  cWeekLabel: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 3,
+  },
+  cDots: {
+    flexDirection: 'row',
+    gap:           5,
+    alignItems:    'center',
+    marginLeft:    spacing.xs,
+  },
+  cDot: {
+    width:        8,
+    height:       8,
+    borderRadius: 4,
+  },
+  cDotFull: {
+    backgroundColor: colors.accent,
+  },
+  cDotEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth:     1.5,
+    borderColor:     colors.muted2,
+  },
+  // Contextual buttons (right of row 4)
+  cBtnOutline: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.xs,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical:   spacing.xs + 2,
+    borderRadius:      radius.sm,
+    borderWidth:       borders.thin,
+    borderColor:       colors.muted2,
+    backgroundColor:   'transparent',
+    flexShrink:        0,
+  },
+  cBtnOutlineText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  cBtnOrange: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical:   spacing.xs + 2,
+    borderRadius:      radius.sm,
+    backgroundColor:   colors.orange,
+    flexShrink:        0,
+  },
+  cBtnOrangeText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.semibold,
+    color:      '#fff',
+  },
+  cBtnAccent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    borderRadius:      radius.sm,
+    backgroundColor:   colors.accent,
+    flexShrink:        0,
+  },
+  cBtnAccentText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.bold,
+    color:      colors.bg,
+  },
+  // No program state
+  cNoProgramRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  cNoProgramDot: {
+    width:        9,
+    height:       9,
+    borderRadius: 5,
+    borderWidth:  1.5,
+    borderColor:  colors.muted,
+    flexShrink:   0,
+  },
+  cNoProgramTitle: {
+    fontSize:   typography.sm,
+    color:      colors.muted,
+    fontStyle:  'italic',
+  },
+  cNoProgramSub: {
+    fontSize:   typography.xs,
+    color:      colors.muted2,
+    marginTop:  2,
+    marginLeft: 15,
+  },
+  // Tags at bottom of card
+  cTagsRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+    marginTop:     spacing.xs,
+    paddingTop:    spacing.xs,
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+  },
+  cTagPill: {
+    borderWidth:       borders.thin,
+    borderColor:       colors.muted2,
+    borderRadius:      radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   2,
+  },
+  cTagPillText: {
     fontSize:   typography.xs,
     color:      colors.muted,
     fontWeight: typography.medium,
-    alignSelf:  'center',
   },
+
+  // Legacy stubs — kept so detail view still compiles
+  cTagInlineChip: {},
+  cTagInlineChipText: {},
+  cTagInlineMore: {},
+  cCardMetaRow: {},
+  cCardMetaDot: {},
+  cCardMetaStatus: {},
+  cCardMetaSep: {},
+  cCardMeta: {},
+  cIconBtn: {},
+  cIconBtnText: {},
+  cActivityBadge: {},
+  cActivityDot: {},
+  cActivityText: {},
+  cSyncRow: {},
+  cSyncError: {},
+  cSyncStamp: {},
+  cProgramSection: {},
+  cProgramNameRow: {},
+  cProgramWeeks: {},
+  cProgramLabel: {},
+  cProgramStatusIcon: {},
+  cProgramName: {},
+  cProgramMeta: {},
+  cTagRow: {},
+  cTagChip: {},
+  cTagChipRemovable: {},
+  cTagChipText: {},
+  cTagChipRemove: {},
+  cTagMore: {},
   // Selectable tags in info tab
   cTagSelectable: {
     flexDirection:     'row',
@@ -2932,20 +2979,11 @@ const styles = StyleSheet.create({
   },
   cTagSelectableTextActive: { color: colors.accent },
 
-  // Action buttons (CSS-mockup style)
-  cActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
-  // Flat (borderless) variants — used on client list cards
-  cBtnFlat: {
-    height:          32,
-    alignItems:      'center',
-    justifyContent:  'center',
-    paddingHorizontal: spacing.sm,
-  },
-  cBtnFlatPrimary: {},   // color comes from cBtnTextPrimary
-  cBtnFlatBlue:    {},   // color comes from cBtnTextBlue
+  // Legacy action button stubs
+  cActions: {},
+  cBtnFlat: {},
+  cBtnFlatPrimary: {},
+  cBtnFlatBlue:    {},
   cBtnFlatText: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
@@ -2963,58 +3001,16 @@ const styles = StyleSheet.create({
     color:      colors.muted,
     lineHeight: 20,
   },
-  cBtnSecondary: {
-    flex:            1,
-    height:          36,
-    borderRadius:    radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-    paddingHorizontal: spacing.sm,
-  },
-  cBtnPrimary: {
-    backgroundColor: withOpacity(colors.orange, 0.1),
-    borderColor:     withOpacity(colors.orange, 0.35),
-  },
-  cBtnBlue: {
-    backgroundColor: withOpacity(colors.blue, 0.1),
-    borderColor:     withOpacity(colors.blue, 0.35),
-  },
-  cBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      colors.muted,
-  },
-  cBtnTextPrimary: {
-    color: colors.orange,
-  },
-  cBtnTextBlue: {
-    color: colors.blue,
-  },
-  cBtnAssignActive: {
-    backgroundColor: withOpacity(colors.accent, 0.12),
-    borderColor:     withOpacity(colors.accent, 0.4),
-  },
-  cBtnTextAssignActive: {
-    color: colors.accent,
-  },
-  cBtnIcon: {
-    width:           36,
-    height:          36,
-    borderRadius:    radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  cBtnIconText: {
-    fontSize:   18,
-    color:      colors.muted,
-    lineHeight: 20,
-  },
+  cBtnSecondary:        {},
+  cBtnPrimary:          {},
+  cBtnBlue:             {},
+  cBtnText:             {},
+  cBtnTextPrimary:      {},
+  cBtnTextBlue:         {},
+  cBtnAssignActive:     {},
+  cBtnTextAssignActive: {},
+  cBtnIcon:             {},
+  cBtnIconText:         {},
 
   // ── Detail header ──
   detailHeader: {
