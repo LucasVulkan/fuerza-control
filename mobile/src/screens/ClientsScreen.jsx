@@ -819,35 +819,36 @@ function ClientListCard({
       </View>
 
       {activeProgram ? (
-        /* ── Program block — tighter internal gap ── */
+        /* ── Program block: info rows left · button centered right ── */
         <View style={styles.cProgramBlock}>
-          {/* Row 2: Status dot · Program name · Stage name */}
-          <View style={styles.cRow2}>
-            {showDirty ? (
-              <Text style={[styles.cStatusIcon, { color: colors.orange }]}>▲</Text>
-            ) : (
-              <View style={styles.cStatusDot} />
-            )}
-            <Text
-              style={[styles.cProgName, showDirty && { color: colors.orange }]}
-              numberOfLines={1}
-            >
-              {activeProgram.name}
-              {currentStage?.name ? (
-                <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
-                  {' · '}{currentStage.name}
-                </Text>
-              ) : null}
+          {/* Left: stacked info */}
+          <View style={styles.cProgramInfo}>
+            {/* Row 2: Status dot · Program name · Stage name */}
+            <View style={styles.cRow2}>
+              {showDirty ? (
+                <Text style={[styles.cStatusIcon, { color: colors.orange }]}>▲</Text>
+              ) : (
+                <View style={styles.cStatusDot} />
+              )}
+              <Text
+                style={[styles.cProgName, showDirty && { color: colors.orange }]}
+                numberOfLines={1}
+              >
+                {activeProgram.name}
+                {currentStage?.name ? (
+                  <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
+                    {' · '}{currentStage.name}
+                  </Text>
+                ) : null}
+              </Text>
+            </View>
+
+            {/* Row 3: Program meta */}
+            <Text style={styles.cProgMeta}>
+              {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
             </Text>
-          </View>
 
-          {/* Row 3: Program meta */}
-          <Text style={styles.cProgMeta}>
-            {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
-          </Text>
-
-          {/* Row 4: Counters + contextual button */}
-          <View style={styles.cRow4}>
+            {/* Row 4: Counters only */}
             <View style={styles.cCounters}>
               <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
               <Text style={styles.cWeekLabel}> Semana</Text>
@@ -857,21 +858,22 @@ function ClientListCard({
                 ))}
               </View>
             </View>
-
-            {showDirty ? (
-              <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-                <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
-                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
-                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                  <Path d="M18 20V10M12 20V4M6 20v-6" />
-                </Svg>
-                <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
-              </TouchableOpacity>
-            )}
           </View>
+
+          {/* Right: contextual button — vertically centered with info block */}
+          {showDirty ? (
+            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
+              <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                <Path d="M18 20V10M12 20V4M6 20v-6" />
+              </Svg>
+              <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         /* ── No program state ── */
@@ -2305,8 +2307,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   searchSideBtn: {
-    width:           36,
-    height:          36,
+    width:           42,
+    height:          42,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
@@ -2334,7 +2336,7 @@ const styles = StyleSheet.create({
     borderRadius:      radius.sm,
     paddingHorizontal: spacing.md,
     gap:               spacing.sm,
-    height:            36,
+    height:            42,
   },
   searchInput: {
     flex:    1,
@@ -2358,8 +2360,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.xs + 2,
     borderRadius:      radius.full,
-    borderWidth:       borders.thin,
-    borderColor:       colors.text,
+    borderWidth:       1.5,
+    borderColor:       withOpacity(colors.text, 0.65),
     backgroundColor:   colors.surface,
     flexShrink:        0,
     minWidth:          100,
@@ -2380,6 +2382,7 @@ const styles = StyleSheet.create({
     justifyContent:    'center',
     paddingHorizontal: 5,
     flexShrink:        0,
+    marginLeft:        spacing.sm,  // guaranteed gap between text and badge
   },
   statusPillBadgeText: {
     fontSize:   11,
@@ -2757,7 +2760,13 @@ const styles = StyleSheet.create({
   },
   // Program block — rows 2+3+4 grouped with tight gap
   cProgramBlock: {
-    gap: 4,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  cProgramInfo: {
+    flex: 1,
+    gap:  4,
   },
   // Row 2: status dot · program · stage
   cRow2: {
@@ -2808,10 +2817,10 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
   },
   cWeekNum: {
-    fontSize:   typography.lg,
+    fontSize:   typography.base,
     fontWeight: typography.heavy,
     color:      colors.text,
-    lineHeight: typography.lg * 1.1,
+    lineHeight: typography.base * 1.1,
   },
   cWeekLabel: {
     fontSize:   typography.sm,
