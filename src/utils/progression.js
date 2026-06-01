@@ -200,8 +200,8 @@ function countQualifyingSets(doneSets, targets) {
     const time = parseFloat(s.time) || 0;
     if (minTime > 0 && time > 0) return time >= minTime;
     if (minReps > 0 && reps > 0) return reps >= minReps;
-    // No metric data entered → rely on done flag or weight presence
-    return s.done || parseFloat(s.weight) > 0;
+    // No metric data entered → only the done tick confirms completion
+    return !!s.done;
   }).length;
 }
 
