@@ -1522,17 +1522,28 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             )}
             {/* Filters */}
-            <View style={{ gap: spacing.xs, marginBottom: spacing.xs }}>
-              <View style={styles.chipRow}>
-                {[{ id: 'active', label: t('clients.scope.active') }, { id: 'all', label: t('clients.scope.all') }].map(({ id, label }) => (
-                  <FilterChip key={id} label={label} active={scopeFilter === id} onPress={() => setScopeFilter(id)} />
-                ))}
-              </View>
-              <View style={styles.chipRow}>
-                {PERIOD_OPTIONS.map(({ id, label }) => (
-                  <FilterChip key={id} label={label} active={periodFilter === id} onPress={() => setPeriodFilter(id)} />
-                ))}
-              </View>
+            <View style={styles.histFilterRow}>
+              {PERIOD_OPTIONS.map(({ id, label }) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.histFilterBtn, periodFilter === id && styles.histFilterBtnActive]}
+                  onPress={() => setPeriodFilter(id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.histFilterBtnText, periodFilter === id && styles.histFilterBtnTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+              <View style={{ flex: 1 }} />
+              {[{ id: 'active', label: t('clients.scope.active') }, { id: 'all', label: t('clients.scope.all') }].map(({ id, label }) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.histFilterBtn, scopeFilter === id && styles.histFilterBtnActive]}
+                  onPress={() => setScopeFilter(id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.histFilterBtnText, scopeFilter === id && styles.histFilterBtnTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {filteredLog.length === 0 ? (
@@ -3412,6 +3423,26 @@ const styles = StyleSheet.create({
   tabBarUnderlineActive: { backgroundColor: colors.accent },
 
   // ── Tab content ──
+  histFilterRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  histFilterBtn: {
+    paddingVertical:   4,
+    paddingHorizontal: spacing.sm,
+    borderRadius:      5,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface2,
+  },
+  histFilterBtnActive: {
+    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     withOpacity(colors.accent, 0.3),
+  },
+  histFilterBtnText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  histFilterBtnTextActive: { color: colors.accent },
+
   refreshHistoryBtn: {
     backgroundColor: `${colors.accent}18`,
     borderWidth:     1,
