@@ -298,8 +298,10 @@ function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeass
     : dayCount > 0 ? `${dayCount} días/ciclo` : null;
 
   // 3rd button state machine
+  // When cloud sync is available (onUpload defined), active program always shows "↑ Subir"
+  // so the trainer has an explicit upload CTA. "✓ Asignado" only when there's no cloud.
   const assignBtn = isActive
-    ? dirty
+    ? onUpload
       ? { label: '↑ Subir', extraStyle: styles.cBtnPrimary, extraTextStyle: styles.cBtnTextPrimary, onPress: onUpload }
       : { label: '✓ Asignado', extraStyle: styles.cBtnAssignActive, extraTextStyle: styles.cBtnTextAssignActive, onPress: null }
     : { label: t('clients.newProgramModal.assignBtn'), extraStyle: null, extraTextStyle: null, onPress: onAssign };
@@ -3229,7 +3231,7 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  cBtnIconText:         {},
+  cBtnIconText:         { color: colors.muted, fontSize: typography.base },
 
   // ── Detail header ──
   detailHeader: {
