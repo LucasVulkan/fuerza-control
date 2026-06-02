@@ -123,9 +123,37 @@ function Accordion({ label, open, onToggle, children }) {
 
 // ── Session card (history tab) ─────────────────────────────────────────────────
 
+// ── Session card helpers (mirror of HistoryScreen) ────────────────────────────
+
+function buildSetLabel(s, i, fmtW) {
+  const hasW = s.weight && Number(s.weight) > 0;
+  const hasR = s.reps   && Number(s.reps)   > 0;
+  const hasT = s.time   && Number(s.time)   > 0;
+  if (hasW && hasR) return `${fmtW(s.weight)}×${s.reps}`;
+  if (hasW && hasT) return `${fmtW(s.weight)}×${s.time}s`;
+  if (hasR)         return `${s.reps} reps`;
+  if (hasT)         return `${s.time}s`;
+  if (hasW)         return fmtW(s.weight);
+  return `S${i + 1}`;
+}
+
+function getPillVariant(s, exConfig) {
+  const hasData = (s.weight && Number(s.weight) > 0)
+               || (s.reps   && Number(s.reps)   > 0)
+               || (s.time   && Number(s.time)   > 0);
+  if (!hasData)         return 'empty';
+  if (s.done === false) return 'partial';
+  if (exConfig) {
+    const isTimeBased = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
+    if (isTimeBased  && exConfig.minTime && Number(s.time) < Number(exConfig.minTime)) return 'partial';
+    if (!isTimeBased && exConfig.minReps && Number(s.reps) < Number(exConfig.minReps)) return 'partial';
+  }
+  return 'done';
+}
+
 function ClientSessionCard({ session, onDelete }) {
-  const { i18n, t }    = useTranslation();
-  const { fmt: fmtW }  = useWeightUnit();
+  const { i18n, t }   = useTranslation();
+  const { fmt: fmtW } = useWeightUnit();
   const [open, setOpen] = useState(false);
 
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -133,62 +161,99 @@ function ClientSessionCard({ session, onDelete }) {
   const customExercises      = useStore((s) => s.customExercises);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const template = getEffectiveTemplate(session.sessionTemplateId);
-  const label    = template?.label ?? '?';
-  const name     = template?.name  ?? t('clients.sessionFallback');
-  const accent   = resolveColor(template?.color ?? 'var(--accent)');
+  const template   = getEffectiveTemplate(session.sessionTemplateId);
+  const label      = template?.label ?? '?';
+  const name       = template?.name  ?? t('clients.sessionFallback');
+  const accent     = resolveColor(template?.color ?? 'var(--accent)');
+  const durMin     = session.duration ? Math.round(session.duration / 60000) : null;
+  const hasNotes   = !!session.notes?.trim();
 
-  const date    = new Date(session.timestamp).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-  const durMin  = session.duration ? Math.round(session.duration / 60000) : null;
+  const date = new Date(session.timestamp).toLocaleDateString('es-ES', {
+    weekday: 'short', day: 'numeric', month: 'short',
+  });
+
+  const exConfigs = {};
+  (template?.exercises ?? []).forEach((ec) => { exConfigs[ec.exerciseId] = ec; });
 
   return (
-    <View style={[styles.sessionCard, { borderLeftColor: accent }]}>
-      <TouchableOpacity style={styles.sessionCardTop} onPress={() => setOpen((v) => !v)} activeOpacity={0.75}>
-        <View style={styles.sessionCardLeft}>
-          <Text style={[styles.sessionLabel, { color: accent }]}>{label}</Text>
-          <View>
-            <Text style={styles.sessionName}>{name}</Text>
-            <Text style={styles.sessionDate}>{date}{durMin ? ` · ${durMin} min` : ''}</Text>
+    <View style={styles.sesCard}>
+      <TouchableOpacity
+        style={[styles.sesCardHeader, { borderLeftColor: accent }]}
+        onPress={() => setOpen((v) => !v)}
+        activeOpacity={0.75}
+      >
+        <View style={styles.sesCardLeft}>
+          <Text style={[styles.sesTag, { color: accent }]} numberOfLines={1}>
+            {t('workout.sessionLabel', { label })}
+          </Text>
+          <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
+          <View style={styles.sesMeta}>
+            <Text style={styles.sesDate}>{date}</Text>
+            {durMin ? <Text style={styles.sesMetaSep}>·</Text> : null}
+            {durMin ? <Text style={styles.sesDate}>{durMin} min</Text> : null}
+            {hasNotes && (
+              <View style={styles.sesNoteTag}>
+                <Text style={styles.sesNoteTagText}>NOTA</Text>
+              </View>
+            )}
           </View>
         </View>
-        <View style={styles.sessionCardRight}>
-          <TouchableOpacity onPress={() => Alert.alert('Eliminar sesión', '¿Eliminar esta sesión del historial?', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Eliminar', style: 'destructive', onPress: () => onDelete(session.id) },
-          ])} hitSlop={8}>
-            <Text style={styles.sessionDelete}>✕</Text>
+        <View style={styles.sesCardRight}>
+          <TouchableOpacity
+            onPress={() => Alert.alert(t('history.deleteTitle'), t('history.deleteConfirm'), [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(session.id) },
+            ])}
+            hitSlop={8}
+            style={{ padding: spacing.xs }}
+          >
+            <Text style={styles.sesDelete}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.sessionChevron}>{open ? '▴' : '▾'}</Text>
+          <Text style={[styles.sesChevron, open && styles.sesChevronOpen]}>▾</Text>
         </View>
       </TouchableOpacity>
 
       {open && (
-        <View style={styles.sessionBody}>
-          {session.exercises?.map((ex) => {
-            const def = allExercises[ex.exerciseId];
+        <View style={styles.sesDetail}>
+          {hasNotes && (
+            <View style={styles.sesNoteSection}>
+              <Text style={styles.sesNoteSectionText}>{session.notes}</Text>
+            </View>
+          )}
+          {(session.exercises ?? []).map((ex) => {
+            const def    = allExercises[ex.exerciseId];
             const exName = def
               ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
               : ex.exerciseId;
-            const doneSets = ex.sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? [];
-            if (!doneSets.length) return null;
+            const hasSets = (ex.sets ?? []).some((s) => s.done || s.weight || s.reps || s.time);
+            if (!hasSets) return null;
+            const exCfg = exConfigs[ex.exerciseId];
             return (
-              <View key={ex.exerciseId} style={styles.sessionExRow}>
-                <Text style={styles.sessionExName}>{exName}</Text>
-                <Text style={styles.sessionExSets}>
-                  {doneSets.map((s, i) => {
-                    if (s.time)               return `${s.time}s`;
-                    if (s.weight && s.reps)   return `${fmtW(s.weight)}×${s.reps}`;
-                    if (s.reps)               return `${s.reps}r`;
-                    if (s.weight)             return fmtW(s.weight);
-                    return `S${i + 1}`;
-                  }).join('  ')}
-                </Text>
+              <View key={ex.exerciseId} style={styles.sesExSection}>
+                <Text style={styles.sesExName}>{exName}</Text>
+                <View style={styles.sesPills}>
+                  {(ex.sets ?? []).map((s, i) => {
+                    const variant = getPillVariant(s, exCfg);
+                    return (
+                      <View key={i} style={[
+                        styles.sesPill,
+                        variant === 'done'    && styles.sesPillDone,
+                        variant === 'partial' && styles.sesPillPartial,
+                      ]}>
+                        <Text style={[
+                          styles.sesPillText,
+                          variant === 'done'    && styles.sesPillTextDone,
+                          variant === 'partial' && styles.sesPillTextPartial,
+                        ]}>
+                          {buildSetLabel(s, i, fmtW)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             );
           })}
-          {session.notes?.trim() ? (
-            <Text style={styles.sessionNotes}>{session.notes}</Text>
-          ) : null}
         </View>
       )}
     </View>
@@ -1442,7 +1507,7 @@ export default function ClientsScreen() {
 
         {/* ── Tab: Historial ── */}
         {activeTab === 'history' && (
-          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl, gap: spacing.xs }]}>
             {/* Sync button — only shown when client is connected to cloud */}
             {selectedClient?.syncSlotId && (
               <TouchableOpacity
@@ -3515,6 +3580,114 @@ const styles = StyleSheet.create({
     borderTopWidth: borders.thin,
     borderTopColor: colors.border,
   },
+
+  // ── Client SessionCard (same format as HistoryScreen) ──────────────────────
+  sesCard: {
+    backgroundColor: colors.surface,
+    borderWidth:     borders.thin,
+    borderColor:     colors.borderCard,
+    borderRadius:    radius.md,
+    overflow:        'hidden',
+  },
+  sesCardHeader: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    padding:         spacing.md,
+    borderLeftWidth: 3,
+    gap:             spacing.sm,
+  },
+  sesCardLeft: {
+    flex: 1,
+    gap:  2,
+  },
+  sesTag: {
+    fontSize:      10,
+    fontWeight:    typography.bold,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  2,
+  },
+  sesName: {
+    fontSize:   typography.base,
+    fontWeight: typography.heavy,
+    color:      colors.text,
+  },
+  sesMeta: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+    marginTop:     3,
+  },
+  sesDate:    { fontSize: typography.xs, color: colors.muted },
+  sesMetaSep: { fontSize: typography.xs, color: colors.muted2 },
+  sesNoteTag: {
+    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.25),
+    borderRadius:    3,
+    paddingHorizontal: 5,
+    paddingVertical:   1,
+  },
+  sesNoteTagText: {
+    fontSize:      8,
+    fontWeight:    typography.bold,
+    color:         colors.accent,
+    letterSpacing: 0.5,
+  },
+  sesCardRight: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    flexShrink:    0,
+  },
+  sesDelete:      { fontSize: typography.base, color: colors.muted2 },
+  sesChevron:     { fontSize: typography.base, color: colors.muted },
+  sesChevronOpen: { transform: [{ rotate: '180deg' }] },
+  sesDetail: {
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+  },
+  sesNoteSection: {
+    padding:         spacing.md,
+    backgroundColor: withOpacity(colors.accent, 0.04),
+    borderLeftWidth: 2,
+    borderLeftColor: withOpacity(colors.accent, 0.3),
+  },
+  sesNoteSectionText: {
+    fontSize:   typography.sm,
+    color:      colors.text,
+    lineHeight: typography.sm * 1.6,
+  },
+  sesExSection: {
+    padding:        spacing.md,
+    borderTopWidth: borders.thin,
+    borderTopColor: colors.border,
+    gap:            spacing.xs,
+  },
+  sesExName: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  sesPills: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+  },
+  sesPill: {
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   2,
+  },
+  sesPillDone:        { backgroundColor: 'rgba(74,222,128,0.08)', borderColor: 'rgba(74,222,128,0.3)' },
+  sesPillPartial:     { backgroundColor: 'rgba(251,146,60,0.10)', borderColor: 'rgba(251,146,60,0.35)' },
+  sesPillText:        { fontSize: typography.xs, color: colors.muted },
+  sesPillTextDone:    { color: colors.green },
+  sesPillTextPartial: { color: '#fb923c' },
 
   // ── Exercise mini card ──
   exMiniCard: {
