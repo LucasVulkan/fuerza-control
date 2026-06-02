@@ -380,8 +380,9 @@ export const useStore = create(
         set((s) => ({
           clients: {
             ...s.clients,
-            // Fresh assignment always clears the dirty flag — the client now has the latest version.
-            [clientId]: { ...s.clients[clientId], activeProgramId: programId, programDirty: false },
+            // Assigning a (different) program marks it dirty — trainer needs to push it to the client.
+            // Deassigning (programId === null) clears dirty.
+            [clientId]: { ...s.clients[clientId], activeProgramId: programId, programDirty: programId !== null },
           },
         }));
       },
