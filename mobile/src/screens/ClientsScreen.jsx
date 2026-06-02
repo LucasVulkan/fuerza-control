@@ -828,7 +828,9 @@ function ClientListCard({
             {/* Row 2: Status dot · Program name · Stage name */}
             <View style={styles.cRow2}>
               {showDirty ? (
-                <Text style={[styles.cStatusIcon, { color: colors.orange }]}>▲</Text>
+                <View style={styles.cStatusBadge}>
+                  <Text style={styles.cStatusBadgeText}>↑</Text>
+                </View>
               ) : (
                 <View style={styles.cStatusDot} />
               )}
@@ -2954,6 +2956,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
     flexShrink:      0,
   },
+  cStatusBadge: {
+    width:           18,
+    height:          18,
+    borderRadius:    5,
+    backgroundColor: withOpacity(colors.orange, 0.18),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.orange, 0.5),
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  cStatusBadgeText: {
+    fontSize:   10,
+    fontWeight: typography.bold,
+    color:      colors.orange,
+    lineHeight: 12,
+  },
   cStatusIcon: {
     fontSize:   12,
     fontWeight: typography.bold,
@@ -3047,7 +3066,7 @@ const styles = StyleSheet.create({
   cBtnOrangeText: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
-    color:      '#fff',
+    color:      colors.bg,
   },
   cBtnAccent: {
     paddingHorizontal: spacing.md + 4,
