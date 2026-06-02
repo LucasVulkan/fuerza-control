@@ -3430,7 +3430,7 @@ const styles = StyleSheet.create({
     marginBottom:  spacing.sm,
   },
   histFilterBtn: {
-    paddingVertical:   4,
+    paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
@@ -3441,7 +3441,7 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
     borderColor:     withOpacity(colors.accent, 0.3),
   },
-  histFilterBtnText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  histFilterBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
   histFilterBtnTextActive: { color: colors.accent },
 
   refreshHistoryBtn: {

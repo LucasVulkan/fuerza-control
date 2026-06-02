@@ -249,12 +249,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
   },
   tab: {
-    paddingHorizontal: spacing.sm + 2, paddingVertical: 4,
+    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
     backgroundColor: colors.surface2, borderRadius: radius.sm,
     borderWidth: borders.thin, borderColor: colors.border,
   },
   tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  tabText: { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  tabText: { fontSize: typography.base, color: colors.muted, fontWeight: typography.medium },
   tabTextActive: { color: colors.onAccent },
 
   // Wrapper View con padding — evita el clipping vertical de Android en horizontal ScrollView

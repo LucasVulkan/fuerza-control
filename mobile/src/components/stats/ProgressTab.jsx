@@ -1280,7 +1280,7 @@ const styles = StyleSheet.create({
 
   // ── Shared control button ──────────────────────────────────────────────────
   ctrlBtn: {
-    paddingVertical:   4,
+    paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
@@ -1291,13 +1291,13 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
     borderColor:     withOpacity(colors.accent, 0.3),
   },
-  ctrlBtnText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  ctrlBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
   ctrlBtnTextActive: { color: colors.accent },
   btnGroup:          { flexDirection: 'row', gap: spacing.xs },
 
   // ── Scope toggle ────────────────────────────────────────────────────────────
   scopeToggle: {
-    paddingVertical:   4,
+    paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius:      radius.sm,
     borderWidth:       borders.thin,
@@ -1308,7 +1308,7 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
     borderColor:     withOpacity(colors.accent, 0.3),
   },
-  scopeToggleText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  scopeToggleText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
   scopeToggleTextActive: { color: colors.accent },
 
   // ── Summary tiles ──────────────────────────────────────────────────────────
