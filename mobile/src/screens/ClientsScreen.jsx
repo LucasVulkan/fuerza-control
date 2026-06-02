@@ -1941,13 +1941,13 @@ export default function ClientsScreen() {
           {/* Search input */}
           <View style={styles.searchInputWrap}>
             <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
-              stroke={withOpacity(colors.text, 0.28)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              stroke={withOpacity(colors.text, 0.55)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
             </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar cliente…"
-              placeholderTextColor={withOpacity(colors.text, 0.28)}
+              placeholderTextColor={withOpacity(colors.text, 0.45)}
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
@@ -1961,7 +1961,7 @@ export default function ClientsScreen() {
             activeOpacity={0.7}
           >
             <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-              stroke={tagFilterRow.length > 0 ? colors.accent : withOpacity(colors.text, 0.28)}
+              stroke={tagFilterRow.length > 0 ? colors.accent : withOpacity(colors.text, 0.55)}
               strokeWidth={2} strokeLinecap="round">
               <Path d="M4 6h16M7 12h10M10 18h4" />
             </Svg>
@@ -2412,7 +2412,7 @@ const styles = StyleSheet.create({
   },
   searchSideBtnIcon: {
     fontSize:   20,
-    color:      withOpacity(colors.text, 0.28),
+    color:      withOpacity(colors.text, 0.55),
     lineHeight: 24,
   },
   searchInputWrap: {
@@ -2940,14 +2940,16 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   cProgramInfo: {
-    flex: 1,
-    gap:  2,
+    flex:     1,
+    minWidth: 0,
+    gap:      2,
   },
   // Row 2: status dot · program · stage
   cRow2: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           6,
+    minWidth:      0,
   },
   cStatusDot: {
     width:           8,
