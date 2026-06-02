@@ -3153,7 +3153,11 @@ const styles = StyleSheet.create({
   cProgramStatusIcon: {},
   cProgramName: {},
   cProgramMeta: {},
-  cTagRow: {},
+  cTagRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+  },
   cTagChip: {},
   cTagChipRemovable: {},
   cTagChipText: {},
