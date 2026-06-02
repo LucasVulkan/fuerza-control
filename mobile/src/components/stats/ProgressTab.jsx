@@ -1196,7 +1196,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
           </TouchableOpacity>
           {dropOpen && (
             <View style={styles.dropList}>
-              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={{ maxHeight: 200 }}>
+              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
                 {exercisesWithLogs.map((id) => {
                   const def  = allExercises[id];
                   const name = def
@@ -1373,7 +1373,7 @@ const styles = StyleSheet.create({
   sectionCount: { fontSize: typography.xs, color: colors.muted2 },
 
   // ── Exercise dropdown selector ─────────────────────────────────────────────
-  dropWrapper: { zIndex: 10 },
+  dropWrapper: { zIndex: 100, elevation: 10 },
   dropBtn: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -1388,17 +1388,27 @@ const styles = StyleSheet.create({
   dropBtnText: { fontSize: typography.base, color: colors.text, fontWeight: typography.medium, flex: 1 },
   dropArrow:   { fontSize: 10, color: colors.muted, marginLeft: spacing.sm },
   dropList: {
-    marginTop:       2,
+    position:        'absolute',
+    top:             '100%',
+    left:            0,
+    right:           0,
+    zIndex:          100,
+    elevation:       10,
+    marginTop:       4,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
     backgroundColor: colors.surface,
     overflow:        'hidden',
+    shadowColor:     '#000',
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   0.3,
+    shadowRadius:    8,
   },
   dropItem: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingVertical:   spacing.sm,
+    paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.md,
     gap:               spacing.sm,
     borderBottomWidth: borders.thin,
@@ -1412,9 +1422,9 @@ const styles = StyleSheet.create({
   },
   dropCheckActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   dropCheckMark:   { fontSize: 9, color: colors.bg, lineHeight: 11 },
-  dropItemText:    { flex: 1, fontSize: typography.xs, color: colors.text },
+  dropItemText:    { flex: 1, fontSize: typography.base, color: colors.muted },
   dropResetBtn:    { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, alignItems: 'center' },
-  dropResetText:   { fontSize: typography.xs, color: colors.muted },
+  dropResetText:   { fontSize: typography.sm, color: colors.muted },
 
   // ── Exercise list ──────────────────────────────────────────────────────────
   exerciseList: { gap: spacing.xs },
