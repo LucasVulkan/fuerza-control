@@ -634,7 +634,18 @@
       "programs": "Programs",
       "history": "History",
       "progress": "Progress",
-      "info": "Info"
+      "info": "Info",
+      "key": "Key"
+    },
+    "keyTab": {
+      "title": "CLIENT KEY",
+      "subtitle": "Share this code with the client so they can connect and receive their programs.",
+      "copy": "Copy code",
+      "copied": "✓ Copied",
+      "noSlot": "This client is not connected to the cloud yet.",
+      "connect": "☁️ Connect to cloud",
+      "connecting": "Connecting…",
+      "connectedNoCode": "Connected · no local code"
     },
     "scope": {
       "active": "Active program",

@@ -1034,6 +1034,10 @@ export default function ClientsScreen() {
   const [billAmount,  setBillAmount]  = useState('');
   const [billStatus,  setBillStatus]  = useState('pending');
 
+  // Detail - key tab
+  const [keyTabCopied,     setKeyTabCopied]     = useState(false);
+  const [keyTabConnecting, setKeyTabConnecting] = useState(false);
+
   // Import
   const [importState, setImportState] = useState(null); // { fileName, parsedData }
 
@@ -1350,6 +1354,7 @@ export default function ClientsScreen() {
       { id: 'history',   label: t('clients.tabs.history'),   icon: '📋' },
       { id: 'progress',  label: t('clients.tabs.progress'),  icon: '📈' },
       { id: 'info',      label: t('clients.tabs.info'),      icon: '📝' },
+      { id: 'key',       label: t('clients.tabs.key'),       icon: '🔑' },
     ];
     const PERIOD_OPTIONS = [
       { id: '7d',  label: t('clients.period.7d') },
@@ -1777,6 +1782,86 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
+        )}
+
+        {/* ── Tab: Clave ── */}
+        {activeTab === 'key' && (
+          <ScrollView
+            contentContainerStyle={[styles.keyTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}
+          >
+            {/* SVG llave grande */}
+            <View style={styles.keyTabIcon}>
+              <Svg viewBox="0 0 24 24" width={48} height={48} fill="none"
+                stroke={withOpacity(colors.accent, 0.5)} strokeWidth={1.5}
+                strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+              </Svg>
+            </View>
+
+            {selectedClient.syncSlotId ? (
+              selectedClient.syncCode ? (
+                /* ── Tiene código ── */
+                <View style={styles.keyTabBlock}>
+                  <Text style={styles.keyTabLabel}>{t('clients.keyTab.title')}</Text>
+                  <View style={styles.keyTabCodeRow}>
+                    <View style={styles.keyTabCodeBox}>
+                      <Text style={styles.keyTabCodeText}>{selectedClient.syncCode}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.keyTabCopyBtn}
+                      activeOpacity={0.7}
+                      onPress={async () => {
+                        await Clipboard.setStringAsync(selectedClient.syncCode);
+                        setKeyTabCopied(true);
+                        showToast(t('clients.keyTab.copied'));
+                        setTimeout(() => setKeyTabCopied(false), 1800);
+                      }}
+                    >
+                      <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
+                        stroke={keyTabCopied ? colors.green : colors.accent}
+                        strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        {keyTabCopied
+                          ? <Path d="M20 6L9 17l-5-5" />
+                          : <Path d="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2zm0 0H6a2 2 0 00-2 2v12" />
+                        }
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.keyTabSubtitle}>{t('clients.keyTab.subtitle')}</Text>
+                </View>
+              ) : (
+                /* ── Conectado pero sin código local ── */
+                <View style={styles.keyTabBlock}>
+                  <Text style={styles.keyTabLabel}>{t('clients.keyTab.connectedNoCode')}</Text>
+                </View>
+              )
+            ) : (
+              /* ── Sin slot — botón conectar ── */
+              <View style={styles.keyTabBlock}>
+                <Text style={styles.keyTabNoSlotText}>{t('clients.keyTab.noSlot')}</Text>
+                <TouchableOpacity
+                  style={[styles.keyTabConnectBtn, keyTabConnecting && { opacity: 0.6 }]}
+                  disabled={keyTabConnecting}
+                  activeOpacity={0.85}
+                  onPress={async () => {
+                    setKeyTabConnecting(true);
+                    try {
+                      await connectClientToCloud(selectedClientId);
+                      showToast('✓ Cliente conectado a la nube');
+                    } catch (err) {
+                      Alert.alert('Error', err.message ?? 'No se pudo conectar.');
+                    } finally {
+                      setKeyTabConnecting(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.keyTabConnectBtnText}>
+                    {keyTabConnecting ? t('clients.keyTab.connecting') : t('clients.keyTab.connect')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
         )}
 
         {/* New program modal */}
@@ -2714,6 +2799,96 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   infoSheetBtnTextAccent: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.accent,
+  },
+
+  // ── Key tab ───────────────────────────────────────────────────────────────────
+  keyTabContent: {
+    flexGrow:          1,
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.xxl,
+    alignItems:        'center',
+    gap:               spacing.lg,
+  },
+  keyTabIcon: {
+    width:           88,
+    height:          88,
+    borderRadius:    44,
+    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.15),
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginBottom:    spacing.xs,
+  },
+  keyTabBlock: {
+    width:         '100%',
+    alignItems:    'center',
+    gap:           spacing.md,
+  },
+  keyTabLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.accent,
+    letterSpacing: 1.2,
+    textAlign:     'center',
+  },
+  keyTabCodeRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    width:         '100%',
+  },
+  keyTabCodeBox: {
+    flex:              1,
+    backgroundColor:   withOpacity(colors.accent, 0.06),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.2),
+    borderRadius:      radius.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems:        'center',
+  },
+  keyTabCodeText: {
+    fontSize:      22,
+    fontWeight:    typography.heavy,
+    color:         colors.text,
+    letterSpacing: 4,
+  },
+  keyTabCopyBtn: {
+    width:           52,
+    height:          52,
+    borderRadius:    radius.md,
+    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.2),
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  keyTabSubtitle: {
+    fontSize:   typography.sm,
+    color:      colors.muted,
+    textAlign:  'center',
+    lineHeight: typography.sm * 1.5,
+    paddingHorizontal: spacing.md,
+  },
+  keyTabNoSlotText: {
+    fontSize:  typography.base,
+    color:     colors.muted,
+    textAlign: 'center',
+  },
+  keyTabConnectBtn: {
+    backgroundColor:   withOpacity(colors.accent, 0.08),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.25),
+    borderRadius:      radius.md,
+    alignItems:        'center',
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  keyTabConnectBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
     color:      colors.accent,

@@ -634,7 +634,18 @@
       "programs": "Programas",
       "history": "Historial",
       "progress": "Progresión",
-      "info": "Info"
+      "info": "Info",
+      "key": "Clave"
+    },
+    "keyTab": {
+      "title": "CLAVE DE CLIENTE",
+      "subtitle": "Comparte este código con el cliente para que pueda conectarse y recibir sus programas.",
+      "copy": "Copiar código",
+      "copied": "✓ Copiado",
+      "noSlot": "Este cliente aún no está conectado a la nube.",
+      "connect": "☁️ Conectar a la nube",
+      "connecting": "Conectando…",
+      "connectedNoCode": "Conectado · sin código local"
     },
     "scope": {
       "active": "Programa activo",
