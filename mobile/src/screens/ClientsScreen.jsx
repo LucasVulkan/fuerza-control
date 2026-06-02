@@ -2940,7 +2940,7 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'space-between',
     gap:            spacing.sm,
-    marginTop:      spacing.xs,
+    marginTop:      2,
   },
   // Row 2: status dot · program · stage
   cRow2: {
