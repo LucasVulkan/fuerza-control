@@ -1780,7 +1780,7 @@ export const useStore = create(
 
       // ── Import ────────────────────────────────────────────────────────────────
 
-      importData: (data, sections) => {
+      importData: (data, sections, { silent = false } = {}) => {
         const allFilePrograms = {
           ...(data.programs ?? {}),
           ...(data.program ? { [data.program.id]: data.program } : {}),
@@ -1840,7 +1840,7 @@ export const useStore = create(
           return updates;
         });
 
-        get().showToast('✓ Importado correctamente');
+        if (!silent) get().showToast('✓ Importado correctamente');
         return { ok: true };
       },
 
@@ -2179,8 +2179,8 @@ export const useStore = create(
           const lastImport = clientSync.lastProgramImportedAt;
           if (lastImport && new Date(updatedAt) <= new Date(lastImport)) return; // already up to date
 
-          // Re-import: merges templates into store, updates active program
-          get().importData(programJson, { program: true, log: false });
+          // Re-import silently: background update, no toast needed
+          get().importData(programJson, { program: true, log: false }, { silent: true });
           set((s) => ({
             clientSync: { ...s.clientSync, lastProgramImportedAt: new Date().toISOString() },
           }));

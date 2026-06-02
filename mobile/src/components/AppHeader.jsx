@@ -474,7 +474,7 @@ export default function AppHeader() {
 
   function handleImport(parsedData, sections) {
     setImportState(null);
-    importData(parsedData, sections);
+    importData(parsedData, sections, { silent: true }); // caller shows its own toast below
     showToast(t('header.toastImported'));
   }
 
