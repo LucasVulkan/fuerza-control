@@ -219,7 +219,7 @@ function InputCell({
           <View style={styles.numRow}>
             <View style={styles.decPart} />
             <Text style={[styles.valueText, showPrev && styles.valueTextPrev]}>{intStr}</Text>
-            <Text style={[styles.valueText, styles.decPart, showPrev && styles.valueTextPrev]}>{decStr}</Text>
+            <Text style={[styles.valueText, styles.decPart, showPrev && styles.valueTextPrev]} numberOfLines={1}>{decStr}</Text>
           </View>
         ) : (
           <Text style={styles.placeholder}>—</Text>
@@ -433,10 +433,11 @@ const styles = StyleSheet.create({
 
   numRow: {
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'baseline',
+    flexWrap:      'nowrap',
   },
   decPart: {
-    width:     22,
+    width:     36,
     textAlign: 'left',
   },
 
