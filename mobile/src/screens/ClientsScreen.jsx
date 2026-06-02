@@ -850,31 +850,31 @@ function ClientListCard({
             {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
           </Text>
 
-          {/* Row 4: Counters left · button right */}
-          <View style={styles.cBottomRow}>
-            <View style={styles.cCounters}>
-              <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
-              <Text style={styles.cWeekLabel}> Semana</Text>
-              <View style={styles.cDots}>
-                {Array.from({ length: sessPerCycle }, (_, i) => (
-                  <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
-                ))}
-              </View>
+          {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
+          <View style={styles.cCounters}>
+            <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
+            <Text style={styles.cWeekLabel}> Semana</Text>
+            <View style={styles.cDots}>
+              {Array.from({ length: sessPerCycle }, (_, i) => (
+                <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
+              ))}
             </View>
-            {showDirty ? (
-              <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-                <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
-                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
-                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                  <Path d="M18 20V10M12 20V4M6 20v-6" />
-                </Svg>
-                <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
-              </TouchableOpacity>
-            )}
           </View>
+
+          {/* Button: absolute bottom-right of cProgramBlock — unaffected by tags below */}
+          {showDirty ? (
+            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
+              <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                <Path d="M18 20V10M12 20V4M6 20v-6" />
+              </Svg>
+              <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         /* ── No program state ── */
@@ -2935,13 +2935,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap:           2,
   },
-  cBottomRow: {
-    flexDirection:  'row',
-    alignItems:     'flex-start',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
-    marginTop:      0,
-  },
   // Row 2: status dot · program · stage
   cRow2: {
     flexDirection: 'row',
@@ -3001,11 +2994,11 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   cCounters: {
-    flex:          1,
     flexDirection: 'row',
     alignItems:    'center',
     flexWrap:      'wrap',
     gap:           3,
+    paddingRight:  110,
   },
   cWeekNum: {
     fontSize:   typography.base,
@@ -3048,8 +3041,9 @@ const styles = StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
-    flexShrink:        0,
-    alignSelf:         'flex-start',
+    position:          'absolute',
+    bottom:            0,
+    right:             0,
   },
   cBtnOutlineText: {
     fontSize:   typography.sm,
@@ -3061,8 +3055,9 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.xs + 3,
     borderRadius:      radius.sm,
     backgroundColor:   colors.orange,
-    flexShrink:        0,
-    alignSelf:         'flex-start',
+    position:          'absolute',
+    bottom:            0,
+    right:             0,
   },
   cBtnOrangeText: {
     fontSize:   typography.sm,
