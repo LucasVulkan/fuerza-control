@@ -1940,14 +1940,14 @@ export default function ClientsScreen() {
 
           {/* Search input */}
           <View style={styles.searchInputWrap}>
-            <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
-              stroke={colors.muted2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
+              stroke={withOpacity(colors.text, 0.28)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
             </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar cliente…"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={withOpacity(colors.text, 0.28)}
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
@@ -1960,8 +1960,8 @@ export default function ClientsScreen() {
             onPress={() => setShowTagSheet(true)}
             activeOpacity={0.7}
           >
-            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
-              stroke={tagFilterRow.length > 0 ? colors.accent : colors.muted}
+            <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
+              stroke={tagFilterRow.length > 0 ? colors.accent : withOpacity(colors.text, 0.28)}
               strokeWidth={2} strokeLinecap="round">
               <Path d="M4 6h16M7 12h10M10 18h4" />
             </Svg>
@@ -2411,9 +2411,9 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
   },
   searchSideBtnIcon: {
-    fontSize:   16,
-    color:      colors.muted,
-    lineHeight: 20,
+    fontSize:   20,
+    color:      withOpacity(colors.text, 0.28),
+    lineHeight: 24,
   },
   searchInputWrap: {
     flex:              1,
@@ -2428,9 +2428,9 @@ const styles = StyleSheet.create({
     height:            42,
   },
   searchInput: {
-    flex:    1,
-    color:   colors.text,
-    fontSize: typography.sm,
+    flex:     1,
+    color:    colors.text,
+    fontSize: typography.base,
   },
 
   // Row 3: Filter pills row
@@ -2936,7 +2936,7 @@ const styles = StyleSheet.create({
   // Program block — rows 2+3+4 grouped with tight gap
   cProgramBlock: {
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'flex-end',
     gap:           spacing.sm,
   },
   cProgramInfo: {
@@ -3010,8 +3010,8 @@ const styles = StyleSheet.create({
   },
   cWeekNum: {
     fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      colors.text,
+    fontWeight: typography.semibold,
+    color:      colors.muted,
     lineHeight: typography.base * 1.1,
   },
   cWeekLabel: {
