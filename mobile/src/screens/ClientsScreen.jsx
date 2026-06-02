@@ -1457,7 +1457,7 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             )}
             {/* Filters */}
-            <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
+            <View style={{ gap: spacing.xs, marginBottom: spacing.xs }}>
               <View style={styles.chipRow}>
                 {[{ id: 'active', label: t('clients.scope.active') }, { id: 'all', label: t('clients.scope.all') }].map(({ id, label }) => (
                   <FilterChip key={id} label={label} active={scopeFilter === id} onPress={() => setScopeFilter(id)} />
@@ -3329,7 +3329,6 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.md,
     alignItems:        'center',
-    marginBottom:      spacing.sm,
   },
   refreshHistoryBtnText: {
     fontSize:   typography.sm,
