@@ -821,38 +821,37 @@ function ClientListCard({
       </View>
 
       {activeProgram ? (
-        /* ── Program block: info rows left · button centered right ── */
+        /* ── Program block: column layout so name spans full card width ── */
         <View style={styles.cProgramBlock}>
-          {/* Left: stacked info */}
-          <View style={styles.cProgramInfo}>
-            {/* Row 2: Status dot · Program name · Stage name */}
-            <View style={styles.cRow2}>
-              {showDirty ? (
-                <View style={styles.cStatusBadge}>
-                  <Text style={styles.cStatusBadgeText}>↑</Text>
-                </View>
-              ) : (
-                <View style={styles.cStatusDot} />
-              )}
-              <Text
-                style={[styles.cProgName, showDirty && { color: colors.orange }]}
-                numberOfLines={1}
-              >
-                {activeProgram.name}
-                {currentStage?.name ? (
-                  <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
-                    {' · '}{currentStage.name}
-                  </Text>
-                ) : null}
-              </Text>
-            </View>
-
-            {/* Row 3: Program meta */}
-            <Text style={styles.cProgMeta}>
-              {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
+          {/* Row 2: Status dot · Program name (full width) */}
+          <View style={styles.cRow2}>
+            {showDirty ? (
+              <View style={styles.cStatusBadge}>
+                <Text style={styles.cStatusBadgeText}>↑</Text>
+              </View>
+            ) : (
+              <View style={styles.cStatusDot} />
+            )}
+            <Text
+              style={[styles.cProgName, showDirty && { color: colors.orange }]}
+              numberOfLines={1}
+            >
+              {activeProgram.name}
+              {currentStage?.name ? (
+                <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
+                  {' · '}{currentStage.name}
+                </Text>
+              ) : null}
             </Text>
+          </View>
 
-            {/* Row 4: Counters only */}
+          {/* Row 3: Program meta */}
+          <Text style={styles.cProgMeta}>
+            {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
+          </Text>
+
+          {/* Row 4: Counters left · button right */}
+          <View style={styles.cBottomRow}>
             <View style={styles.cCounters}>
               <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
               <Text style={styles.cWeekLabel}> Semana</Text>
@@ -862,22 +861,20 @@ function ClientListCard({
                 ))}
               </View>
             </View>
+            {showDirty ? (
+              <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+                <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
+                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                  <Path d="M18 20V10M12 20V4M6 20v-6" />
+                </Svg>
+                <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
-
-          {/* Right: contextual button — vertically centered with info block */}
-          {showDirty ? (
-            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
-              <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
-                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                <Path d="M18 20V10M12 20V4M6 20v-6" />
-              </Svg>
-              <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
       ) : (
         /* ── No program state ── */
@@ -2935,21 +2932,21 @@ const styles = StyleSheet.create({
   },
   // Program block — rows 2+3+4 grouped with tight gap
   cProgramBlock: {
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-    gap:           spacing.sm,
+    flexDirection: 'column',
+    gap:           2,
   },
-  cProgramInfo: {
-    flex:     1,
-    minWidth: 0,
-    gap:      2,
+  cBottomRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.sm,
+    marginTop:      spacing.xs,
   },
   // Row 2: status dot · program · stage
   cRow2: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           6,
-    minWidth:      0,
   },
   cStatusDot: {
     width:           8,
