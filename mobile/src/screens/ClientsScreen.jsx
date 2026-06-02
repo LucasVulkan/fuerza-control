@@ -2937,7 +2937,7 @@ const styles = StyleSheet.create({
   },
   cBottomRow: {
     flexDirection:  'row',
-    alignItems:     'center',
+    alignItems:     'flex-start',
     justifyContent: 'space-between',
     gap:            spacing.sm,
     marginTop:      0,
