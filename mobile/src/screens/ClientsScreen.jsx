@@ -1507,7 +1507,7 @@ export default function ClientsScreen() {
 
         {/* ── Tab: Historial ── */}
         {activeTab === 'history' && (
-          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl, gap: spacing.xs }]}>
+          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
             {/* Sync button — only shown when client is connected to cloud */}
             {selectedClient?.syncSlotId && (
               <TouchableOpacity
@@ -1534,16 +1534,15 @@ export default function ClientsScreen() {
                 </TouchableOpacity>
               ))}
               <View style={{ flex: 1 }} />
-              {[{ id: 'active', label: t('clients.scope.active') }, { id: 'all', label: t('clients.scope.all') }].map(({ id, label }) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.histFilterBtn, scopeFilter === id && styles.histFilterBtnActive]}
-                  onPress={() => setScopeFilter(id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.histFilterBtnText, scopeFilter === id && styles.histFilterBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
+              <TouchableOpacity
+                style={[styles.histFilterBtn, scopeFilter === 'active' && styles.histFilterBtnActive]}
+                onPress={() => setScopeFilter((s) => s === 'active' ? 'all' : 'active')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.histFilterBtnText, scopeFilter === 'active' && styles.histFilterBtnTextActive]}>
+                  {t('clients.scope.active')}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {filteredLog.length === 0 ? (
@@ -3427,6 +3426,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.xs,
+    marginTop:     spacing.xs,
+    marginBottom:  spacing.sm,
   },
   histFilterBtn: {
     paddingVertical:   4,
