@@ -3049,6 +3049,7 @@ const styles = StyleSheet.create({
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
     flexShrink:        0,
+    alignSelf:         'center',
   },
   cBtnOutlineText: {
     fontSize:   typography.sm,
@@ -3061,6 +3062,7 @@ const styles = StyleSheet.create({
     borderRadius:      radius.sm,
     backgroundColor:   colors.orange,
     flexShrink:        0,
+    alignSelf:         'center',
   },
   cBtnOrangeText: {
     fontSize:   typography.sm,
