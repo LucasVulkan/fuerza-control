@@ -2567,14 +2567,36 @@ const styles = StyleSheet.create({
   tagRowPillXActive: { color: colors.accent },
 
   // Legacy — keep chip styles for compatibility with other views
-  chip: {},
-  chipActive: {},
-  chipText: {},
-  chipTextActive: {},
-  chipCountBadge: {},
-  chipCountText: {},
-  chipCountBadgeActive: {},
-  chipCountTextActive: {},
+  chip: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs,
+    borderRadius:      radius.full,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    backgroundColor:   colors.surface2,
+  },
+  chipActive: {
+    borderColor:     withOpacity(colors.accent, 0.4),
+    backgroundColor: withOpacity(colors.accent, 0.08),
+  },
+  chipText: {
+    fontSize:   typography.sm,
+    color:      colors.muted,
+    fontWeight: typography.medium,
+  },
+  chipTextActive: { color: colors.accent },
+  chipCountBadge: {
+    marginLeft:      4,
+    backgroundColor: colors.surface,
+    borderRadius:    radius.full,
+    paddingHorizontal: 5,
+    paddingVertical:   1,
+  },
+  chipCountText: { fontSize: typography.xs, color: colors.muted },
+  chipCountBadgeActive: { backgroundColor: withOpacity(colors.accent, 0.15) },
+  chipCountTextActive: { color: colors.accent },
   syncIndicator: {},
   syncDot: {},
   syncDotActive: {},
@@ -2587,7 +2609,11 @@ const styles = StyleSheet.create({
   sortBtnText: {},
   sortBtnTextActive: {},
   sortTagClear: {},
-  chipRow: {},
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs,
+  },
 
   // ── Tag filter bottom sheet ──
   tagSheet: {
