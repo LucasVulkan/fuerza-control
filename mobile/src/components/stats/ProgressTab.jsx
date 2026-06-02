@@ -1008,8 +1008,17 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
   const [search,        setSearch]        = useState('');
   const [selectedExIds, setSelectedExIds] = useState(new Set());
   const [dropOpen,      setDropOpen]      = useState(false);
+  const [dropPos,       setDropPos]       = useState({ top: 0, left: 0, width: 300 });
+  const dropBtnRef = useRef(null);
 
   useEffect(() => { setSelectedExIds(new Set()); setDropOpen(false); }, [scope, period]);
+
+  function openDrop() {
+    dropBtnRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+      setDropPos({ top: pageY + height + 4, left: pageX, width });
+      setDropOpen(true);
+    });
+  }
 
   function toggleEx(id) {
     setSelectedExIds((prev) => {
@@ -1183,8 +1192,9 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
       {!search.trim() && exercisesWithLogs.length > 0 && (
         <View style={styles.dropWrapper}>
           <TouchableOpacity
+            ref={dropBtnRef}
             style={styles.dropBtn}
-            onPress={() => setDropOpen((v) => !v)}
+            onPress={dropOpen ? () => setDropOpen(false) : openDrop}
             activeOpacity={0.75}
           >
             <Text style={styles.dropBtnText}>
@@ -1194,9 +1204,18 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
             </Text>
             <Text style={styles.dropArrow}>{dropOpen ? '▴' : '▾'}</Text>
           </TouchableOpacity>
-          {dropOpen && (
-            <View style={styles.dropList}>
-              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+
+          {/* Modal so the list floats over ALL content without stealing scroll from the parent */}
+          <Modal
+            visible={dropOpen}
+            transparent
+            animationType="none"
+            onRequestClose={() => setDropOpen(false)}
+          >
+            {/* Backdrop — closes on tap outside */}
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
+            <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
                 {exercisesWithLogs.map((id) => {
                   const def  = allExercises[id];
                   const name = def
@@ -1221,14 +1240,14 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
               {selectedExIds.size > 0 && (
                 <TouchableOpacity
                   style={styles.dropResetBtn}
-                  onPress={() => setSelectedExIds(new Set())}
+                  onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
                   activeOpacity={0.75}
                 >
                   <Text style={styles.dropResetText}>Restablecer selección</Text>
                 </TouchableOpacity>
               )}
             </View>
-          )}
+          </Modal>
         </View>
       )}
 
@@ -1389,12 +1408,6 @@ const styles = StyleSheet.create({
   dropArrow:   { fontSize: 10, color: colors.muted, marginLeft: spacing.sm },
   dropList: {
     position:        'absolute',
-    top:             '100%',
-    left:            0,
-    right:           0,
-    zIndex:          100,
-    elevation:       10,
-    marginTop:       4,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
@@ -1404,6 +1417,7 @@ const styles = StyleSheet.create({
     shadowOffset:    { width: 0, height: 4 },
     shadowOpacity:   0.3,
     shadowRadius:    8,
+    elevation:       10,
   },
   dropItem: {
     flexDirection:     'row',
