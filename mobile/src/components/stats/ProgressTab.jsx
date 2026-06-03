@@ -36,7 +36,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const CHART_H      = 128;
 const PAD_TOP      = 12;
 const PAD_BOT      = 24;
-const Y_AXIS_W     = 32;
+const Y_AXIS_W     = 24;
 const C_PAD_L      = 6;
 const C_PAD_R      = 12;
 const MIN_SCROLL   = 6;
@@ -466,6 +466,12 @@ function MiniLineChart({ data, metricLabel }) {
                 style={{ position: 'absolute', top: 0, left: 0, height: CHART_H, width: clipWidthAnim, overflow: 'hidden' }}
               >
                 <Svg width={svgW} height={CHART_H}>
+                  {/* Grid lines */}
+                  {yTicks.map(({ y }, i) => (
+                    <Line key={`grid-${i}`} x1={C_PAD_L} y1={y} x2={svgW - C_PAD_R} y2={y}
+                      stroke={colors.border} strokeWidth={0.5} opacity={0.5}
+                    />
+                  ))}
                   {pts.slice(1).map((_, segI) => (
                     <AnimatedLine key={segI}
                       x1={pts[segI].x} y1={yAnims[segI]}
@@ -869,20 +875,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   {metrics.length > 1 && metrics.map(({ id, label }) => (
                     <TouchableOpacity
                       key={id}
-                      style={[styles.ctrlBtn, !pctMode && activeMetric === id && styles.ctrlBtnActive]}
+                      style={[styles.ctrlBtn, styles.ctrlBtnFull, activeMetric === id && styles.ctrlBtnActive]}
                       onPress={() => { setChartMetric(id); setPctMode(false); }}
                     >
-                      <Text style={[styles.ctrlBtnText, !pctMode && activeMetric === id && styles.ctrlBtnTextActive]}>
+                      <Text style={[styles.ctrlBtnText, activeMetric === id && styles.ctrlBtnTextActive]}>
                         {label}
                       </Text>
                     </TouchableOpacity>
                   ))}
-                  <TouchableOpacity
-                    style={[styles.ctrlBtn, pctMode && styles.ctrlBtnActive]}
-                    onPress={() => setPctMode((v) => !v)}
-                  >
-                    <Text style={[styles.ctrlBtnText, pctMode && styles.ctrlBtnTextActive]}>%</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
               <MiniLineChart data={chartData} metricLabel={metricLabel} />
@@ -1310,9 +1310,10 @@ const styles = StyleSheet.create({
     backgroundColor: withOpacity(colors.accent, 0.08),
     borderColor:     withOpacity(colors.accent, 0.3),
   },
-  ctrlBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
+  ctrlBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.regular },
   ctrlBtnTextActive: { color: colors.accent },
-  btnGroup:          { flexDirection: 'row', gap: spacing.xs },
+  btnGroup:          { flexDirection: 'row', gap: spacing.xs, flex: 1 },
+  ctrlBtnFull:       { flex: 1, alignItems: 'center', paddingVertical: spacing.xs + 1 },
 
   // ── Scope toggle ────────────────────────────────────────────────────────────
   scopeToggle: {
@@ -1404,7 +1405,7 @@ const styles = StyleSheet.create({
     borderColor:       colors.border,
     backgroundColor:   colors.surface,
   },
-  dropBtnText: { fontSize: typography.base, color: colors.text, fontWeight: typography.medium, flex: 1 },
+  dropBtnText: { fontSize: typography.base, color: colors.muted, fontWeight: typography.regular, flex: 1 },
   dropArrow:   { fontSize: 10, color: colors.muted, marginLeft: spacing.sm },
   dropList: {
     position:        'absolute',
@@ -1491,7 +1492,7 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection:     'row',
-    alignItems:        'flex-start',
+    alignItems:        'stretch',
     paddingHorizontal: spacing.xl,
     paddingBottom:     spacing.md,
     gap:               spacing.sm,
@@ -1518,7 +1519,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     flex:       1,
     fontSize:   typography.md,
-    fontWeight: typography.heavy,
+    fontWeight: typography.medium,
     color:      colors.text,
     lineHeight: typography.md * 1.3,
   },
@@ -1573,7 +1574,6 @@ const styles = StyleSheet.create({
   exPickerItemTextActive: { color: colors.accent, fontWeight: typography.semibold },
   modalCloseBtn: {
     width:           28,
-    height:          28,
     borderRadius:    radius.sm,
     backgroundColor: colors.surface2,
     alignItems:      'center',

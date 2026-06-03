@@ -238,6 +238,20 @@ export default function ExerciseCard({
     startCollapse(() => setManualOpen(false));
   }, [startCollapse]);
 
+  // ── Active set (first undone) ─────────────────────────────────────────────
+  const activeSetIdx = setsState.findIndex((s) => !s.done);
+
+  function handleCopyFromPrev(setIdx) {
+    const prev = setsState[setIdx - 1];
+    if (!prev) return;
+    if (prev.weight != null && prev.weight !== '')
+      onFieldChange(setIdx, 'weight', String(prev.weight));
+    if (prev.reps != null && prev.reps !== '')
+      onFieldChange(setIdx, 'reps', String(prev.reps));
+    if (prev.time != null && prev.time !== '')
+      onFieldChange(setIdx, 'time', String(prev.time));
+  }
+
   const progression = (() => {
     if (!lastExercise?.sets?.length) return null;
     try { return getProgression(exConfig, def, lastExercise.sets, t); }
@@ -372,7 +386,7 @@ export default function ExerciseCard({
 
           {/* Column headers */}
           <View style={styles.colHeader}>
-            <View style={{ width: 28 }} />
+            <View style={{ width: 20 }} />
             {inputType === 'reps' ? (
               <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
             ) : inputType === 'time' ? (
@@ -412,6 +426,8 @@ export default function ExerciseCard({
                   index={i}
                   set={set}
                   inputType={inputType}
+                  isActive={i === activeSetIdx}
+                  onCopyPrev={i > 0 ? () => handleCopyFromPrev(i) : undefined}
                   weightDisplay={
                     set.weight !== '' && set.weight != null
                       ? String(toDisplay(set.weight))
@@ -547,7 +563,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize:   typography.xs,
-    fontWeight: typography.medium,
+    fontWeight: typography.regular,
   },
 
   // Column headers

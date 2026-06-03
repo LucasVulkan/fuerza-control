@@ -547,6 +547,8 @@
     "saveBtn": "Save",
     "toastUpdated": "✓ Exercise updated",
     "toastSubstituted": "✓ Exercise substituted",
+    "sectionVolume": "Volume",
+    "sectionOptions": "Options",
     "sectionProgression": "PROGRESSION",
     "sectionEvaluation": "EVALUATION",
     "sectionIncrement": "INCREMENT",
@@ -568,10 +570,18 @@
       "all_complete": "All done ✓",
       "pct": "Min %"
     },
+    "evalModeDesc": {
+      "all_complete": "Progress when all sets are completed at the top of the rep range",
+      "pct": "Progress when the minimum percentage of sets is completed"
+    },
     "evalPctLabel": "Threshold",
     "incrTypes": {
       "fixed": "Fixed",
       "pct": "Percentage"
+    },
+    "incrTypeDesc": {
+      "fixed": "Adds a fixed amount each time load increases",
+      "pct": "Increases weight by a percentage of the current value"
     },
     "incrFixedRepsLabel": "+ reps",
     "incrMinLabel": "Min. available",
@@ -584,7 +594,7 @@
   },
   "clients": {
     "title": "Clients",
-    "newBtn": "＋ NEW",
+    "newBtn": "+ Client",
     "searchPlaceholder": "Search client...",
     "filterActive": "Active",
     "filterInactive": "Inactive",
@@ -693,7 +703,7 @@
     "statusBilled": "Billed",
     "statusPaid": "Paid",
     "periodThisMonth": "This month",
-    "periodLast3Months": "Last 3 months",
+    "periodLast3Months": "3 months",
     "periodAll": "Always",
     "noBillingEntries": "No entries for this filter.",
     "newClientModal": {
@@ -724,7 +734,7 @@
   },
   "templates": {
     "title": "Templates",
-    "newBtn": "＋ NEW",
+    "newBtn": "+ Template",
     "empty": "No templates yet.\nCreate templates to assign them\nquickly to your clients.",
     "deleteConfirm": "Delete this template?",
     "deleteTitle": "Delete template",

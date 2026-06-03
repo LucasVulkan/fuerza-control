@@ -162,90 +162,90 @@ export default function ProgramEditorScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Stage tabs */}
-      {hasStages && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.stageTabs}
-          contentContainerStyle={styles.stageTabsContent}
-        >
-          {activeProgram.stages.map((stage, idx) => {
-            const isSelected = idx === selectedStageIdx;
-            const isActive   = idx === (activeProgram.currentStageIndex ?? 0);
-            return (
-              <TouchableOpacity
-                key={stage.id ?? idx}
-                style={[styles.stageTab, isSelected && styles.stageTabActive]}
-                onPress={() => setSelectedStageIdx(idx)}
-              >
-                <Text style={[styles.stageTabText, isSelected && styles.stageTabTextActive]}>
-                  {stage.name}
-                </Text>
-                {isActive && <View style={styles.activeDot} />}
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity style={styles.addStageTab} onPress={handleAddStage}>
-            <Text style={styles.addStageTabText}>＋</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
-
-      {/* Stage meta row */}
-      {hasStages && selectedStage && (
-        <View style={styles.stageMeta}>
-          <View style={styles.stageFields}>
-            <TextInput
-              style={styles.stageNameInput}
-              value={stageName}
-              onChangeText={setStageName}
-              onBlur={commitStageName}
-              onSubmitEditing={commitStageName}
-              placeholder={t('editor.stageName')}
-              placeholderTextColor={colors.muted}
-              returnKeyType="done"
-            />
-            <View style={styles.stageWeeksRow}>
-              <TextInput
-                style={styles.stageWeeksInput}
-                value={stageWeeks}
-                onChangeText={setStageWeeks}
-                onBlur={commitStageWeeks}
-                onSubmitEditing={commitStageWeeks}
-                keyboardType="numeric"
-                returnKeyType="done"
-              />
-              <Text style={styles.stageWeeksLabel}>{t('editor.stageWeeks')}</Text>
-            </View>
-          </View>
-          <View style={styles.stageActions}>
-            {selectedStageIdx !== (activeProgram.currentStageIndex ?? 0) && (
-              <TouchableOpacity
-                style={styles.activateBtn}
-                onPress={() => {
-                  setCurrentStage(editingId, selectedStageIdx);
-                  showToast(t('editor.toastStageActivated', { name: selectedStage.name }));
-                }}
-              >
-                <Text style={styles.activateBtnText}>{t('editor.stageActivate')}</Text>
-              </TouchableOpacity>
-            )}
-            {activeProgram.stages.length > 1 && (
-              <TouchableOpacity style={styles.deleteStageBtn} hitSlop={12} onPress={handleDeleteStage}>
-                <Text style={styles.deleteStageBtnText}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
-
       {/* Scrollable content */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Stage section — scrolls with content, card style */}
+        {hasStages && (
+          <View style={styles.stageCard}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.stageTabsContent}
+            >
+              {activeProgram.stages.map((stage, idx) => {
+                const isSelected = idx === selectedStageIdx;
+                const isActive   = idx === (activeProgram.currentStageIndex ?? 0);
+                return (
+                  <TouchableOpacity
+                    key={stage.id ?? idx}
+                    style={[styles.stageTab, isSelected && styles.stageTabActive]}
+                    onPress={() => setSelectedStageIdx(idx)}
+                  >
+                    <Text style={[styles.stageTabText, isSelected && styles.stageTabTextActive]}>
+                      {stage.name}
+                    </Text>
+                    {isActive && <View style={styles.activeDot} />}
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity style={styles.addStageTab} onPress={handleAddStage}>
+                <Text style={styles.addStageTabText}>＋</Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {selectedStage && (
+              <View style={styles.stageMeta}>
+                <View style={styles.stageFields}>
+                  <TextInput
+                    style={styles.stageNameInput}
+                    value={stageName}
+                    onChangeText={setStageName}
+                    onBlur={commitStageName}
+                    onSubmitEditing={commitStageName}
+                    placeholder={t('editor.stageName')}
+                    placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                  />
+                  <View style={styles.stageWeeksRow}>
+                    <TextInput
+                      style={styles.stageWeeksInput}
+                      value={stageWeeks}
+                      onChangeText={setStageWeeks}
+                      onBlur={commitStageWeeks}
+                      onSubmitEditing={commitStageWeeks}
+                      keyboardType="numeric"
+                      returnKeyType="done"
+                    />
+                    <Text style={styles.stageWeeksLabel}>{t('editor.stageWeeks')}</Text>
+                  </View>
+                </View>
+                <View style={styles.stageActions}>
+                  {selectedStageIdx !== (activeProgram.currentStageIndex ?? 0) && (
+                    <TouchableOpacity
+                      style={styles.activateBtn}
+                      onPress={() => {
+                        setCurrentStage(editingId, selectedStageIdx);
+                        showToast(t('editor.toastStageActivated', { name: selectedStage.name }));
+                      }}
+                    >
+                      <Text style={styles.activateBtnText}>{t('editor.stageActivate')}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {activeProgram.stages.length > 1 && (
+                    <TouchableOpacity style={styles.deleteStageBtn} hitSlop={12} onPress={handleDeleteStage}>
+                      <Text style={styles.deleteStageBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {!hasStages && (
           <Text style={styles.changesHint}>{t('editor.changesHint')}</Text>
         )}
@@ -332,10 +332,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
   },
 
-  // Stage tabs
-  stageTabs: {
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
-    backgroundColor: colors.surface, flexGrow: 0,
+  // Stage card (scrollable, not full-width)
+  stageCard: {
+    backgroundColor:  colors.surface,
+    borderWidth:      borders.thin,
+    borderColor:      colors.border,
+    borderRadius:     radius.md,
+    overflow:         'hidden',
   },
   stageTabsContent: { paddingHorizontal: spacing.xs },
   stageTab: {
@@ -352,14 +355,14 @@ const styles = StyleSheet.create({
 
   // Stage meta
   stageMeta: {
-    flexDirection:     'row',
-    alignItems:        'center',
+    flexDirection:    'row',
+    alignItems:       'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-    backgroundColor:   colors.surface2,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
-    gap:               spacing.sm,
+    paddingVertical:  spacing.sm,
+    backgroundColor:  colors.surface2,
+    borderTopWidth:   borders.thin,
+    borderTopColor:   colors.border,
+    gap:              spacing.sm,
   },
   stageFields: {
     flex:          1,
@@ -448,12 +451,12 @@ const styles = StyleSheet.create({
     borderTopWidth: borders.thin, borderTopColor: colors.border,
   },
   saveBtn: {
-    borderRadius: radius.md, paddingVertical: spacing.lg,
+    borderRadius: radius.md, paddingVertical: spacing.md,
     alignItems: 'center', backgroundColor: colors.accent,
   },
   saveBtnText: {
-    fontSize: typography.xl, fontWeight: typography.heavy,
-    color: colors.onAccent, letterSpacing: 1.5,
+    fontSize: typography.base, fontWeight: typography.heavy,
+    color: colors.onAccent, letterSpacing: 1,
   },
   discardBtn: { alignItems: 'center', paddingVertical: spacing.md },
   discardText: { fontSize: typography.base, color: colors.muted },

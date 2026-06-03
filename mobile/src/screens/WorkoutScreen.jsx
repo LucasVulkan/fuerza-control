@@ -582,17 +582,17 @@ const styles = StyleSheet.create({
 
   // Save / discard
   saveBtn: {
-    borderRadius:   radius.md,
-    paddingVertical: spacing.lg,
-    alignItems:     'center',
-    marginTop:      spacing.sm,
+    borderRadius:    radius.md,
+    paddingVertical: spacing.md + 4,
+    alignItems:      'center',
+    marginTop:       spacing.sm,
     backgroundColor: colors.accent,
   },
   saveBtnText: {
-    fontSize:      typography.xl,
+    fontSize:      typography.base,
     fontWeight:    typography.heavy,
     color:         colors.onAccent,
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
   discardBtn: {
     alignItems:      'center',

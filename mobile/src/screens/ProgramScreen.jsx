@@ -338,14 +338,16 @@ export default function ProgramScreen() {
 
       {/* Sub-header: title + action */}
       <View style={styles.subHeader}>
-        <Text style={styles.title}>{t('templates.title').toUpperCase()}</Text>
-        <TouchableOpacity
-          style={styles.newBtn}
-          onPress={() => setShowCreate(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.newBtnText}>{t('templates.newBtn')}</Text>
-        </TouchableOpacity>
+        <View style={styles.subHeaderRow}>
+          <Text style={styles.title}>{t('templates.title').toUpperCase()}</Text>
+          <TouchableOpacity
+            style={styles.newBtn}
+            onPress={() => setShowCreate(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newBtnText}>{t('templates.newBtn')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* List */}
@@ -420,14 +422,16 @@ const styles = StyleSheet.create({
 
   // Sub-header (below AppHeader)
   subHeader: {
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.lg,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  subHeaderRow: {
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
     paddingHorizontal: spacing.xl,
-    paddingTop:        spacing.xl,
-    paddingBottom:     spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
   },
   title: {
     fontSize:      typography.base,
@@ -436,8 +440,8 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   newBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs + 2,
   },

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Animated, PanResponder, LayoutAnimation, Platform, UIManager,
+  Modal, KeyboardAvoidingView, SafeAreaView, ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
@@ -301,6 +302,12 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
     .map((id) => template.exercises.find((ex) => ex.exerciseId === id))
     .filter(Boolean);
 
+  // Editing exercise — resolved for modal
+  const editingExConfig = editingExId
+    ? template.exercises.find((ex) => ex.exerciseId === editingExId) ?? null
+    : null;
+  const editingDef = editingExId ? allExercises[editingExId] : null;
+
   // The dragged item's content for the floating overlay
   const draggingExConfig = draggingId
     ? template.exercises.find((ex) => ex.exerciseId === draggingId)
@@ -308,6 +315,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
   const draggingDef = draggingId ? allExercises[draggingId] : null;
 
   return (
+    <>
     <View style={[styles.card, { borderLeftColor: color }]}>
       {/* ── Header ── */}
       <TouchableOpacity
@@ -346,11 +354,10 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
             <Text style={styles.iconBtnText}>✎</Text>
           </TouchableOpacity>
           {onRemove && (
-            <TouchableOpacity hitSlop={8} onPress={onRemove} style={styles.iconBtn}>
+            <TouchableOpacity hitSlop={8} onPress={onRemove} style={[styles.iconBtn, { marginLeft: spacing.xs }]}>
               <Text style={[styles.iconBtnText, { color: colors.muted2 }]}>✕</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.chevron}>{open ? '▾' : '›'}</Text>
         </View>
       </TouchableOpacity>
 
@@ -364,7 +371,6 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
           {orderedExercises.map((exConfig) => {
             const isDragging = draggingId === exConfig.exerciseId;
             return (
-              // opacity:0 hides the row while dragging; the gesture stays alive.
               <View key={exConfig.exerciseId} style={[{ overflow: 'visible' }, isDragging && { opacity: 0 }]}>
                 <ExerciseRow
                   exConfig={exConfig}
@@ -376,17 +382,6 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
                   onDragEnd={() => handleDragEnd(exConfig.exerciseId)}
                   onSwipeDelete={handleRemoveExercise}
                 />
-                {editingExId === exConfig.exerciseId && !isDragging && (
-                  <View style={styles.inlineEditorWrap}>
-                    <ExerciseEditorInline
-                      templateId={templateId}
-                      exConfig={exConfig}
-                      def={allExercises[exConfig.exerciseId]}
-                      onClose={() => setEditingExId(null)}
-                      navigation={navigation}
-                    />
-                  </View>
-                )}
               </View>
             );
           })}
@@ -436,6 +431,54 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
         </View>
       )}
     </View>
+
+    {/* ── Exercise editor modal ────────────────────────────────────────────── */}
+    {editingExConfig && (
+      <Modal
+        visible
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditingExId(null)}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          {/* Header */}
+          <View style={styles.modalTopbar}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.modalExTag}>EJERCICIO</Text>
+              <Text style={styles.modalExName} numberOfLines={1}>
+                {editingDef?.name ?? editingExId}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.modalAcceptBtn}
+              onPress={() => setEditingExId(null)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalAcceptTxt}>Aceptar</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Content */}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ExerciseEditorInline
+                templateId={templateId}
+                exConfig={editingExConfig}
+                def={editingDef}
+                onClose={() => setEditingExId(null)}
+                navigation={navigation}
+              />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -477,7 +520,46 @@ const styles = StyleSheet.create({
     fontSize: typography.xs, color: colors.muted,
     padding: spacing.md, textAlign: 'center',
   },
-  inlineEditorWrap: { paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
+  // ── Exercise editor modal ────────────────────────────────────────────────
+  modalSafe: {
+    flex:            1,
+    backgroundColor: colors.bg,
+  },
+  modalTopbar: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+  },
+  modalExTag: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.muted,
+    letterSpacing: 1,
+  },
+  modalExName: {
+    fontSize:   typography.lg,
+    fontWeight: typography.bold,
+    color:      colors.text,
+    marginTop:  2,
+  },
+  modalAcceptBtn: {
+    backgroundColor:   colors.accent,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   8,
+    borderRadius:      radius.sm,
+    marginLeft:        spacing.md,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  modalAcceptTxt: {
+    fontSize:   typography.sm,
+    fontWeight: typography.heavy,
+    color:      colors.onAccent,
+    letterSpacing: 0.5,
+  },
   bodyActions: {
     flexDirection: 'row',
     gap: spacing.xs,

@@ -586,8 +586,8 @@ export default function HomeScreen() {
 
               {/* Program actions */}
               <View style={styles.programActions}>
-                <ProgramBtn label={t('home.view')}    onPress={() => navigate('programPrint')}  accent />
-                <ProgramBtn label={t('home.edit')}    onPress={() => navigate('programEditor')} accent />
+                <ProgramBtn label={t('home.view')}    onPress={() => navigate('programPrint')}  />
+                <ProgramBtn label={t('home.edit')}    onPress={() => navigate('programEditor')} />
                 <ProgramBtn label={t('home.archive')} onPress={() => setArchiveOpen(true)}      danger />
               </View>
             </>

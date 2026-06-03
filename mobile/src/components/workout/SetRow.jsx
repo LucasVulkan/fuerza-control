@@ -258,10 +258,18 @@ export default function SetRow({
   onToggleDone,
   showHint,
   weightScrollStep,
+  isActive,
+  onCopyPrev,
 }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.setNum}>S{index + 1}</Text>
+      {onCopyPrev ? (
+        <TouchableOpacity onPress={onCopyPrev} hitSlop={8}>
+          <Text style={[styles.setNum, isActive && styles.setNumActive]}>S{index + 1}</Text>
+        </TouchableOpacity>
+      ) : (
+        <Text style={[styles.setNum, isActive && styles.setNumActive]}>S{index + 1}</Text>
+      )}
 
       {/* ── weight_reps ── */}
       {inputType === 'weight_reps' && (
@@ -363,11 +371,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   setNum: {
-    width:         28,
+    width:         20,
     fontSize:      typography.xs,
     color:         colors.muted,
     letterSpacing: 0.5,
     textAlign:     'right',
+  },
+  setNumActive: {
+    color:      colors.accent,
+    fontWeight: typography.semibold,
   },
 
   inputCell: { flex: 1 },
@@ -378,7 +390,7 @@ const styles = StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       colors.borderCard,
     borderRadius:      radius.sm,
-    paddingVertical:   spacing.sm,
+    paddingVertical:   spacing.xs + 2,
     paddingHorizontal: spacing.xs,
     alignItems:        'center',
     justifyContent:    'center',
@@ -392,7 +404,7 @@ const styles = StyleSheet.create({
     fontSize:          typography.md,
     fontWeight:        typography.semibold,
     textAlign:         'center',
-    paddingVertical:   spacing.sm,
+    paddingVertical:   spacing.xs + 2,
     paddingHorizontal: spacing.xs,
   },
   inputScrollActive: {

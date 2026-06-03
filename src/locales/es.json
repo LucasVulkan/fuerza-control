@@ -547,6 +547,8 @@
     "saveBtn": "Guardar",
     "toastUpdated": "✓ Ejercicio actualizado",
     "toastSubstituted": "✓ Ejercicio sustituido",
+    "sectionVolume": "Volumen",
+    "sectionOptions": "Opciones",
     "sectionProgression": "PROGRESIÓN",
     "sectionEvaluation": "EVALUACIÓN",
     "sectionIncrement": "INCREMENTO",
@@ -568,10 +570,18 @@
       "all_complete": "Todas ✓",
       "pct": "% mínimo"
     },
+    "evalModeDesc": {
+      "all_complete": "Sube cuando completas todas las series en el rango superior de reps",
+      "pct": "Sube cuando alcanzas el porcentaje indicado de series completadas"
+    },
     "evalPctLabel": "Umbral",
     "incrTypes": {
       "fixed": "Fijo",
       "pct": "Porcentaje"
+    },
+    "incrTypeDesc": {
+      "fixed": "Añade una cantidad fija en cada subida de carga",
+      "pct": "Sube el peso un porcentaje del valor actual"
     },
     "incrFixedRepsLabel": "+ reps",
     "incrMinLabel": "Mín. disponible",
@@ -584,7 +594,7 @@
   },
   "clients": {
     "title": "Clientes",
-    "newBtn": "＋ NUEVO",
+    "newBtn": "+ Cliente",
     "searchPlaceholder": "Buscar cliente...",
     "filterActive": "Activos",
     "filterInactive": "Inactivos",
@@ -693,7 +703,7 @@
     "statusBilled": "Facturado",
     "statusPaid": "Pagado",
     "periodThisMonth": "Este mes",
-    "periodLast3Months": "Últimos 3 meses",
+    "periodLast3Months": "3 meses",
     "periodAll": "Siempre",
     "noBillingEntries": "Sin entradas para este filtro.",
     "newClientModal": {
@@ -724,7 +734,7 @@
   },
   "templates": {
     "title": "Plantillas",
-    "newBtn": "＋ NUEVA",
+    "newBtn": "+ Plantilla",
     "empty": "Sin plantillas todavía.\nCrea plantillas para asignarlas\nrápidamente a tus clientes.",
     "deleteConfirm": "¿Eliminar esta plantilla?",
     "deleteTitle": "Eliminar plantilla",

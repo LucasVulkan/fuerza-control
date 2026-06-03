@@ -139,9 +139,9 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
         ))}
       </View>
 
-      {/* Grid — always 6 rows, arrow buttons navigate months */}
+      {/* Grid — trim trailing empty rows */}
       <View style={cal.grid}>
-        {weeks.map((week, wi) => (
+        {weeks.filter((week) => week.some((d) => d !== null)).map((week, wi) => (
           <View key={wi} style={cal.week}>
             {week.map((day, di) => {
               if (day === null) return <View key={di} style={cal.cellBlank} />;
@@ -190,7 +190,7 @@ const cal = StyleSheet.create({
   wrap: {
     paddingHorizontal: spacing.xl,
     paddingTop:        spacing.md,
-    paddingBottom:     spacing.md,
+    paddingBottom:     spacing.sm,
     borderBottomWidth: borders.thin,
     borderBottomColor: colors.border,
   },

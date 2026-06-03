@@ -665,17 +665,24 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
     return entries.sort((a, b) => b.date.localeCompare(a.date));
   }, [clients]);
 
+  const periodFiltered = useMemo(() => {
+    if (periodFilter === 'all') return allEntries;
+    const now = new Date();
+    const months = periodFilter === '1m' ? 1 : 3;
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
+    return allEntries.filter((e) => e.date >= cutoff);
+  }, [allEntries, periodFilter]);
+
+  const statusCounts = useMemo(() => ({
+    all:     periodFiltered.length,
+    pending: periodFiltered.filter((e) => e.status !== 'paid').length,
+    paid:    periodFiltered.filter((e) => e.status === 'paid').length,
+  }), [periodFiltered]);
+
   const filtered = useMemo(() => {
-    let list = allEntries;
-    if (statusFilter !== 'all') list = list.filter((e) => e.status === statusFilter);
-    if (periodFilter !== 'all') {
-      const now = new Date();
-      const months = periodFilter === '1m' ? 1 : 3;
-      const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
-      list = list.filter((e) => e.date >= cutoff);
-    }
-    return list;
-  }, [allEntries, statusFilter, periodFilter]);
+    if (statusFilter === 'all') return periodFiltered;
+    return periodFiltered.filter((e) => e.status === statusFilter);
+  }, [periodFiltered, statusFilter]);
 
   const total   = filtered.reduce((a, b) => a + (b.amount ?? 0), 0);
   const paid    = filtered.filter((e) => e.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
@@ -696,7 +703,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
         <GlobalAddBillingModal clients={clients} onClose={() => setShowAdd(false)} />
       )}
 
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl }}>
         {/* Summary tiles */}
         <View style={styles.billingRow}>
           {[
@@ -712,16 +719,47 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
         </View>
 
         {/* Filters */}
-        <View style={{ gap: spacing.xs }}>
-          <View style={styles.chipRow}>
-            {[{ id: 'all', label: t('clients.filterAll') }, { id: 'pending', label: t('clients.billPending') }, { id: 'paid', label: t('clients.statusPaid') }].map(({ id, label }) => (
-              <FilterChip key={id} label={label} active={statusFilter === id} onPress={() => setStatusFilter(id)} />
-            ))}
+        <View style={{ gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md }}>
+          {/* Status row */}
+          <View style={styles.billFilterRow}>
+            {[
+              { id: 'all',     label: t('clients.filterAll')   },
+              { id: 'pending', label: t('clients.billPending') },
+              { id: 'paid',    label: t('clients.statusPaid')  },
+            ].map(({ id, label }) => {
+              const active = statusFilter === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.billFilterBtn, active && styles.billFilterBtnActive]}
+                  onPress={() => setStatusFilter(id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{label}</Text>
+                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{statusCounts[id]}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <View style={styles.chipRow}>
-            {[{ id: 'all', label: t('clients.periodAll') }, { id: '1m', label: t('clients.periodThisMonth') }, { id: '3m', label: t('clients.periodLast3Months') }].map(({ id, label }) => (
-              <FilterChip key={id} label={label} active={periodFilter === id} onPress={() => setPeriodFilter(id)} />
-            ))}
+          {/* Period row */}
+          <View style={styles.billFilterRow}>
+            {[
+              { id: 'all', label: t('clients.periodAll')        },
+              { id: '1m',  label: t('clients.periodThisMonth')  },
+              { id: '3m',  label: t('clients.periodLast3Months')},
+            ].map(({ id, label }) => {
+              const active = periodFilter === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.billFilterBtn, active && styles.billFilterBtnActive]}
+                  onPress={() => setPeriodFilter(id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -1996,7 +2034,7 @@ export default function ClientsScreen() {
               <Path d="M3 6h18M3 10h18M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
             </Svg>
           </TouchableOpacity>
-          <AccentBtn label="＋ Nuevo cliente" onPress={() => setShowNewClient(true)} small />
+          <AccentBtn label={t('clients.newBtn')} onPress={() => setShowNewClient(true)} small />
         </View>
 
         {/* Row 2: Sort [↓↑] + Search + Filter [≡] */}
@@ -3013,7 +3051,7 @@ const styles = StyleSheet.create({
   },
   cName: {
     fontSize:   typography.xl,
-    fontWeight: typography.bold,
+    fontWeight: typography.medium,
     color:      colors.text,
     flexShrink: 1,
   },
@@ -3917,6 +3955,56 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     fontWeight: typography.medium,
   },
+
+  // ── Billing status filter row ──
+  // ── Billing filter rows (status + period) ──
+  billFilterRow: {
+    flexDirection: 'row',
+    gap:           spacing.xs,
+  },
+  billFilterBtn: {
+    flex:            1,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             spacing.xs,
+    paddingVertical: spacing.xs + 1,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: withOpacity(colors.surface2, 0.35),
+  },
+  billFilterBtnActive: {
+    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(colors.accent, 0.08),
+  },
+  billFilterBtnText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.regular,
+    color:      colors.muted,
+  },
+  billFilterBtnTextActive: { color: withOpacity(colors.accent, 0.9) },
+  billFilterBadge: {
+    backgroundColor:   'transparent',
+    borderWidth:       1,
+    borderColor:       colors.border,
+    borderRadius:      999,
+    minWidth:          22,
+    height:            22,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: 5,
+  },
+  billFilterBadgeActive: {
+    backgroundColor: colors.accent,
+    borderColor:     colors.accent,
+  },
+  billFilterBadgeText: {
+    fontSize:   11,
+    fontWeight: typography.bold,
+    color:      colors.muted,
+  },
+  billFilterBadgeTextActive: { color: colors.bg },
 
   // ── Billing entries ──
   billEntry: {

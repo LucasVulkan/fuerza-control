@@ -9,7 +9,7 @@ import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
   Animated, PanResponder,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -56,6 +56,22 @@ function parseImportFile(jsonString) {
   } catch {
     return { ok: false, error: 'El archivo no es un JSON válido.' };
   }
+}
+
+// ── FIT logo (SVG paths) ───────────────────────────────────────────────────────
+
+function FitLogo({ height = 22 }) {
+  const width = height * (378 / 126);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
+      {/* I */}
+      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={colors.accent} />
+      {/* T */}
+      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={colors.accent} />
+      {/* F */}
+      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={colors.accent} />
+    </Svg>
+  );
 }
 
 // ── Icon ───────────────────────────────────────────────────────────────────────
@@ -483,7 +499,7 @@ export default function AppHeader() {
       <View style={styles.header}>
         <View style={styles.appNameContainer}>
           <Text style={styles.appNameForma}>Forma</Text>
-          <Text style={styles.appNameFit}> Fit</Text>
+          <View style={{ marginTop: 4 }}><FitLogo height={14} /></View>
         </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
         <TouchableOpacity
@@ -564,7 +580,8 @@ const styles = StyleSheet.create({
   },
   appNameContainer: {
     flexDirection: 'row',
-    alignItems:    'baseline',
+    alignItems:    'center',
+    gap:           spacing.xs,
     minWidth:      88,
   },
   appNameForma: {
@@ -575,9 +592,9 @@ const styles = StyleSheet.create({
   },
   appNameFit: {
     fontSize:      typography.xl,
-    fontWeight:    typography.heavy,
+    fontFamily:    'BarlowCondensed_800ExtraBold_Italic',
     color:         colors.accent,
-    letterSpacing: 0.5,
+    letterSpacing: 2,
   },
   clockText: {
     flex:       1,
