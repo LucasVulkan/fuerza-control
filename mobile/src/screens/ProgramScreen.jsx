@@ -13,9 +13,11 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
+import PaywallModal from '../components/PaywallModal';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -258,13 +260,19 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function ProgramScreen() {
-  const { t }  = useTranslation();
-  const insets = useSafeAreaInsets();
+  const { t }       = useTranslation();
+  const insets      = useSafeAreaInsets();
+  const navigation  = useNavigation();
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [contextTarget, setContextTarget] = useState(null); // programId or null
   const [showAssign,    setShowAssign]    = useState(false);
   const [assignTarget,  setAssignTarget]  = useState(null); // captures contextTarget before menu closes
+  const [showPaywall,   setShowPaywall]   = useState(false);
+
+  const profile    = useStore((s) => s.profile);
+  const setProfile = useStore((s) => s.setProfile);
+  const isPro      = profile?.isPro ?? true;
 
   const programs                 = useStore((s) => s.programs);
   const sessionTemplates         = useStore((s) => s.sessionTemplates);
@@ -329,6 +337,40 @@ export default function ProgramScreen() {
           onPress: () => { deleteProgram(programId, false); showToast(t('templates.toastDeleted')); },
         },
       ]
+    );
+  }
+
+  // ── PRO gate ───────────────────────────────────────────────────────────────
+  if (!isPro) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <AppHeader />
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>📐</Text>
+          <Text style={styles.emptyTitle}>Plantillas de entrenamiento</Text>
+          <Text style={styles.emptyBody}>
+            Crea plantillas y asígnalas a tus clientes en segundos. Estandariza tus programas y ahorra tiempo.
+          </Text>
+          <TouchableOpacity
+            style={styles.proBtn}
+            onPress={() => setShowPaywall(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.proBtnText}>Ver planes PRO</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.hideTabBtn}
+            onPress={() => {
+              setProfile({ proTabsHidden: true });
+              navigation.navigate('Home');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.hideTabBtnText}>Ocultar tab</Text>
+          </TouchableOpacity>
+        </View>
+        {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      </View>
     );
   }
 
@@ -584,6 +626,28 @@ const styles = StyleSheet.create({
     fontWeight:    typography.heavy,
     color:         colors.bg,
     letterSpacing: 1,
+  },
+  proBtn: {
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.sm,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xl,
+    marginTop:         spacing.xs,
+  },
+  proBtnText: {
+    fontSize:   typography.base,
+    fontWeight: typography.bold,
+    color:      colors.bg,
+  },
+  hideTabBtn: {
+    marginTop:         spacing.sm,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  hideTabBtnText: {
+    fontSize:  typography.sm,
+    color:     colors.muted,
+    textAlign: 'center',
   },
 
   // Modals — bottom-sheet backdrop (flex:1 pushes sheet to bottom)

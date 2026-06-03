@@ -10,12 +10,13 @@
  * pasando el parámetro de navegación: { fromApp: true }.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View, Text, ScrollView, TextInput,
   TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -68,11 +69,22 @@ function parseImportFile(jsonString) {
 
 // ─── Brand tag two-tone ───────────────────────────────────────────────────────
 
+function FitLogo({ height = 18 }) {
+  const width = height * (378 / 126);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
+      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={colors.accent} />
+      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={colors.accent} />
+      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={colors.accent} />
+    </Svg>
+  );
+}
+
 function BrandTag() {
   return (
     <View style={styles.brandTag}>
       <Text style={styles.brandTagForma}>Forma</Text>
-      <Text style={styles.brandTagFit}> Fit</Text>
+      <View style={{ marginTop: 3 }}><FitLogo height={13} /></View>
     </View>
   );
 }
@@ -107,15 +119,27 @@ export default function OnboardingScreen() {
   const { t } = useTranslation();
   const generateAndActivateProgram = useStore((s) => s.generateAndActivateProgram);
   const createEmptyProgram         = useStore((s) => s.createEmptyProgram);
+  const cloneProgramFromTemplate   = useStore((s) => s.cloneProgramFromTemplate);
   const importData                 = useStore((s) => s.importData);
   const exerciseLibrary            = useStore((s) => s.exerciseLibrary);
   const customExercises            = useStore((s) => s.customExercises);
   const storeNavigate              = useStore((s) => s.navigate);
   const language                   = useStore((s) => s.profile?.language ?? 'es');
+  const isPro                      = useStore((s) => s.profile?.isPro ?? true);
+  const programs                   = useStore((s) => s.programs);
 
-  const [mode,             setMode]            = useState(null);
-  const [showClientCode,   setShowClientCode]  = useState(false);
-  const [step,             setStep]            = useState(0);
+  const templateList = useMemo(
+    () => Object.values(programs ?? {})
+      .filter((p) => p.mode === 'template')
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [programs],
+  );
+
+  const [mode,               setMode]              = useState(null);
+  const [showClientCode,     setShowClientCode]     = useState(false);
+  const [step,               setStep]              = useState(0);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [templateProgramName, setTemplateProgramName] = useState('');
   const [loading,          setLoading]         = useState(false);
   const [importState,      setImportState]     = useState(null);
   const [generatedProgram, setGeneratedProgram]= useState(null); // { program, sessionTemplates }
@@ -195,6 +219,14 @@ export default function OnboardingScreen() {
 
   function handleManualCreate() {
     createEmptyProgram(manualSessions, manualName.trim() || t('onboarding.programNamePlaceholder', 'Mi programa'));
+    finish();
+  }
+
+  function handleLoadTemplate() {
+    const src = programs[selectedTemplateId];
+    if (!src) return;
+    const name = templateProgramName.trim() || src.name;
+    cloneProgramFromTemplate(selectedTemplateId, { name });
     finish();
   }
 
@@ -381,6 +413,18 @@ export default function OnboardingScreen() {
             desc={t('onboarding.modeImportDesc', 'Carga un archivo .json exportado desde Forma Fit.')}
             onPress={handlePickFile}
           />
+          {isPro && templateList.length > 0 && (
+            <ModeCard
+              icon="📐"
+              title="Cargar plantilla"
+              desc="Crea un programa a partir de una de tus plantillas."
+              onPress={() => {
+                setSelectedTemplateId(null);
+                setTemplateProgramName('');
+                setMode('template_picker');
+              }}
+            />
+          )}
           <ModeCard
             icon="👤"
             title="Tengo un entrenador"
@@ -476,7 +520,7 @@ export default function OnboardingScreen() {
         {/* Botones */}
         <View style={styles.manualFooter}>
           <TouchableOpacity style={styles.backBtn} onPress={() => setMode(null)} activeOpacity={0.75}>
-            <Text style={styles.backBtnText}>{t('common.back', 'Atrás')}</Text>
+            <Text style={styles.backBtnText}>‹ Atrás</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.createBtn, !manualName.trim() && styles.createBtnOff]}
@@ -484,7 +528,89 @@ export default function OnboardingScreen() {
             activeOpacity={manualName.trim() ? 0.85 : 1}
           >
             <Text style={[styles.createBtnText, !manualName.trim() && styles.createBtnTextOff]}>
-              {t('onboarding.createAndEdit', 'CREAR Y EDITAR')}
+              {t('onboarding.createAndEdit', 'Crear y editar →')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Modo template picker ─────────────────────────────────────────────────────
+  if (mode === 'template_picker') {
+    const selectedTpl = selectedTemplateId ? programs[selectedTemplateId] : null;
+
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.modeHeader}>
+          <BrandTag />
+          <Text style={styles.modeHeadline}>Cargar plantilla</Text>
+          <Text style={styles.modeSubtitle}>Selecciona una plantilla para crear tu programa</Text>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.tplPickerList}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {templateList.map((tpl) => {
+            const isSelected = tpl.id === selectedTemplateId;
+            const dayCount   = (tpl.stages?.length > 0
+              ? tpl.stages.flatMap((s) => s.days ?? [])
+              : tpl.days ?? []).length;
+            return (
+              <TouchableOpacity
+                key={tpl.id}
+                style={[styles.tplPickerCard, isSelected && styles.tplPickerCardActive]}
+                onPress={() => {
+                  setSelectedTemplateId(tpl.id);
+                  setTemplateProgramName(tpl.name);
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.tplPickerCardBody}>
+                  <Text style={[styles.tplPickerName, isSelected && styles.tplPickerNameActive]} numberOfLines={1}>
+                    {tpl.name}
+                  </Text>
+                  {dayCount > 0 && (
+                    <Text style={styles.tplPickerMeta}>{dayCount} sesiones por ciclo</Text>
+                  )}
+                </View>
+                {isSelected && <Text style={styles.tplPickerCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Nombre del programa */}
+          {selectedTpl && (
+            <View style={styles.tplNameField}>
+              <Text style={styles.fieldLabel}>NOMBRE DEL PROGRAMA</Text>
+              <TextInput
+                style={styles.textInput}
+                value={templateProgramName}
+                onChangeText={setTemplateProgramName}
+                placeholder={selectedTpl.name}
+                placeholderTextColor={colors.muted2}
+                returnKeyType="done"
+                autoCorrect={false}
+              />
+            </View>
+          )}
+        </ScrollView>
+
+        {/* CTA */}
+        <View style={styles.tplPickerFooter}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setMode(null)} activeOpacity={0.75}>
+            <Text style={styles.backBtnText}>‹ Atrás</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.createBtn, !selectedTemplateId && styles.createBtnOff]}
+            onPress={handleLoadTemplate}
+            disabled={!selectedTemplateId}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.createBtnText, !selectedTemplateId && styles.createBtnTextOff]}>
+              Crear programa →
             </Text>
           </TouchableOpacity>
         </View>
@@ -505,7 +631,7 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Pasos */}
-      {step === 0 && <StepLevel      answers={answers} set_={set_}        onNext={nextStep} />}
+      {step === 0 && <StepLevel      answers={answers} set_={set_}        onNext={nextStep} onBack={() => setMode(null)} />}
       {step === 1 && <StepDiscipline answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
       {step === 2 && <StepDistrib    answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
       {step === 3 && <StepDays       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
@@ -527,15 +653,15 @@ export default function OnboardingScreen() {
 
 // ─── Pasos individuales ───────────────────────────────────────────────────────
 
-function StepLevel({ answers, set_, onNext }) {
+function StepLevel({ answers, set_, onNext, onBack }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
       title={t('onboarding.stepLevel.title', 'Nivel')}
       subtitle={t('onboarding.stepLevel.subtitle', '¿Cuál es tu nivel de experiencia?')}
       onNext={onNext}
+      onBack={onBack}
       nextDisabled={!answers.level}
-      showBack={false}
     >
       {LEVEL_IDS.map((id) => (
         <OptionCard
@@ -811,13 +937,14 @@ const styles = StyleSheet.create({
   // Brand tag
   brandTag: {
     flexDirection: 'row',
-    alignItems:    'baseline',
+    alignItems:    'center',
+    gap:           spacing.xs,
   },
   brandTagForma: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
+    fontSize:      typography.lg,
+    fontWeight:    typography.heavy,
     color:         colors.text,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   brandTagFit: {
     fontSize:      typography.sm,
@@ -1119,7 +1246,7 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
   },
   createBtnOff:     { backgroundColor: colors.surface2 },
-  createBtnText:    { fontSize: 20, fontWeight: typography.heavy, letterSpacing: 1.5, color: colors.onAccent },
+  createBtnText:    { fontSize: 16, fontWeight: typography.heavy, letterSpacing: 1, color: colors.onAccent },
   createBtnTextOff: { color: colors.muted },
 
   // StepDays helpers
@@ -1172,4 +1299,54 @@ const styles = StyleSheet.create({
   pplLabel: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
 
   hint: { fontSize: typography.xs, color: colors.muted, marginTop: spacing.xs },
+
+  // Template picker
+  tplPickerList: {
+    padding:    spacing.lg,
+    gap:        spacing.sm,
+    paddingBottom: spacing.xxl,
+  },
+  tplPickerCard: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    backgroundColor: colors.surface,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.md,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+  },
+  tplPickerCardActive: {
+    borderColor:     colors.accent,
+    backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  tplPickerCardBody: { flex: 1, minWidth: 0 },
+  tplPickerName: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  tplPickerNameActive: { color: colors.text },
+  tplPickerMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 2,
+  },
+  tplPickerCheck: {
+    fontSize:   typography.base,
+    color:      colors.accent,
+    fontWeight: typography.heavy,
+  },
+  tplNameField: {
+    marginTop: spacing.md,
+    gap:       spacing.xs,
+  },
+  tplPickerFooter: {
+    flexDirection:   'row',
+    gap:             spacing.sm,
+    padding:         spacing.lg,
+    paddingBottom:   spacing.xl,
+    borderTopWidth:  borders.thin,
+    borderTopColor:  colors.border,
+  },
 });

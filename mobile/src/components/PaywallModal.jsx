@@ -19,9 +19,9 @@ import { colors, spacing, typography, borders, radius } from '../theme';
 const PRO_FEATURES = [
   { emoji: '👥', text: 'Gestión completa de clientes' },
   { emoji: '📋', text: 'Asignar programas a clientes' },
-  { emoji: '💶', text: 'Control de facturación' },
-  { emoji: '☁️', text: 'Backup automático en Google Drive' },
-  { emoji: '📊', text: 'Exportar historial completo' },
+  { emoji: '📈', text: 'Ver el progreso de tus clientes en tiempo real' },
+  { emoji: '💶', text: 'Registro de facturación' },
+  { emoji: '📐', text: 'Crear plantillas de entrenamiento' },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -112,14 +112,13 @@ export default function PaywallModal({ onClose }) {
           ) : packages.length === 0 ? (
             <View style={styles.noProducts}>
               <Text style={styles.noProductsTxt}>
-                Planes de suscripción próximamente
+                Forma Pro próximamente
               </Text>
             </View>
           ) : (
             <View style={styles.packageList}>
               {packages.map((pkg) => {
                 const isSelected = pkg.identifier === selected;
-                const isAnnual   = pkg.packageType === 'ANNUAL' || pkg.identifier?.toLowerCase().includes('annual');
                 return (
                   <TouchableOpacity
                     key={pkg.identifier}
@@ -127,19 +126,13 @@ export default function PaywallModal({ onClose }) {
                     onPress={() => setSelected(pkg.identifier)}
                     activeOpacity={0.8}
                   >
-                    {isAnnual && (
-                      <View style={styles.saveBadge}>
-                        <Text style={styles.saveBadgeTxt}>MEJOR VALOR</Text>
-                      </View>
-                    )}
                     <View style={[styles.radio, isSelected && styles.radioActive]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pkgTitle, isSelected && styles.pkgTitleActive]}>
-                        {pkg.product.title || (isAnnual ? 'Anual' : 'Mensual')}
+                        {pkg.product.title || 'Forma Pro'}
                       </Text>
                       <Text style={styles.pkgPrice}>
-                        {pkg.product.priceString}
-                        {isAnnual ? ' / año' : ' / mes'}
+                        {pkg.product.priceString} · Pago único
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -160,8 +153,8 @@ export default function PaywallModal({ onClose }) {
                 ? <ActivityIndicator size="small" color={colors.bg} />
                 : <Text style={styles.ctaTxt}>
                     {selectedPkg
-                      ? `Empezar por ${selectedPkg.product.priceString}`
-                      : 'Empezar con PRO'}
+                      ? `Comprar por ${selectedPkg.product.priceString}`
+                      : 'Comprar Forma Pro'}
                   </Text>
               }
             </TouchableOpacity>
@@ -180,7 +173,7 @@ export default function PaywallModal({ onClose }) {
           </TouchableOpacity>
 
           <Text style={styles.legal}>
-            La suscripción se renueva automáticamente. Puedes cancelar en cualquier momento desde los ajustes de tu cuenta de Google Play o App Store.
+            Pago único. Sin suscripciones. El acceso a Forma Pro es permanente.
           </Text>
         </ScrollView>
       </View>

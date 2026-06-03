@@ -21,6 +21,7 @@ import ImportModal from './ImportModal';
 import DriveBackupModal from './DriveBackupModal';
 import ClientCodeModal from './ClientCodeModal';
 import TrainerSyncModal from './TrainerSyncModal';
+import PaywallModal from './PaywallModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
@@ -184,7 +185,8 @@ function ArchivedProgramsModal({ onClose }) {
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode }) {
   const { t }         = useTranslation();
   const insets        = useSafeAreaInsets();
-  const [exporting, setExporting] = useState(null);
+  const [exporting,    setExporting]   = useState(null);
+  const [showPaywall,  setShowPaywall] = useState(false);
 
   const profile              = useStore((s) => s.profile);
   const setProfile           = useStore((s) => s.setProfile);
@@ -196,25 +198,10 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
   const trainerSync          = useStore((s) => s.trainerSync);
 
-  const lang  = profile.language   ?? 'es';
-  const unit  = profile.weightUnit ?? 'kg';
-  const isPro = profile.isPro      ?? true;
-
-  // ── Easter egg: 5 taps rápidos en "Plan actual" para toggle Pro (testing en prod) ──
-  const planTapCount = useRef(0);
-  const planTapTimer = useRef(null);
-  const showToast    = useStore((s) => s.showToast);
-  function handlePlanTap() {
-    planTapCount.current += 1;
-    clearTimeout(planTapTimer.current);
-    if (planTapCount.current >= 5) {
-      planTapCount.current = 0;
-      setProfile({ isPro: !isPro });
-      showToast(isPro ? 'Plan: FREE (test)' : 'Plan: PRO (test)');
-    } else {
-      planTapTimer.current = setTimeout(() => { planTapCount.current = 0; }, 1500);
-    }
-  }
+  const lang           = profile.language      ?? 'es';
+  const unit           = profile.weightUnit    ?? 'kg';
+  const isPro          = profile.isPro         ?? true;
+  const proTabsHidden  = profile.proTabsHidden ?? false;
 
   // ── Drag-to-close ────────────────────────────────────────────────────────────
   const translateY      = useRef(new Animated.Value(900)).current;
@@ -377,6 +364,19 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
                 ))}
               </View>
             </View>
+            {!isPro && (
+              <View style={[styles.toggleRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.toggleLabel}>{t('header.proTabsLabel')}</Text>
+                <TouchableOpacity
+                  style={[styles.toggleBtn, !proTabsHidden && styles.toggleBtnActive]}
+                  onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
+                >
+                  <Text style={[styles.toggleBtnText, !proTabsHidden && styles.toggleBtnTextActive]}>
+                    {proTabsHidden ? t('header.proTabsHidden') : t('header.proTabsVisible')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </CategoryCard>
 
           {/* ── CUENTA ── */}
@@ -385,19 +385,22 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               icon={<Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />}
               label={t('header.currentPlan')}
               badge={isPro ? 'PRO' : 'FREE'}
-              onPress={handlePlanTap}
+              onPress={isPro ? undefined : () => setShowPaywall(true)}
             />
-            <MenuItem
-              icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
-              label={t('header.trainerSync')}
-              badge={
-                trainerSync.mode === 'google'  ? 'GOOGLE' :
-                trainerSync.mode === 'code'    ? 'CÓDIGO' :
-                trainerSync.mode === 'offline' ? 'OFFLINE' : null
-              }
-              onPress={() => { onClose(); onChangeSyncMode(); }}
-            />
+            {isPro && (
+              <MenuItem
+                icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
+                label={t('header.trainerSync')}
+                badge={
+                  trainerSync.mode === 'google'  ? 'GOOGLE' :
+                  trainerSync.mode === 'code'    ? 'CÓDIGO' :
+                  trainerSync.mode === 'offline' ? 'OFFLINE' : null
+                }
+                onPress={() => { onClose(); onChangeSyncMode(); }}
+              />
+            )}
           </CategoryCard>
+          {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
 
           {/* ── DESARROLLADOR — solo en dev builds ── */}
           {__DEV__ && (

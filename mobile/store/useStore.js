@@ -79,6 +79,7 @@ const INITIAL_PROFILE = {
   bodyWeight: null,
   theme: 'dark',
   isPro: true,
+  proTabsHidden: false,
   language: 'es',
   weightUnit: 'kg',
 };

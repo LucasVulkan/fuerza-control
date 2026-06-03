@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { useStore }      from '../../store/useStore';
 import { colors, borders } from '../theme';
 import HomeScreen       from '../screens/HomeScreen';
 import HistoryScreen    from '../screens/HistoryScreen';
@@ -42,8 +43,11 @@ function TabBarBackground() {
 
 // ── Bottom tab navigator ───────────────────────────────────────────────────────
 function MainTabs() {
-  const insets = useSafeAreaInsets();
-  const { t }  = useTranslation();
+  const insets         = useSafeAreaInsets();
+  const { t }          = useTranslation();
+  const isPro          = useStore((s) => s.profile?.isPro          ?? true);
+  const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
+  const showProTabs    = isPro || !proTabsHidden;
   return (
     <Tab.Navigator
       screenOptions={{
@@ -77,16 +81,20 @@ function MainTabs() {
         component={StatsScreen}
         options={{ tabBarLabel: t('tabs.progress'),  tabBarIcon: tabIcon('stats-chart') }}
       />
-      <Tab.Screen
-        name="Clients"
-        component={ClientsScreen}
-        options={{ tabBarLabel: t('tabs.clients'),   tabBarIcon: tabIcon('people') }}
-      />
-      <Tab.Screen
-        name="Program"
-        component={ProgramScreen}
-        options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('layers') }}
-      />
+      {showProTabs && (
+        <Tab.Screen
+          name="Clients"
+          component={ClientsScreen}
+          options={{ tabBarLabel: t('tabs.clients'),   tabBarIcon: tabIcon('people') }}
+        />
+      )}
+      {showProTabs && (
+        <Tab.Screen
+          name="Program"
+          component={ProgramScreen}
+          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('layers') }}
+        />
+      )}
     </Tab.Navigator>
   );
 }

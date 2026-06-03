@@ -33,6 +33,9 @@
     "theme": "Theme",
     "language": "Language",
     "units": "Weight units",
+    "proTabsLabel": "Pro tabs",
+    "proTabsVisible": "Visible",
+    "proTabsHidden": "Hidden",
     "settings": "SETTINGS",
     "sectionPrograms": "PROGRAMS",
     "sectionData": "DATA",
@@ -229,7 +232,7 @@
     "numberOfSessions": "Number of sessions",
     "addMoreFromEditor": "You can add more sessions from the editor.",
     "emptySessionsHint": "{{count}} empty sessions will be created. Add exercises to each from the program editor.",
-    "createAndEdit": "CREATE AND EDIT ›",
+    "createAndEdit": "Create and edit →",
     "stepIndicator": "STEP {{current}} OF {{total}}",
     "stepLevel": {
       "title": "What's your level?",

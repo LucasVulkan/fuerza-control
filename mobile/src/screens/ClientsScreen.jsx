@@ -1058,6 +1058,7 @@ export default function ClientsScreen() {
   const deleteTag    = useStore((s) => s.deleteTag);
 
   const isPro        = profile.isPro ?? true;
+  const setProfile   = useStore((s) => s.setProfile);
   const trainerSync  = useStore((s) => s.trainerSync);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
@@ -1423,6 +1424,16 @@ export default function ClientsScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.proBtnText}>Ver planes PRO</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.hideTabBtn}
+            onPress={() => {
+              setProfile({ proTabsHidden: true });
+              navigation.navigate('Home');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.hideTabBtnText}>Ocultar tab</Text>
           </TouchableOpacity>
         </View>
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -2850,6 +2861,16 @@ const styles = StyleSheet.create({
     fontSize:   typography.base,
     fontWeight: typography.bold,
     color:      colors.bg,
+  },
+  hideTabBtn: {
+    marginTop:         spacing.sm,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  hideTabBtnText: {
+    fontSize:  typography.sm,
+    color:     colors.muted,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize:  typography.sm,
