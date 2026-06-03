@@ -31,7 +31,7 @@ import * as SecureStore  from 'expo-secure-store';
 import Constants         from 'expo-constants';
 
 import { useStore }                                       from '../../store/useStore';
-import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup } from '../services/driveService';
+import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, borders, radius }   from '../theme';
 
@@ -159,8 +159,9 @@ export default function DriveBackupModal({ onClose }) {
     setMsg('Cargando lista…');
     try {
       const token = await SecureStore.getItemAsync('drive_access_token');
-      if (token && driveBackup.folderId) {
-        setFiles(await listBackups(token, driveBackup.folderId));
+      if (token) {
+        const folderId = driveBackup.folderId ?? (await findOrCreateFolder(token).catch(() => null));
+        setFiles(folderId ? await listBackups(token, folderId) : []);
       } else {
         setFiles([]);
       }

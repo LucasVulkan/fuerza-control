@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet,
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
+import DriveBackupModal from '../components/DriveBackupModal';
 import {
   colors, spacing, typography, radius, borders,
   resolveColor, withOpacity,
@@ -418,6 +419,7 @@ export default function HomeScreen() {
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
+  const [showDrive,   setShowDrive]   = useState(false);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -447,6 +449,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
+      {showDrive && <DriveBackupModal onClose={() => setShowDrive(false)} />}
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -484,16 +487,11 @@ export default function HomeScreen() {
                   ) : null}
                 </View>
                 {driveBackup?.enabled && (
-                  <View style={styles.progDriveBlock}>
+                  <TouchableOpacity onPress={() => setShowDrive(true)} hitSlop={10}>
                     <Text style={[styles.progDriveIcon, driveBackup.needsReconnect && { color: colors.orange }]}>
                       {driveBackup.needsReconnect ? '⚠ ☁' : '☁'}
                     </Text>
-                    <Text style={[styles.progDriveTime, driveBackup.needsReconnect && { color: colors.orange }]}>
-                      {driveBackup.needsReconnect
-                        ? 'Reconectar'
-                        : (formatBackupTime(driveBackup.lastBackup) ?? 'Sin backup')}
-                    </Text>
-                  </View>
+                  </TouchableOpacity>
                 )}
               </View>
 

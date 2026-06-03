@@ -179,7 +179,6 @@ export default function WorkoutScreen() {
   const customExercises    = useStore((s) => s.customExercises);
   const workoutLog         = useStore((s) => s.workoutLog);
   const restTimer          = useStore((s) => s.ui.restTimer);
-  const driveBackup        = useStore((s) => s.driveBackup);
 
   // Store actions
   const updateSetField        = useStore((s) => s.updateSetField);
@@ -274,11 +273,6 @@ export default function WorkoutScreen() {
                 <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
                   {template.name ?? ''}
                 </Text>
-                {driveBackup.needsReconnect ? (
-                  <Text style={[styles.driveIcon, { color: colors.orange }]}>⚠ ☁</Text>
-                ) : driveBackup.enabled ? (
-                  <Text style={styles.driveIcon}>☁</Text>
-                ) : null}
               </View>
             </>
           )}

@@ -10,6 +10,7 @@ import {
   View, Text, TouchableOpacity, Modal, StyleSheet,
   ActivityIndicator, ScrollView, Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }                                     from '../../store/useStore';
 import { colors, spacing, typography, borders, radius } from '../theme';
@@ -27,6 +28,7 @@ const PRO_FEATURES = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PaywallModal({ onClose }) {
+  const insets = useSafeAreaInsets();
   const getOffering     = useStore((s) => s.getOffering);
   const purchasePackage = useStore((s) => s.purchasePackage);
   const restorePurchases = useStore((s) => s.restorePurchases);
@@ -80,7 +82,7 @@ export default function PaywallModal({ onClose }) {
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, { paddingBottom: spacing.xxl + insets.bottom }]}>
         <View style={styles.handle} />
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -193,7 +195,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius:  radius.lg,
     borderTopRightRadius: radius.lg,
     paddingHorizontal:    spacing.xl,
-    paddingBottom:        spacing.xxl,
     paddingTop:           spacing.sm,
     maxHeight:            '90%',
   },

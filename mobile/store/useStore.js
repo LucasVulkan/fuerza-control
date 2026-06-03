@@ -1863,8 +1863,11 @@ export const useStore = create(
       connectDrive: async (email, accessToken, refreshToken) => {
         await SecureStore.setItemAsync('drive_access_token', accessToken);
         if (refreshToken) await SecureStore.setItemAsync('drive_refresh_token', refreshToken);
+        // Recover the existing backup folder (or create one if first time)
+        let folderId = get().driveBackup.folderId ?? null;
+        try { folderId = await findOrCreateFolder(accessToken); } catch {}
         set((s) => ({
-          driveBackup: { ...s.driveBackup, enabled: true, email, needsReconnect: false },
+          driveBackup: { ...s.driveBackup, enabled: true, email, needsReconnect: false, folderId },
         }));
         await get()._syncDriveConfigToSecureStore();
       },
