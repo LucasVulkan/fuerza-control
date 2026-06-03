@@ -18,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lucasgomez.fuerzacontrol",
+      "bundleIdentifier": "com.formastudio.formafit",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,7 +29,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.lucasgomez.fuerzacontrol",
+      "package": "com.formastudio.formafit",
       "permissions": ["com.android.vending.BILLING"]
     },
     "web": {
