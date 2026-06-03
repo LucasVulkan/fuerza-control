@@ -20,6 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken } from '../src/services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
+import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
 import {
@@ -2297,7 +2298,7 @@ export const useStore = create(
         if (!RC) return get().profile.isPro;
         try {
           const info = await RC.getCustomerInfo();
-          const isPro = !!info.entitlements.active['pro'];
+          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
           set((s) => ({ profile: { ...s.profile, isPro } }));
           return isPro;
         } catch {
@@ -2323,7 +2324,7 @@ export const useStore = create(
         if (!RC) return { ok: false, error: 'Compras no disponibles en este entorno' };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
-          let isPro = !!customerInfo.entitlements.active['pro'];
+          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
           // Entitlement may take a moment to propagate — re-check once after a short delay
           if (!isPro) {
             await new Promise((r) => setTimeout(r, 2000));
@@ -2348,7 +2349,7 @@ export const useStore = create(
         if (!RC) return false;
         try {
           const info = await RC.restorePurchases();
-          const isPro = !!info.entitlements.active['pro'];
+          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
           set((s) => ({ profile: { ...s.profile, isPro } }));
           get().showToast(isPro ? '✓ Compra restaurada' : 'No se encontraron compras anteriores');
           return isPro;

@@ -12,4 +12,4 @@ export const RC_ANDROID_API_KEY = 'goog_pJopTvjCRGKAhbzhpZPiaZnvTgq';
 export const RC_IOS_API_KEY = 'YOUR_IOS_API_KEY';
 
 // Must match the entitlement ID you created in RevenueCat
-export const RC_PRO_ENTITLEMENT = 'pro';
+export const RC_PRO_ENTITLEMENT = 'Forma - Fit Pro';
