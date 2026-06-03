@@ -1,84 +1,82 @@
 /**
  * timerNotification.js
  *
- * Manages rest-timer notifications:
- *  - Android: sticky live countdown in the notification drawer (updates every second)
- *             + OS-scheduled HIGH-importance alert when time is up (fires even if app is killed)
- *  - iOS:     OS-scheduled one-shot notification that fires when the timer ends
- *             (survives app being killed; cancelled if the user stops early)
+ * Android: @notifee/react-native con cronómetro nativo.
+ *   - showCountdownNotification: una sola notificación sticky al iniciar el timer.
+ *     El SO hace tick automáticamente — funciona aunque la app esté minimizada o cerrada.
+ *   - scheduleOsDoneNotification: alarma OS que suena al terminar el timer.
  *
- * All async functions are safe to call without await — they swallow every error.
+ * iOS: expo-notifications para la notificación de fin (unchanged).
+ *
+ * Todas las funciones async son seguras sin await — no lanzan nunca.
  */
 
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
-// ─── Foreground handler ────────────────────────────────────────────────────────
+// ─── Notifee (Android only) ───────────────────────────────────────────────────
+
+let _notifee           = null;
+let _AndroidImportance = null;
+let _TriggerType       = null;
+
+if (Platform.OS === 'android') {
+  try {
+    const mod         = require('@notifee/react-native');
+    _notifee           = mod.default;
+    _AndroidImportance = mod.AndroidImportance;
+    _TriggerType       = mod.TriggerType;
+  } catch {
+    // No disponible en Expo Go — las funciones fallan silenciosamente
+  }
+}
+
+// ─── Fixed notification IDs ───────────────────────────────────────────────────
+
+const COUNTDOWN_ID    = 'rest-timer-countdown';
+const IOS_DONE_ID     = 'rest-timer-ios-done';
+const ANDROID_DONE_ID = 'rest-timer-android-done';
+
+// ─── Foreground handler ───────────────────────────────────────────────────────
 
 /**
- * Suppress all banners/sounds when the app is in the foreground.
- * The in-app RestTimerFloat + toast + haptic handle UX while the app is active.
- * Background / killed-app behaviour is controlled by the channel importance.
- * Call once at app startup (idempotent).
+ * Suprime banners mientras la app está en primer plano.
+ * Android: el canal LOW importance ya evita heads-up banners, nada más que hacer.
+ * iOS:     expo-notifications necesita el handler explícito.
  */
 export function setForegroundNotificationHandler() {
+  if (Platform.OS !== 'ios') return;
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      const type = notification.request.content.data?.type;
-      // Countdown notifications must reach the OS notification list so they
-      // appear in the drawer even while the app is in the foreground.
-      // Everything else (including the "done" alert) is suppressed — the
-      // in-app haptic + toast handle the UX when the app is active.
-      if (type === 'countdown') {
-        return {
-          shouldShowBanner: false, // no heads-up banner (in-app widget handles it)
-          shouldShowList:  true,   // keep it in the drawer ← was false, the bug
-          shouldPlaySound: false,
-          shouldSetBadge:  false,
-        };
-      }
-      return {
-        shouldShowBanner: false,
-        shouldShowList:  false,
-        shouldPlaySound: false,
-        shouldSetBadge:  false,
-      };
-    },
+    handleNotification: async () => ({
+      shouldShowBanner: false,
+      shouldShowList:   false,
+      shouldPlaySound:  false,
+      shouldSetBadge:   false,
+    }),
   });
 }
 
-// ─── Fixed notification identifiers ───────────────────────────────────────────
-const COUNTDOWN_ID       = 'rest-timer-countdown';
-const IOS_DONE_ID        = 'rest-timer-ios-done';
-const ANDROID_DONE_ID    = 'rest-timer-android-done';
-
-// ─── Android notification channels ────────────────────────────────────────────
+// ─── Channels ─────────────────────────────────────────────────────────────────
 
 /**
- * Create (or confirm) the two Android notification channels.
- * Must be called before sending any notifications.
- * Safe to call on every app launch — Android ignores duplicate channel creation.
+ * Crea los canales de Android. Idempotente — seguro llamarlo en cada arranque.
  */
 export async function setupNotificationChannels() {
-  if (Platform.OS !== 'android') return;
+  if (Platform.OS !== 'android' || !_notifee) return;
 
-  // "rest-timer": LOW importance → silent, no heads-up, shown in drawer only
-  await Notifications.setNotificationChannelAsync('rest-timer', {
-    name: 'Temporizador de descanso',
-    importance: Notifications.AndroidImportance.LOW,
-    sound: null,
-    enableVibrate: false,
-    showBadge: false,
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  await _notifee.createChannel({
+    id:         'rest-timer',
+    name:       'Temporizador de descanso',
+    importance: _AndroidImportance.LOW,
+    vibration:  false,
+    lights:     false,
   });
 
-  // "rest-done": HIGH importance → plays sound + shows heads-up banner
-  await Notifications.setNotificationChannelAsync('rest-done', {
-    name: 'Fin de descanso',
-    importance: Notifications.AndroidImportance.HIGH,
-    enableVibrate: true,
-    showBadge: false,
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  await _notifee.createChannel({
+    id:         'rest-done',
+    name:       'Fin de descanso',
+    importance: _AndroidImportance.HIGH,
+    vibration:  true,
   });
 }
 
@@ -86,6 +84,10 @@ export async function setupNotificationChannels() {
 
 export async function requestNotificationPermissions() {
   try {
+    if (Platform.OS === 'android' && _notifee) {
+      const settings = await _notifee.requestPermission();
+      return settings.authorizationStatus >= 1;
+    }
     const { status } = await Notifications.requestPermissionsAsync();
     return status === 'granted';
   } catch {
@@ -93,94 +95,91 @@ export async function requestNotificationPermissions() {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtCountdown(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
-}
-
-// ─── Android: live countdown ───────────────────────────────────────────────────
+// ─── Android: cronómetro nativo ───────────────────────────────────────────────
 
 /**
- * Post (or update) the sticky countdown notification.
- * Calling with the same identifier replaces the existing notification in-place
- * via the underlying Android NotificationManager.notify(id, …) behaviour.
+ * Muestra una notificación sticky con un cronómetro regresivo nativo.
+ * Llamar UNA VEZ cuando el timer arranca — el SO gestiona el tick automáticamente.
+ *
+ * @param {number} remaining  - segundos restantes (para calcular endAt si no se pasa)
+ * @param {number} _total     - ignorado (compatibilidad con firma anterior)
+ * @param {string} exerciseName
+ * @param {number} [endAt]    - timestamp ms de fin (Date.now() + remaining * 1000)
  */
-export async function showCountdownNotification(remaining, total, exerciseName) {
-  if (Platform.OS !== 'android') return;
+export async function showCountdownNotification(remaining, _total, exerciseName, endAt) {
+  if (Platform.OS !== 'android' || !_notifee) return;
   try {
-    await Notifications.scheduleNotificationAsync({
-      identifier: COUNTDOWN_ID,
-      content: {
-        title: `⏱ ${fmtCountdown(remaining)}`,
-        body: exerciseName
-          ? `Siguiente: ${exerciseName}`
-          : 'Recuperándote…',
-        sticky: true,
-        autoDismiss: false,
-        color: '#E8FF47',
-        data: { type: 'countdown', remaining, total },
+    const targetTime = endAt ?? (Date.now() + remaining * 1000);
+    await _notifee.displayNotification({
+      id:    COUNTDOWN_ID,
+      title: 'Descansando',
+      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Recuperándote…',
+      android: {
+        channelId:            'rest-timer',
+        ongoing:              true,
+        asForegroundService:  false,
+        color:                '#E8FF47',
+        showChronometer:      true,
+        chronometerDirection: 'down',
+        timestamp:            targetTime,
+        pressAction:          { id: 'default' },
       },
-      // ChannelAwareTriggerInput — fires immediately to the specified channel
-      trigger: { channelId: 'rest-timer' },
     });
   } catch {}
 }
 
 export async function dismissCountdownNotification() {
-  try {
-    await Notifications.dismissNotificationAsync(COUNTDOWN_ID);
-  } catch {}
+  if (Platform.OS !== 'android' || !_notifee) return;
+  try { await _notifee.cancelNotification(COUNTDOWN_ID); } catch {}
 }
 
-// ─── OS-scheduled "done" notification — survives app being killed ─────────────
+// ─── OS-scheduled "done" notification ────────────────────────────────────────
 
 /**
- * Schedule a one-shot OS notification that fires when the timer ends.
- * Uses the system scheduler so it fires correctly even if the app is killed.
- *
- * Call cancelScheduledDoneNotification() if the user stops the timer early
- * or if the timer completes while the app is in the foreground (haptic+toast
- * already provides the in-app feedback in that case).
+ * Programa la alerta de fin de descanso.
+ * Usa notifee (Android) o expo-notifications (iOS).
+ * Se dispara aunque la app esté cerrada.
  */
 export async function scheduleOsDoneNotification(seconds, exerciseName) {
-  const content = {
-    title: '✅ ¡A por la siguiente serie!',
-    body: exerciseName
-      ? `${exerciseName} — descansaste bien`
-      : '¡Descanso terminado!',
-    sound: 'default',
-    data: { type: 'done' },
-  };
+  const title = '✅ ¡A por la siguiente serie!';
+  const body  = exerciseName
+    ? `${exerciseName} — descansaste bien`
+    : '¡Descanso terminado!';
 
   if (Platform.OS === 'ios') {
     try {
       await Notifications.cancelScheduledNotificationAsync(IOS_DONE_ID).catch(() => {});
       await Notifications.scheduleNotificationAsync({
         identifier: IOS_DONE_ID,
-        content,
+        content: { title, body, sound: 'default', data: { type: 'done' } },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          type:    Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds,
           repeats: false,
         },
       });
     } catch {}
-  } else if (Platform.OS === 'android') {
+
+  } else if (Platform.OS === 'android' && _notifee && _TriggerType) {
     try {
-      await Notifications.cancelScheduledNotificationAsync(ANDROID_DONE_ID).catch(() => {});
-      await Notifications.scheduleNotificationAsync({
-        identifier: ANDROID_DONE_ID,
-        content,
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds,
-          repeats: false,
-          channelId: 'rest-done',
+      await _notifee.cancelTriggerNotification(ANDROID_DONE_ID).catch(() => {});
+      await _notifee.createTriggerNotification(
+        {
+          id: ANDROID_DONE_ID,
+          title,
+          body,
+          android: {
+            channelId:   'rest-done',
+            importance:  _AndroidImportance.HIGH,
+            pressAction: { id: 'default' },
+          },
         },
-      });
+        {
+          type:         _TriggerType.TIMESTAMP,
+          timestamp:    Date.now() + seconds * 1000,
+          alarmManager: { allowWhileIdle: true },
+        },
+      );
     } catch {}
   }
 }
@@ -188,12 +187,14 @@ export async function scheduleOsDoneNotification(seconds, exerciseName) {
 export async function cancelScheduledDoneNotification() {
   try {
     await Notifications.cancelScheduledNotificationAsync(IOS_DONE_ID).catch(() => {});
-    await Notifications.cancelScheduledNotificationAsync(ANDROID_DONE_ID).catch(() => {});
   } catch {}
+  if (Platform.OS === 'android' && _notifee) {
+    try { await _notifee.cancelTriggerNotification(ANDROID_DONE_ID).catch(() => {}); } catch {}
+  }
 }
 
-// ─── Legacy aliases (kept for any future direct use) ─────────────────────────
-export const scheduleIosDoneNotification    = (s, n) => scheduleOsDoneNotification(s, n);
-export const cancelIosDoneNotification      = ()     => cancelScheduledDoneNotification();
+// ─── Legacy aliases ───────────────────────────────────────────────────────────
+export const scheduleIosDoneNotification     = (s, n) => scheduleOsDoneNotification(s, n);
+export const cancelIosDoneNotification       = ()     => cancelScheduledDoneNotification();
 export const scheduleAndroidDoneNotification = (s, n) => scheduleOsDoneNotification(s, n);
-export const cancelAndroidDoneNotification  = ()     => cancelScheduledDoneNotification();
+export const cancelAndroidDoneNotification   = ()     => cancelScheduledDoneNotification();

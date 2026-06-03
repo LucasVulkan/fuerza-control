@@ -1461,9 +1461,9 @@ export const useStore = create(
           },
         }));
 
-        // Show initial countdown notification (Android)
-        // Schedule OS-level "done" notification — fires at the right time even if app is killed
-        showCountdownNotification(seconds, seconds, exerciseName).catch(() => {});
+        // Show chronometer notification once — notifee handles the ticking natively.
+        // Schedule OS-level "done" notification — fires even if the app is killed.
+        showCountdownNotification(seconds, seconds, exerciseName, endAt).catch(() => {});
         scheduleOsDoneNotification(seconds, exerciseName).catch(() => {});
 
         // Helper: fire the "done" side-effects when the timer expires
@@ -1496,11 +1496,10 @@ export const useStore = create(
             }));
             fireDone();
           } else {
-            // Still running — correct the displayed time and refresh the countdown notification
+            // Still running — correct the displayed time (chronometer notification ticks itself)
             set((s) => ({
               ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
             }));
-            showCountdownNotification(remaining, seconds, exerciseName).catch(() => {});
           }
         });
 
@@ -1526,7 +1525,6 @@ export const useStore = create(
           set((s) => ({
             ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
           }));
-          showCountdownNotification(remaining, ui.restTimer.total, exerciseName).catch(() => {});
         }, 1000);
 
         set({ _restInterval: interval, _appStateSub: appStateSub });
