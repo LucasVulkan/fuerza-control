@@ -104,6 +104,57 @@ const INITIAL_UI = {
   homeTab: 'session',
 };
 
+// ─── Program diff helper ──────────────────────────────────────────────────────
+/**
+ * Compares the current active program with an incoming programJson from the trainer.
+ * Returns a string[] with human-readable change lines, e.g.:
+ *   ["+1 etapa nueva", "Etapa 1: +2 sesiones", "Sesión A: +3 ejercicios"]
+ */
+function buildProgramDiff(storeState, newProgramJson) {
+  const { programs, profile, sessionTemplates, userPrograms } = storeState;
+  const oldProg = programs[profile.activeProgramId];
+  if (!oldProg) return ['Programa nuevo del entrenador'];
+
+  const newPrograms    = { ...(newProgramJson.programs ?? {}), ...(newProgramJson.program ? { [newProgramJson.program.id]: newProgramJson.program } : {}) };
+  const newProg        = newPrograms[profile.activeProgramId] ?? Object.values(newPrograms)[0];
+  const newTemplates   = { ...(newProgramJson.sessionTemplates ?? {}), ...(newProgramJson.userPrograms ?? {}) };
+  const oldTemplates   = { ...sessionTemplates, ...userPrograms };
+
+  const getStages = (p) => p?.stages?.length > 0 ? p.stages : [{ days: p?.days ?? [], name: 'Principal' }];
+  const oldStages = getStages(oldProg);
+  const newStages = getStages(newProg);
+
+  const lines = [];
+
+  const stageDiff = newStages.length - oldStages.length;
+  if (stageDiff > 0) lines.push(`+${stageDiff} etapa${stageDiff > 1 ? 's' : ''} nueva${stageDiff > 1 ? 's' : ''}`);
+  if (stageDiff < 0) lines.push(`${Math.abs(stageDiff)} etapa${Math.abs(stageDiff) > 1 ? 's' : ''} eliminada${Math.abs(stageDiff) > 1 ? 's' : ''}`);
+
+  for (let si = 0; si < Math.min(oldStages.length, newStages.length); si++) {
+    const oldDays = oldStages[si].days ?? [];
+    const newDays = newStages[si].days ?? [];
+    const stageLabel = oldStages.length > 1 ? `Etapa ${si + 1}` : null;
+    const sesDiff = newDays.length - oldDays.length;
+
+    if (sesDiff !== 0) {
+      const prefix = stageLabel ? `${stageLabel}: ` : '';
+      lines.push(`${prefix}${sesDiff > 0 ? '+' : ''}${sesDiff} sesión${Math.abs(sesDiff) > 1 ? 'es' : ''}`);
+    }
+
+    for (let di = 0; di < Math.min(oldDays.length, newDays.length); di++) {
+      const oldEx = (oldTemplates[oldDays[di].sessionTemplateId]?.exercises ?? []).length;
+      const newEx = (newTemplates[newDays[di].sessionTemplateId]?.exercises ?? []).length;
+      const exDiff = newEx - oldEx;
+      if (exDiff !== 0) {
+        const sesLabel = newDays[di].label ?? `Sesión ${di + 1}`;
+        lines.push(`${sesLabel}: ${exDiff > 0 ? '+' : ''}${exDiff} ejercicio${Math.abs(exDiff) > 1 ? 's' : ''}`);
+      }
+    }
+  }
+
+  return lines.length > 0 ? lines : ['Cambios menores en el programa'];
+}
+
 // ─── Store ─────────────────────────────────────────────────────────────────────
 
 export const useStore = create(
@@ -148,7 +199,8 @@ export const useStore = create(
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
-        syncErrorAt:    null,  // ISO — timestamp of last failed upload to trainer
+        syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
+        pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
       },
 
       // Static references (not persisted)
@@ -2208,7 +2260,7 @@ export const useStore = create(
        */
       checkAndPullProgramUpdates: async () => {
         const { clientSync } = get();
-        if (!clientSync.slotId) return; // not a client
+        if (!clientSync.slotId) return;
 
         try {
           const { programJson, updatedAt } = await downloadProgram(clientSync.slotId);
@@ -2217,14 +2269,69 @@ export const useStore = create(
           const lastImport = clientSync.lastProgramImportedAt;
           if (lastImport && new Date(updatedAt) <= new Date(lastImport)) return; // already up to date
 
-          // Re-import silently: background update, no toast needed
-          get().importData(programJson, { program: true, log: false }, { silent: true });
+          // Build a simple diff so the modal can show what changed
+          const diff = buildProgramDiff(get(), programJson);
+
+          // Store as pending — the user decides what to do via ProgramUpdateModal
           set((s) => ({
-            clientSync: { ...s.clientSync, lastProgramImportedAt: new Date().toISOString() },
+            clientSync: {
+              ...s.clientSync,
+              pendingProgramUpdate: { programJson, updatedAt, diff },
+            },
           }));
         } catch {
           // Silent — network failure or RLS error; client keeps their local copy
         }
+      },
+
+      /** Apply the pending trainer program update. keepProgress=true preserves week/stage. */
+      applyPendingProgramUpdate: (keepProgress) => {
+        const { clientSync, programs, profile } = get();
+        const pending = clientSync.pendingProgramUpdate;
+        if (!pending) return;
+
+        // Snapshot current progress before overwriting
+        const oldProgram = programs[profile.activeProgramId];
+        const savedProgress = keepProgress && oldProgram ? {
+          currentWeek:       oldProgram.currentWeek       ?? 1,
+          currentStageIndex: oldProgram.currentStageIndex ?? 0,
+        } : null;
+
+        get().importData(pending.programJson, { program: true, log: false }, { silent: true });
+
+        // Restore progress capped to new program bounds
+        if (savedProgress) {
+          const newProg = get().programs[profile.activeProgramId];
+          if (newProg) {
+            const stageCount = newProg.stages?.length ?? 1;
+            const safeStage  = Math.min(savedProgress.currentStageIndex, stageCount - 1);
+            set((s) => ({
+              programs: {
+                ...s.programs,
+                [profile.activeProgramId]: {
+                  ...s.programs[profile.activeProgramId],
+                  currentWeek:       savedProgress.currentWeek,
+                  currentStageIndex: Math.max(0, safeStage),
+                },
+              },
+            }));
+          }
+        }
+
+        set((s) => ({
+          clientSync: {
+            ...s.clientSync,
+            pendingProgramUpdate:  null,
+            lastProgramImportedAt: new Date().toISOString(),
+          },
+        }));
+      },
+
+      /** Dismiss the pending update without applying it (user can apply later via settings). */
+      dismissPendingProgramUpdate: () => {
+        set((s) => ({
+          clientSync: { ...s.clientSync, pendingProgramUpdate: null },
+        }));
       },
 
       /**

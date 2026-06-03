@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import DriveBackupModal from '../components/DriveBackupModal';
+import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import {
   colors, spacing, typography, radius, borders,
   resolveColor, withOpacity,
@@ -450,6 +451,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
       {showDrive && <DriveBackupModal onClose={() => setShowDrive(false)} />}
+      <ProgramUpdateModal />
 
       <ScrollView
         contentContainerStyle={styles.content}
