@@ -28,7 +28,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
-      "versionCode": 2,
       "edgeToEdgeEnabled": true,
       "package": "com.formastudio.formafit",
       "permissions": ["com.android.vending.BILLING"],
