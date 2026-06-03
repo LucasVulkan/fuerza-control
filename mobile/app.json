@@ -40,6 +40,15 @@
             { "scheme": "file",    "mimeType": "application/x-fitdata" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            { "scheme": "content", "mimeType": "*/*", "pathPattern": ".*\\.fitdata" },
+            { "scheme": "file",    "mimeType": "*/*", "pathPattern": ".*\\.fitdata" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
