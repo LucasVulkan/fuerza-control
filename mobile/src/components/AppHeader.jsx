@@ -96,7 +96,7 @@ function Icon({ d, size = 18 }) {
 
 // ── MenuItem ──────────────────────────────────────────────────────────────────
 
-function MenuItem({ icon, label, onPress, disabled, badge }) {
+function MenuItem({ icon, label, subtitle, onPress, disabled, badge }) {
   return (
     <TouchableOpacity
       style={[styles.menuItem, disabled && styles.menuItemDisabled]}
@@ -104,7 +104,12 @@ function MenuItem({ icon, label, onPress, disabled, badge }) {
       activeOpacity={0.65}
     >
       <View style={styles.menuItemIcon}>{icon}</View>
-      <Text style={styles.menuItemText}>{label}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.menuItemText}>{label}</Text>
+        {subtitle != null && (
+          <Text style={styles.menuItemSubtitle} numberOfLines={1}>{subtitle}</Text>
+        )}
+      </View>
       {badge != null && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>
@@ -197,6 +202,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const clientSync           = useStore((s) => s.clientSync);
   const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
   const trainerSync          = useStore((s) => s.trainerSync);
+  const driveBackup          = useStore((s) => s.driveBackup);
 
   const lang           = profile.language      ?? 'es';
   const unit           = profile.weightUnit    ?? 'kg';
@@ -287,6 +293,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
                 <MenuItem
                   icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />}
                   label={t('header.changeTrainer')}
+                  subtitle="Conectado"
                   onPress={() => { onClose(); onConnectTrainer(); }}
                 />
                 <MenuItem
@@ -307,7 +314,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
           {/* ── DATOS ── */}
           <CategoryCard title={t('header.sectionData')}>
             <MenuItem
-              icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
+              icon={<Icon d="M12 15V3m0 0L8 7m4-4l4 4M3 20h18" />}
               label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
               onPress={() => handleExport('full')}
               disabled={!!exporting}
@@ -319,13 +326,14 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               disabled={!!exporting}
             />
             <MenuItem
-              icon={<Icon d="M12 15V3m0 0L8 7m4-4l4 4M3 20h18" />}
+              icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
               label={t('header.importFile')}
               onPress={() => { onClose(); onImport(); }}
             />
             <MenuItem
               icon={<Icon d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />}
               label={t('header.driveBackup')}
+              subtitle={driveBackup?.enabled && driveBackup?.email ? driveBackup.email : null}
               onPress={() => { onClose(); onShowDrive(); }}
             />
           </CategoryCard>
@@ -707,9 +715,13 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
   },
   menuItemText: {
-    flex:       1,
     fontSize:   typography.base,
     color:      colors.text,
+  },
+  menuItemSubtitle: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 1,
   },
 
   // Badge

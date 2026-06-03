@@ -57,7 +57,9 @@ export default function App() {
   }, []);
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
+  // EXPO_PUBLIC_FORCE_PRO=true skips the RC check (used in preview builds for testing)
   useEffect(() => {
+    if (process.env.EXPO_PUBLIC_FORCE_PRO === 'true') return; // preview build → keep isPro as-is
     try {
       const Purchases = require('react-native-purchases').default;
       const { LOG_LEVEL } = require('react-native-purchases');

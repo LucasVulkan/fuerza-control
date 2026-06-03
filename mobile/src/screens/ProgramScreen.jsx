@@ -15,10 +15,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+
+function ShareIcon({ size = 18, color = colors.muted }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
+      <Path
+        d="M12 36V60C12 61.5913 12.6321 63.1174 13.7574 64.2426C14.8826 65.3679 16.4087 66 18 66H54C55.5913 66 57.1174 65.3679 58.2426 64.2426C59.3679 63.1174 60 61.5913 60 60V36M24 18L36 6L48 18M36 6L36 45"
+        stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +65,7 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
           )}
         </View>
         <TouchableOpacity style={styles.cardIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
-          <Text style={styles.cardShareIcon}>📤</Text>
+          <ShareIcon />
         </TouchableOpacity>
       </View>
 

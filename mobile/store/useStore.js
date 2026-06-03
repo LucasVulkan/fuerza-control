@@ -2112,8 +2112,11 @@ export const useStore = create(
       /**
        * Validates a client code and returns slot info WITHOUT linking.
        * Used in step 1 of the modal to show "Programa encontrado".
+       * Signs in anonymously first so RLS policies (auth.uid() checks) don't block the read.
        */
       validateClientCode: async (code) => {
+        const { signInAnonymously } = require('../src/services/supabaseAuth');
+        await signInAnonymously(); // ensure we have a Supabase session before querying
         const slot = await getSlotByClientCode(code);
         if (!slot) throw new Error('Código no encontrado. Comprueba que lo has escrito bien.');
         if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');

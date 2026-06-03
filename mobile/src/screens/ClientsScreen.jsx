@@ -62,6 +62,17 @@ function HeaderIcon({ d, size = 14, active = false }) {
   );
 }
 
+function ShareIcon({ size = 18, color = colors.muted }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
+      <Path
+        d="M12 36V60C12 61.5913 12.6321 63.1174 13.7574 64.2426C14.8826 65.3679 16.4087 66 18 66H54C55.5913 66 57.1174 65.3679 58.2426 64.2426C59.3679 63.1174 60 61.5913 60 60V36M24 18L36 6L48 18M36 6L36 45"
+        stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // ── Filter chip ────────────────────────────────────────────────────────────────
 
 function FilterChip({ label, active, onPress, count }) {
@@ -394,7 +405,7 @@ function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeass
         </View>
         {/* Share icon — top right, like 🔑 on client cards */}
         <TouchableOpacity style={styles.cIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
-          <Text style={styles.progShareIcon}>📤</Text>
+          <ShareIcon />
         </TouchableOpacity>
       </View>
 
@@ -2098,11 +2109,23 @@ export default function ClientsScreen() {
         >
           {/* Status cycling pill */}
           <TouchableOpacity style={styles.statusPill} onPress={cycleStatus} activeOpacity={0.75}>
-            <Text style={styles.statusPillText}>
+            <Text style={[styles.statusPillText, {
+              color: statusFilter === 'active' ? colors.green
+                   : statusFilter === 'inactive' ? colors.red
+                   : colors.text,
+            }]}>
               {statusFilter === 'active' ? 'Activos' : statusFilter === 'inactive' ? 'Inactivos' : 'Todos'}
             </Text>
-            <View style={styles.statusPillBadge}>
-              <Text style={styles.statusPillBadgeText}>
+            <View style={[styles.statusPillBadge, {
+              backgroundColor: statusFilter === 'active'   ? withOpacity(colors.green, 0.15)
+                             : statusFilter === 'inactive' ? withOpacity(colors.red,   0.15)
+                             : withOpacity(colors.text,   0.1),
+            }]}>
+              <Text style={[styles.statusPillBadgeText, {
+                color: statusFilter === 'active' ? colors.green
+                     : statusFilter === 'inactive' ? colors.red
+                     : colors.text,
+              }]}>
                 {statusFilter === 'active'
                   ? clientCounts.active
                   : statusFilter === 'inactive'
@@ -2571,7 +2594,7 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.xs + 2,
     borderRadius:      radius.full,
     borderWidth:       1.5,
-    borderColor:       withOpacity(colors.text, 0.65),
+    borderColor:       colors.border,
     backgroundColor:   colors.surface,
     flexShrink:        0,
   },
@@ -2581,7 +2604,6 @@ const styles = StyleSheet.create({
     color:      colors.text,
   },
   statusPillBadge: {
-    backgroundColor:   colors.accent,
     borderRadius:      radius.full,
     minWidth:          20,
     height:            20,
@@ -3071,7 +3093,7 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   cName: {
-    fontSize:   typography.xl,
+    fontSize:   typography.lg,
     fontWeight: typography.medium,
     color:      colors.text,
     flexShrink: 1,

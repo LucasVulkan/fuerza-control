@@ -11,6 +11,9 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FORCE_PRO": "true"
       }
     },
     "production": {
