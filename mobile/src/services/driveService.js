@@ -68,6 +68,15 @@ export async function listBackups(token, folderId) {
   return res.files ?? [];
 }
 
+/** Downloads a backup file by ID and returns the parsed JSON content. */
+export async function downloadBackup(token, fileId) {
+  const res = await fetch(`${DRIVE_V3}/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Error al descargar: ${res.status}`);
+  return res.json();
+}
+
 /** Deletes a single file by ID. */
 export async function deleteFile(token, fileId) {
   await fetch(`${DRIVE_V3}/files/${fileId}`, {

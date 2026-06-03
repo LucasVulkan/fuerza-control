@@ -31,7 +31,7 @@ import * as SecureStore  from 'expo-secure-store';
 import Constants         from 'expo-constants';
 
 import { useStore }                                       from '../../store/useStore';
-import { exchangeCodeForTokens, getUserEmail, listBackups } from '../services/driveService';
+import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, borders, radius }   from '../theme';
 
@@ -63,6 +63,7 @@ export default function DriveBackupModal({ onClose }) {
   const setDriveFrequency  = useStore((s) => s.setDriveFrequency);
   const performDriveBackup = useStore((s) => s.performDriveBackup);
   const deleteDriveBackups = useStore((s) => s.deleteDriveBackups);
+  const importData         = useStore((s) => s.importData);
   const showToast          = useStore((s) => s.showToast);
 
   const [loading, setLoading]     = useState(false);
@@ -171,6 +172,35 @@ export default function DriveBackupModal({ onClose }) {
       setLoading(false);
       setMsg('');
     }
+  }
+
+  function handleRestoreFile(file) {
+    Alert.alert(
+      'Restaurar backup',
+      `¿Restaurar "${file.name}"?\n\nTus datos actuales se reemplazarán con los de este backup.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Restaurar', style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            setMsg('Descargando backup…');
+            try {
+              const token = await SecureStore.getItemAsync('drive_access_token');
+              const data  = await downloadBackup(token, file.id);
+              importData(data, { program: true, log: true, settings: true });
+              showToast('✓ Backup restaurado');
+              onClose();
+            } catch (err) {
+              Alert.alert('Error', err?.message ?? 'No se pudo restaurar el backup.');
+            } finally {
+              setLoading(false);
+              setMsg('');
+            }
+          },
+        },
+      ],
+    );
   }
 
   function handleDeleteAll() {
@@ -295,14 +325,20 @@ export default function DriveBackupModal({ onClose }) {
                       <Text style={styles.emptyTxt}>No hay backups guardados</Text>
                     ) : (
                       files.map((f) => (
-                        <View key={f.id} style={styles.fileRow}>
+                        <TouchableOpacity
+                          key={f.id}
+                          style={styles.fileRow}
+                          onPress={() => handleRestoreFile(f)}
+                          activeOpacity={0.7}
+                          disabled={loading}
+                        >
                           <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
                           <Text style={styles.fileDate}>
                             {f.createdTime
                               ? new Date(f.createdTime).toLocaleDateString('es-ES')
                               : ''}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       ))
                     )}
                   </View>

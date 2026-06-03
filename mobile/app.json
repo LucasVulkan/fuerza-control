@@ -31,7 +31,18 @@
       "versionCode": 2,
       "edgeToEdgeEnabled": true,
       "package": "com.formastudio.formafit",
-      "permissions": ["com.android.vending.BILLING"]
+      "permissions": ["com.android.vending.BILLING"],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            { "scheme": "content", "mimeType": "application/x-fitdata" },
+            { "scheme": "file",    "mimeType": "application/x-fitdata" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

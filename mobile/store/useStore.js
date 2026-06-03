@@ -1576,7 +1576,7 @@ export const useStore = create(
 
       exportFullBackup: async () => {
         const s        = get();
-        const fileName = `fc-backup-${new Date().toISOString().split('T')[0]}.json`;
+        const fileName = `fc-backup-${new Date().toISOString().split('T')[0]}.fitdata`;
         const json     = JSON.stringify({
           version: '2', exportType: 'full',
           exportDate: new Date().toISOString().split('T')[0],
@@ -1596,7 +1596,7 @@ export const useStore = create(
             const perms = await SAF.requestDirectoryPermissionsAsync();
             if (!perms.granted) return;
             const fileUri = await SAF.createFileAsync(
-              perms.directoryUri, fileName, 'application/json',
+              perms.directoryUri, fileName, 'application/x-fitdata',
             );
             await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
           } else {
@@ -1651,14 +1651,14 @@ export const useStore = create(
         const safeName = program.name
           .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
           .replace(/\s+/g, '-').toLowerCase();
-        const fileName = safeName + '-con-historial.json';
+        const fileName = safeName + '-con-historial.fitdata';
         try {
           if (Platform.OS === 'android') {
             const SAF   = FileSystem.StorageAccessFramework;
             const perms = await SAF.requestDirectoryPermissionsAsync();
             if (!perms.granted) return;
             const fileUri = await SAF.createFileAsync(
-              perms.directoryUri, fileName, 'application/json',
+              perms.directoryUri, fileName, 'application/x-fitdata',
             );
             await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
           } else {
@@ -1729,14 +1729,14 @@ export const useStore = create(
         const payload = get()._buildProgramJson(programId, withLog);
         if (!payload) return;
         const suffix   = withLog ? '-con-historial' : '';
-        const fileName = payload.safeName + suffix + '.json';
+        const fileName = payload.safeName + suffix + '.fitdata';
         try {
           if (Platform.OS === 'android') {
             const SAF   = FileSystem.StorageAccessFramework;
             const perms = await SAF.requestDirectoryPermissionsAsync();
             if (!perms.granted) return; // user cancelled picker
             const fileUri = await SAF.createFileAsync(
-              perms.directoryUri, fileName, 'application/json',
+              perms.directoryUri, fileName, 'application/x-fitdata',
             );
             await FileSystem.writeAsStringAsync(fileUri, payload.json, {
               encoding: FileSystem.EncodingType.UTF8,
@@ -1762,11 +1762,11 @@ export const useStore = create(
         if (!payload) return;
         const suffix = withLog ? '-con-historial' : '';
         try {
-          const fileUri = FileSystem.cacheDirectory + payload.safeName + suffix + '.json';
+          const fileUri = FileSystem.cacheDirectory + payload.safeName + suffix + '.fitdata';
           await FileSystem.writeAsStringAsync(fileUri, payload.json, { encoding: FileSystem.EncodingType.UTF8 });
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(fileUri, {
-              mimeType: 'application/json',
+              mimeType: 'application/x-fitdata',
               dialogTitle: payload.programName + (withLog ? ' + historial' : ''),
             });
           } else {

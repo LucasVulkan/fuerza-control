@@ -6,8 +6,10 @@ import './src/i18n';                   // Initialize i18n before rendering
 import * as WebBrowser from 'expo-web-browser';
 WebBrowser.maybeCompleteAuthSession();
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Platform, StyleSheet } from 'react-native';
+import * as Linking     from 'expo-linking';
+import * as FileSystem  from 'expo-file-system/legacy';
 import {
   setForegroundNotificationHandler,
   setupNotificationChannels,
@@ -29,6 +31,33 @@ import { useStore } from './store/useStore';
 export default function App() {
   const checkProStatus              = useStore((s) => s.checkProStatus);
   const checkAndPullProgramUpdates  = useStore((s) => s.checkAndPullProgramUpdates);
+  const importData                  = useStore((s) => s.importData);
+  const showToast                   = useStore((s) => s.showToast);
+
+  // ── Incoming .fitdata file handler ──────────────────────────────────────────
+  // Called when the app is opened by tapping a .fitdata file (from WhatsApp,
+  // email, Drive, etc.). Reads the file, parses the JSON and imports the data.
+  const handleIncomingFile = useCallback(async (url) => {
+    if (!url || !url.includes('.fitdata')) return;
+    try {
+      const content = await FileSystem.readAsStringAsync(url, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const data = JSON.parse(content);
+      importData(data, { program: true, log: true, settings: true });
+      showToast('✓ Archivo importado');
+    } catch {
+      showToast('⚠️ No se pudo abrir el archivo');
+    }
+  }, [importData, showToast]);
+
+  useEffect(() => {
+    // Cold start — app opened directly from a file tap
+    Linking.getInitialURL().then((url) => { if (url) handleIncomingFile(url); }).catch(() => {});
+    // Warm start — app already running when file is tapped
+    const sub = Linking.addEventListener('url', ({ url }) => handleIncomingFile(url));
+    return () => sub.remove();
+  }, [handleIncomingFile]);
 
   // ── Notification setup ──────────────────────────────────────────────────────
   useEffect(() => {

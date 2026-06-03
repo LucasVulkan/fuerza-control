@@ -476,7 +476,7 @@ export default function AppHeader() {
     setPicking(true);
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/json', '*/*'],
+        type: ['application/x-fitdata', 'application/json', '*/*'],
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.length) return;
