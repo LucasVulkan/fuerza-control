@@ -18,7 +18,8 @@ import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy'; // v19: legacy = readAsStringAsync, EncodingType, cacheDirectory
 import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
-import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups } from '../src/services/driveService';
+import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken } from '../src/services/driveService';
+import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
 import {
@@ -1900,18 +1901,43 @@ export const useStore = create(
       },
 
       /**
+       * Wraps any Drive operation with automatic token refresh on 401.
+       * Usage: await get()._withDriveToken(async (token) => { ...drive calls... })
+       */
+      _withDriveToken: async (fn) => {
+        let token = await SecureStore.getItemAsync('drive_access_token');
+        if (!token) {
+          set((s) => ({ driveBackup: { ...s.driveBackup, needsReconnect: true } }));
+          throw new Error('Token expirado');
+        }
+        try {
+          return await fn(token);
+        } catch (e) {
+          if (!e?.message?.includes('401')) throw e;
+          // Token expired — try to refresh
+          const refreshToken = await SecureStore.getItemAsync('drive_refresh_token');
+          if (!refreshToken) {
+            set((s) => ({ driveBackup: { ...s.driveBackup, needsReconnect: true } }));
+            throw new Error('Token expirado');
+          }
+          try {
+            const { access_token } = await refreshAccessToken(refreshToken, GOOGLE_ANDROID_CLIENT_ID);
+            await SecureStore.setItemAsync('drive_access_token', access_token);
+            return await fn(access_token); // retry with new token
+          } catch {
+            set((s) => ({ driveBackup: { ...s.driveBackup, needsReconnect: true } }));
+            throw new Error('Token expirado');
+          }
+        }
+      },
+
+      /**
        * Serialises current store state and uploads it to Drive.
        * Returns { ok: true, fileName } on success, { ok: false, error } on failure.
        */
       performDriveBackup: async () => {
         const { driveBackup } = get();
         if (!driveBackup.enabled) return { ok: false, error: 'Drive no conectado' };
-
-        const token = await SecureStore.getItemAsync('drive_access_token');
-        if (!token) {
-          set((s) => ({ driveBackup: { ...s.driveBackup, needsReconnect: true } }));
-          return { ok: false, error: 'Token expirado' };
-        }
 
         const s = get();
         const json = JSON.stringify({
@@ -1930,22 +1956,28 @@ export const useStore = create(
         // Also persist JSON to SecureStore so the background task can reuse it
         await SecureStore.setItemAsync('drive_backup_json', json);
 
-        const activeFolderId = driveBackup.folderId ?? (await findOrCreateFolder(token));
-        const date     = new Date().toISOString().split('T')[0];
-        const fileName = `forma-backup-${date}.json`;
-
-        await uploadBackup(token, activeFolderId, fileName, json);
-        await pruneOldBackups(token, activeFolderId);
-
-        const now = new Date().toISOString();
-        set((s) => ({
-          driveBackup: {
-            ...s.driveBackup,
-            lastBackup: now, lastBackupFile: fileName, folderId: activeFolderId,
-          },
-        }));
-        await get()._syncDriveConfigToSecureStore();
-        return { ok: true, fileName };
+        try {
+          const fileName = await get()._withDriveToken(async (token) => {
+            const activeFolderId = driveBackup.folderId ?? (await findOrCreateFolder(token));
+            const date   = new Date().toISOString().split('T')[0];
+            const name   = `forma-backup-${date}.fitdata`;
+            await uploadBackup(token, activeFolderId, name, json);
+            await pruneOldBackups(token, activeFolderId);
+            const now = new Date().toISOString();
+            set((s) => ({
+              driveBackup: {
+                ...s.driveBackup,
+                lastBackup: now, lastBackupFile: name, folderId: activeFolderId,
+              },
+            }));
+            await get()._syncDriveConfigToSecureStore();
+            return name;
+          });
+          return { ok: true, fileName };
+        } catch (e) {
+          if (e?.message === 'Token expirado') return { ok: false, error: 'Token expirado' };
+          return { ok: false, error: e?.message ?? 'Error desconocido' };
+        }
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -2291,11 +2323,21 @@ export const useStore = create(
         if (!RC) return { ok: false, error: 'Compras no disponibles en este entorno' };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
-          const isPro = !!customerInfo.entitlements.active['pro'];
+          let isPro = !!customerInfo.entitlements.active['pro'];
+          // Entitlement may take a moment to propagate — re-check once after a short delay
+          if (!isPro) {
+            await new Promise((r) => setTimeout(r, 2000));
+            isPro = await get().checkProStatus();
+          }
           set((s) => ({ profile: { ...s.profile, isPro } }));
           return { ok: true, isPro };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
+          // Already purchased — restore entitlements instead of showing error
+          if (e?.code === 'PRODUCT_ALREADY_PURCHASED') {
+            const isPro = await get().restorePurchases().catch(() => false);
+            return { ok: true, isPro };
+          }
           return { ok: false, error: e?.message ?? 'Error al procesar la compra' };
         }
       },

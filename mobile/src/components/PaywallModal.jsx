@@ -29,9 +29,11 @@ const PRO_FEATURES = [
 
 export default function PaywallModal({ onClose }) {
   const insets = useSafeAreaInsets();
-  const getOffering     = useStore((s) => s.getOffering);
-  const purchasePackage = useStore((s) => s.purchasePackage);
+  const getOffering      = useStore((s) => s.getOffering);
+  const purchasePackage  = useStore((s) => s.purchasePackage);
   const restorePurchases = useStore((s) => s.restorePurchases);
+  const checkProStatus   = useStore((s) => s.checkProStatus);
+  const showToast        = useStore((s) => s.showToast);
 
   const [offering, setOffering]       = useState(null);
   const [selected, setSelected]       = useState(null); // selected package key
@@ -60,9 +62,18 @@ export default function PaywallModal({ onClose }) {
     try {
       const result = await purchasePackage(selectedPkg);
       if (result.ok) {
+        if (!result.isPro) {
+          // Purchase went through but entitlement not yet reflected — poll RC
+          showToast('Compra procesada, sincronizando…');
+          const synced = await checkProStatus().catch(() => false);
+          if (!synced) {
+            // Last resort: try restore
+            await restorePurchases().catch(() => {});
+          }
+        }
         onClose();
       } else if (!result.cancelled) {
-        Alert.alert('Error', result.error ?? 'No se pudo completar la compra.');
+        Alert.alert('Error en la compra', result.error ?? 'No se pudo completar la compra.');
       }
     } finally {
       setPurchasing(false);
