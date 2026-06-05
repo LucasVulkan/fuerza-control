@@ -245,7 +245,19 @@ export default function WorkoutScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            // When the app is killed mid-workout and relaunched, Workout is set as the
+            // initial route (no back stack). goBack() would fail silently in that case.
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main', { screen: 'Home' });
+            }
+          }}
+          hitSlop={12}
+          style={styles.backBtn}
+        >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>

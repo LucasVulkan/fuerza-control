@@ -2540,16 +2540,29 @@ export const useStore = create(
         const { clientSync } = get();
         if (!clientSync.slotId) throw new Error('No estás conectado a ningún entrenador.');
 
-        const oldUserId = clientSync.supabaseUserId;
-        if (!oldUserId) throw new Error('No se encontró el ID de usuario anterior.');
+        // Get the actual current Supabase user ID from the live auth session.
+        // clientSync.supabaseUserId might be null if the user connected before this
+        // field was added to the persisted state, which would cause the RPC to fail
+        // (SQL: WHERE client_id = null never matches — you need IS NULL).
+        const { supabase: _sb } = require('../src/config/supabase');
+        const { data: { user: currentUser } } = await _sb.auth.getUser();
+        const oldUserId = currentUser?.id ?? clientSync.supabaseUserId;
+        if (!oldUserId) throw new Error('No se encontró sesión activa. Reconéctate con el código del entrenador.');
 
-        // 1. Sign in with Google — changes the Supabase session to the Google user
+        // 1. Sign in with Google — changes the Supabase session to the Google user.
+        //    Depending on the Supabase project config, this may either create a new
+        //    Google user OR link the Google identity to the existing anonymous account
+        //    (same user ID). We handle both cases below.
         const { loginWithGoogleClient } = require('../src/services/supabaseAuth');
         const { userId: newUserId } = await loginWithGoogleClient({ idToken, accessToken });
 
-        // 2. Transfer the slot from old anonymous ID to new Google ID
-        //    (caller is now the Google user; RPC verifies old ID matches current client_id)
-        await transferClientSlot(clientSync.slotId, oldUserId, newUserId);
+        // 2. Transfer the slot only if Supabase issued a distinct Google user ID.
+        //    If account-linking is enabled, newUserId === oldUserId and the slot
+        //    already belongs to the right user — no RPC call needed.
+        if (newUserId !== oldUserId) {
+          // Caller is now the Google user; RPC verifies old ID matches current client_id.
+          await transferClientSlot(clientSync.slotId, oldUserId, newUserId);
+        }
 
         // 3. Update local state — slot is now owned by the Google user
         set((s) => ({
