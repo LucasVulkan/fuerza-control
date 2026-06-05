@@ -467,6 +467,7 @@ export default function AppHeader() {
 
   const importData                = useStore((s) => s.importData);
   const showToast                 = useStore((s) => s.showToast);
+  const navigate                  = useStore((s) => s.navigate);
   const language                  = useStore((s) => s.profile?.language ?? 'es');
   const pendingUpload             = useStore((s) => s.clientSync?.pendingUpload);
   const uploadHistoryToTrainer    = useStore((s) => s.uploadHistoryToTrainer);
@@ -537,6 +538,8 @@ export default function AppHeader() {
     setImportState(null);
     importData(parsedData, sections, { silent: true }); // caller shows its own toast below
     showToast(t('header.toastImported'));
+    // If a program was imported, navigate to home so the new program is visible.
+    if (sections.program) navigate('home');
   }
 
   return (

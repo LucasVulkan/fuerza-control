@@ -10,7 +10,7 @@
  * pasando el parámetro de navegación: { fromApp: true }.
  */
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TextInput,
   TouchableOpacity, ActivityIndicator,
@@ -127,6 +127,8 @@ export default function OnboardingScreen() {
   const language                   = useStore((s) => s.profile?.language ?? 'es');
   const isPro                      = useStore((s) => s.profile?.isPro ?? true);
   const programs                   = useStore((s) => s.programs);
+  const pendingExternalImport      = useStore((s) => s.pendingExternalImport);
+  const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
 
   const templateList = useMemo(
     () => Object.values(programs ?? {})
@@ -146,6 +148,18 @@ export default function OnboardingScreen() {
   const [expandedSessions, setExpandedSessions]= useState(new Set());
   const [manualSessions,   setManualSessions]  = useState(3);
   const [manualName,       setManualName]      = useState('');
+
+  // Handle .fitdata files opened from the OS file explorer while on this screen.
+  // AppHeader (which normally handles this) is not mounted during onboarding.
+  useEffect(() => {
+    if (!pendingExternalImport) return;
+    const { rawContent, fileName } = pendingExternalImport;
+    clearPendingExternalImport();
+    const parsed = parseImportFile(rawContent);
+    if (!parsed.ok) { Alert.alert('Archivo no válido', parsed.error); return; }
+    setImportState({ fileName, parsedData: parsed.data });
+  }, [pendingExternalImport]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const [answers, setAnswers] = useState({
     level:            null,

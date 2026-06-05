@@ -1,6 +1,10 @@
 /**
  * Import modal — mobile port of the web ImportModal.
- * Shows after a .json file has been parsed successfully.
+ * Shows after a .fitdata file has been parsed successfully.
+ *
+ * Two layouts depending on the export type:
+ *   - 'full' (backup)   → section switches (multi-select) + IMPORTAR button
+ *   - program / mixed   → radio-button mode picker + IMPORTAR button
  *
  * Props:
  *   fileName    — original file name
@@ -23,31 +27,51 @@ function typeLabel(exportType, hasLog) {
   return 'Programa';
 }
 
-// ── Section toggle row ────────────────────────────────────────────────────────
+// ── Radio option (program-mode picker) ────────────────────────────────────────
+
+function RadioOption({ label, desc, selected, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[s.radioOption, selected && s.radioOptionSelected]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[s.radioCircle, selected && s.radioCircleSelected]}>
+        {selected && <View style={s.radioDot} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.radioLabel, selected && s.radioLabelSelected]}>{label}</Text>
+        {desc ? <Text style={s.radioDesc}>{desc}</Text> : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Section toggle row (backup) ───────────────────────────────────────────────
 
 function SectionRow({ label, desc, enabled, disabled, onToggle }) {
   return (
     <TouchableOpacity
-      style={[styles.sectionRow, enabled && !disabled && styles.sectionRowActive]}
+      style={[s.sectionRow, enabled && !disabled && s.sectionRowActive]}
       onPress={disabled ? undefined : onToggle}
       activeOpacity={disabled ? 1 : 0.7}
     >
-      <View style={styles.sectionInfo}>
-        <Text style={[styles.sectionLabel, disabled && { color: colors.muted2 }]}>{label}</Text>
-        {desc ? <Text style={styles.sectionDesc}>{desc}</Text> : null}
+      <View style={s.sectionInfo}>
+        <Text style={[s.sectionLabel, disabled && { color: colors.muted2 }]}>{label}</Text>
+        {desc ? <Text style={s.sectionDesc}>{desc}</Text> : null}
       </View>
       <Switch
         value={enabled}
         onValueChange={disabled ? undefined : onToggle}
         disabled={disabled}
         trackColor={{ false: colors.border, true: colors.accent }}
-        thumbColor={enabled ? colors.bg : colors.muted}
+        thumbColor={enabled ? '#FFFFFF' : colors.muted}
       />
     </TouchableOpacity>
   );
 }
 
-// ── Scrollable section list (no actions here) ─────────────────────────────────
+// ── Backup sections (full-backup flow) ────────────────────────────────────────
 
 function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) {
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
@@ -58,13 +82,13 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
 
   return (
     <>
-      <View style={styles.warning}>
-        <Text style={styles.warningText}>
+      <View style={s.warning}>
+        <Text style={s.warningText}>
           Los datos importados sobreescribirán los existentes en cada sección seleccionada.
         </Text>
       </View>
 
-      <View style={styles.sectionList}>
+      <View style={s.sectionList}>
         <SectionRow
           label="Programa activo"
           desc={hasPrograms ? 'Activa el programa importado' : 'No disponible'}
@@ -95,17 +119,17 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
         />
 
         {/* Template section — mode buttons inside same card */}
-        <View style={[styles.templateCard, sections.templates && hasTemplates && styles.templateCardActive]}>
+        <View style={[s.templateCard, sections.templates && hasTemplates && s.templateCardActive]}>
           <TouchableOpacity
-            style={styles.templateCardRow}
+            style={s.templateCardRow}
             onPress={hasTemplates ? () => onToggle('templates') : undefined}
             activeOpacity={hasTemplates ? 0.7 : 1}
           >
-            <View style={styles.sectionInfo}>
-              <Text style={[styles.sectionLabel, !hasTemplates && { color: colors.muted2 }]}>
+            <View style={s.sectionInfo}>
+              <Text style={[s.sectionLabel, !hasTemplates && { color: colors.muted2 }]}>
                 Plantillas de programa
               </Text>
-              <Text style={styles.sectionDesc}>
+              <Text style={s.sectionDesc}>
                 {hasTemplates ? 'Plantillas reutilizables' : 'No disponible'}
               </Text>
             </View>
@@ -114,18 +138,18 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
               onValueChange={hasTemplates ? () => onToggle('templates') : undefined}
               disabled={!hasTemplates}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={sections.templates && hasTemplates ? colors.bg : colors.muted}
+              thumbColor={sections.templates && hasTemplates ? '#FFFFFF' : colors.muted}
             />
           </TouchableOpacity>
           {sections.templates && hasTemplates && (
-            <View style={styles.templateModeRow}>
+            <View style={s.templateModeRow}>
               {['merge', 'replace'].map((mode) => (
                 <TouchableOpacity
                   key={mode}
-                  style={[styles.modeBtn, sections.templatesMode === mode && styles.modeBtnActive]}
+                  style={[s.modeBtn, sections.templatesMode === mode && s.modeBtnActive]}
                   onPress={() => onSetTemplatesMode(mode)}
                 >
-                  <Text style={[styles.modeBtnText, sections.templatesMode === mode && styles.modeBtnTextActive]}>
+                  <Text style={[s.modeBtnText, sections.templatesMode === mode && s.modeBtnTextActive]}>
                     {mode === 'merge' ? 'Combinar' : 'Reemplazar'}
                   </Text>
                 </TouchableOpacity>
@@ -138,41 +162,43 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
   );
 }
 
-// ── Program modes (non-full-backup) ───────────────────────────────────────────
+// ── Program mode picker (non-backup flow) ─────────────────────────────────────
 
-function ProgramModes({ parsedData, hasLog, onImport, onClose }) {
+const PROGRAM_MODES = (hasLog) => [
+  ...(hasLog ? [{
+    id:       'full',
+    label:    'Reemplazar programa e historial',
+    desc:     'Activa el programa importado y añade su historial de sesiones',
+    sections: { program: true, log: true },
+  }] : []),
+  ...(hasLog ? [{
+    id:       'log_only',
+    label:    'Solo añadir historial',
+    desc:     'Mantiene el programa actual, añade las sesiones del archivo',
+    sections: { program: false, log: true },
+  }] : []),
+  {
+    id:       'program_only',
+    label:    'Solo el programa',
+    desc:     'Activa el programa importado, sin tocar el historial',
+    sections: { program: true, log: false },
+  },
+];
+
+function ProgramModes({ hasLog, selectedMode, onSelect }) {
+  const modes = PROGRAM_MODES(hasLog);
   return (
-    <View style={styles.modeList}>
-      <ModeOption
-        label="Reemplazar programa e historial"
-        desc="Activa el programa importado y añade su historial de sesiones"
-        onPress={() => onImport(parsedData, { program: true, log: true })}
-      />
-      {hasLog && (
-        <ModeOption
-          label="Solo añadir historial"
-          desc="Mantiene el programa actual, añade las sesiones del archivo"
-          onPress={() => onImport(parsedData, { program: false, log: true })}
+    <View style={s.modeList}>
+      {modes.map((m) => (
+        <RadioOption
+          key={m.id}
+          label={m.label}
+          desc={m.desc}
+          selected={selectedMode === m.id}
+          onPress={() => onSelect(m.id)}
         />
-      )}
-      <ModeOption
-        label="Solo el programa"
-        desc="Activa el programa importado, sin tocar el historial"
-        onPress={() => onImport(parsedData, { program: true, log: false })}
-      />
-      <TouchableOpacity style={[styles.cancelBtn, { marginTop: spacing.xs }]} onPress={onClose}>
-        <Text style={styles.cancelText}>Cancelar</Text>
-      </TouchableOpacity>
+      ))}
     </View>
-  );
-}
-
-function ModeOption({ label, desc, onPress }) {
-  return (
-    <TouchableOpacity style={styles.modeOption} onPress={onPress} activeOpacity={0.75}>
-      <Text style={styles.modeOptionLabel}>{label}</Text>
-      <Text style={styles.modeOptionDesc}>{desc}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -184,7 +210,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
   const badge      = typeLabel(exportType, hasLog);
 
-  // Sections state lives here so actions row (outside ScrollView) can read it
+  // ── Backup state ──────────────────────────────────────────────────────────
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLogData   = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
@@ -200,35 +226,52 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
     templatesMode:   'merge',
   });
 
-  const nothingSelected = !sections.program && !sections.log
-    && !sections.customExercises && !sections.clients && !sections.templates;
+  // ── Program-mode state ────────────────────────────────────────────────────
+  const defaultMode = hasLog ? 'full' : 'program_only';
+  const [selectedMode, setSelectedMode] = useState(defaultMode);
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const nothingSelected = isBackup
+    ? !sections.program && !sections.log && !sections.customExercises
+      && !sections.clients && !sections.templates
+    : false; // radio always has a valid selection
 
   function toggle(key) {
-    setSections((s) => ({ ...s, [key]: !s[key] }));
+    setSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleConfirm() {
+    if (isBackup) {
+      onImport(parsedData, sections);
+    } else {
+      const modes = PROGRAM_MODES(hasLog);
+      const mode  = modes.find((m) => m.id === selectedMode) ?? modes[modes.length - 1];
+      onImport(parsedData, mode.sections);
+    }
   }
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.centeredOuter}
+        style={s.centeredOuter}
       >
-        <View style={styles.sheet}>
+        <View style={s.sheet}>
           {/* ── Header ── */}
-          <Text style={styles.title}>Importar archivo</Text>
-          <View style={styles.fileRow}>
-            <Text style={styles.fileName} numberOfLines={1}>{fileName}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge.toUpperCase()}</Text>
+          <Text style={s.title}>Importar archivo</Text>
+          <View style={s.fileRow}>
+            <Text style={s.fileName} numberOfLines={1}>{fileName}</Text>
+            <View style={s.badge}>
+              <Text style={s.badgeText}>{badge.toUpperCase()}</Text>
             </View>
           </View>
 
           {/* ── Scrollable content ── */}
           <ScrollView
             showsVerticalScrollIndicator={false}
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            style={s.scroll}
+            contentContainerStyle={s.scrollContent}
           >
             {isBackup
               ? (
@@ -236,37 +279,34 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
                   parsedData={parsedData}
                   sections={sections}
                   onToggle={toggle}
-                  onSetTemplatesMode={(mode) => setSections((s) => ({ ...s, templatesMode: mode }))}
+                  onSetTemplatesMode={(mode) => setSections((prev) => ({ ...prev, templatesMode: mode }))}
                 />
               )
               : (
                 <ProgramModes
-                  parsedData={parsedData}
                   hasLog={hasLog}
-                  onImport={onImport}
-                  onClose={onClose}
+                  selectedMode={selectedMode}
+                  onSelect={setSelectedMode}
                 />
               )
             }
           </ScrollView>
 
           {/* ── Actions — always visible, outside scroll ── */}
-          {isBackup && (
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-                <Text style={styles.cancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.importBtn, nothingSelected && styles.importBtnDisabled]}
-                onPress={nothingSelected ? undefined : () => onImport(parsedData, sections)}
-                activeOpacity={nothingSelected ? 1 : 0.8}
-              >
-                <Text style={[styles.importBtnText, nothingSelected && styles.importBtnTextDisabled]}>
-                  IMPORTAR
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <View style={s.actions}>
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={s.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.importBtn, nothingSelected && s.importBtnDisabled]}
+              onPress={nothingSelected ? undefined : handleConfirm}
+              activeOpacity={nothingSelected ? 1 : 0.8}
+            >
+              <Text style={[s.importBtnText, nothingSelected && s.importBtnTextDisabled]}>
+                IMPORTAR
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -275,7 +315,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -311,10 +351,10 @@ const styles = StyleSheet.create({
     color:    colors.muted,
   },
   badge: {
-    backgroundColor: withOpacity(colors.accent, 0.1),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.3),
-    borderRadius:    radius.sm,
+    backgroundColor:   withOpacity(colors.accent, 0.1),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.3),
+    borderRadius:      radius.sm,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
   },
@@ -326,12 +366,8 @@ const styles = StyleSheet.create({
   },
 
   // Scroll area
-  scroll: {
-    flexShrink: 1,
-  },
-  scrollContent: {
-    gap: spacing.sm,
-  },
+  scroll: { flexShrink: 1 },
+  scrollContent: { gap: spacing.sm },
 
   // Warning
   warning: {
@@ -348,10 +384,59 @@ const styles = StyleSheet.create({
     lineHeight: typography.xs * 1.6,
   },
 
-  // Section toggles
-  sectionList: {
-    gap: spacing.xs,
+  // ── Radio options (program modes) ─────────────────────────────────────────
+  modeList: { gap: spacing.sm },
+
+  radioOption: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.sm,
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.sm,
+    padding:         spacing.md,
   },
+  radioOptionSelected: {
+    borderColor:     withOpacity(colors.accent, 0.5),
+    backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  radioCircle: {
+    width:          20,
+    height:         20,
+    borderRadius:   10,
+    borderWidth:    2,
+    borderColor:    colors.border,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  radioCircleSelected: {
+    borderColor: colors.accent,
+  },
+  radioDot: {
+    width:           10,
+    height:          10,
+    borderRadius:    5,
+    backgroundColor: colors.accent,
+  },
+  radioLabel: {
+    fontSize:     typography.base,
+    fontWeight:   typography.medium,
+    color:        colors.text,
+    marginBottom: 2,
+  },
+  radioLabelSelected: {
+    color: colors.accent,
+  },
+  radioDesc: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    lineHeight: typography.xs * 1.6,
+  },
+
+  // ── Backup sections ───────────────────────────────────────────────────────
+  sectionList: { gap: spacing.xs },
   sectionRow: {
     flexDirection:   'row',
     alignItems:      'center',
@@ -422,11 +507,9 @@ const styles = StyleSheet.create({
     color:      colors.muted,
     fontWeight: typography.medium,
   },
-  modeBtnTextActive: {
-    color: colors.accent,
-  },
+  modeBtnTextActive: { color: colors.accent },
 
-  // Actions (always visible, outside ScrollView)
+  // ── Actions row (always visible) ─────────────────────────────────────────
   actions: {
     flexDirection: 'row',
     gap:           spacing.sm,
@@ -452,39 +535,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems:      'center',
   },
-  importBtnDisabled: {
-    backgroundColor: colors.surface2,
-  },
+  importBtnDisabled: { backgroundColor: colors.surface2 },
   importBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
     color:         colors.bg,
     letterSpacing: 1,
   },
-  importBtnTextDisabled: {
-    color: colors.muted,
-  },
-
-  // Program modes
-  modeList: {
-    gap: spacing.sm,
-  },
-  modeOption: {
-    backgroundColor: colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
-    padding:         spacing.md,
-  },
-  modeOptionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      colors.text,
-  },
-  modeOptionDesc: {
-    fontSize:   typography.xs,
-    color:      colors.muted,
-    marginTop:  3,
-    lineHeight: typography.xs * 1.6,
-  },
+  importBtnTextDisabled: { color: colors.muted },
 });
