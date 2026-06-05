@@ -27,7 +27,8 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
 
   const [step,        setStep]        = useState('enter'); // 'enter' | 'confirm'
   const [code,        setCode]        = useState('');
-  const [slotInfo,    setSlotInfo]    = useState(null); // { slotId, programName, alreadyLinked }
+  const [slotInfo,    setSlotInfo]    = useState(null); // { slotId, programName, alreadyLinked, hasRemoteHistory }
+  const [historyMode, setHistoryMode] = useState('program'); // 'program' | 'merge'
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState(null);
   const [pasted,      setPasted]      = useState(false);
@@ -46,6 +47,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
     setStep('enter');
     setCode('');
     setSlotInfo(null);
+    setHistoryMode('program');
     setError(null);
     onClose();
   }
@@ -69,7 +71,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
     setLoading(true);
     setError(null);
     try {
-      await linkToTrainer(code);
+      await linkToTrainer(code, { mergeHistory: historyMode === 'merge' });
       handleClose();
       onSuccess?.();
     } catch (err) {
@@ -149,6 +151,47 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
                   <Text style={s.warnText}>
                     ⚠️ Ya estás conectado con un entrenador. Al continuar perderás el acceso al anterior.
                   </Text>
+                </View>
+              )}
+
+              {/* History merge choice — only shown when there is remote history */}
+              {slotInfo.hasRemoteHistory && (
+                <View style={s.histSection}>
+                  <Text style={s.histSectionLabel}>¿QUÉ QUIERES SINCRONIZAR?</Text>
+                  <TouchableOpacity
+                    style={[s.histOption, historyMode === 'program' && s.histOptionActive]}
+                    onPress={() => setHistoryMode('program')}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[s.radio, historyMode === 'program' && s.radioActive]}>
+                      {historyMode === 'program' && <View style={s.radioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.histOptionTitle, historyMode === 'program' && s.histOptionTitleActive]}>
+                        Solo el programa
+                      </Text>
+                      <Text style={s.histOptionDesc}>
+                        Se importa el programa del entrenador. Tu historial local no cambia.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.histOption, historyMode === 'merge' && s.histOptionActive]}
+                    onPress={() => setHistoryMode('merge')}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[s.radio, historyMode === 'merge' && s.radioActive]}>
+                      {historyMode === 'merge' && <View style={s.radioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.histOptionTitle, historyMode === 'merge' && s.histOptionTitleActive]}>
+                        Programa + historial
+                      </Text>
+                      <Text style={s.histOptionDesc}>
+                        Se combina el historial guardado en la nube con el local. Las sesiones duplicadas no se repiten.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -314,6 +357,63 @@ const s = StyleSheet.create({
     fontSize:   typography.xs,
     color:      colors.orange,
     lineHeight: typography.xs * 1.5,
+  },
+
+  // History merge options
+  histSection: {
+    gap: spacing.xs,
+  },
+  histSectionLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         colors.muted,
+    letterSpacing: 0.8,
+    marginBottom:  2,
+  },
+  histOption: {
+    flexDirection:   'row',
+    alignItems:      'flex-start',
+    gap:             spacing.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.sm,
+    padding:         spacing.sm,
+    backgroundColor: colors.surface2,
+  },
+  histOptionActive: {
+    borderColor:     withOpacity(colors.accent, 0.4),
+    backgroundColor: withOpacity(colors.accent, 0.06),
+  },
+  histOptionTitle: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.text,
+    marginBottom: 2,
+  },
+  histOptionTitleActive: { color: colors.accent },
+  histOptionDesc: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    lineHeight: typography.xs * 1.5,
+  },
+  // Radio button
+  radio: {
+    width:          18,
+    height:         18,
+    borderRadius:   9,
+    borderWidth:    2,
+    borderColor:    colors.border,
+    alignItems:     'center',
+    justifyContent: 'center',
+    marginTop:      2,
+    flexShrink:     0,
+  },
+  radioActive: { borderColor: colors.accent },
+  radioDot: {
+    width:           8,
+    height:          8,
+    borderRadius:    4,
+    backgroundColor: colors.accent,
   },
 
   // Info list

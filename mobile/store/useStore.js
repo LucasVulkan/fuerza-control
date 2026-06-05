@@ -2220,17 +2220,23 @@ export const useStore = create(
         if (!slot) throw new Error('Código no encontrado. Comprueba que lo has escrito bien.');
         if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
         return {
-          slotId:      slot.id,
-          programName: slot.program_json?.program?.name ?? 'Programa',
-          alreadyLinked: !!slot.client_id,
+          slotId:           slot.id,
+          programName:      slot.program_json?.program?.name ?? 'Programa',
+          alreadyLinked:    !!slot.client_id,
+          hasRemoteHistory: !!slot.history_updated_at,
         };
       },
 
       /**
        * Links the client to a trainer slot and imports the program.
        * Flow: anonymous sign-in → link slot → import program → save state.
+       *
+       * @param {string}  code               The XXXX-XXXX trainer code.
+       * @param {object}  [opts]
+       * @param {boolean} [opts.mergeHistory] If true, download remote history and merge
+       *                                      into the local workoutLog (deduplicated by id).
        */
-      linkToTrainer: async (code) => {
+      linkToTrainer: async (code, { mergeHistory = false } = {}) => {
         const { signInAnonymously } = require('../src/services/supabaseAuth');
 
         // 1. Anonymous Supabase session
@@ -2250,7 +2256,31 @@ export const useStore = create(
         // 5. Import the program using existing logic (same format as file export)
         get().importData(slot.program_json, { program: true, log: false });
 
-        // 6. Save client sync state
+        // 6. Optionally merge remote workout history into local log
+        if (mergeHistory) {
+          try {
+            const { history: remoteEntries, customExercises: remoteCustom } =
+              await downloadHistory(slot.id);
+
+            const localIds = new Set((get().workoutLog ?? []).map((e) => e.id));
+            const newEntries = remoteEntries.filter((e) => e.id && !localIds.has(e.id));
+
+            if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
+              set((s) => ({
+                workoutLog: [...s.workoutLog, ...newEntries].sort(
+                  (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+                ),
+                // Remote custom exercises fill gaps; local definitions take priority
+                customExercises: { ...remoteCustom, ...s.customExercises },
+              }));
+            }
+          } catch (err) {
+            // Non-fatal — program still imported; history can be fetched manually later
+            console.warn('[linkToTrainer] history merge failed:', err.message);
+          }
+        }
+
+        // 7. Save client sync state
         set(() => ({
           clientSync: {
             slotId:                 slot.id,

@@ -132,7 +132,7 @@ export async function downloadHistory(slotId) {
 export async function getSlotByClientCode(clientCode) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, client_name, trainer_id, program_json, program_updated_at, client_id')
+    .select('id, client_name, trainer_id, program_json, program_updated_at, client_id, history_updated_at')
     .eq('client_code', clientCode.trim().toUpperCase())
     .single();
 
