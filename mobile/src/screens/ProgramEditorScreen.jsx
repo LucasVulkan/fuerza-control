@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, SafeAreaView, Alert, Keyboard,
+  StyleSheet, Alert, Keyboard,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
@@ -137,7 +137,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       {/* Header */}
       <View style={styles.headerWrap}>
         <View style={styles.header}>
@@ -278,7 +278,6 @@ export default function ProgramEditorScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 32 }} />
       </ScrollView>
 
       {/* Save button — always accent, matching WorkoutScreen style */}
@@ -290,7 +289,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
           <Text style={styles.discardText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -424,7 +423,8 @@ const styles = StyleSheet.create({
 
   // Content
   scrollContent: {
-    paddingHorizontal: spacing.xl, paddingTop: spacing.md, gap: spacing.sm,
+    paddingHorizontal: spacing.xl, paddingTop: spacing.md,
+    paddingBottom: spacing.xxl, gap: spacing.sm,
   },
   changesHint: { fontSize: typography.xs, color: colors.muted, lineHeight: 18, marginBottom: 4 },
   addSessionBtn: {
