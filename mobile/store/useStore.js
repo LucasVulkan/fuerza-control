@@ -25,6 +25,7 @@ import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBack
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
+  updateCountdownNotification,
   dismissCountdownNotification,
   scheduleOsDoneNotification,
   cancelScheduledDoneNotification,
@@ -1561,7 +1562,8 @@ export const useStore = create(
             }));
             fireDone();
           } else {
-            // Still running — correct the displayed time (chronometer notification ticks itself)
+            // Still running — correct the displayed time and refresh the notification title
+            updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName).catch(() => {});
             set((s) => ({
               ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
             }));
@@ -1586,6 +1588,9 @@ export const useStore = create(
             fireDone();
             return;
           }
+
+          // Update notification title + progress bar every second (while JS is running)
+          updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName).catch(() => {});
 
           set((s) => ({
             ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },

@@ -31,6 +31,15 @@ if (Platform.OS === 'android') {
   }
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Formats seconds to MM:SS string (e.g. 90 → "01:30"). */
+function fmt(s) {
+  const m   = Math.floor(Math.max(0, s) / 60);
+  const sec = Math.max(0, s) % 60;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
 // ─── Fixed notification IDs ───────────────────────────────────────────────────
 
 const COUNTDOWN_ID    = 'rest-timer-countdown';
@@ -95,34 +104,66 @@ export async function requestNotificationPermissions() {
   }
 }
 
-// ─── Android: cronómetro nativo ───────────────────────────────────────────────
+// ─── Android: notificación de countdown ──────────────────────────────────────
 
 /**
- * Muestra una notificación sticky con un cronómetro regresivo nativo.
- * Llamar UNA VEZ cuando el timer arranca — el SO gestiona el tick automáticamente.
+ * Muestra la notificación sticky al arrancar el timer.
+ * El título muestra MM:SS formateado y hay una barra de progreso.
+ * updateCountdownNotification() actualiza el título cada segundo mientras el JS corre.
  *
- * @param {number} remaining  - segundos restantes (para calcular endAt si no se pasa)
- * @param {number} _total     - ignorado (compatibilidad con firma anterior)
+ * @param {number} remaining   - segundos restantes al arrancar
+ * @param {number} total       - duración total del descanso (para la barra de progreso)
  * @param {string} exerciseName
- * @param {number} [endAt]    - timestamp ms de fin (Date.now() + remaining * 1000)
+ * @param {number} [endAt]     - timestamp ms de fin (no usado aquí, compatibilidad)
  */
-export async function showCountdownNotification(remaining, _total, exerciseName, endAt) {
+export async function showCountdownNotification(remaining, total, exerciseName, endAt) {
   if (Platform.OS !== 'android' || !_notifee) return;
   try {
-    const targetTime = endAt ?? (Date.now() + remaining * 1000);
     await _notifee.displayNotification({
       id:    COUNTDOWN_ID,
-      title: 'Descansando',
-      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Recuperándote…',
+      title: fmt(remaining),
+      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Descansando…',
       android: {
-        channelId:            'rest-timer',
-        ongoing:              true,
-        asForegroundService:  false,
-        color:                '#E8FF47',
-        showChronometer:      true,
-        chronometerDirection: 'down',
-        timestamp:            targetTime,
-        pressAction:          { id: 'default' },
+        channelId:   'rest-timer',
+        ongoing:     true,
+        color:       '#E8FF47',
+        progress: {
+          max:           total > 0 ? total : remaining,
+          current:       remaining,
+          indeterminate: false,
+        },
+        pressAction: { id: 'default' },
+      },
+    });
+  } catch {}
+}
+
+/**
+ * Actualiza la notificación de countdown con el tiempo restante actual.
+ * Llamar cada segundo desde el interval del store (mientras el JS está vivo).
+ * Usa el mismo ID que showCountdownNotification — reemplaza en el sitio.
+ *
+ * @param {number} remaining   - segundos restantes
+ * @param {number} total       - duración total (para la barra de progreso)
+ * @param {string} exerciseName
+ */
+export async function updateCountdownNotification(remaining, total, exerciseName) {
+  if (Platform.OS !== 'android' || !_notifee) return;
+  try {
+    await _notifee.displayNotification({
+      id:    COUNTDOWN_ID,
+      title: fmt(remaining),
+      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Descansando…',
+      android: {
+        channelId:   'rest-timer',
+        ongoing:     true,
+        color:       '#E8FF47',
+        progress: {
+          max:           total > 0 ? total : 1,
+          current:       remaining,
+          indeterminate: false,
+        },
+        pressAction: { id: 'default' },
       },
     });
   } catch {}
