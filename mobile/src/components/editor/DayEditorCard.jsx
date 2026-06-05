@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Animated, PanResponder, LayoutAnimation, Platform, UIManager,
-  Modal, KeyboardAvoidingView, SafeAreaView, ScrollView,
+  Modal, KeyboardAvoidingView, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { colors, spacing, typography, radius, borders, resolveColor, withOpacity } from '../../theme';
@@ -440,7 +441,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
         presentationStyle="pageSheet"
         onRequestClose={() => setEditingExId(null)}
       >
-        <SafeAreaView style={styles.modalSafe}>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
           {/* Header */}
           <View style={styles.modalTopbar}>
             <View style={{ flex: 1, minWidth: 0 }}>
