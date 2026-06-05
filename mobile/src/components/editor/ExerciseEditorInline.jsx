@@ -35,8 +35,8 @@ function StepField({ label, value, onChange, min, max }) {
           onBlur={handleBlur}
           selectTextOnFocus
         />
-        <TouchableOpacity style={[sf.stepBtn, sf.stepBtnPlus]} onPress={() => onChange(Math.min(max, numVal + 1))}>
-          <Text style={[sf.stepText, sf.stepTextPlus]}>+</Text>
+        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))}>
+          <Text style={sf.stepText}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -58,6 +58,7 @@ const sf = StyleSheet.create({
     color:         colors.muted,
     letterSpacing: 0.5,
     fontWeight:    typography.medium,
+    textAlign:     'center',
   },
   row: {
     flexDirection: 'row',
@@ -65,8 +66,8 @@ const sf = StyleSheet.create({
     gap:           spacing.xs,
   },
   stepBtn: {
-    width:           34,
-    height:          40,
+    width:           36,
+    height:          36,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
@@ -74,17 +75,10 @@ const sf = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  stepBtnPlus: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.30),
-  },
   stepText: {
     fontSize:   18,
     color:      colors.muted,
     lineHeight: 22,
-  },
-  stepTextPlus: {
-    color: colors.accent,
   },
   valueInput: {
     flex:               1,

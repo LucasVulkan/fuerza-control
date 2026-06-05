@@ -80,7 +80,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
   function handleCreate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'El nombre es obligatorio';
-    if (!form.pattern)     errs.pattern = 'Selecciona un patrón';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     const id  = generateCustomId();
@@ -159,25 +158,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
               onChangeText={(v) => set_('name', v)}
             />
             {!!errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-          </View>
-
-          {/* Patrón */}
-          <View style={styles.field}>
-            <Text style={styles.label}>PATRÓN DE MOVIMIENTO *</Text>
-            <View style={[styles.chipWrap, errors.pattern && { borderColor: colors.red }]}>
-              {PATTERNS.map((p) => (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[styles.chip, form.pattern === p.value && styles.chipActive]}
-                  onPress={() => set_('pattern', p.value)}
-                >
-                  <Text style={[styles.chipText, form.pattern === p.value && styles.chipTextActive]}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {!!errors.pattern && <Text style={styles.errorText}>{errors.pattern}</Text>}
           </View>
 
           {/* Tipo de seguimiento */}
@@ -259,6 +239,24 @@ export default function CustomExerciseScreen({ navigation, route }) {
                   onPress={() => set_('restSec', s)}
                 >
                   <Text style={[styles.restChipText, form.restSec === s && styles.restChipTextActive]}>{s}s</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Patrón de movimiento — opcional, útil para búsquedas */}
+          <View style={styles.field}>
+            <Text style={styles.label}>PATRÓN DE MOVIMIENTO</Text>
+            <View style={styles.chipWrap}>
+              {PATTERNS.map((p) => (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[styles.chip, form.pattern === p.value && styles.chipActive]}
+                  onPress={() => set_('pattern', form.pattern === p.value ? '' : p.value)}
+                >
+                  <Text style={[styles.chipText, form.pattern === p.value && styles.chipTextActive]}>
+                    {p.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
