@@ -214,6 +214,10 @@ export const useStore = create(
       _hasHydrated:  false,
       _initialRoute: 'Main',
 
+      // External file import — set when the OS opens a .fitdata file via intent.
+      // NOT persisted. AppHeader watches this and shows ImportModal when set.
+      pendingExternalImport: null,  // { rawContent: string, fileName: string } | null
+
       // ══════════════════════════════════════════════════════════════════════
       // PROFILE
       // ══════════════════════════════════════════════════════════════════════
@@ -1628,6 +1632,14 @@ export const useStore = create(
           }
         }, duration);
       },
+
+      // ── External file import (intent / share) ─────────────────────────────────
+      // App.js calls setPendingExternalImport when the OS opens a .fitdata file.
+      // AppHeader watches it and shows ImportModal so the user can choose sections.
+      setPendingExternalImport: ({ rawContent, fileName }) =>
+        set({ pendingExternalImport: { rawContent, fileName } }),
+      clearPendingExternalImport: () =>
+        set({ pendingExternalImport: null }),
 
       // ══════════════════════════════════════════════════════════════════════
       // EXPORT / SHARE (Native)

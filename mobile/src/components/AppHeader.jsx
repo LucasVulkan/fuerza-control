@@ -465,11 +465,13 @@ export default function AppHeader() {
   const [showSyncMode,      setShowSyncMode]       = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
-  const importData            = useStore((s) => s.importData);
-  const showToast             = useStore((s) => s.showToast);
-  const language              = useStore((s) => s.profile?.language ?? 'es');
-  const pendingUpload         = useStore((s) => s.clientSync?.pendingUpload);
-  const uploadHistoryToTrainer = useStore((s) => s.uploadHistoryToTrainer);
+  const importData                = useStore((s) => s.importData);
+  const showToast                 = useStore((s) => s.showToast);
+  const language                  = useStore((s) => s.profile?.language ?? 'es');
+  const pendingUpload             = useStore((s) => s.clientSync?.pendingUpload);
+  const uploadHistoryToTrainer    = useStore((s) => s.uploadHistoryToTrainer);
+  const pendingExternalImport     = useStore((s) => s.pendingExternalImport);
+  const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
 
   const [retrying, setRetrying] = useState(false);
 
@@ -489,6 +491,20 @@ export default function AppHeader() {
     const id = setInterval(() => setNow(new Date()), 10_000);
     return () => clearInterval(id);
   }, []);
+
+  // Watch for files opened externally (intent / share sheet).
+  // App.js reads the file and sets pendingExternalImport; we parse + show modal.
+  useEffect(() => {
+    if (!pendingExternalImport) return;
+    const { rawContent, fileName } = pendingExternalImport;
+    clearPendingExternalImport();                         // consume immediately
+    const parsed = parseImportFile(rawContent);
+    if (!parsed.ok) {
+      Alert.alert('Archivo no válido', parsed.error);
+      return;
+    }
+    setImportState({ fileName, parsedData: parsed.data });
+  }, [pendingExternalImport]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handlePickFile() {
     setPicking(true);

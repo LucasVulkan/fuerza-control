@@ -31,25 +31,45 @@ import { useStore } from './store/useStore';
 export default function App() {
   const checkProStatus              = useStore((s) => s.checkProStatus);
   const checkAndPullProgramUpdates  = useStore((s) => s.checkAndPullProgramUpdates);
-  const importData                  = useStore((s) => s.importData);
   const showToast                   = useStore((s) => s.showToast);
+  const setPendingExternalImport    = useStore((s) => s.setPendingExternalImport);
 
   // ── Incoming .fitdata file handler ──────────────────────────────────────────
-  // Called when the app is opened by tapping a .fitdata file (from WhatsApp,
-  // email, Drive, etc.). Reads the file, parses the JSON and imports the data.
+  // Called when the OS opens a .fitdata file and routes it to this app via
+  // the VIEW intent filter (from file explorer, WhatsApp, Drive, etc.).
+  //
+  // Two URL forms to handle:
+  //  - content://... — file explorer sends a content URI (path may not have .fitdata)
+  //  - file://...    — direct file path (always has .fitdata in path)
+  //
+  // We store the raw content in the store so AppHeader can show the ImportModal
+  // with section selection (same UX as importing via the settings menu).
   const handleIncomingFile = useCallback(async (url) => {
-    if (!url || !url.includes('.fitdata')) return;
+    if (!url) return;
+    // Accept content:// and file:// URIs (from our intent filter)
+    // plus any URL that explicitly mentions .fitdata (e.g. warm-start deep links).
+    // Reject anything else (OAuth redirects, push notifications, etc.).
+    const isFileIntent =
+      url.startsWith('content://') ||
+      url.startsWith('file://') ||
+      url.includes('.fitdata');
+    if (!isFileIntent) return;
+
     try {
-      const content = await FileSystem.readAsStringAsync(url, {
+      const rawContent = await FileSystem.readAsStringAsync(url, {
         encoding: FileSystem.EncodingType.UTF8,
       });
-      const data = JSON.parse(content);
-      importData(data, { program: true, log: true, settings: true });
-      showToast('✓ Archivo importado');
+      // Extract a human-readable filename (best-effort from the URI)
+      const uriParts = url.split('/');
+      const raw      = uriParts[uriParts.length - 1] ?? '';
+      const fileName = decodeURIComponent(raw).split('?')[0] || 'backup.fitdata';
+
+      // Hand off to AppHeader's ImportModal via the store
+      setPendingExternalImport({ rawContent, fileName });
     } catch {
-      showToast('⚠️ No se pudo abrir el archivo');
+      showToast('⚠️ No se pudo leer el archivo');
     }
-  }, [importData, showToast]);
+  }, [showToast, setPendingExternalImport]);
 
   useEffect(() => {
     // Cold start — app opened directly from a file tap
