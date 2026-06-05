@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Switch, KeyboardAvoidingView, Platform,
@@ -35,6 +35,82 @@ const EQUIPMENT_OPTIONS = [
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
+
+// ─── StepField — igual que en ExerciseEditorInline ────────────────────────────
+function StepField({ label, value, onChange, min, max }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+  const numVal = Number(value);
+
+  return (
+    <View style={sf.card}>
+      <Text style={sf.label}>{label}</Text>
+      <View style={sf.row}>
+        <TouchableOpacity style={sf.btn} onPress={() => onChange(Math.max(min, numVal - 1))}>
+          <Text style={sf.btnText}>−</Text>
+        </TouchableOpacity>
+        <TextInput
+          style={sf.valueInput}
+          keyboardType="numeric"
+          value={draft}
+          onChangeText={(v) => setDraft(v.replace(/[^0-9]/g, ''))}
+          onBlur={() => {
+            const n = parseInt(draft, 10);
+            if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); setDraft(String(c)); onChange(c); }
+            else setDraft(String(value));
+          }}
+          selectTextOnFocus
+        />
+        <TouchableOpacity style={sf.btn} onPress={() => onChange(Math.min(max, numVal + 1))}>
+          <Text style={sf.btnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const sf = StyleSheet.create({
+  card: {
+    flex:            1,
+    backgroundColor: colors.surface,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.md,
+    padding:         spacing.sm + 2,
+    gap:             6,
+  },
+  label: {
+    fontSize:      typography.xs,
+    color:         colors.muted,
+    letterSpacing: 0.5,
+    fontWeight:    typography.medium,
+    textAlign:     'center',
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  btn: {
+    width:           36,
+    height:          36,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  btnText: { fontSize: 18, color: colors.muted, lineHeight: 22 },
+  valueInput: {
+    flex:               1,
+    textAlign:          'center',
+    textAlignVertical:  'center',
+    includeFontPadding: false,
+    fontSize:           typography.lg,
+    fontWeight:         typography.bold,
+    color:              colors.text,
+    backgroundColor:    'transparent',
+    height:             36,
+    paddingVertical:    0,
+  },
+});
 
 export default function CustomExerciseScreen({ navigation, route }) {
   const { templateId, currentExerciseId, sessionMode = false } = route.params ?? {};
@@ -180,68 +256,26 @@ export default function CustomExerciseScreen({ navigation, route }) {
             </View>
           </View>
 
-          {/* Series y rango */}
-          <View style={styles.field}>
-            <View style={styles.row3}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>SERIES</Text>
-                <TextInput
-                  style={styles.input} keyboardType="numeric"
-                  value={String(form.sets)} onChangeText={(v) => set_('sets', v)}
-                />
-              </View>
-              {form.metric === 'reps' ? (
-                <>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>REPS MÍN</Text>
-                    <TextInput
-                      style={styles.input} keyboardType="numeric"
-                      value={String(form.minReps)} onChangeText={(v) => set_('minReps', v)}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>REPS MÁX</Text>
-                    <TextInput
-                      style={styles.input} keyboardType="numeric"
-                      value={String(form.maxReps)} onChangeText={(v) => set_('maxReps', v)}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>SEG MÍN</Text>
-                    <TextInput
-                      style={styles.input} keyboardType="numeric"
-                      value={String(form.minReps)} onChangeText={(v) => set_('minReps', v)}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>SEG MÁX</Text>
-                    <TextInput
-                      style={styles.input} keyboardType="numeric"
-                      value={String(form.maxReps)} onChangeText={(v) => set_('maxReps', v)}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
+          {/* Series + rango */}
+          <View style={styles.stepRow}>
+            <StepField label="SERIES"   value={form.sets}    onChange={(v) => set_('sets', v)}    min={1}  max={8}   />
+            <StepField
+              label={form.metric === 'reps' ? 'REPS MÍN' : 'SEG MÍN'}
+              value={form.minReps}
+              onChange={(v) => set_('minReps', v)}
+              min={1} max={form.metric === 'reps' ? 50 : 300}
+            />
+            <StepField
+              label={form.metric === 'reps' ? 'REPS MÁX' : 'SEG MÁX'}
+              value={form.maxReps}
+              onChange={(v) => set_('maxReps', v)}
+              min={1} max={form.metric === 'reps' ? 50 : 300}
+            />
           </View>
 
           {/* Descanso */}
-          <View style={styles.field}>
-            <Text style={styles.label}>DESCANSO (SEGUNDOS)</Text>
-            <View style={styles.restRow}>
-              {[60, 90, 120, 180].map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.restChip, form.restSec === s && styles.restChipActive]}
-                  onPress={() => set_('restSec', s)}
-                >
-                  <Text style={[styles.restChipText, form.restSec === s && styles.restChipTextActive]}>{s}s</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.stepRow}>
+            <StepField label="DESCANSO (s)" value={form.restSec} onChange={(v) => set_('restSec', v)} min={15} max={600} />
           </View>
 
           {/* Patrón de movimiento — opcional, útil para búsquedas */}
@@ -407,6 +441,7 @@ const styles = StyleSheet.create({
 
   form: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.lg },
   field: {},
+  stepRow: { flexDirection: 'row', gap: spacing.sm },
   label: { fontSize: typography.xs, color: colors.muted, letterSpacing: 1.5, marginBottom: spacing.xs },
 
   input: {
@@ -438,16 +473,6 @@ const styles = StyleSheet.create({
   chipText:       { fontSize: typography.xs, color: colors.muted },
   chipTextActive: { color: colors.accent },
 
-  row3:   { flexDirection: 'row', gap: spacing.sm },
-  restRow: { flexDirection: 'row', gap: spacing.xs },
-  restChip: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm,
-    backgroundColor: colors.surface2, borderRadius: radius.sm,
-    borderWidth: borders.thin, borderColor: colors.border,
-  },
-  restChipActive:     { backgroundColor: colors.accent, borderColor: colors.accent },
-  restChipText:       { fontSize: typography.sm, color: colors.muted },
-  restChipTextActive: { color: colors.onAccent },
 
   tempoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   tempoInput: {
