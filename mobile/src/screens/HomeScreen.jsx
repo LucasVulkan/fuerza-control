@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, StyleSheet,
+  Modal, StyleSheet, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -434,6 +434,7 @@ export default function HomeScreen() {
   const startSession         = useStore((s) => s.startSession);
   const startFreeSession     = useStore((s) => s.startFreeSession);
   const navigate             = useStore((s) => s.navigate);
+  const clientSync           = useStore((s) => s.clientSync);
   const archiveProgram       = useStore((s) => s.archiveProgram);
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
@@ -601,7 +602,20 @@ export default function HomeScreen() {
             </Text>
             <TouchableOpacity
               style={styles.newProgramBtn}
-              onPress={() => navigate('onboarding')}
+              onPress={() => {
+                if (clientSync?.slotId) {
+                  Alert.alert(
+                    '¿Crear nuevo programa?',
+                    'Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado.',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Continuar', style: 'destructive', onPress: () => navigate('onboarding') },
+                    ],
+                  );
+                } else {
+                  navigate('onboarding');
+                }
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.newProgramBtnText}>{t('home.newProgram')}</Text>

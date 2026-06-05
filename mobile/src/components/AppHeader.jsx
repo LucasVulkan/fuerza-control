@@ -282,7 +282,25 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
             <MenuItem
               icon={<Icon d="M12 5v14M5 12h14" />}
               label={t('header.newProgramItem')}
-              onPress={() => { onClose(); navigate('onboarding'); }}
+              onPress={() => {
+                if (clientSync?.slotId) {
+                  Alert.alert(
+                    '¿Crear nuevo programa?',
+                    'Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado.',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      {
+                        text: 'Continuar',
+                        style: 'destructive',
+                        onPress: () => { onClose(); navigate('onboarding'); },
+                      },
+                    ],
+                  );
+                } else {
+                  onClose();
+                  navigate('onboarding');
+                }
+              }}
             />
             <MenuItem
               icon={<Icon d="M4 6h16M4 10h16M4 14h10" />}

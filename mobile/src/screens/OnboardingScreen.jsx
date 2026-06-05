@@ -129,6 +129,8 @@ export default function OnboardingScreen() {
   const programs                   = useStore((s) => s.programs);
   const pendingExternalImport      = useStore((s) => s.pendingExternalImport);
   const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
+  const clientSync                 = useStore((s) => s.clientSync);
+  const unlinkFromTrainer          = useStore((s) => s.unlinkFromTrainer);
 
   const templateList = useMemo(
     () => Object.values(programs ?? {})
@@ -191,6 +193,12 @@ export default function OnboardingScreen() {
   }
 
   function finish() {
+    // If the user was connected to a trainer, disconnect now that they have
+    // a new program. keepProgram=true so the newly created program is not
+    // overwritten by the pre-link previousActiveProgramId.
+    if (clientSync?.slotId) {
+      unlinkFromTrainer({ keepProgram: true }).catch(() => {});
+    }
     if (fromApp) {
       navigation.goBack();
     } else {

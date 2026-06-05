@@ -2425,11 +2425,13 @@ export const useStore = create(
       },
 
       /** Disconnects the client from their trainer. */
-      unlinkFromTrainer: async () => {
+      unlinkFromTrainer: async ({ keepProgram = false } = {}) => {
         const { clientSync, trainerSync } = get();
 
-        // Restore previous activeProgramId if we saved one on link
-        if (clientSync.previousActiveProgramId) {
+        // Restore previous activeProgramId if we saved one on link.
+        // Skip when keepProgram=true — e.g. the user just created a new program
+        // and we shouldn't overwrite it with the pre-link program.
+        if (!keepProgram && clientSync.previousActiveProgramId) {
           set((s) => ({
             profile: { ...s.profile, activeProgramId: clientSync.previousActiveProgramId },
           }));
