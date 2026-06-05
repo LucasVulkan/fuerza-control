@@ -15,7 +15,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Animated, Modal, Pressable, PanResponder,
+  StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl,
 } from 'react-native';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -997,7 +997,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
 
 // ── ProgressTab ────────────────────────────────────────────────────────────────
 
-export default function ProgressTab({ baseLog, programTemplateIds, allExercises }) {
+export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const { fmt: fmtWeight, toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
@@ -1123,6 +1123,14 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises 
       contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      refreshControl={onRefresh ? (
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
+        />
+      ) : undefined}
     >
       {/* ── Fila única: Período + toggle programa ────────────────────────── */}
       <View style={styles.topRow}>

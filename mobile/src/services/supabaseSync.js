@@ -99,6 +99,7 @@ export async function uploadHistory(slotId, entries, customExercises = {}) {
     .update({
       history_json:       payload,
       history_updated_at: new Date().toISOString(),
+      sessions_count:     entries.length,
     })
     .eq('id', slotId);
 
@@ -170,8 +171,10 @@ export async function getSlotByClientCode(clientCode) {
 }
 
 /**
- * Links an anonymous client userId to their slot.
- * Called once after the client enters the magic code.
+ * Links (or re-links) a client userId to their slot.
+ * The code acts as a permanent reconnect credential — no guard on client_id,
+ * so a client can re-enter their code after reinstalling or switching devices.
+ * If the trainer accidentally shares a code, they can reset the slot from ClientsScreen.
  */
 export async function linkClientToSlot(slotId, clientUserId) {
   const { error } = await supabase
@@ -259,7 +262,7 @@ export async function transferClientSlot(slotId, oldClientId, newClientId) {
 export async function getTrainerSlots(trainerId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, client_name, client_code, client_id, history_updated_at, disconnected_at')
+    .select('id, client_name, client_code, client_id, history_updated_at, disconnected_at, sessions_count')
     .eq('trainer_id', trainerId)
     .order('created_at', { ascending: true });
 

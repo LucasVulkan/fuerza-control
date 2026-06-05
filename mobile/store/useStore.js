@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   updateCountdownNotification,
@@ -186,10 +186,11 @@ export const useStore = create(
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
       trainerSync: {
-        mode:        null,   // null | 'offline' | 'code' | 'google'
-        code:        null,   // string — trainer recovery code (only when mode === 'code')
-        userId:      null,   // Supabase user.id once authenticated
-        trainerName: null,   // string — display name shown to clients on their programs
+        mode:                  null,   // null | 'offline' | 'code' | 'google'
+        code:                  null,   // string — trainer recovery code (only when mode === 'code')
+        userId:                null,   // Supabase user.id once authenticated
+        trainerName:           null,   // string — display name shown to clients on their programs
+        lastSeenSessionsCount: {},     // { [clientId]: number } — count when trainer last viewed history
       },
 
       // ── Client sync (when user is a client connected to a trainer) ────────
@@ -2224,14 +2225,52 @@ export const useStore = create(
         }
       },
 
-      /** Marks client history as viewed (clears the "new activity" badge). */
+      /** Marks client history as viewed — clears badge and records current remote count as seen. */
       markHistoryViewed: (clientId) => {
+        const remoteCount = get().clients[clientId]?.remoteSessionsCount ?? 0;
         set((s) => ({
           clients: {
             ...s.clients,
             [clientId]: { ...s.clients[clientId], historyHasNew: false },
           },
+          trainerSync: {
+            ...s.trainerSync,
+            lastSeenSessionsCount: {
+              ...s.trainerSync.lastSeenSessionsCount,
+              [clientId]: remoteCount,
+            },
+          },
         }));
+      },
+
+      /**
+       * Fetches all trainer slots from Supabase and updates each local client's
+       * remoteSessionsCount. Lightweight — only reads sessions_count (no history JSON).
+       * Called on ClientsScreen mount and pull-to-refresh.
+       */
+      refreshTrainerSlots: async () => {
+        const { trainerSync, clients } = get();
+        if (!trainerSync.userId) return;
+
+        await _ensureTrainerSession(trainerSync);
+
+        const slots = await getTrainerSlots(trainerSync.userId);
+
+        // Build slotId → sessions_count map
+        const countBySlot = {};
+        slots.forEach((slot) => { countBySlot[slot.id] = slot.sessions_count ?? 0; });
+
+        // Update remoteSessionsCount for each matching local client
+        set((s) => {
+          const updated = { ...s.clients };
+          Object.keys(updated).forEach((clientId) => {
+            const slotId = updated[clientId].syncSlotId;
+            if (slotId && countBySlot[slotId] !== undefined) {
+              updated[clientId] = { ...updated[clientId], remoteSessionsCount: countBySlot[slotId] };
+            }
+          });
+          return { clients: updated };
+        });
       },
 
       /**

@@ -11,7 +11,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, FlatList, TouchableOpacity,
   TextInput, Modal, Alert, StyleSheet, KeyboardAvoidingView,
-  Platform,
+  Platform, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -890,7 +890,7 @@ function syncAgo(isoStr) {
 
 function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo,
+  onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo, newSessionsCount = 0,
 }) {
   const { t } = useTranslation();
   const programDirty = client.programDirty ?? false;
@@ -981,12 +981,26 @@ function ClientListCard({
               <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.cBtnOutline} onPress={onViewProgress} activeOpacity={0.85}>
-              <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
-                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                <Path d="M18 20V10M12 20V4M6 20v-6" />
-              </Svg>
-              <Text style={styles.cBtnOutlineText}>{t('clients.btnViewProgress')}</Text>
+            <TouchableOpacity
+              style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
+              onPress={onViewProgress}
+              activeOpacity={0.85}
+            >
+              {newSessionsCount > 0 ? (
+                <View style={styles.sessionsBadge}>
+                  <Text style={styles.sessionsBadgeText}>
+                    {newSessionsCount > 99 ? '99+' : newSessionsCount}
+                  </Text>
+                </View>
+              ) : (
+                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                  <Path d="M18 20V10M12 20V4M6 20v-6" />
+                </Svg>
+              )}
+              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
+                {t('clients.btnViewProgress')}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1061,6 +1075,7 @@ export default function ClientsScreen() {
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
   const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
   const markHistoryViewed        = useStore((s) => s.markHistoryViewed);
+  const refreshTrainerSlots      = useStore((s) => s.refreshTrainerSlots);
 
   // Tag registry
   const tagRegistry  = useStore((s) => s.tagRegistry ?? []);
@@ -1136,6 +1151,9 @@ export default function ClientsScreen() {
   const [scopeFilter,   setScopeFilter]   = useState('active');
   const [periodFilter,  setPeriodFilter]  = useState('all');
   const [refreshingHistory, setRefreshingHistory] = useState(false);
+
+  // List pull-to-refresh
+  const [refreshingList, setRefreshingList] = useState(false);
 
   // Detail - info accordion
   const [openSections,  setOpenSections]  = useState({ status: false, personal: true, weight: false, billing: false });
@@ -1266,6 +1284,22 @@ export default function ClientsScreen() {
     }
   }, [isPro]); // run once when screen mounts as PRO user
 
+  // ── Auto-fetch slot session counts on mount ─────────────────────────────────
+
+  useEffect(() => {
+    if (trainerSync.mode && trainerSync.mode !== 'offline' && trainerSync.userId) {
+      refreshTrainerSlots().catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Badge count helper ──────────────────────────────────────────────────────
+
+  function getNewSessionsCount(clientId) {
+    const remote   = clients[clientId]?.remoteSessionsCount ?? 0;
+    const lastSeen = trainerSync.lastSeenSessionsCount?.[clientId] ?? 0;
+    return Math.max(0, remote - lastSeen);
+  }
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleSelectClient(clientId) {
@@ -1287,12 +1321,24 @@ export default function ClientsScreen() {
   }
 
   function handleSelectClientProgress(clientId) {
+    markHistoryViewed(clientId); // progress tab also shows history-derived data
     setSelectedClientId(clientId);
     setActiveTab('progress');
     setScopeFilter('active');
     setPeriodFilter('all');
     setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
+  }
+
+  async function handleRefreshList() {
+    setRefreshingList(true);
+    try {
+      await refreshTrainerSlots();
+    } catch {
+      // silent — badge state is best-effort
+    } finally {
+      setRefreshingList(false);
+    }
   }
 
   function handleSelectClientHistory(clientId) {
@@ -1567,20 +1613,17 @@ export default function ClientsScreen() {
 
         {/* ── Tab: Historial ── */}
         {activeTab === 'history' && (
-          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
-            {/* Sync button — only shown when client is connected to cloud */}
-            {selectedClient?.syncSlotId && (
-              <TouchableOpacity
-                style={styles.refreshHistoryBtn}
-                onPress={handleRefreshHistory}
-                activeOpacity={0.75}
-                disabled={refreshingHistory}
-              >
-                <Text style={styles.refreshHistoryBtnText}>
-                  {refreshingHistory ? t('clients.refreshingHistory') : t('clients.refreshHistory')}
-                </Text>
-              </TouchableOpacity>
-            )}
+          <ScrollView
+            contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}
+            refreshControl={selectedClient?.syncSlotId ? (
+              <RefreshControl
+                refreshing={refreshingHistory}
+                onRefresh={handleRefreshHistory}
+                tintColor={colors.accent}
+                colors={[colors.accent]}
+              />
+            ) : undefined}
+          >
             {/* Filters */}
             <View style={styles.histFilterRow}>
               {PERIOD_OPTIONS.map(({ id, label }) => (
@@ -1623,6 +1666,8 @@ export default function ClientsScreen() {
             baseLog={clientBaseLog}
             programTemplateIds={activeClientTemplateIds}
             allExercises={allExercises}
+            onRefresh={selectedClient?.syncSlotId ? handleRefreshHistory : undefined}
+            refreshing={refreshingHistory}
           />
         )}
 
@@ -2170,6 +2215,14 @@ export default function ClientsScreen() {
           data={clientList}
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl + insets.bottom }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingList}
+              onRefresh={handleRefreshList}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
           renderItem={({ item: client }) => {
             const activeProgram   = programs[client.activeProgramId];
             const isConnected     = trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!client.syncSlotId;
@@ -2205,6 +2258,7 @@ export default function ClientsScreen() {
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   weeksTraining={weeksTraining}
+                  newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
                   onOpenEditor={() => {
                     if (client.activeProgramId) setEditingProgram(client.activeProgramId);
@@ -3231,6 +3285,23 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
+  },
+  cBtnOutlineNew: {
+    borderColor: colors.orange,
+  },
+  sessionsBadge: {
+    width:           17,
+    height:          17,
+    borderRadius:    9,
+    backgroundColor: colors.orange,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  sessionsBadgeText: {
+    fontSize:   9,
+    fontWeight: typography.bold,
+    color:      '#FFFFFF',
+    lineHeight: 13,
   },
   cBtnOrange: {
     paddingHorizontal: spacing.md,
