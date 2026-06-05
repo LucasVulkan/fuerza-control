@@ -314,8 +314,9 @@ export default function ProgramScreen() {
   }
 
   function handleCreate(name, numSessions) {
-    createEmptyProgram(numSessions, name, 'template');
+    const newId = createEmptyProgram(numSessions, name, 'template');
     showToast(t('templates.toastCreated'));
+    setEditingProgram(newId);
   }
 
   function handleDuplicate(programId) {

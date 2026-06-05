@@ -817,6 +817,7 @@ export const useStore = create(
             ? { ...s.profile, activeProgramId: programId, onboardingCompleted: true }
             : s.profile,
         }));
+        return programId;
       },
 
       addSessionToProgram: (programId, stageIndex = null) => {

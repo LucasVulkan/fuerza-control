@@ -219,7 +219,13 @@ export default function OnboardingScreen() {
 
   function handleManualCreate() {
     createEmptyProgram(manualSessions, manualName.trim() || t('onboarding.programNamePlaceholder', 'Mi programa'));
-    finish();
+    // Navigate to Main first (activeProgramId is now set, ProgramEditor picks it up as fallback)
+    if (fromApp) {
+      navigation.goBack();
+    } else {
+      navigation.replace('Main');
+    }
+    setTimeout(() => storeNavigate('programEditor'), 150);
   }
 
   function handleLoadTemplate() {
