@@ -37,12 +37,13 @@ function generateCustomId() {
 }
 
 export default function CustomExerciseScreen({ navigation, route }) {
-  const { templateId, currentExerciseId } = route.params ?? {};
+  const { templateId, currentExerciseId, sessionMode = false } = route.params ?? {};
   const insets = useSafeAreaInsets();
 
   const addCustomExercise = useStore((s) => s.addCustomExercise);
   const addExercise       = useStore((s) => s.addExercise);
   const replaceExercise   = useStore((s) => s.replaceExercise);
+  const addAdHocExercise  = useStore((s) => s.addAdHocExercise);
   const showToast         = useStore((s) => s.showToast);
 
   const [advanced, setAdvanced] = useState(false);
@@ -97,10 +98,11 @@ export default function CustomExerciseScreen({ navigation, route }) {
       isUnilateral:         form.isUnilateral,
       progressionModel:     form.progressionModel,
       progressionDirection: 'increase',
-      minReps:              parseInt(form.minReps),
-      maxReps:              parseInt(form.maxReps),
+      sets:                 parseInt(form.sets)    || 3,
+      minReps:              parseInt(form.minReps) || 8,
+      maxReps:              parseInt(form.maxReps) || 12,
       weightStep:           2.5,
-      restSec:              parseInt(form.restSec),
+      restSec:              parseInt(form.restSec) || 90,
       tips:                 form.notes.trim() ? [form.notes.trim()] : [],
       isCustom:             true,
       // Flexible tracking defaults
@@ -109,7 +111,11 @@ export default function CustomExerciseScreen({ navigation, route }) {
     };
 
     addCustomExercise(def);
-    if (templateId) {
+
+    if (sessionMode) {
+      addAdHocExercise(id);
+      showToast('Ejercicio añadido a la sesión');
+    } else if (templateId) {
       if (currentExerciseId) {
         replaceExercise(templateId, currentExerciseId, id);
         showToast('Ejercicio sustituido');

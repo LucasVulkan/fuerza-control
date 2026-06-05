@@ -201,7 +201,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
       </View>
       <TouchableOpacity
         style={styles.createBtn}
-        onPress={() => navigation.navigate('CustomExercise', { templateId, currentExerciseId })}
+        onPress={() => navigation.navigate('CustomExercise', { templateId, currentExerciseId, sessionMode })}
       >
         <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
       </TouchableOpacity>

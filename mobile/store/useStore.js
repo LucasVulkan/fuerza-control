@@ -738,7 +738,7 @@ export const useStore = create(
         const exDef = exerciseLibrary[exerciseId] ?? customExercises[exerciseId];
         if (!template || !exDef) return;
         const newExConfig = {
-          exerciseId, isKey: false, sets: 3,
+          exerciseId, isKey: false, sets: exDef.sets ?? 3,
           restSec: exDef.restSec ?? 90,
           minReps: exDef.minReps ?? null, maxReps: exDef.maxReps ?? null,
           progressionOverride: null, limitationNote: null,
@@ -2147,13 +2147,20 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, updatedAt } = await downloadHistory(client.syncSlotId);
-          if (!history?.length) return { merged: 0 };
+          const { history, customExercises: clientCustom, updatedAt } = await downloadHistory(client.syncSlotId);
+          if (!history?.length && !Object.keys(clientCustom ?? {}).length) return { merged: 0 };
+
+          // Import any custom exercise definitions the client sent (so trainer can resolve names)
+          if (clientCustom && Object.keys(clientCustom).length > 0) {
+            set((s) => ({
+              customExercises: { ...s.customExercises, ...clientCustom },
+            }));
+          }
 
           // Merge into the trainer's local workoutLog using existing dedup logic
           const existing = get().workoutLog;
           const existingIds = new Set(existing.map((e) => e.id));
-          const newEntries = history.filter((e) => !existingIds.has(e.id));
+          const newEntries = (history ?? []).filter((e) => !existingIds.has(e.id));
 
           if (newEntries.length > 0) {
             set((s) => ({
@@ -2345,11 +2352,11 @@ export const useStore = create(
        * Called after each session save. Sets pendingUpload on failure.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog } = get();
+        const { clientSync, workoutLog, customExercises } = get();
         if (!clientSync.slotId) return; // not linked to a trainer
 
         try {
-          await uploadHistory(clientSync.slotId, workoutLog);
+          await uploadHistory(clientSync.slotId, workoutLog, customExercises);
           set((s) => ({
             clientSync: {
               ...s.clientSync,

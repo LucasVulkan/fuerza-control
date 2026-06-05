@@ -64,11 +64,16 @@ export async function uploadProgram(slotId, programJson) {
  * Uploads the client's workout history JSON to their slot.
  * Called by the client after each session save.
  */
-export async function uploadHistory(slotId, historyJson) {
+/**
+ * Payload format: { entries: WorkoutEntry[], customExercises: Record<id, def> }
+ * Backward-compat: old clients uploaded a plain array — downloadHistory handles both.
+ */
+export async function uploadHistory(slotId, entries, customExercises = {}) {
+  const payload = { entries, customExercises };
   const { error } = await supabase
     .from('trainer_clients')
     .update({
-      history_json:       historyJson,
+      history_json:       payload,
       history_updated_at: new Date().toISOString(),
     })
     .eq('id', slotId);
@@ -110,9 +115,13 @@ export async function downloadHistory(slotId) {
 
   if (error) throw error;
 
+  const raw = data.history_json;
+  // Support both new format { entries, customExercises } and legacy plain array
+  const isNewFormat = raw && !Array.isArray(raw) && raw.entries !== undefined;
   return {
-    history:     data.history_json ?? [],
-    updatedAt:   data.history_updated_at,
+    history:         isNewFormat ? (raw.entries ?? []) : (raw ?? []),
+    customExercises: isNewFormat ? (raw.customExercises ?? {}) : {},
+    updatedAt:       data.history_updated_at,
   };
 }
 
