@@ -194,6 +194,40 @@ export async function disconnectClientSlot(slotId) {
 }
 
 /**
+ * Looks up a client slot by the currently-authenticated Google user ID.
+ * Used for auto-reconnect: after Google sign-in, check whether this user
+ * already has a linked trainer_clients row.
+ * Requires the RLS policy "client_can_read_own_slot" (client_id = auth.uid()).
+ *
+ * Returns the slot row or null if not found.
+ */
+export async function getClientSlotByUserId(userId) {
+  const { data, error } = await supabase
+    .from('trainer_clients')
+    .select('id, program_json, program_updated_at, history_updated_at')
+    .eq('client_id', userId)
+    .maybeSingle();   // returns null instead of throwing when no row found
+
+  if (error) throw error;
+  return data;        // null if no linked slot
+}
+
+/**
+ * Transfers a trainer_clients row from one client user to another.
+ * Called AFTER Google login (auth.uid() = new Google user ID).
+ * The RPC verifies: caller == p_new_client_id AND current client_id == p_old_client_id.
+ * Requires the transfer_client_slot SQL function (SECURITY DEFINER) in Supabase.
+ */
+export async function transferClientSlot(slotId, oldClientId, newClientId) {
+  const { error } = await supabase.rpc('transfer_client_slot', {
+    p_slot_id:        slotId,
+    p_old_client_id:  oldClientId,
+    p_new_client_id:  newClientId,
+  });
+  if (error) throw error;
+}
+
+/**
  * Fetches all client slots for a trainer.
  * Returns array of slot rows.
  */

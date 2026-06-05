@@ -19,8 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
 import DriveBackupModal from './DriveBackupModal';
-import ClientCodeModal from './ClientCodeModal';
-import TrainerSyncModal from './TrainerSyncModal';
+import ClientCodeModal       from './ClientCodeModal';
+import ClientGoogleLinkModal from './ClientGoogleLinkModal';
+import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
 
@@ -187,7 +188,7 @@ function ArchivedProgramsModal({ onClose }) {
 
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode }) {
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode, onLinkGoogle }) {
   const { t }         = useTranslation();
   const insets        = useSafeAreaInsets();
   const [exporting,    setExporting]   = useState(null);
@@ -296,6 +297,22 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
                   subtitle="Conectado"
                   onPress={() => { onClose(); onConnectTrainer(); }}
                 />
+                {!clientSync.googleLinked && (
+                  <MenuItem
+                    icon={<Icon d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m4 4V7" />}
+                    label="Vincular Google"
+                    subtitle="Reconéctate sin código desde cualquier dispositivo"
+                    onPress={() => { onClose(); onLinkGoogle(); }}
+                  />
+                )}
+                {clientSync.googleLinked && (
+                  <MenuItem
+                    icon={<Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" />}
+                    label="Google vinculado"
+                    subtitle="Reconexión automática activa"
+                    onPress={null}
+                  />
+                )}
                 <MenuItem
                   icon={<Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />}
                   label={t('header.disconnectTrainer')}
@@ -444,6 +461,7 @@ export default function AppHeader() {
   const [showArchived,      setShowArchived]       = useState(false);
   const [showDrive,         setShowDrive]          = useState(false);
   const [showClientCode,    setShowClientCode]     = useState(false);
+  const [showClientGoogle,  setShowClientGoogle]   = useState(false);
   const [showSyncMode,      setShowSyncMode]       = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
@@ -543,6 +561,7 @@ export default function AppHeader() {
         onShowArchived={() => setShowArchived(true)}
         onShowDrive={() => setShowDrive(true)}
         onConnectTrainer={() => setShowClientCode(true)}
+        onLinkGoogle={() => setShowClientGoogle(true)}
         onChangeSyncMode={() => setShowSyncMode(true)}
       />
 
@@ -557,6 +576,11 @@ export default function AppHeader() {
       <ClientCodeModal
         visible={showClientCode}
         onClose={() => setShowClientCode(false)}
+      />
+
+      <ClientGoogleLinkModal
+        visible={showClientGoogle}
+        onClose={() => setShowClientGoogle(false)}
       />
 
       <TrainerSyncModal

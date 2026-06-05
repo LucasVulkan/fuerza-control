@@ -308,6 +308,12 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     (async () => {
       setLoading(true);
       try {
+        // Capture existing slot IDs BEFORE the Google login changes the session.
+        // claimTrainerSlots (called after) will reassign them to the new Google user ID.
+        const existingSlotIds = Object.values(
+          useStore.getState().clients ?? {}
+        ).map((c) => c.syncSlotId).filter(Boolean);
+
         const tokens = await exchangeCodeForTokens({
           code:         googleResponse.params.code,
           codeVerifier: googleRequestRef.current?.codeVerifier,
@@ -320,6 +326,15 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           accessToken: tokens.access_token,
         });
         setTrainerSyncMode('google', { userId });
+
+        // Reassign existing client slots to the new Google user ID.
+        // Requires the claim_trainer_slots SQL function (SECURITY DEFINER) in Supabase.
+        if (existingSlotIds.length > 0) {
+          await claimTrainerSlots(existingSlotIds).catch(() => {
+            // Non-fatal — if the RPC fails, trainer still logs in successfully.
+          });
+        }
+
         onClose();
       } catch (err) {
         Alert.alert('Error', err.message ?? 'No se pudo iniciar sesión con Google.');
@@ -407,12 +422,15 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     const existingMode = trainerSync.mode;
     // Warn when switching away from an already-configured mode
     if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
+      const isUpgrade = existingMode === 'code' && selected === 'google';
       Alert.alert(
-        'Cambiar modo de sincronización',
-        'Se desconectará tu cuenta actual. Tu historial de clientes queda guardado en el dispositivo.\n\n¿Continuar?',
+        isUpgrade ? 'Cambiar a Google' : 'Cambiar modo de sincronización',
+        isUpgrade
+          ? 'Pasarás a usar tu cuenta de Google. Tus clientes actuales se migran automáticamente.\n\n¿Continuar?'
+          : 'Se desconectará tu cuenta actual. Tu historial de clientes queda guardado en el dispositivo.\n\n¿Continuar?',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Cambiar', style: 'destructive', onPress: doSwitch },
+          { text: isUpgrade ? 'Cambiar a Google' : 'Cambiar', style: isUpgrade ? 'default' : 'destructive', onPress: doSwitch },
         ],
       );
       return;
@@ -514,10 +532,10 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                           ⚠ Ya tienes un código. Al crear uno nuevo perderás la sincronización con tus clientes actuales.
                         </Text>
                       )}
-                      {/* Google: cambiar desde código huerfanará a los clientes */}
+                      {/* Google: upgrade desde código — clientes se migran automáticamente */}
                       {active && mode.id === 'google' && trainerSync.code && (
-                        <Text style={s.optionWarn}>
-                          ⚠ Si ya usas código personal, al cambiar a Google tus clientes quedarán vinculados a la cuenta anterior y no podrás actualizarlos.
+                        <Text style={[s.optionWarn, { color: colors.green }]}>
+                          ✓ Tus clientes actuales se migran automáticamente a tu cuenta de Google.
                         </Text>
                       )}
                     </TouchableOpacity>

@@ -117,6 +117,24 @@ export async function recoverWithTrainerCode(code) {
 }
 
 /**
+ * Signs a client in with a Google id_token.
+ * Unlike loginWithGoogleTrainer, this does NOT upsert a trainer profile row.
+ * Used for client Google linking and auto-reconnect on new devices.
+ *
+ * @param {{ idToken: string, accessToken: string }} tokens
+ * @returns {{ session, userId }}
+ */
+export async function loginWithGoogleClient({ idToken, accessToken }) {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider:     'google',
+    token:        idToken,
+    access_token: accessToken,
+  });
+  if (error) throw error;
+  return { session: data.session, userId: data.user.id };
+}
+
+/**
  * Signs in anonymously (for clients).
  * Creates a persistent anonymous session in Supabase.
  */

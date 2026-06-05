@@ -11,27 +11,101 @@
  *   warns that the current program will be archived.
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, TextInput,
   ActivityIndicator, StyleSheet, Platform, KeyboardAvoidingView, Alert,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { useStore } from '../../store/useStore';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser  from 'expo-web-browser';
+import * as Clipboard   from 'expo-clipboard';
+import Constants        from 'expo-constants';
+
+import { useStore }              from '../../store/useStore';
+import { exchangeCodeForTokens } from '../services/driveService';
+import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 
-export default function ClientCodeModal({ visible, onClose, onSuccess }) {
-  const validateClientCode = useStore((s) => s.validateClientCode);
-  const linkToTrainer      = useStore((s) => s.linkToTrainer);
-  const clientSync         = useStore((s) => s.clientSync);
+WebBrowser.maybeCompleteAuthSession();
 
-  const [step,        setStep]        = useState('enter'); // 'enter' | 'confirm'
-  const [code,        setCode]        = useState('');
-  const [slotInfo,    setSlotInfo]    = useState(null); // { slotId, programName, alreadyLinked, hasRemoteHistory }
-  const [historyMode, setHistoryMode] = useState('program'); // 'program' | 'merge'
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState(null);
-  const [pasted,      setPasted]      = useState(false);
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint:         'https://oauth2.googleapis.com/token',
+};
+
+export default function ClientCodeModal({ visible, onClose, onSuccess }) {
+  const validateClientCode    = useStore((s) => s.validateClientCode);
+  const linkToTrainer         = useStore((s) => s.linkToTrainer);
+  const validateGoogleClient  = useStore((s) => s.validateGoogleClient);
+  const confirmGoogleReconnect = useStore((s) => s.confirmGoogleReconnect);
+  const clientSync            = useStore((s) => s.clientSync);
+
+  const [step,         setStep]         = useState('enter'); // 'enter' | 'confirm'
+  const [code,         setCode]         = useState('');
+  const [slotInfo,     setSlotInfo]     = useState(null); // { slotId, programName, alreadyLinked, hasRemoteHistory }
+  const [historyMode,  setHistoryMode]  = useState('program'); // 'program' | 'merge'
+  const [googleUserId, setGoogleUserId] = useState(null);  // set when Google reconnect finds a slot
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState(null);
+  const [pasted,       setPasted]       = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleNoSlot,  setGoogleNoSlot]  = useState(false);
+
+  // ── Google OAuth for auto-reconnect ────────────────────────────────────────
+  const isExpoGo         = Constants.executionEnvironment === 'storeClient';
+  const androidRedirect  = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+  const googleRedirectUri = AuthSession.makeRedirectUri({ native: androidRedirect });
+
+  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId:     GOOGLE_ANDROID_CLIENT_ID,
+      scopes:       ['openid', 'email', 'profile'],
+      responseType: AuthSession.ResponseType.Code,
+      usePKCE:      true,
+      redirectUri:  googleRedirectUri,
+      extraParams:  { access_type: 'online', prompt: 'select_account' },
+    },
+    GOOGLE_DISCOVERY,
+  );
+
+  const googleRequestRef = useRef(googleRequest);
+  useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
+
+  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    if (googleResponse?.type !== 'success') return;
+    (async () => {
+      setGoogleLoading(true);
+      setError(null);
+      setGoogleNoSlot(false);
+      try {
+        const tokens = await exchangeCodeForTokens({
+          code:         googleResponse.params.code,
+          codeVerifier: googleRequestRef.current?.codeVerifier,
+          redirectUri:  googleRedirectUri,
+          clientId:     GOOGLE_ANDROID_CLIENT_ID,
+        });
+        if (!tokens.id_token) throw new Error('Google no devolvió un id_token.');
+        const result = await validateGoogleClient({ idToken: tokens.id_token, accessToken: tokens.access_token });
+        if (result.found) {
+          setGoogleUserId(result.userId);
+          setSlotInfo({
+            slotId:           result.slotId,
+            programName:      result.programName,
+            hasRemoteHistory: result.hasRemoteHistory,
+            alreadyLinked:    false,
+          });
+          setHistoryMode('program');
+          setStep('confirm');
+        } else {
+          setGoogleNoSlot(true);
+        }
+      } catch (err) {
+        setError(err.message ?? 'Error al conectar con Google.');
+      } finally {
+        setGoogleLoading(false);
+      }
+    })();
+  }, [googleResponse]); // eslint-disable-line
 
   async function handlePaste() {
     const text = await Clipboard.getStringAsync();
@@ -48,6 +122,8 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
     setCode('');
     setSlotInfo(null);
     setHistoryMode('program');
+    setGoogleUserId(null);
+    setGoogleNoSlot(false);
     setError(null);
     onClose();
   }
@@ -71,7 +147,17 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
     setLoading(true);
     setError(null);
     try {
-      await linkToTrainer(code, { mergeHistory: historyMode === 'merge' });
+      if (googleUserId) {
+        // Google auto-reconnect flow
+        await confirmGoogleReconnect({
+          slotId:      slotInfo.slotId,
+          googleUserId,
+          mergeHistory: historyMode === 'merge',
+        });
+      } else {
+        // Code-based flow
+        await linkToTrainer(code, { mergeHistory: historyMode === 'merge' });
+      }
       handleClose();
       onSuccess?.();
     } catch (err) {
@@ -133,13 +219,40 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
                     : <Text style={s.primaryBtnText}>Continuar</Text>}
                 </TouchableOpacity>
               </View>
+
+              {/* ── Google reconnect ── */}
+              <View style={s.dividerRow}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>o</Text>
+                <View style={s.dividerLine} />
+              </View>
+              <TouchableOpacity
+                style={[s.googleBtn, (googleLoading || isExpoGo) && { opacity: 0.4 }]}
+                onPress={() => { setGoogleNoSlot(false); setError(null); googlePromptAsync(); }}
+                disabled={googleLoading || isExpoGo}
+                activeOpacity={0.8}
+              >
+                {googleLoading
+                  ? <ActivityIndicator color={colors.text} size="small" />
+                  : <Text style={s.googleBtnText}>Reconectarse con Google</Text>}
+              </TouchableOpacity>
+              {googleNoSlot && (
+                <Text style={s.googleNoSlotText}>
+                  No hay cuenta vinculada a ese Google. Introduce el código de tu entrenador.
+                </Text>
+              )}
+              {isExpoGo && (
+                <Text style={s.googleUnavailText}>Google no disponible en Expo Go</Text>
+              )}
             </>
           )}
 
           {/* ── Step 2: Confirm ── */}
           {step === 'confirm' && slotInfo && (
             <>
-              <Text style={s.title}>Programa encontrado</Text>
+              <Text style={s.title}>
+                {googleUserId ? 'Cuenta encontrada' : 'Programa encontrado'}
+              </Text>
 
               <View style={s.programFound}>
                 <Text style={s.programFoundLabel}>PROGRAMA</Text>
@@ -414,6 +527,41 @@ const s = StyleSheet.create({
     height:          8,
     borderRadius:    4,
     backgroundColor: colors.accent,
+  },
+
+  // Google reconnect
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    marginTop:     spacing.xs,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: typography.xs, color: colors.muted },
+  googleBtn: {
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.sm,
+    paddingVertical: spacing.sm + 2,
+    alignItems:      'center',
+    backgroundColor: colors.surface2,
+  },
+  googleBtnText: {
+    fontSize:   typography.sm,
+    color:      colors.text,
+    fontWeight: typography.medium,
+  },
+  googleNoSlotText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    textAlign:  'center',
+    lineHeight: typography.xs * 1.5,
+  },
+  googleUnavailText: {
+    fontSize:   typography.xs,
+    color:      colors.muted,
+    textAlign:  'center',
+    fontStyle:  'italic',
   },
 
   // Info list

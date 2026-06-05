@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -195,7 +195,8 @@ export const useStore = create(
       clientSync: {
         slotId:                null,  // trainer_clients row id
         clientCode:            null,  // the code the client entered
-        supabaseUserId:        null,  // anonymous Supabase user id
+        supabaseUserId:        null,  // anonymous Supabase user id (or Google user id if linked)
+        googleLinked:          false, // true once the client has linked a Google account
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
@@ -2418,7 +2419,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -2428,6 +2429,119 @@ export const useStore = create(
             await recoverWithTrainerCode(trainerSync.code);
           } catch { /* silent — trainer can re-auth manually if needed */ }
         }
+      },
+
+      // ══════════════════════════════════════════════════════════════════════
+      // CLIENT GOOGLE AUTH
+      // ══════════════════════════════════════════════════════════════════════
+
+      /**
+       * Validates a Google login and finds the client's slot for auto-reconnect.
+       * Signs in with Google → gets userId → queries trainer_clients by client_id.
+       * Requires the RLS policy "client_can_read_own_slot" in Supabase.
+       *
+       * Returns { found: false } if no slot, or:
+       * { found: true, slotId, userId, programName, hasRemoteHistory }
+       */
+      validateGoogleClient: async ({ idToken, accessToken }) => {
+        const { loginWithGoogleClient } = require('../src/services/supabaseAuth');
+        const { userId } = await loginWithGoogleClient({ idToken, accessToken });
+
+        const slot = await getClientSlotByUserId(userId);
+        if (!slot || !slot.program_json) return { found: false };
+
+        return {
+          found:            true,
+          slotId:           slot.id,
+          userId,
+          programName:      slot.program_json?.program?.name ?? 'Programa',
+          hasRemoteHistory: !!slot.history_updated_at,
+        };
+      },
+
+      /**
+       * Finalizes a Google-based client reconnect on a new device.
+       * Downloads the program from the slot and optionally merges remote history.
+       * Called after the user confirms in the modal (confirm step).
+       */
+      confirmGoogleReconnect: async ({ slotId, googleUserId, mergeHistory = false }) => {
+        // 1. Download program
+        const { programJson } = await downloadProgram(slotId);
+        if (!programJson) throw new Error('No se pudo descargar el programa.');
+
+        // 2. Save current activeProgramId so it can be restored on disconnect
+        const previousActiveProgramId = get().profile.activeProgramId ?? null;
+
+        // 3. Import program
+        get().importData(programJson, { program: true, log: false });
+
+        // 4. Optionally merge remote history (same logic as linkToTrainer)
+        if (mergeHistory) {
+          try {
+            const { history: remoteEntries, customExercises: remoteCustom } =
+              await downloadHistory(slotId);
+            const localIds = new Set((get().workoutLog ?? []).map((e) => e.id));
+            const newEntries = remoteEntries.filter((e) => e.id && !localIds.has(e.id));
+            if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
+              set((s) => ({
+                workoutLog: [...s.workoutLog, ...newEntries].sort(
+                  (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+                ),
+                customExercises: { ...remoteCustom, ...s.customExercises },
+              }));
+            }
+          } catch (err) {
+            console.warn('[confirmGoogleReconnect] history merge failed:', err.message);
+          }
+        }
+
+        // 5. Save client sync state
+        set(() => ({
+          clientSync: {
+            slotId,
+            clientCode:             null,   // not known in Google reconnect flow
+            supabaseUserId:         googleUserId,
+            googleLinked:           true,
+            pendingUpload:          false,
+            lastSyncedAt:           null,
+            syncErrorAt:            null,
+            lastProgramImportedAt:  new Date().toISOString(),
+            previousActiveProgramId,
+          },
+        }));
+      },
+
+      /**
+       * Links the current anonymous client session to a Google account.
+       * Flow: Google OAuth → loginWithGoogleClient → transferClientSlot (RPC) → update state.
+       *
+       * Must be called while the OLD anonymous session is still in memory
+       * (clientSync.supabaseUserId holds the old anonymous user ID).
+       * The RPC is called AS the new Google user, providing the old ID for verification.
+       */
+      linkGoogleForClient: async ({ idToken, accessToken }) => {
+        const { clientSync } = get();
+        if (!clientSync.slotId) throw new Error('No estás conectado a ningún entrenador.');
+
+        const oldUserId = clientSync.supabaseUserId;
+        if (!oldUserId) throw new Error('No se encontró el ID de usuario anterior.');
+
+        // 1. Sign in with Google — changes the Supabase session to the Google user
+        const { loginWithGoogleClient } = require('../src/services/supabaseAuth');
+        const { userId: newUserId } = await loginWithGoogleClient({ idToken, accessToken });
+
+        // 2. Transfer the slot from old anonymous ID to new Google ID
+        //    (caller is now the Google user; RPC verifies old ID matches current client_id)
+        await transferClientSlot(clientSync.slotId, oldUserId, newUserId);
+
+        // 3. Update local state — slot is now owned by the Google user
+        set((s) => ({
+          clientSync: {
+            ...s.clientSync,
+            supabaseUserId: newUserId,
+            googleLinked:   true,
+          },
+        }));
       },
 
       // ══════════════════════════════════════════════════════════════════════
