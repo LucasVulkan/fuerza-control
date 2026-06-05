@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   updateCountdownNotification,
@@ -198,6 +198,7 @@ export const useStore = create(
         clientCode:            null,  // the code the client entered
         supabaseUserId:        null,  // anonymous Supabase user id (or Google user id if linked)
         googleLinked:          false, // true once the client has linked a Google account
+        trainerName:           null,  // trainer's display name (read from trainer_name column)
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
@@ -2084,11 +2085,18 @@ export const useStore = create(
           trainerSync: { ...state.trainerSync, userId },
         })),
 
-      /** Updates only the trainer display name (preserved across mode switches). */
-      setTrainerName: (name) =>
+      /** Updates the trainer display name locally and syncs to all Supabase slots. */
+      setTrainerName: (name) => {
+        const trimmed = name?.trim() || null;
         set((state) => ({
-          trainerSync: { ...state.trainerSync, trainerName: name ?? null },
-        })),
+          trainerSync: { ...state.trainerSync, trainerName: trimmed },
+        }));
+        // Propagate to Supabase so clients see the new name on their next sync
+        const { trainerSync } = get();
+        if (trainerSync.userId) {
+          updateTrainerNameForSlots(trainerSync.userId, trimmed).catch(() => {});
+        }
+      },
 
       /** Resets sync mode (e.g. when switching modes). */
       resetTrainerSync: () =>
@@ -2142,7 +2150,7 @@ export const useStore = create(
             tpl.trainerName = trainerName.trim();
           });
         }
-        await uploadProgram(client.syncSlotId, programData);
+        await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null);
         // Clear pending-upload flag after successful push
         set((s) => ({
           clients: {
@@ -2242,6 +2250,7 @@ export const useStore = create(
           programName:      slot.program_json?.program?.name ?? 'Programa',
           alreadyLinked:    !!slot.client_id,
           hasRemoteHistory: !!slot.history_updated_at,
+          trainerName:      slot.trainer_name ?? null,
         };
       },
 
@@ -2304,6 +2313,7 @@ export const useStore = create(
             slotId:                 slot.id,
             clientCode:             code.trim().toUpperCase(),
             supabaseUserId:         userId,
+            trainerName:            slot.trainer_name ?? null,
             pendingUpload:          false,
             lastSyncedAt:           null,
             syncErrorAt:            null,
@@ -2324,7 +2334,15 @@ export const useStore = create(
         if (!clientSync.slotId) return;
 
         try {
-          const { programJson, updatedAt } = await downloadProgram(clientSync.slotId);
+          const { programJson, updatedAt, trainerName } = await downloadProgram(clientSync.slotId);
+
+          // Always sync trainer name if it changed (independent of program updates)
+          if (trainerName !== undefined && trainerName !== clientSync.trainerName) {
+            set((s) => ({
+              clientSync: { ...s.clientSync, trainerName: trainerName ?? null },
+            }));
+          }
+
           if (!programJson || !updatedAt) return;
 
           const lastImport = clientSync.lastProgramImportedAt;
@@ -2438,7 +2456,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -2484,8 +2502,8 @@ export const useStore = create(
        * Called after the user confirms in the modal (confirm step).
        */
       confirmGoogleReconnect: async ({ slotId, googleUserId, mergeHistory = false }) => {
-        // 1. Download program
-        const { programJson } = await downloadProgram(slotId);
+        // 1. Download program (also fetches trainer_name)
+        const { programJson, trainerName } = await downloadProgram(slotId);
         if (!programJson) throw new Error('No se pudo descargar el programa.');
 
         // 2. Save current activeProgramId so it can be restored on disconnect
@@ -2521,6 +2539,7 @@ export const useStore = create(
             clientCode:             null,   // not known in Google reconnect flow
             supabaseUserId:         googleUserId,
             googleLinked:           true,
+            trainerName:            trainerName ?? null,
             pendingUpload:          false,
             lastSyncedAt:           null,
             syncErrorAt:            null,

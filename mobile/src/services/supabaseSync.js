@@ -47,15 +47,39 @@ export async function createClientSlot(trainerId, clientName) {
 
 /**
  * Uploads the trainer's program JSON for a specific client slot.
+ * Optionally updates trainer_name at the same time (avoids an extra round-trip).
+ *
+ * @param {string}      slotId
+ * @param {object}      programJson
+ * @param {string|null} [trainerName]  — pass to update the column; omit to leave unchanged
  */
-export async function uploadProgram(slotId, programJson) {
+export async function uploadProgram(slotId, programJson, trainerName) {
+  const payload = {
+    program_json:       programJson,
+    program_updated_at: new Date().toISOString(),
+  };
+  if (trainerName !== undefined) payload.trainer_name = trainerName ?? null;
+
   const { error } = await supabase
     .from('trainer_clients')
-    .update({
-      program_json:       programJson,
-      program_updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq('id', slotId);
+
+  if (error) throw error;
+}
+
+/**
+ * Updates trainer_name on ALL slots that belong to this trainer.
+ * Called when the trainer changes their display name from the settings.
+ *
+ * @param {string}      trainerId   — trainer's Supabase user.id
+ * @param {string|null} trainerName
+ */
+export async function updateTrainerNameForSlots(trainerId, trainerName) {
+  const { error } = await supabase
+    .from('trainer_clients')
+    .update({ trainer_name: trainerName ?? null })
+    .eq('trainer_id', trainerId);
 
   if (error) throw error;
 }
@@ -89,15 +113,16 @@ export async function uploadHistory(slotId, entries, customExercises = {}) {
 export async function downloadProgram(slotId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('program_json, program_updated_at')
+    .select('program_json, program_updated_at, trainer_name')
     .eq('id', slotId)
     .single();
 
   if (error) throw error;
 
   return {
-    programJson: data.program_json ?? null,
-    updatedAt:   data.program_updated_at ?? null,
+    programJson:  data.program_json ?? null,
+    updatedAt:    data.program_updated_at ?? null,
+    trainerName:  data.trainer_name ?? null,
   };
 }
 
@@ -132,7 +157,7 @@ export async function downloadHistory(slotId) {
 export async function getSlotByClientCode(clientCode) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, client_name, trainer_id, program_json, program_updated_at, client_id, history_updated_at')
+    .select('id, client_name, trainer_id, program_json, program_updated_at, client_id, history_updated_at, trainer_name')
     .eq('client_code', clientCode.trim().toUpperCase())
     .single();
 
@@ -204,7 +229,7 @@ export async function disconnectClientSlot(slotId) {
 export async function getClientSlotByUserId(userId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, program_json, program_updated_at, history_updated_at')
+    .select('id, program_json, program_updated_at, history_updated_at, trainer_name')
     .eq('client_id', userId)
     .maybeSingle();   // returns null instead of throwing when no row found
 

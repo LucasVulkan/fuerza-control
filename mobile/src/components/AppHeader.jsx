@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
-  Animated, PanResponder,
+  Animated, PanResponder, TextInput,
 } from 'react-native';
 import Svg, { Path, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -203,6 +203,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const clientSync           = useStore((s) => s.clientSync);
   const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
   const trainerSync          = useStore((s) => s.trainerSync);
+  const setTrainerName       = useStore((s) => s.setTrainerName);
   const driveBackup          = useStore((s) => s.driveBackup);
 
   const lang           = profile.language      ?? 'es';
@@ -312,7 +313,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
                 <MenuItem
                   icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />}
                   label={t('header.changeTrainer')}
-                  subtitle="Conectado"
+                  subtitle={clientSync.trainerName ? `Conectado con ${clientSync.trainerName}` : 'Conectado'}
                   onPress={() => { onClose(); onConnectTrainer(); }}
                 />
                 {!clientSync.googleLinked && (
@@ -431,16 +432,32 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
               onPress={isPro ? undefined : () => setShowPaywall(true)}
             />
             {isPro && (
-              <MenuItem
-                icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
-                label={t('header.trainerSync')}
-                badge={
-                  trainerSync.mode === 'google'  ? 'GOOGLE' :
-                  trainerSync.mode === 'code'    ? 'CÓDIGO' :
-                  trainerSync.mode === 'offline' ? 'OFFLINE' : null
-                }
-                onPress={() => { onClose(); onChangeSyncMode(); }}
-              />
+              <>
+                <MenuItem
+                  icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
+                  label={t('header.trainerSync')}
+                  badge={
+                    trainerSync.mode === 'google'  ? 'GOOGLE' :
+                    trainerSync.mode === 'code'    ? 'CÓDIGO' :
+                    trainerSync.mode === 'offline' ? 'OFFLINE' : null
+                  }
+                  onPress={() => { onClose(); onChangeSyncMode(); }}
+                />
+                {trainerSync.mode && trainerSync.mode !== 'offline' && (
+                  <View style={styles.nameFieldRow}>
+                    <Text style={styles.nameFieldLabel}>Tu nombre</Text>
+                    <TextInput
+                      style={styles.nameFieldInput}
+                      value={trainerSync.trainerName ?? ''}
+                      onChangeText={(v) => setTrainerName(v)}
+                      placeholder="Nombre visible para tus clientes"
+                      placeholderTextColor={colors.muted2}
+                      returnKeyType="done"
+                      maxLength={40}
+                    />
+                  </View>
+                )}
+              </>
             )}
           </CategoryCard>
           {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -836,6 +853,31 @@ const styles = StyleSheet.create({
   },
   toggleBtnTextActive: {
     color: colors.accent,
+  },
+
+  // Trainer name field
+  nameFieldRow: {
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: borders.thin,
+    borderBottomColor: colors.border,
+    gap:               spacing.xs,
+  },
+  nameFieldLabel: {
+    fontSize:      typography.xs,
+    color:         colors.muted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  nameFieldInput: {
+    fontSize:          typography.base,
+    color:             colors.text,
+    paddingVertical:   spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    borderRadius:      radius.sm,
   },
 
   // Archived programs modal
