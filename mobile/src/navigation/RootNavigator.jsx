@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { useStore }      from '../../store/useStore';
+import { useStore }        from '../../store/useStore';
 import { colors, borders } from '../theme';
 import HomeScreen       from '../screens/HomeScreen';
 import HistoryScreen    from '../screens/HistoryScreen';
@@ -101,9 +101,19 @@ function MainTabs() {
 
 // ── Root stack ─────────────────────────────────────────────────────────────────
 export default function RootNavigator() {
+  const hasHydrated  = useStore((s) => s._hasHydrated);
+  const initialRoute = useStore((s) => s._initialRoute ?? 'Main');
+
+  // Block render until AsyncStorage has been read. This prevents a brief flash
+  // of MainTabs on first launch (new device → should open Setup/Onboarding).
+  if (!hasHydrated) {
+    return <View style={styles.hydrating} />;
+  }
+
   return (
     <View style={styles.root}>
       <Stack.Navigator
+        initialRouteName={initialRoute}
         screenOptions={{
           headerShown:  false,
           contentStyle: styles.stackContent,
@@ -163,6 +173,10 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  hydrating: {
+    flex: 1,
+    backgroundColor: colors.bg,
   },
   tabBar: {
     backgroundColor: 'transparent', // el background lo pone TabBarBackground

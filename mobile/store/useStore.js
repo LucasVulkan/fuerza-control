@@ -208,6 +208,11 @@ export const useStore = create(
       sessionTemplates: SESSION_TEMPLATES,
       programs: PROGRAMS,
 
+      // Hydration gate — true once AsyncStorage has been read.
+      // NOT persisted. RootNavigator waits for this before rendering.
+      _hasHydrated:  false,
+      _initialRoute: 'Main',
+
       // ══════════════════════════════════════════════════════════════════════
       // PROFILE
       // ══════════════════════════════════════════════════════════════════════
@@ -2546,21 +2551,23 @@ export const useStore = create(
         migrateTemplates(state.userPrograms);
         migrateTemplates(state.sessionTemplates);
 
-        // Navigate to appropriate screen after rehydration
-        // (navigationRef may not be ready yet, so defer to next tick)
-        const hasProgram      = state.profile?.activeProgramId && state.programs?.[state.profile.activeProgramId];
-        const setupDone       = state.profile?.setupComplete;
-        const onboardingDone  = state.profile?.onboardingCompleted;
+        // Determine the initial screen. We set _hasHydrated + _initialRoute so
+        // RootNavigator can mount the Stack with the correct initialRouteName
+        // without any setTimeout / navigateTo race condition.
+        const hasProgram     = state.profile?.activeProgramId && state.programs?.[state.profile.activeProgramId];
+        const setupDone      = state.profile?.setupComplete;
+        const onboardingDone = state.profile?.onboardingCompleted;
 
+        let initialRoute = 'Main';
         if (!setupDone && !onboardingDone && !hasProgram) {
-          // Nuevo usuario — mostrar selector de idioma/unidades primero
-          setTimeout(() => navigateTo('setup'), 100);
+          initialRoute = 'Setup';
         } else if (!onboardingDone && !hasProgram) {
-          // Setup hecho pero sin programa todavía
-          setTimeout(() => navigateTo('onboarding'), 100);
+          initialRoute = 'Onboarding';
         } else if (state.activeSession?.templateId) {
-          setTimeout(() => navigateTo('workout'), 100);
+          initialRoute = 'Workout';
         }
+
+        useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
       },
     }
   )
