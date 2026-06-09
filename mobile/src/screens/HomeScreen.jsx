@@ -632,32 +632,30 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* ── Botones de estado ── */}
+        <View style={styles.statusButtons}>
+          <TouchableOpacity
+            style={styles.statusBtn}
+            onPress={() => navigation.navigate('DriveBackup')}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.statusBtnDot, { backgroundColor: driveDotColor }]} />
+            <Text style={styles.statusBtnText}>Google Drive</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.statusBtn}
+            onPress={() => navigation.navigate('TrainerConnection')}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.statusBtnDot, { backgroundColor: trainerDotColor }]} />
+            <Text style={styles.statusBtnText}>
+              {clientSync.trainerName ? clientSync.trainerName : 'Entrenador'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-
-      {/* ── Footer status bar ── */}
-      <View style={[styles.footerBar, { paddingBottom: insets.bottom + 4 }]}>
-        <TouchableOpacity
-          style={styles.footerBtn}
-          onPress={() => navigation.navigate('DriveBackup')}
-          activeOpacity={0.75}
-        >
-          <View style={[styles.footerDot, { backgroundColor: driveDotColor }]} />
-          <Text style={styles.footerBtnText}>Google Drive</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footerDivider} />
-
-        <TouchableOpacity
-          style={styles.footerBtn}
-          onPress={() => navigation.navigate('TrainerConnection')}
-          activeOpacity={0.75}
-        >
-          <View style={[styles.footerDot, { backgroundColor: trainerDotColor }]} />
-          <Text style={styles.footerBtnText}>
-            {clientSync.trainerName ? clientSync.trainerName : 'Entrenador'}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Modals */}
       {archiveOpen && (
@@ -1185,40 +1183,33 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // ── Footer status bar ────────────────────────────────────────────────────────
-  footerBar: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
-    backgroundColor:   colors.surface,
-    paddingTop:        spacing.sm - 2,
-    paddingHorizontal: spacing.md,
+  // ── Botones de estado (Drive + Entrenador) ───────────────────────────────────
+  statusButtons: {
+    flexDirection: 'row',
+    gap:           spacing.sm,
   },
-  footerBtn: {
-    flex:           1,
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    gap:            spacing.xs,
+  statusBtn: {
+    flex:            1,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface,
   },
-  footerDot: {
+  statusBtnDot: {
     width:        7,
     height:       7,
     borderRadius: 4,
     flexShrink:   0,
   },
-  footerBtnText: {
-    fontSize:   typography.xs,
+  statusBtnText: {
+    fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.muted,
-  },
-  footerDivider: {
-    width:           borders.thin,
-    height:          20,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.xs,
   },
 
   // Stage picker

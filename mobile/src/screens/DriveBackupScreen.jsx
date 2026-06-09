@@ -322,7 +322,6 @@ export default function DriveBackupScreen() {
               {/* Actions */}
               <Text style={styles.sectionLabel}>ACCIONES</Text>
               <ActionRow label="Hacer backup ahora"  onPress={handleBackupNow}  disabled={loading} />
-              <ActionRow label="Ver backups en Drive" onPress={() => setActiveTab('backups')} disabled={loading} />
 
               <View style={styles.separator} />
               <ActionRow label="Eliminar todos los backups"    onPress={handleDeleteAll}  disabled={loading} danger />

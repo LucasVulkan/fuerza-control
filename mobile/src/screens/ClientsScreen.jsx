@@ -2147,6 +2147,7 @@ export default function ClientsScreen() {
 
         {/* Row 3: Status cycle + active tag pills */}
         <ScrollView
+          style={styles.filterRowScroll}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}
@@ -2632,12 +2633,16 @@ const styles = StyleSheet.create({
   },
 
   // Row 3: Filter pills row
+  filterRowScroll: {
+    marginTop: -spacing.sm,   // pull Row 3 up, reducing gap with search bar
+  },
   filterRow: {
     flexDirection:  'row',
     alignItems:     'center',
     gap:            spacing.sm,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xs,
+    paddingTop:     spacing.xs,
+    paddingBottom:  spacing.xs,
   },
   // Status cycle pill
   statusPill: {

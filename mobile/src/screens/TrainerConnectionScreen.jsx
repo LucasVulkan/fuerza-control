@@ -29,7 +29,7 @@ export default function TrainerConnectionScreen() {
   const clientSync           = useStore((s) => s.clientSync);
   const programs             = useStore((s) => s.programs);
   const profile              = useStore((s) => s.profile);
-  const disconnectFromTrainer = useStore((s) => s.disconnectFromTrainer);
+  const disconnectFromTrainer = useStore((s) => s.unlinkFromTrainer);
 
   const [showCodeModal,   setShowCodeModal]   = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
@@ -61,8 +61,8 @@ export default function TrainerConnectionScreen() {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Desconectar', style: 'destructive',
-          onPress: () => {
-            disconnectFromTrainer();
+          onPress: async () => {
+            await disconnectFromTrainer();
             navigation.goBack();
           },
         },
@@ -196,12 +196,25 @@ export default function TrainerConnectionScreen() {
               onPress={() => setShowCodeModal(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.connectBtnText}>Conectar con entrenador</Text>
+              <Text style={styles.connectBtnText}>Conectar con código</Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={() => setShowCodeModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.googleBtnText}>Reconectarse con Google</Text>
             </TouchableOpacity>
 
             <Text style={styles.connectHint}>
-              Pide el código de 8 caracteres a tu entrenador.{'\n'}
-              Si ya estuviste conectado antes, puedes reconectarte con tu cuenta de Google.
+              Si ya estuviste conectado antes y vinculaste tu cuenta de Google, úsala para reconectarte automáticamente.
             </Text>
           </>
         )}
@@ -413,6 +426,31 @@ const styles = StyleSheet.create({
     fontSize:  typography.xs,
     color:     colors.muted,
     marginTop: 1,
+  },
+
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    marginTop:     spacing.xs,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: typography.xs, color: colors.muted },
+
+  // Google button
+  googleBtn: {
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    borderRadius:    radius.sm,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+    backgroundColor: colors.surface2,
+  },
+  googleBtnText: {
+    fontSize:   typography.sm,
+    color:      colors.text,
+    fontWeight: typography.medium,
   },
 
   // Not connected CTA

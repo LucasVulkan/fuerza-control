@@ -2754,6 +2754,15 @@ export const useStore = create(
           i18n.changeLanguage(state.profile.language);
         }
 
+        // Clear stale active sessions (older than 12h) so the app doesn't
+        // always open on WorkoutScreen after closing mid-session during testing.
+        if (state.activeSession?.templateId) {
+          const age = Date.now() - (state.activeSession.startedAt ?? 0);
+          if (age > 12 * 60 * 60 * 1000) {
+            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', adHocExercises: [], freeSessionName: '' };
+          }
+        }
+
         // Migrate string tags → tagRegistry IDs
         if (!state.tagRegistry) state.tagRegistry = [];
         const needsTagMigration = Object.values(state.clients ?? {}).some(
