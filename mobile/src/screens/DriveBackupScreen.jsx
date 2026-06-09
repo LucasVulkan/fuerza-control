@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, ScrollView, RefreshControl,
+  Alert, ActivityIndicator, ScrollView, RefreshControl, TextInput,
 } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
@@ -48,12 +48,14 @@ export default function DriveBackupScreen() {
   const connectDrive       = useStore((s) => s.connectDrive);
   const disconnectDrive    = useStore((s) => s.disconnectDrive);
   const setDriveFrequency  = useStore((s) => s.setDriveFrequency);
+  const setDriveBackupName = useStore((s) => s.setDriveBackupName);
   const performDriveBackup = useStore((s) => s.performDriveBackup);
   const deleteDriveBackups = useStore((s) => s.deleteDriveBackups);
   const importData         = useStore((s) => s.importData);
   const showToast          = useStore((s) => s.showToast);
 
   const [activeTab,   setActiveTab]   = useState('settings'); // 'settings' | 'backups'
+  const [nameInput,   setNameInput]   = useState(driveBackup.backupName ?? '');
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setMsg]         = useState('');
   const [files,       setFiles]       = useState(null);  // null = not loaded yet
@@ -224,6 +226,24 @@ export default function DriveBackupScreen() {
     );
   }
 
+  // ── Backup name helpers ───────────────────────────────────────────────────────
+  function sanitizeBackupName(raw) {
+    const s = (raw || '').trim();
+    if (!s) return 'forma-backup';
+    return s
+      .toLowerCase()
+      .replace(/[áàäâã]/g, 'a').replace(/[éèëê]/g, 'e')
+      .replace(/[íìïî]/g, 'i').replace(/[óòöôõ]/g, 'o')
+      .replace(/[úùüû]/g, 'u').replace(/ñ/g, 'n').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'forma-backup';
+  }
+
+  const today       = new Date().toISOString().split('T')[0];
+  const previewName = `${sanitizeBackupName(nameInput)}-${today}.fitdata`;
+
   const isConnected = driveBackup.enabled;
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -319,8 +339,28 @@ export default function DriveBackupScreen() {
                 ))}
               </View>
 
+              {/* Backup name */}
+              <Text style={styles.sectionLabel}>NOMBRE DE ARCHIVO</Text>
+              <View style={styles.nameInputWrap}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={nameInput}
+                  onChangeText={(v) => {
+                    setNameInput(v);
+                    setDriveBackupName(v);
+                  }}
+                  placeholder="forma-backup"
+                  placeholderTextColor={colors.muted2}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  maxLength={40}
+                />
+              </View>
+              <Text style={styles.namePreview}>{previewName}</Text>
+
               {/* Actions */}
-              <Text style={styles.sectionLabel}>ACCIONES</Text>
+              <Text style={[styles.sectionLabel, { marginTop: spacing.xs }]}>ACCIONES</Text>
               <ActionRow label="Hacer backup ahora"  onPress={handleBackupNow}  disabled={loading} />
 
               <View style={styles.separator} />
@@ -604,6 +644,28 @@ const styles = StyleSheet.create({
   freqTxtActive: {
     color:      colors.accent,
     fontWeight: typography.medium,
+  },
+
+  // Backup name input
+  nameInputWrap: {
+    backgroundColor:   colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    height:            42,
+    justifyContent:    'center',
+  },
+  nameInput: {
+    color:    colors.text,
+    fontSize: typography.base,
+    padding:  0,
+  },
+  namePreview: {
+    fontSize:  typography.xs,
+    color:     colors.muted,
+    marginTop: 4,
+    marginLeft: 2,
   },
 
   // Action rows

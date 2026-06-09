@@ -176,6 +176,7 @@ export const useStore = create(
         lastBackup:     null,      // ISO string
         lastBackupFile: null,
         needsReconnect: false,     // set true when background task can't find token
+        backupName:     '',        // custom prefix for backup filenames
       },
 
       clients: {},
@@ -1979,6 +1980,11 @@ export const useStore = create(
         }
       },
 
+      /** Updates the custom name prefix used for new backup filenames. */
+      setDriveBackupName: (name) => {
+        set((s) => ({ driveBackup: { ...s.driveBackup, backupName: name } }));
+      },
+
       /**
        * Wraps any Drive operation with automatic token refresh on 401.
        * Usage: await get()._withDriveToken(async (token) => { ...drive calls... })
@@ -2038,8 +2044,18 @@ export const useStore = create(
         try {
           const fileName = await get()._withDriveToken(async (token) => {
             const activeFolderId = driveBackup.folderId ?? (await findOrCreateFolder(token));
-            const date   = new Date().toISOString().split('T')[0];
-            const name   = `forma-backup-${date}.fitdata`;
+            const date     = new Date().toISOString().split('T')[0];
+            const rawName  = driveBackup.backupName?.trim() || 'forma-backup';
+            const safeName = rawName
+              .toLowerCase()
+              .replace(/[áàäâã]/g, 'a').replace(/[éèëê]/g, 'e')
+              .replace(/[íìïî]/g, 'i').replace(/[óòöôõ]/g, 'o')
+              .replace(/[úùüû]/g, 'u').replace(/ñ/g, 'n').replace(/ç/g, 'c')
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '') || 'forma-backup';
+            const name = `${safeName}-${date}.fitdata`;
             await uploadBackup(token, activeFolderId, name, json);
             await pruneOldBackups(token, activeFolderId);
             const now = new Date().toISOString();
