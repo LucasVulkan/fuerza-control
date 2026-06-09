@@ -67,7 +67,7 @@ export default function App() {
       // Hand off to AppHeader's ImportModal via the store
       setPendingExternalImport({ rawContent, fileName });
     } catch {
-      showToast('⚠️ No se pudo leer el archivo');
+      showToast('No se pudo leer el archivo', 2200, 'error');
     }
   }, [showToast, setPendingExternalImport]);
 

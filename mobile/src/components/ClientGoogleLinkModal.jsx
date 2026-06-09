@@ -72,7 +72,7 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
         });
         if (!tokens.id_token) throw new Error('Google no devolvió un id_token. Inténtalo de nuevo.');
         await linkGoogleForClient({ idToken: tokens.id_token, accessToken: tokens.access_token });
-        showToast('Google vinculado correctamente');
+        showToast('Google vinculado', 2200, 'success');
         onClose();
       } catch (err) {
         Alert.alert('Error', err.message ?? 'No se pudo vincular la cuenta de Google.');

@@ -93,7 +93,7 @@ export default function DriveBackupScreen() {
         });
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);
-        showToast('✓ Google Drive conectado');
+        showToast('Google Drive conectado', 2200, 'success');
       } catch (err) {
         Alert.alert('Error al conectar', err?.message ?? 'No se pudo conectar con Google Drive.');
       } finally {
@@ -135,7 +135,7 @@ export default function DriveBackupScreen() {
     try {
       const result = await performDriveBackup();
       if (result.ok) {
-        showToast('✓ ' + result.fileName);
+        showToast('Backup guardado', 2200, 'success');
         // Refresh list if on backups tab
         if (activeTab === 'backups') loadFiles();
       } else if (result.error === 'Token expirado') {
@@ -165,8 +165,8 @@ export default function DriveBackupScreen() {
             try {
               const token = await SecureStore.getItemAsync('drive_access_token');
               const data  = await downloadBackup(token, file.id);
-              importData(data, { program: true, log: true, settings: true });
-              showToast('✓ Backup restaurado');
+              importData(data, { program: true, log: true, settings: true }, { silent: true });
+              showToast('Backup restaurado', 2200, 'success');
               navigation.goBack();
             } catch (err) {
               Alert.alert('Error', err?.message ?? 'No se pudo restaurar el backup.');
@@ -194,7 +194,7 @@ export default function DriveBackupScreen() {
             try {
               await deleteDriveBackups();
               setFiles([]);
-              showToast('✓ Backups eliminados');
+              showToast('Backups eliminados', 2200, 'neutral');
             } catch {
               Alert.alert('Error', 'No se pudieron eliminar los backups.');
             } finally {
@@ -217,7 +217,7 @@ export default function DriveBackupScreen() {
           text: 'Desconectar', style: 'destructive',
           onPress: async () => {
             await disconnectDrive();
-            showToast('Cuenta desconectada');
+            showToast('Drive desconectado', 2200, 'neutral');
           },
         },
       ],

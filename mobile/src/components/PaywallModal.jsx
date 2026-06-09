@@ -64,7 +64,7 @@ export default function PaywallModal({ onClose }) {
       if (result.ok) {
         if (!result.isPro) {
           // Purchase went through but entitlement not yet reflected — poll RC
-          showToast('Compra procesada, sincronizando…');
+          showToast('Compra procesada, sincronizando…', 2200, 'neutral');
           const synced = await checkProStatus().catch(() => false);
           if (!synced) {
             // Last resort: try restore

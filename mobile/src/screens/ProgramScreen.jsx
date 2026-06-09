@@ -315,7 +315,7 @@ export default function ProgramScreen() {
 
   function handleCreate(name, numSessions) {
     const newId = createEmptyProgram(numSessions, name, 'template');
-    showToast(t('templates.toastCreated'));
+    showToast(t('templates.toastCreated'), 2200, 'success');
     setEditingProgram(newId);
   }
 
@@ -323,7 +323,7 @@ export default function ProgramScreen() {
     const src = programs[programId];
     if (!src) return;
     cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + t('templates.copyNameSuffix') });
-    showToast(t('templates.toastDuplicated'));
+    showToast(t('templates.toastDuplicated'), 2200, 'success');
   }
 
   function handleAssignToClient(clientId, programName) {
@@ -333,7 +333,7 @@ export default function ProgramScreen() {
     });
     if (newId) {
       setEditingProgram(newId);
-      showToast(t('templates.toastAssigned'));
+      showToast(t('templates.toastAssigned'), 2200, 'success');
     }
     setShowAssign(false);
     setAssignTarget(null);
@@ -347,7 +347,7 @@ export default function ProgramScreen() {
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('common.delete'), style: 'destructive',
-          onPress: () => { deleteProgram(programId, false); showToast(t('templates.toastDeleted')); },
+          onPress: () => { deleteProgram(programId, false); showToast(t('templates.toastDeleted'), 2200, 'neutral'); },
         },
       ]
     );

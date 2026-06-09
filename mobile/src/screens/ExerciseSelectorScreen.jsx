@@ -89,13 +89,13 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   function handleSelect(exerciseId) {
     if (sessionMode) {
       addAdHocExercise(exerciseId);
-      showToast('Ejercicio añadido a la sesión');
+      showToast('Ejercicio añadido', 2200, 'success');
     } else if (currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, exerciseId);
-      showToast(t('exerciseEditor.toastSubstituted'));
+      showToast(t('exerciseEditor.toastSubstituted'), 2200, 'success');
     } else {
       addExercise(templateId, exerciseId);
-      showToast(t('editor.toastExAdded'));
+      showToast(t('editor.toastExAdded'), 2200, 'success');
     }
     navigation.goBack();
   }

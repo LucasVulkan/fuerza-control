@@ -283,7 +283,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
   function handleRemoveExercise(exerciseId) {
     if (editingExId === exerciseId) setEditingExId(null);
     removeExercise(templateId, exerciseId);
-    showToast(t('editor.toastExDeleted'));
+    showToast(t('editor.toastExDeleted'), 2200, 'neutral');
   }
 
   function handleAddExercise() {
@@ -422,7 +422,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
                 style={styles.restoreBtn}
                 onPress={() => {
                   restoreSession(templateId);
-                  showToast('Sesión restaurada');
+                  showToast('Sesión restaurada', 2200, 'success');
                 }}
               >
                 <Text style={styles.restoreBtnText}>Restaurar</Text>

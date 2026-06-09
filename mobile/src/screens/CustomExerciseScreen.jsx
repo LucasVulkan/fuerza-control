@@ -189,14 +189,14 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     if (sessionMode) {
       addAdHocExercise(id);
-      showToast('Ejercicio añadido a la sesión');
+      showToast('Ejercicio añadido', 2200, 'success');
     } else if (templateId) {
       if (currentExerciseId) {
         replaceExercise(templateId, currentExerciseId, id);
-        showToast('Ejercicio sustituido');
+        showToast('Ejercicio sustituido', 2200, 'success');
       } else {
         addExercise(templateId, id);
-        showToast('Ejercicio añadido');
+        showToast('Ejercicio añadido', 2200, 'success');
       }
     }
     navigation.pop(2);

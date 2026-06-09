@@ -224,8 +224,8 @@ export default function WorkoutScreen() {
 
   function handleSave() {
     const result = saveSession();
-    if (!result.ok) { showToast('⚠️ ' + result.error); return; }
-    showToast(t('workout.sessionSaved'));
+    if (!result.ok) { showToast(result.error, 2200, 'error'); return; }
+    showToast(t('workout.sessionSaved'), 2200, 'success');
     setTimeout(() => navigation.navigate('Main', { screen: 'Home' }), 800);
   }
 

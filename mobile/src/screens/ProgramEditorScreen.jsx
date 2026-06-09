@@ -89,7 +89,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
     addStageToProgram(editingId);
     const newIdx = wasStaged ? (activeProgram?.stages?.length ?? 1) : 1;
     setSelectedStageIdx(newIdx);
-    showToast(t('editor.toastStageAdded'));
+    showToast(t('editor.toastStageAdded'), 2200, 'success');
   }
 
   function handleDeleteStage() {
@@ -103,7 +103,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
           onPress: () => {
             removeStageFromProgram(editingId, selectedStageIdx);
             setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
-            showToast(t('editor.toastStageDeleted'));
+            showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
           },
         },
       ]
@@ -229,7 +229,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
                       style={styles.activateBtn}
                       onPress={() => {
                         setCurrentStage(editingId, selectedStageIdx);
-                        showToast(t('editor.toastStageActivated', { name: selectedStage.name }));
+                        showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
                       }}
                     >
                       <Text style={styles.activateBtnText}>{t('editor.stageActivate')}</Text>

@@ -167,7 +167,7 @@ function ArchivedProgramsModal({ onClose }) {
                   </View>
                   <TouchableOpacity
                     style={styles.restoreBtn}
-                    onPress={() => { restoreProgram(p.id); showToast(t('header.toastRestored')); onClose(); }}
+                    onPress={() => { restoreProgram(p.id); showToast(t('header.toastRestored'), 2200, 'success'); onClose(); }}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.restoreBtnText}>{t('archived.restore')}</Text>
@@ -515,9 +515,9 @@ export default function AppHeader() {
     setRetrying(true);
     try {
       await uploadHistoryToTrainer();
-      showToast(t('header.toastSynced'));
+      showToast(t('header.toastSynced'), 2200, 'success');
     } catch {
-      showToast(t('header.toastSyncFailed'));
+      showToast(t('header.toastSyncFailed'), 2200, 'error');
     } finally {
       setRetrying(false);
     }
@@ -572,7 +572,7 @@ export default function AppHeader() {
   function handleImport(parsedData, sections) {
     setImportState(null);
     importData(parsedData, sections, { silent: true }); // caller shows its own toast below
-    showToast(t('header.toastImported'));
+    showToast(t('header.toastImported'), 2200, 'success');
     // If a program was imported, navigate to home so the new program is visible.
     if (sections.program) navigate('home');
   }

@@ -121,7 +121,7 @@ export default function DriveBackupModal({ onClose }) {
         });
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);
-        showToast('✓ Google Drive conectado');
+        showToast('Google Drive conectado', 2200, 'success');
       } catch (err) {
         Alert.alert('Error al conectar', err?.message ?? 'No se pudo conectar con Google Drive.');
       } finally {
@@ -139,7 +139,7 @@ export default function DriveBackupModal({ onClose }) {
     try {
       const result = await performDriveBackup();
       if (result.ok) {
-        showToast('✓ ' + result.fileName);
+        showToast('Backup guardado', 2200, 'success');
       } else if (result.error === 'Token expirado') {
         Alert.alert('Sesión expirada', 'Vuelve a conectar tu cuenta de Google para continuar.');
       } else {
@@ -189,8 +189,8 @@ export default function DriveBackupModal({ onClose }) {
             try {
               const token = await SecureStore.getItemAsync('drive_access_token');
               const data  = await downloadBackup(token, file.id);
-              importData(data, { program: true, log: true, settings: true });
-              showToast('✓ Backup restaurado');
+              importData(data, { program: true, log: true, settings: true }, { silent: true });
+              showToast('Backup restaurado', 2200, 'success');
               onClose();
             } catch (err) {
               Alert.alert('Error', err?.message ?? 'No se pudo restaurar el backup.');
@@ -219,7 +219,7 @@ export default function DriveBackupModal({ onClose }) {
               await deleteDriveBackups();
               setFiles([]);
               setShowFiles(false);
-              showToast('✓ Backups eliminados');
+              showToast('Backups eliminados', 2200, 'neutral');
             } catch {
               Alert.alert('Error', 'No se pudieron eliminar los backups.');
             } finally {
@@ -242,7 +242,7 @@ export default function DriveBackupModal({ onClose }) {
           text: 'Desconectar', style: 'destructive',
           onPress: async () => {
             await disconnectDrive();
-            showToast('Cuenta desconectada');
+            showToast('Drive desconectado', 2200, 'neutral');
           },
         },
       ],

@@ -567,9 +567,9 @@ export const useStore = create(
           const currentIds = new Set(get().workoutLog.map((e) => e.id));
           const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
           if (newEntries.length) set((s) => ({ workoutLog: [...s.workoutLog, ...newEntries] }));
-          get().showToast('✓ Programa e historial actualizados');
+          get().showToast('Programa actualizado');
         } else if (mode === 'add_program') {
-          if (!data.program) { get().showToast('⚠️ El archivo no contiene programa'); return; }
+          if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
           const programId = data.program.id;
           set((s) => ({
             programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
@@ -584,7 +584,7 @@ export const useStore = create(
               },
             },
           }));
-          get().showToast('✓ Programa añadido al cliente');
+          get().showToast('Programa enviado al cliente');
         } else if (mode === 'merge_log') {
           const currentIds = new Set(get().workoutLog.map((e) => e.id));
           const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
@@ -593,7 +593,7 @@ export const useStore = create(
             sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
             userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
           }));
-          get().showToast(`✓ ${newEntries.length} sesiones añadidas`);
+          get().showToast(`${newEntries.length} sesión${newEntries.length !== 1 ? 'es' : ''} importada${newEntries.length !== 1 ? 's' : ''}`);
         }
       },
 
@@ -1539,7 +1539,7 @@ export const useStore = create(
           cancelScheduledDoneNotification().catch(() => {}); // cancel OS notification (timer ended in foreground)
           dismissCountdownNotification().catch(() => {});
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          get().showToast('¡Siguiente serie!');
+          get().showToast('¡Siguiente serie!', 2200, 'neutral');
         }
 
         // AppState listener: re-sync when the app comes back to the foreground.
@@ -1629,9 +1629,9 @@ export const useStore = create(
       // TOAST
       // ══════════════════════════════════════════════════════════════════════
 
-      showToast: (msg, duration = 2200) => {
+      showToast: (msg, duration = 2200, type = 'success') => {
         const id = generateId('toast');
-        set((s) => ({ ui: { ...s.ui, toast: { msg, id } } }));
+        set((s) => ({ ui: { ...s.ui, toast: { msg, id, type } } }));
         setTimeout(() => {
           const { ui } = get();
           if (ui.toast?.id === id) {
@@ -1683,10 +1683,10 @@ export const useStore = create(
             const fileUri = FileSystem.documentDirectory + fileName;
             await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
           }
-          get().showToast('✓ Guardado: ' + fileName);
+          get().showToast('Archivo exportado');
         } catch (e) {
           if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('⚠️ Error al exportar');
+            get().showToast('Error al exportar', 2200, 'error');
           }
         }
       },
@@ -1695,7 +1695,7 @@ export const useStore = create(
         const s = get();
         const { profile, programs, sessionTemplates, userPrograms, customExercises, workoutLog } = s;
         const program = programs[profile.activeProgramId];
-        if (!program) { get().showToast('Sin programa activo'); return; }
+        if (!program) { get().showToast('Sin programa activo', 2200, 'error'); return; }
 
         const tplIds = new Set();
         if (program.stages?.length > 0) {
@@ -1745,10 +1745,10 @@ export const useStore = create(
             const fileUri = FileSystem.documentDirectory + fileName;
             await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
           }
-          get().showToast('✓ Guardado: ' + fileName);
+          get().showToast('Archivo exportado');
         } catch (e) {
           if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('⚠️ Error al exportar');
+            get().showToast('Error al exportar', 2200, 'error');
           }
         }
       },
@@ -1827,11 +1827,11 @@ export const useStore = create(
               encoding: FileSystem.EncodingType.UTF8,
             });
           }
-          get().showToast('✓ Guardado: ' + fileName);
+          get().showToast('Archivo exportado');
         } catch (e) {
           // ignore user-cancel from the directory picker
           if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('⚠️ Error al guardar');
+            get().showToast('Error al guardar', 2200, 'error');
           }
         }
       },
@@ -1850,10 +1850,10 @@ export const useStore = create(
               dialogTitle: payload.programName + (withLog ? ' + historial' : ''),
             });
           } else {
-            get().showToast('Compartir no disponible en este dispositivo');
+            get().showToast('Compartir no disponible', 2200, 'neutral');
           }
         } catch {
-          get().showToast('⚠️ Error al compartir');
+          get().showToast('Error al compartir', 2200, 'error');
         }
       },
 
@@ -1919,7 +1919,7 @@ export const useStore = create(
           return updates;
         });
 
-        if (!silent) get().showToast('✓ Importado correctamente');
+        if (!silent) get().showToast('Importado correctamente');
         return { ok: true };
       },
 
@@ -2320,7 +2320,7 @@ export const useStore = create(
         const previousActiveProgramId = get().profile.activeProgramId ?? null;
 
         // 5. Import the program using existing logic (same format as file export)
-        get().importData(slot.program_json, { program: true, log: false });
+        get().importData(slot.program_json, { program: true, log: false }, { silent: true });
 
         // 6. Optionally merge remote workout history into local log
         if (mergeHistory) {
@@ -2360,6 +2360,8 @@ export const useStore = create(
             previousActiveProgramId,
           },
         }));
+
+        get().showToast('Conectado con el entrenador');
       },
 
       /**
@@ -2549,7 +2551,7 @@ export const useStore = create(
         const previousActiveProgramId = get().profile.activeProgramId ?? null;
 
         // 3. Import program
-        get().importData(programJson, { program: true, log: false });
+        get().importData(programJson, { program: true, log: false }, { silent: true });
 
         // 4. Optionally merge remote history (same logic as linkToTrainer)
         if (mergeHistory) {
@@ -2705,10 +2707,10 @@ export const useStore = create(
           const info = await RC.restorePurchases();
           const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
           set((s) => ({ profile: { ...s.profile, isPro } }));
-          get().showToast(isPro ? '✓ Compra restaurada' : 'No se encontraron compras anteriores');
+          get().showToast(isPro ? 'Compra restaurada' : 'No se encontraron compras anteriores', 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
-          get().showToast('⚠️ Error al restaurar compras');
+          get().showToast('Error al restaurar compras', 2200, 'error');
           return false;
         }
       },

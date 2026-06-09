@@ -576,7 +576,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
     addClientBilling(clientId, {
       date, concept: concept.trim(), amount: parseFloat(amount), status,
     });
-    showToast('✓ Entrada añadida');
+    showToast('Cobro registrado', 2200, 'success');
     onClose();
   }
 
@@ -815,14 +815,14 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
     await Clipboard.setStringAsync(client.syncCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-    showToast('✓ Código copiado');
+    showToast('Código copiado', 2200, 'neutral');
   }
 
   async function handleConnect() {
     setLoading(true);
     try {
       await onConnectCloud();
-      showToast('✓ Cliente conectado a la nube');
+      showToast('Cliente conectado', 2200, 'success');
       onClose();
     } catch (err) {
       Alert.alert('Error', err.message ?? 'No se pudo conectar.');
@@ -1420,9 +1420,9 @@ export default function ClientsScreen() {
     try {
       const { merged } = await downloadClientHistory(selectedClientId);
       markHistoryViewed(selectedClientId);
-      showToast(merged > 0 ? `✓ ${merged} sesión${merged !== 1 ? 'es' : ''} nuevas` : '✓ Historial actualizado');
+      showToast(merged > 0 ? `${merged} sesión${merged !== 1 ? 'es' : ''} nueva${merged !== 1 ? 's' : ''}` : 'Historial al día', 2200, 'success');
     } catch (err) {
-      showToast(`⚠️ ${err?.message ?? t('clients.errorUpdateHistory')}`);
+      showToast(err?.message ?? t('clients.errorUpdateHistory'), 2200, 'error');
     } finally {
       setRefreshingHistory(false);
     }
@@ -1579,7 +1579,7 @@ export default function ClientsScreen() {
               const doUpload = async () => {
                 try {
                   await uploadProgramToClient(selectedClientId, program.id);
-                  showToast('✓ Programa subido al cliente');
+                  showToast('Programa enviado', 2200, 'success');
                 } catch (err) {
                   Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
                 }
@@ -1994,7 +1994,7 @@ export default function ClientsScreen() {
                       onPress={async () => {
                         await Clipboard.setStringAsync(selectedClient.syncCode);
                         setKeyTabCopied(true);
-                        showToast(t('clients.keyTab.copied'));
+                        showToast(t('clients.keyTab.copied'), 2200, 'neutral');
                         setTimeout(() => setKeyTabCopied(false), 1800);
                       }}
                     >
@@ -2028,7 +2028,7 @@ export default function ClientsScreen() {
                     setKeyTabConnecting(true);
                     try {
                       await connectClientToCloud(selectedClientId);
-                      showToast('✓ Cliente conectado a la nube');
+                      showToast('Cliente conectado', 2200, 'success');
                     } catch (err) {
                       Alert.alert('Error', err.message ?? 'No se pudo conectar.');
                     } finally {
@@ -2270,7 +2270,7 @@ export default function ClientsScreen() {
                     if (!client.activeProgramId) return;
                     try {
                       await uploadProgramToClient(client.id, client.activeProgramId);
-                      showToast('✓ Programa subido al cliente');
+                      showToast('Programa enviado', 2200, 'success');
                     } catch (err) {
                       Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
                     }
