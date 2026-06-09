@@ -303,11 +303,12 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
 // ── ArchiveModal ───────────────────────────────────────────────────────────────
 
 function ArchiveModal({ programName, onConfirm, onClose }) {
-  const { t } = useTranslation();
+  const { t }    = useTranslation();
+  const insets   = useSafeAreaInsets();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { paddingBottom: Math.max(spacing.xxl, insets.bottom + spacing.lg) }]}>
         <Text style={styles.sheetTitle}>{t('home.archiveModal.title')}</Text>
         <Text style={styles.archiveDesc}>
           <Text style={{ color: colors.text, fontWeight: typography.semibold }}>{programName}</Text>
@@ -349,11 +350,12 @@ function ArchiveOption({ label, desc, onPress, danger }) {
 
 function StagePickerModal({ program, onSelect, onClose }) {
   const { t }      = useTranslation();
+  const insets     = useSafeAreaInsets();
   const currentIdx = program.currentStageIndex ?? 0;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { paddingBottom: Math.max(spacing.xxl, insets.bottom + spacing.lg) }]}>
         <Text style={styles.sheetTitle}>{t('home.selectStage')}</Text>
         <View style={styles.stageList}>
           {program.stages.map((stage, idx) => {
