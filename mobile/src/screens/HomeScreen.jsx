@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
-import DriveBackupModal from '../components/DriveBackupModal';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import {
   colors, spacing, typography, radius, borders,
@@ -420,7 +419,6 @@ export default function HomeScreen() {
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
-  const [showDrive,   setShowDrive]   = useState(false);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -448,10 +446,22 @@ export default function HomeScreen() {
     setArchiveOpen(false);
   }
 
+  // ── Status dots ──────────────────────────────────────────────────────────────
+  const driveDotColor = !driveBackup.enabled
+    ? colors.muted
+    : driveBackup.needsReconnect
+      ? colors.orange
+      : colors.green;
+
+  const trainerDotColor = !clientSync.slotId
+    ? colors.muted
+    : (clientSync.pendingUpload || clientSync.syncErrorAt)
+      ? colors.orange
+      : colors.green;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
-      {showDrive && <DriveBackupModal onClose={() => setShowDrive(false)} />}
       <ProgramUpdateModal />
 
       <ScrollView
@@ -490,7 +500,7 @@ export default function HomeScreen() {
                   ) : null}
                 </View>
                 {driveBackup?.enabled && (
-                  <TouchableOpacity onPress={() => setShowDrive(true)} hitSlop={10}>
+                  <TouchableOpacity onPress={() => navigation.navigate('DriveBackup')} hitSlop={10}>
                     <Text style={[styles.progDriveIcon, driveBackup.needsReconnect && { color: colors.orange }]}>
                       {driveBackup.needsReconnect ? '⚠ ☁' : '☁'}
                     </Text>
@@ -623,6 +633,31 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Footer status bar ── */}
+      <View style={[styles.footerBar, { paddingBottom: insets.bottom + 4 }]}>
+        <TouchableOpacity
+          style={styles.footerBtn}
+          onPress={() => navigation.navigate('DriveBackup')}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.footerDot, { backgroundColor: driveDotColor }]} />
+          <Text style={styles.footerBtnText}>Google Drive</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footerDivider} />
+
+        <TouchableOpacity
+          style={styles.footerBtn}
+          onPress={() => navigation.navigate('TrainerConnection')}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.footerDot, { backgroundColor: trainerDotColor }]} />
+          <Text style={styles.footerBtnText}>
+            {clientSync.trainerName ? clientSync.trainerName : 'Entrenador'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Modals */}
       {archiveOpen && (
@@ -1148,6 +1183,42 @@ const styles = StyleSheet.create({
     fontSize:   typography.base,
     color:      colors.muted,
     fontWeight: typography.medium,
+  },
+
+  // ── Footer status bar ────────────────────────────────────────────────────────
+  footerBar: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    borderTopWidth:    borders.thin,
+    borderTopColor:    colors.border,
+    backgroundColor:   colors.surface,
+    paddingTop:        spacing.sm - 2,
+    paddingHorizontal: spacing.md,
+  },
+  footerBtn: {
+    flex:           1,
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    gap:            spacing.xs,
+  },
+  footerDot: {
+    width:        7,
+    height:       7,
+    borderRadius: 4,
+    flexShrink:   0,
+  },
+  footerBtnText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  footerDivider: {
+    width:           borders.thin,
+    height:          20,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.xs,
   },
 
   // Stage picker

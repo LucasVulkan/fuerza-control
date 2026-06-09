@@ -20,6 +20,8 @@ import ProgramEditorScreen   from '../screens/ProgramEditorScreen';
 import ExerciseSelectorScreen from '../screens/ExerciseSelectorScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
 import ExerciseHistoryScreen    from '../screens/ExerciseHistoryScreen';
+import DriveBackupScreen        from '../screens/DriveBackupScreen';
+import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import Toast                 from '../components/Toast';
 
 const Stack = createNativeStackNavigator();
@@ -159,6 +161,16 @@ export default function RootNavigator() {
         <Stack.Screen
           name="ExerciseHistory"
           component={ExerciseHistoryScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="DriveBackup"
+          component={DriveBackupScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="TrainerConnection"
+          component={TrainerConnectionScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>
