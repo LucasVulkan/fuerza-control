@@ -22,7 +22,7 @@ import Constants        from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../../store/useStore';
 import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer, signOut as supabaseSignOut } from '../services/supabaseAuth';
-import { claimTrainerSlots } from '../services/supabaseSync';
+import { claimTrainerSlots, getTrainerSlots } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
@@ -327,11 +327,32 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
         });
         setTrainerSyncMode('google', { userId });
 
-        // Reassign existing client slots to the new Google user ID.
-        // Requires the claim_trainer_slots SQL function (SECURITY DEFINER) in Supabase.
-        if (existingSlotIds.length > 0) {
-          await claimTrainerSlots(existingSlotIds).catch(() => {
-            // Non-fatal — if the RPC fails, trainer still logs in successfully.
+        // Collect all slot IDs to claim under the Google user.
+        // Start with locally-known slots (captures same-device switch to Google mode).
+        let allSlotIds = [...existingSlotIds];
+
+        // Fallback: if no local slots, try the stored trainer code to find old slots
+        // that still belong to the code-based account (e.g. fresh install with Google).
+        if (allSlotIds.length === 0) {
+          const storedCode = useStore.getState().trainerSync.code;
+          if (storedCode) {
+            try {
+              const { userId: codeUserId } = await recoverWithTrainerCode(storedCode);
+              const codeSlots = await getTrainerSlots(codeUserId);
+              allSlotIds = codeSlots.map((s) => s.id).filter(Boolean);
+            } catch (err) {
+              console.error('[TrainerSync] code fallback for slot discovery failed:', err.message);
+            }
+            // Restore the Google session regardless of whether code recovery found slots.
+            await loginWithGoogleTrainer({ idToken: tokens.id_token, accessToken: tokens.access_token })
+              .catch(() => {});
+          }
+        }
+
+        // Transfer all found slots to the Google user ID.
+        if (allSlotIds.length > 0) {
+          await claimTrainerSlots(allSlotIds).catch((err) => {
+            console.error('[TrainerSync] claimTrainerSlots failed:', err.message);
           });
         }
 

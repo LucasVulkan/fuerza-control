@@ -686,7 +686,6 @@ export default function HomeScreen() {
                   <Text style={[styles.statusCardTitle, styles.statusCardTitleDrive]}>Backup en la nube</Text>
                   <Text style={styles.statusCardSub} numberOfLines={1}>{driveSub}</Text>
                 </View>
-                <Text style={styles.statusCardChevron}>›</Text>
               </View>
               <View style={[styles.statusPill, { backgroundColor: withOpacity(drivePillColor, 0.18) }]}>
                 <Text style={[styles.statusPillText, { color: drivePillColor }]}>{drivePillLabel}</Text>
@@ -708,7 +707,6 @@ export default function HomeScreen() {
                   <Text style={[styles.statusCardTitle, styles.statusCardTitleTrainer]}>Entrenador</Text>
                   <Text style={styles.statusCardSub} numberOfLines={1}>{trainerSub}</Text>
                 </View>
-                <Text style={styles.statusCardChevron}>›</Text>
               </View>
               <View style={[styles.statusPill, { backgroundColor: withOpacity(trainerPillColor, 0.18) }]}>
                 <Text style={[styles.statusPillText, { color: trainerPillColor }]}>{trainerPillLabel}</Text>
@@ -1275,12 +1273,12 @@ const styles = StyleSheet.create({
   statusCardContent: {
     padding:       spacing.md,
     paddingBottom: spacing.sm,
-    gap:           5,
+    gap:           spacing.sm,
   },
   statusCardRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
+    gap:           spacing.sm,
   },
   statusCardTitle:       { fontSize: typography.sm, fontWeight: typography.medium, color: colors.text },
   statusCardTitleDrive:  { color: colors.green },
@@ -1289,9 +1287,9 @@ const styles = StyleSheet.create({
   statusCardChevron:     { fontSize: 18, color: colors.muted, lineHeight: 20, flexShrink: 0 },
   statusPill: {
     alignSelf:         'flex-start',
-    paddingHorizontal: 7,
-    paddingVertical:   2,
-    borderRadius:      radius.xs,
+    paddingHorizontal: 10,
+    paddingVertical:   3,
+    borderRadius:      99,
   },
   statusPillText: { fontSize: 10, fontWeight: typography.medium },
   statusCardMeta: { fontSize: 9, color: colors.muted },

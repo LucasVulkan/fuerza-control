@@ -2542,7 +2542,8 @@ export const useStore = create(
         const { userId } = await loginWithGoogleClient({ idToken, accessToken });
 
         const slot = await getClientSlotByUserId(userId);
-        if (!slot || !slot.program_json) return { found: false };
+        if (!slot) return { found: false };
+        if (!slot.program_json) throw new Error('Tu entrenador aún no ha subido ningún programa. Vuelve a intentarlo más tarde.');
 
         return {
           found:            true,
