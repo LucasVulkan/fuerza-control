@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
 } from 'react-native';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -412,6 +413,37 @@ function ProgramBtn({ label, onPress, accent, danger }) {
   );
 }
 
+// ── Status card icons ─────────────────────────────────────────────────────────
+
+function CloudIcon({ size = 22, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function PersonIcon({ size = 22, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
 // ── HomeScreen ─────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -448,18 +480,28 @@ export default function HomeScreen() {
     setArchiveOpen(false);
   }
 
-  // ── Status dots ──────────────────────────────────────────────────────────────
-  const driveDotColor = !driveBackup.enabled
-    ? colors.muted
-    : driveBackup.needsReconnect
-      ? colors.orange
-      : colors.green;
+  // ── Status cards data ────────────────────────────────────────────────────────
+  const driveConnected  = driveBackup.enabled && !driveBackup.needsReconnect;
+  const driveWarn       = driveBackup.enabled && driveBackup.needsReconnect;
+  const driveIconColor  = driveWarn ? colors.orange : driveConnected ? colors.green : colors.muted;
+  const drivePillColor  = driveWarn ? colors.orange : driveConnected ? colors.green : colors.muted;
+  const drivePillLabel  = driveWarn ? '⚠ Reconectar' : driveConnected ? '✓ Sincronizado' : '– Sin conexión';
+  const driveSub        = driveBackup.email ?? 'Google Drive';
+  const driveMeta       = driveBackup.lastBackup
+    ? `Última copia: ${formatBackupTime(driveBackup.lastBackup)}`
+    : 'Nunca sincronizado';
 
-  const trainerDotColor = !clientSync.slotId
-    ? colors.muted
-    : (clientSync.pendingUpload || clientSync.syncErrorAt)
-      ? colors.orange
-      : colors.green;
+  const trainerOk        = !!clientSync.slotId && !clientSync.syncErrorAt && !clientSync.pendingUpload;
+  const trainerWarn      = !!clientSync.slotId && (!!clientSync.syncErrorAt || clientSync.pendingUpload);
+  const trainerIconColor = trainerWarn ? colors.orange : trainerOk ? colors.blue : colors.muted;
+  const trainerPillColor = trainerWarn ? colors.orange : trainerOk ? colors.blue : colors.muted;
+  const trainerPillLabel = trainerWarn ? '⚠ Pendiente' : trainerOk ? '✓ Conectado' : '– No conectado';
+  const trainerSub       = (trainerOk || trainerWarn)
+    ? (clientSync.trainerName ?? 'Entrenador')
+    : 'No conectado';
+  const trainerMeta      = trainerOk || trainerWarn
+    ? (clientSync.lastSyncedAt ? `Última sync: ${formatBackupTime(clientSync.lastSyncedAt)}` : 'Sin actividad reciente')
+    : 'Conectar entrenador';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -493,21 +535,14 @@ export default function HomeScreen() {
 
           return (
             <>
-              {/* Program name + trainer credit + drive icon */}
+              {/* Program name + trainer credit */}
               <View style={styles.progHeader}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.progLabel} numberOfLines={1}>{activeProgram.name}</Text>
-                  {programTrainerName ? (
-                    <Text style={styles.progTrainer}>{t('workout.trainerCredit', { name: programTrainerName })}</Text>
-                  ) : null}
-                </View>
-                {driveBackup?.enabled && (
-                  <TouchableOpacity onPress={() => navigation.navigate('DriveBackup')} hitSlop={10}>
-                    <Text style={[styles.progDriveIcon, driveBackup.needsReconnect && { color: colors.orange }]}>
-                      {driveBackup.needsReconnect ? '⚠ ☁' : '☁'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <Text style={styles.progLabel} numberOfLines={1}>
+                  {activeProgram.name}
+                  {programTrainerName
+                    ? <Text style={styles.progTrainerInline}>{`  ·  ${t('workout.trainerCredit', { name: programTrainerName })}`}</Text>
+                    : null}
+                </Text>
               </View>
 
               {/* Progress header (stage + week / pill) */}
@@ -635,27 +670,53 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Botones de estado ── */}
-        <View style={styles.statusButtons}>
+        {/* ── Tarjetas de estado (Drive + Entrenador) ── */}
+        <View style={styles.statusCards}>
+
+          {/* Drive */}
           <TouchableOpacity
-            style={styles.statusBtn}
+            style={[styles.statusCard, styles.statusCardDrive]}
             onPress={() => navigation.navigate('DriveBackup')}
             activeOpacity={0.75}
           >
-            <View style={[styles.statusBtnDot, { backgroundColor: driveDotColor }]} />
-            <Text style={styles.statusBtnText}>Google Drive</Text>
+            <View style={styles.statusCardContent}>
+              <View style={styles.statusCardRow}>
+                <CloudIcon size={22} color={driveIconColor} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.statusCardTitle, styles.statusCardTitleDrive]}>Backup en la nube</Text>
+                  <Text style={styles.statusCardSub} numberOfLines={1}>{driveSub}</Text>
+                </View>
+                <Text style={styles.statusCardChevron}>›</Text>
+              </View>
+              <View style={[styles.statusPill, { backgroundColor: withOpacity(drivePillColor, 0.18) }]}>
+                <Text style={[styles.statusPillText, { color: drivePillColor }]}>{drivePillLabel}</Text>
+              </View>
+              <Text style={styles.statusCardMeta} numberOfLines={1}>{driveMeta}</Text>
+            </View>
           </TouchableOpacity>
 
+          {/* Entrenador */}
           <TouchableOpacity
-            style={styles.statusBtn}
+            style={[styles.statusCard, styles.statusCardTrainer]}
             onPress={() => navigation.navigate('TrainerConnection')}
             activeOpacity={0.75}
           >
-            <View style={[styles.statusBtnDot, { backgroundColor: trainerDotColor }]} />
-            <Text style={styles.statusBtnText}>
-              {clientSync.trainerName ? clientSync.trainerName : 'Entrenador'}
-            </Text>
+            <View style={styles.statusCardContent}>
+              <View style={styles.statusCardRow}>
+                <PersonIcon size={22} color={trainerIconColor} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.statusCardTitle, styles.statusCardTitleTrainer]}>Entrenador</Text>
+                  <Text style={styles.statusCardSub} numberOfLines={1}>{trainerSub}</Text>
+                </View>
+                <Text style={styles.statusCardChevron}>›</Text>
+              </View>
+              <View style={[styles.statusPill, { backgroundColor: withOpacity(trainerPillColor, 0.18) }]}>
+                <Text style={[styles.statusPillText, { color: trainerPillColor }]}>{trainerPillLabel}</Text>
+              </View>
+              <Text style={styles.statusCardMeta} numberOfLines={1}>{trainerMeta}</Text>
+            </View>
           </TouchableOpacity>
+
         </View>
       </ScrollView>
 
@@ -716,6 +777,13 @@ const styles = StyleSheet.create({
     color:     colors.muted2,
     marginTop: 1,
     paddingLeft: 2,
+  },
+  progTrainerInline: {
+    fontSize:      typography.xs,
+    color:         colors.muted2,
+    fontWeight:    typography.regular,
+    letterSpacing: 0,
+    textTransform: 'none',
   },
   progDriveBlock: {
     alignItems: 'flex-end',
@@ -1185,34 +1253,48 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // ── Botones de estado (Drive + Entrenador) ───────────────────────────────────
-  statusButtons: {
+  // ── Tarjetas de estado (Drive + Entrenador) ─────────────────────────────────
+  statusCards: {
     flexDirection: 'row',
     gap:           spacing.sm,
   },
-  statusBtn: {
-    flex:            1,
-    flexDirection:   'row',
-    alignItems:      'center',
-    justifyContent:  'center',
-    gap:             spacing.xs,
-    paddingVertical: spacing.sm + 2,
-    borderRadius:    radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+  statusCard: {
+    flex:          1,
+    borderWidth:   borders.thin,
+    borderRadius:  radius.md,
+    overflow:      'hidden',
   },
-  statusBtnDot: {
-    width:        7,
-    height:       7,
-    borderRadius: 4,
-    flexShrink:   0,
+  statusCardDrive: {
+    backgroundColor: withOpacity(colors.green, 0.05),
+    borderColor:     withOpacity(colors.green, 0.25),
   },
-  statusBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      colors.muted,
+  statusCardTrainer: {
+    backgroundColor: withOpacity(colors.blue, 0.05),
+    borderColor:     withOpacity(colors.blue, 0.25),
   },
+  statusCardContent: {
+    padding:       spacing.md,
+    paddingBottom: spacing.sm,
+    gap:           5,
+  },
+  statusCardRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  statusCardTitle:       { fontSize: typography.sm, fontWeight: typography.medium, color: colors.text },
+  statusCardTitleDrive:  { color: colors.green },
+  statusCardTitleTrainer:{ color: colors.blue },
+  statusCardSub:         { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
+  statusCardChevron:     { fontSize: 18, color: colors.muted, lineHeight: 20, flexShrink: 0 },
+  statusPill: {
+    alignSelf:         'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical:   2,
+    borderRadius:      radius.xs,
+  },
+  statusPillText: { fontSize: 10, fontWeight: typography.medium },
+  statusCardMeta: { fontSize: 9, color: colors.muted },
 
   // Stage picker
   stageList: {

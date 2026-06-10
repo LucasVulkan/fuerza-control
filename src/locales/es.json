@@ -472,6 +472,7 @@
     "addSessionToStage": "＋ Añadir sesión a esta etapa",
     "convertToStages": "⊞ Convertir a programa por etapas",
     "changesHint": "Los cambios se aplican a todas las sesiones futuras. Puedes restaurar cualquier día a sus valores originales.",
+    "toastSaved": "Cambios guardados",
     "toastStageAdded": "Etapa añadida",
     "toastStageDeleted": "Etapa eliminada",
     "toastStageActivated": "{{name}} activada",

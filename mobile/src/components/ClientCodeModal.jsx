@@ -33,7 +33,7 @@ const GOOGLE_DISCOVERY = {
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-export default function ClientCodeModal({ visible, onClose, onSuccess }) {
+export default function ClientCodeModal({ visible, onClose, onSuccess, startWithGoogle = false }) {
   const validateClientCode    = useStore((s) => s.validateClientCode);
   const linkToTrainer         = useStore((s) => s.linkToTrainer);
   const validateGoogleClient  = useStore((s) => s.validateGoogleClient);
@@ -68,8 +68,23 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
     GOOGLE_DISCOVERY,
   );
 
-  const googleRequestRef = useRef(googleRequest);
+  const googleRequestRef   = useRef(googleRequest);
+  const hasAutoTriggered   = useRef(false);
   useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
+
+  // Auto-trigger Google OAuth when opened via the "Reconectarse con Google" button
+  useEffect(() => {
+    if (!startWithGoogle || !visible) {
+      hasAutoTriggered.current = false;
+      return;
+    }
+    if (googleRequest && !hasAutoTriggered.current) {
+      hasAutoTriggered.current = true;
+      setGoogleNoSlot(false);
+      setError(null);
+      googlePromptAsync();
+    }
+  }, [startWithGoogle, visible, googleRequest]); // eslint-disable-line
 
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (googleResponse?.type !== 'success') return;
@@ -178,8 +193,49 @@ export default function ClientCodeModal({ visible, onClose, onSuccess }) {
       >
         <View style={s.card}>
 
-          {/* ── Step 1: Enter code ── */}
-          {step === 'enter' && (
+          {/* ── Step 1a: Google auto-reconnect (no code form) ── */}
+          {step === 'enter' && startWithGoogle && (
+            <>
+              <Text style={s.title}>Reconectarse con Google</Text>
+              <Text style={s.subtitle}>
+                Buscando tu cuenta de entrenador vinculada…
+              </Text>
+
+              {googleLoading && <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.sm }} />}
+
+              {error && <Text style={s.errorText}>{error}</Text>}
+
+              {googleNoSlot && (
+                <Text style={s.googleNoSlotText}>
+                  No hay cuenta vinculada a ese Google. Introduce el código de tu entrenador.
+                </Text>
+              )}
+
+              {isExpoGo && (
+                <Text style={s.googleUnavailText}>Google no disponible en Expo Go</Text>
+              )}
+
+              <View style={s.actions}>
+                <TouchableOpacity style={[s.cancelBtn, { flex: 1 }]} onPress={handleClose} activeOpacity={0.7}>
+                  <Text style={s.cancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+                {/* Retry button appears if Google returned no slot or had an error */}
+                {(googleNoSlot || error) && !googleLoading && (
+                  <TouchableOpacity
+                    style={[s.primaryBtn, { flex: 1 }, isExpoGo && { opacity: 0.4 }]}
+                    onPress={() => { setGoogleNoSlot(false); setError(null); hasAutoTriggered.current = false; googlePromptAsync(); }}
+                    disabled={isExpoGo}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.primaryBtnText}>Reintentar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* ── Step 1b: Enter code ── */}
+          {step === 'enter' && !startWithGoogle && (
             <>
               <Text style={s.title}>Conectar con entrenador</Text>
               <Text style={s.subtitle}>

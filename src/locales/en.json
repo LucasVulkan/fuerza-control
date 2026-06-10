@@ -472,6 +472,7 @@
     "addSessionToStage": "＋ Add session to this stage",
     "convertToStages": "⊞ Convert to staged program",
     "changesHint": "Changes apply to all future sessions. You can restore any day to its original values.",
+    "toastSaved": "Changes saved",
     "toastStageAdded": "Stage added",
     "toastStageDeleted": "Stage deleted",
     "toastStageActivated": "{{name}} activated",

@@ -108,25 +108,28 @@ export async function requestNotificationPermissions() {
 
 /**
  * Muestra la notificación sticky al arrancar el timer.
- * El título muestra MM:SS formateado y hay una barra de progreso.
- * updateCountdownNotification() actualiza el título cada segundo mientras el JS corre.
+ * Usa el cronómetro nativo de Android (showChronometer + chronometerDirection: 'down')
+ * para que el SO haga el tick aunque el JS esté suspendido en background.
  *
  * @param {number} remaining   - segundos restantes al arrancar
  * @param {number} total       - duración total del descanso (para la barra de progreso)
  * @param {string} exerciseName
- * @param {number} [endAt]     - timestamp ms de fin (no usado aquí, compatibilidad)
+ * @param {number} endAt       - timestamp ms de fin (base del cronómetro nativo)
  */
 export async function showCountdownNotification(remaining, total, exerciseName, endAt) {
   if (Platform.OS !== 'android' || !_notifee) return;
   try {
     await _notifee.displayNotification({
       id:    COUNTDOWN_ID,
-      title: fmt(remaining),
-      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Descansando…',
+      title: exerciseName ?? 'Descansando…',
+      body:  'Temporizador de descanso',
       android: {
-        channelId:   'rest-timer',
-        ongoing:     true,
-        color:       '#E8FF47',
+        channelId:            'rest-timer',
+        ongoing:              true,
+        color:                '#E8FF47',
+        showChronometer:      true,
+        chronometerDirection: 'down',
+        timestamp:            endAt,
         progress: {
           max:           total > 0 ? total : remaining,
           current:       remaining,
@@ -139,25 +142,28 @@ export async function showCountdownNotification(remaining, total, exerciseName, 
 }
 
 /**
- * Actualiza la notificación de countdown con el tiempo restante actual.
- * Llamar cada segundo desde el interval del store (mientras el JS está vivo).
- * Usa el mismo ID que showCountdownNotification — reemplaza en el sitio.
+ * Actualiza la barra de progreso de la notificación cada segundo (mientras el JS está vivo).
+ * Preserva showChronometer + timestamp para que el SO siga haciendo el tick en background.
  *
  * @param {number} remaining   - segundos restantes
  * @param {number} total       - duración total (para la barra de progreso)
  * @param {string} exerciseName
+ * @param {number} endAt       - timestamp ms de fin (mismo valor que en showCountdownNotification)
  */
-export async function updateCountdownNotification(remaining, total, exerciseName) {
+export async function updateCountdownNotification(remaining, total, exerciseName, endAt) {
   if (Platform.OS !== 'android' || !_notifee) return;
   try {
     await _notifee.displayNotification({
       id:    COUNTDOWN_ID,
-      title: fmt(remaining),
-      body:  exerciseName ? `Siguiente: ${exerciseName}` : 'Descansando…',
+      title: exerciseName ?? 'Descansando…',
+      body:  'Temporizador de descanso',
       android: {
-        channelId:   'rest-timer',
-        ongoing:     true,
-        color:       '#E8FF47',
+        channelId:            'rest-timer',
+        ongoing:              true,
+        color:                '#E8FF47',
+        showChronometer:      true,
+        chronometerDirection: 'down',
+        timestamp:            endAt,
         progress: {
           max:           total > 0 ? total : 1,
           current:       remaining,

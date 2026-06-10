@@ -7,7 +7,7 @@
  *   baseLog            WorkoutLog[]   – sessions to analyse; caller pre-filters to this
  *                                       subject (all of the user's log, or only the client's
  *                                       sessions).  ProgressTab adds its own scope/period.
- *   programTemplateIds Set<string>    – template IDs for "Este programa" toggle.
+ *   programTemplateIds Set<string>    – template IDs for "Programa actual" toggle.
  *                                       Pass an empty Set to hide the toggle.
  *   allExercises       { [id]: def }  – merged exercise library + custom exercises.
  */
@@ -39,13 +39,12 @@ const PAD_BOT      = 24;
 const Y_AXIS_W     = 24;
 const C_PAD_L      = 6;
 const C_PAD_R      = 12;
-const MIN_SCROLL   = 6;
-const STEP_PX      = 52;
+const MIN_SCROLL   = 12;
 const Y_ANIM_COUNT = 80;
 
 const PERIOD_OPTIONS = [
   { id: '7d',  label: '7D'   },
-  { id: '1m',  label: '30D'  },
+  { id: '1m',  label: '1M'   },
   { id: '3m',  label: '3M'   },
   { id: 'all', label: 'Todo' },
 ];
@@ -58,7 +57,7 @@ function filterLog(log, scope, period, programTemplateIds) {
     filtered = filtered.filter((e) => programTemplateIds.has(e.sessionTemplateId));
   }
   if (period !== 'all') {
-    const days   = period === '7d' ? 7 : period === '1m' ? 30 : 90;
+    const days   = period === '7d' ? 7 : period === '1m' ? 30 : period === '3m' ? 90 : 365;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     filtered     = filtered.filter((e) => e.timestamp >= cutoff);
   }
@@ -233,6 +232,79 @@ function buildSessionSummary(exercise, def, fmtWeight) {
   return parts.filter(Boolean).join(' / ') || null;
 }
 
+// ── SetPills — compact per-set chips ─────────────────────────────────────────
+
+function SetPills({ exercise, def, fmtWeight }) {
+  const done = exercise?.sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? [];
+  if (!done.length) return <Text style={styles.modalSesSummary}>—</Text>;
+
+  const model = def?.progressionModel;
+
+  // Time-based: [30s] [45s]
+  if (model === 'time_progression') {
+    return (
+      <View style={styles.setPillsRow}>
+        {done.map((s, i) => (
+          <View key={i} style={styles.setPill}>
+            <Text style={styles.setPillText}>{s.time ?? '?'}s</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  const weights    = done.map((s) => parseFloat(s.weight) || 0);
+  const hasWeight  = weights.some((w) => w > 0);
+
+  // No weight — reps only: [5] [8] [6]
+  if (!hasWeight) {
+    const chips = done.map((s, i) => {
+      const r = parseInt(s.reps) || 0;
+      return r > 0 ? (
+        <View key={i} style={styles.setPill}>
+          <Text style={styles.setPillText}>{r}</Text>
+        </View>
+      ) : null;
+    }).filter(Boolean);
+    return <View style={styles.setPillsRow}>{chips}</View>;
+  }
+
+  const uniqueWeights = new Set(weights.filter((w) => w > 0));
+
+  // Uniform weight — label + reps chips: 20kg [3] [3] [2]
+  if (uniqueWeights.size === 1) {
+    const w = [...uniqueWeights][0];
+    const chips = done.map((s, i) => {
+      const r = parseInt(s.reps) || 0;
+      return r > 0 ? (
+        <View key={i} style={styles.setPill}>
+          <Text style={styles.setPillText}>{r}</Text>
+        </View>
+      ) : null;
+    }).filter(Boolean);
+    return (
+      <View style={styles.setPillsRow}>
+        <Text style={styles.setPillWeight}>{fmtWeight(w)}</Text>
+        {chips}
+      </View>
+    );
+  }
+
+  // Varying weight — full chips: [20×3] [25×3]
+  const chips = done.map((s, i) => {
+    const w = parseFloat(s.weight) || 0;
+    const r = parseInt(s.reps)    || 0;
+    if (!w && !r) return null;
+    const label = w > 0 && r > 0 ? `${fmtWeight(w)}×${r}` : w > 0 ? fmtWeight(w) : `${r}`;
+    return (
+      <View key={i} style={styles.setPill}>
+        <Text style={styles.setPillText}>{label}</Text>
+      </View>
+    );
+  }).filter(Boolean);
+  return <View style={styles.setPillsRow}>{chips}</View>;
+}
+
 function getSessionTotalVol(session) {
   return session.exercises.reduce((sum, ex) => {
     const done = ex.sets.filter((s) => s.done || s.weight || s.reps);
@@ -362,7 +434,8 @@ function MiniLineChart({ data, metricLabel }) {
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (!chartW || data.length < 2) return;
     const needsSc  = data.length > MIN_SCROLL;
-    const pW       = needsSc ? (data.length - 1) * STEP_PX : Math.max(1, chartW - C_PAD_L - C_PAD_R);
+    const stepPx   = needsSc ? (chartW - C_PAD_L - C_PAD_R) / (MIN_SCROLL - 1) : 0;
+    const pW       = needsSc ? (data.length - 1) * stepPx : Math.max(1, chartW - C_PAD_L - C_PAD_R);
     const sW       = C_PAD_L + pW + C_PAD_R;
     const pH       = CHART_H - PAD_TOP - PAD_BOT;
     const vals     = data.map((d) => d.value);
@@ -396,7 +469,8 @@ function MiniLineChart({ data, metricLabel }) {
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (!chartW || data.length < 2) return;
     const needsSc = data.length > MIN_SCROLL;
-    const pW      = needsSc ? (data.length - 1) * STEP_PX : Math.max(1, chartW - C_PAD_L - C_PAD_R);
+    const stepPx  = needsSc ? (chartW - C_PAD_L - C_PAD_R) / (MIN_SCROLL - 1) : 0;
+    const pW      = needsSc ? (data.length - 1) * stepPx : Math.max(1, chartW - C_PAD_L - C_PAD_R);
     const sW      = C_PAD_L + pW + C_PAD_R;
     const startW  = needsSc ? sW - chartW : 0;
     clipWidthAnim.setValue(startW);
@@ -413,7 +487,8 @@ function MiniLineChart({ data, metricLabel }) {
 
   const needsScroll = data.length > MIN_SCROLL;
   const plotH       = CHART_H - PAD_TOP - PAD_BOT;
-  const plotW       = needsScroll ? (data.length - 1) * STEP_PX : Math.max(1, chartW - C_PAD_L - C_PAD_R);
+  const stepPx      = needsScroll ? (chartW - C_PAD_L - C_PAD_R) / (MIN_SCROLL - 1) : 0;
+  const plotW       = needsScroll ? (data.length - 1) * stepPx : Math.max(1, chartW - C_PAD_L - C_PAD_R);
   const svgW        = C_PAD_L + plotW + C_PAD_R;
   const values      = data.map((d) => d.value);
   const minV        = Math.min(...values);
@@ -662,7 +737,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
   const filteredLogs = useMemo(() => {
     if (modalPeriod === 'all') return effectiveLogs;
-    const days   = modalPeriod === '7d' ? 7 : modalPeriod === '1m' ? 30 : 90;
+    const days   = modalPeriod === '7d' ? 7 : modalPeriod === '1m' ? 30 : modalPeriod === '3m' ? 90 : 365;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     return effectiveLogs.filter(({ timestamp }) => timestamp >= cutoff);
   }, [effectiveLogs, modalPeriod]);
@@ -843,7 +918,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   onPress={() => setModalScope((s) => s === 'program' ? 'all' : 'program')}
                 >
                   <Text style={[styles.scopeToggleText, modalScope === 'program' && styles.scopeToggleTextActive]}>
-                    Este programa
+                    Programa actual
                   </Text>
                 </TouchableOpacity>
               )}
@@ -892,10 +967,6 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             <View style={styles.modalSesSection}>
               <Text style={styles.modalSesSectionLabel}>SESIONES</Text>
               {[...sessionDeltas].reverse().map(({ timestamp, val, delta, isPR, metricId, exercise }) => {
-                const valStr     = val !== null
-                  ? (metricId === 'time' ? `${val}s` : metricId === 'kg' ? fmtWeight(val) : `${val} reps`)
-                  : null;
-                const summary    = buildSessionSummary(exercise, def, fmtWeight);
                 const deltaColor = delta !== null ? (delta >= 0 ? colors.green : colors.orange) : colors.muted;
                 const deltaStr  = delta !== null ? (() => {
                   const sign = delta > 0 ? '+' : '';
@@ -922,9 +993,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                         <Text style={styles.prPillText}>PR</Text>
                       </View>
                     )}
-                    <Text style={styles.modalSesSummary} numberOfLines={1}>
-                      {summary ?? valStr ?? '—'}
-                    </Text>
+                    <SetPills exercise={exercise} def={def} fmtWeight={fmtWeight} />
                   </View>
                 );
               })}
@@ -1150,7 +1219,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
             onPress={() => setScope((s) => s === 'program' ? 'all' : 'program')}
           >
             <Text style={[styles.scopeToggleText, scope === 'program' && styles.scopeToggleTextActive]}>
-              Este programa
+              Programa actual
             </Text>
           </TouchableOpacity>
         )}
@@ -1679,6 +1748,26 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
     textAlign:  'right',
   },
+  // Set chips
+  setPillsRow: {
+    flex:           1,
+    flexDirection:  'row',
+    flexWrap:       'wrap',
+    justifyContent: 'flex-end',
+    alignItems:     'center',
+    gap:            3,
+  },
+  setPill: {
+    backgroundColor: colors.surface2,
+    borderWidth:     0.5,
+    borderColor:     colors.border,
+    borderRadius:    3,
+    paddingHorizontal: 5,
+    paddingVertical:   2,
+  },
+  setPillText:   { fontSize: 10, color: colors.text,  fontWeight: typography.medium },
+  setPillWeight: { fontSize: 10, color: colors.muted, fontWeight: typography.medium, marginRight: 1 },
+
   prPill: {
     paddingHorizontal: 6,
     paddingVertical:   2,

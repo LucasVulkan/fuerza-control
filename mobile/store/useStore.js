@@ -1565,8 +1565,8 @@ export const useStore = create(
             }));
             fireDone();
           } else {
-            // Still running — correct the displayed time and refresh the notification title
-            updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName).catch(() => {});
+            // Still running — correct the displayed time and refresh the progress bar
+            updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName, ui.restTimer.endAt).catch(() => {});
             set((s) => ({
               ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
             }));
@@ -1592,8 +1592,8 @@ export const useStore = create(
             return;
           }
 
-          // Update notification title + progress bar every second (while JS is running)
-          updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName).catch(() => {});
+          // Update progress bar every second (while JS is running); time counter is native
+          updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName, ui.restTimer.endAt).catch(() => {});
 
           set((s) => ({
             ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
@@ -2618,13 +2618,20 @@ export const useStore = create(
         const { clientSync } = get();
         if (!clientSync.slotId) throw new Error('No estás conectado a ningún entrenador.');
 
-        // Get the actual current Supabase user ID from the live auth session.
-        // clientSync.supabaseUserId might be null if the user connected before this
-        // field was added to the persisted state, which would cause the RPC to fail
-        // (SQL: WHERE client_id = null never matches — you need IS NULL).
+        // oldUserId must be the ID that currently owns the slot in the DB.
+        // Prefer clientSync.supabaseUserId (saved when the client first connected)
+        // because it always matches the DB's client_id.
+        // Falling back to the live session only covers the legacy case where
+        // supabaseUserId was not yet persisted (pre-migration clients).
+        // Do NOT use currentUser?.id as the primary source: after a reinstall or
+        // session expiry, Supabase creates a new anonymous user whose ID does not
+        // match the slot's client_id → the RPC raises "slot not found or current
+        // owner id does not match" on the first attempt, then the second attempt
+        // silently skips the transfer (newUserId === oldUserId as Google user)
+        // without actually updating the DB — leaving future reconnects broken.
         const { supabase: _sb } = require('../src/config/supabase');
         const { data: { user: currentUser } } = await _sb.auth.getUser();
-        const oldUserId = currentUser?.id ?? clientSync.supabaseUserId;
+        const oldUserId = clientSync.supabaseUserId ?? currentUser?.id;
         if (!oldUserId) throw new Error('No se encontró sesión activa. Reconéctate con el código del entrenador.');
 
         // 1. Sign in with Google — changes the Supabase session to the Google user.

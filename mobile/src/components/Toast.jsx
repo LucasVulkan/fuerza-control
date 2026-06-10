@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, selectToast } from '../../store/useStore';
@@ -37,13 +37,17 @@ export default function Toast() {
   const insets  = useSafeAreaInsets();
   const toast   = useStore(selectToast);
   const opacity = useRef(new Animated.Value(0)).current;
-  const msgRef  = useRef('');
-  const typeRef = useRef('success');
+
+  // useState (not useRef) so changing the displayed text triggers a re-render
+  // immediately — prevents the brief "old toast flash" when two toasts fire quickly.
+  const [displayMsg,  setDisplayMsg]  = useState('');
+  const [displayType, setDisplayType] = useState('success');
 
   useEffect(() => {
     if (toast?.msg) {
-      msgRef.current  = toast.msg;
-      typeRef.current = toast.type ?? 'success';
+      // Update content first so the new text is visible on the very next frame
+      setDisplayMsg(toast.msg);
+      setDisplayType(toast.type ?? 'success');
       opacity.stopAnimation();
       Animated.timing(opacity, {
         toValue:         1,
@@ -59,7 +63,7 @@ export default function Toast() {
     }
   }, [toast?.id, toast]);
 
-  const scheme = TOAST_COLORS[typeRef.current] ?? TOAST_COLORS.neutral;
+  const scheme = TOAST_COLORS[displayType] ?? TOAST_COLORS.neutral;
 
   return (
     <Animated.View
@@ -76,7 +80,7 @@ export default function Toast() {
       ]}
     >
       <Text style={[styles.text, { color: scheme.text }]} numberOfLines={2}>
-        {msgRef.current}
+        {displayMsg}
       </Text>
     </Animated.View>
   );

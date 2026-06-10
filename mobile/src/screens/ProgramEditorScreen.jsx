@@ -132,6 +132,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
     commitStageWeeks();
     // Mark any clients that have this program assigned as needing a re-upload
     markProgramDirtyForClients(editingId);
+    showToast(t('editor.toastSaved'), 2200, 'success');
     useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
     navigation.goBack();
   }

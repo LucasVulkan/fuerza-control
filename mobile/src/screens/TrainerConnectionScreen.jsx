@@ -31,8 +31,9 @@ export default function TrainerConnectionScreen() {
   const profile              = useStore((s) => s.profile);
   const disconnectFromTrainer = useStore((s) => s.unlinkFromTrainer);
 
-  const [showCodeModal,   setShowCodeModal]   = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [showCodeModal,    setShowCodeModal]    = useState(false);
+  const [googleAutoStart,  setGoogleAutoStart]  = useState(false);
+  const [showGoogleModal,  setShowGoogleModal]  = useState(false);
 
   const isConnected   = !!clientSync.slotId;
   const hasError      = !!(clientSync.pendingUpload || clientSync.syncErrorAt);
@@ -207,7 +208,7 @@ export default function TrainerConnectionScreen() {
 
             <TouchableOpacity
               style={styles.googleBtn}
-              onPress={() => setShowCodeModal(true)}
+              onPress={() => { setGoogleAutoStart(true); setShowCodeModal(true); }}
               activeOpacity={0.8}
             >
               <Text style={styles.googleBtnText}>Reconectarse con Google</Text>
@@ -223,10 +224,9 @@ export default function TrainerConnectionScreen() {
       {/* ── Modals overlay ── */}
       <ClientCodeModal
         visible={showCodeModal}
-        onClose={() => setShowCodeModal(false)}
-        onSuccess={() => {
-          setShowCodeModal(false);
-        }}
+        startWithGoogle={googleAutoStart}
+        onClose={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
+        onSuccess={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
       />
 
       <ClientGoogleLinkModal
