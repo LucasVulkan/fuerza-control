@@ -356,6 +356,9 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           });
         }
 
+        // Restore any server slots missing from local state (e.g. fresh install).
+        await useStore.getState().refreshTrainerSlots().catch(() => {});
+
         onClose();
       } catch (err) {
         Alert.alert('Error', err.message ?? 'No se pudo iniciar sesión con Google.');

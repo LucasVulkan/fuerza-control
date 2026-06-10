@@ -2276,6 +2276,35 @@ export const useStore = create(
         const countBySlot = {};
         slots.forEach((slot) => { countBySlot[slot.id] = slot.sessions_count ?? 0; });
 
+        // Restore server slots that are missing from local state (e.g. after reinstall).
+        // Only active slots (disconnected_at = null) are restored.
+        const knownSlotIds = new Set(
+          Object.values(clients).map((c) => c.syncSlotId).filter(Boolean),
+        );
+        const missingSlots = slots.filter(
+          (s) => !knownSlotIds.has(s.id) && !s.disconnected_at,
+        );
+        if (missingSlots.length > 0) {
+          set((s) => {
+            const restored = { ...s.clients };
+            for (const slot of missingSlots) {
+              const id = generateId('client');
+              restored[id] = {
+                id,
+                name:         slot.client_name ?? 'Cliente',
+                createdAt:    new Date().toISOString().split('T')[0],
+                programIds:   [],
+                activeProgramId: null,
+                fullName: '', phone: '', email: '', notes: '',
+                bodyWeight: [], billing: [], status: 'active',
+                syncCode:    slot.client_code ?? null,
+                syncSlotId:  slot.id,
+              };
+            }
+            return { clients: restored };
+          });
+        }
+
         // Update remoteSessionsCount for each matching local client
         set((s) => {
           const updated = { ...s.clients };
