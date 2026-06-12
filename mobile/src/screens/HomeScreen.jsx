@@ -1057,7 +1057,7 @@ const styles = StyleSheet.create({
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'center',
-    marginBottom:   6,
+    marginBottom:   2,
   },
   heroTag: {
     fontSize:      12,
@@ -1077,7 +1077,7 @@ const styles = StyleSheet.create({
   heroEx: {
     fontSize:     12,
     color:        colors.mutedLight,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg + 2,
   },
   heroCta: {
     backgroundColor: colors.accent,
