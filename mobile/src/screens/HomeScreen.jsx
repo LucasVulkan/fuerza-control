@@ -1084,7 +1084,7 @@ const styles = StyleSheet.create({
     borderRadius:    radius.sm + 2,
     paddingVertical: 11,
     alignItems:      'center',
-    marginTop:       spacing.lg,
+    marginTop:       spacing.md,
   },
   heroCtaText: {
     fontSize:      14,
