@@ -120,6 +120,49 @@ function mergeClientLog(existing, incoming) {
   return [...base, ...fresh].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 }
 
+/**
+ * Re-IDs a program file payload: new program id + new session template ids,
+ * remapping days (flat and staged), the template maps, and the included
+ * workoutLog entries so the history stays linked to the re-ID'd templates.
+ * Used when importing a file whose program id already belongs to another
+ * client (or to the trainer) — prevents two clients sharing one program object.
+ */
+function reidProgramFile(data) {
+  const newProgramId = generateId('prog');
+  const idMap  = {};
+  const mapTpl = (tid) => (idMap[tid] ??= generateId('tpl'));
+  const cloneDays = (days) =>
+    (days ?? []).map((d) => ({ ...d, sessionTemplateId: mapTpl(d.sessionTemplateId) }));
+
+  const program = {
+    ...data.program,
+    id:   newProgramId,
+    days: cloneDays(data.program.days),
+    ...(data.program.stages?.length
+      ? { stages: data.program.stages.map((st) => ({ ...st, days: cloneDays(st.days) })) }
+      : {}),
+  };
+
+  const remapTemplates = (src) => {
+    const out = {};
+    Object.entries(src ?? {}).forEach(([tid, tpl]) => {
+      if (idMap[tid]) out[idMap[tid]] = { ...tpl, id: idMap[tid], programId: newProgramId };
+      else out[tid] = tpl; // not referenced by this program — keep untouched
+    });
+    return out;
+  };
+
+  return {
+    ...data,
+    program,
+    sessionTemplates: remapTemplates(data.sessionTemplates),
+    userPrograms:     remapTemplates(data.userPrograms),
+    workoutLog: (data.workoutLog ?? []).map((e) =>
+      idMap[e.sessionTemplateId] ? { ...e, sessionTemplateId: idMap[e.sessionTemplateId] } : e,
+    ),
+  };
+}
+
 const INITIAL_PROFILE = {
   name: 'Usuario',
   activeProgramId: null,
@@ -606,9 +649,19 @@ export const useStore = create(
 
       // Mobile: receives parsedData (already parsed JSON) + mode string
       importForClient: (clientId, parsedData, mode) => {
-        const data = parsedData;
+        let data = parsedData;
         const client = get().clients[clientId];
         if (!client) return;
+
+        // Collision-safe identity: if the file's program id already belongs to
+        // ANOTHER client (or to the trainer), re-ID everything so two clients
+        // never share one program object. Same-client matches keep their ids —
+        // that's the update flow, and preserves template↔history linkage.
+        if (data.program) {
+          const existing = get().programs[data.program.id];
+          const collides = existing && !(existing.mode === 'managed' && existing.clientId === clientId);
+          if (collides) data = reidProgramFile(data);
+        }
 
         if (mode === 'replace') {
           if (data.program) {
