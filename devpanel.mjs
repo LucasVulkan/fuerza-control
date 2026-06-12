@@ -29,12 +29,16 @@ async function projectInfo() {
     sh('git log -1 --format="%h %s"'),
     sh('git status --porcelain'),
   ]);
+  // Commits committed locally but not yet pushed to the upstream branch.
+  const aheadRes = await sh('git rev-list --count @{u}..HEAD');
+  const ahead = /^\d+$/.test(aheadRes.out.trim()) ? Number(aheadRes.out.trim()) : 0;
   return {
-    name:    pkg.name,
+    name:    'Forma Fit',
     version: pkg.version,
     branch:  branch.out.trim() || '—',
     commit:  commit.out.trim() || '—',
     dirty:   status.out.trim().length > 0,
+    ahead,
   };
 }
 
@@ -52,6 +56,12 @@ const server = createServer(async (req, res) => {
     const failed = m && m[2] ? Number(m[2]) : (code === 0 ? 0 : null);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: code === 0, passed, failed, total: m ? Number(m[3]) : null, out }));
+    return;
+  }
+  if (req.url === '/api/push' && req.method === 'POST') {
+    const { code, out } = await sh('git push');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: code === 0, out: out.trim() || '(sin salida)' }));
     return;
   }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -87,6 +97,7 @@ const HTML = `<!DOCTYPE html>
   .pill.dirty { background:rgba(248,81,73,.15); color:var(--red); }
   button { background:var(--accent); color:#fff; border:none; border-radius:8px;
            padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+  button.secondary { background:#30363d; }
   button:disabled { opacity:.5; cursor:default; }
   .row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
   .banner { font-weight:700; font-size:15px; padding:9px 14px; border-radius:8px; display:none; }
@@ -105,7 +116,13 @@ const HTML = `<!DOCTYPE html>
       <dt>Rama</dt><dd id="branch">…</dd>
       <dt>Último commit</dt><dd id="commit">…</dd>
       <dt>Estado</dt><dd id="dirty">…</dd>
+      <dt>Sin subir</dt><dd id="ahead">…</dd>
     </dl>
+    <div class="row" style="margin-top:14px">
+      <button id="pushBtn" class="secondary" onclick="pushGit()">⬆ Push a git</button>
+      <span id="pushStatus" class="muted"></span>
+    </div>
+    <pre id="pushOut" style="margin-top:10px;display:none"></pre>
   </div>
 
   <div class="card">
@@ -128,6 +145,27 @@ async function loadInfo() {
   document.getElementById('dirty').innerHTML = i.dirty
     ? '<span class="pill dirty">cambios sin commitear</span>'
     : '<span class="pill clean">limpio</span>';
+  document.getElementById('ahead').textContent =
+    i.ahead > 0 ? \`\${i.ahead} commit\${i.ahead !== 1 ? 's' : ''}\` : 'todo subido';
+}
+
+async function pushGit() {
+  const btn = document.getElementById('pushBtn');
+  const st  = document.getElementById('pushStatus');
+  const out = document.getElementById('pushOut');
+  btn.disabled = true; st.textContent = 'Subiendo…'; st.style.color = '';
+  out.style.display = 'none';
+  try {
+    const r = await (await fetch('/api/push', { method: 'POST' })).json();
+    out.textContent = r.out; out.style.display = 'block';
+    st.textContent  = r.ok ? '✓ Push hecho' : '✗ Falló el push';
+    st.style.color  = r.ok ? 'var(--green)' : 'var(--red)';
+  } catch (e) {
+    st.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    loadInfo(); // refresh "sin subir" counter
+  }
 }
 
 async function runTests() {
