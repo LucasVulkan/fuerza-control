@@ -26,11 +26,12 @@ function buildSetLabel(s, i, fmtWeight) {
   const hasW = s.weight && Number(s.weight) > 0;
   const hasR = s.reps   && Number(s.reps)   > 0;
   const hasT = s.time   && Number(s.time)   > 0;
-  if (hasW && hasR) return `${fmtWeight(s.weight)}×${s.reps}`;
-  if (hasW && hasT) return `${fmtWeight(s.weight)}×${s.time}s`;
-  if (hasR)         return `${s.reps} reps`;
-  if (hasT)         return `${s.time}s`;
-  if (hasW)         return fmtWeight(s.weight);
+  const rpe  = s.rpe && Number(s.rpe) > 0 ? ` @${s.rpe}` : '';
+  if (hasW && hasR) return `${fmtWeight(s.weight)}×${s.reps}${rpe}`;
+  if (hasW && hasT) return `${fmtWeight(s.weight)}×${s.time}s${rpe}`;
+  if (hasR)         return `${s.reps} reps${rpe}`;
+  if (hasT)         return `${s.time}s${rpe}`;
+  if (hasW)         return `${fmtWeight(s.weight)}${rpe}`;
   return `S${i + 1}`;
 }
 

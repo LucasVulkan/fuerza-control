@@ -576,13 +576,17 @@
     },
     "evalModes": {
       "all_complete": "Todas ✓",
-      "pct": "% mínimo"
+      "pct": "% mínimo",
+      "rpe": "RPE"
     },
     "evalModeDesc": {
       "all_complete": "Sube cuando completas todas las series en el rango superior de reps",
-      "pct": "Sube cuando alcanzas el porcentaje indicado de series completadas"
+      "pct": "Sube cuando alcanzas el porcentaje indicado de series completadas",
+      "rpe": "Sube cuando completas todas las series con RPE medio igual o inferior al objetivo"
     },
     "evalPctLabel": "Umbral",
+    "maxRpeLabel": "RPE objetivo",
+    "trackRpeLabel": "Registrar RPE",
     "incrTypes": {
       "fixed": "Fijo",
       "pct": "Porcentaje"

@@ -576,13 +576,17 @@
     },
     "evalModes": {
       "all_complete": "All done ✓",
-      "pct": "Min %"
+      "pct": "Min %",
+      "rpe": "RPE"
     },
     "evalModeDesc": {
       "all_complete": "Progress when all sets are completed at the top of the rep range",
-      "pct": "Progress when the minimum percentage of sets is completed"
+      "pct": "Progress when the minimum percentage of sets is completed",
+      "rpe": "Progress when all sets are completed with average RPE at or below the target"
     },
     "evalPctLabel": "Threshold",
+    "maxRpeLabel": "Target RPE",
+    "trackRpeLabel": "Track RPE",
     "incrTypes": {
       "fixed": "Fixed",
       "pct": "Percentage"

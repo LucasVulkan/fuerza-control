@@ -178,6 +178,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
     tempo:          exConfig.tempo        ?? '',
     trainerNote:    exConfig.trainerNote  ?? '',
+    trackRpe:       exConfig.trackRpe     ?? false,
+    evalMaxRpe:     initProg.evaluation.maxRpe ?? 8,
     progType:       initProg.type,
     evalMode:       initProg.evaluation.mode,
     evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
@@ -199,6 +201,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
   const [tempo,          setTempo]          = useState(i.tempo);
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
+  const [trackRpe,       setTrackRpe]       = useState(i.trackRpe);
+  const [evalMaxRpe,     setEvalMaxRpe]     = useState(i.evalMaxRpe);
   const [progType,       setProgType]       = useState(i.progType);
   const [evalMode,       setEvalMode]       = useState(i.evalMode);
   const [evalPct,        setEvalPct]        = useState(i.evalPct);
@@ -215,6 +219,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
 
   stateRef.current = {
     sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
+    trackRpe, evalMaxRpe,
     progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
   };
 
@@ -228,14 +233,16 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       isUnilateral: s.isUnilateral,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
+      trackRpe:     s.trackRpe,
       progressionModel: LEGACY_TYPE_MAP[s.progType] ?? 'double_progression',
       progression: {
         type:      s.progType,
         direction: 'increase',
         evaluation: {
-          mode:         s.evalMode,
+          // RPE mode only makes sense when RPE is being recorded
+          mode:         s.evalMode === 'rpe' && !s.trackRpe ? 'all_complete' : s.evalMode,
           pctThreshold: s.evalPct / 100,
-          maxRpe:       8,
+          maxRpe:       s.evalMaxRpe,
           minRir:       2,
         },
         increment: {
@@ -268,6 +275,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
+      trackRpe, evalMaxRpe,
       progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
 
   useEffect(() => {
@@ -282,7 +290,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     minReps !== i.minReps || maxReps !== i.maxReps ||
     minTime !== i.minTime || maxTime !== i.maxTime ||
     metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
-    trainerNote !== i.trainerNote ||
+    trainerNote !== i.trainerNote || trackRpe !== i.trackRpe || evalMaxRpe !== i.evalMaxRpe ||
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
     incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
     incrPctValue !== i.incrPctValue || incrMin !== i.incrMin;
@@ -294,6 +302,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setMinTime(i.minTime);     setMaxTime(i.maxTime);
     setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
     setTrainerNote(i.trainerNote);
+    setTrackRpe(i.trackRpe);   setEvalMaxRpe(i.evalMaxRpe);
     setProgType(i.progType);   setEvalMode(i.evalMode);         setEvalPct(i.evalPct);
     setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue);
     setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
@@ -329,6 +338,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const EVAL_MODES = [
     { id: 'all_complete', label: t('exerciseEditor.evalModes.all_complete') },
     { id: 'pct',          label: t('exerciseEditor.evalModes.pct')          },
+    // RPE evaluation only offered when the exercise records RPE
+    ...(trackRpe ? [{ id: 'rpe', label: t('exerciseEditor.evalModes.rpe') }] : []),
   ];
   const INCR_TYPES = [
     { id: 'fixed', label: t('exerciseEditor.incrTypes.fixed') },
@@ -426,6 +437,18 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                 <View style={{ flex: 1 }} />
               </View>
             )}
+            {evalMode === 'rpe' && (
+              <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                <StepField
+                  label={t('exerciseEditor.maxRpeLabel')}
+                  value={evalMaxRpe}
+                  onChange={setEvalMaxRpe}
+                  min={6}
+                  max={10}
+                />
+                <View style={{ flex: 1 }} />
+              </View>
+            )}
           </>
         )}
 
@@ -481,6 +504,15 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
         <Text style={styles.secTitle}>{t('exerciseEditor.sectionOptions')}</Text>
         <View style={styles.optionsCard}>
           <ToggleRow label="Unilateral" value={isUnilateral} onChange={setIsUnilateral} />
+          <View style={styles.optionsDivider} />
+          <ToggleRow
+            label={t('exerciseEditor.trackRpeLabel')}
+            value={trackRpe}
+            onChange={(v) => {
+              setTrackRpe(v);
+              if (!v && evalMode === 'rpe') setEvalMode('all_complete');
+            }}
+          />
           <View style={styles.optionsDivider} />
           <View style={styles.tempoRow}>
             <View style={styles.tempoMeta}>

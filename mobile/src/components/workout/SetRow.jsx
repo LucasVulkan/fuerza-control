@@ -260,6 +260,8 @@ export default function SetRow({
   weightScrollStep,
   isActive,
   onCopyPrev,
+  showRpe = false,     // exercise has 'Registrar RPE' enabled
+  onRpeChange,
 }) {
   return (
     <View style={styles.row}>
@@ -347,6 +349,17 @@ export default function SetRow({
           />
           <TimerButton onTime={onTimeChange} />
         </>
+      )}
+
+      {/* ── RPE (opt-in per exercise) ── */}
+      {showRpe && (
+        <InputCell
+          value={set.rpe ?? ''}
+          onChangeText={onRpeChange}
+          keyboardType="decimal-pad"
+          scrollStep={0.5}
+          isDone={set.done}
+        />
       )}
 
       {/* ── Done ── */}

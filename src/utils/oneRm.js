@@ -10,11 +10,20 @@
 
 const MAX_RELIABLE_REPS = 12;
 
-/** e1RM for a single set, or null when not computable. */
-export function epley1RM(weight, reps) {
+/**
+ * e1RM for a single set, or null when not computable.
+ * When RPE is provided (5–10), effective reps = reps + reps-in-reserve:
+ * 100×5 @RPE8 means 2 more reps were possible → estimate as a 7-rep max.
+ */
+export function epley1RM(weight, reps, rpe = null) {
   const w = parseFloat(weight);
-  const r = parseInt(reps, 10);
-  if (!w || w <= 0 || !r || r < 1 || r > MAX_RELIABLE_REPS) return null;
+  let   r = parseInt(reps, 10);
+  if (!w || w <= 0 || !r || r < 1) return null;
+  const rpeNum = parseFloat(rpe);
+  if (rpeNum >= 5 && rpeNum <= 10) {
+    r = r + (10 - rpeNum); // add reps in reserve
+  }
+  if (r > MAX_RELIABLE_REPS) return null;
   if (r === 1) return w;
   return w * (1 + r / 30);
 }
@@ -24,7 +33,7 @@ export function bestSetE1RM(sets) {
   let best = null;
   for (const s of sets ?? []) {
     if (!(s.done || s.weight || s.reps)) continue;
-    const v = epley1RM(s.weight, s.reps);
+    const v = epley1RM(s.weight, s.reps, s.rpe);
     if (v !== null && (best === null || v > best)) best = v;
   }
   return best;

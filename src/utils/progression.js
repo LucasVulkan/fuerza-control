@@ -226,9 +226,21 @@ function evaluateCompletion(doneSets, totalSets, evaluation, targets = {}) {
       if (completionRate >= 0.5)                     return 'hold';
       return 'retreat';
 
-    case 'rpe':
-      // Requires set-level RPE data — not yet collected.
-      // Falls through to all_complete as a safe default until implemented.
+    case 'rpe': {
+      const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0);
+      if (rpes.length > 0) {
+        const avgRpe = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+        const target = evaluation.maxRpe ?? 8;
+        const allDone = completionRate >= 1;
+        // Completed everything below the RPE ceiling → room to progress
+        if (allDone && avgRpe <= target)          return 'advance';
+        // Grinding near failure or missing most sets → back off
+        if (avgRpe > 9.5 || completionRate < 0.6) return 'retreat';
+        return 'hold';
+      }
+      // Session has no RPE data → fall through to all_complete as safe default
+    }
+    // eslint-disable-next-line no-fallthrough
 
     case 'all_complete':
     default: {
@@ -307,10 +319,29 @@ function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) 
   const struggling = qualRate < 0.6;
   const weightStr  = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
 
-  if (allHitMax) {
+  // RPE gate (evaluation.mode 'rpe'): the weight increase additionally requires
+  // average RPE at or below the target; near-failure sessions pull back.
+  // Sessions without RPE data behave exactly as before.
+  let rpeGate = null;
+  if (prog.evaluation?.mode === 'rpe') {
+    const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0);
+    if (rpes.length) {
+      rpeGate = {
+        avg:    rpes.reduce((a, b) => a + b, 0) / rpes.length,
+        target: prog.evaluation.maxRpe ?? 8,
+      };
+    }
+  }
+
+  if (allHitMax && (!rpeGate || rpeGate.avg <= rpeGate.target)) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = maxW + inc;
     return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), suggestedWeight: next, suggestedTime: null };
+  }
+  if (rpeGate && rpeGate.avg > 9.5 && maxW > 0) {
+    const inc  = computeIncrement(maxW, prog.increment);
+    const next = Math.max(0, maxW - inc);
+    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), suggestedWeight: next, suggestedTime: null };
   }
   if (mostHitMin) {
     return { type: 'hold', icon: '→', msg: t('progression.normal_mostHit', { weightStr }), suggestedWeight: maxW || null, suggestedTime: null };

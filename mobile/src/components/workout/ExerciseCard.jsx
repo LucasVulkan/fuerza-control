@@ -92,6 +92,8 @@ export default function ExerciseCard({
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
+  // RPE column (opt-in per exercise from the program editor)
+  const trackRpe = !!exConfig.trackRpe;
   const [noteExpanded, setNoteExpanded] = useState(false);
   // Client feedback note input visibility
   const [noteInputOpen, setNoteInputOpen] = useState(false);
@@ -436,6 +438,10 @@ export default function ExerciseCard({
             )}
             {/* Timer btn spacer */}
             {hasTimer && <View style={{ width: 36 }} />}
+            {/* RPE column */}
+            {trackRpe && (
+              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>RPE</Text>
+            )}
             {/* Done btn spacer */}
             <View style={{ width: 36 }} />
           </View>
@@ -458,6 +464,14 @@ export default function ExerciseCard({
                   set={set}
                   inputType={inputType}
                   isActive={i === activeSetIdx}
+                  showRpe={trackRpe}
+                  onRpeChange={(v) => {
+                    if (v === '') { onFieldChange(i, 'rpe', ''); return; }
+                    const cleaned = String(v).replace(',', '.');
+                    const n = parseFloat(cleaned);
+                    if (isNaN(n)) return;
+                    onFieldChange(i, 'rpe', n > 10 ? '10' : n < 0 ? '0' : cleaned);
+                  }}
                   onCopyPrev={i > 0 ? () => handleCopyFromPrev(i) : undefined}
                   weightDisplay={
                     set.weight !== '' && set.weight != null
