@@ -258,12 +258,10 @@ export const useStore = create(
       workoutLog: [],
       // Per-client histories (trainer side). Kept separate from the trainer's
       // own workoutLog so personal and client data never mix.
+      // The trainer's copy is append-only: client-side deletions never remove
+      // entries here — it's the trainer's professional record of the client.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
-      // Tombstones of deleted log entries (client side). Uploaded with the
-      // history payload so the trainer can apply deletions — absence of an
-      // entry (e.g. after a reinstall) never deletes anything by itself.
-      deletedLogIds: [],
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -1618,17 +1616,8 @@ export const useStore = create(
       // WORKOUT LOG
       // ══════════════════════════════════════════════════════════════════════
 
-      deleteLogEntry: (logId) => {
-        set((state) => ({
-          workoutLog: state.workoutLog.filter((e) => e.id !== logId),
-          // Tombstone so the deletion propagates to the trainer on next upload
-          deletedLogIds: [...(state.deletedLogIds ?? []), logId].slice(-500),
-        }));
-        // Push the deletion right away if connected (fire and forget)
-        if (get().clientSync.slotId) {
-          get().uploadHistoryToTrainer().catch(() => {});
-        }
-      },
+      deleteLogEntry: (logId) =>
+        set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
 
       /** Deletes an entry from a client's separated history (trainer side). */
       deleteClientLogEntry: (clientId, logId) =>
@@ -2363,10 +2352,10 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, customExercises: clientCustom, deletedIds, updatedAt } =
+          const { history, customExercises: clientCustom, updatedAt } =
             await downloadHistory(client.syncSlotId);
-          if (!history?.length && !deletedIds?.length && !Object.keys(clientCustom ?? {}).length) {
-            return { merged: 0, removed: 0 };
+          if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
+            return { merged: 0 };
           }
 
           // Import any custom exercise definitions the client sent (so trainer can resolve names)
@@ -2376,17 +2365,12 @@ export const useStore = create(
             }));
           }
 
-          // Merge into this client's separated log — never into the trainer's own workoutLog.
-          // Add-only by id, then apply the client's deletion tombstones: an entry
-          // missing from the upload (e.g. reinstall) is kept; only explicit
-          // deletions remove it here.
+          // Merge into this client's separated log — never into the trainer's own
+          // workoutLog. Append-only by id: entries absent from the upload (client
+          // deleted them, or reinstalled) are kept — this is the trainer's record.
           const existing  = get().clientLogs[clientId] ?? [];
-          let   merged    = mergeClientLog(existing, history);
+          const merged    = mergeClientLog(existing, history);
           const newCount  = merged.length - existing.length;
-          const deletedSet = new Set(deletedIds ?? []);
-          const beforeDel  = merged.length;
-          if (deletedSet.size) merged = merged.filter((e) => !deletedSet.has(e.id));
-          const removed    = beforeDel - merged.length;
 
           set((s) => ({
             clientLogs: { ...s.clientLogs, [clientId]: merged },
@@ -2401,7 +2385,7 @@ export const useStore = create(
             },
           }));
 
-          return { merged: newCount, removed };
+          return { merged: newCount };
         } catch (err) {
           // Record error timestamp so ClientCard can show a visual indicator
           set((s) => ({
@@ -2687,11 +2671,10 @@ export const useStore = create(
        * Scope-filtered for privacy: only sessions of the trainer's program(s),
        * plus free sessions logged after connecting. The rest of the client's
        * personal history never leaves the device.
-       * Includes deletion tombstones so the trainer can apply removals.
-       * Called after each session save / deletion. Sets pendingUpload on failure.
+       * Called after each session save. Sets pendingUpload on failure.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises, deletedLogIds, programs, profile } = get();
+        const { clientSync, workoutLog, customExercises, programs, profile } = get();
         if (!clientSync.slotId) return; // not linked to a trainer
 
         // Trainer-scope template ids. Links created before trainerProgramIds
@@ -2722,7 +2705,7 @@ export const useStore = create(
         });
 
         try {
-          await uploadHistory(clientSync.slotId, entries, relevantCustom, deletedLogIds ?? []);
+          await uploadHistory(clientSync.slotId, entries, relevantCustom);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -3007,7 +2990,6 @@ export const useStore = create(
         profile: state.profile,
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
-        deletedLogIds: state.deletedLogIds,
         activeSession: state.activeSession,
         userPrograms: state.userPrograms,
         customExercises: state.customExercises,
