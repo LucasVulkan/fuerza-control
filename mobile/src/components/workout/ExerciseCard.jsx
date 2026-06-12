@@ -6,7 +6,7 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
@@ -83,9 +83,19 @@ export default function ExerciseCard({
   onFieldChange,
   onToggleDone,
   onAddSet,
+  trainerName,
+  clientNote,
+  onClientNoteChange,
 }) {
   const { t, i18n } = useTranslation();
   const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
+
+  // Trainer note (instructions written in the program editor)
+  const trainerNote = exConfig.trainerNote?.trim() || null;
+  const [noteExpanded, setNoteExpanded] = useState(false);
+  // Client feedback note input visibility
+  const [noteInputOpen, setNoteInputOpen] = useState(false);
+  const hasClientNote = !!clientNote?.trim();
 
   // Derive inputType — new field with fallback for existing exercises
   const inputType = exConfig.inputType
@@ -368,11 +378,18 @@ export default function ExerciseCard({
 
             </View>
 
-            {manualOpen && (
-              <TouchableOpacity onPress={handleCollapse} hitSlop={8}>
-                <Text style={styles.collapseBtn}>{t('workout.collapse', 'Colapsar')}</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.headerRight}>
+              {onClientNoteChange && (
+                <TouchableOpacity onPress={() => setNoteInputOpen((v) => !v)} hitSlop={8}>
+                  <Text style={[styles.noteBtn, !hasClientNote && !noteInputOpen && styles.noteBtnDim]}>📝</Text>
+                </TouchableOpacity>
+              )}
+              {manualOpen && (
+                <TouchableOpacity onPress={handleCollapse} hitSlop={8}>
+                  <Text style={styles.collapseBtn}>{t('workout.collapse', 'Colapsar')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* Progression chip */}
@@ -382,6 +399,20 @@ export default function ExerciseCard({
                 {progression.icon}  {progression.msg}
               </Text>
             </View>
+          ) : null}
+
+          {/* Trainer note — 1-line clamp, tap to expand */}
+          {trainerNote ? (
+            <TouchableOpacity
+              style={styles.trainerNote}
+              onPress={() => setNoteExpanded((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.trainerNoteText} numberOfLines={noteExpanded ? undefined : 1}>
+                📋 {trainerName ? <Text style={styles.trainerNoteName}>{trainerName}: </Text> : null}
+                {trainerNote}
+              </Text>
+            </TouchableOpacity>
           ) : null}
 
           {/* Column headers */}
@@ -476,6 +507,21 @@ export default function ExerciseCard({
             })}
           </View>
 
+          {/* Client feedback note */}
+          {onClientNoteChange && (noteInputOpen || hasClientNote) ? (
+            <View style={styles.clientNoteWrap}>
+              <TextInput
+                style={styles.clientNoteInput}
+                value={clientNote ?? ''}
+                onChangeText={onClientNoteChange}
+                placeholder={t('workout.clientNotePlaceholder')}
+                placeholderTextColor={colors.muted2}
+                multiline
+                maxLength={280}
+              />
+            </View>
+          ) : null}
+
           {/* Añadir serie */}
           <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
             <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
@@ -550,6 +596,56 @@ const styles = StyleSheet.create({
     fontSize:  typography.xs,
     color:     colors.muted,
     marginTop: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  noteBtn: {
+    fontSize: typography.md,
+  },
+  noteBtnDim: {
+    opacity: 0.35,
+  },
+
+  // Trainer note strip
+  trainerNote: {
+    marginHorizontal:  spacing.md,
+    marginBottom:      spacing.sm,
+    backgroundColor:   withOpacity(colors.accent, 0.07),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.accent, 0.25),
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   5,
+  },
+  trainerNoteText: {
+    fontSize:   typography.xs,
+    color:      colors.text,
+    lineHeight: 17,
+  },
+  trainerNoteName: {
+    fontWeight: typography.bold,
+    color:      colors.accent,
+  },
+
+  // Client feedback note
+  clientNoteWrap: {
+    marginHorizontal: spacing.md,
+    marginTop:        spacing.xs,
+  },
+  clientNoteInput: {
+    backgroundColor:   colors.surface2,
+    borderWidth:       borders.thin,
+    borderColor:       colors.border,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.sm,
+    color:             colors.text,
+    fontSize:          typography.sm,
+    minHeight:         44,
+    textAlignVertical: 'top',
   },
 
   // Progression chip

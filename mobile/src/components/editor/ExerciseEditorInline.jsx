@@ -177,6 +177,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     metric:         initMetric,
     isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
     tempo:          exConfig.tempo        ?? '',
+    trainerNote:    exConfig.trainerNote  ?? '',
     progType:       initProg.type,
     evalMode:       initProg.evaluation.mode,
     evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
@@ -197,6 +198,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [metric,         setMetric]         = useState(i.metric);
   const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
   const [tempo,          setTempo]          = useState(i.tempo);
+  const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
   const [progType,       setProgType]       = useState(i.progType);
   const [evalMode,       setEvalMode]       = useState(i.evalMode);
   const [evalPct,        setEvalPct]        = useState(i.evalPct);
@@ -212,7 +214,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
   stateRef.current = {
-    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
     progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
   };
 
@@ -225,6 +227,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       sets: s.sets, restSec: s.restSec, inputType,
       isUnilateral: s.isUnilateral,
       tempo:        s.tempo.trim() || null,
+      trainerNote:  s.trainerNote.trim() || null,
       progressionModel: LEGACY_TYPE_MAP[s.progType] ?? 'double_progression',
       progression: {
         type:      s.progType,
@@ -264,7 +267,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo,
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
       progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
 
   useEffect(() => {
@@ -279,6 +282,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     minReps !== i.minReps || maxReps !== i.maxReps ||
     minTime !== i.minTime || maxTime !== i.maxTime ||
     metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
+    trainerNote !== i.trainerNote ||
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
     incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
     incrPctValue !== i.incrPctValue || incrMin !== i.incrMin;
@@ -289,6 +293,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setMinReps(i.minReps);     setMaxReps(i.maxReps);
     setMinTime(i.minTime);     setMaxTime(i.maxTime);
     setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
+    setTrainerNote(i.trainerNote);
     setProgType(i.progType);   setEvalMode(i.evalMode);         setEvalPct(i.evalPct);
     setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue);
     setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
@@ -492,6 +497,20 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
               keyboardType="default"
               autoCapitalize="characters"
               returnKeyType="done"
+            />
+          </View>
+          <View style={styles.optionsDivider} />
+          <View style={styles.noteBlock}>
+            <Text style={styles.toggleLabel}>{t('exerciseEditor.trainerNoteLabel')}</Text>
+            <Text style={styles.tempoHint}>{t('exerciseEditor.trainerNoteHint')}</Text>
+            <TextInput
+              style={styles.noteInput}
+              value={trainerNote}
+              onChangeText={setTrainerNote}
+              placeholder={t('exerciseEditor.trainerNotePlaceholder')}
+              placeholderTextColor={colors.muted2}
+              multiline
+              maxLength={280}
             />
           </View>
         </View>
@@ -727,6 +746,24 @@ const styles = StyleSheet.create({
   },
   tempoMeta: { flex: 1, gap: 2 },
   tempoHint: { fontSize: 9, color: colors.muted2, lineHeight: 13, marginTop: 2 },
+  noteBlock: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    gap: 2,
+  },
+  noteInput: {
+    marginTop:        spacing.xs,
+    backgroundColor:  colors.surface2,
+    borderWidth:      borders.thin,
+    borderColor:      colors.border,
+    borderRadius:     radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:  spacing.sm,
+    color:            colors.text,
+    fontSize:         typography.sm,
+    minHeight:        60,
+    textAlignVertical: 'top',
+  },
   tempoInput: {
     backgroundColor:    colors.surface2,
     borderWidth:        borders.thin,

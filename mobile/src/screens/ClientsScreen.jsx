@@ -180,7 +180,8 @@ function ClientSessionCard({ session, onDelete }) {
     : (template?.name ?? t('clients.sessionFallback'));
   const accent     = resolveColor(template?.color ?? 'var(--accent)');
   const durMin     = session.duration ? Math.round(session.duration / 60000) : null;
-  const hasNotes   = !!session.notes?.trim();
+  const hasNotes   = !!session.notes?.trim()
+                  || (session.exercises ?? []).some((e) => !!e.note);
 
   const date = new Date(session.timestamp).toLocaleDateString('es-ES', {
     weekday: 'short', day: 'numeric', month: 'short',
@@ -229,7 +230,7 @@ function ClientSessionCard({ session, onDelete }) {
 
       {open && (
         <View style={styles.sesDetail}>
-          {hasNotes && (
+          {!!session.notes?.trim() && (
             <View style={styles.sesNoteSection}>
               <Text style={styles.sesNoteSectionText}>{session.notes}</Text>
             </View>
@@ -240,7 +241,7 @@ function ClientSessionCard({ session, onDelete }) {
               ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
               : ex.exerciseId;
             const hasSets = (ex.sets ?? []).some((s) => s.done || s.weight || s.reps || s.time);
-            if (!hasSets) return null;
+            if (!hasSets && !ex.note) return null;
             const exCfg = exConfigs[ex.exerciseId];
             return (
               <View key={ex.exerciseId} style={styles.sesExSection}>
@@ -265,6 +266,9 @@ function ClientSessionCard({ session, onDelete }) {
                     );
                   })}
                 </View>
+                {!!ex.note && (
+                  <Text style={styles.sesExNote}>📝 {ex.note}</Text>
+                )}
               </View>
             );
           })}
@@ -3877,6 +3881,12 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
+  },
+  sesExNote: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontStyle:  'italic',
+    lineHeight: 16,
   },
   sesPills: {
     flexDirection: 'row',

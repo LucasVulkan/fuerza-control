@@ -194,6 +194,7 @@ export default function WorkoutScreen() {
   const toggleAdHocSetDone    = useStore((s) => s.toggleAdHocSetDone);
   const addAdHocSet           = useStore((s) => s.addAdHocSet);
   const updateFreeSessionName = useStore((s) => s.updateFreeSessionName);
+  const setExerciseNote       = useStore((s) => s.setExerciseNote);
 
   // Derive template + exercises
   const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
@@ -331,6 +332,9 @@ export default function WorkoutScreen() {
               }
               onToggleDone={(setIdx) => toggleSetDone(exConfig.exerciseId, setIdx)}
               onAddSet={() => addSetToSession(exConfig.exerciseId)}
+              trainerName={template?.trainerName}
+              clientNote={activeSession.exerciseNotes?.[exConfig.exerciseId] ?? ''}
+              onClientNoteChange={(text) => setExerciseNote(exConfig.exerciseId, text)}
             />
           ))}
 
@@ -357,6 +361,8 @@ export default function WorkoutScreen() {
                 }
                 onToggleDone={(setIdx) => toggleAdHocSetDone(adHoc.exerciseId, setIdx)}
                 onAddSet={() => addAdHocSet(adHoc.exerciseId)}
+                clientNote={activeSession.exerciseNotes?.[adHoc.exerciseId] ?? ''}
+                onClientNoteChange={(text) => setExerciseNote(adHoc.exerciseId, text)}
               />
             );
           })}

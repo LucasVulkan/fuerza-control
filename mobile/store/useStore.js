@@ -184,6 +184,7 @@ const INITIAL_ACTIVE_SESSION = {
   setsState: {},
   startedAt: null,
   notes: '',
+  exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
 };
@@ -1254,7 +1255,7 @@ export const useStore = create(
           }));
         });
         set({
-          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', adHocExercises: [], freeSessionName: '' },
+          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '' },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
@@ -1267,6 +1268,7 @@ export const useStore = create(
             setsState: {},
             startedAt: Date.now(),
             notes: '',
+            exerciseNotes: {},
             adHocExercises: [],
             freeSessionName: '',
           },
@@ -1277,6 +1279,15 @@ export const useStore = create(
 
       updateFreeSessionName: (name) =>
         set((s) => ({ activeSession: { ...s.activeSession, freeSessionName: name } })),
+
+      /** Sets the client's per-exercise feedback note for the active session. */
+      setExerciseNote: (exerciseId, text) =>
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            exerciseNotes: { ...(s.activeSession.exerciseNotes ?? {}), [exerciseId]: text },
+          },
+        })),
 
       // Reconciles activeSession.setsState with the current template.
       // Call this when entering WorkoutScreen after editing the program:
@@ -1464,6 +1475,7 @@ export const useStore = create(
             a.setsState.some((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done)
           );
           if (!hasData) return { ok: false, error: 'Sin datos registrados' };
+          const freeNotes = activeSession.exerciseNotes ?? {};
           const logEntry = {
             id:                generateId('log'),
             sessionTemplateId: '__free__',
@@ -1474,6 +1486,7 @@ export const useStore = create(
             bodyWeight:        null,
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
+              ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
             })),
           };
           set((s) => ({
@@ -1504,6 +1517,10 @@ export const useStore = create(
           return s;
         }
 
+        const sessionExNotes = activeSession.exerciseNotes ?? {};
+        const exNote = (exerciseId) =>
+          sessionExNotes[exerciseId]?.trim() ? { note: sessionExNotes[exerciseId].trim() } : {};
+
         const exercises = template.exercises
           .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec }) => {
             const setsData = activeSession.setsState[exerciseId] ?? [];
@@ -1512,7 +1529,7 @@ export const useStore = create(
             const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
-            return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec };
+            return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId) };
           })
           .filter(Boolean);
 
@@ -1530,6 +1547,7 @@ export const useStore = create(
             ...exercises,
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
               exerciseId: adHoc.exerciseId, isAdHoc: true, sets: adHoc.setsState,
+              ...exNote(adHoc.exerciseId),
             })),
           ],
         };
@@ -3014,7 +3032,7 @@ export const useStore = create(
         if (state.activeSession?.templateId) {
           const age = Date.now() - (state.activeSession.startedAt ?? 0);
           if (age > 12 * 60 * 60 * 1000) {
-            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', adHocExercises: [], freeSessionName: '' };
+            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '' };
           }
         }
 

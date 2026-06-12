@@ -301,7 +301,8 @@ function SessionCard({ session, onDelete }) {
   }, [template, programs, session.sessionTemplateId]);
 
   const durationMin = session.duration ? Math.round(session.duration / 60000) : null;
-  const hasNotes    = !!session.notes?.trim();
+  const hasNotes    = !!session.notes?.trim()
+                   || (session.exercises ?? []).some((e) => !!e.note);
 
   function handleDelete() {
     Alert.alert(
@@ -355,7 +356,7 @@ function SessionCard({ session, onDelete }) {
       {/* Expanded detail */}
       {open && (
         <View style={styles.detail}>
-          {hasNotes && (
+          {!!session.notes?.trim() && (
             <View style={styles.noteSection}>
               <Text style={styles.noteSectionLabel}>NOTA</Text>
               <Text style={styles.noteSectionText}>{session.notes}</Text>
@@ -412,6 +413,9 @@ function SessionCard({ session, onDelete }) {
                     </View>
                   ))}
                 </View>
+                {!!ex.note && (
+                  <Text style={styles.exNote}>📝 {ex.note}</Text>
+                )}
               </View>
             );
           })}
@@ -824,6 +828,12 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     fontWeight: typography.medium,
     color:      colors.text,
+  },
+  exNote: {
+    fontSize:   typography.xs,
+    color:      colors.accent,
+    fontStyle:  'italic',
+    lineHeight: 16,
   },
   setPills: {
     flexDirection: 'row',
