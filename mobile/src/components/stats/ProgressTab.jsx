@@ -25,6 +25,7 @@ import { useStore }      from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
 import { formatDate }    from '../../../../src/utils/formatters';
+import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
 
@@ -90,7 +91,8 @@ function getMetrics(def, allLogs, weightLabel = 'kg') {
   const m = [{ id: 'reps', label: 'Reps' }];
   if (hasWeight) {
     m.unshift({ id: 'kg', label: weightLabel.toUpperCase() });
-    m.push({ id: 'vol', label: 'Vol' });
+    m.push({ id: 'vol',  label: 'Vol' });
+    m.push({ id: 'e1rm', label: '1RM' });
   }
   return m;
 }
@@ -115,6 +117,10 @@ function computeValue(sets, metricId) {
       (a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0
     );
     return v > 0 ? Math.round(v) : null;
+  }
+  if (metricId === 'e1rm') {
+    const v = bestSetE1RM(done);
+    return v !== null ? Math.round(v * 10) / 10 : null;
   }
   return null;
 }
@@ -395,9 +401,10 @@ function computeExPR(logs, def) {
   return bestVal !== null ? { value: bestVal, timestamp: bestTs, metric: bestMet } : null;
 }
 
-function computeExSessionDeltas(logs, def) {
+function computeExSessionDeltas(logs, def, metricOverride = null) {
   const model     = def?.progressionModel;
-  const primaryId = model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg';
+  const primaryId = metricOverride
+    ?? (model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg');
   let bestSoFar   = null;
   return logs.map(({ timestamp, exercise }, i) => {
     const pv       = computeValue(exercise?.sets, primaryId);
@@ -769,15 +776,23 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   }, [filteredLogs]);
 
   const prData        = useMemo(() => computeExPR(effectiveLogs, def), [effectiveLogs, def]);
-  const sessionDeltas = useMemo(() => computeExSessionDeltas(filteredLogs, def), [filteredLogs, def]);
+  // Session deltas follow the metric selected on the chart — the whole modal
+  // "thinks" in one metric at a time.
+  const sessionDeltas = useMemo(
+    () => computeExSessionDeltas(filteredLogs, def, activeMetric),
+    [filteredLogs, def, activeMetric]
+  );
+  // Current-ability estimate: best e1RM over the last 6 weeks (scope-filtered,
+  // independent of the period filter so a short period doesn't blank the tile).
+  const e1rmData = useMemo(() => recentE1RM(effectiveLogs), [effectiveLogs]);
 
   const chartData = useMemo(() => {
-    const needsConv = activeMetric === 'kg' || activeMetric === 'vol';
+    const needsConv = activeMetric === 'kg' || activeMetric === 'vol' || activeMetric === 'e1rm';
     const rawData = filteredLogs
       .map(({ timestamp, exercise }) => {
         const raw   = computeValue(exercise?.sets, activeMetric);
         const value = raw !== null && needsConv
-          ? (activeMetric === 'kg' ? wDisplay(raw) : Math.round(wDisplay(1) * raw * 10) / 10)
+          ? (activeMetric === 'vol' ? Math.round(wDisplay(1) * raw * 10) / 10 : wDisplay(raw))
           : raw;
         return {
           date: new Date(timestamp).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
@@ -924,12 +939,26 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               )}
             </View>
 
-            {/* 3 stat tiles — order: PR · Carga · Volumen */}
+            {/* 3 stat tiles — order: 1RM est. (o PR) · Carga · Volumen */}
             <View style={styles.modalStatRow}>
               <View style={styles.modalStatTile}>
-                <Text style={[styles.modalStatValue, { color: colors.accent }]}>{prDisplay ?? '—'}</Text>
-                <Text style={styles.modalStatLabel}>PR</Text>
-                <Text style={styles.modalStatSub} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
+                {e1rmData ? (
+                  <>
+                    <Text style={[styles.modalStatValue, { color: colors.accent }]}>
+                      {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
+                    </Text>
+                    <Text style={styles.modalStatLabel}>1RM EST.</Text>
+                    <Text style={styles.modalStatSub} numberOfLines={1}>
+                      {prDisplay ? `PR ${prDisplay} · ${prAgoStr ?? ''}` : '—'}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.modalStatValue, { color: colors.accent }]}>{prDisplay ?? '—'}</Text>
+                    <Text style={styles.modalStatLabel}>PR</Text>
+                    <Text style={styles.modalStatSub} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
+                  </>
+                )}
               </View>
               <View style={styles.modalStatTile}>
                 <Text style={[styles.modalStatValue, { color: loadImpColor }]}>{loadImpStr}</Text>
@@ -970,12 +999,15 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 const deltaColor = delta !== null ? (delta >= 0 ? colors.green : colors.orange) : colors.muted;
                 const deltaStr  = delta !== null ? (() => {
                   const sign = delta > 0 ? '+' : '';
-                  if (metricId === 'kg') {
+                  if (metricId === 'kg' || metricId === 'e1rm') {
                     const abs = Math.abs(delta);
                     const rounded = abs % 1 === 0 ? abs : Math.round(abs * 10) / 10;
                     return `${sign}${delta < 0 ? '-' : ''}${fmtWeight(rounded)}`;
                   }
                   if (metricId === 'time') return `${sign}${Math.round(delta)}s`;
+                  if (metricId === 'vol') {
+                    return `${delta >= 0 ? '+' : '−'}${fmtVol(Math.abs(delta), wDisplay)} ${weightLabel}`;
+                  }
                   return `${sign}${Math.round(delta)} reps`;
                 })() : null;
                 return (
