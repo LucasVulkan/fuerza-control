@@ -172,9 +172,12 @@ function ClientSessionCard({ session, onDelete }) {
   const customExercises      = useStore((s) => s.customExercises);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const template   = getEffectiveTemplate(session.sessionTemplateId);
-  const label      = template?.label ?? '?';
-  const name       = template?.name  ?? t('clients.sessionFallback');
+  const isFree     = session.sessionTemplateId === '__free__';
+  const template   = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
+  const label      = isFree ? '★' : (template?.label ?? '?');
+  const name       = isFree
+    ? (session.sessionName || t('freeSession.historyLabel'))
+    : (template?.name ?? t('clients.sessionFallback'));
   const accent     = resolveColor(template?.color ?? 'var(--accent)');
   const durMin     = session.duration ? Math.round(session.duration / 60000) : null;
   const hasNotes   = !!session.notes?.trim();
@@ -1045,7 +1048,7 @@ export default function ClientsScreen() {
   // ── Store ──────────────────────────────────────────────────────────────────
   const clients                = useStore((s) => s.clients);
   const programs               = useStore((s) => s.programs);
-  const workoutLog             = useStore((s) => s.workoutLog);
+  const clientLogs             = useStore((s) => s.clientLogs);
   const exerciseLibrary        = useStore((s) => s.exerciseLibrary);
   const customExercises        = useStore((s) => s.customExercises);
   const sessionTemplates       = useStore((s) => s.sessionTemplates);
@@ -1069,7 +1072,7 @@ export default function ClientsScreen() {
   const addClientBodyWeight    = useStore((s) => s.addClientBodyWeight);
   const removeClientBodyWeight = useStore((s) => s.removeClientBodyWeight);
   const importForClient          = useStore((s) => s.importForClient);
-  const deleteLogEntry           = useStore((s) => s.deleteLogEntry);
+  const deleteClientLogEntry     = useStore((s) => s.deleteClientLogEntry);
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
@@ -1198,13 +1201,7 @@ export default function ClientsScreen() {
     // Always sort by last session date
     const lastTs = {};
     list.forEach((c) => {
-      const ids = new Set(
-        (c.programIds ?? [])
-          .map((id) => programs[id])
-          .filter(Boolean)
-          .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
-      );
-      const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+      const sessions = clientLogs[c.id] ?? [];
       lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
     });
     list.sort((a, b) => sortDir === 'desc'
@@ -1213,7 +1210,7 @@ export default function ClientsScreen() {
     );
 
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortDir, programs, workoutLog]);
+  }, [clients, search, statusFilter, tagFilter, sortDir, clientLogs]);
 
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
@@ -1239,22 +1236,24 @@ export default function ClientsScreen() {
     return new Set(getAllProgramDays(activeProg).map((d) => d.sessionTemplateId));
   }, [selectedClient, programs]);
 
-  // All sessions for this client (no scope/period filter) — for ProgressTab
+  // All sessions for this client (no scope/period filter) — for ProgressTab.
+  // Comes straight from the client's separated log, so it also includes
+  // free sessions ('__free__') that template filtering used to hide.
   const clientBaseLog = useMemo(() => {
-    if (!allClientTemplateIds.size) return [];
-    return workoutLog.filter((e) => allClientTemplateIds.has(e.sessionTemplateId));
-  }, [workoutLog, allClientTemplateIds]);
+    return selectedClientId ? (clientLogs[selectedClientId] ?? []) : [];
+  }, [clientLogs, selectedClientId]);
 
   const filteredLog = useMemo(() => {
-    const templateIds = scopeFilter === 'active' ? activeClientTemplateIds : allClientTemplateIds;
-    let log = workoutLog.filter((e) => templateIds.has(e.sessionTemplateId));
+    let log = scopeFilter === 'active'
+      ? clientBaseLog.filter((e) => activeClientTemplateIds.has(e.sessionTemplateId))
+      : clientBaseLog;
     if (periodFilter !== 'all') {
       const days = periodFilter === '7d' ? 7 : 30;
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
       log = log.filter((e) => e.timestamp >= cutoff);
     }
-    return log.sort((a, b) => b.timestamp - a.timestamp);
-  }, [workoutLog, scopeFilter, periodFilter, activeClientTemplateIds, allClientTemplateIds]);
+    return [...log].sort((a, b) => b.timestamp - a.timestamp);
+  }, [clientBaseLog, scopeFilter, periodFilter, activeClientTemplateIds]);
 
   const exercisesWithLogs = useMemo(() => {
     return [...new Set(
@@ -1430,12 +1429,12 @@ export default function ClientsScreen() {
 
   function getSessionCount(program) {
     const ids = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
-    return workoutLog.filter((e) => ids.has(e.sessionTemplateId)).length;
+    return clientBaseLog.filter((e) => ids.has(e.sessionTemplateId)).length;
   }
 
   function getLastActivity(program) {
     const ids = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
-    const sessions = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+    const sessions = clientBaseLog.filter((e) => ids.has(e.sessionTemplateId));
     return sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : null;
   }
 
@@ -1654,7 +1653,7 @@ export default function ClientsScreen() {
               <ClientSessionCard
                 key={session.id}
                 session={session}
-                onDelete={(id) => deleteLogEntry(id)}
+                onDelete={(id) => deleteClientLogEntry(selectedClientId, id)}
               />
             ))}
           </ScrollView>
@@ -2227,20 +2226,14 @@ export default function ClientsScreen() {
           renderItem={({ item: client }) => {
             const activeProgram   = programs[client.activeProgramId];
             const isConnected     = trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!client.syncSlotId;
-            // Last activity across ALL client programs
-            const allTemplateIds  = new Set(
-              (client.programIds ?? [])
-                .map((id) => programs[id])
-                .filter(Boolean)
-                .flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId))
-            );
-            const clientSessions  = workoutLog.filter((e) => allTemplateIds.has(e.sessionTemplateId));
+            // Last activity across the client's separated history
+            const clientSessions  = clientLogs[client.id] ?? [];
             const lastActivityTs  = clientSessions.length ? Math.max(...clientSessions.map((e) => e.timestamp)) : null;
             // Weeks training on the active program (from first logged session)
             const activeTplIds    = activeProgram
               ? new Set(getAllProgramDays(activeProgram).map((d) => d.sessionTemplateId))
               : new Set();
-            const activeSessions  = workoutLog.filter((e) => activeTplIds.has(e.sessionTemplateId));
+            const activeSessions  = clientSessions.filter((e) => activeTplIds.has(e.sessionTemplateId));
             const firstActiveTs   = activeSessions.length ? Math.min(...activeSessions.map((e) => e.timestamp)) : null;
             const weeksTraining   = firstActiveTs
               ? Math.max(1, Math.ceil((Date.now() - firstActiveTs) / (7 * 24 * 60 * 60 * 1000)))

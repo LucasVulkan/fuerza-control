@@ -71,6 +71,55 @@ async function _ensureTrainerSession(trainerSync) {
   }
 }
 
+/** Collects every sessionTemplateId referenced by a program (staged or flat). */
+function _programTemplateIds(program) {
+  const ids = new Set();
+  if (program?.stages?.length > 0) {
+    program.stages.forEach((st) => (st.days ?? []).forEach((d) => ids.add(d.sessionTemplateId)));
+  } else {
+    (program?.days ?? []).forEach((d) => ids.add(d.sessionTemplateId));
+  }
+  return ids;
+}
+
+/**
+ * Splits client-owned entries out of a mixed workoutLog (legacy data model).
+ * An entry belongs to a client when its sessionTemplateId is part of one of
+ * that client's programs. Entries matching several clients (shared program —
+ * the ambiguity this migration exists to eliminate) are copied to each.
+ * Returns { personalLog, clientEntries: { [clientId]: entries[] } }.
+ */
+function splitClientLogEntries(workoutLog, clients, programs) {
+  const templateOwners = {}; // templateId → [clientId, ...]
+  Object.values(clients ?? {}).forEach((c) => {
+    (c.programIds ?? []).forEach((pid) => {
+      _programTemplateIds(programs?.[pid]).forEach((tid) => {
+        (templateOwners[tid] ??= []).push(c.id);
+      });
+    });
+  });
+  const personalLog   = [];
+  const clientEntries = {};
+  (workoutLog ?? []).forEach((e) => {
+    const owners = templateOwners[e.sessionTemplateId];
+    if (owners?.length) {
+      owners.forEach((cid) => (clientEntries[cid] ??= []).push(e));
+    } else {
+      personalLog.push(e);
+    }
+  });
+  return { personalLog, clientEntries };
+}
+
+/** Merges incoming entries into a client log — deduped by id, sorted by timestamp. */
+function mergeClientLog(existing, incoming) {
+  const base = existing ?? [];
+  const ids  = new Set(base.map((e) => e.id));
+  const fresh = (incoming ?? []).filter((e) => e.id && !ids.has(e.id));
+  if (!fresh.length) return base;
+  return [...base, ...fresh].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+}
+
 const INITIAL_PROFILE = {
   name: 'Usuario',
   activeProgramId: null,
@@ -164,6 +213,10 @@ export const useStore = create(
       // ── State ──────────────────────────────────────────────────────────────
       profile: INITIAL_PROFILE,
       workoutLog: [],
+      // Per-client histories (trainer side). Kept separate from the trainer's
+      // own workoutLog so personal and client data never mix.
+      // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
+      clientLogs: {},
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -331,11 +384,17 @@ export const useStore = create(
         set((s) => {
           const next = { ...s.programs };
           delete next[programId];
+          // Managed (client) programs keep their history in clientLogs — clear there too
+          const ownerClientId = program?.clientId;
+          const ownerLog      = ownerClientId ? s.clientLogs[ownerClientId] : null;
           return {
             programs: next,
             workoutLog: deleteHistory
               ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
               : s.workoutLog,
+            clientLogs: deleteHistory && ownerLog
+              ? { ...s.clientLogs, [ownerClientId]: ownerLog.filter((e) => !templateIds.has(e.sessionTemplateId)) }
+              : s.clientLogs,
           };
         });
       },
@@ -431,10 +490,14 @@ export const useStore = create(
             }
             delete nextPrograms[pid];
           });
+          // Remove the client's separated history entirely
+          const nextClientLogs = { ...s.clientLogs };
+          delete nextClientLogs[clientId];
           return {
             clients: nextClients,
             programs: nextPrograms,
             workoutLog: s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId)),
+            clientLogs: nextClientLogs,
           };
         });
       },
@@ -565,9 +628,15 @@ export const useStore = create(
               },
             }));
           }
-          const currentIds = new Set(get().workoutLog.map((e) => e.id));
-          const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
-          if (newEntries.length) set((s) => ({ workoutLog: [...s.workoutLog, ...newEntries] }));
+          // Entries from a client file belong to that client's log, not the trainer's
+          if (data.workoutLog?.length) {
+            set((s) => ({
+              clientLogs: {
+                ...s.clientLogs,
+                [clientId]: mergeClientLog(s.clientLogs[clientId], data.workoutLog),
+              },
+            }));
+          }
           get().showToast('Programa actualizado');
         } else if (mode === 'add_program') {
           if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
@@ -587,14 +656,15 @@ export const useStore = create(
           }));
           get().showToast('Programa enviado al cliente');
         } else if (mode === 'merge_log') {
-          const currentIds = new Set(get().workoutLog.map((e) => e.id));
-          const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
+          const existing   = get().clientLogs[clientId] ?? [];
+          const merged     = mergeClientLog(existing, data.workoutLog);
+          const newCount   = merged.length - existing.length;
           set((s) => ({
-            workoutLog: [...s.workoutLog, ...newEntries],
+            clientLogs: { ...s.clientLogs, [clientId]: merged },
             sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
             userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
           }));
-          get().showToast(`${newEntries.length} sesión${newEntries.length !== 1 ? 'es' : ''} importada${newEntries.length !== 1 ? 's' : ''}`);
+          get().showToast(`${newCount} sesión${newCount !== 1 ? 'es' : ''} importada${newCount !== 1 ? 's' : ''}`);
         }
       },
 
@@ -1492,6 +1562,15 @@ export const useStore = create(
       deleteLogEntry: (logId) =>
         set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
 
+      /** Deletes an entry from a client's separated history (trainer side). */
+      deleteClientLogEntry: (clientId, logId) =>
+        set((state) => ({
+          clientLogs: {
+            ...state.clientLogs,
+            [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
+          },
+        })),
+
       getLastSession: (templateId) => {
         const { workoutLog } = get();
         return workoutLog
@@ -1664,6 +1743,7 @@ export const useStore = create(
           appName: 'Forma Fit',
           profile: s.profile,
           workoutLog: s.workoutLog,
+          clientLogs: s.clientLogs ?? {},
           userPrograms: s.userPrograms,
           programs: s.programs,
           sessionTemplates: s.sessionTemplates,
@@ -1916,6 +1996,30 @@ export const useStore = create(
           }
           if (sections.clients) {
             updates.clients = { ...s.clients, ...(data.clients ?? {}) };
+            // Restore per-client histories from backups that include them
+            if (data.clientLogs && Object.keys(data.clientLogs).length) {
+              const mergedLogs = { ...s.clientLogs };
+              Object.entries(data.clientLogs).forEach(([cid, entries]) => {
+                mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
+              });
+              updates.clientLogs = mergedLogs;
+            }
+          }
+          // Legacy backups (pre-clientLogs) mixed client entries into workoutLog.
+          // Split them out using the final clients + programs of this import.
+          if (sections.log && !data.clientLogs) {
+            const finalClients  = updates.clients    ?? s.clients;
+            const finalPrograms = updates.programs   ?? s.programs;
+            const finalLog      = updates.workoutLog ?? s.workoutLog;
+            const { personalLog, clientEntries } = splitClientLogEntries(finalLog, finalClients, finalPrograms);
+            if (Object.keys(clientEntries).length) {
+              updates.workoutLog = personalLog;
+              const mergedLogs = { ...(updates.clientLogs ?? s.clientLogs) };
+              Object.entries(clientEntries).forEach(([cid, entries]) => {
+                mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
+              });
+              updates.clientLogs = mergedLogs;
+            }
           }
           return updates;
         });
@@ -2031,6 +2135,7 @@ export const useStore = create(
           appName: 'Forma Fit',
           profile: s.profile,
           workoutLog: s.workoutLog,
+          clientLogs: s.clientLogs ?? {},
           userPrograms: s.userPrograms,
           programs: s.programs,
           sessionTemplates: s.sessionTemplates,
@@ -2200,32 +2305,25 @@ export const useStore = create(
             }));
           }
 
-          // Merge into the trainer's local workoutLog using existing dedup logic
-          const existing = get().workoutLog;
-          const existingIds = new Set(existing.map((e) => e.id));
-          const newEntries = (history ?? []).filter((e) => !existingIds.has(e.id));
+          // Merge into this client's separated log — never into the trainer's own workoutLog
+          const existing  = get().clientLogs[clientId] ?? [];
+          const merged    = mergeClientLog(existing, history);
+          const newCount  = merged.length - existing.length;
 
-          if (newEntries.length > 0) {
-            set((s) => ({
-              workoutLog: [...s.workoutLog, ...newEntries]
-                .sort((a, b) => b.timestamp - a.timestamp),
-            }));
-          }
-
-          // Update last-sync timestamp, clear any prior error, set new-activity flag
           set((s) => ({
+            clientLogs: { ...s.clientLogs, [clientId]: merged },
             clients: {
               ...s.clients,
               [clientId]: {
                 ...s.clients[clientId],
                 lastHistorySync: updatedAt,
                 syncErrorAt:     null,
-                ...(newEntries.length > 0 ? { historyHasNew: true } : {}),
+                ...(newCount > 0 ? { historyHasNew: true } : {}),
               },
             },
           }));
 
-          return { merged: newEntries.length };
+          return { merged: newCount };
         } catch (err) {
           // Record error timestamp so ClientCard can show a visual indicator
           set((s) => ({
@@ -2790,6 +2888,7 @@ export const useStore = create(
       partialize: (state) => ({
         profile: state.profile,
         workoutLog: state.workoutLog,
+        clientLogs: state.clientLogs,
         activeSession: state.activeSession,
         userPrograms: state.userPrograms,
         customExercises: state.customExercises,
@@ -2815,6 +2914,21 @@ export const useStore = create(
           const age = Date.now() - (state.activeSession.startedAt ?? 0);
           if (age > 12 * 60 * 60 * 1000) {
             state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', adHocExercises: [], freeSessionName: '' };
+          }
+        }
+
+        // Migrate: split client entries out of the personal workoutLog (one-time).
+        // Runs only when clientLogs doesn't exist yet (first launch after update).
+        if (!state.clientLogs) {
+          state.clientLogs = {};
+          const { personalLog, clientEntries } = splitClientLogEntries(
+            state.workoutLog, state.clients, state.programs,
+          );
+          if (Object.keys(clientEntries).length) {
+            state.workoutLog = personalLog;
+            Object.entries(clientEntries).forEach(([cid, entries]) => {
+              state.clientLogs[cid] = entries.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+            });
           }
         }
 

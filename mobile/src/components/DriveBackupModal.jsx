@@ -189,7 +189,7 @@ export default function DriveBackupModal({ onClose }) {
             try {
               const token = await SecureStore.getItemAsync('drive_access_token');
               const data  = await downloadBackup(token, file.id);
-              importData(data, { program: true, log: true, settings: true }, { silent: true });
+              importData(data, { program: true, log: true, settings: true, customExercises: true, clients: true }, { silent: true });
               showToast('Backup restaurado', 2200, 'success');
               onClose();
             } catch (err) {
