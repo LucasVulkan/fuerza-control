@@ -50,12 +50,6 @@ function relativeTime(ts, t) {
   return formatDate(ts);
 }
 
-function lastTimeText(status, lastSession, t) {
-  if (status === 'active') return t('home.sessionActiveNow');
-  const rel = relativeTime(lastSession?.timestamp, t);
-  return rel ? t('home.lastTime', { time: rel }) : t('home.firstTime');
-}
-
 /**
  * Global "week" counter = total sessions logged for this program / sessions-per-cycle.
  * "Semana" in this app = one complete rotation through the session templates.
@@ -221,15 +215,15 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
   );
 }
 
-// ── SessionCard ────────────────────────────────────────────────────────────────
+// ── Session cards ──────────────────────────────────────────────────────────────
 
-function SessionCard({ template, lastSession, allExercises, status, onPress, language }) {
-  const { t }  = useTranslation();
-  const accent = resolveColor(template?.color ?? 'var(--day1)');
+function sessionA11yLabel(t, template, statusLabel) {
+  return `${t('workout.sessionLabel', { label: template?.label ?? '' })}, ${template?.name ?? ''}, ${statusLabel}`;
+}
 
-  // First 2 exercise names
-  const exerciseNames = (template?.exercises ?? [])
-    .slice(0, 2)
+function exercisePreview(template, allExercises, language, count) {
+  return (template?.exercises ?? [])
+    .slice(0, count)
     .map(({ exerciseId }) => {
       const ex = allExercises[exerciseId];
       if (!ex) return null;
@@ -237,65 +231,78 @@ function SessionCard({ template, lastSession, allExercises, status, onPress, lan
     })
     .filter(Boolean)
     .join(' · ');
+}
 
-  // Status text
-  const statusText = {
-    active:  { label: t('home.sessionActive'),  color: colors.accent },
-    next:    { label: t('home.sessionNext'),     color: colors.accent },
-    done:    { label: t('home.sessionDone'),     color: colors.green  },
-    pending: { label: t('home.sessionPending'),  color: colors.muted  },
-  }[status];
-
-  // Button config
-  const btn = {
-    active:  { label: t('home.btnContinue'), style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
-    next:    { label: t('home.btnStart'),    style: styles.btnPrimary, textStyle: styles.btnPrimaryText },
-    done:    { label: t('home.btnRepeat'),   style: styles.btnRepeat,  textStyle: styles.btnRepeatText  },
-    pending: { label: t('home.btnDo'),       style: styles.btnOther,   textStyle: styles.btnOtherText   },
-  }[status];
-
-  const timeText = lastTimeText(status, lastSession, t);
-  const timeStyle = status === 'active' ? styles.sesLastActive : styles.sesLast;
+/** Featured card for the next (or in-progress) session — the main CTA of the home. */
+function HeroSessionCard({ template, lastSession, allExercises, status, onPress, language }) {
+  const { t }  = useTranslation();
+  const accent = resolveColor(template?.color ?? 'var(--day1)');
+  const exerciseNames = exercisePreview(template, allExercises, language, 3);
+  const isActive    = status === 'active';
+  const timeText    = isActive
+    ? t('home.sessionActiveNow')
+    : (relativeTime(lastSession?.timestamp, t) ?? t('home.firstTime'));
+  const statusLabel = isActive ? t('home.sessionActive') : t('home.sessionNext');
 
   return (
     <TouchableOpacity
-      style={[styles.sesCard, { borderLeftColor: accent }]}
+      style={styles.heroCard}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
+    >
+      <View style={styles.heroTop}>
+        <Text style={[styles.heroTag, { color: accent }]}>
+          {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
+        </Text>
+        <Text style={[styles.heroTime, isActive && { color: colors.accent }]}>{timeText}</Text>
+      </View>
+      <Text style={styles.heroName} numberOfLines={1}>{template?.name ?? ''}</Text>
+      {exerciseNames ? (
+        <Text style={styles.heroEx} numberOfLines={1}>{exerciseNames}</Text>
+      ) : null}
+      <View style={styles.heroCta}>
+        <Text style={styles.heroCtaText}>
+          {`${isActive ? t('home.btnContinue') : t('home.btnStart')}  →`}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/** Compact row for the rest of the cycle: done sessions dimmed, pending neutral. */
+function CompactSessionCard({ template, lastSession, status, orderNum, onPress }) {
+  const { t }  = useTranslation();
+  const accent = resolveColor(template?.color ?? 'var(--day1)');
+  const done   = status === 'done';
+  const rel    = relativeTime(lastSession?.timestamp, t);
+  const meta   = done
+    ? `${t('home.sessionDone')}${rel ? ` · ${rel}` : ''}`
+    : (rel ?? t('home.firstTime'));
+  const statusLabel = done ? t('home.sessionDone') : t('home.sessionPending');
+
+  return (
+    <TouchableOpacity
+      style={[styles.cmpCard, { borderLeftColor: accent }, done && styles.cmpCardDone]}
       onPress={onPress}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
     >
-      {/* Left info block */}
-      <View style={styles.sesInfo}>
-
-        {/* SESIÓN A — colored, bigger */}
-        <Text style={[styles.sesTag, { color: accent }]}>
-          {t('workout.sessionLabel', { label: template?.label ?? '' })}
-        </Text>
-
-        {/* Session name */}
-        <Text style={styles.sesName} numberOfLines={1}>
-          {template?.name ?? ''}
-        </Text>
-
-        {/* Status text */}
-        <Text style={[styles.sesStatus, { color: statusText.color }]}>
-          {statusText.label}
-        </Text>
-
-        {/* Exercises */}
-        {exerciseNames ? (
-          <Text style={styles.sesEx} numberOfLines={1}>{exerciseNames}</Text>
-        ) : null}
-
-        {/* Last time */}
-        <Text style={timeStyle}>{timeText}</Text>
-
+      <View style={styles.cmpLeft}>
+        {done
+          ? <CheckIcon size={15} color={colors.green} />
+          : <Text style={styles.cmpOrder}>{orderNum}</Text>}
       </View>
-
-      {/* CTA button */}
-      <View style={styles.sesCta}>
-        <View style={btn.style}>
-          <Text style={btn.textStyle}>{btn.label}</Text>
-        </View>
+      <View style={styles.cmpInfo}>
+        <Text style={styles.cmpTitle} numberOfLines={1}>
+          {`${template?.label ?? ''} · ${template?.name ?? ''}`}
+        </Text>
+        <Text style={styles.cmpMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+      <View style={styles.cmpBtn}>
+        <Text style={styles.cmpBtnText}>{done ? t('home.btnRepeat') : t('home.btnDo')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -391,24 +398,16 @@ function StagePickerModal({ program, onSelect, onClose }) {
 
 // ── ProgramBtn ─────────────────────────────────────────────────────────────────
 
-function ProgramBtn({ label, onPress, accent, danger }) {
+function ProgramBtn({ label, onPress, icon }) {
   return (
     <TouchableOpacity
-      style={[
-        styles.programBtn,
-        accent && styles.programBtnAccent,
-        danger && styles.programBtnDanger,
-      ]}
+      style={styles.programBtn}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="button"
     >
-      <Text style={[
-        styles.programBtnText,
-        accent && styles.programBtnTextAccent,
-        danger && styles.programBtnTextDanger,
-      ]}>
-        {label}
-      </Text>
+      {icon}
+      <Text style={styles.programBtnText}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -444,6 +443,39 @@ function PersonIcon({ size = 22, color }) {
   );
 }
 
+function CheckIcon({ size = 16, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function ChevronRightIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function EyeIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+      <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function PencilIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // ── HomeScreen ─────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -459,8 +491,11 @@ export default function HomeScreen() {
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
   const workoutLog           = useStore((s) => s.workoutLog);
-  const sessionTemplates     = useStore((s) => s.sessionTemplates);   // reactivity
-  const userPrograms         = useStore((s) => s.userPrograms);        // reactivity
+  // Subscribed only so template/program edits re-render this screen
+  // eslint-disable-next-line no-unused-vars
+  const sessionTemplates     = useStore((s) => s.sessionTemplates);
+  // eslint-disable-next-line no-unused-vars
+  const userPrograms         = useStore((s) => s.userPrograms);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
@@ -484,24 +519,21 @@ export default function HomeScreen() {
   const driveConnected  = driveBackup.enabled && !driveBackup.needsReconnect;
   const driveWarn       = driveBackup.enabled && driveBackup.needsReconnect;
   const driveIconColor  = driveWarn ? colors.orange : driveConnected ? colors.green : colors.muted;
-  const drivePillColor  = driveWarn ? colors.orange : driveConnected ? colors.green : colors.muted;
-  const drivePillLabel  = driveWarn ? '⚠ Reconectar' : driveConnected ? '✓ Sincronizado' : '– Sin conexión';
-  const driveSub        = driveBackup.email ?? 'Google Drive';
-  const driveMeta       = driveBackup.lastBackup
-    ? `Última copia: ${formatBackupTime(driveBackup.lastBackup)}`
-    : 'Nunca sincronizado';
+  const driveSub        = driveWarn
+    ? t('home.reconnect')
+    : driveConnected
+      ? (driveBackup.lastBackup ? formatBackupTime(driveBackup.lastBackup) : t('home.connected'))
+      : t('home.notConnected');
 
   const trainerOk        = !!clientSync.slotId && !clientSync.syncErrorAt && !clientSync.pendingUpload;
   const trainerWarn      = !!clientSync.slotId && (!!clientSync.syncErrorAt || clientSync.pendingUpload);
   const trainerIconColor = trainerWarn ? colors.orange : trainerOk ? colors.blue : colors.muted;
-  const trainerPillColor = trainerWarn ? colors.orange : trainerOk ? colors.blue : colors.muted;
-  const trainerPillLabel = trainerWarn ? '⚠ Pendiente' : trainerOk ? '✓ Conectado' : '– No conectado';
-  const trainerSub       = (trainerOk || trainerWarn)
-    ? (clientSync.trainerName ?? 'Entrenador')
-    : 'No conectado';
-  const trainerMeta      = trainerOk || trainerWarn
-    ? (clientSync.lastSyncedAt ? `Última sync: ${formatBackupTime(clientSync.lastSyncedAt)}` : 'Sin actividad reciente')
-    : 'Conectar entrenador';
+  const trainerTitle     = (trainerOk || trainerWarn)
+    ? (clientSync.trainerName ?? t('home.trainer'))
+    : t('home.trainer');
+  const trainerSub       = trainerWarn
+    ? t('home.pendingSync')
+    : trainerOk ? t('home.connected') : t('home.notConnected');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -585,35 +617,71 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Session cards */}
-              <View style={styles.sesList}>
-                {currentDays.map(({ sessionTemplateId }, dayIndex) => {
-                  const tpl    = getEffectiveTemplate(sessionTemplateId);
-                  if (!tpl) return null;
-                  const last   = getLastSession(sessionTemplateId);
-                  const status = getSessionStatus(
-                    dayIndex,
-                    doneInCycle,
-                    activeSession?.templateId,
-                    sessionTemplateId,
+              {/* Session cards: hero (next / in progress) first, the rest compact */}
+              {(() => {
+                const days = currentDays
+                  .map(({ sessionTemplateId }, dayIndex) => ({
+                    templateId:  sessionTemplateId,
+                    template:    getEffectiveTemplate(sessionTemplateId),
+                    lastSession: getLastSession(sessionTemplateId),
+                    status:      getSessionStatus(dayIndex, doneInCycle, activeSession?.templateId, sessionTemplateId),
+                    orderNum:    dayIndex + 1,
+                  }))
+                  .filter((d) => d.template);
+
+                const hero = days.find((d) => d.status === 'active')
+                          ?? days.find((d) => d.status === 'next');
+                const rest = days.filter((d) => d !== hero);
+
+                // Starting a session out of rotation is easy to do by accident —
+                // compact rows confirm before starting.
+                const confirmStart = (d) => {
+                  Alert.alert(
+                    t('home.startOutOfOrderTitle', {
+                      label: t('workout.sessionLabel', { label: d.template.label ?? '' }),
+                    }),
+                    t('home.startOutOfOrderDesc'),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('home.btnStart'), onPress: () => startSession(d.templateId) },
+                    ],
                   );
-                  return (
-                    <SessionCard
-                      key={sessionTemplateId}
-                      template={tpl}
-                      lastSession={last}
-                      allExercises={allExercises}
-                      status={status}
-                      language={i18n.language}
-                      onPress={
-                        status === 'active'
-                          ? () => navigation.navigate('Workout')
-                          : () => startSession(sessionTemplateId)
-                      }
-                    />
-                  );
-                })}
-              </View>
+                };
+
+                return (
+                  <View style={styles.sesList}>
+                    {hero && (
+                      <>
+                        <Text style={styles.secLabel}>
+                          {(hero.status === 'active' ? t('home.sessionActiveNow') : t('home.nextWorkout')).toUpperCase()}
+                        </Text>
+                        <HeroSessionCard
+                          template={hero.template}
+                          lastSession={hero.lastSession}
+                          allExercises={allExercises}
+                          status={hero.status}
+                          language={i18n.language}
+                          onPress={
+                            hero.status === 'active'
+                              ? () => navigation.navigate('Workout')
+                              : () => startSession(hero.templateId)
+                          }
+                        />
+                      </>
+                    )}
+                    {rest.map((d) => (
+                      <CompactSessionCard
+                        key={d.templateId}
+                        template={d.template}
+                        lastSession={d.lastSession}
+                        status={d.status === 'done' ? 'done' : 'pending'}
+                        orderNum={d.orderNum}
+                        onPress={() => confirmStart(d)}
+                      />
+                    ))}
+                  </View>
+                );
+              })()}
 
               {/* Sesión libre */}
               <TouchableOpacity
@@ -624,6 +692,7 @@ export default function HomeScreen() {
                     : startFreeSession
                 }
                 activeOpacity={0.75}
+                accessibilityRole="button"
               >
                 <Text style={styles.freeSessionBtnText}>
                   {activeSession.templateId === '__free__'
@@ -634,9 +703,25 @@ export default function HomeScreen() {
 
               {/* Program actions */}
               <View style={styles.programActions}>
-                <ProgramBtn label={t('home.view')}    onPress={() => navigate('programPrint')}  />
-                <ProgramBtn label={t('home.edit')}    onPress={() => navigate('programEditor')} />
-                <ProgramBtn label={t('home.archive')} onPress={() => setArchiveOpen(true)}      danger />
+                <ProgramBtn
+                  label={t('home.viewProgram')}
+                  icon={<EyeIcon size={14} color={colors.mutedLight} />}
+                  onPress={() => navigate('programPrint')}
+                />
+                <ProgramBtn
+                  label={t('home.edit')}
+                  icon={<PencilIcon size={14} color={colors.mutedLight} />}
+                  onPress={() => navigate('programEditor')}
+                />
+                <TouchableOpacity
+                  style={styles.programBtnMore}
+                  onPress={() => setArchiveOpen(true)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('home.moreOptions')}
+                >
+                  <Text style={styles.programBtnMoreText}>···</Text>
+                </TouchableOpacity>
               </View>
             </>
           );
@@ -670,49 +755,43 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Tarjetas de estado (Drive + Entrenador) ── */}
+        {/* ── Conexiones (Drive + Entrenador) — solo destacan si necesitan atención ── */}
         <View style={styles.statusCards}>
 
           {/* Drive */}
           <TouchableOpacity
-            style={[styles.statusCard, styles.statusCardDrive]}
+            style={[styles.statusCard, driveWarn && styles.statusCardWarn]}
             onPress={() => navigation.navigate('DriveBackup')}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`Drive, ${driveSub}`}
           >
-            <View style={styles.statusCardContent}>
-              <View style={styles.statusCardRow}>
-                <CloudIcon size={22} color={driveIconColor} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.statusCardTitle, styles.statusCardTitleDrive]}>Backup en la nube</Text>
-                  <Text style={styles.statusCardSub} numberOfLines={1}>{driveSub}</Text>
-                </View>
-              </View>
-              <View style={[styles.statusPill, { backgroundColor: withOpacity(drivePillColor, 0.18) }]}>
-                <Text style={[styles.statusPillText, { color: drivePillColor }]}>{drivePillLabel}</Text>
-              </View>
-              <Text style={styles.statusCardMeta} numberOfLines={1}>{driveMeta}</Text>
+            <CloudIcon size={18} color={driveIconColor} />
+            <View style={styles.statusInfo}>
+              <Text style={styles.statusTitle} numberOfLines={1}>Drive</Text>
+              <Text style={[styles.statusSub, driveWarn && { color: colors.orange }]} numberOfLines={1}>
+                {driveSub}
+              </Text>
             </View>
+            <ChevronRightIcon size={13} color={colors.muted2} />
           </TouchableOpacity>
 
           {/* Entrenador */}
           <TouchableOpacity
-            style={[styles.statusCard, styles.statusCardTrainer]}
+            style={[styles.statusCard, trainerWarn && styles.statusCardWarn]}
             onPress={() => navigation.navigate('TrainerConnection')}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`${trainerTitle}, ${trainerSub}`}
           >
-            <View style={styles.statusCardContent}>
-              <View style={styles.statusCardRow}>
-                <PersonIcon size={22} color={trainerIconColor} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.statusCardTitle, styles.statusCardTitleTrainer]}>Entrenador</Text>
-                  <Text style={styles.statusCardSub} numberOfLines={1}>{trainerSub}</Text>
-                </View>
-              </View>
-              <View style={[styles.statusPill, { backgroundColor: withOpacity(trainerPillColor, 0.18) }]}>
-                <Text style={[styles.statusPillText, { color: trainerPillColor }]}>{trainerPillLabel}</Text>
-              </View>
-              <Text style={styles.statusCardMeta} numberOfLines={1}>{trainerMeta}</Text>
+            <PersonIcon size={18} color={trainerIconColor} />
+            <View style={styles.statusInfo}>
+              <Text style={styles.statusTitle} numberOfLines={1}>{trainerTitle}</Text>
+              <Text style={[styles.statusSub, trainerWarn && { color: colors.orange }]} numberOfLines={1}>
+                {trainerSub}
+              </Text>
             </View>
+            <ChevronRightIcon size={13} color={colors.muted2} />
           </TouchableOpacity>
 
         </View>
@@ -843,9 +922,9 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   phStageWeek: {
-    fontSize:     10,
+    fontSize:     11,
     fontWeight:   typography.regular,
-    color:        colors.muted,
+    color:        colors.mutedLight,
     marginBottom: spacing.sm,
   },
   phBar: {
@@ -886,10 +965,10 @@ const styles = StyleSheet.create({
     gap:        4,
   },
   phWkSes: {
-    fontSize:  9,
+    fontSize:   11,
     fontWeight: typography.regular,
-    color:     colors.muted,
-    textAlign: 'center',
+    color:      colors.mutedLight,
+    textAlign:  'center',
   },
   phDots: {
     flexDirection:  'row',
@@ -957,109 +1036,112 @@ const styles = StyleSheet.create({
   sesList: {
     gap: 7,
   },
-  sesCard: {
-    backgroundColor:  colors.surface,
-    borderWidth:      borders.thin,
-    borderColor:      colors.borderCard,
-    borderLeftWidth:  3,
-    borderRadius:     radius.md,
-    padding:          spacing.md - 2,
-    paddingLeft:      spacing.md,
-    paddingRight:     spacing.sm + 3,
-    flexDirection:    'row',
-    gap:              spacing.sm + 2,
-    alignItems:       'stretch',
-  },
-  sesInfo: {
-    flex:     1,
-    minWidth: 0,
-    gap:      2,
-  },
-  sesTag: {
+  secLabel: {
     fontSize:      11,
-    fontWeight:    typography.bold,
+    fontWeight:    typography.semibold,
     letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  7,
-  },
-  sesName: {
-    fontSize:   15,
-    fontWeight: typography.heavy,
-    color:      colors.text,
-    lineHeight: 15 * 1.1,
-  },
-  cloudIcon: {
-    fontSize:   12,
-    color:      colors.green,
-    lineHeight: typography.xl * 1.2,
-    opacity:    0.75,
-  },
-  trainerCredit: {
-    fontSize:   typography.xs,
-    color:      colors.muted,
-    fontStyle:  'italic',
-  },
-  sesStatus: {
-    fontSize:   10,
-    fontWeight: typography.medium,
-    marginTop:  1,
-  },
-  sesEx: {
-    fontSize:  10,
-    color:     '#555555',
-    marginTop: 1,
-  },
-  sesLast: {
-    fontSize:  9,
-    color:     '#484848',
-    marginTop: 1,
-  },
-  sesLastActive: {
-    fontSize:  9,
-    color:     withOpacity(colors.accent, 0.5),
-    marginTop: 1,
-  },
-  sesCta: {
-    alignItems:    'center',
-    justifyContent: 'center',
-    flexShrink:    0,
+    color:         colors.mutedLight,
+    paddingLeft:   2,
+    marginBottom:  1,
   },
 
-  // Buttons
-  btnPrimary: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.sm,
-    paddingHorizontal: 11,
-    paddingVertical:   8,
+  // Hero (next / in-progress session)
+  heroCard: {
+    backgroundColor: colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.accent, 0.35),
+    borderRadius:    radius.md,
+    padding:         spacing.md + 2,
   },
-  btnPrimaryText: {
-    fontSize:   10.5,
-    fontWeight: typography.bold,
-    color:      colors.onAccent,
+  heroTop: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+    marginBottom:   6,
   },
-  btnRepeat: {
-    borderWidth:       1.5,
-    borderColor:       '#383838',
+  heroTag: {
+    fontSize:      12,
+    fontWeight:    typography.bold,
+    letterSpacing: 1,
+  },
+  heroTime: {
+    fontSize: 11,
+    color:    colors.mutedLight,
+  },
+  heroName: {
+    fontSize:     18,
+    fontWeight:   typography.heavy,
+    color:        colors.text,
+    marginBottom: 3,
+  },
+  heroEx: {
+    fontSize:     12,
+    color:        colors.mutedLight,
+    marginBottom: spacing.md,
+  },
+  heroCta: {
+    backgroundColor: colors.accent,
+    borderRadius:    radius.sm + 2,
+    paddingVertical: 11,
+    alignItems:      'center',
+  },
+  heroCtaText: {
+    fontSize:      14,
+    fontWeight:    typography.bold,
+    color:         colors.onAccent,
+    letterSpacing: 0.5,
+  },
+
+  // Compact rows (done / pending)
+  cmpCard: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm + 2,
+    backgroundColor:   colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderLeftWidth:   3,
+    borderRadius:      radius.md,
+    paddingVertical:   spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+  },
+  cmpCardDone: {
+    opacity: 0.55,
+  },
+  cmpLeft: {
+    width:      18,
+    alignItems: 'center',
+  },
+  cmpOrder: {
+    fontSize:   12,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  cmpInfo: {
+    flex:     1,
+    minWidth: 0,
+    gap:      1,
+  },
+  cmpTitle: {
+    fontSize:   13,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  cmpMeta: {
+    fontSize: 11,
+    color:    colors.mutedLight,
+  },
+  cmpBtn: {
+    borderWidth:       borders.thin,
+    borderColor:       '#333333',
     borderRadius:      radius.sm,
     paddingHorizontal: 10,
-    paddingVertical:   7,
+    paddingVertical:   5,
   },
-  btnRepeatText: {
-    fontSize:   10.5,
-    fontWeight: typography.semibold,
-    color:      '#c0c0c0',
-  },
-  btnOther: {
-    borderWidth:       1.5,
-    borderColor:       '#2e2e2e',
-    borderRadius:      radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical:   7,
-  },
-  btnOtherText: {
-    fontSize:   10.5,
-    fontWeight: typography.semibold,
-    color:      '#888888',
+  cmpBtnText: {
+    fontSize:   11,
+    fontWeight: typography.medium,
+    color:      colors.mutedLight,
   },
 
   // ── Stage advance banner ──────────────────────────────────────────────────────
@@ -1122,42 +1204,49 @@ const styles = StyleSheet.create({
   },
   programBtn: {
     flex:            1,
-    paddingVertical: spacing.sm,
+    flexDirection:   'row',
+    justifyContent:  'center',
+    alignItems:      'center',
+    gap:             6,
+    paddingVertical: spacing.sm + 1,
     borderRadius:    radius.sm,
     borderWidth:     borders.thin,
     borderColor:     colors.border,
-    alignItems:      'center',
     backgroundColor: colors.surface,
   },
-  programBtnAccent: {
-    backgroundColor: withOpacity(colors.accent, 0.07),
-    borderColor:     withOpacity(colors.accent, 0.3),
-  },
-  programBtnDanger: {
-    backgroundColor: 'rgba(248,113,113,0.07)',
-    borderColor:     'rgba(248,113,113,0.3)',
-  },
   programBtnText: {
-    fontSize:   typography.sm,
+    fontSize:   typography.sm + 1,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      colors.mutedLight,
   },
-  programBtnTextAccent: { color: colors.accent },
-  programBtnTextDanger: { color: colors.red },
+  programBtnMore: {
+    width:           46,
+    borderRadius:    radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: colors.surface,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  programBtnMoreText: {
+    fontSize:      15,
+    color:         colors.mutedLight,
+    letterSpacing: 1,
+  },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
   freeSessionBtn: {
-    paddingVertical:   spacing.sm + 2,
-    borderRadius:      radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.25),
-    backgroundColor:   withOpacity(colors.accent, 0.05),
-    alignItems:        'center',
+    paddingVertical: spacing.sm + 1,
+    borderRadius:    radius.md,
+    borderWidth:     borders.thin,
+    borderStyle:     'dashed',
+    borderColor:     '#333333',
+    alignItems:      'center',
   },
   freeSessionBtnText: {
-    fontSize:      typography.sm,
+    fontSize:      typography.sm + 1,
     fontWeight:    typography.medium,
-    color:         colors.accent,
+    color:         colors.mutedLight,
     letterSpacing: 0.3,
   },
 
@@ -1251,48 +1340,41 @@ const styles = StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // ── Tarjetas de estado (Drive + Entrenador) ─────────────────────────────────
+  // ── Conexiones (Drive + Entrenador) ──────────────────────────────────────────
   statusCards: {
     flexDirection: 'row',
     gap:           spacing.sm,
   },
   statusCard: {
-    flex:          1,
-    borderWidth:   borders.thin,
-    borderRadius:  radius.md,
-    overflow:      'hidden',
+    flex:              1,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    backgroundColor:   colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       colors.borderCard,
+    borderRadius:      radius.md,
+    paddingVertical:   spacing.sm + 2,
+    paddingHorizontal: spacing.md - 2,
   },
-  statusCardDrive: {
-    backgroundColor: withOpacity(colors.green, 0.05),
-    borderColor:     withOpacity(colors.green, 0.25),
+  statusCardWarn: {
+    backgroundColor: withOpacity(colors.orange, 0.06),
+    borderColor:     withOpacity(colors.orange, 0.4),
   },
-  statusCardTrainer: {
-    backgroundColor: withOpacity(colors.blue, 0.05),
-    borderColor:     withOpacity(colors.blue, 0.25),
+  statusInfo: {
+    flex:     1,
+    minWidth: 0,
   },
-  statusCardContent: {
-    padding:       spacing.md,
-    paddingBottom: spacing.sm,
-    gap:           spacing.sm,
+  statusTitle: {
+    fontSize:   12,
+    fontWeight: typography.medium,
+    color:      colors.text,
   },
-  statusCardRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
+  statusSub: {
+    fontSize:  11,
+    color:     colors.mutedLight,
+    marginTop: 1,
   },
-  statusCardTitle:       { fontSize: typography.sm, fontWeight: typography.medium, color: colors.text },
-  statusCardTitleDrive:  { color: colors.green },
-  statusCardTitleTrainer:{ color: colors.blue },
-  statusCardSub:         { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
-  statusCardChevron:     { fontSize: 18, color: colors.muted, lineHeight: 20, flexShrink: 0 },
-  statusPill: {
-    alignSelf:         'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical:   3,
-    borderRadius:      99,
-  },
-  statusPillText: { fontSize: 10, fontWeight: typography.medium },
-  statusCardMeta: { fontSize: 9, color: colors.muted },
 
   // Stage picker
   stageList: {

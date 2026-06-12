@@ -18,6 +18,7 @@ export const colors = {
 
   // Text
   text:       '#f0f0f0',
+  mutedLight: '#9a9a9a', // metadata on dark surfaces — keeps ≥4.5:1 contrast at small sizes
   muted:      '#777777',
   muted2:     '#555555',
 
