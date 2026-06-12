@@ -1077,13 +1077,14 @@ const styles = StyleSheet.create({
   heroEx: {
     fontSize:     12,
     color:        colors.mutedLight,
-    marginBottom: spacing.lg + 2,
+    marginBottom: spacing.sm,
   },
   heroCta: {
     backgroundColor: colors.accent,
     borderRadius:    radius.sm + 2,
     paddingVertical: 11,
     alignItems:      'center',
+    marginTop:       spacing.lg,
   },
   heroCtaText: {
     fontSize:      14,
