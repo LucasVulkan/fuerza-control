@@ -1,0 +1,387 @@
+/**
+ * Nivel 2 — Simulación del protocolo entrenador↔cliente.
+ *
+ * Toda la sincronización es un puñado de funciones sobre una sola tabla
+ * (trainer_clients). Aquí montamos un fake en memoria de esa tabla, fiel a
+ * src/services/supabaseSync.js, y dos "dispositivos" (entrenador y cliente)
+ * que ejecutan el flujo real sin red:
+ *
+ *   entrenador crea cliente → sube programa → cliente conecta con código →
+ *   hace sesiones → sube historial (filtrado por alcance) → entrenador descarga
+ *
+ * Las piezas con lógica de verdad son funciones puras reales:
+ * scopeFilterForUpload (privacidad), mergeClientLog (append-only) y
+ * reidProgramFile (programa compartido). El test las mueve de punta a punta y
+ * comprueba ambos lados — justo la clase de bug que estuvimos persiguiendo
+ * (logs cruzados, subida filtrada, programas compartidos).
+ */
+
+import { describe, test, expect } from 'vitest';
+import {
+  scopeFilterForUpload,
+  mergeClientLog,
+  reidProgramFile,
+  programTemplateIds,
+  splitClientLogEntries,
+} from './clientLogs';
+
+const clone = (x) => JSON.parse(JSON.stringify(x));
+
+const DAY     = 86400000;
+const LINK_TS = Date.parse('2026-01-10T10:00:00Z');
+
+// ── Fake en memoria de la tabla trainer_clients ──────────────────────────────
+// Mismas operaciones y semántica que src/services/supabaseSync.js, sin Supabase.
+class FakeTrainerClients {
+  constructor() { this.rows = []; this.seq = 1; }
+
+  createClientSlot(trainerId, clientName) {
+    const clientCode = `CODE-${this.seq}`;
+    const row = {
+      id:                 `slot_${this.seq}`,
+      trainer_id:         trainerId,
+      client_name:        clientName,
+      client_code:        clientCode,
+      client_id:          null,
+      program_json:       null,
+      program_updated_at: null,
+      history_json:       null,
+      history_updated_at: null,
+      trainer_name:       null,
+      sessions_count:     0,
+      disconnected_at:    null,
+      created_at:         new Date().toISOString(),
+    };
+    this.seq += 1;
+    this.rows.push(row);
+    return { slotId: row.id, clientCode };
+  }
+
+  _byId(id) {
+    const r = this.rows.find((x) => x.id === id);
+    if (!r) throw new Error(`slot ${id} no encontrado`);
+    return r;
+  }
+
+  uploadProgram(slotId, programJson, trainerName) {
+    const r = this._byId(slotId);
+    r.program_json = programJson;
+    r.program_updated_at = new Date().toISOString();
+    if (trainerName !== undefined) r.trainer_name = trainerName ?? null;
+  }
+
+  getSlotByClientCode(code) {
+    return this.rows.find((x) => x.client_code === code) ?? null;
+  }
+
+  // El RPC vincula la fila a auth.uid(); aquí el llamante pasa su uid simulado.
+  linkClientToSlot(code, callerUid) {
+    const r = this.getSlotByClientCode(code);
+    if (!r) throw new Error('código no encontrado');
+    r.client_id = callerUid;
+    r.disconnected_at = null;
+    return r.id;
+  }
+
+  uploadHistory(slotId, entries, customExercises = {}) {
+    const r = this._byId(slotId);
+    r.history_json = { entries, customExercises };
+    r.history_updated_at = new Date().toISOString();
+    r.sessions_count = entries.length;
+  }
+
+  downloadHistory(slotId) {
+    const r = this._byId(slotId);
+    const raw = r.history_json;
+    // Soporta formato nuevo { entries, customExercises } y legacy (array plano).
+    const isNew = raw && !Array.isArray(raw) && raw.entries !== undefined;
+    return {
+      history:         isNew ? (raw.entries ?? []) : (raw ?? []),
+      customExercises: isNew ? (raw.customExercises ?? {}) : {},
+      updatedAt:       r.history_updated_at,
+    };
+  }
+
+  downloadProgram(slotId) {
+    const r = this._byId(slotId);
+    return {
+      programJson: r.program_json ?? null,
+      updatedAt:   r.program_updated_at ?? null,
+      trainerName: r.trainer_name ?? null,
+    };
+  }
+}
+
+// ── Fixtures ─────────────────────────────────────────────────────────────────
+function programFile(programId, templateIds, name = 'Hipertrofia') {
+  return {
+    program: {
+      id:   programId,
+      name,
+      days: templateIds.map((t) => ({ sessionTemplateId: t })),
+    },
+    sessionTemplates: Object.fromEntries(
+      templateIds.map((t) => [t, { id: t, programId, name: `Sesión ${t}` }]),
+    ),
+    userPrograms: {},
+    workoutLog:   [],
+  };
+}
+
+const session = (id, sessionTemplateId, timestamp, exercises = []) =>
+  ({ id, sessionTemplateId, timestamp, exercises });
+
+// ── Roles ────────────────────────────────────────────────────────────────────
+function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) {
+  const state = { userId, trainerName, clients: {}, clientLogs: {}, personalLog: [], customExercises: {} };
+  return {
+    state,
+    addClient(clientId, name) {
+      const { slotId, clientCode } = db.createClientSlot(userId, name);
+      state.clients[clientId] = { id: clientId, name, slotId, programIds: [] };
+      return clientCode;
+    },
+    pushProgram(clientId, file) {
+      // El store estampa trainerName en cada plantilla antes de subir.
+      const stamped = clone(file);
+      Object.values(stamped.sessionTemplates ?? {}).forEach((tpl) => { tpl.trainerName = trainerName; });
+      db.uploadProgram(state.clients[clientId].slotId, stamped, trainerName);
+    },
+    // Descarga el historial del cliente y lo fusiona en SU log separado —
+    // nunca en el workoutLog personal del entrenador. Append-only por id.
+    pull(clientId) {
+      const { history, customExercises } = db.downloadHistory(state.clients[clientId].slotId);
+      if (Object.keys(customExercises).length) Object.assign(state.customExercises, customExercises);
+      const existing = state.clientLogs[clientId] ?? [];
+      const merged   = mergeClientLog(existing, history);
+      state.clientLogs[clientId] = merged;
+      return merged.length - existing.length;
+    },
+  };
+}
+
+function makeClient(db, { uid = 'client-uid-1' } = {}) {
+  const state = { uid, programs: {}, sessionTemplates: {}, workoutLog: [], customExercises: {}, clientSync: {} };
+  return {
+    state,
+    connect(code, { at }) {
+      const slot = db.getSlotByClientCode(code);
+      if (!slot) throw new Error('código no encontrado');
+      db.linkClientToSlot(code, uid);
+      const { programJson } = db.downloadProgram(slot.id);
+      const data = programJson;
+      state.programs[data.program.id] = data.program;
+      Object.assign(state.sessionTemplates, data.sessionTemplates ?? {});
+      state.clientSync = {
+        slotId:            slot.id,
+        trainerProgramIds: [data.program.id],
+        linkedAt:          new Date(at).toISOString(),
+      };
+    },
+    logSession(entry)   { state.workoutLog.push(entry); },
+    deleteSession(id)   { state.workoutLog = state.workoutLog.filter((e) => e.id !== id); },
+    upload() {
+      const { entries, customExercises } = scopeFilterForUpload({
+        workoutLog:        state.workoutLog,
+        programs:          state.programs,
+        customExercises:   state.customExercises,
+        trainerProgramIds: state.clientSync.trainerProgramIds,
+        linkedAt:          state.clientSync.linkedAt,
+      });
+      db.uploadHistory(state.clientSync.slotId, entries, customExercises);
+      return entries;
+    },
+  };
+}
+
+// Arranque común: entrenador con un cliente conectado y programa de 2 sesiones.
+function linkedSetup() {
+  const db      = new FakeTrainerClients();
+  const trainer = makeTrainer(db);
+  const client  = makeClient(db);
+  const code    = trainer.addClient('ana', 'Ana');
+  trainer.pushProgram('ana', programFile('prog_trainer', ['tplA', 'tplB']));
+  client.connect(code, { at: LINK_TS });
+  return { db, trainer, client };
+}
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
+  test('el entrenador recibe las sesiones de su programa, no el historial personal', () => {
+    const { trainer, client } = linkedSetup();
+
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
+    client.logSession(session('p1', 'tplPersonal', LINK_TS + 3 * DAY)); // fuera de alcance
+
+    client.upload();
+    trainer.pull('ana');
+
+    const ids = trainer.state.clientLogs.ana.map((e) => e.id);
+    expect(ids).toEqual(['s1', 's2']);
+    expect(ids).not.toContain('p1');
+    expect(trainer.state.personalLog).toEqual([]); // log propio del entrenador intacto
+  });
+
+  test('la sesión libre anterior a conectar se queda en el cliente; la posterior se sube', () => {
+    const { trainer, client } = linkedSetup();
+
+    client.logSession(session('free-old', '__free__', LINK_TS - DAY));
+    client.logSession(session('free-new', '__free__', LINK_TS + DAY));
+
+    client.upload();
+    trainer.pull('ana');
+
+    const ids = trainer.state.clientLogs.ana.map((e) => e.id);
+    expect(ids).toContain('free-new');
+    expect(ids).not.toContain('free-old');
+  });
+
+  test('solo viajan las definiciones de ejercicio personalizado referenciadas', () => {
+    const { trainer, client } = linkedSetup();
+    client.state.customExercises = {
+      custUsed:   { name: 'Press raro' },
+      custUnused: { name: 'Otro que no uso' },
+    };
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY, [{ exerciseId: 'custUsed' }]));
+
+    client.upload();
+    trainer.pull('ana');
+
+    expect(trainer.state.customExercises).toHaveProperty('custUsed');
+    expect(trainer.state.customExercises).not.toHaveProperty('custUnused');
+  });
+
+  test('si el cliente borra una sesión y vuelve a subir, el entrenador la conserva (append-only)', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
+    client.upload();
+    trainer.pull('ana');
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2']);
+
+    client.deleteSession('s1');   // el cliente borra en su dispositivo
+    client.upload();
+    trainer.pull('ana');
+
+    // El registro del entrenador es un log: no pierde s1.
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2']);
+  });
+
+  test('descargar dos veces no duplica (idempotente)', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();
+
+    expect(trainer.pull('ana')).toBe(1); // primera descarga añade 1
+    expect(trainer.pull('ana')).toBe(0); // segunda no añade nada
+    expect(trainer.state.clientLogs.ana).toHaveLength(1);
+  });
+
+  test('las sesiones nuevas se acumulan en descargas sucesivas, ordenadas por fecha', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
+    client.upload();
+    expect(trainer.pull('ana')).toBe(1);
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2']);
+  });
+});
+
+describe('dos clientes del mismo entrenador no cruzan historiales', () => {
+  test('cada cliente sube a su propio slot; los logs quedan separados por clientId', () => {
+    const db      = new FakeTrainerClients();
+    const trainer = makeTrainer(db);
+    const ana     = makeClient(db, { uid: 'uid-ana' });
+    const luis    = makeClient(db, { uid: 'uid-luis' });
+
+    const codeAna  = trainer.addClient('ana',  'Ana');
+    const codeLuis = trainer.addClient('luis', 'Luis');
+    trainer.pushProgram('ana',  programFile('prog_ana',  ['tplA1', 'tplA2']));
+    trainer.pushProgram('luis', programFile('prog_luis', ['tplL1', 'tplL2']));
+
+    ana.connect(codeAna,   { at: LINK_TS });
+    luis.connect(codeLuis, { at: LINK_TS });
+
+    ana.logSession(session('a1', 'tplA1', LINK_TS + DAY));
+    luis.logSession(session('l1', 'tplL1', LINK_TS + DAY));
+    ana.upload();  trainer.pull('ana');
+    luis.upload(); trainer.pull('luis');
+
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['a1']);
+    expect(trainer.state.clientLogs.luis.map((e) => e.id)).toEqual(['l1']);
+  });
+});
+
+describe('programa compartido entre dos clientes (lado entrenador)', () => {
+  // Mirrors importForClient: si el id del programa ya pertenece a OTRO cliente,
+  // se re-IDifica todo para que dos clientes nunca compartan plantillas.
+  test('reasignar el mismo archivo a un segundo cliente genera plantillas únicas', () => {
+    const fileForA = programFile('prog_shared', ['tpl1', 'tpl2']);
+
+    // El entrenador ya tiene prog_shared asignado al cliente A.
+    const onTrainer = { prog_shared: { id: 'prog_shared', mode: 'managed', clientId: 'A' } };
+
+    // Al asignar el MISMO archivo a B, la regla del store detecta colisión.
+    const existing = onTrainer[fileForA.program.id];
+    const collides = existing && !(existing.mode === 'managed' && existing.clientId === 'B');
+    expect(collides).toBe(true);
+
+    const fileForB = reidProgramFile(fileForA);
+    expect(fileForB.program.id).not.toBe('prog_shared');
+
+    const tplsA = [...programTemplateIds(fileForA.program)];
+    const tplsB = [...programTemplateIds(fileForB.program)];
+    expect(tplsB.some((t) => tplsA.includes(t))).toBe(false); // sin plantillas en común
+  });
+
+  test('con plantillas únicas, splitClientLogEntries enruta cada sesión a un solo cliente', () => {
+    const fileA = programFile('prog_a', ['tplA1', 'tplA2']);
+    const fileB = reidProgramFile(programFile('prog_b', ['tplA1', 'tplA2'])); // mismas plantillas → re-ID
+
+    const programs = {
+      prog_a:               fileA.program,
+      [fileB.program.id]:   fileB.program,
+    };
+    const clients = {
+      A: { id: 'A', programIds: ['prog_a'] },
+      B: { id: 'B', programIds: [fileB.program.id] },
+    };
+
+    const [bTpl1] = [...programTemplateIds(fileB.program)];
+    const mixedLog = [
+      session('a1', 'tplA1', 1),    // de A
+      session('b1', bTpl1,   2),    // de B (plantilla re-ID'd)
+    ];
+
+    const { clientEntries } = splitClientLogEntries(mixedLog, clients, programs);
+    expect(clientEntries.A.map((e) => e.id)).toEqual(['a1']);
+    expect(clientEntries.B.map((e) => e.id)).toEqual(['b1']);
+  });
+});
+
+describe('tabla trainer_clients en memoria — semántica fiel', () => {
+  test('un código inexistente devuelve null', () => {
+    const db = new FakeTrainerClients();
+    expect(db.getSlotByClientCode('NOPE')).toBeNull();
+  });
+
+  test('linkClientToSlot vincula client_id al llamante', () => {
+    const db = new FakeTrainerClients();
+    const { clientCode, slotId } = db.createClientSlot('t1', 'Ana');
+    db.linkClientToSlot(clientCode, 'uid-xyz');
+    expect(db._byId(slotId).client_id).toBe('uid-xyz');
+  });
+
+  test('downloadHistory entiende el formato legacy (array plano)', () => {
+    const db = new FakeTrainerClients();
+    const { slotId } = db.createClientSlot('t1', 'Ana');
+    db._byId(slotId).history_json = [session('x', 'tplA', 1)]; // formato viejo
+    const { history, customExercises } = db.downloadHistory(slotId);
+    expect(history).toHaveLength(1);
+    expect(customExercises).toEqual({});
+  });
+});

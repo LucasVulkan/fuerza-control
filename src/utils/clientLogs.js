@@ -48,6 +48,61 @@ export function splitClientLogEntries(workoutLog, clients, programs) {
   return { personalLog, clientEntries };
 }
 
+/**
+ * Computes the privacy-scoped slice of a client's history to send to their trainer.
+ * Only sessions belonging to the trainer's program(s) leave the device, plus free
+ * sessions logged after linking — the client's personal history stays local.
+ * Mirrors the inline filter the store used to run; extracted so the trainer↔client
+ * protocol can be simulated end-to-end in tests.
+ *
+ * @param {object}   args
+ * @param {Array}    args.workoutLog             Client's full local log.
+ * @param {object}   args.programs               id → program map (client side).
+ * @param {object}   [args.customExercises]      id → def map (client side).
+ * @param {string[]} [args.trainerProgramIds]    Program ids that came from the trainer.
+ * @param {string}   [args.fallbackProgramId]    Active program id, used for legacy links
+ *                                               created before trainerProgramIds existed.
+ * @param {string}   [args.linkedAt]             ISO date the client linked to the trainer.
+ * @param {string}   [args.lastProgramImportedAt] ISO date fallback when linkedAt is absent.
+ * @returns {{ entries: Array, customExercises: object }}
+ */
+export function scopeFilterForUpload({
+  workoutLog,
+  programs,
+  customExercises,
+  trainerProgramIds,
+  fallbackProgramId,
+  linkedAt,
+  lastProgramImportedAt,
+}) {
+  const progIds = trainerProgramIds?.length
+    ? trainerProgramIds
+    : [fallbackProgramId].filter(Boolean);
+
+  const tplIds = new Set();
+  progIds.forEach((pid) => programTemplateIds(programs?.[pid]).forEach((t) => tplIds.add(t)));
+
+  const linkedTs = linkedAt
+    ? new Date(linkedAt).getTime()
+    : (lastProgramImportedAt ? new Date(lastProgramImportedAt).getTime() : 0);
+
+  const entries = (workoutLog ?? []).filter((e) =>
+    tplIds.has(e.sessionTemplateId) ||
+    (e.sessionTemplateId === '__free__' && (e.timestamp ?? 0) >= linkedTs)
+  );
+
+  // Only ship custom-exercise defs the uploaded entries actually reference.
+  const usedExIds = new Set(
+    entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId))
+  );
+  const relevantCustom = {};
+  Object.entries(customExercises ?? {}).forEach(([id, def]) => {
+    if (usedExIds.has(id)) relevantCustom[id] = def;
+  });
+
+  return { entries, customExercises: relevantCustom };
+}
+
 /** Merges incoming entries into a client log — deduped by id, sorted by timestamp. */
 export function mergeClientLog(existing, incoming) {
   const base = existing ?? [];

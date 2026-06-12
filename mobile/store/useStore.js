@@ -36,7 +36,7 @@ import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
 import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
-import { splitClientLogEntries, mergeClientLog, reidProgramFile, programTemplateIds } from '../../src/utils/clientLogs';
+import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -2604,31 +2604,18 @@ export const useStore = create(
         const { clientSync, workoutLog, customExercises, programs, profile } = get();
         if (!clientSync.slotId) return; // not linked to a trainer
 
-        // Trainer-scope template ids. Links created before trainerProgramIds
+        // Privacy-scoped slice: only trainer-program sessions + post-link free
+        // sessions leave the device. Links created before trainerProgramIds
         // existed fall back to the active program (the trainer's, in the
         // standard linked flow).
-        const progIds = clientSync.trainerProgramIds?.length
-          ? clientSync.trainerProgramIds
-          : [profile.activeProgramId].filter(Boolean);
-        const tplIds = new Set();
-        progIds.forEach((pid) => programTemplateIds(programs[pid]).forEach((t) => tplIds.add(t)));
-
-        const linkedTs = clientSync.linkedAt
-          ? new Date(clientSync.linkedAt).getTime()
-          : (clientSync.lastProgramImportedAt ? new Date(clientSync.lastProgramImportedAt).getTime() : 0);
-
-        const entries = workoutLog.filter((e) =>
-          tplIds.has(e.sessionTemplateId) ||
-          (e.sessionTemplateId === '__free__' && (e.timestamp ?? 0) >= linkedTs)
-        );
-
-        // Only ship custom-exercise defs the uploaded entries actually reference
-        const usedExIds = new Set(
-          entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId))
-        );
-        const relevantCustom = {};
-        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
-          if (usedExIds.has(id)) relevantCustom[id] = def;
+        const { entries, customExercises: relevantCustom } = scopeFilterForUpload({
+          workoutLog,
+          programs,
+          customExercises,
+          trainerProgramIds:     clientSync.trainerProgramIds,
+          fallbackProgramId:     profile.activeProgramId,
+          linkedAt:              clientSync.linkedAt,
+          lastProgramImportedAt: clientSync.lastProgramImportedAt,
         });
 
         try {

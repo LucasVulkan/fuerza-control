@@ -48,8 +48,11 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify(await projectInfo()));
     return;
   }
-  if (req.url === '/api/test' && req.method === 'POST') {
-    const { code, out } = await sh('npm test');
+  if (req.url.startsWith('/api/test') && req.method === 'POST') {
+    // Optional ?filter=<substring> runs only matching test files (Vitest filter).
+    const filter = new URL(req.url, `http://localhost:${PORT}`).searchParams.get('filter');
+    const cmd = filter ? `npm test -- ${filter}` : 'npm test';
+    const { code, out } = await sh(cmd);
     // Parse Vitest summary line, e.g. "Tests  30 passed (30)"
     const m = out.match(/Tests\s+(\d+)\s+passed(?:\s+\|\s+(\d+)\s+failed)?\s+\((\d+)\)/);
     const passed = m ? Number(m[1]) : null;
@@ -127,7 +130,8 @@ const HTML = `<!DOCTYPE html>
 
   <div class="card">
     <div class="row" style="margin-bottom:14px">
-      <button id="runBtn" onclick="runTests()">▶ Correr tests</button>
+      <button id="runBtn" onclick="runTests()">▶ Correr todos los tests</button>
+      <button id="simBtn" class="secondary" onclick="runTests('clientSync.sim')">▶ Simulación entrenador↔cliente</button>
       <span id="status" class="muted">Listo.</span>
     </div>
     <div id="banner" class="banner"></div>
@@ -168,16 +172,18 @@ async function pushGit() {
   }
 }
 
-async function runTests() {
-  const btn = document.getElementById('runBtn');
+async function runTests(filter) {
+  const runBtn = document.getElementById('runBtn');
+  const simBtn = document.getElementById('simBtn');
   const status = document.getElementById('status');
   const banner = document.getElementById('banner');
   const out = document.getElementById('out');
-  btn.disabled = true; status.textContent = 'Corriendo…';
+  runBtn.disabled = true; simBtn.disabled = true; status.textContent = 'Corriendo…';
   banner.className = 'banner'; out.style.display = 'none';
+  const url = filter ? '/api/test?filter=' + encodeURIComponent(filter) : '/api/test';
   const t0 = performance.now();
   try {
-    const r = await (await fetch('/api/test', { method: 'POST' })).json();
+    const r = await (await fetch(url, { method: 'POST' })).json();
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
     out.textContent = r.out; out.style.display = 'block';
     if (r.ok) {
@@ -191,7 +197,7 @@ async function runTests() {
   } catch (e) {
     status.textContent = 'Error: ' + e.message;
   } finally {
-    btn.disabled = false;
+    runBtn.disabled = false; simBtn.disabled = false;
     loadInfo(); // refresh dirty/commit in case it changed
   }
 }
