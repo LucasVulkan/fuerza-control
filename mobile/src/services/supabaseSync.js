@@ -89,11 +89,14 @@ export async function updateTrainerNameForSlots(trainerId, trainerName) {
  * Called by the client after each session save.
  */
 /**
- * Payload format: { entries: WorkoutEntry[], customExercises: Record<id, def> }
+ * Payload format: { entries, customExercises, deletedIds }
+ *  - entries:         WorkoutEntry[] — pre-filtered by the client to trainer scope
+ *  - customExercises: Record<id, def> — only defs referenced by entries
+ *  - deletedIds:      string[] — tombstones so the trainer can apply deletions
  * Backward-compat: old clients uploaded a plain array — downloadHistory handles both.
  */
-export async function uploadHistory(slotId, entries, customExercises = {}) {
-  const payload = { entries, customExercises };
+export async function uploadHistory(slotId, entries, customExercises = {}, deletedIds = []) {
+  const payload = { entries, customExercises, deletedIds };
   const { error } = await supabase
     .from('trainer_clients')
     .update({
@@ -142,11 +145,12 @@ export async function downloadHistory(slotId) {
   if (error) throw error;
 
   const raw = data.history_json;
-  // Support both new format { entries, customExercises } and legacy plain array
+  // Support both new format { entries, customExercises, deletedIds } and legacy plain array
   const isNewFormat = raw && !Array.isArray(raw) && raw.entries !== undefined;
   return {
     history:         isNewFormat ? (raw.entries ?? []) : (raw ?? []),
     customExercises: isNewFormat ? (raw.customExercises ?? {}) : {},
+    deletedIds:      isNewFormat ? (raw.deletedIds ?? []) : [],
     updatedAt:       data.history_updated_at,
   };
 }

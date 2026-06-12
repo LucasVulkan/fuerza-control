@@ -1417,9 +1417,12 @@ export default function ClientsScreen() {
     if (!selectedClientId || refreshingHistory) return;
     setRefreshingHistory(true);
     try {
-      const { merged } = await downloadClientHistory(selectedClientId);
+      const { merged, removed = 0 } = await downloadClientHistory(selectedClientId);
       markHistoryViewed(selectedClientId);
-      showToast(merged > 0 ? `${merged} sesión${merged !== 1 ? 'es' : ''} nueva${merged !== 1 ? 's' : ''}` : 'Historial al día', 2200, 'success');
+      const parts = [];
+      if (merged > 0)  parts.push(`${merged} sesión${merged !== 1 ? 'es' : ''} nueva${merged !== 1 ? 's' : ''}`);
+      if (removed > 0) parts.push(`${removed} eliminada${removed !== 1 ? 's' : ''}`);
+      showToast(parts.length ? parts.join(' · ') : 'Historial al día', 2200, 'success');
     } catch (err) {
       showToast(err?.message ?? t('clients.errorUpdateHistory'), 2200, 'error');
     } finally {

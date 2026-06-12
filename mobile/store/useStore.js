@@ -260,6 +260,10 @@ export const useStore = create(
       // own workoutLog so personal and client data never mix.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
+      // Tombstones of deleted log entries (client side). Uploaded with the
+      // history payload so the trainer can apply deletions — absence of an
+      // entry (e.g. after a reinstall) never deletes anything by itself.
+      deletedLogIds: [],
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -302,6 +306,8 @@ export const useStore = create(
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
         syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
         pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
+        trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
+        linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
       },
 
       // Static references (not persisted)
@@ -1612,8 +1618,17 @@ export const useStore = create(
       // WORKOUT LOG
       // ══════════════════════════════════════════════════════════════════════
 
-      deleteLogEntry: (logId) =>
-        set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
+      deleteLogEntry: (logId) => {
+        set((state) => ({
+          workoutLog: state.workoutLog.filter((e) => e.id !== logId),
+          // Tombstone so the deletion propagates to the trainer on next upload
+          deletedLogIds: [...(state.deletedLogIds ?? []), logId].slice(-500),
+        }));
+        // Push the deletion right away if connected (fire and forget)
+        if (get().clientSync.slotId) {
+          get().uploadHistoryToTrainer().catch(() => {});
+        }
+      },
 
       /** Deletes an entry from a client's separated history (trainer side). */
       deleteClientLogEntry: (clientId, logId) =>
@@ -2348,8 +2363,11 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, customExercises: clientCustom, updatedAt } = await downloadHistory(client.syncSlotId);
-          if (!history?.length && !Object.keys(clientCustom ?? {}).length) return { merged: 0 };
+          const { history, customExercises: clientCustom, deletedIds, updatedAt } =
+            await downloadHistory(client.syncSlotId);
+          if (!history?.length && !deletedIds?.length && !Object.keys(clientCustom ?? {}).length) {
+            return { merged: 0, removed: 0 };
+          }
 
           // Import any custom exercise definitions the client sent (so trainer can resolve names)
           if (clientCustom && Object.keys(clientCustom).length > 0) {
@@ -2358,10 +2376,17 @@ export const useStore = create(
             }));
           }
 
-          // Merge into this client's separated log — never into the trainer's own workoutLog
+          // Merge into this client's separated log — never into the trainer's own workoutLog.
+          // Add-only by id, then apply the client's deletion tombstones: an entry
+          // missing from the upload (e.g. reinstall) is kept; only explicit
+          // deletions remove it here.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history);
+          let   merged    = mergeClientLog(existing, history);
           const newCount  = merged.length - existing.length;
+          const deletedSet = new Set(deletedIds ?? []);
+          const beforeDel  = merged.length;
+          if (deletedSet.size) merged = merged.filter((e) => !deletedSet.has(e.id));
+          const removed    = beforeDel - merged.length;
 
           set((s) => ({
             clientLogs: { ...s.clientLogs, [clientId]: merged },
@@ -2376,7 +2401,7 @@ export const useStore = create(
             },
           }));
 
-          return { merged: newCount };
+          return { merged: newCount, removed };
         } catch (err) {
           // Record error timestamp so ClientCard can show a visual indicator
           set((s) => ({
@@ -2554,6 +2579,8 @@ export const useStore = create(
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
             previousActiveProgramId,
+            trainerProgramIds:      [slot.program_json?.program?.id].filter(Boolean),
+            linkedAt:               new Date().toISOString(),
           },
         }));
 
@@ -2639,6 +2666,11 @@ export const useStore = create(
             ...s.clientSync,
             pendingProgramUpdate:  null,
             lastProgramImportedAt: new Date().toISOString(),
+            // The updated program may carry a new id — keep it in upload scope
+            trainerProgramIds: [...new Set([
+              ...(s.clientSync.trainerProgramIds ?? []),
+              ...(pending.programJson?.program?.id ? [pending.programJson.program.id] : []),
+            ])],
           },
         }));
       },
@@ -2651,15 +2683,46 @@ export const useStore = create(
       },
 
       /**
-       * Uploads the client's full workout log to their trainer slot.
-       * Called after each session save. Sets pendingUpload on failure.
+       * Uploads the client's workout history to their trainer slot.
+       * Scope-filtered for privacy: only sessions of the trainer's program(s),
+       * plus free sessions logged after connecting. The rest of the client's
+       * personal history never leaves the device.
+       * Includes deletion tombstones so the trainer can apply removals.
+       * Called after each session save / deletion. Sets pendingUpload on failure.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises } = get();
+        const { clientSync, workoutLog, customExercises, deletedLogIds, programs, profile } = get();
         if (!clientSync.slotId) return; // not linked to a trainer
 
+        // Trainer-scope template ids. Links created before trainerProgramIds
+        // existed fall back to the active program (the trainer's, in the
+        // standard linked flow).
+        const progIds = clientSync.trainerProgramIds?.length
+          ? clientSync.trainerProgramIds
+          : [profile.activeProgramId].filter(Boolean);
+        const tplIds = new Set();
+        progIds.forEach((pid) => _programTemplateIds(programs[pid]).forEach((t) => tplIds.add(t)));
+
+        const linkedTs = clientSync.linkedAt
+          ? new Date(clientSync.linkedAt).getTime()
+          : (clientSync.lastProgramImportedAt ? new Date(clientSync.lastProgramImportedAt).getTime() : 0);
+
+        const entries = workoutLog.filter((e) =>
+          tplIds.has(e.sessionTemplateId) ||
+          (e.sessionTemplateId === '__free__' && (e.timestamp ?? 0) >= linkedTs)
+        );
+
+        // Only ship custom-exercise defs the uploaded entries actually reference
+        const usedExIds = new Set(
+          entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId))
+        );
+        const relevantCustom = {};
+        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
+          if (usedExIds.has(id)) relevantCustom[id] = def;
+        });
+
         try {
-          await uploadHistory(clientSync.slotId, workoutLog, customExercises);
+          await uploadHistory(clientSync.slotId, entries, relevantCustom, deletedLogIds ?? []);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -2693,7 +2756,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -2783,6 +2846,8 @@ export const useStore = create(
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
             previousActiveProgramId,
+            trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
+            linkedAt:               new Date().toISOString(),
           },
         }));
       },
@@ -2942,6 +3007,7 @@ export const useStore = create(
         profile: state.profile,
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
+        deletedLogIds: state.deletedLogIds,
         activeSession: state.activeSession,
         userPrograms: state.userPrograms,
         customExercises: state.customExercises,
