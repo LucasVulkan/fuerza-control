@@ -155,36 +155,28 @@ export async function downloadHistory(slotId) {
 
 /**
  * Looks up a client slot by the client_code the client entered.
- * Returns the slot row or null if not found.
+ * Goes through the get_slot_by_code SECURITY DEFINER function so RLS can stay
+ * locked to own-rows-only: the function returns ONLY the row matching the exact
+ * code (no table enumeration). Returns the slot row or null if not found.
  */
 export async function getSlotByClientCode(clientCode) {
-  const { data, error } = await supabase
-    .from('trainer_clients')
-    .select('id, client_name, trainer_id, program_json, program_updated_at, client_id, history_updated_at, trainer_name')
-    .eq('client_code', clientCode.trim().toUpperCase())
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // no rows found
-    throw error;
-  }
-
-  return data;
+  const { data, error } = await supabase.rpc('get_slot_by_code', { p_code: clientCode });
+  if (error) throw error;
+  return data?.[0] ?? null;
 }
 
 /**
- * Links (or re-links) a client userId to their slot.
- * The code acts as a permanent reconnect credential — no guard on client_id,
- * so a client can re-enter their code after reinstalling or switching devices.
- * If the trainer accidentally shares a code, they can reset the slot from ClientsScreen.
+ * Links (or re-links) the caller to the slot matching the code.
+ * The code acts as a permanent reconnect credential — re-linking is allowed by
+ * design, so a client can re-enter their code after reinstalling or switching
+ * devices. Runs through link_client_to_slot (SECURITY DEFINER), which binds the
+ * row to auth.uid() — the caller cannot link anyone but themselves.
+ * Returns the linked slot id.
  */
-export async function linkClientToSlot(slotId, clientUserId) {
-  const { error } = await supabase
-    .from('trainer_clients')
-    .update({ client_id: clientUserId, disconnected_at: null })
-    .eq('id', slotId);
-
+export async function linkClientToSlot(clientCode) {
+  const { data, error } = await supabase.rpc('link_client_to_slot', { p_code: clientCode });
   if (error) throw error;
+  return data;
 }
 
 /**

@@ -2536,8 +2536,8 @@ export const useStore = create(
         if (!slot) throw new Error('Código no encontrado.');
         if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
 
-        // 3. Link userId to slot
-        await linkClientToSlot(slot.id, userId);
+        // 3. Link this user (auth.uid()) to the slot via the verified RPC
+        await linkClientToSlot(code);
 
         // 4. Save previous activeProgramId so we can restore it on unlink
         const previousActiveProgramId = get().profile.activeProgramId ?? null;
