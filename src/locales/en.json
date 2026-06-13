@@ -471,6 +471,21 @@
   "errors": {
     "cannotReadFile": "Could not read the file"
   },
+  "nextSession": {
+    "title": "Next session",
+    "hint": "Adjust only what you want to change. Anything you leave keeps its progression.",
+    "last": "Last: {{summary}}",
+    "noLast": "No previous data",
+    "notePlaceholder": "Note (this session only)…",
+    "send": "Send to {{name}}",
+    "sent": "Sent to {{name}}",
+    "sendFailed": "Could not send.",
+    "onlyNext": "Only affects the next session",
+    "clear": "Clear",
+    "noProgram": "This client has no active program.",
+    "notConnectedTitle": "Client not connected",
+    "notConnectedBody": "This client isn't connected to the cloud, so the prescription can't be sent."
+  },
   "editor": {
     "titleEdit": "EDIT PROGRAM",
     "titleEditClient": "EDIT CLIENT PROGRAM",

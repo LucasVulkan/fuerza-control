@@ -471,6 +471,21 @@
   "errors": {
     "cannotReadFile": "No se pudo leer el archivo"
   },
+  "nextSession": {
+    "title": "Próxima sesión",
+    "hint": "Ajusta solo lo que quieras cambiar. Lo que no toques sigue su progresión.",
+    "last": "Última: {{summary}}",
+    "noLast": "Sin datos previos",
+    "notePlaceholder": "Nota (solo esta sesión)…",
+    "send": "Enviar a {{name}}",
+    "sent": "Enviado a {{name}}",
+    "sendFailed": "No se pudo enviar.",
+    "onlyNext": "Solo afecta a la próxima sesión",
+    "clear": "Limpiar",
+    "noProgram": "Este cliente no tiene programa activo.",
+    "notConnectedTitle": "Cliente sin conexión",
+    "notConnectedBody": "Este cliente no está conectado a la nube, así que no se le puede enviar la prescripción."
+  },
   "editor": {
     "titleEdit": "EDITAR PROGRAMA",
     "titleEditClient": "EDITAR PROGRAMA DE CLIENTE",
