@@ -20,7 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -898,6 +898,42 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   );
 }
 
+// ── Action sheet icons ──────────────────────────────────────────────────────────
+
+function ChartIcon({ size = 20, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 20V10M12 20V4M6 20v-6" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function TargetIcon({ size = 20, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.8} />
+      <Circle cx="12" cy="12" r="5" stroke={color} strokeWidth={1.8} />
+      <Circle cx="12" cy="12" r="1.6" fill={color} />
+    </Svg>
+  );
+}
+function PencilIcon({ size = 20, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 20h9" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
+            stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function PersonIcon({ size = 20, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
 // ── ClientActionsSheet ──────────────────────────────────────────────────────────
 // The "···" menu on a client card: keeps the frequent action one tap on the card
 // and tucks the rest (next session, edit program, info) behind this sheet.
@@ -913,6 +949,7 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
         <Text style={styles.infoSheetName}>{client.name}</Text>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
+          <ChartIcon color={colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
           {newSessionsCount > 0 && (
             <View style={styles.actionBadge}>
@@ -922,16 +959,19 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
+          <TargetIcon color={colors.blue} />
           <Text style={[styles.actionLabel, { color: colors.blue }]}>{t('clients.actNextSession')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
+          <PencilIcon color={colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actEditProgram')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onInfo)} activeOpacity={0.7}>
+          <PersonIcon color={colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actInfo')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
