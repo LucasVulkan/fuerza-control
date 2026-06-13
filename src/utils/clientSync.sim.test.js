@@ -24,6 +24,7 @@ import {
   programTemplateIds,
   splitClientLogEntries,
 } from './clientLogs';
+import { assignActiveProgram, archivedProgramIds } from './clientPrograms';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -133,7 +134,7 @@ const session = (id, sessionTemplateId, timestamp, exercises = []) =>
 
 // ── Roles ────────────────────────────────────────────────────────────────────
 function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) {
-  const state = { userId, trainerName, clients: {}, clientLogs: {}, personalLog: [], customExercises: {} };
+  const state = { userId, trainerName, clients: {}, clientLogs: {}, personalLog: [], customExercises: {}, programs: {} };
   return {
     state,
     addClient(clientId, name) {
@@ -146,6 +147,28 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
       const stamped = clone(file);
       Object.values(stamped.sessionTemplates ?? {}).forEach((tpl) => { tpl.trainerName = trainerName; });
       db.uploadProgram(state.clients[clientId].slotId, stamped, trainerName);
+    },
+    // Asigna un programa (modelo de un único activo): lo activa, archiva el
+    // anterior y lo sube al slot. Usa la util real assignActiveProgram.
+    assignProgram(clientId, file) {
+      state.programs[file.program.id] = file;
+      state.clients[clientId] = assignActiveProgram(state.clients[clientId], file.program.id);
+      this.pushProgram(clientId, file);
+      return file.program.id;
+    },
+    // Importar un archivo al registro del cliente (mirror de importForClient):
+    // 'replace' activa el entrante; 'replace_log' además fusiona su historial;
+    // 'merge_log' solo añade sesiones sin tocar el programa.
+    importProgram(clientId, file, mode) {
+      if (mode === 'replace' || mode === 'replace_log') {
+        state.programs[file.program.id] = file;
+        state.clients[clientId] = assignActiveProgram(state.clients[clientId], file.program.id);
+        if (mode === 'replace_log' && file.workoutLog?.length) {
+          state.clientLogs[clientId] = mergeClientLog(state.clientLogs[clientId] ?? [], file.workoutLog);
+        }
+      } else if (mode === 'merge_log') {
+        state.clientLogs[clientId] = mergeClientLog(state.clientLogs[clientId] ?? [], file.workoutLog ?? []);
+      }
     },
     // Descarga el historial del cliente y lo fusiona en SU log separado —
     // nunca en el workoutLog personal del entrenador. Append-only por id.
@@ -180,6 +203,19 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
     },
     logSession(entry)   { state.workoutLog.push(entry); },
     deleteSession(id)   { state.workoutLog = state.workoutLog.filter((e) => e.id !== id); },
+    // El entrenador cambió el programa: el cliente lo descarga y lo adopta.
+    // trainerProgramIds ACUMULA (mirror del store) — las sesiones del programa
+    // anterior siguen dentro del alcance de subida, no se quedan huérfanas.
+    syncProgram() {
+      const { programJson } = db.downloadProgram(state.clientSync.slotId);
+      const data = programJson;
+      state.programs[data.program.id] = data.program;
+      Object.assign(state.sessionTemplates, data.sessionTemplates ?? {});
+      state.clientSync.trainerProgramIds = [...new Set([
+        ...(state.clientSync.trainerProgramIds ?? []),
+        data.program.id,
+      ])];
+    },
     upload() {
       const { entries, customExercises } = scopeFilterForUpload({
         workoutLog:        state.workoutLog,
@@ -360,6 +396,91 @@ describe('programa compartido entre dos clientes (lado entrenador)', () => {
     const { clientEntries } = splitClientLogEntries(mixedLog, clients, programs);
     expect(clientEntries.A.map((e) => e.id)).toEqual(['a1']);
     expect(clientEntries.B.map((e) => e.id)).toEqual(['b1']);
+  });
+});
+
+describe('Fase 2 — reasignación de programa (un único activo)', () => {
+  test('reasignar archiva el programa anterior y activa el nuevo (lado entrenador)', () => {
+    const db      = new FakeTrainerClients();
+    const trainer = makeTrainer(db);
+    trainer.addClient('ana', 'Ana');
+
+    trainer.assignProgram('ana', programFile('prog_v1', ['tplA', 'tplB']));
+    expect(trainer.state.clients.ana.activeProgramId).toBe('prog_v1');
+
+    trainer.assignProgram('ana', programFile('prog_v2', ['tplC', 'tplD']));
+    const ana = trainer.state.clients.ana;
+    expect(ana.activeProgramId).toBe('prog_v2');
+    expect(archivedProgramIds(ana)).toEqual(['prog_v1']);                 // el anterior, archivado
+    expect(new Set(ana.programIds)).toEqual(new Set(['prog_v1', 'prog_v2'])); // nada perdido
+  });
+
+  test('el cliente recibe el cambio de programa y conserva su historial', () => {
+    const db      = new FakeTrainerClients();
+    const trainer = makeTrainer(db);
+    const client  = makeClient(db);
+    const code    = trainer.addClient('ana', 'Ana');
+
+    trainer.assignProgram('ana', programFile('prog_v1', ['tplA', 'tplB']));
+    client.connect(code, { at: LINK_TS });
+    expect(Object.keys(client.state.programs)).toEqual(['prog_v1']);
+
+    // Entrena v1; el entrenador recibe sus sesiones.
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
+    client.upload();
+    trainer.pull('ana');
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2']);
+
+    // El entrenador reasigna a v2 y lo sube; el cliente lo adopta.
+    trainer.assignProgram('ana', programFile('prog_v2', ['tplC', 'tplD']));
+    client.syncProgram();
+    expect(client.state.clientSync.trainerProgramIds).toEqual(['prog_v1', 'prog_v2']);
+
+    // Entrena v2; el historial previo (v1) sigue en alcance, no se pierde.
+    client.logSession(session('s3', 'tplC', LINK_TS + 5 * DAY));
+    client.upload();
+    expect(trainer.pull('ana')).toBe(1); // solo s3 es nuevo
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2', 's3']);
+  });
+});
+
+describe('Fase 2 — importar programa (replace / replace_log / merge_log)', () => {
+  // Cliente con v1 asignado y una sesión ya en el historial del entrenador.
+  function clientWithV1() {
+    const db      = new FakeTrainerClients();
+    const trainer = makeTrainer(db);
+    trainer.addClient('ana', 'Ana');
+    trainer.assignProgram('ana', programFile('prog_v1', ['tplA', 'tplB']));
+    trainer.state.clientLogs.ana = [session('h1', 'tplA', LINK_TS + DAY)];
+    return { trainer };
+  }
+
+  test('replace activa el programa entrante aunque su id difiera; el anterior se archiva', () => {
+    const { trainer } = clientWithV1();
+    trainer.importProgram('ana', programFile('prog_v2', ['tplC', 'tplD']), 'replace');
+    const ana = trainer.state.clients.ana;
+    expect(ana.activeProgramId).toBe('prog_v2');
+    expect(archivedProgramIds(ana)).toEqual(['prog_v1']);
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['h1']); // historial intacto
+  });
+
+  test('replace_log activa el entrante y fusiona su historial', () => {
+    const { trainer } = clientWithV1();
+    const file = programFile('prog_v2', ['tplC', 'tplD']);
+    file.workoutLog = [session('h2', 'tplC', LINK_TS + 3 * DAY)];
+    trainer.importProgram('ana', file, 'replace_log');
+    expect(trainer.state.clients.ana.activeProgramId).toBe('prog_v2');
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['h1', 'h2']);
+  });
+
+  test('merge_log solo añade sesiones, sin cambiar el programa activo', () => {
+    const { trainer } = clientWithV1();
+    const file = programFile('prog_v2', ['tplC', 'tplD']);
+    file.workoutLog = [session('h2', 'tplC', LINK_TS + 3 * DAY)];
+    trainer.importProgram('ana', file, 'merge_log');
+    expect(trainer.state.clients.ana.activeProgramId).toBe('prog_v1'); // sin cambios
+    expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['h1', 'h2']);
   });
 });
 

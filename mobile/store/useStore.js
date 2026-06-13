@@ -37,6 +37,7 @@ import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
+import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -468,12 +469,14 @@ export const useStore = create(
       },
 
       setClientActiveProgram: (clientId, programId) => {
+        // Assigning makes the program active (archiving the previous one) and
+        // marks it dirty so the trainer pushes it. Deassigning clears both.
         set((s) => ({
           clients: {
             ...s.clients,
-            // Assigning a (different) program marks it dirty — trainer needs to push it to the client.
-            // Deassigning (programId === null) clears dirty.
-            [clientId]: { ...s.clients[clientId], activeProgramId: programId, programDirty: programId !== null },
+            [clientId]: programId === null
+              ? deassignProgram(s.clients[clientId])
+              : assignActiveProgram(s.clients[clientId], programId),
           },
         }));
       },
@@ -586,24 +589,14 @@ export const useStore = create(
         if (mode === 'replace' || mode === 'replace_log') {
           if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
           const programId = data.program.id;
-          set((s) => {
-            const existingIds = s.clients[clientId].programIds ?? [];
-            return {
-              programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
-              sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
-              userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
-              customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
-              clients: {
-                ...s.clients,
-                [clientId]: {
-                  ...s.clients[clientId],
-                  programIds: existingIds.includes(programId) ? existingIds : [programId, ...existingIds],
-                  activeProgramId: programId,
-                  programDirty: true,
-                },
-              },
-            };
-          });
+          set((s) => ({
+            programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
+            sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
+            userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
+            customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
+            // Incoming program becomes active; the previous active is archived.
+            clients: { ...s.clients, [clientId]: assignActiveProgram(s.clients[clientId], programId) },
+          }));
           // Entries from a client file belong to that client's log, not the trainer's
           if (mode === 'replace_log' && data.workoutLog?.length) {
             set((s) => ({

@@ -1295,7 +1295,7 @@ function ClientListCard({
                 </View>
               ) : (
                 <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                  stroke={colors.text} strokeWidth={3} strokeLinecap="round">
                   <Path d="M18 20V10M12 20V4M6 20v-6" />
                 </Svg>
               )}
