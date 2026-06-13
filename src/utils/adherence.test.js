@@ -78,6 +78,38 @@ describe('computeAdherence — weekly figures', () => {
   });
 });
 
+describe('computeAdherence — recentPerWeek (real pace)', () => {
+  test('averages the last completed weeks, ignoring the in-progress one', () => {
+    // 2 per completed week across 4 weeks; this week's sessions are ignored.
+    const sessions = [
+      s(0), s(1),         // this week (excluded from the average)
+      s(7), s(8),         // last completed week
+      s(14), s(15),       // 2 weeks ago
+      s(21), s(22),       // 3 weeks ago
+      s(28), s(29),       // 4 weeks ago
+    ];
+    const r = computeAdherence({ sessions, sessionsPerCycle: 2, now: NOW });
+    expect(r.recentPerWeek).toBe(2);
+  });
+
+  test('a slowing client shows a pace below target', () => {
+    // One session per completed week across 4 weeks → avg 1 on a 2×/week plan.
+    const sessions = [s(8), s(15), s(22), s(29)];
+    const r = computeAdherence({ sessions, sessionsPerCycle: 2, now: NOW });
+    expect(r.recentPerWeek).toBe(1);
+  });
+
+  test('brand-new client (only this week) falls back to the current week', () => {
+    const r = computeAdherence({ sessions: [s(0), s(1)], sessionsPerCycle: 2, now: NOW });
+    expect(r.recentPerWeek).toBe(2);
+  });
+
+  test('no history → zero pace', () => {
+    const r = computeAdherence({ sessions: [], sessionsPerCycle: 2, now: NOW });
+    expect(r.recentPerWeek).toBe(0);
+  });
+});
+
 describe('requiresAttention', () => {
   test('at risk and slipping require attention; the rest do not', () => {
     expect(requiresAttention(STATUS.AT_RISK)).toBe(true);

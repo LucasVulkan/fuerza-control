@@ -579,26 +579,33 @@ export const useStore = create(
           if (collides) data = reidProgramFile(data);
         }
 
-        if (mode === 'replace') {
-          if (data.program) {
-            const programId = data.program.id;
-            const alreadyLinked = (client.programIds ?? []).includes(programId);
-            set((s) => ({
+        // 'replace'     → incoming program becomes the client's ACTIVE program
+        //                 (the previous active stays in programIds = archived).
+        //                 Works even when the incoming id differs from the active.
+        // 'replace_log' → same, plus merges the file's sessions into the log.
+        if (mode === 'replace' || mode === 'replace_log') {
+          if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
+          const programId = data.program.id;
+          set((s) => {
+            const existingIds = s.clients[clientId].programIds ?? [];
+            return {
               programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
               sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
               userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
               customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
-              clients: alreadyLinked ? s.clients : {
+              clients: {
                 ...s.clients,
                 [clientId]: {
                   ...s.clients[clientId],
-                  programIds: [...(s.clients[clientId].programIds ?? []), programId],
+                  programIds: existingIds.includes(programId) ? existingIds : [programId, ...existingIds],
+                  activeProgramId: programId,
+                  programDirty: true,
                 },
               },
-            }));
-          }
+            };
+          });
           // Entries from a client file belong to that client's log, not the trainer's
-          if (data.workoutLog?.length) {
+          if (mode === 'replace_log' && data.workoutLog?.length) {
             set((s) => ({
               clientLogs: {
                 ...s.clientLogs,
@@ -606,24 +613,7 @@ export const useStore = create(
               },
             }));
           }
-          get().showToast('Programa actualizado');
-        } else if (mode === 'add_program') {
-          if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
-          const programId = data.program.id;
-          set((s) => ({
-            programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
-            sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
-            userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
-            customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
-            clients: {
-              ...s.clients,
-              [clientId]: {
-                ...s.clients[clientId],
-                programIds: [...new Set([...(s.clients[clientId].programIds ?? []), programId])],
-              },
-            },
-          }));
-          get().showToast('Programa enviado al cliente');
+          get().showToast(mode === 'replace_log' ? 'Programa e historial actualizados' : 'Programa actualizado');
         } else if (mode === 'merge_log') {
           const existing   = get().clientLogs[clientId] ?? [];
           const merged     = mergeClientLog(existing, data.workoutLog);
@@ -676,6 +666,7 @@ export const useStore = create(
           ui: { ...s.ui, _editingProgramId: programId },
         }));
         get().navigate('programEditor');
+        return programId;
       },
 
       // ══════════════════════════════════════════════════════════════════════

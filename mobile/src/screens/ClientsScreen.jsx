@@ -82,11 +82,11 @@ function HeaderIcon({ d, size = 14, active = false }) {
 
 function ShareIcon({ size = 18, color = colors.muted }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
-      <Path
-        d="M12 36V60C12 61.5913 12.6321 63.1174 13.7574 64.2426C14.8826 65.3679 16.4087 66 18 66H54C55.5913 66 57.1174 65.3679 58.2426 64.2426C59.3679 63.1174 60 61.5913 60 60V36M24 18L36 6L48 18M36 6L36 45"
-        stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-      />
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="6"  cy="12" r="3" stroke={color} strokeWidth={1.8} />
+      <Circle cx="18" cy="6"  r="3" stroke={color} strokeWidth={1.8} />
+      <Circle cx="18" cy="18" r="3" stroke={color} strokeWidth={1.8} />
+      <Path d="M8.7 10.7l6.6 -3.4M8.7 13.3l6.6 3.4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -361,7 +361,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
           <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
             {[
               { mode: 'replace',     label: t('clients.importModal.replaceLabel'),     desc: t('clients.importModal.replaceDesc') },
-              { mode: 'add_program', label: t('clients.importModal.addProgramLabel'),  desc: t('clients.importModal.addProgramDesc') },
+              { mode: 'replace_log', label: t('clients.importModal.replaceLogLabel'),  desc: t('clients.importModal.replaceLogDesc') },
               { mode: 'merge_log',   label: t('clients.importModal.mergeLogLabel'),    desc: t('clients.importModal.mergeLogDesc') },
             ].map(({ mode, label, desc }) => (
               <TouchableOpacity
@@ -382,74 +382,157 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
   );
 }
 
-// ── Program card (programs tab) ────────────────────────────────────────────────
+// ── Small icons for program rows ───────────────────────────────────────────────
 
-function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeassign, onView, onEdit, onShare, onExport, onDelete, onUpload }) {
-  const { t } = useTranslation();
+function EyeIcon({ size = 18, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.7} />
+    </Svg>
+  );
+}
+function DownloadIcon({ size = 18, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3v12M8 11l4 4 4-4M5 21h14" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// ── Active program hero (programs tab) ──────────────────────────────────────────
+// The one active program gets a rich card: where the client is in the mesocycle,
+// the next session in the rotation (deep-links to the prescription editor), the
+// real training pace, and the last/total session counts.
+
+function ActiveProgramHero({
+  program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount,
+  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete,
+}) {
+  const { t, i18n } = useTranslation();
+  const isEs = i18n.language?.startsWith('es');
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ── Mesocycle position ──
+  const stages       = program.stages ?? [];
+  const hasStages    = stages.length > 0;
+  const stageIdx     = program.currentStageIndex ?? 0;
+  const currentStage = hasStages ? stages[stageIdx] : null;
+  const currentDays  = hasStages ? (currentStage?.days ?? []) : (program.days ?? []);
+  const sessPerCycle = Math.max(1, currentDays.length);
+  const done         = program.stageSessionsCompleted ?? 0;
+
+  // ── Next session in the rotation ──
+  const nextDay   = currentDays[done % sessPerCycle];
+  const nextTpl   = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
+  const nextLabel = nextTpl?.label ?? String.fromCharCode(65 + (done % sessPerCycle));
+  const nextName  = nextTpl?.name ?? '';
+
+  // ── Stage progress bar (multi-stage with a defined length) ──
+  const stageWeeks    = currentStage?.durationWeeks ?? null;
+  const threshold     = stageWeeks ? stageWeeks * sessPerCycle : null;
+  const weekInStage   = stageWeeks ? Math.min(stageWeeks, Math.floor(done / sessPerCycle) + 1) : null;
+  const stageProgress = threshold ? Math.min(1, done / threshold) : null;
+  const showStageBar  = stages.length > 1;
+
+  // ── Real pace ──
+  const paceTarget  = adherence?.weekTarget ?? sessPerCycle;
+  const paceRaw     = adherence?.recentPerWeek ?? 0;
+  const paceHasData = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
+  const paceRounded = Math.round(paceRaw * 2) / 2;
+  const paceRateStr = Number.isInteger(paceRounded)
+    ? String(paceRounded)
+    : paceRounded.toFixed(1).replace('.', isEs ? ',' : '.');
+  const streak = adherence?.streak ?? 0;
+
   const lastStr = lastActivity
-    ? new Date(lastActivity).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+    ? new Date(lastActivity).toLocaleDateString(isEs ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short' })
     : null;
 
-  const dayCount   = getAllProgramDays(program).length;
-  const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
-
-  const structureStr = stageCount
-    ? `${stageCount} etapas · ${dayCount} días/ciclo`
-    : dayCount > 0 ? `${dayCount} días/ciclo` : null;
-
-  // 3rd button state machine
-  // dirty = program assigned but not yet pushed to cloud → show "↑ Subir"
-  // !dirty + active = already synced → show "✓ Asignado"
-  const assignBtn = isActive
-    ? dirty
-      ? { label: '↑ Subir', extraStyle: styles.cBtnPrimary, extraTextStyle: styles.cBtnTextPrimary, onPress: onUpload }
-      : { label: '✓ Asignado', extraStyle: styles.cBtnAssignActive, extraTextStyle: styles.cBtnTextAssignActive, onPress: null }
-    : { label: t('clients.newProgramModal.assignBtn'), extraStyle: null, extraTextStyle: null, onPress: onAssign };
-
   return (
-    <View style={[styles.progCard, isActive && styles.progCardActive]}>
+    <View style={[styles.progCard, styles.heroCard]}>
 
-      {/* Top: name + structure + share icon */}
+      {/* Name + ACTIVO badge + share */}
       <View style={styles.progCardTop}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.progCardNameRow}>
-            <Text style={styles.progCardName} numberOfLines={1}>{program.name}</Text>
-            {isActive && (
-              <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>ACTIVO</Text>
-              </View>
-            )}
+            <Text style={styles.heroName} numberOfLines={1}>{program.name}</Text>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>ACTIVO</Text>
+            </View>
           </View>
-          {structureStr && (
-            <Text style={styles.progCardStructure}>{structureStr}</Text>
-          )}
-          {lastStr && (
-            <Text style={styles.progCardLastSession}>Última sesión: {lastStr}</Text>
-          )}
         </View>
-        {/* Share icon — top right, like 🔑 on client cards */}
         <TouchableOpacity style={styles.cIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
           <ShareIcon />
         </TouchableOpacity>
       </View>
 
-      {/* Actions: Ver · Editar · [Asignar|✓ Asignado|↑ Subir] · ⋯ */}
+      {/* Mesocycle position */}
+      {showStageBar ? (
+        <View style={styles.heroStage}>
+          <View style={styles.heroStageRow}>
+            <Text style={styles.heroStageLabel}>{t('clients.stagePos', { idx: stageIdx + 1, total: stages.length })}</Text>
+            {weekInStage != null && (
+              <Text style={styles.heroStageMeta}>{t('clients.stageWeek', { week: weekInStage, weeks: stageWeeks })}</Text>
+            )}
+          </View>
+          {stageProgress != null && (
+            <View style={styles.heroBar}>
+              <View style={[styles.heroBarFill, { width: `${Math.round(stageProgress * 100)}%` }]} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <Text style={styles.heroStageMeta}>{t('clients.cycleDays', { count: sessPerCycle })}</Text>
+      )}
+
+      {/* Next session in the rotation → prescription editor */}
+      <TouchableOpacity style={styles.heroNext} onPress={onPrescribe} activeOpacity={0.85}>
+        <TargetIcon size={20} color={colors.blue} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.heroNextLabel}>{t('clients.nextInCycle')}</Text>
+          <Text style={styles.heroNextVal} numberOfLines={1}>
+            {nextLabel}{nextName ? ` · ${nextName}` : ''}
+          </Text>
+        </View>
+        <Text style={styles.heroPrepare}>{t('clients.prepare')} →</Text>
+      </TouchableOpacity>
+
+      {/* Real pace + streak */}
+      <View style={styles.heroMetaLine}>
+        <Text style={styles.heroMetaText}>
+          {paceHasData
+            ? t('clients.weekPace', { rate: paceRateStr, target: paceTarget })
+            : t('clients.weekPaceNoData', { target: paceTarget })}
+        </Text>
+        {streak > 0 && (
+          <Text style={styles.heroStreak}>{' · '}{t('clients.streakWeeks', { count: streak })}</Text>
+        )}
+      </View>
+
+      {/* Last + total */}
+      <Text style={styles.heroSubMeta}>
+        {lastStr ? t('clients.lastSessionDate', { date: lastStr }) : t('clients.noSessionsYet')}
+        {sessionCount > 0 ? ` · ${t('clients.totalSessions', { count: sessionCount })}` : ''}
+      </Text>
+
+      {/* Actions: Ver · Editar · [Subir|Asignado] · ⋯ */}
       <View style={styles.progCardActions}>
         <TouchableOpacity style={styles.cBtnSecondary} onPress={onView} activeOpacity={0.85}>
-          <Text style={styles.cBtnText}>Ver</Text>
+          <Text style={styles.cBtnText}>{t('clients.view')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cBtnSecondary} onPress={onEdit} activeOpacity={0.85}>
-          <Text style={styles.cBtnText}>Editar</Text>
+          <Text style={styles.cBtnText}>{t('clients.edit')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.cBtnSecondary, assignBtn.extraStyle]}
-          onPress={assignBtn.onPress ?? undefined}
-          activeOpacity={assignBtn.onPress ? 0.85 : 1}
-        >
-          <Text style={[styles.cBtnText, assignBtn.extraTextStyle]}>{assignBtn.label}</Text>
-        </TouchableOpacity>
+        {dirty ? (
+          <TouchableOpacity style={[styles.cBtnSecondary, styles.cBtnPrimary]} onPress={onUpload} activeOpacity={0.85}>
+            <Text style={[styles.cBtnText, styles.cBtnTextPrimary]}>↑ {t('clients.upload')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.cBtnSecondary, styles.cBtnAssignActive]}>
+            <Text style={[styles.cBtnText, styles.cBtnTextAssignActive]}>✓ {t('clients.assigned')}</Text>
+          </View>
+        )}
         <TouchableOpacity style={styles.cBtnIcon} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
           <Text style={styles.cBtnIconText}>⋯</Text>
         </TouchableOpacity>
@@ -461,19 +544,68 @@ function ProgramCard({ program, isActive, dirty, lastActivity, onAssign, onDeass
         <View style={styles.contextMenu}>
           {onUpload && (
             <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onUpload(); }}>
-              <Text style={styles.contextMenuText}>📤 Subir a cliente</Text>
+              <Text style={styles.contextMenuText}>📤 {t('clients.menuUpload')}</Text>
             </TouchableOpacity>
           )}
-          {isActive && onDeassign && (
+          {onDeassign && (
             <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDeassign(); }}>
-              <Text style={styles.contextMenuText}>Quitar asignación</Text>
+              <Text style={styles.contextMenuText}>{t('clients.menuDeassign')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
-            <Text style={styles.contextMenuText}>Exportar</Text>
+            <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
-            <Text style={[styles.contextMenuText, { color: colors.red }]}>Eliminar programa</Text>
+            <Text style={[styles.contextMenuText, { color: colors.red }]}>{t('clients.menuDelete')}</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ── Archived (previous) program row — compact ───────────────────────────────────
+
+function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExport, onReactivate, onDelete }) {
+  const { t, i18n } = useTranslation();
+  const isEs = i18n.language?.startsWith('es');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const lastStr = lastActivity
+    ? new Date(lastActivity).toLocaleDateString(isEs ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+  const meta = [
+    sessionCount > 0 ? t('clients.programSessions', { count: sessionCount }) : t('clients.noSessionsYet'),
+    lastStr,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <View style={styles.archRow}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.archName} numberOfLines={1}>{program.name}</Text>
+        <Text style={styles.archMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+      <TouchableOpacity onPress={onView} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
+        <EyeIcon size={17} color={colors.muted2} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onExport} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
+        <DownloadIcon size={17} color={colors.muted2} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
+        <Text style={styles.archDots}>⋯</Text>
+      </TouchableOpacity>
+
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
+        <View style={styles.contextMenu}>
+          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onReactivate(); }}>
+            <Text style={[styles.contextMenuText, { color: colors.accent }]}>{t('clients.menuReactivate')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
+            <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
+            <Text style={[styles.contextMenuText, { color: colors.red }]}>{t('clients.menuDelete')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -1028,7 +1160,7 @@ function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const programDirty = client.programDirty ?? false;
   const showDirty    = isConnected && programDirty;
   // Unsent next-session prescriptions (incl. a failed send) → blue upload button.
@@ -1056,6 +1188,19 @@ function ClientListCard({
     : 0;
   const weekNum        = weeksTraining ?? 1;
 
+  // Real training pace (avg sessions/week) vs target — replaces the redundant
+  // "X de Y esta semana" line, which only repeated what the cycle dots show.
+  const paceTarget   = adherence?.weekTarget ?? sessPerCycle;
+  const paceRaw      = adherence?.recentPerWeek ?? 0;
+  const paceRounded  = Math.round(paceRaw * 2) / 2; // nearest 0.5
+  const paceHasData  = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
+  const paceRateStr  = Number.isInteger(paceRounded)
+    ? String(paceRounded)
+    : paceRounded.toFixed(1).replace('.', i18n.language?.startsWith('es') ? ',' : '.');
+  // Flag when the real pace falls below target so the trainer notices a slowdown
+  // even before adherence flips to slipping/at-risk.
+  const paceBehind   = paceHasData && paceRounded < paceTarget;
+
   // Status dot color
   const dotColor = showDirty ? colors.orange : colors.green;
 
@@ -1080,8 +1225,7 @@ function ClientListCard({
       </View>
 
       {activeProgram ? (
-        <>
-        {/* ── Program block: column layout so name spans full card width ── */}
+        /* ── Program block: column layout so name spans full card width ── */
         <View style={styles.cProgramBlock}>
           {/* Row 2: Status dot · Program name (full width) */}
           <View style={styles.cRow2}>
@@ -1105,13 +1249,16 @@ function ClientListCard({
             </Text>
           </View>
 
-          {/* Row 3: Weekly compliance (active clients) — falls back to program
-              meta for paused/inactive or clients without history yet. */}
+          {/* Row 3: Real training pace (avg sessions/week) vs target. Tinted
+              orange when below target, red/orange when adherence needs attention. */}
           <Text style={[
             styles.cProgMeta,
+            paceBehind && { color: colors.orange },
             adherence && requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
           ]}>
-            {t('clients.weekCompliance', { done: adherence?.weekDone ?? 0, target: adherence?.weekTarget ?? sessPerCycle })}
+            {paceHasData
+              ? t('clients.weekPace', { rate: paceRateStr, target: paceTarget })
+              : t('clients.weekPaceNoData', { target: paceTarget })}
           </Text>
 
           {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
@@ -1124,42 +1271,40 @@ function ClientListCard({
               ))}
             </View>
           </View>
-        </View>
 
-        {/* Button: absolute bottom-right of the CARD so it stays anchored even
-            when a tag row is added below the program block. */}
-        {showDirty ? (
-          <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-            <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-          </TouchableOpacity>
-        ) : showOverrideDirty ? (
-          <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
-            <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
-            onPress={onViewProgress}
-            activeOpacity={0.85}
-          >
-            {newSessionsCount > 0 ? (
-              <View style={styles.sessionsBadge}>
-                <Text style={styles.sessionsBadgeText}>
-                  {newSessionsCount > 99 ? '99+' : newSessionsCount}
-                </Text>
-              </View>
-            ) : (
-              <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                <Path d="M18 20V10M12 20V4M6 20v-6" />
-              </Svg>
-            )}
-            <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
-              {t('clients.btnViewProgress')}
-            </Text>
-          </TouchableOpacity>
-        )}
-        </>
+          {/* Button: absolute bottom-right of the program block. */}
+          {showDirty ? (
+            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+            </TouchableOpacity>
+          ) : showOverrideDirty ? (
+            <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
+              <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
+              onPress={onViewProgress}
+              activeOpacity={0.85}
+            >
+              {newSessionsCount > 0 ? (
+                <View style={styles.sessionsBadge}>
+                  <Text style={styles.sessionsBadgeText}>
+                    {newSessionsCount > 99 ? '99+' : newSessionsCount}
+                  </Text>
+                </View>
+              ) : (
+                <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                  <Path d="M18 20V10M12 20V4M6 20v-6" />
+                </Svg>
+              )}
+              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
+                {t('clients.btnViewProgress')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       ) : (
         /* ── No program state ── */
         <View style={styles.cNoProgramRow}>
@@ -1216,6 +1361,7 @@ export default function ClientsScreen() {
   const deleteProgram          = useStore((s) => s.deleteProgram);
   const setEditingProgram      = useStore((s) => s.setEditingProgram);
   const setPrintingProgram     = useStore((s) => s.setPrintingProgram);
+  const getEffectiveTemplate   = useStore((s) => s.getEffectiveTemplate);
   const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
   const shareSpecificProgram   = useStore((s) => s.shareSpecificProgram);
   const setClientActiveProgram = useStore((s) => s.setClientActiveProgram);
@@ -1305,6 +1451,7 @@ export default function ClientsScreen() {
 
   // Detail - programs tab
   const [showNewProgram,   setShowNewProgram]   = useState(false);
+  const [showPrevious,     setShowPrevious]     = useState(false);
 
   // Detail - history / progress filters
   const [scopeFilter,   setScopeFilter]   = useState('active');
@@ -1607,21 +1754,42 @@ export default function ClientsScreen() {
     );
   }
 
+  // The model keeps exactly one active program per client: assigning a new one
+  // replaces and archives the current. Warn before that happens.
+  function confirmReplaceActive(onConfirm) {
+    const hasActive = selectedClient?.activeProgramId && programs[selectedClient.activeProgramId];
+    if (!hasActive) { onConfirm(); return; }
+    Alert.alert(
+      t('clients.replaceActiveTitle'),
+      t('clients.replaceActiveConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('clients.replaceActiveConfirmBtn'), onPress: onConfirm },
+      ],
+    );
+  }
+
   function handleCreateProgram(programName, numSessions) {
     if (!selectedClientId) return;
-    createProgramForClient(selectedClientId, numSessions, programName);
     setShowNewProgram(false);
+    confirmReplaceActive(() => {
+      const newId = createProgramForClient(selectedClientId, numSessions, programName);
+      if (newId) setClientActiveProgram(selectedClientId, newId);
+    });
   }
 
   function handleCreateFromTemplate(templateId, customName) {
     if (!selectedClientId) return;
-    const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? t('clients.programFallback');
-    cloneProgramFromTemplate(templateId, {
-      mode: 'managed',
-      clientId: selectedClientId,
-      name: customName.trim() || srcName,
-    });
     setShowNewProgram(false);
+    const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? t('clients.programFallback');
+    confirmReplaceActive(() => {
+      const newId = cloneProgramFromTemplate(templateId, {
+        mode: 'managed',
+        clientId: selectedClientId,
+        name: customName.trim() || srcName,
+      });
+      if (newId) setClientActiveProgram(selectedClientId, newId);
+    });
   }
 
   async function handleImportPick() {
@@ -1802,49 +1970,99 @@ export default function ClientsScreen() {
         </View>
 
         {/* ── Tab: Programas ── */}
-        {activeTab === 'programs' && (
-          <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
-            {clientPrograms.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyBody}>Sin programas. Pulsa ＋ para añadir uno.</Text>
-              </View>
-            ) : clientPrograms.map((program) => {
-              const progIsActive = selectedClient.activeProgramId === program.id;
-              const syncEnabled  = trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId;
-              const doUpload = async () => {
-                try {
-                  await uploadProgramToClient(selectedClientId, program.id);
-                  showToast('Programa enviado', 2200, 'success');
-                } catch (err) {
-                  Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
-                }
-              };
-              return (
-              <ProgramCard
-                key={program.id}
-                program={program}
-                isActive={progIsActive}
-                dirty={progIsActive && (selectedClient.programDirty ?? false)}
-                lastActivity={getLastActivity(program)}
-                onAssign={async () => {
+        {activeTab === 'programs' && (() => {
+          const activeProgram    = clientPrograms.find((p) => p.id === selectedClient.activeProgramId) ?? null;
+          const previousPrograms = clientPrograms.filter((p) => p.id !== selectedClient.activeProgramId);
+          const syncEnabled      = trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId;
+
+          const uploadProgram = async (programId) => {
+            try {
+              await uploadProgramToClient(selectedClientId, programId);
+              showToast(t('clients.programSent'), 2200, 'success');
+            } catch (err) {
+              Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+            }
+          };
+          const confirmDelete = (program) => Alert.alert(
+            t('clients.deleteProgramTitle'),
+            t('clients.deleteProgramConfirm', { name: program.name }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('clients.menuDelete'), style: 'destructive', onPress: () => deleteProgram(program.id, false) },
+            ],
+          );
+          // Reactivating an archived program replaces the active one (the model
+          // keeps exactly one active) — confirm before the swap.
+          const reactivate = (program) => Alert.alert(
+            t('clients.reactivateTitle'),
+            t('clients.reactivateConfirm', { name: program.name }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('clients.menuReactivate'), onPress: async () => {
                   setClientActiveProgram(selectedClientId, program.id);
-                  if (syncEnabled) await doUpload();
-                }}
-                onDeassign={() => setClientActiveProgram(selectedClientId, null)}
-                onView={() => setPrintingProgram(program.id)}
-                onEdit={() => setEditingProgram(program.id)}
-                onShare={() => shareSpecificProgram(program.id, true)}
-                onExport={() => exportSpecificProgram(program.id, true)}
-                onUpload={syncEnabled ? doUpload : undefined}
-                onDelete={() => Alert.alert('Eliminar programa', `¿Eliminar "${program.name}"?`, [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Eliminar', style: 'destructive', onPress: () => deleteProgram(program.id, false) },
-                ])}
-              />
-              );
-            })}
-          </ScrollView>
-        )}
+                  if (syncEnabled) await uploadProgram(program.id);
+                } },
+            ],
+          );
+
+          return (
+            <ScrollView contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+              {clientPrograms.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyBody}>{t('clients.noProgramsHint')}</Text>
+                </View>
+              ) : (
+                <>
+                  {activeProgram ? (
+                    <ActiveProgramHero
+                      program={activeProgram}
+                      getEffectiveTemplate={getEffectiveTemplate}
+                      adherence={adherenceByClient[selectedClientId]}
+                      dirty={selectedClient.programDirty ?? false}
+                      lastActivity={getLastActivity(activeProgram)}
+                      sessionCount={getSessionCount(activeProgram)}
+                      onView={() => setPrintingProgram(activeProgram.id)}
+                      onEdit={() => setEditingProgram(activeProgram.id)}
+                      onUpload={syncEnabled ? () => uploadProgram(activeProgram.id) : undefined}
+                      onPrescribe={() => navigation.navigate('NextSession', { clientId: selectedClientId })}
+                      onShare={() => shareSpecificProgram(activeProgram.id, true)}
+                      onExport={() => exportSpecificProgram(activeProgram.id, true)}
+                      onDeassign={() => setClientActiveProgram(selectedClientId, null)}
+                      onDelete={() => confirmDelete(activeProgram)}
+                    />
+                  ) : (
+                    <View style={styles.noActiveBox}>
+                      <Text style={styles.noActiveTitle}>{t('clients.noActiveProgram')}</Text>
+                      <Text style={styles.noActiveSub}>{t('clients.noActiveProgramHint')}</Text>
+                    </View>
+                  )}
+
+                  {previousPrograms.length > 0 && (
+                    <View style={styles.archSection}>
+                      <TouchableOpacity style={styles.archHeader} onPress={() => setShowPrevious((v) => !v)} activeOpacity={0.7}>
+                        <Text style={styles.archChevron}>{showPrevious ? '▾' : '▸'}</Text>
+                        <Text style={styles.archHeaderLabel}>{t('clients.previousPrograms')}</Text>
+                        <View style={styles.archCount}><Text style={styles.archCountText}>{previousPrograms.length}</Text></View>
+                      </TouchableOpacity>
+                      {showPrevious && previousPrograms.map((program) => (
+                        <ArchivedProgramRow
+                          key={program.id}
+                          program={program}
+                          lastActivity={getLastActivity(program)}
+                          sessionCount={getSessionCount(program)}
+                          onView={() => setPrintingProgram(program.id)}
+                          onExport={() => exportSpecificProgram(program.id, true)}
+                          onReactivate={() => reactivate(program)}
+                          onDelete={() => confirmDelete(program)}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+          );
+        })()}
 
         {/* ── Tab: Historial ── */}
         {activeTab === 'history' && (
@@ -3683,8 +3901,8 @@ const styles = StyleSheet.create({
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
     position:          'absolute',
-    bottom:            spacing.md,
-    right:             spacing.md,
+    bottom:            0,
+    right:             0,
   },
   cBtnOutlineText: {
     fontSize:   typography.base,
@@ -3714,8 +3932,8 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     backgroundColor:   colors.orange,
     position:          'absolute',
-    bottom:            spacing.md,
-    right:             spacing.md,
+    bottom:            0,
+    right:             0,
   },
   cBtnOrangeText: {
     fontSize:   typography.base,
@@ -3728,8 +3946,8 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     backgroundColor:   colors.blue,
     position:          'absolute',
-    bottom:            spacing.md,
-    right:             spacing.md,
+    bottom:            0,
+    right:             0,
   },
   cBtnOverrideText: {
     fontSize:   typography.base,
@@ -3780,7 +3998,6 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
     marginTop:     -spacing.xs,   // pull the tags closer to the block above
     marginBottom:  -2,            // trim the space below the tags
-    paddingRight:  92,            // reserve room for the absolute card button
   },
   cTagPill: {
     borderWidth:       borders.thin,
@@ -4128,6 +4345,170 @@ const styles = StyleSheet.create({
   progCardActionDivider: {
     width:           1,
     backgroundColor: colors.border,
+  },
+
+  // ── Active program hero ──
+  heroCard: {
+    borderColor: `${colors.accent}40`,
+    gap:         spacing.md - 2,
+  },
+  heroName: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      colors.text,
+  },
+  heroStage: {
+    gap: spacing.xs,
+  },
+  heroStageRow: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+  },
+  heroStageLabel: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  heroStageMeta: {
+    fontSize: typography.sm,
+    color:    colors.muted2,
+  },
+  heroBar: {
+    height:          5,
+    borderRadius:    radius.full,
+    backgroundColor: colors.surface2,
+    overflow:        'hidden',
+  },
+  heroBarFill: {
+    height:          '100%',
+    backgroundColor: colors.accent,
+    borderRadius:    radius.full,
+  },
+  heroNext: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.sm,
+    padding:         spacing.sm + 2,
+    borderRadius:    radius.md,
+    backgroundColor: withOpacity(colors.blue, 0.10),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(colors.blue, 0.30),
+  },
+  heroNextLabel: {
+    fontSize: typography.xs,
+    color:    withOpacity(colors.blue, 0.85),
+  },
+  heroNextVal: {
+    fontSize:   typography.md,
+    fontWeight: typography.medium,
+    color:      colors.text,
+    marginTop:  1,
+  },
+  heroPrepare: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.blue,
+  },
+  heroMetaLine: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    flexWrap:      'wrap',
+  },
+  heroMetaText: {
+    fontSize: typography.sm,
+    color:    colors.muted,
+  },
+  heroStreak: {
+    fontSize: typography.sm,
+    color:    colors.orange,
+  },
+  heroSubMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted2,
+    marginTop: -spacing.xs + 1,
+  },
+
+  // ── No active program ──
+  noActiveBox: {
+    padding:         spacing.lg,
+    borderRadius:    radius.lg,
+    borderWidth:     borders.thin,
+    borderColor:     colors.borderCard,
+    backgroundColor: colors.surface,
+    alignItems:      'center',
+    gap:             spacing.xs,
+  },
+  noActiveTitle: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      colors.muted,
+  },
+  noActiveSub: {
+    fontSize: typography.xs,
+    color:    colors.muted2,
+  },
+
+  // ── Previous (archived) programs ──
+  archSection: {
+    marginTop: spacing.sm,
+    gap:       spacing.sm,
+  },
+  archHeader: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  archChevron: {
+    fontSize: typography.sm,
+    color:    colors.muted2,
+    width:    14,
+  },
+  archHeaderLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.medium,
+    color:         colors.muted,
+    letterSpacing: 0.5,
+  },
+  archCount: {
+    backgroundColor:   colors.surface2,
+    borderRadius:      radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   1,
+  },
+  archCountText: {
+    fontSize: typography.xs,
+    color:    colors.muted2,
+  },
+  archRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:    radius.md,
+    borderWidth:     borders.thin,
+    borderColor:     colors.border,
+    backgroundColor: `${colors.surface}80`,
+  },
+  archName: {
+    fontSize: typography.base,
+    color:    colors.muted,
+  },
+  archMeta: {
+    fontSize:  typography.xs,
+    color:     colors.muted2,
+    marginTop: 2,
+  },
+  archIcon: {
+    padding: spacing.xs,
+  },
+  archDots: {
+    fontSize:  typography.base,
+    color:     colors.muted2,
+    width:     18,
+    textAlign: 'center',
   },
 
   // ── Session card ──

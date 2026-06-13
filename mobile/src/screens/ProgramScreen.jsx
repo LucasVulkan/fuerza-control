@@ -294,6 +294,7 @@ export default function ProgramScreen() {
   const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
   const deleteProgram            = useStore((s) => s.deleteProgram);
   const setEditingProgram        = useStore((s) => s.setEditingProgram);
+  const setClientActiveProgram   = useStore((s) => s.setClientActiveProgram);
   const setPrintingProgram       = useStore((s) => s.setPrintingProgram);
   const exportSpecificProgram    = useStore((s) => s.exportSpecificProgram);
   const shareSpecificProgram     = useStore((s) => s.shareSpecificProgram);
@@ -328,15 +329,34 @@ export default function ProgramScreen() {
 
   function handleAssignToClient(clientId, programName) {
     if (!assignTarget) return;
-    const newId = cloneProgramFromTemplate(assignTarget, {
-      mode: 'managed', clientId, name: programName,
-    });
-    if (newId) {
-      setEditingProgram(newId);
-      showToast(t('templates.toastAssigned'), 2200, 'success');
+    const doAssign = () => {
+      const newId = cloneProgramFromTemplate(assignTarget, {
+        mode: 'managed', clientId, name: programName,
+      });
+      if (newId) {
+        // Assigning replaces the client's active program (the previous one is
+        // archived automatically by staying in programIds but losing active).
+        setClientActiveProgram(clientId, newId);
+        setEditingProgram(newId);
+        showToast(t('templates.toastAssigned'), 2200, 'success');
+      }
+      setShowAssign(false);
+      setAssignTarget(null);
+    };
+    const targetClient = clients[clientId];
+    const hasActive = targetClient?.activeProgramId && programs[targetClient.activeProgramId];
+    if (hasActive) {
+      Alert.alert(
+        t('clients.replaceActiveTitle'),
+        t('clients.replaceActiveConfirm'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('clients.replaceActiveConfirmBtn'), onPress: doAssign },
+        ],
+      );
+    } else {
+      doAssign();
     }
-    setShowAssign(false);
-    setAssignTarget(null);
   }
 
   function handleDelete(programId) {

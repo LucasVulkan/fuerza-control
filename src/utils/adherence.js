@@ -49,6 +49,32 @@ function weeklyStreak(timestamps, target, now) {
   return streak;
 }
 
+/**
+ * Average sessions per week over the last `window` *completed* weeks (the
+ * current in-progress week is excluded so a Monday morning doesn't make a
+ * steady client look like they've slowed down). Falls back to the current
+ * week for brand-new clients who only have this week's data.
+ *
+ * This is the client's REAL training pace — distinct from the program's cycle
+ * progress (the dots) and from this-week's raw count.
+ */
+function recentWeeklyAverage(timestamps, now, window = 4) {
+  if (!timestamps.length) return 0;
+  const counts  = countByWeek(timestamps);
+  const firstWs = startOfWeek(timestamps[0]);
+  let ws = startOfWeek(startOfWeek(now) - DAY); // last completed week
+  let total = 0;
+  let weeks = 0;
+  while (weeks < window && ws >= firstWs) {
+    total += counts.get(ws) ?? 0;
+    weeks += 1;
+    ws = startOfWeek(ws - DAY);
+  }
+  // Only the current (in-progress) week exists — use it so the line isn't 0.
+  if (weeks === 0) return counts.get(startOfWeek(now)) ?? 0;
+  return total / weeks;
+}
+
 /** Adherence procedural status values. */
 export const STATUS = {
   ON_TRACK: 'on_track',
@@ -78,7 +104,8 @@ export function requiresAttention(status) {
  * @param {number}   [args.now]              Injectable clock for tests.
  * @returns {{
  *   status: string, daysSince: number|null,
- *   weekDone: number, weekTarget: number, streak: number,
+ *   weekDone: number, weekTarget: number,
+ *   recentPerWeek: number, streak: number,
  * }}
  */
 export function computeAdherence({
@@ -96,7 +123,8 @@ export function computeAdherence({
   const weekDone   = stamps.filter((ts) => ts >= startOfWeek(now)).length;
   const lastTs     = stamps.length ? stamps[stamps.length - 1] : null;
   const daysSince  = lastTs != null ? Math.floor((now - lastTs) / DAY) : null;
-  const base       = { daysSince, weekDone, weekTarget: target, streak: 0 };
+  const perWeek    = recentWeeklyAverage(stamps, now);
+  const base       = { daysSince, weekDone, weekTarget: target, recentPerWeek: perWeek, streak: 0 };
 
   // Manual pause/inactive silences adherence entirely.
   if (manualStatus === 'paused' || manualStatus === 'inactive') {
