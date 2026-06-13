@@ -3675,7 +3675,7 @@ const styles = StyleSheet.create({
     gap:               spacing.xs + 1,
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm + 2,
+    borderRadius:      radius.md,
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
@@ -3708,7 +3708,7 @@ const styles = StyleSheet.create({
   cBtnOrange: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm + 2,
+    borderRadius:      radius.md,
     backgroundColor:   colors.orange,
     position:          'absolute',
     bottom:            0,
@@ -3722,7 +3722,7 @@ const styles = StyleSheet.create({
   cBtnOverride: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm + 2,
+    borderRadius:      radius.md,
     backgroundColor:   colors.blue,
     position:          'absolute',
     bottom:            0,
@@ -3736,7 +3736,7 @@ const styles = StyleSheet.create({
   cBtnAccent: {
     paddingHorizontal: spacing.md + 4,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm + 2,
+    borderRadius:      radius.md,
     backgroundColor:   colors.accent,
     flexShrink:        0,
   },
@@ -3775,18 +3775,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap:      'wrap',
     gap:           spacing.xs,
+    marginTop:     -spacing.xs,   // pull the tags closer to the block above
+    marginBottom:  -2,            // trim the space below the tags
   },
   cTagPill: {
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
     borderRadius:      radius.full,
     paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
+    paddingVertical:   1,
   },
   cTagPillText: {
-    fontSize:   typography.xs,
+    fontSize:   9,
     color:      colors.muted,
-    fontWeight: typography.medium,
+    fontWeight: typography.regular,
   },
 
   // Legacy stubs — kept so detail view still compiles
