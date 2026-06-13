@@ -37,6 +37,7 @@ import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
+import { consumeOverride } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -216,6 +217,7 @@ export const useStore = create(
         pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
         trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
         linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
+        pendingOverrides:      {},    // { [templateId]: override } — trainer's next-session prescriptions, consumed on save
       },
 
       // Static references (not persisted)
@@ -1504,6 +1506,13 @@ export const useStore = create(
           workoutLog: [...s.workoutLog, logEntry],
           activeSession: INITIAL_ACTIVE_SESSION,
           ui: { ...s.ui, homeTab: 'session' },
+          // Consume the trainer's one-off prescription for this session, if any.
+          ...(s.clientSync.pendingOverrides?.[activeSession.templateId] ? {
+            clientSync: {
+              ...s.clientSync,
+              pendingOverrides: consumeOverride(s.clientSync.pendingOverrides, activeSession.templateId),
+            },
+          } : {}),
           ...(stageUpdate ? {
             programs: {
               ...s.programs,
@@ -2266,6 +2275,46 @@ export const useStore = create(
         }));
       },
 
+      // ── Next-session overrides (trainer side) ──────────────────────────────
+      // A one-off prescription for the NEXT occurrence of a client's session.
+      // Stored on the client; delivered to the client and consumed there later.
+      setOverrideTarget: (clientId, templateId, exerciseId, patch) => {
+        set((s) => {
+          const client = s.clients[clientId];
+          if (!client) return {};
+          const overrides = { ...(client.nextOverrides ?? {}) };
+          const ov = overrides[templateId] ?? {
+            templateId, createdAt: new Date().toISOString(), exercises: {},
+          };
+          const exMap  = { ...(ov.exercises ?? {}) };
+          const merged = { ...(exMap[exerciseId] ?? {}), ...patch };
+          // Drop blank fields so an empty entry doesn't linger.
+          Object.keys(merged).forEach((k) => {
+            if (merged[k] == null || merged[k] === '') delete merged[k];
+          });
+          if (Object.keys(merged).length === 0) delete exMap[exerciseId];
+          else exMap[exerciseId] = merged;
+
+          if (Object.keys(exMap).length === 0) delete overrides[templateId];
+          else overrides[templateId] = { ...ov, exercises: exMap };
+
+          return { clients: { ...s.clients, [clientId]: { ...client, nextOverrides: overrides } } };
+        });
+      },
+
+      clearOverride: (clientId, templateId) => {
+        set((s) => {
+          const client = s.clients[clientId];
+          if (!client) return {};
+          return {
+            clients: {
+              ...s.clients,
+              [clientId]: { ...client, nextOverrides: consumeOverride(client.nextOverrides, templateId) },
+            },
+          };
+        });
+      },
+
       /**
        * Downloads and merges a client's workout history from Supabase.
        * Uses the existing mergeWorkoutLog logic to avoid duplicates.
@@ -2653,7 +2702,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -2946,6 +2995,9 @@ export const useStore = create(
             });
           }
         }
+
+        // Default the next-session overrides map on older persisted state.
+        if (state.clientSync && !state.clientSync.pendingOverrides) state.clientSync.pendingOverrides = {};
 
         // Migrate string tags → tagRegistry IDs
         if (!state.tagRegistry) state.tagRegistry = [];
