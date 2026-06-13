@@ -78,6 +78,8 @@
     "archive": "Archive",
     "week": "Week",
     "sessions": "Sessions",
+    "connections": "Connections",
+    "restOfCycle": "Rest of the cycle",
     "weekProgress": "Week {{current}} of {{total}}",
     "stageDefault": "Stage {{n}}",
     "currentStageDefault": "the current stage",

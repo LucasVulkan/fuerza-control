@@ -157,40 +157,39 @@ function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onC
   const weekLabel = String(weekNum).padStart(2, '0');
 
   if (stageInfo) {
-    // ── With stages: stage card (left) + week card (right) ──
+    // ── With stages: unified card — week number (left) + stage progress (right) ──
     return (
-      <View style={styles.progressHeader}>
+      <View style={styles.cpCard}>
 
-        {/* Stage card */}
-        <View style={[styles.phCard, styles.phStage]}>
-          <View style={styles.phStageRow1}>
-            <Text style={styles.phStageLabel}>{stageInfo.stageLabel}</Text>
+        {/* Week number — the one stat that leads */}
+        <View style={styles.cpWeekCol}>
+          <Text style={styles.cpWeekNum}>{weekLabel}</Text>
+          <Text style={styles.cpWeekLabel}>{t('home.week')}</Text>
+        </View>
+
+        <View style={styles.cpDivider} />
+
+        {/* Stage name + menu, progress bar, week-in-stage + cycle dots */}
+        <View style={styles.cpRight}>
+          <View style={styles.cpRightTop}>
+            <Text style={styles.cpStageName} numberOfLines={1}>
+              {stageInfo.stageName}
+              <Text style={styles.cpStageLabel}>{`  ·  ${stageInfo.stageLabel}`}</Text>
+            </Text>
             <TouchableOpacity
               onPress={onChangeStage}
               hitSlop={{ top: 8, bottom: 8, left: 12, right: 4 }}
             >
-              <Text style={styles.phStageMenu}>···</Text>
+              <Text style={styles.cpMenu}>···</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.phStageName} numberOfLines={1}>
-            {stageInfo.stageName}
-          </Text>
-          <Text style={styles.phStageWeek}>
-            {t('home.weekProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
-          </Text>
-          <View style={styles.phBar}>
-            <View
-              style={[styles.phBarFill, { width: `${Math.round(stageInfo.progressRatio * 100)}%` }]}
-            />
+          <View style={styles.cpBar}>
+            <View style={[styles.cpBarFill, { width: `${Math.round(stageInfo.progressRatio * 100)}%` }]} />
           </View>
-        </View>
-
-        {/* Week card */}
-        <View style={[styles.phCard, styles.phWeekSq]}>
-          <Text style={styles.phWkTop}>{t('home.week')}</Text>
-          <Text style={styles.phWkNum}>{weekLabel}</Text>
-          <View style={styles.phWeekBottom}>
-            <Text style={styles.phWkSes}>{t('home.sessions')}</Text>
+          <View style={styles.cpRightBottom}>
+            <Text style={styles.cpWeekInStage}>
+              {t('home.weekProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
+            </Text>
             <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
           </View>
         </View>
@@ -302,7 +301,7 @@ function CompactSessionCard({ template, lastSession, status, orderNum, onPress, 
       </View>
       <View style={styles.cmpInfo}>
         <View style={styles.cmpTitleRow}>
-          <Text style={styles.cmpTitle} numberOfLines={1}>
+          <Text style={[styles.cmpTitle, { color: accent }]} numberOfLines={1}>
             {`${template?.label ?? ''} · ${template?.name ?? ''}`}
           </Text>
           {hasOverride && (
@@ -486,6 +485,27 @@ function PencilIcon({ size = 14, color }) {
   );
 }
 
+function BarbellIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 9v6M20 9v6M7 6.5v11M17 6.5v11M7 12h10" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// ── Section header ──────────────────────────────────────────────────────────────
+// SESIONES carries an icon (the training core); PROGRAMA/CONEXIONES are text-only,
+// muted — the hierarchy comes from the icon, the colour and the divider above.
+
+function SectionHeader({ label, icon, muted }) {
+  return (
+    <View style={styles.secHeader}>
+      {icon}
+      <Text style={[styles.secHeaderLabel, muted && styles.secHeaderLabelMuted]}>{label}</Text>
+    </View>
+  );
+}
+
 // ── HomeScreen ─────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -627,44 +647,45 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Session cards: hero (next / in progress) first, the rest compact */}
-              {(() => {
-                const days = currentDays
-                  .map(({ sessionTemplateId }, dayIndex) => ({
-                    templateId:  sessionTemplateId,
-                    template:    getEffectiveTemplate(sessionTemplateId),
-                    lastSession: getLastSession(sessionTemplateId),
-                    status:      getSessionStatus(dayIndex, doneInCycle, activeSession?.templateId, sessionTemplateId),
-                    orderNum:    dayIndex + 1,
-                  }))
-                  .filter((d) => d.template);
+              {/* ── SESIONES ── (hero + pending sessions + free session) */}
+              <View style={styles.section}>
+                <SectionHeader
+                  icon={<BarbellIcon size={14} color={colors.accent} />}
+                  label={t('home.sessions').toUpperCase()}
+                />
+                {(() => {
+                  const days = currentDays
+                    .map(({ sessionTemplateId }, dayIndex) => ({
+                      templateId:  sessionTemplateId,
+                      template:    getEffectiveTemplate(sessionTemplateId),
+                      lastSession: getLastSession(sessionTemplateId),
+                      status:      getSessionStatus(dayIndex, doneInCycle, activeSession?.templateId, sessionTemplateId),
+                      orderNum:    dayIndex + 1,
+                    }))
+                    .filter((d) => d.template);
 
-                const hero = days.find((d) => d.status === 'active')
-                          ?? days.find((d) => d.status === 'next');
-                const rest = days.filter((d) => d !== hero);
+                  const hero = days.find((d) => d.status === 'active')
+                            ?? days.find((d) => d.status === 'next');
+                  const rest = days.filter((d) => d !== hero);
 
-                // Starting a session out of rotation is easy to do by accident —
-                // compact rows confirm before starting.
-                const confirmStart = (d) => {
-                  Alert.alert(
-                    t('home.startOutOfOrderTitle', {
-                      label: t('workout.sessionLabel', { label: d.template.label ?? '' }),
-                    }),
-                    t('home.startOutOfOrderDesc'),
-                    [
-                      { text: t('common.cancel'), style: 'cancel' },
-                      { text: t('home.btnStart'), onPress: () => startSession(d.templateId) },
-                    ],
-                  );
-                };
+                  // Starting a session out of rotation is easy to do by accident —
+                  // compact rows confirm before starting.
+                  const confirmStart = (d) => {
+                    Alert.alert(
+                      t('home.startOutOfOrderTitle', {
+                        label: t('workout.sessionLabel', { label: d.template.label ?? '' }),
+                      }),
+                      t('home.startOutOfOrderDesc'),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('home.btnStart'), onPress: () => startSession(d.templateId) },
+                      ],
+                    );
+                  };
 
-                return (
-                  <View style={styles.sesList}>
-                    {hero && (
-                      <>
-                        <Text style={styles.secLabel}>
-                          {(hero.status === 'active' ? t('home.sessionActiveNow') : t('home.nextWorkout')).toUpperCase()}
-                        </Text>
+                  return (
+                    <View style={styles.sesList}>
+                      {hero && (
                         <HeroSessionCard
                           template={hero.template}
                           lastSession={hero.lastSession}
@@ -678,62 +699,68 @@ export default function HomeScreen() {
                               : () => startSession(hero.templateId)
                           }
                         />
-                      </>
-                    )}
-                    {rest.map((d) => (
-                      <CompactSessionCard
-                        key={d.templateId}
-                        template={d.template}
-                        lastSession={d.lastSession}
-                        status={d.status === 'done' ? 'done' : 'pending'}
-                        orderNum={d.orderNum}
-                        hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
-                        onPress={() => confirmStart(d)}
-                      />
-                    ))}
-                  </View>
-                );
-              })()}
+                      )}
+                      {rest.length > 0 && (
+                        <Text style={styles.subLabel}>{t('home.restOfCycle').toUpperCase()}</Text>
+                      )}
+                      {rest.map((d) => (
+                        <CompactSessionCard
+                          key={d.templateId}
+                          template={d.template}
+                          lastSession={d.lastSession}
+                          status={d.status === 'done' ? 'done' : 'pending'}
+                          orderNum={d.orderNum}
+                          hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
+                          onPress={() => confirmStart(d)}
+                        />
+                      ))}
+                    </View>
+                  );
+                })()}
 
-              {/* Sesión libre */}
-              <TouchableOpacity
-                style={styles.freeSessionBtn}
-                onPress={
-                  activeSession.templateId === '__free__'
-                    ? () => navigation.navigate('Workout')
-                    : startFreeSession
-                }
-                activeOpacity={0.75}
-                accessibilityRole="button"
-              >
-                <Text style={styles.freeSessionBtnText}>
-                  {activeSession.templateId === '__free__'
-                    ? t('freeSession.btnContinue')
-                    : t('freeSession.btn')}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Program actions */}
-              <View style={styles.programActions}>
-                <ProgramBtn
-                  label={t('home.viewProgram')}
-                  icon={<EyeIcon size={14} color={colors.mutedLight} />}
-                  onPress={() => navigate('programPrint')}
-                />
-                <ProgramBtn
-                  label={t('home.edit')}
-                  icon={<PencilIcon size={14} color={colors.mutedLight} />}
-                  onPress={() => navigate('programEditor')}
-                />
+                {/* Sesión libre */}
                 <TouchableOpacity
-                  style={styles.programBtnMore}
-                  onPress={() => setArchiveOpen(true)}
-                  activeOpacity={0.7}
+                  style={styles.freeSessionBtn}
+                  onPress={
+                    activeSession.templateId === '__free__'
+                      ? () => navigation.navigate('Workout')
+                      : startFreeSession
+                  }
+                  activeOpacity={0.75}
                   accessibilityRole="button"
-                  accessibilityLabel={t('home.moreOptions')}
                 >
-                  <Text style={styles.programBtnMoreText}>···</Text>
+                  <Text style={styles.freeSessionBtnText}>
+                    {activeSession.templateId === '__free__'
+                      ? t('freeSession.btnContinue')
+                      : t('freeSession.btn')}
+                  </Text>
                 </TouchableOpacity>
+              </View>
+
+              {/* ── PROGRAMA ── */}
+              <View style={styles.section}>
+                <SectionHeader label={t('home.program').toUpperCase()} muted />
+                <View style={styles.programActions}>
+                  <ProgramBtn
+                    label={t('home.viewProgram')}
+                    icon={<EyeIcon size={14} color={colors.mutedLight} />}
+                    onPress={() => navigate('programPrint')}
+                  />
+                  <ProgramBtn
+                    label={t('home.edit')}
+                    icon={<PencilIcon size={14} color={colors.mutedLight} />}
+                    onPress={() => navigate('programEditor')}
+                  />
+                  <TouchableOpacity
+                    style={styles.programBtnMore}
+                    onPress={() => setArchiveOpen(true)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('home.moreOptions')}
+                  >
+                    <Text style={styles.programBtnMoreText}>···</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </>
           );
@@ -767,7 +794,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Conexiones (Drive + Entrenador) — solo destacan si necesitan atención ── */}
+        {/* ── CONEXIONES (Drive + Entrenador) — solo destacan si necesitan atención ── */}
+        <View style={styles.section}>
+        <SectionHeader label={t('home.connections').toUpperCase()} muted />
         <View style={styles.statusCards}>
 
           {/* Drive */}
@@ -807,6 +836,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
         </View>
+        </View>
       </ScrollView>
 
       {/* Modals */}
@@ -845,6 +875,121 @@ const styles = StyleSheet.create({
     padding:       spacing.xl,
     paddingBottom: spacing.xxl * 2,
     gap:           spacing.lg,
+  },
+
+  // ── Section structure (Sesiones / Programa / Conexiones) ──────────────────────
+  section: {
+    gap: spacing.sm,
+  },
+  secHeader: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+  },
+  secHeaderLabel: {
+    fontSize:      11,
+    fontWeight:    typography.semibold,
+    letterSpacing: 1.5,
+    color:         colors.muted,
+    textTransform: 'uppercase',
+  },
+  secHeaderLabelMuted: {
+    color: colors.muted2,
+  },
+  subLabel: {
+    fontSize:      10,
+    fontWeight:    typography.medium,
+    letterSpacing: 1,
+    color:         colors.muted2,
+    paddingLeft:   2,
+    marginTop:     5,
+    marginBottom:  -1,
+  },
+
+  // ── Stage/week header (C+) ────────────────────────────────────────────────────
+  cpCard: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.md,
+    backgroundColor: '#101010',
+    borderWidth:     borders.thin,
+    borderColor:     '#242424',
+    borderRadius:    radius.md,
+    paddingVertical: 13,
+    paddingHorizontal: spacing.md + 2,
+  },
+  cpWeekCol: {
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  cpWeekNum: {
+    fontSize:      26,
+    fontWeight:    typography.bold,
+    color:         colors.text,
+    lineHeight:    26,
+    letterSpacing: -1,
+  },
+  cpWeekLabel: {
+    fontSize:      9,
+    fontWeight:    typography.semibold,
+    letterSpacing: 1,
+    color:         colors.muted2,
+    marginTop:     3,
+    textTransform: 'uppercase',
+  },
+  cpDivider: {
+    width:           1,
+    alignSelf:       'stretch',
+    backgroundColor: '#242424',
+  },
+  cpRight: {
+    flex:     1,
+    minWidth: 0,
+  },
+  cpRightTop: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'baseline',
+    marginBottom:   8,
+  },
+  cpStageName: {
+    flexShrink: 1,
+    fontSize:   13,
+    fontWeight: typography.medium,
+    color:      colors.text,
+  },
+  cpStageLabel: {
+    fontSize:   11,
+    fontWeight: typography.regular,
+    color:      colors.muted2,
+  },
+  cpMenu: {
+    fontSize:      16,
+    color:         colors.muted,
+    lineHeight:    16,
+    letterSpacing: 1,
+    paddingLeft:   spacing.sm,
+  },
+  cpBar: {
+    height:          4,
+    backgroundColor: colors.border,
+    borderRadius:    2,
+    overflow:        'hidden',
+    marginBottom:    6,
+  },
+  cpBarFill: {
+    height:          '100%',
+    backgroundColor: colors.accent,
+    borderRadius:    2,
+  },
+  cpRightBottom: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+  },
+  cpWeekInStage: {
+    fontSize: 11,
+    color:    colors.muted2,
   },
 
   // ── Program label ────────────────────────────────────────────────────────────
@@ -1105,8 +1250,8 @@ const styles = StyleSheet.create({
     color:    colors.mutedLight,
   },
   heroName: {
-    fontSize:     18,
-    fontWeight:   typography.heavy,
+    fontSize:     17,
+    fontWeight:   typography.bold,
     color:        colors.text,
     marginBottom: 3,
   },
