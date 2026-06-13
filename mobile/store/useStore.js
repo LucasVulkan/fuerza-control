@@ -1446,6 +1446,9 @@ export const useStore = create(
 
         if (exercises.length === 0) return { ok: false, error: 'Sin datos registrados' };
 
+        // Tag the entry if the trainer had prescribed targets for this session.
+        const wasAdapted = !!get().clientSync.pendingOverrides?.[activeSession.templateId];
+
         const logEntry = {
           id: generateId('log'),
           sessionTemplateId: activeSession.templateId,
@@ -1454,6 +1457,7 @@ export const useStore = create(
           duration: activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
           bodyWeight: null,
+          ...(wasAdapted ? { adapted: true } : {}),
           exercises: [
             ...exercises,
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({

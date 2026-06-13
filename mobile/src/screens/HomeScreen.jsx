@@ -234,7 +234,7 @@ function exercisePreview(template, allExercises, language, count) {
 }
 
 /** Featured card for the next (or in-progress) session — the main CTA of the home. */
-function HeroSessionCard({ template, lastSession, allExercises, status, onPress, language }) {
+function HeroSessionCard({ template, lastSession, allExercises, status, onPress, language, hasOverride }) {
   const { t }  = useTranslation();
   const accent = resolveColor(template?.color ?? 'var(--day1)');
   const exerciseNames = exercisePreview(template, allExercises, language, 3);
@@ -253,9 +253,14 @@ function HeroSessionCard({ template, lastSession, allExercises, status, onPress,
       accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
     >
       <View style={styles.heroTop}>
-        <Text style={[styles.heroTag, { color: accent }]}>
-          {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
-        </Text>
+        <View style={styles.heroTagRow}>
+          <Text style={[styles.heroTag, { color: accent }]}>
+            {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
+          </Text>
+          {hasOverride && (
+            <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
+          )}
+        </View>
         <Text style={[styles.heroTime, isActive && { color: colors.accent }]}>{timeText}</Text>
       </View>
       <Text style={styles.heroName} numberOfLines={1}>{template?.name ?? ''}</Text>
@@ -272,7 +277,7 @@ function HeroSessionCard({ template, lastSession, allExercises, status, onPress,
 }
 
 /** Compact row for the rest of the cycle: done sessions dimmed, pending neutral. */
-function CompactSessionCard({ template, lastSession, status, orderNum, onPress }) {
+function CompactSessionCard({ template, lastSession, status, orderNum, onPress, hasOverride }) {
   const { t }  = useTranslation();
   const accent = resolveColor(template?.color ?? 'var(--day1)');
   const done   = status === 'done';
@@ -296,9 +301,14 @@ function CompactSessionCard({ template, lastSession, status, orderNum, onPress }
           : <Text style={styles.cmpOrder}>{orderNum}</Text>}
       </View>
       <View style={styles.cmpInfo}>
-        <Text style={styles.cmpTitle} numberOfLines={1}>
-          {`${template?.label ?? ''} · ${template?.name ?? ''}`}
-        </Text>
+        <View style={styles.cmpTitleRow}>
+          <Text style={styles.cmpTitle} numberOfLines={1}>
+            {`${template?.label ?? ''} · ${template?.name ?? ''}`}
+          </Text>
+          {hasOverride && (
+            <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
+          )}
+        </View>
         <Text style={styles.cmpMeta} numberOfLines={1}>{meta}</Text>
       </View>
       <View style={styles.cmpBtn}>
@@ -661,6 +671,7 @@ export default function HomeScreen() {
                           allExercises={allExercises}
                           status={hero.status}
                           language={i18n.language}
+                          hasOverride={!!clientSync.pendingOverrides?.[hero.templateId]}
                           onPress={
                             hero.status === 'active'
                               ? () => navigation.navigate('Workout')
@@ -676,6 +687,7 @@ export default function HomeScreen() {
                         lastSession={d.lastSession}
                         status={d.status === 'done' ? 'done' : 'pending'}
                         orderNum={d.orderNum}
+                        hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
                         onPress={() => confirmStart(d)}
                       />
                     ))}
@@ -1058,6 +1070,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems:     'center',
     marginBottom:   2,
+  },
+  heroTagRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    flexShrink:    1,
+  },
+  cmpTitleRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  adaptedChip: {
+    backgroundColor:   withOpacity(colors.blue, 0.14),
+    borderRadius:      radius.full,
+    paddingHorizontal: 7,
+    paddingVertical:   1,
+    flexShrink:        0,
+  },
+  adaptedChipText: {
+    fontSize:      9,
+    fontWeight:    typography.bold,
+    color:         colors.blue,
+    letterSpacing: 0.5,
   },
   heroTag: {
     fontSize:      12,

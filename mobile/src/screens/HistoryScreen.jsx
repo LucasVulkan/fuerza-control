@@ -343,6 +343,11 @@ function SessionCard({ session, onDelete }) {
                 <Text style={styles.noteTagText}>NOTA</Text>
               </View>
             )}
+            {session.adapted && (
+              <View style={styles.adaptedTag}>
+                <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -779,6 +784,20 @@ const styles = StyleSheet.create({
     fontSize:      8,
     fontWeight:    typography.bold,
     color:         colors.accent,
+    letterSpacing: 0.5,
+  },
+  adaptedTag: {
+    backgroundColor:   withOpacity(colors.blue, 0.1),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.blue, 0.3),
+    borderRadius:      3,
+    paddingHorizontal: 5,
+    paddingVertical:   1,
+  },
+  adaptedTagText: {
+    fontSize:      8,
+    fontWeight:    typography.bold,
+    color:         colors.blue,
     letterSpacing: 0.5,
   },
   cardHeaderRight: {
