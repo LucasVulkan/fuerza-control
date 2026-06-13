@@ -572,7 +572,7 @@ function MiniLineChart({ data, metricLabel }) {
                   })}
                 </Svg>
               </Animated.View>
-              <Svg style={StyleSheet.absoluteFill} width={svgW} height={CHART_H} onPress={handlePress}>
+              <Svg style={StyleSheet.absoluteFill} width={svgW} height={CHART_H} pointerEvents="none">
                 {pts.map((p) => {
                   const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
                   return (
@@ -592,6 +592,9 @@ function MiniLineChart({ data, metricLabel }) {
                   </G>
                 )}
               </Svg>
+              {/* Tap layer for point selection — a Pressable (not Svg onPress) so
+                  vertical drags are released to the parent ScrollView and scroll. */}
+              <Pressable style={StyleSheet.absoluteFill} onPress={handlePress} />
             </View>
           </ScrollView>
         )}
