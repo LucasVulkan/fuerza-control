@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
+import { resolveExerciseReference } from '../../../../src/utils/sessionOverride';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
 
 // ── Progression chip colors ────────────────────────────────────────────────────
@@ -86,12 +87,16 @@ export default function ExerciseCard({
   trainerName,
   clientNote,
   onClientNoteChange,
+  overrideEx,
 }) {
   const { t, i18n } = useTranslation();
   const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
+  // Coach next-session prescription (one-off): blue target ghosts + chip + note.
+  const hasCoachTarget = !!(overrideEx && (overrideEx.weight != null || overrideEx.reps != null));
+  const coachNote = overrideEx?.note?.trim() || null;
   // RPE column (opt-in per exercise from the program editor)
   const trackRpe = !!exConfig.trackRpe;
   const [noteExpanded, setNoteExpanded] = useState(false);
@@ -394,12 +399,19 @@ export default function ExerciseCard({
             </View>
           </View>
 
-          {/* Progression chip */}
-          {progression?.msg ? (
+          {/* Progression chip — hidden when the trainer set an explicit target */}
+          {!hasCoachTarget && progression?.msg ? (
             <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderColor: chipStyle.border }]}>
               <Text style={[styles.chipText, { color: chipStyle.text }]}>
                 {progression.icon}  {progression.msg}
               </Text>
+            </View>
+          ) : null}
+
+          {/* Coach target chip (next-session prescription) */}
+          {hasCoachTarget ? (
+            <View style={[styles.chip, styles.coachChip]}>
+              <Text style={[styles.chipText, { color: colors.blue }]}>◎  {t('workout.coachTarget')}</Text>
             </View>
           ) : null}
 
@@ -415,6 +427,17 @@ export default function ExerciseCard({
                 {trainerNote}
               </Text>
             </TouchableOpacity>
+          ) : null}
+
+          {/* Coach one-off note (this session) — additive with the program note */}
+          {coachNote ? (
+            <View style={styles.coachNote}>
+              <Text style={styles.coachNoteText}>
+                {trainerName ? <Text style={styles.coachNoteName}>{trainerName}: </Text> : null}
+                {coachNote}
+                <Text style={styles.coachNoteTag}>{`  · ${t('workout.thisSession')}`}</Text>
+              </Text>
+            </View>
           ) : null}
 
           {/* Column headers */}
@@ -457,6 +480,16 @@ export default function ExerciseCard({
               const prevTime = lastSet?.time != null && lastSet?.time !== ''
                 ? String(lastSet.time) : '';
 
+              // Trainer target (if any) wins over the last-session reference and
+              // renders blue; otherwise the grey last-session ghost stays.
+              const coachWeightDisp = overrideEx?.weight != null && overrideEx?.weight !== ''
+                ? String(toDisplay(overrideEx.weight)) : undefined;
+              const ref = resolveExerciseReference(
+                { weight: coachWeightDisp, reps: overrideEx?.reps },
+                prevWeightDisplay,
+                prevReps,
+              );
+
               return (
                 <SetRow
                   key={i}
@@ -478,9 +511,11 @@ export default function ExerciseCard({
                       ? String(toDisplay(set.weight))
                       : ''
                   }
-                  prevWeightDisplay={prevWeightDisplay}
-                  prevReps={prevReps}
+                  prevWeightDisplay={ref.weight.value}
+                  prevReps={ref.reps.value}
                   prevTime={prevTime}
+                  prevWeightSource={ref.weight.source}
+                  prevRepsSource={ref.reps.source}
                   weightScrollStep={weightScrollStep}
                   showHint={i === hintSetIndex}
                   onWeightChange={(v) => {
@@ -496,21 +531,26 @@ export default function ExerciseCard({
                     if (v !== '' && i >= hintSetIndex) setHintSetIndex(i + 1);
                   }}
                   onToggleDone={() => {
-                    if (!set.done && lastSet) {
+                    if (!set.done) {
                       const needsWeight = inputType === 'weight_reps' || inputType === 'weight_time';
                       const needsReps   = inputType === 'weight_reps' || inputType === 'reps';
                       const needsTime   = inputType === 'time'        || inputType === 'weight_time';
+                      // Coach target (kg) fills before the last-session value.
+                      const fillWeight = overrideEx?.weight != null && overrideEx?.weight !== ''
+                        ? overrideEx.weight : lastSet?.weight;
+                      const fillReps   = overrideEx?.reps != null && overrideEx?.reps !== ''
+                        ? overrideEx.reps : lastSet?.reps;
 
                       if (needsWeight && (set.weight === '' || set.weight == null)
-                          && lastSet.weight != null && lastSet.weight !== '') {
-                        onFieldChange(i, 'weight', String(lastSet.weight));
+                          && fillWeight != null && fillWeight !== '') {
+                        onFieldChange(i, 'weight', String(fillWeight));
                       }
                       if (needsReps && (set.reps === '' || set.reps == null)
-                          && lastSet.reps != null && lastSet.reps !== '') {
-                        onFieldChange(i, 'reps', String(lastSet.reps));
+                          && fillReps != null && fillReps !== '') {
+                        onFieldChange(i, 'reps', String(fillReps));
                       }
                       if (needsTime && (set.time === '' || set.time == null)
-                          && lastSet.time != null && lastSet.time !== '') {
+                          && lastSet?.time != null && lastSet.time !== '') {
                         onFieldChange(i, 'time', String(lastSet.time));
                       }
                     }
@@ -674,6 +714,34 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize:   typography.xs,
     fontWeight: typography.regular,
+  },
+  coachChip: {
+    backgroundColor: withOpacity(colors.blue, 0.1),
+    borderColor:     withOpacity(colors.blue, 0.3),
+  },
+
+  // Coach one-off note strip
+  coachNote: {
+    marginHorizontal:  spacing.md,
+    marginBottom:      spacing.sm,
+    backgroundColor:   withOpacity(colors.blue, 0.07),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.blue, 0.25),
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   5,
+  },
+  coachNoteText: {
+    fontSize:   typography.xs,
+    color:      colors.text,
+    lineHeight: 17,
+  },
+  coachNoteName: {
+    fontWeight: typography.bold,
+    color:      colors.blue,
+  },
+  coachNoteTag: {
+    color: colors.muted,
   },
 
   // Column headers

@@ -73,6 +73,7 @@ function TimerButton({ onTime }) {
 function InputCell({
   value,
   prevValue  = '',
+  prevSource = 'last',   // 'last' (grey ghost) | 'coach' (blue, trainer target)
   onChangeText,
   keyboardType,
   scrollStep = 1,
@@ -204,6 +205,10 @@ function InputCell({
   const dotIdx = renderStr.indexOf('.');
   const intStr = renderStr ? (dotIdx >= 0 ? renderStr.slice(0, dotIdx) : renderStr) : '';
   const decStr = dotIdx >= 0 ? renderStr.slice(dotIdx) : '';
+  // Ghost styling: grey for last-session reference, blue for a trainer target.
+  const ghostStyle = showPrev
+    ? (prevSource === 'coach' ? styles.valueTextCoach : styles.valueTextPrev)
+    : null;
 
   return (
     <View style={styles.inputCell} {...panResponder.panHandlers}>
@@ -213,13 +218,14 @@ function InputCell({
           styles.input,
           isDone && !scrollActive && styles.inputDone,
           showPrev && styles.inputPrev,
+          showPrev && prevSource === 'coach' && styles.inputCoach,
         ]}
       >
         {renderStr ? (
           <View style={styles.numRow}>
             <View style={styles.decPart} />
-            <Text style={[styles.valueText, showPrev && styles.valueTextPrev]}>{intStr}</Text>
-            <Text style={[styles.valueText, styles.decPart, showPrev && styles.valueTextPrev]} numberOfLines={1}>{decStr}</Text>
+            <Text style={[styles.valueText, ghostStyle]}>{intStr}</Text>
+            <Text style={[styles.valueText, styles.decPart, ghostStyle]} numberOfLines={1}>{decStr}</Text>
           </View>
         ) : (
           <Text style={styles.placeholder}>—</Text>
@@ -252,6 +258,8 @@ export default function SetRow({
   prevWeightDisplay,
   prevReps,
   prevTime,
+  prevWeightSource = 'last',
+  prevRepsSource   = 'last',
   onWeightChange,
   onRepsChange,
   onTimeChange,
@@ -279,6 +287,7 @@ export default function SetRow({
           <InputCell
             value={weightDisplay}
             prevValue={prevWeightDisplay ?? ''}
+            prevSource={prevWeightSource}
             onChangeText={onWeightChange}
             keyboardType="decimal-pad"
             scrollStep={weightScrollStep ?? 0.5}
@@ -288,6 +297,7 @@ export default function SetRow({
           <InputCell
             value={set.reps ?? ''}
             prevValue={prevReps ?? ''}
+            prevSource={prevRepsSource}
             onChangeText={onRepsChange}
             keyboardType="numeric"
             scrollStep={1}
@@ -302,6 +312,7 @@ export default function SetRow({
         <InputCell
           value={set.reps ?? ''}
           prevValue={prevReps ?? ''}
+          prevSource={prevRepsSource}
           onChangeText={onRepsChange}
           keyboardType="numeric"
           scrollStep={1}
@@ -332,6 +343,7 @@ export default function SetRow({
           <InputCell
             value={weightDisplay}
             prevValue={prevWeightDisplay ?? ''}
+            prevSource={prevWeightSource}
             onChangeText={onWeightChange}
             keyboardType="decimal-pad"
             scrollStep={weightScrollStep ?? 0.5}
@@ -438,6 +450,9 @@ const styles = StyleSheet.create({
   inputPrev: {
     borderColor: colors.borderCard,
   },
+  inputCoach: {
+    borderColor: withOpacity(colors.blue, 0.4),
+  },
 
   valueText: {
     fontSize:   typography.md,
@@ -447,6 +462,10 @@ const styles = StyleSheet.create({
   },
   valueTextPrev: {
     color:      colors.muted2,
+    fontWeight: typography.regular,
+  },
+  valueTextCoach: {
+    color:      colors.blue,
     fontWeight: typography.regular,
   },
   placeholder: {

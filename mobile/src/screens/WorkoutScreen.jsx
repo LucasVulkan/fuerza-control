@@ -178,6 +178,7 @@ export default function WorkoutScreen() {
   const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
   const customExercises    = useStore((s) => s.customExercises);
   const workoutLog         = useStore((s) => s.workoutLog);
+  const clientSync         = useStore((s) => s.clientSync);
   const restTimer          = useStore((s) => s.ui.restTimer);
 
   // Store actions
@@ -210,11 +211,15 @@ export default function WorkoutScreen() {
     .filter((e) => e.sessionTemplateId === activeSession.templateId)
     .sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
 
+  // Trainer's one-off prescription for this session (if any), keyed by exercise.
+  const sessionOverride = clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
+
   const exercises = (template?.exercises ?? []).map((exConfig) => ({
     exConfig,
     def:         allExercises[exConfig.exerciseId],
     setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
     lastExercise: lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
+    overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
   }));
 
   // Free session flag
@@ -320,13 +325,14 @@ export default function WorkoutScreen() {
             </View>
           )}
 
-          {exercises.map(({ exConfig, def, setsState, lastExercise }) => (
+          {exercises.map(({ exConfig, def, setsState, lastExercise, overrideEx }) => (
             <ExerciseCard
               key={exConfig.exerciseId}
               exConfig={exConfig}
               def={def}
               setsState={setsState}
               lastExercise={lastExercise}
+              overrideEx={overrideEx}
               onFieldChange={(setIdx, field, value) =>
                 updateSetField(exConfig.exerciseId, setIdx, field, value)
               }
