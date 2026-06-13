@@ -3675,7 +3675,7 @@ const styles = StyleSheet.create({
     gap:               spacing.xs + 1,
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm,
+    borderRadius:      radius.sm + 2,
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
@@ -3708,7 +3708,7 @@ const styles = StyleSheet.create({
   cBtnOrange: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm,
+    borderRadius:      radius.sm + 2,
     backgroundColor:   colors.orange,
     position:          'absolute',
     bottom:            0,
@@ -3722,7 +3722,7 @@ const styles = StyleSheet.create({
   cBtnOverride: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm,
+    borderRadius:      radius.sm + 2,
     backgroundColor:   colors.blue,
     position:          'absolute',
     bottom:            0,
@@ -3736,7 +3736,7 @@ const styles = StyleSheet.create({
   cBtnAccent: {
     paddingHorizontal: spacing.md + 4,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.sm,
+    borderRadius:      radius.sm + 2,
     backgroundColor:   colors.accent,
     flexShrink:        0,
   },
