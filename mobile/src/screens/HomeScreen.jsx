@@ -301,8 +301,9 @@ function CompactSessionCard({ template, lastSession, status, orderNum, onPress, 
       </View>
       <View style={styles.cmpInfo}>
         <View style={styles.cmpTitleRow}>
-          <Text style={[styles.cmpTitle, { color: accent }]} numberOfLines={1}>
-            {`${template?.label ?? ''} · ${template?.name ?? ''}`}
+          <Text style={styles.cmpTitle} numberOfLines={1}>
+            <Text style={{ color: accent }}>{template?.label ?? ''}</Text>
+            {` · ${template?.name ?? ''}`}
           </Text>
           {hasOverride && (
             <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
@@ -1251,7 +1252,7 @@ const styles = StyleSheet.create({
   },
   heroName: {
     fontSize:     17,
-    fontWeight:   typography.bold,
+    fontWeight:   typography.semibold,
     color:        colors.text,
     marginBottom: 3,
   },
