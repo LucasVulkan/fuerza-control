@@ -29,12 +29,30 @@ import TrainerSyncModal from '../components/TrainerSyncModal';
 import ProgressTab from '../components/stats/ProgressTab';
 import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
 import { summarizeSets } from '../../../src/utils/progression';
+import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function getAllProgramDays(p) {
   if (p?.stages?.length > 0) return p.stages.flatMap((st) => st.days ?? []);
   return p?.days ?? [];
+}
+
+/** Expected sessions per week = days in the program's CURRENT cycle (active stage). */
+function weeklyTarget(program) {
+  if (!program) return 0;
+  const hasStages = (program.stages?.length ?? 0) > 0;
+  const stageIdx  = program.currentStageIndex ?? 0;
+  const days = hasStages ? (program.stages[stageIdx]?.days ?? []) : (program.days ?? []);
+  return days.length;
+}
+
+/** Adherence procedural status → theme color. */
+function adherenceColor(status) {
+  if (status === STATUS.AT_RISK)  return colors.red;
+  if (status === STATUS.SLIPPING) return colors.orange;
+  if (status === STATUS.ON_TRACK) return colors.green;
+  return colors.muted; // no_data / muted
 }
 
 function parseImportFile(jsonString) {
@@ -896,9 +914,29 @@ function syncAgo(isoStr) {
 
 // ── Client list card ───────────────────────────────────────────────────────────
 
+/** Ephemeral filter pill that doubles as an attention counter. */
+function AttentionPill({ label, count, color, active, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[styles.attnPill, { backgroundColor: active ? color : withOpacity(color, 0.12) }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.attnPillText, { color: active ? colors.bg : color }]}>{label}</Text>
+      <View style={[styles.attnPillBadge, {
+        backgroundColor: active ? withOpacity(colors.bg, 0.25) : withOpacity(color, 0.2),
+      }]}>
+        <Text style={[styles.attnPillBadgeText, { color: active ? colors.bg : color }]}>{count}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo, newSessionsCount = 0,
+  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo, newSessionsCount = 0,
 }) {
   const { t } = useTranslation();
   const programDirty = client.programDirty ?? false;
@@ -933,10 +971,18 @@ function ClientListCard({
   return (
     <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
 
-      {/* ── Row 1: Name · date · Info → ── */}
+      {/* ── Row 1: Name · streak · date · Info → ── */}
       <View style={styles.cRow1}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
-        <Text style={styles.cDate}>{lastStr}</Text>
+        {adherence?.streak >= 2 && (
+          <Text style={styles.cStreak}>{t('clients.streakWeeks', { count: adherence.streak })}</Text>
+        )}
+        <Text style={[
+          styles.cDate,
+          adherence && requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
+        ]}>
+          {lastStr}
+        </Text>
         <TouchableOpacity onPress={onGoInfo} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
           <Text style={styles.cInfoBtn}>Info →</Text>
         </TouchableOpacity>
@@ -967,10 +1013,20 @@ function ClientListCard({
             </Text>
           </View>
 
-          {/* Row 3: Program meta */}
-          <Text style={styles.cProgMeta}>
-            {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
-          </Text>
+          {/* Row 3: Weekly compliance (active clients) — falls back to program
+              meta for paused/inactive or clients without history yet. */}
+          {adherence && adherence.status !== STATUS.NO_DATA && adherence.status !== STATUS.MUTED ? (
+            <Text style={[
+              styles.cProgMeta,
+              requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
+            ]}>
+              {t('clients.weekCompliance', { done: adherence.weekDone, target: adherence.weekTarget })}
+            </Text>
+          ) : (
+            <Text style={styles.cProgMeta}>
+              {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
+            </Text>
+          )}
 
           {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
           <View style={styles.cCounters}>
@@ -1124,8 +1180,10 @@ export default function ClientsScreen() {
   const [tagFilterRow,     setTagFilterRow]     = useState([]);    // all tag IDs shown in the row
   const [showTagSheet,     setShowTagSheet]     = useState(false);
   const [sortDir,          setSortDir]          = useState('desc'); // always sort by last session
+  const [adherenceFilter,  setAdherenceFilter]  = useState(null);   // null | 'at_risk' | 'unreviewed'
 
   function cycleStatus() {
+    setAdherenceFilter(null); // status cycle and adherence pills are exclusive modes
     setStatusFilter((s) => s === 'active' ? 'inactive' : s === 'inactive' ? 'all' : 'active');
   }
   function addTagToRow(id) {
@@ -1192,30 +1250,82 @@ export default function ClientsScreen() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
+  // Adherence (procedural) per client — drives the card colour + the pills.
+  const adherenceByClient = useMemo(() => {
+    const out = {};
+    Object.values(clients ?? {}).forEach((c) => {
+      out[c.id] = computeAdherence({
+        sessions:         clientLogs[c.id] ?? [],
+        sessionsPerCycle: weeklyTarget(programs[c.activeProgramId]),
+        manualStatus:     c.status ?? 'active',
+      });
+    });
+    return out;
+  }, [clients, programs, clientLogs]);
+
+  // Unreviewed sessions per client (remote count minus what the trainer last saw).
+  const unreviewedByClient = useMemo(() => {
+    const out = {};
+    Object.values(clients ?? {}).forEach((c) => {
+      out[c.id] = Math.max(0, (c.remoteSessionsCount ?? 0) - (trainerSync.lastSeenSessionsCount?.[c.id] ?? 0));
+    });
+    return out;
+  }, [clients, trainerSync.lastSeenSessionsCount]);
+
+  // Pill counters — global avisos, not scoped to search/tags.
+  const atRiskCount     = useMemo(
+    () => Object.values(clients ?? {}).filter((c) => adherenceByClient[c.id]?.status === STATUS.AT_RISK).length,
+    [clients, adherenceByClient],
+  );
+  const unreviewedCount = useMemo(
+    () => Object.values(unreviewedByClient).filter((n) => n > 0).length,
+    [unreviewedByClient],
+  );
+
+  // If a filter's counter dropped to zero its pill is gone, so ignore it
+  // (derived, not stored — avoids resetting state from an effect).
+  const effectiveAdherenceFilter =
+    (adherenceFilter === 'at_risk'    && atRiskCount === 0) ||
+    (adherenceFilter === 'unreviewed' && unreviewedCount === 0)
+      ? null : adherenceFilter;
+
+  // An adherence pill, when active, overrides the manual status/tag filters and
+  // jumps to its focused subset + order. Otherwise the list behaves as before.
   const clientList = useMemo(() => {
     let list = Object.values(clients ?? {})
-      .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-      .filter((c) => {
-        const s = c.status ?? 'active';
-        if (statusFilter === 'active')   return s !== 'inactive';
-        if (statusFilter === 'inactive') return s === 'inactive';
-        return true;
-      })
-      .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
+      .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
-    // Always sort by last session date
+    if (effectiveAdherenceFilter === 'at_risk') {
+      list = list.filter((c) => adherenceByClient[c.id]?.status === STATUS.AT_RISK);
+    } else if (effectiveAdherenceFilter === 'unreviewed') {
+      list = list.filter((c) => (unreviewedByClient[c.id] ?? 0) > 0);
+    } else {
+      list = list
+        .filter((c) => {
+          const s = c.status ?? 'active';
+          if (statusFilter === 'active')   return s !== 'inactive';
+          if (statusFilter === 'inactive') return s === 'inactive';
+          return true;
+        })
+        .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
+    }
+
     const lastTs = {};
     list.forEach((c) => {
       const sessions = clientLogs[c.id] ?? [];
       lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
     });
-    list.sort((a, b) => sortDir === 'desc'
-      ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
-      : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)
-    );
-
+    if (effectiveAdherenceFilter === 'at_risk') {
+      list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)); // most idle first
+    } else if (effectiveAdherenceFilter === 'unreviewed') {
+      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // most recent first
+    } else {
+      list.sort((a, b) => sortDir === 'desc'
+        ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
+        : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0));
+    }
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortDir, clientLogs]);
+  }, [clients, search, statusFilter, tagFilter, sortDir, clientLogs, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
 
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
@@ -2157,6 +2267,26 @@ export default function ClientsScreen() {
           contentContainerStyle={styles.filterRow}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Attention pills — ephemeral: only when there's something to act on */}
+          {atRiskCount > 0 && (
+            <AttentionPill
+              label={t('clients.atRiskPill')}
+              count={atRiskCount}
+              color={colors.red}
+              active={adherenceFilter === 'at_risk'}
+              onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
+            />
+          )}
+          {unreviewedCount > 0 && (
+            <AttentionPill
+              label={t('clients.unreviewedPill')}
+              count={unreviewedCount}
+              color={colors.accent}
+              active={adherenceFilter === 'unreviewed'}
+              onPress={() => setAdherenceFilter((f) => (f === 'unreviewed' ? null : 'unreviewed'))}
+            />
+          )}
+
           {/* Status cycling pill */}
           <TouchableOpacity style={styles.statusPill} onPress={cycleStatus} activeOpacity={0.75}>
             <Text style={[styles.statusPillText, {
@@ -2257,6 +2387,7 @@ export default function ClientsScreen() {
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   weeksTraining={weeksTraining}
+                  adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
                   onOpenEditor={() => {
@@ -2641,6 +2772,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop:     spacing.xs,
     paddingBottom:  spacing.xs,
+  },
+  // Attention pills (En riesgo / Sin revisar)
+  attnPill: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    paddingLeft:       spacing.lg,
+    paddingRight:      spacing.sm + 2,
+    paddingVertical:   spacing.xs + 2,
+    borderRadius:      radius.full,
+    flexShrink:        0,
+  },
+  attnPillText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+  },
+  attnPillBadge: {
+    borderRadius:      radius.full,
+    minWidth:          20,
+    height:            20,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: 5,
+    flexShrink:        0,
+  },
+  attnPillBadgeText: {
+    fontSize:   11,
+    fontWeight: typography.bold,
   },
   // Status cycle pill
   statusPill: {
@@ -3158,6 +3317,11 @@ const styles = StyleSheet.create({
   cDate: {
     fontSize:  typography.xs,
     color:     colors.muted,
+    flexShrink: 0,
+  },
+  cStreak: {
+    fontSize:   typography.xs,
+    color:      colors.muted2,
     flexShrink: 0,
   },
   cInfoBtnWrap: {
