@@ -933,6 +933,14 @@ function PersonIcon({ size = 20, color }) {
     </Svg>
   );
 }
+function CloudUpIcon({ size = 20, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M7 18a4 4 0 0 1-.5-7.97A6 6 0 0 1 18 9.5a3.5 3.5 0 0 1-.5 8.5" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M12 21V12M9 14.5l3-3 3 3" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 // ── ClientActionsSheet ──────────────────────────────────────────────────────────
 // The "···" menu on a client card: keeps the frequent action one tap on the card
@@ -1037,7 +1045,6 @@ function ClientListCard({
 
   // Program info
   const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
-  const stageCount     = activeProgram?.stages?.length ?? 0;
   const stageIdx       = activeProgram?.currentStageIndex ?? 0;
   const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
   const currentDays    = hasStages
@@ -1099,18 +1106,12 @@ function ClientListCard({
 
           {/* Row 3: Weekly compliance (active clients) — falls back to program
               meta for paused/inactive or clients without history yet. */}
-          {adherence && adherence.status !== STATUS.NO_DATA && adherence.status !== STATUS.MUTED ? (
-            <Text style={[
-              styles.cProgMeta,
-              requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
-            ]}>
-              {t('clients.weekCompliance', { done: adherence.weekDone, target: adherence.weekTarget })}
-            </Text>
-          ) : (
-            <Text style={styles.cProgMeta}>
-              {stageCount > 1 ? `${stageCount} etapas   ` : ''}{sessPerCycle} ses/ciclo
-            </Text>
-          )}
+          <Text style={[
+            styles.cProgMeta,
+            adherence && requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
+          ]}>
+            {t('clients.weekCompliance', { done: adherence?.weekDone ?? 0, target: adherence?.weekTarget ?? sessPerCycle })}
+          </Text>
 
           {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
           <View style={styles.cCounters}>
@@ -1371,6 +1372,33 @@ export default function ClientsScreen() {
     () => Object.values(unreviewedByClient).filter((n) => n > 0).length,
     [unreviewedByClient],
   );
+
+  // Clients with unsent uploads (program changes and/or next-session prescriptions).
+  const pendingClients = useMemo(
+    () => Object.values(clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)),
+    [clients],
+  );
+  const pendingOverrideCount = pendingClients.filter((c) => c.overridesDirty).length;
+  const pendingProgramCount  = pendingClients.filter((c) => c.programDirty).length;
+  const [sendingAll, setSendingAll] = useState(false);
+
+  async function sendAllPending() {
+    if (sendingAll || !pendingClients.length) return;
+    setSendingAll(true);
+    let ok = 0, fail = 0;
+    for (const c of pendingClients) {
+      try {
+        if (c.programDirty && c.activeProgramId) await uploadProgramToClient(c.id, c.activeProgramId);
+        if (c.overridesDirty) await sendOverrides(c.id);
+        ok += 1;
+      } catch { fail += 1; }
+    }
+    setSendingAll(false);
+    showToast(
+      fail === 0 ? t('clients.sendAllDone') : t('clients.sendAllPartial', { ok, fail }),
+      2400, fail === 0 ? 'success' : 'error',
+    );
+  }
 
   // If a filter's counter dropped to zero its pill is gone, so ignore it
   // (derived, not stored — avoids resetting state from an effect).
@@ -2427,6 +2455,32 @@ export default function ClientsScreen() {
 
       </View>
 
+      {/* Global pending-uploads banner — between filters and the card list */}
+      {pendingClients.length > 0 && (
+        <View style={styles.pendingBanner}>
+          <CloudUpIcon size={19} color={colors.blue} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.pendingTitle} numberOfLines={1}>
+              {t('clients.pendingClients', { count: pendingClients.length })}
+            </Text>
+            <Text style={styles.pendingSub} numberOfLines={1}>
+              {[
+                pendingOverrideCount ? t('clients.pendingPrescriptions', { count: pendingOverrideCount }) : null,
+                pendingProgramCount  ? t('clients.pendingPrograms',      { count: pendingProgramCount })  : null,
+              ].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.pendingBtn, sendingAll && { opacity: 0.6 }]}
+            onPress={sendAllPending}
+            disabled={sendingAll}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.pendingBtnText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Client list */}
       {clientList.length === 0 ? (
         <View style={styles.emptyState}>
@@ -3454,6 +3508,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     lineHeight:    18,
   },
+  // Global pending-uploads banner
+  pendingBanner: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    marginHorizontal:  spacing.xl,
+    marginTop:         spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm + 1,
+    borderRadius:      radius.md,
+    backgroundColor:   withOpacity(colors.blue, 0.1),
+    borderWidth:       borders.thin,
+    borderColor:       withOpacity(colors.blue, 0.35),
+  },
+  pendingTitle: { fontSize: typography.sm + 1, color: colors.text },
+  pendingSub:   { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
+  pendingBtn: {
+    backgroundColor:   colors.blue,
+    borderRadius:      radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 3,
+    flexShrink:        0,
+  },
+  pendingBtnText: { fontSize: typography.sm, fontWeight: typography.semibold, color: colors.bg },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',

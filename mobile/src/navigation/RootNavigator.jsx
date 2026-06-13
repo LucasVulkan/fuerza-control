@@ -51,6 +51,10 @@ function MainTabs() {
   const isPro          = useStore((s) => s.profile?.isPro          ?? true);
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
+  // Clients with unsent uploads (program changes and/or next-session prescriptions).
+  const pendingClients = useStore((s) =>
+    Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
+  );
   return (
     <Tab.Navigator
       screenOptions={{
@@ -88,7 +92,12 @@ function MainTabs() {
         <Tab.Screen
           name="Clients"
           component={ClientsScreen}
-          options={{ tabBarLabel: t('tabs.clients'),   tabBarIcon: tabIcon('people') }}
+          options={{
+            tabBarLabel: t('tabs.clients'),
+            tabBarIcon:  tabIcon('people'),
+            tabBarBadge: pendingClients > 0 ? pendingClients : undefined,
+            tabBarBadgeStyle: { backgroundColor: colors.blue, color: colors.onAccent, fontSize: 10 },
+          }}
         />
       )}
       {showProTabs && (
