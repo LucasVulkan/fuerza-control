@@ -525,6 +525,62 @@ function MiniLineChart({ data, metricLabel }) {
     setSelected(hit && hit.i !== selected?.i ? hit : null);
   };
 
+  const canvas = (
+    <View style={{ width: svgW, height: CHART_H }}>
+      <Animated.View
+        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, height: CHART_H, width: clipWidthAnim, overflow: 'hidden' }}
+      >
+        <Svg width={svgW} height={CHART_H}>
+          {yTicks.map(({ y }, i) => (
+            <Line key={`grid-${i}`} x1={C_PAD_L} y1={y} x2={svgW - C_PAD_R} y2={y}
+              stroke={colors.border} strokeWidth={0.5} opacity={0.5}
+            />
+          ))}
+          {pts.slice(1).map((_, segI) => (
+            <AnimatedLine key={segI}
+              x1={pts[segI].x} y1={yAnims[segI]}
+              x2={pts[segI + 1].x} y2={yAnims[segI + 1]}
+              stroke={colors.accent} strokeWidth={1.5}
+            />
+          ))}
+          {pts.map((p, i) => {
+            const isSel = selected?.i === i;
+            return (
+              <AnimatedCircle key={i} cx={p.x} cy={yAnims[i]}
+                r={isSel ? 6 : 4} fill={colors.accent}
+                stroke={isSel ? colors.bg : 'none'} strokeWidth={isSel ? 2 : 0}
+              />
+            );
+          })}
+        </Svg>
+      </Animated.View>
+      <Svg style={StyleSheet.absoluteFill} width={svgW} height={CHART_H} pointerEvents="none">
+        {pts.map((p) => {
+          const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
+          return (
+            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={colors.muted} textAnchor={anchor}>
+              {p.date}
+            </SvgText>
+          );
+        })}
+        {selected && (
+          <G>
+            <Rect x={tooltipX - TW / 2} y={tooltipY} width={TW} height={TH}
+              fill={colors.surface2} stroke={colors.border} strokeWidth={1} rx={4} />
+            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={colors.muted}  textAnchor="start">{selected.date}</SvgText>
+            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={colors.accent} textAnchor="start">
+              {fmtAxisVal(selected.value)}{metricLabel ? ` ${metricLabel}` : ''}
+            </SvgText>
+          </G>
+        )}
+      </Svg>
+      {/* Tap layer for point selection — a Pressable (not Svg onPress) so
+          vertical drags are released to the parent ScrollView and scroll. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress} />
+    </View>
+  );
+
   return (
     <View style={styles.chartRow}>
       <View style={[styles.yAxisArea, { height: CHART_H }]}>
@@ -533,71 +589,18 @@ function MiniLineChart({ data, metricLabel }) {
         ))}
       </View>
       <View style={styles.chartContentArea} onLayout={(e) => setChartW(e.nativeEvent.layout.width)}>
-        {chartW > 0 && (
+        {chartW > 0 && (needsScroll ? (
+          // Horizontal scroll only when the series is wider than the viewport.
           <ScrollView
             ref={scrollRef}
             horizontal
-            scrollEnabled={needsScroll}
             showsHorizontalScrollIndicator={false}
             nestedScrollEnabled
-            contentOffset={needsScroll ? { x: Math.max(0, svgW - chartW), y: 0 } : undefined}
+            contentOffset={{ x: Math.max(0, svgW - chartW), y: 0 }}
           >
-            <View style={{ width: svgW, height: CHART_H }}>
-              <Animated.View
-                pointerEvents="none"
-                style={{ position: 'absolute', top: 0, left: 0, height: CHART_H, width: clipWidthAnim, overflow: 'hidden' }}
-              >
-                <Svg width={svgW} height={CHART_H}>
-                  {/* Grid lines */}
-                  {yTicks.map(({ y }, i) => (
-                    <Line key={`grid-${i}`} x1={C_PAD_L} y1={y} x2={svgW - C_PAD_R} y2={y}
-                      stroke={colors.border} strokeWidth={0.5} opacity={0.5}
-                    />
-                  ))}
-                  {pts.slice(1).map((_, segI) => (
-                    <AnimatedLine key={segI}
-                      x1={pts[segI].x} y1={yAnims[segI]}
-                      x2={pts[segI + 1].x} y2={yAnims[segI + 1]}
-                      stroke={colors.accent} strokeWidth={1.5}
-                    />
-                  ))}
-                  {pts.map((p, i) => {
-                    const isSel = selected?.i === i;
-                    return (
-                      <AnimatedCircle key={i} cx={p.x} cy={yAnims[i]}
-                        r={isSel ? 6 : 4} fill={colors.accent}
-                        stroke={isSel ? colors.bg : 'none'} strokeWidth={isSel ? 2 : 0}
-                      />
-                    );
-                  })}
-                </Svg>
-              </Animated.View>
-              <Svg style={StyleSheet.absoluteFill} width={svgW} height={CHART_H} pointerEvents="none">
-                {pts.map((p) => {
-                  const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
-                  return (
-                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={colors.muted} textAnchor={anchor}>
-                      {p.date}
-                    </SvgText>
-                  );
-                })}
-                {selected && (
-                  <G>
-                    <Rect x={tooltipX - TW / 2} y={tooltipY} width={TW} height={TH}
-                      fill={colors.surface2} stroke={colors.border} strokeWidth={1} rx={4} />
-                    <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={colors.muted}  textAnchor="start">{selected.date}</SvgText>
-                    <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={colors.accent} textAnchor="start">
-                      {fmtAxisVal(selected.value)}{metricLabel ? ` ${metricLabel}` : ''}
-                    </SvgText>
-                  </G>
-                )}
-              </Svg>
-              {/* Tap layer for point selection — a Pressable (not Svg onPress) so
-                  vertical drags are released to the parent ScrollView and scroll. */}
-              <Pressable style={StyleSheet.absoluteFill} onPress={handlePress} />
-            </View>
+            {canvas}
           </ScrollView>
-        )}
+        ) : canvas)}
       </View>
     </View>
   );
@@ -853,7 +856,6 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
       <View style={styles.modalOverlay} pointerEvents="box-none">
         <Animated.View
           style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.lg, transform: [{ translateY }] }]}
-          onStartShouldSetResponder={() => true}
         >
           {/* Drag zone: handle indicator + header */}
           <View
