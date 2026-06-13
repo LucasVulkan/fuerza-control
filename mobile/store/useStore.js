@@ -25,7 +25,6 @@ import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBack
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
-  updateCountdownNotification,
   dismissCountdownNotification,
   scheduleOsDoneNotification,
   cancelScheduledDoneNotification,
@@ -1590,9 +1589,10 @@ export const useStore = create(
           },
         }));
 
-        // Show chronometer notification once — notifee handles the ticking natively.
+        // Show chronometer notification once — notifee handles the ticking natively,
+        // so it stays correct while minimized without any per-second re-post.
         // Schedule OS-level "done" notification — fires even if the app is killed.
-        showCountdownNotification(seconds, seconds, exerciseName, endAt).catch(() => {});
+        showCountdownNotification(exerciseName, endAt).catch(() => {});
         scheduleOsDoneNotification(seconds, exerciseName).catch(() => {});
 
         // Helper: fire the "done" side-effects when the timer expires
@@ -1625,8 +1625,8 @@ export const useStore = create(
             }));
             fireDone();
           } else {
-            // Still running — correct the displayed time and refresh the progress bar
-            updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName, ui.restTimer.endAt).catch(() => {});
+            // Still running — just correct the in-app counter. The notification
+            // chronometer is native and stayed correct on its own.
             set((s) => ({
               ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
             }));
@@ -1652,9 +1652,8 @@ export const useStore = create(
             return;
           }
 
-          // Update progress bar every second (while JS is running); time counter is native
-          updateCountdownNotification(remaining, ui.restTimer.total, ui.restTimer.exerciseName, ui.restTimer.endAt).catch(() => {});
-
+          // Drive the in-app countdown/bar. The notification chronometer is
+          // native, so there's nothing to push to it each second.
           set((s) => ({
             ui: { ...s.ui, restTimer: { ...s.ui.restTimer, remaining } },
           }));

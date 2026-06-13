@@ -3,7 +3,11 @@
  *
  * Android: @notifee/react-native con cronómetro nativo.
  *   - showCountdownNotification: una sola notificación sticky al iniciar el timer.
- *     El SO hace tick automáticamente — funciona aunque la app esté minimizada o cerrada.
+ *     El SO hace tick del texto MM:SS automáticamente — funciona aunque la app
+ *     esté minimizada o cerrada. NO lleva barra de progreso: Android solo anima
+ *     el cronómetro por su cuenta; una barra requeriría re-publicar cada segundo
+ *     (imposible con el JS suspendido) o un foreground service. Optamos por el
+ *     cronómetro nativo en la notificación y la barra rica dentro de la app.
  *   - scheduleOsDoneNotification: alarma OS que suena al terminar el timer.
  *
  * iOS: expo-notifications para la notificación de fin (unchanged).
@@ -29,15 +33,6 @@ if (Platform.OS === 'android') {
   } catch {
     // No disponible en Expo Go — las funciones fallan silenciosamente
   }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Formats seconds to MM:SS string (e.g. 90 → "01:30"). */
-function fmt(s) {
-  const m   = Math.floor(Math.max(0, s) / 60);
-  const sec = Math.max(0, s) % 60;
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
 // ─── Fixed notification IDs ───────────────────────────────────────────────────
@@ -109,14 +104,13 @@ export async function requestNotificationPermissions() {
 /**
  * Muestra la notificación sticky al arrancar el timer.
  * Usa el cronómetro nativo de Android (showChronometer + chronometerDirection: 'down')
- * para que el SO haga el tick aunque el JS esté suspendido en background.
+ * para que el SO haga el tick del texto aunque el JS esté suspendido en background.
+ * Sin barra de progreso a propósito (ver cabecera del archivo).
  *
- * @param {number} remaining   - segundos restantes al arrancar
- * @param {number} total       - duración total del descanso (para la barra de progreso)
  * @param {string} exerciseName
  * @param {number} endAt       - timestamp ms de fin (base del cronómetro nativo)
  */
-export async function showCountdownNotification(remaining, total, exerciseName, endAt) {
+export async function showCountdownNotification(exerciseName, endAt) {
   if (Platform.OS !== 'android' || !_notifee) return;
   try {
     await _notifee.displayNotification({
@@ -130,46 +124,7 @@ export async function showCountdownNotification(remaining, total, exerciseName, 
         showChronometer:      true,
         chronometerDirection: 'down',
         timestamp:            endAt,
-        progress: {
-          max:           total > 0 ? total : remaining,
-          current:       remaining,
-          indeterminate: false,
-        },
-        pressAction: { id: 'default' },
-      },
-    });
-  } catch {}
-}
-
-/**
- * Actualiza la barra de progreso de la notificación cada segundo (mientras el JS está vivo).
- * Preserva showChronometer + timestamp para que el SO siga haciendo el tick en background.
- *
- * @param {number} remaining   - segundos restantes
- * @param {number} total       - duración total (para la barra de progreso)
- * @param {string} exerciseName
- * @param {number} endAt       - timestamp ms de fin (mismo valor que en showCountdownNotification)
- */
-export async function updateCountdownNotification(remaining, total, exerciseName, endAt) {
-  if (Platform.OS !== 'android' || !_notifee) return;
-  try {
-    await _notifee.displayNotification({
-      id:    COUNTDOWN_ID,
-      title: exerciseName ?? 'Descansando…',
-      body:  'Temporizador de descanso',
-      android: {
-        channelId:            'rest-timer',
-        ongoing:              true,
-        color:                '#E8FF47',
-        showChronometer:      true,
-        chronometerDirection: 'down',
-        timestamp:            endAt,
-        progress: {
-          max:           total > 0 ? total : 1,
-          current:       remaining,
-          indeterminate: false,
-        },
-        pressAction: { id: 'default' },
+        pressAction:          { id: 'default' },
       },
     });
   } catch {}
