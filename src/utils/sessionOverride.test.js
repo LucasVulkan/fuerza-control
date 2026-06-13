@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import {
   isEmptyOverride,
   resolveExerciseReference,
+  resolveRef,
   overrideStatus,
   consumeOverride,
 } from './sessionOverride';
@@ -19,6 +20,10 @@ describe('isEmptyOverride', () => {
   });
   test('a note alone makes it non-empty', () => {
     expect(isEmptyOverride({ exercises: { dom: { note: 'suave hoy' } } })).toBe(false);
+  });
+  test('a time or rpe target makes it non-empty', () => {
+    expect(isEmptyOverride({ exercises: { plank: { time: 45 } } })).toBe(false);
+    expect(isEmptyOverride({ exercises: { sq: { rpe: 8 } } })).toBe(false);
   });
   test('blank note only → still empty', () => {
     expect(isEmptyOverride({ exercises: { dom: { note: '   ' } } })).toBe(true);
@@ -40,6 +45,14 @@ describe('resolveExerciseReference', () => {
     const r = resolveExerciseReference(undefined, '', '');
     expect(r.weight).toEqual({ value: '', source: 'none' });
     expect(r.reps).toEqual({ value: '', source: 'none' });
+  });
+});
+
+describe('resolveRef', () => {
+  test('coach target wins, else last, else none', () => {
+    expect(resolveRef(45, 30)).toEqual({ value: '45', source: 'coach' });
+    expect(resolveRef(undefined, 30)).toEqual({ value: '30', source: 'last' });
+    expect(resolveRef('', '')).toEqual({ value: '', source: 'none' });
   });
 });
 

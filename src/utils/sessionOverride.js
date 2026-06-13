@@ -21,8 +21,19 @@
 export function isEmptyOverride(override) {
   const ex = override?.exercises ?? {};
   return !Object.values(ex).some(
-    (e) => e && (e.weight != null || e.reps != null || (e.note ?? '').trim() !== ''),
+    (e) => e && (e.weight != null || e.reps != null || e.time != null || e.rpe != null
+                 || (e.note ?? '').trim() !== ''),
   );
+}
+
+/**
+ * Resolves a single field's ghost value + source: a trainer target wins over the
+ * last-session reference; both render dimmed and are overwritten by the client.
+ */
+export function resolveRef(target, last) {
+  if (target != null && target !== '') return { value: String(target), source: 'coach' };
+  if (last   != null && last   !== '') return { value: String(last),   source: 'last' };
+  return { value: '', source: 'none' };
 }
 
 /**
@@ -37,14 +48,9 @@ export function isEmptyOverride(override) {
  * @returns {{ weight: Ref, reps: Ref }}  Ref = { value: string, source }
  */
 export function resolveExerciseReference(overrideEx, lastWeight, lastReps) {
-  const pick = (target, last) => {
-    if (target != null && target !== '') return { value: String(target), source: 'coach' };
-    if (last   != null && last   !== '') return { value: String(last),   source: 'last' };
-    return { value: '', source: 'none' };
-  };
   return {
-    weight: pick(overrideEx?.weight, lastWeight),
-    reps:   pick(overrideEx?.reps,   lastReps),
+    weight: resolveRef(overrideEx?.weight, lastWeight),
+    reps:   resolveRef(overrideEx?.reps,   lastReps),
   };
 }
 

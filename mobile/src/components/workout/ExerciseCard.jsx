@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
-import { resolveExerciseReference } from '../../../../src/utils/sessionOverride';
+import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
 
 // ── Progression chip colors ────────────────────────────────────────────────────
@@ -95,7 +95,8 @@ export default function ExerciseCard({
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
   // Coach next-session prescription (one-off): blue target ghosts + chip + note.
-  const hasCoachTarget = !!(overrideEx && (overrideEx.weight != null || overrideEx.reps != null));
+  const hasCoachTarget = !!(overrideEx && (overrideEx.weight != null || overrideEx.reps != null
+                            || overrideEx.time != null || overrideEx.rpe != null));
   const coachNote = overrideEx?.note?.trim() || null;
   // RPE column (opt-in per exercise from the program editor)
   const trackRpe = !!exConfig.trackRpe;
@@ -489,6 +490,14 @@ export default function ExerciseCard({
                 prevWeightDisplay,
                 prevReps,
               );
+              const timeRef = resolveRef(
+                overrideEx?.time != null && overrideEx?.time !== '' ? overrideEx.time : undefined,
+                prevTime,
+              );
+              const rpeRef  = resolveRef(
+                overrideEx?.rpe != null && overrideEx?.rpe !== '' ? overrideEx.rpe : undefined,
+                '', // no last-session RPE ghost
+              );
 
               return (
                 <SetRow
@@ -513,9 +522,12 @@ export default function ExerciseCard({
                   }
                   prevWeightDisplay={ref.weight.value}
                   prevReps={ref.reps.value}
-                  prevTime={prevTime}
+                  prevTime={timeRef.value}
                   prevWeightSource={ref.weight.source}
                   prevRepsSource={ref.reps.source}
+                  prevTimeSource={timeRef.source}
+                  prevRpe={rpeRef.value}
+                  prevRpeSource={rpeRef.source}
                   weightScrollStep={weightScrollStep}
                   showHint={i === hintSetIndex}
                   onWeightChange={(v) => {
@@ -540,6 +552,8 @@ export default function ExerciseCard({
                         ? overrideEx.weight : lastSet?.weight;
                       const fillReps   = overrideEx?.reps != null && overrideEx?.reps !== ''
                         ? overrideEx.reps : lastSet?.reps;
+                      const fillTime   = overrideEx?.time != null && overrideEx?.time !== ''
+                        ? overrideEx.time : lastSet?.time;
 
                       if (needsWeight && (set.weight === '' || set.weight == null)
                           && fillWeight != null && fillWeight !== '') {
@@ -550,8 +564,8 @@ export default function ExerciseCard({
                         onFieldChange(i, 'reps', String(fillReps));
                       }
                       if (needsTime && (set.time === '' || set.time == null)
-                          && lastSet?.time != null && lastSet.time !== '') {
-                        onFieldChange(i, 'time', String(lastSet.time));
+                          && fillTime != null && fillTime !== '') {
+                        onFieldChange(i, 'time', String(fillTime));
                       }
                     }
                     onToggleDone(i);

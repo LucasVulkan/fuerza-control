@@ -260,6 +260,9 @@ export default function SetRow({
   prevTime,
   prevWeightSource = 'last',
   prevRepsSource   = 'last',
+  prevTimeSource   = 'last',
+  prevRpe,
+  prevRpeSource    = 'last',
   onWeightChange,
   onRepsChange,
   onTimeChange,
@@ -327,6 +330,7 @@ export default function SetRow({
           <InputCell
             value={set.time ?? ''}
             prevValue={prevTime ?? ''}
+            prevSource={prevTimeSource}
             onChangeText={onTimeChange}
             keyboardType="numeric"
             scrollStep={5}
@@ -353,6 +357,7 @@ export default function SetRow({
           <InputCell
             value={set.time ?? ''}
             prevValue={prevTime ?? ''}
+            prevSource={prevTimeSource}
             onChangeText={onTimeChange}
             keyboardType="numeric"
             scrollStep={5}
@@ -367,6 +372,8 @@ export default function SetRow({
       {showRpe && (
         <InputCell
           value={set.rpe ?? ''}
+          prevValue={prevRpe ?? ''}
+          prevSource={prevRpeSource}
           onChangeText={onRpeChange}
           keyboardType="decimal-pad"
           scrollStep={0.5}

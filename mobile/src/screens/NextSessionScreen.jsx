@@ -18,16 +18,43 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
 
-function lastSummary(lastExData) {
+/** Input type for an exercise (matches ExerciseCard's fallback logic). */
+function inputTypeFor(exConfig, def) {
+  return exConfig.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+}
+
+/** Editable target fields for an exercise: [key, label] pairs. */
+function fieldsFor(inputType, trackRpe) {
+  const base = inputType === 'reps'        ? [['reps', 'reps']]
+             : inputType === 'time'        ? [['time', 's']]
+             : inputType === 'weight_time' ? [['weight', 'kg'], ['time', 's']]
+             :                               [['weight', 'kg'], ['reps', 'reps']];
+  if (trackRpe) base.push(['rpe', 'RPE']);
+  return base;
+}
+
+function lastSummary(lastExData, inputType) {
   const sets = lastExData?.sets ?? [];
-  const weights = [...new Set(sets.map((s) => s.weight).filter((w) => w !== '' && w != null))];
-  const reps    = sets.map((s) => s.reps).filter((r) => r !== '' && r != null);
-  if (!weights.length && !reps.length) return null;
+  if (!sets.length) return null;
+  const clean = (vals) => vals.filter((v) => v !== '' && v != null);
+
+  if (inputType === 'time') {
+    const times = clean(sets.map((s) => s.time));
+    return times.length ? `${times.join(', ')} s` : null;
+  }
+
+  const weights = [...new Set(clean(sets.map((s) => s.weight)))];
   const wPart = weights.length === 0 ? ''
     : weights.length === 1 ? `${weights[0]} kg`
     : `${Math.min(...weights.map(Number))}–${Math.max(...weights.map(Number))} kg`;
-  const rPart = reps.length ? reps.join(', ') : '';
-  return [wPart, rPart].filter(Boolean).join(' · ');
+  const secondVals = inputType === 'weight_time'
+    ? clean(sets.map((s) => s.time))
+    : clean(sets.map((s) => s.reps));
+  const second = secondVals.length
+    ? (inputType === 'weight_time' ? `${secondVals.join(', ')} s` : secondVals.join(', '))
+    : '';
+  if (!wPart && !second) return null;
+  return [wPart, second].filter(Boolean).join(' · ');
 }
 
 export default function NextSessionScreen({ navigation, route }) {
@@ -83,6 +110,8 @@ export default function NextSessionScreen({ navigation, route }) {
       seed[exerciseId] = {
         weight: o.weight != null ? String(o.weight) : '',
         reps:   o.reps   != null ? String(o.reps)   : '',
+        time:   o.time   != null ? String(o.time)   : '',
+        rpe:    o.rpe    != null ? String(o.rpe)    : '',
         note:   o.note   ?? '',
       };
     });
@@ -181,11 +210,14 @@ export default function NextSessionScreen({ navigation, route }) {
             contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 90 }]}
             keyboardShouldPersistTaps="handled"
           >
-            {(template?.exercises ?? []).map(({ exerciseId }) => {
-              const def  = allExercises[exerciseId];
-              const last = lastLog?.exercises?.find((e) => e.exerciseId === exerciseId);
-              const summary = lastSummary(last);
-              const d = draft[exerciseId] ?? { weight: '', reps: '', note: '' };
+            {(template?.exercises ?? []).map((exConfig) => {
+              const exerciseId = exConfig.exerciseId;
+              const def       = allExercises[exerciseId];
+              const inputType = inputTypeFor(exConfig, def);
+              const fields    = fieldsFor(inputType, !!exConfig.trackRpe);
+              const last      = lastLog?.exercises?.find((e) => e.exerciseId === exerciseId);
+              const summary   = lastSummary(last, inputType);
+              const d = draft[exerciseId] ?? {};
               return (
                 <View key={exerciseId} style={styles.exCard}>
                   <Text style={styles.exName} numberOfLines={1}>{def?.name ?? exerciseId}</Text>
@@ -193,34 +225,24 @@ export default function NextSessionScreen({ navigation, route }) {
                     {summary ? t('nextSession.last', { summary }) : t('nextSession.noLast')}
                   </Text>
                   <View style={styles.fieldsRow}>
-                    <View style={styles.field}>
-                      <Text style={styles.fieldLabel}>kg</Text>
-                      <TextInput
-                        style={styles.fieldInput}
-                        value={d.weight}
-                        onChangeText={(v) => setField(exerciseId, 'weight', v)}
-                        onBlur={() => commitField(exerciseId, 'weight')}
-                        keyboardType="decimal-pad"
-                        placeholder="—"
-                        placeholderTextColor={colors.muted2}
-                      />
-                    </View>
-                    <View style={styles.field}>
-                      <Text style={styles.fieldLabel}>reps</Text>
-                      <TextInput
-                        style={styles.fieldInput}
-                        value={d.reps}
-                        onChangeText={(v) => setField(exerciseId, 'reps', v)}
-                        onBlur={() => commitField(exerciseId, 'reps')}
-                        keyboardType="numeric"
-                        placeholder="—"
-                        placeholderTextColor={colors.muted2}
-                      />
-                    </View>
+                    {fields.map(([key, label]) => (
+                      <View key={key} style={styles.field}>
+                        <Text style={styles.fieldLabel}>{label}</Text>
+                        <TextInput
+                          style={styles.fieldInput}
+                          value={d[key] ?? ''}
+                          onChangeText={(v) => setField(exerciseId, key, v)}
+                          onBlur={() => commitField(exerciseId, key)}
+                          keyboardType={key === 'reps' || key === 'time' ? 'numeric' : 'decimal-pad'}
+                          placeholder="—"
+                          placeholderTextColor={colors.muted2}
+                        />
+                      </View>
+                    ))}
                   </View>
                   <TextInput
                     style={styles.noteInput}
-                    value={d.note}
+                    value={d.note ?? ''}
                     onChangeText={(v) => setField(exerciseId, 'note', v)}
                     onBlur={() => commitField(exerciseId, 'note')}
                     placeholder={t('nextSession.notePlaceholder')}
