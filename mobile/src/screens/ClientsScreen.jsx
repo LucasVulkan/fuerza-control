@@ -1146,7 +1146,7 @@ function ClientListCard({
                   </Text>
                 </View>
               ) : (
-                <Svg viewBox="0 0 24 24" width={13} height={13} fill="none"
+                <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
                   stroke={colors.text} strokeWidth={2} strokeLinecap="round">
                   <Path d="M18 20V10M12 20V4M6 20v-6" />
                 </Svg>
@@ -3672,9 +3672,9 @@ const styles = StyleSheet.create({
   cBtnOutline: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 3,
+    gap:               spacing.xs + 1,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical:   spacing.xs + 4,
     borderRadius:      radius.sm,
     borderWidth:       borders.thin,
     borderColor:       colors.muted2,
@@ -3684,7 +3684,7 @@ const styles = StyleSheet.create({
     right:             0,
   },
   cBtnOutlineText: {
-    fontSize:   typography.sm,
+    fontSize:   typography.base,
     fontWeight: typography.medium,
     color:      colors.text,
   },
@@ -3706,8 +3706,8 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
   cBtnOrange: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 3,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical:   spacing.xs + 4,
     borderRadius:      radius.sm,
     backgroundColor:   colors.orange,
     position:          'absolute',
@@ -3715,13 +3715,13 @@ const styles = StyleSheet.create({
     right:             0,
   },
   cBtnOrangeText: {
-    fontSize:   typography.sm,
+    fontSize:   typography.base,
     fontWeight: typography.semibold,
     color:      colors.bg,
   },
   cBtnOverride: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 3,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical:   spacing.xs + 4,
     borderRadius:      radius.sm,
     backgroundColor:   colors.blue,
     position:          'absolute',
@@ -3729,7 +3729,7 @@ const styles = StyleSheet.create({
     right:             0,
   },
   cBtnOverrideText: {
-    fontSize:   typography.sm,
+    fontSize:   typography.base,
     fontWeight: typography.semibold,
     color:      colors.bg,
   },
