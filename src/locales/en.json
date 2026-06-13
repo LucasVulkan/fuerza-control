@@ -489,6 +489,7 @@
     "deleteStageConfirm": "Delete \"{{name}}\"? Sessions in this stage will be lost.",
     "saveChanges": "SAVE CHANGES",
     "save": "Save",
+    "saved": "Saved",
     "unsavedTitle": "Unsaved changes",
     "unsavedBody": "You have pending changes. Are you sure you want to leave without saving?",
     "keepEditing": "Keep editing",
@@ -520,6 +521,8 @@
     "createExercise": "＋ Create exercise",
     "exerciseCount_one": "{{count}} EXERCISE",
     "exerciseCount_other": "{{count}} EXERCISES",
+    "addedN_one": "Add {{count}} exercise",
+    "addedN_other": "Add {{count}} exercises",
     "levelIntermediate": "Intermediate",
     "levelBeginner": "Beginner",
     "patterns": {

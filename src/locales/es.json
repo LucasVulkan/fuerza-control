@@ -489,6 +489,7 @@
     "deleteStageConfirm": "¿Eliminar \"{{name}}\"? Las sesiones de esta etapa se perderán.",
     "saveChanges": "GUARDAR CAMBIOS",
     "save": "Guardar",
+    "saved": "Guardado",
     "unsavedTitle": "Cambios sin guardar",
     "unsavedBody": "Hay cambios pendientes. ¿Seguro que quieres salir sin guardarlos?",
     "keepEditing": "Seguir editando",
@@ -520,6 +521,8 @@
     "createExercise": "＋ Crear ejercicio",
     "exerciseCount_one": "{{count}} EJERCICIO",
     "exerciseCount_other": "{{count}} EJERCICIOS",
+    "addedN_one": "Añadir {{count}} ejercicio",
+    "addedN_other": "Añadir {{count}} ejercicios",
     "levelIntermediate": "Intermedio",
     "levelBeginner": "Principiante",
     "patterns": {

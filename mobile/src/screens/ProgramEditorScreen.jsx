@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Keyboard,
@@ -14,6 +14,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const programs              = useStore((s) => s.programs);
+  const userPrograms          = useStore((s) => s.userPrograms); // subscribe for dirty-state reactivity
   const profile               = useStore((s) => s.profile);
   const ui                    = useStore((s) => s.ui);
   const beginEditSession      = useStore((s) => s.beginEditSession);
@@ -79,9 +80,10 @@ export default function ProgramEditorScreen({ navigation, route }) {
     const st   = useStore.getState();
     const snap = st._editSnapshot;
     if (!snap) return false;
-    const cur = JSON.stringify({ p: st.programs[editingId],   up: st.userPrograms,   t: st.sessionTemplates });
-    const old = JSON.stringify({ p: snap.programs[editingId], up: snap.userPrograms, t: snap.sessionTemplates });
-    if (cur !== old) return true;
+    // Edits land in programs[editingId] (structure) and userPrograms (per-session
+    // overrides). Base sessionTemplates don't change while editing, so skip them.
+    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
+    if (JSON.stringify(st.userPrograms) !== JSON.stringify(snap.userPrograms)) return true;
     if (nameValue.trim() !== (activeProgram?.name ?? '')) return true;
     if (selectedStage) {
       if (stageName.trim() !== (selectedStage.name ?? '')) return true;
@@ -116,6 +118,13 @@ export default function ProgramEditorScreen({ navigation, route }) {
     return sub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation, editingId, nameValue, stageName, stageWeeks, selectedStage, activeProgram]);
+
+  // Reactive dirty flag for the header Save button.
+  const dirty = useMemo(
+    () => hasUnsavedChanges(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [programs, userPrograms, nameValue, stageName, stageWeeks, selectedStageIdx],
+  );
 
   if (!activeProgram) return null;
 
@@ -195,8 +204,15 @@ export default function ProgramEditorScreen({ navigation, route }) {
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={1}>
             {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
           </Text>
-          <TouchableOpacity onPress={handleSave} style={styles.saveBtnHeader} activeOpacity={0.85}>
-            <Text style={styles.saveBtnHeaderText}>{t('editor.save')}</Text>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={!dirty}
+            style={[styles.saveBtnHeader, !dirty && styles.saveBtnHeaderClean]}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.saveBtnHeaderText, !dirty && styles.saveBtnHeaderTextClean]}>
+              {dirty ? t('editor.save') : t('editor.saved')}
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={styles.programNameWrap}>
@@ -366,6 +382,11 @@ const styles = StyleSheet.create({
     fontSize: typography.sm, fontWeight: typography.heavy,
     color: colors.onAccent, letterSpacing: 0.5,
   },
+  saveBtnHeaderClean: {
+    backgroundColor: colors.surface2,
+    borderWidth: borders.thin, borderColor: colors.border,
+  },
+  saveBtnHeaderTextClean: { color: colors.muted },
   programNameWrap: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,

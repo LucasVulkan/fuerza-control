@@ -49,6 +49,21 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const [filterMode, setFilterMode] = useState(defaultMode);
   const [selectedPattern, setSelectedPattern] = useState(currentDef?.pattern ?? '');
 
+  // Multi-select only when ADDING (replace mode stays a single pick).
+  const multiSelect = !currentExerciseId;
+  const [selectedIds, setSelectedIds] = useState([]);
+  function toggleSelect(exerciseId) {
+    setSelectedIds((prev) =>
+      prev.includes(exerciseId) ? prev.filter((id) => id !== exerciseId) : [...prev, exerciseId]
+    );
+  }
+  function handleAddSelected() {
+    if (!selectedIds.length) return;
+    selectedIds.forEach((id) => (sessionMode ? addAdHocExercise(id) : addExercise(templateId, id)));
+    showToast(t('exerciseSelector.addedN', { count: selectedIds.length }), 2200, 'success');
+    navigation.goBack();
+  }
+
   const allExercises = useMemo(() => Object.values(allLibrary), [allLibrary]);
 
   function getExName(ex) {
@@ -106,21 +121,32 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     { id: 'pattern', label: t('exerciseSelector.tabPattern') },
   ];
 
-  const renderItem = ({ item: ex }) => (
-    <TouchableOpacity style={styles.exerciseRow} onPress={() => handleSelect(ex.id)} activeOpacity={0.6}>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={styles.exerciseName}>{getExName(ex)}</Text>
-          {ex.isCustom && <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>}
+  const renderItem = ({ item: ex }) => {
+    const isSel = multiSelect && selectedIds.includes(ex.id);
+    return (
+      <TouchableOpacity
+        style={styles.exerciseRow}
+        onPress={() => (multiSelect ? toggleSelect(ex.id) : handleSelect(ex.id))}
+        activeOpacity={0.6}
+      >
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.exerciseName}>{getExName(ex)}</Text>
+            {ex.isCustom && <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>}
+          </View>
+          <Text style={styles.exerciseMeta}>
+            {t(`exerciseSelector.patterns.${ex.pattern}`, ex.pattern)}
+            {ex.level === 'beginner' ? ` · ${t('exerciseSelector.levelBeginner')}` : ''}
+          </Text>
         </View>
-        <Text style={styles.exerciseMeta}>
-          {t(`exerciseSelector.patterns.${ex.pattern}`, ex.pattern)}
-          {ex.level === 'beginner' ? ` · ${t('exerciseSelector.levelBeginner')}` : ''}
-        </Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
-  );
+        {multiSelect
+          ? <View style={[styles.checkbox, isSel && styles.checkboxOn]}>
+              {isSel && <Text style={styles.checkboxTick}>✓</Text>}
+            </View>
+          : <Text style={styles.chevron}>›</Text>}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
@@ -208,9 +234,11 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
       {/* List */}
       <FlatList
+        style={{ flex: 1 }}
         data={filtered}
         keyExtractor={(ex) => ex.id}
         renderItem={renderItem}
+        extraData={selectedIds}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
@@ -219,6 +247,17 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
           </View>
         }
       />
+
+      {/* Add-selected bar — only in multi-select mode with a selection */}
+      {multiSelect && selectedIds.length > 0 && (
+        <View style={styles.addBar}>
+          <TouchableOpacity style={styles.addBarBtn} onPress={handleAddSelected} activeOpacity={0.85}>
+            <Text style={styles.addBarText}>
+              {t('exerciseSelector.addedN', { count: selectedIds.length })}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -305,6 +344,27 @@ const styles = StyleSheet.create({
   },
   customBadgeText: { fontSize: 9, color: colors.accent, letterSpacing: 0.8 },
   chevron: { fontSize: 16, color: colors.muted, marginLeft: spacing.xs },
+  checkbox: {
+    width: 22, height: 22, borderRadius: radius.xs,
+    borderWidth: 1.5, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
+  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkboxTick: { fontSize: 13, fontWeight: typography.heavy, color: colors.onAccent, lineHeight: 16 },
+  addBar: {
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
+    borderTopWidth: borders.thin, borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  addBarBtn: {
+    backgroundColor: colors.accent, borderRadius: radius.md,
+    paddingVertical: spacing.md, alignItems: 'center',
+  },
+  addBarText: {
+    fontSize: typography.base, fontWeight: typography.heavy,
+    color: colors.onAccent, letterSpacing: 0.5,
+  },
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { fontSize: typography.base, color: colors.muted },
 });
