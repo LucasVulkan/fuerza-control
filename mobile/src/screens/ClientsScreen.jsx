@@ -898,6 +898,48 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   );
 }
 
+// ── ClientActionsSheet ──────────────────────────────────────────────────────────
+// The "···" menu on a client card: keeps the frequent action one tap on the card
+// and tucks the rest (next session, edit program, info) behind this sheet.
+
+function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
+  const { t } = useTranslation();
+  const run = (fn) => () => { onClose(); fn(); };
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+      <View style={styles.infoSheet}>
+        <View style={styles.infoSheetHandle} />
+        <Text style={styles.infoSheetName}>{client.name}</Text>
+
+        <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
+          <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
+          {newSessionsCount > 0 && (
+            <View style={styles.actionBadge}>
+              <Text style={styles.actionBadgeText}>{newSessionsCount > 99 ? '99+' : newSessionsCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
+          <Text style={[styles.actionLabel, { color: colors.blue }]}>{t('clients.actNextSession')}</Text>
+          <Text style={styles.actionChevron}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
+          <Text style={styles.actionLabel}>{t('clients.actEditProgram')}</Text>
+          <Text style={styles.actionChevron}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionRow} onPress={run(onInfo)} activeOpacity={0.7}>
+          <Text style={styles.actionLabel}>{t('clients.actInfo')}</Text>
+          <Text style={styles.actionChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Sync time helper ───────────────────────────────────────────────────────────
 
 function syncAgo(isoStr) {
@@ -936,7 +978,7 @@ function AttentionPill({ label, count, color, active, onPress }) {
 
 function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onGoInfo, newSessionsCount = 0,
+  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, newSessionsCount = 0,
 }) {
   const { t } = useTranslation();
   const programDirty = client.programDirty ?? false;
@@ -983,8 +1025,8 @@ function ClientListCard({
         ]}>
           {lastStr}
         </Text>
-        <TouchableOpacity onPress={onGoInfo} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
-          <Text style={styles.cInfoBtn}>Info →</Text>
+        <TouchableOpacity onPress={onOpenActions} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
+          <Text style={styles.cMoreBtn}>···</Text>
         </TouchableOpacity>
       </View>
 
@@ -1247,6 +1289,7 @@ export default function ClientsScreen() {
 
   // Client info sheet (⋯ button on card)
   const [infoSheetClientId, setInfoSheetClientId] = useState(null);
+  const [actionsClientId,   setActionsClientId]   = useState(null);
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
@@ -2404,7 +2447,7 @@ export default function ClientsScreen() {
                       Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
                     }
                   }}
-                  onGoInfo={() => handleSelectClientInfo(client.id)}
+                  onOpenActions={() => setActionsClientId(client.id)}
                 />
                 {infoSheetClientId === client.id && (
                   <ClientInfoSheet
@@ -2416,6 +2459,23 @@ export default function ClientsScreen() {
               </>
             );
           }}
+        />
+      )}
+
+      {/* Client actions sheet (··· on the card) */}
+      {actionsClientId && clients[actionsClientId] && (
+        <ClientActionsSheet
+          client={clients[actionsClientId]}
+          newSessionsCount={getNewSessionsCount(actionsClientId)}
+          onClose={() => setActionsClientId(null)}
+          onProgress={() => handleSelectClientProgress(actionsClientId)}
+          onNextSession={() => navigation.navigate('NextSession', { clientId: actionsClientId })}
+          onEditProgram={() => {
+            const c = clients[actionsClientId];
+            if (c?.activeProgramId) setEditingProgram(c.activeProgramId);
+            else handleSelectClient(actionsClientId);
+          }}
+          onInfo={() => handleSelectClientInfo(actionsClientId)}
         />
       )}
 
@@ -3332,6 +3392,48 @@ const styles = StyleSheet.create({
     fontSize:   typography.sm,
     color:      colors.accent,
     fontWeight: typography.semibold,
+  },
+  cMoreBtn: {
+    fontSize:      18,
+    color:         colors.muted,
+    letterSpacing: 1,
+    lineHeight:    18,
+  },
+  // Action sheet rows (··· menu)
+  actionRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius:    radius.sm,
+    gap:             spacing.sm,
+  },
+  actionRowNext: {
+    backgroundColor: withOpacity(colors.blue, 0.08),
+  },
+  actionLabel: {
+    flex:       1,
+    fontSize:   typography.md,
+    color:      colors.text,
+    fontWeight: typography.medium,
+  },
+  actionChevron: {
+    fontSize: 18,
+    color:    colors.muted2,
+  },
+  actionBadge: {
+    backgroundColor:   colors.accent,
+    borderRadius:      radius.full,
+    minWidth:          20,
+    height:            20,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: 6,
+  },
+  actionBadgeText: {
+    fontSize:   11,
+    fontWeight: typography.bold,
+    color:      colors.onAccent,
   },
   // Program block — rows 2+3+4 grouped with tight gap
   cProgramBlock: {
