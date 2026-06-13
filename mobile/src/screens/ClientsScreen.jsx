@@ -1080,7 +1080,8 @@ function ClientListCard({
       </View>
 
       {activeProgram ? (
-        /* ── Program block: column layout so name spans full card width ── */
+        <>
+        {/* ── Program block: column layout so name spans full card width ── */}
         <View style={styles.cProgramBlock}>
           {/* Row 2: Status dot · Program name (full width) */}
           <View style={styles.cRow2}>
@@ -1123,40 +1124,42 @@ function ClientListCard({
               ))}
             </View>
           </View>
-
-          {/* Button: absolute bottom-right of cProgramBlock — unaffected by tags below */}
-          {showDirty ? (
-            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-            </TouchableOpacity>
-          ) : showOverrideDirty ? (
-            <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
-              <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
-              onPress={onViewProgress}
-              activeOpacity={0.85}
-            >
-              {newSessionsCount > 0 ? (
-                <View style={styles.sessionsBadge}>
-                  <Text style={styles.sessionsBadgeText}>
-                    {newSessionsCount > 99 ? '99+' : newSessionsCount}
-                  </Text>
-                </View>
-              ) : (
-                <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-                  stroke={colors.text} strokeWidth={2} strokeLinecap="round">
-                  <Path d="M18 20V10M12 20V4M6 20v-6" />
-                </Svg>
-              )}
-              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
-                {t('clients.btnViewProgress')}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
+
+        {/* Button: absolute bottom-right of the CARD so it stays anchored even
+            when a tag row is added below the program block. */}
+        {showDirty ? (
+          <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
+            <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
+          </TouchableOpacity>
+        ) : showOverrideDirty ? (
+          <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
+            <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
+            onPress={onViewProgress}
+            activeOpacity={0.85}
+          >
+            {newSessionsCount > 0 ? (
+              <View style={styles.sessionsBadge}>
+                <Text style={styles.sessionsBadgeText}>
+                  {newSessionsCount > 99 ? '99+' : newSessionsCount}
+                </Text>
+              </View>
+            ) : (
+              <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                stroke={colors.text} strokeWidth={2} strokeLinecap="round">
+                <Path d="M18 20V10M12 20V4M6 20v-6" />
+              </Svg>
+            )}
+            <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
+              {t('clients.btnViewProgress')}
+            </Text>
+          </TouchableOpacity>
+        )}
+        </>
       ) : (
         /* ── No program state ── */
         <View style={styles.cNoProgramRow}>
@@ -3680,8 +3683,8 @@ const styles = StyleSheet.create({
     borderColor:       colors.muted2,
     backgroundColor:   'transparent',
     position:          'absolute',
-    bottom:            0,
-    right:             0,
+    bottom:            spacing.md,
+    right:             spacing.md,
   },
   cBtnOutlineText: {
     fontSize:   typography.base,
@@ -3711,8 +3714,8 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     backgroundColor:   colors.orange,
     position:          'absolute',
-    bottom:            0,
-    right:             0,
+    bottom:            spacing.md,
+    right:             spacing.md,
   },
   cBtnOrangeText: {
     fontSize:   typography.base,
@@ -3725,8 +3728,8 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     backgroundColor:   colors.blue,
     position:          'absolute',
-    bottom:            0,
-    right:             0,
+    bottom:            spacing.md,
+    right:             spacing.md,
   },
   cBtnOverrideText: {
     fontSize:   typography.base,
@@ -3777,6 +3780,7 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
     marginTop:     -spacing.xs,   // pull the tags closer to the block above
     marginBottom:  -2,            // trim the space below the tags
+    paddingRight:  92,            // reserve room for the absolute card button
   },
   cTagPill: {
     borderWidth:       borders.thin,
