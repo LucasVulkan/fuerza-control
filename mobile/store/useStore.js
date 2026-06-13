@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   updateCountdownNotification,
@@ -37,7 +37,7 @@ import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
-import { consumeOverride } from '../../src/utils/sessionOverride';
+import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -2316,6 +2316,30 @@ export const useStore = create(
       },
 
       /**
+       * Uploads the client's next-session overrides to their slot. Re-stamps
+       * createdAt to "now" so the consume baseline is the send moment (a session
+       * the client did before sending doesn't count as consuming it).
+       */
+      sendOverrides: async (clientId) => {
+        const { clients, trainerSync } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        await _ensureTrainerSession(trainerSync);
+
+        const now = new Date().toISOString();
+        const stamped = Object.fromEntries(
+          Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
+        );
+        await uploadOverrides(client.syncSlotId, stamped);
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: { ...s.clients[clientId], nextOverrides: stamped, overridesSentAt: now },
+          },
+        }));
+      },
+
+      /**
        * Downloads and merges a client's workout history from Supabase.
        * Uses the existing mergeWorkoutLog logic to avoid duplicates.
        */
@@ -2558,7 +2582,7 @@ export const useStore = create(
         if (!clientSync.slotId) return;
 
         try {
-          const { programJson, updatedAt, trainerName } = await downloadProgram(clientSync.slotId);
+          const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
 
           // Always sync trainer name if it changed (independent of program updates)
           if (trainerName !== undefined && trainerName !== clientSync.trainerName) {
@@ -2566,6 +2590,16 @@ export const useStore = create(
               clientSync: { ...s.clientSync, trainerName: trainerName ?? null },
             }));
           }
+
+          // Pull next-session overrides, skipping any already consumed locally
+          // (a session of that template logged at/after the override was sent).
+          // Independent of program updates, so handled before the early return.
+          const log = get().workoutLog;
+          const fresh = {};
+          Object.entries(overrides ?? {}).forEach(([tid, ov]) => {
+            if (overrideStatus(ov, log) !== 'consumed') fresh[tid] = ov;
+          });
+          set((s) => ({ clientSync: { ...s.clientSync, pendingOverrides: fresh } }));
 
           if (!programJson || !updatedAt) return;
 

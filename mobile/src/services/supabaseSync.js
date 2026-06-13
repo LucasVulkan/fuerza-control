@@ -109,14 +109,30 @@ export async function uploadHistory(slotId, entries, customExercises = {}) {
 }
 
 /**
+ * Uploads the trainer's next-session overrides (one-off prescriptions) for a
+ * client slot. Map keyed by templateId; {} clears them.
+ */
+export async function uploadOverrides(slotId, overrides) {
+  const { error } = await supabase
+    .from('trainer_clients')
+    .update({
+      overrides_json:       overrides ?? {},
+      overrides_updated_at: new Date().toISOString(),
+    })
+    .eq('id', slotId);
+
+  if (error) throw error;
+}
+
+/**
  * Downloads the trainer's program JSON for a client slot.
  * Called by the client on startup to check for program updates.
- * Returns { programJson, updatedAt }.
+ * Returns { programJson, updatedAt, trainerName, overrides }.
  */
 export async function downloadProgram(slotId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('program_json, program_updated_at, trainer_name')
+    .select('program_json, program_updated_at, trainer_name, overrides_json')
     .eq('id', slotId)
     .single();
 
@@ -126,6 +142,7 @@ export async function downloadProgram(slotId) {
     programJson:  data.program_json ?? null,
     updatedAt:    data.program_updated_at ?? null,
     trainerName:  data.trainer_name ?? null,
+    overrides:    data.overrides_json ?? {},
   };
 }
 
