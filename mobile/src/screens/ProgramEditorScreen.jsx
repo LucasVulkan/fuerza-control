@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Keyboard,
@@ -57,6 +57,66 @@ export default function ProgramEditorScreen({ navigation, route }) {
     }
   }, [activeProgram?.stages?.length]);
 
+  const leavingRef = useRef(false);
+
+  // Reverts the live edits to the snapshot taken on entry, then clears edit state.
+  function restoreSnapshot() {
+    const snapshot = useStore.getState()._editSnapshot;
+    if (snapshot) {
+      useStore.setState({
+        programs: snapshot.programs,
+        sessionTemplates: snapshot.sessionTemplates,
+        userPrograms: snapshot.userPrograms,
+        _editSnapshot: null,
+      });
+    }
+    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
+  }
+
+  // True if the live store diverges from the entry snapshot, or a text field
+  // holds an uncommitted edit (name / stage name / stage weeks).
+  function hasUnsavedChanges() {
+    const st   = useStore.getState();
+    const snap = st._editSnapshot;
+    if (!snap) return false;
+    const cur = JSON.stringify({ p: st.programs[editingId],   up: st.userPrograms,   t: st.sessionTemplates });
+    const old = JSON.stringify({ p: snap.programs[editingId], up: snap.userPrograms, t: snap.sessionTemplates });
+    if (cur !== old) return true;
+    if (nameValue.trim() !== (activeProgram?.name ?? '')) return true;
+    if (selectedStage) {
+      if (stageName.trim() !== (selectedStage.name ?? '')) return true;
+      if (String(stageWeeks) !== String(selectedStage.durationWeeks ?? 4)) return true;
+    }
+    return false;
+  }
+
+  // Intercept every exit (back arrow, swipe, hardware back). Warn only when
+  // there are unsaved changes; otherwise leave silently.
+  useEffect(() => {
+    const sub = navigation.addListener('beforeRemove', (e) => {
+      if (leavingRef.current || !hasUnsavedChanges()) return;
+      e.preventDefault();
+      Alert.alert(
+        t('editor.unsavedTitle'),
+        t('editor.unsavedBody'),
+        [
+          { text: t('editor.keepEditing'), style: 'cancel' },
+          {
+            text: t('editor.exitNoSave'),
+            style: 'destructive',
+            onPress: () => {
+              leavingRef.current = true;
+              restoreSnapshot();
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ],
+      );
+    });
+    return sub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, editingId, nameValue, stageName, stageWeeks, selectedStage, activeProgram]);
+
   if (!activeProgram) return null;
 
   const editorDays = hasStages
@@ -110,20 +170,6 @@ export default function ProgramEditorScreen({ navigation, route }) {
     );
   }
 
-  function handleCancel() {
-    const snapshot = useStore.getState()._editSnapshot;
-    if (snapshot) {
-      useStore.setState({
-        programs: snapshot.programs,
-        sessionTemplates: snapshot.sessionTemplates,
-        userPrograms: snapshot.userPrograms,
-        _editSnapshot: null,
-      });
-    }
-    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
-    navigation.goBack();
-  }
-
   function handleSave() {
     // Flush any text field that still has focus before saving
     Keyboard.dismiss();
@@ -133,6 +179,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
     // Mark any clients that have this program assigned as needing a re-upload
     markProgramDirtyForClients(editingId);
     showToast(t('editor.toastSaved'), 2200, 'success');
+    leavingRef.current = true; // skip the unsaved-changes guard on the way out
     useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
     navigation.goBack();
   }
@@ -142,12 +189,15 @@ export default function ProgramEditorScreen({ navigation, route }) {
       {/* Header */}
       <View style={styles.headerWrap}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} hitSlop={12} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+          <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={1}>
             {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
           </Text>
+          <TouchableOpacity onPress={handleSave} style={styles.saveBtnHeader} activeOpacity={0.85}>
+            <Text style={styles.saveBtnHeaderText}>{t('editor.save')}</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.programNameWrap}>
           <TextInput
@@ -166,7 +216,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
       {/* Scrollable content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Stage section — scrolls with content, card style */}
@@ -280,16 +330,6 @@ export default function ProgramEditorScreen({ navigation, route }) {
         )}
 
       </ScrollView>
-
-      {/* Save button — always accent, matching WorkoutScreen style */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>{t('editor.saveChanges').toUpperCase()}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.discardBtn} onPress={handleCancel}>
-          <Text style={styles.discardText}>{t('common.cancel')}</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -314,6 +354,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.base, fontWeight: typography.bold,
     letterSpacing: 0.5, color: colors.text,
+  },
+  saveBtnHeader: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 3,
+    flexShrink: 0,
+  },
+  saveBtnHeaderText: {
+    fontSize: typography.sm, fontWeight: typography.heavy,
+    color: colors.onAccent, letterSpacing: 0.5,
   },
   programNameWrap: {
     paddingHorizontal: spacing.lg,
@@ -444,21 +495,4 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: 4,
   },
   convertToStagesBtnText: { fontSize: typography.sm, color: colors.muted },
-
-  // Footer — matches WorkoutScreen save/discard pattern
-  footer: {
-    paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    backgroundColor: colors.bg,
-    borderTopWidth: borders.thin, borderTopColor: colors.border,
-  },
-  saveBtn: {
-    borderRadius: radius.md, paddingVertical: spacing.md,
-    alignItems: 'center', backgroundColor: colors.accent,
-  },
-  saveBtnText: {
-    fontSize: typography.base, fontWeight: typography.heavy,
-    color: colors.onAccent, letterSpacing: 1,
-  },
-  discardBtn: { alignItems: 'center', paddingVertical: spacing.md },
-  discardText: { fontSize: typography.base, color: colors.muted },
 });

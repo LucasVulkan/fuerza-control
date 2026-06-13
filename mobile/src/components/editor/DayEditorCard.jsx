@@ -5,6 +5,7 @@ import {
   Modal, KeyboardAvoidingView, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { colors, spacing, typography, radius, borders, resolveColor, withOpacity } from '../../theme';
@@ -178,6 +179,26 @@ const rs = StyleSheet.create({
   editBtnTextActive: { color: colors.accent },
 });
 
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+function PencilIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 20h9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
+            stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ size = 16, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // ─── DayEditorCard ────────────────────────────────────────────────────────────
 
 export default function DayEditorCard({ templateId, onRemove, navigation }) {
@@ -201,6 +222,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
   const [editingExId, setEditingExId] = useState(null);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue]     = useState('');
+  const nameToggleGuard               = useRef(0); // debounces blur→re-press on the edit toggle
 
   // Drag state
   const [localOrder, setLocalOrder] = useState([]);
@@ -297,6 +319,19 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
     const trimmed = nameValue.trim();
     if (trimmed && trimmed !== template.name) renameSession(templateId, trimmed);
     setEditingName(false);
+    nameToggleGuard.current = Date.now();
+  }
+
+  function toggleEditName() {
+    // A blur from tapping this same button may have just committed and closed —
+    // ignore the immediate re-press so it doesn't bounce back into edit mode.
+    if (Date.now() - nameToggleGuard.current < 250) return;
+    if (editingName) {
+      commitName();
+    } else {
+      setNameValue(template.name ?? '');
+      setEditingName(true);
+    }
   }
 
   const orderedExercises = localOrder
@@ -349,10 +384,12 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
         <View style={styles.headerBtns}>
           <TouchableOpacity
             hitSlop={8}
-            onPress={() => { setNameValue(template.name); setEditingName(true); }}
+            onPress={toggleEditName}
             style={styles.iconBtn}
           >
-            <Text style={styles.iconBtnText}>✎</Text>
+            {editingName
+              ? <CheckIcon size={16} color={colors.accent} />
+              : <PencilIcon size={15} color={colors.muted} />}
           </TouchableOpacity>
           {onRemove && (
             <TouchableOpacity hitSlop={8} onPress={onRemove} style={[styles.iconBtn, { marginLeft: spacing.xs }]}>
