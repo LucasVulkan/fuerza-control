@@ -3735,13 +3735,13 @@ const styles = StyleSheet.create({
   },
   cBtnAccent: {
     paddingHorizontal: spacing.md + 4,
-    paddingVertical:   spacing.xs + 3,
+    paddingVertical:   spacing.xs + 4,
     borderRadius:      radius.sm,
     backgroundColor:   colors.accent,
     flexShrink:        0,
   },
   cBtnAccentText: {
-    fontSize:   typography.sm,
+    fontSize:   typography.base,
     fontWeight: typography.bold,
     color:      colors.bg,
   },
