@@ -2302,7 +2302,8 @@ export const useStore = create(
           if (Object.keys(exMap).length === 0) delete overrides[templateId];
           else overrides[templateId] = { ...ov, exercises: exMap };
 
-          return { clients: { ...s.clients, [clientId]: { ...client, nextOverrides: overrides } } };
+          // overridesDirty mirrors programDirty: unsent changes to deliver.
+          return { clients: { ...s.clients, [clientId]: { ...client, nextOverrides: overrides, overridesDirty: true } } };
         });
       },
 
@@ -2313,7 +2314,7 @@ export const useStore = create(
           return {
             clients: {
               ...s.clients,
-              [clientId]: { ...client, nextOverrides: consumeOverride(client.nextOverrides, templateId) },
+              [clientId]: { ...client, nextOverrides: consumeOverride(client.nextOverrides, templateId), overridesDirty: true },
             },
           };
         });
@@ -2338,7 +2339,7 @@ export const useStore = create(
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], nextOverrides: stamped, overridesSentAt: now },
+            [clientId]: { ...s.clients[clientId], nextOverrides: stamped, overridesSentAt: now, overridesDirty: false },
           },
         }));
       },

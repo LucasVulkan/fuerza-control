@@ -1018,11 +1018,13 @@ function AttentionPill({ label, count, color, active, onPress }) {
 
 function ClientListCard({
   client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, newSessionsCount = 0,
+  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
 }) {
   const { t } = useTranslation();
   const programDirty = client.programDirty ?? false;
   const showDirty    = isConnected && programDirty;
+  // Unsent next-session prescriptions (incl. a failed send) → blue upload button.
+  const showOverrideDirty = isConnected && !showDirty && !!client.overridesDirty;
 
   // Last activity label
   let lastStr = 'Nunca';
@@ -1126,6 +1128,10 @@ function ClientListCard({
             <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
               <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
             </TouchableOpacity>
+          ) : showOverrideDirty ? (
+            <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
+              <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
+            </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
@@ -1218,6 +1224,7 @@ export default function ClientsScreen() {
   const deleteClientLogEntry     = useStore((s) => s.deleteClientLogEntry);
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
+  const sendOverrides            = useStore((s) => s.sendOverrides);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
   const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
   const markHistoryViewed        = useStore((s) => s.markHistoryViewed);
@@ -2488,6 +2495,14 @@ export default function ClientsScreen() {
                     }
                   }}
                   onOpenActions={() => setActionsClientId(client.id)}
+                  onSendOverrides={async () => {
+                    try {
+                      await sendOverrides(client.id);
+                      showToast(t('clients.overrideSent'), 2200, 'success');
+                    } catch (err) {
+                      Alert.alert('Error', err.message ?? t('clients.overrideSendFailed'));
+                    }
+                  }}
                 />
                 {infoSheetClientId === client.id && (
                   <ClientInfoSheet
@@ -3622,6 +3637,20 @@ const styles = StyleSheet.create({
     right:             0,
   },
   cBtnOrangeText: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      colors.bg,
+  },
+  cBtnOverride: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs + 3,
+    borderRadius:      radius.sm,
+    backgroundColor:   colors.blue,
+    position:          'absolute',
+    bottom:            0,
+    right:             0,
+  },
+  cBtnOverrideText: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
     color:      colors.bg,
