@@ -21,7 +21,8 @@ import { useNavigation }     from '@react-navigation/native';
 import { useStore }                                                         from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID }                                         from '../config/google';
-import { colors, spacing, typography, borders, radius, withOpacity }        from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -41,6 +42,8 @@ const FREQ_OPTIONS = [
 // ── DriveBackupScreen ─────────────────────────────────────────────────────────
 
 export default function DriveBackupScreen() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -350,7 +353,7 @@ export default function DriveBackupScreen() {
                     setDriveBackupName(v);
                   }}
                   placeholder="forma-backup"
-                  placeholderTextColor={colors.muted2}
+                  placeholderTextColor={th.colors.muted2}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="done"
@@ -388,7 +391,7 @@ export default function DriveBackupScreen() {
                   activeOpacity={0.85}
                 >
                   {loading
-                    ? <ActivityIndicator size="small" color={colors.bg} />
+                    ? <ActivityIndicator size="small" color={th.colors.bg} />
                     : <Text style={styles.connectTxt}>Conectar con Google</Text>
                   }
                 </TouchableOpacity>
@@ -399,7 +402,7 @@ export default function DriveBackupScreen() {
           {/* Global loading feedback */}
           {loading && loadingMsg ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.muted} />
+              <ActivityIndicator size="small" color={th.colors.muted} />
               <Text style={styles.loadingTxt}>{loadingMsg}</Text>
             </View>
           ) : null}
@@ -415,8 +418,8 @@ export default function DriveBackupScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadFiles(true)}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
+              tintColor={th.colors.accent}
+              colors={[th.colors.accent]}
             />
           }
         >
@@ -424,7 +427,7 @@ export default function DriveBackupScreen() {
             <Text style={styles.emptyTxt}>Conecta Google Drive primero.</Text>
           ) : loading && files === null ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.muted} />
+              <ActivityIndicator size="small" color={th.colors.muted} />
               <Text style={styles.loadingTxt}>Cargando backups…</Text>
             </View>
           ) : !files || files.length === 0 ? (
@@ -461,7 +464,7 @@ export default function DriveBackupScreen() {
 
           {loading && loadingMsg ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.muted} />
+              <ActivityIndicator size="small" color={th.colors.muted} />
               <Text style={styles.loadingTxt}>{loadingMsg}</Text>
             </View>
           ) : null}
@@ -474,6 +477,8 @@ export default function DriveBackupScreen() {
 // ── ActionRow ─────────────────────────────────────────────────────────────────
 
 function ActionRow({ label, onPress, disabled, danger, ghost }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[
@@ -489,17 +494,17 @@ function ActionRow({ label, onPress, disabled, danger, ghost }) {
       <Text style={[styles.actionTxt, danger && styles.dangerTxt, ghost && styles.ghostTxt]}>
         {label}
       </Text>
-      {!ghost && <Text style={[styles.actionChevron, danger && { color: colors.red }]}>›</Text>}
+      {!ghost && <Text style={[styles.actionChevron, danger && { color: th.colors.red }]}>›</Text>}
     </TouchableOpacity>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Header
@@ -509,21 +514,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   backBtn: {
     paddingRight: spacing.md,
   },
   backIcon: {
     fontSize:  28,
-    color:     colors.text,
+    color:     th.colors.text,
     lineHeight: 32,
   },
   headerTitle: {
     flex:          1,
     fontSize:      typography.sm,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   headerRight: {
@@ -539,7 +544,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection:     'row',
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   tabItem: {
     flex:            1,
@@ -548,11 +553,11 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   tabLabelActive: {
-    color: colors.text,
+    color: th.colors.text,
   },
   tabUnderline: {
     marginTop:       spacing.xs,
@@ -562,7 +567,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabUnderlineActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
 
   // Content
@@ -573,10 +578,10 @@ const styles = StyleSheet.create({
 
   // Status card
   statusCard: {
-    backgroundColor: colors.surface2,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     padding:         spacing.md,
     gap:             4,
   },
@@ -588,25 +593,25 @@ const styles = StyleSheet.create({
   dot: {
     width: 8, height: 8, borderRadius: 4,
   },
-  dotGreen:  { backgroundColor: colors.green },
-  dotOrange: { backgroundColor: colors.orange },
-  dotGray:   { backgroundColor: colors.muted2 ?? colors.muted },
+  dotGreen:  { backgroundColor: th.colors.green },
+  dotOrange: { backgroundColor: th.colors.orange },
+  dotGray:   { backgroundColor: th.colors.muted2 ?? th.colors.muted },
   statusText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   emailText: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   lastBackupText: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   warningText: {
     fontSize:  typography.xs,
-    color:     colors.red,
+    color:     th.colors.red,
     marginTop: 4,
   },
 
@@ -614,7 +619,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1.5,
     marginTop:     spacing.xs,
   },
@@ -628,42 +633,42 @@ const styles = StyleSheet.create({
   freqBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   freqBtnActive: {
-    borderColor:      colors.accent,
-    backgroundColor:  withOpacity(colors.accent, 0.08),
+    borderColor:      th.colors.accent,
+    backgroundColor:  withOpacity(th.colors.accent, 0.08),
   },
   freqTxt: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   freqTxtActive: {
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.medium,
   },
 
   // Backup name input
   nameInputWrap: {
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     height:            42,
     justifyContent:    'center',
   },
   nameInput: {
-    color:    colors.text,
+    color:    th.colors.text,
     fontSize: typography.base,
     padding:  0,
   },
   namePreview: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 4,
     marginLeft: 2,
   },
@@ -675,10 +680,10 @@ const styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   actionDanger: {
-    borderBottomColor: withOpacity(colors.red, 0.2),
+    borderBottomColor: withOpacity(th.colors.red, 0.2),
   },
   actionGhost: {
     borderBottomWidth: 0,
@@ -686,25 +691,25 @@ const styles = StyleSheet.create({
   },
   actionTxt: {
     fontSize: typography.base,
-    color:    colors.text,
+    color:    th.colors.text,
   },
   actionChevron: {
     fontSize: typography.lg,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
-  dangerTxt: { color: colors.red },
-  ghostTxt:  { color: colors.muted },
+  dangerTxt: { color: th.colors.red },
+  ghostTxt:  { color: th.colors.muted },
 
   separator: {
     height:          borders.thin,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     marginVertical:  spacing.sm,
   },
 
   // Backups tab
   backupListHint: {
     fontSize:     typography.xs,
-    color:        colors.muted,
+    color:        th.colors.muted,
     lineHeight:   typography.xs * 1.5,
     marginBottom: spacing.sm,
   },
@@ -713,34 +718,34 @@ const styles = StyleSheet.create({
     alignItems:        'center',
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   fileName: {
     fontSize:    typography.sm,
     fontWeight:  typography.medium,
-    color:       colors.text,
+    color:       th.colors.text,
   },
   fileDate: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   fileChevron: {
     fontSize: typography.lg,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // Connect (not-connected)
   explainTxt: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.sm * 1.6,
     marginTop:  spacing.sm,
   },
   connectBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md + 2,
     alignItems:      'center',
     marginTop:       spacing.sm,
@@ -748,19 +753,19 @@ const styles = StyleSheet.create({
   connectTxt: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   expoGoNote: {
-    backgroundColor: withOpacity(colors.muted, 0.08),
+    backgroundColor: withOpacity(th.colors.muted, 0.08),
     borderWidth:     1,
-    borderColor:     withOpacity(colors.muted, 0.2),
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.muted, 0.2),
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
     marginTop:       spacing.sm,
   },
   expoGoNoteText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.sm * 1.5,
     textAlign:  'center',
   },
@@ -775,11 +780,11 @@ const styles = StyleSheet.create({
   },
   loadingTxt: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   emptyTxt: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     paddingTop: spacing.xl,
   },

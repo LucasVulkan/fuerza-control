@@ -4,7 +4,8 @@
  * Fiel al original web: mismos estados (selected, disabled, detail expandido).
  */
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useThemedStyles } from '../../useTheme';
 
 export default function OptionCard({
   label,
@@ -16,6 +17,7 @@ export default function OptionCard({
   multi       = false,
   onClick,
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       onPress={disabled ? undefined : onClick}
@@ -57,21 +59,21 @@ export default function OptionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   card: {
     flexDirection:   'row',
     alignItems:      'flex-start',
     gap:             spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     padding:         spacing.lg,
     marginBottom:    spacing.sm,
   },
   cardSelected: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     th.colors.accent,
   },
   cardDisabled: { opacity: 0.45 },
 
@@ -80,7 +82,7 @@ const styles = StyleSheet.create({
     height:          18,
     borderRadius:    9,
     borderWidth:     2,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     backgroundColor: 'transparent',
     marginTop:       2,
     flexShrink:      0,
@@ -89,31 +91,31 @@ const styles = StyleSheet.create({
   },
   indicatorSquare: { borderRadius: 4 },
   indicatorOn: {
-    backgroundColor: colors.accent,
-    borderColor:     colors.accent,
+    backgroundColor: th.colors.accent,
+    borderColor:     th.colors.accent,
   },
-  check: { fontSize: 10, color: colors.onAccent, fontWeight: '700' },
+  check: { fontSize: 10, color: th.colors.onAccent, fontWeight: '700' },
 
   body:     { flex: 1 },
-  label:    { fontSize: typography.md, fontWeight: typography.medium, color: colors.text },
-  labelDim: { color: colors.muted },
+  label:    { fontSize: typography.md, fontWeight: typography.medium, color: th.colors.text },
+  labelDim: { color: th.colors.muted },
   desc: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     marginTop:  3,
     lineHeight: typography.sm * 1.55,
   },
   disabledReason: {
     fontSize:  11,
-    color:     colors.accent,
+    color:     th.colors.accent,
     opacity:   0.7,
     marginTop: 4,
   },
   detailBox: {
     marginTop:       spacing.sm,
     padding:         spacing.sm,
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderRadius:    radius.sm,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderRadius:    th.radius.sm,
   },
-  detailText: { fontSize: 11, color: colors.accent, lineHeight: 11 * 1.6 },
+  detailText: { fontSize: 11, color: th.colors.accent, lineHeight: 11 * 1.6 },
 });

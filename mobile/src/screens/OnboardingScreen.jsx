@@ -29,7 +29,9 @@ import ClientCodeModal from '../components/ClientCodeModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
 import OnboardingStep from '../components/onboarding/OnboardingStep';
 import OptionCard from '../components/onboarding/OptionCard';
-import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
@@ -70,17 +72,19 @@ function parseImportFile(jsonString) {
 // ─── Brand tag two-tone ───────────────────────────────────────────────────────
 
 function FitLogo({ height = 18 }) {
+  const th = useTheme();
   const width = height * (378 / 126);
   return (
     <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
-      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={colors.accent} />
-      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={colors.accent} />
-      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={colors.accent} />
+      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={th.colors.accent} />
+      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={th.colors.accent} />
+      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={th.colors.accent} />
     </Svg>
   );
 }
 
 function BrandTag() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.brandTag}>
       <Text style={styles.brandTagForma}>Forma</Text>
@@ -92,6 +96,7 @@ function BrandTag() {
 // ─── Tarjeta de modo ──────────────────────────────────────────────────────────
 
 function ModeCard({ icon, title, desc, onPress, accent = false }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.modeCard, accent && styles.modeCardAccent]}
@@ -111,6 +116,8 @@ function ModeCard({ icon, title, desc, onPress, accent = false }) {
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
   const route      = useRoute();
@@ -327,7 +334,7 @@ export default function OnboardingScreen() {
         {/* Sesiones expandibles */}
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
           {uniqueTemplates.map((tpl, i) => {
-            const accent     = resolveColor(tpl.color ?? 'var(--day1)');
+            const accent     = resolveColor(th, tpl.color ?? 'var(--day1)');
             const isExpanded = expandedSessions.has(tpl.id);
             const allEx      = { ...exerciseLibrary, ...customExercises };
             return (
@@ -397,7 +404,7 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.loadingScreen, { paddingTop: insets.top }]}>
         <Text style={styles.loadingTitle}>{t('onboarding.generating', 'GENERANDO...')}</Text>
-        <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: spacing.lg }} />
+        <ActivityIndicator color={th.colors.accent} size="large" style={{ marginTop: spacing.lg }} />
         <Text style={styles.loadingDesc}>{t('onboarding.buildingPlan', 'Construyendo tu plan...')}</Text>
       </View>
     );
@@ -504,7 +511,7 @@ export default function OnboardingScreen() {
               value={manualName}
               onChangeText={setManualName}
               placeholder={t('onboarding.programNamePlaceholder', 'Mi programa')}
-              placeholderTextColor={colors.muted2}
+              placeholderTextColor={th.colors.muted2}
               returnKeyType="done"
               autoFocus
             />
@@ -618,7 +625,7 @@ export default function OnboardingScreen() {
                 value={templateProgramName}
                 onChangeText={setTemplateProgramName}
                 placeholder={selectedTpl.name}
-                placeholderTextColor={colors.muted2}
+                placeholderTextColor={th.colors.muted2}
                 returnKeyType="done"
                 autoCorrect={false}
               />
@@ -770,6 +777,7 @@ function StepDistrib({ answers, set_, onNext, onBack }) {
 }
 
 function StepDays({ answers, set_, onNext, onBack }) {
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
 
   // Push/Pull/Legs — fijo 3 días
@@ -956,10 +964,10 @@ function StepProgression({ answers, set_, onNext, onBack, isLast }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   screen: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Brand tag
@@ -971,13 +979,13 @@ const styles = StyleSheet.create({
   brandTagForma: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
   },
   brandTagFit: {
     fontSize:      typography.sm,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
 
@@ -991,21 +999,21 @@ const styles = StyleSheet.create({
   previewReady: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.green,
+    color:         th.colors.green,
     letterSpacing: 1,
     marginTop:     spacing.sm,
   },
   previewTitle: {
     fontSize:      28,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
     lineHeight:    32,
     marginTop:     4,
   },
   previewMeta: {
     fontSize:  typography.base,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 4,
   },
   previewList: {
@@ -1016,11 +1024,11 @@ const styles = StyleSheet.create({
   previewSession: {
     flexDirection:   'row',
     alignItems:      'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     borderLeftWidth: 3,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.md,
   },
@@ -1041,24 +1049,24 @@ const styles = StyleSheet.create({
   previewSessionName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     flex:       1,
   },
   previewChevron: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginLeft: spacing.xs,
   },
   previewSessionMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   previewExList: {
     marginTop:      spacing.sm,
     paddingTop:     spacing.sm,
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
     gap:            spacing.xs,
   },
   previewExItem: {
@@ -1068,7 +1076,7 @@ const styles = StyleSheet.create({
   },
   previewExOrder: {
     fontSize:  typography.xs,
-    color:     colors.muted2,
+    color:     th.colors.muted2,
     width:     16,
     textAlign: 'right',
     paddingTop: 2,
@@ -1076,11 +1084,11 @@ const styles = StyleSheet.create({
   previewExName: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   previewExMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 1,
   },
   previewFooter: {
@@ -1089,28 +1097,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.lg,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
   editBtn: {
     flex:            1,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
   },
   editBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
     letterSpacing: 1,
-    color:         colors.muted,
+    color:         th.colors.muted,
   },
   startBtn: {
     flex:            2,
-    backgroundColor: colors.accent,
-    borderRadius:    radius.md,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
@@ -1119,13 +1127,13 @@ const styles = StyleSheet.create({
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
     letterSpacing: 1.5,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
   },
 
   // Loading
   loadingScreen: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
     alignItems:      'center',
     justifyContent:  'center',
     gap:             spacing.sm,
@@ -1133,11 +1141,11 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontSize:      28,
     fontWeight:    typography.heavy,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 2,
     textAlign:     'center',
   },
-  loadingDesc: { fontSize: typography.base, color: colors.muted, textAlign: 'center' },
+  loadingDesc: { fontSize: typography.base, color: th.colors.muted, textAlign: 'center' },
 
   // Mode selector
   modeHeader: {
@@ -1147,15 +1155,15 @@ const styles = StyleSheet.create({
     gap:               4,
   },
   backIcon:     { marginBottom: spacing.sm },
-  backIconText: { fontSize: 24, color: colors.muted },
+  backIconText: { fontSize: 24, color: th.colors.muted },
   modeHeadline: {
     fontSize:      28,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
     lineHeight:    32,
   },
-  modeSubtitle: { fontSize: typography.base, color: colors.muted, marginTop: 4 },
+  modeSubtitle: { fontSize: typography.base, color: th.colors.muted, marginTop: 4 },
 
   modeCards: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.sm },
 
@@ -1163,22 +1171,22 @@ const styles = StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     gap:             spacing.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.lg,
     padding:         spacing.xl,
   },
   modeCardAccent: {
-    backgroundColor: withOpacity(colors.accent, 0.06),
-    borderColor:     withOpacity(colors.accent, 0.25),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
+    borderColor:     withOpacity(th.colors.accent, 0.25),
   },
   modeIcon:  { fontSize: 28, lineHeight: 32, flexShrink: 0 },
   modeBody:  { flex: 1, gap: 3 },
-  modeTitle: { fontSize: typography.md, fontWeight: typography.semibold, color: colors.text },
-  modeTitleAccent: { color: colors.accent },
-  modeDesc:  { fontSize: typography.sm, color: colors.muted, lineHeight: typography.sm * 1.5 },
-  modeArrow: { fontSize: 20, color: colors.muted, flexShrink: 0 },
+  modeTitle: { fontSize: typography.md, fontWeight: typography.semibold, color: th.colors.text },
+  modeTitleAccent: { color: th.colors.accent },
+  modeDesc:  { fontSize: typography.sm, color: th.colors.muted, lineHeight: typography.sm * 1.5 },
+  modeArrow: { fontSize: 20, color: th.colors.muted, flexShrink: 0 },
 
   // Wizard header
   wizardHeader: {
@@ -1189,7 +1197,7 @@ const styles = StyleSheet.create({
   },
   stepIndicator: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     marginTop:     4,
   },
@@ -1197,7 +1205,7 @@ const styles = StyleSheet.create({
   // Manual
   manualTag: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     marginTop:     2,
   },
@@ -1206,15 +1214,15 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   textInput: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.md,
-    color:             colors.text,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.md,
+    color:             th.colors.text,
     fontSize:          typography.md,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.lg,
@@ -1223,29 +1231,29 @@ const styles = StyleSheet.create({
   sessionBtn: {
     flex:            1,
     height:          56,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
     justifyContent:  'center',
   },
   sessionBtnOn: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
-  sessionBtnText:   { fontSize: 24, fontWeight: typography.heavy, color: colors.muted },
-  sessionBtnTextOn: { color: colors.accent },
-  sessionHint: { fontSize: typography.xs, color: colors.muted, marginTop: 4 },
+  sessionBtnText:   { fontSize: 24, fontWeight: typography.heavy, color: th.colors.muted },
+  sessionBtnTextOn: { color: th.colors.accent },
+  sessionHint: { fontSize: typography.xs, color: th.colors.muted, marginTop: 4 },
 
   infoBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
   },
-  infoText: { fontSize: typography.sm, color: colors.muted, lineHeight: typography.sm * 1.6 },
+  infoText: { fontSize: typography.sm, color: th.colors.muted, lineHeight: typography.sm * 1.6 },
 
   manualFooter: {
     flexDirection:     'row',
@@ -1253,80 +1261,80 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.lg,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
   backBtn: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     paddingVertical:   14,
     paddingHorizontal: spacing.xl,
     justifyContent:  'center',
   },
-  backBtnText: { fontSize: typography.base, color: colors.text, fontWeight: typography.medium },
+  backBtnText: { fontSize: typography.base, color: th.colors.text, fontWeight: typography.medium },
   createBtn: {
     flex:            1,
-    backgroundColor: colors.accent,
-    borderRadius:    radius.md,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
     paddingVertical: 14,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  createBtnOff:     { backgroundColor: colors.surface2 },
-  createBtnText:    { fontSize: 16, fontWeight: typography.heavy, letterSpacing: 1, color: colors.onAccent },
-  createBtnTextOff: { color: colors.muted },
+  createBtnOff:     { backgroundColor: th.colors.surface2 },
+  createBtnText:    { fontSize: 16, fontWeight: typography.heavy, letterSpacing: 1, color: th.colors.onAccent },
+  createBtnTextOff: { color: th.colors.muted },
 
   // StepDays helpers
   dayBtns: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap', marginBottom: spacing.md },
   dayBtn: {
     width:           60,
     height:          60,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
     justifyContent:  'center',
   },
   dayBtnOn: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
-  dayBtnText:   { fontSize: 26, fontWeight: typography.heavy, color: colors.muted },
-  dayBtnTextOn: { color: colors.accent },
+  dayBtnText:   { fontSize: 26, fontWeight: typography.heavy, color: th.colors.muted },
+  dayBtnTextOn: { color: th.colors.accent },
 
   dayOption: {
     flexDirection:   'row',
     alignItems:      'center',
     gap:             spacing.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     padding:         spacing.lg,
     marginBottom:    spacing.sm,
   },
   dayOptionOn: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
-  dayOptionNum:   { fontSize: 36, fontWeight: typography.heavy, color: colors.muted, lineHeight: 40 },
-  dayOptionNumOn: { color: colors.accent },
-  dayOptionTitle: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
-  dayOptionDesc:  { fontSize: typography.sm, color: colors.muted, marginTop: 2 },
+  dayOptionNum:   { fontSize: 36, fontWeight: typography.heavy, color: th.colors.muted, lineHeight: 40 },
+  dayOptionNumOn: { color: th.colors.accent },
+  dayOptionTitle: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
+  dayOptionDesc:  { fontSize: typography.sm, color: th.colors.muted, marginTop: 2 },
 
   pplRow: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.2),
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.accent, 0.2),
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
     marginBottom:    spacing.sm,
   },
-  pplLabel: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
+  pplLabel: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
 
-  hint: { fontSize: typography.xs, color: colors.muted, marginTop: spacing.xs },
+  hint: { fontSize: typography.xs, color: th.colors.muted, marginTop: spacing.xs },
 
   // Template picker
   tplPickerList: {
@@ -1337,32 +1345,32 @@ const styles = StyleSheet.create({
   tplPickerCard: {
     flexDirection:   'row',
     alignItems:      'center',
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.sm,
   },
   tplPickerCardActive: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   tplPickerCardBody: { flex: 1, minWidth: 0 },
   tplPickerName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
-  tplPickerNameActive: { color: colors.text },
+  tplPickerNameActive: { color: th.colors.text },
   tplPickerMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   tplPickerCheck: {
     fontSize:   typography.base,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.heavy,
   },
   tplNameField: {
@@ -1375,6 +1383,6 @@ const styles = StyleSheet.create({
     padding:         spacing.lg,
     paddingBottom:   spacing.xl,
     borderTopWidth:  borders.thin,
-    borderTopColor:  colors.border,
+    borderTopColor:  th.colors.border,
   },
 });

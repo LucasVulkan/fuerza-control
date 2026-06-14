@@ -8,11 +8,13 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useThemedStyles } from '../useTheme';
 
 // ── Botón de selección ─────────────────────────────────────────────────────────
 
 function PickerBtn({ label, sublabel, selected, onPress }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.pickerBtn, selected && styles.pickerBtnOn]}
@@ -30,6 +32,7 @@ function PickerBtn({ label, sublabel, selected, onPress }) {
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function SetupScreen() {
+  const styles = useThemedStyles(makeStyles);
   const insets        = useSafeAreaInsets();
   const navigation    = useNavigation();
   const setProfile    = useStore((s) => s.setProfile);
@@ -96,10 +99,10 @@ export default function SetupScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:              1,
-    backgroundColor:   colors.bg,
+    backgroundColor:   th.colors.bg,
     paddingHorizontal: spacing.xxl,
   },
 
@@ -110,18 +113,18 @@ const styles = StyleSheet.create({
   brandForma: {
     fontSize:      52,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 1,
   },
   brandFit: {
     fontSize:      52,
     fontWeight:    typography.heavy,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
   tagline: {
     fontSize:  typography.lg,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: spacing.sm,
   },
 
@@ -131,7 +134,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1.5,
     marginBottom:  spacing.sm,
   },
@@ -139,27 +142,27 @@ const styles = StyleSheet.create({
 
   pickerBtn: {
     flex:              1,
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.md,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.md,
     paddingVertical:   spacing.lg,
     paddingHorizontal: spacing.md,
     alignItems:        'center',
     gap:               3,
   },
   pickerBtnOn: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     th.colors.accent,
   },
-  pickerLabel:   { fontSize: typography.md, fontWeight: typography.semibold, color: colors.text },
-  pickerLabelOn: { color: colors.accent },
-  pickerSub:     { fontSize: typography.xs, color: colors.muted },
-  pickerSubOn:   { color: colors.accent, opacity: 0.8 },
+  pickerLabel:   { fontSize: typography.md, fontWeight: typography.semibold, color: th.colors.text },
+  pickerLabelOn: { color: th.colors.accent },
+  pickerSub:     { fontSize: typography.xs, color: th.colors.muted },
+  pickerSubOn:   { color: th.colors.accent, opacity: 0.8 },
 
   cta: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.md,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
     paddingVertical: 16,
     alignItems:      'center',
   },
@@ -167,6 +170,6 @@ const styles = StyleSheet.create({
     fontSize:      22,
     fontWeight:    typography.heavy,
     letterSpacing: 2,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
   },
 });

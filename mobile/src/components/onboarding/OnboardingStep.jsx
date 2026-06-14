@@ -5,7 +5,8 @@
  */
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, spacing, typography, radius, borders } from '../../theme';
+import { spacing, typography, borders } from '../../theme';
+import { useThemedStyles } from '../../useTheme';
 
 export default function OnboardingStep({
   title,
@@ -18,6 +19,7 @@ export default function OnboardingStep({
   isLast       = false,
 }) {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <View style={styles.container}>
@@ -65,7 +67,7 @@ export default function OnboardingStep({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1 },
 
   header: {
@@ -76,13 +78,13 @@ const styles = StyleSheet.create({
     fontSize:      30,
     fontWeight:    typography.heavy,
     letterSpacing: 0.8,
-    color:         colors.text,
+    color:         th.colors.text,
     lineHeight:    34,
     marginBottom:  6,
   },
   subtitle: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.base * 1.6,
   },
 
@@ -96,36 +98,36 @@ const styles = StyleSheet.create({
     paddingTop:        spacing.md,
     paddingBottom:     spacing.lg,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
   backBtn: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     paddingVertical:  14,
     paddingHorizontal: spacing.xl,
     justifyContent:  'center',
   },
   backBtnText: {
     fontSize:   typography.base,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   nextBtn: {
     flex:            1,
-    backgroundColor: colors.accent,
-    borderRadius:    radius.md,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
     paddingVertical: 14,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  nextBtnOff: { backgroundColor: colors.surface2 },
+  nextBtnOff: { backgroundColor: th.colors.surface2 },
   nextBtnText: {
     fontSize:      16,
     fontWeight:    typography.heavy,
     letterSpacing: 1,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
   },
-  nextBtnTextOff: { color: colors.muted },
+  nextBtnTextOff: { color: th.colors.muted },
 });

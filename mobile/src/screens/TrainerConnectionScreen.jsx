@@ -18,11 +18,14 @@ import { useNavigation }     from '@react-navigation/native';
 import { useStore }               from '../../store/useStore';
 import ClientCodeModal            from '../components/ClientCodeModal';
 import ClientGoogleLinkModal      from '../components/ClientGoogleLinkModal';
-import { colors, spacing, typography, borders, radius, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── TrainerConnectionScreen ───────────────────────────────────────────────────
 
 export default function TrainerConnectionScreen() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -48,9 +51,9 @@ export default function TrainerConnectionScreen() {
   }
 
   function statusColor() {
-    if (!isConnected) return colors.muted;
-    if (hasError)     return colors.orange;
-    return colors.green;
+    if (!isConnected) return th.colors.muted;
+    if (hasError)     return th.colors.orange;
+    return th.colors.green;
   }
 
   // ── Disconnect ────────────────────────────────────────────────────────────
@@ -240,6 +243,8 @@ export default function TrainerConnectionScreen() {
 // ── ActionRow ─────────────────────────────────────────────────────────────────
 
 function ActionRow({ label, description, onPress, danger }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.actionRow, danger && styles.actionRowDanger]}
@@ -252,17 +257,17 @@ function ActionRow({ label, description, onPress, danger }) {
           <Text style={styles.actionDesc}>{description}</Text>
         ) : null}
       </View>
-      <Text style={[styles.actionChevron, danger && { color: colors.red }]}>›</Text>
+      <Text style={[styles.actionChevron, danger && { color: th.colors.red }]}>›</Text>
     </TouchableOpacity>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Header
@@ -272,21 +277,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   backBtn: {
     paddingRight: spacing.md,
   },
   backIcon: {
     fontSize:   28,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: 32,
   },
   headerTitle: {
     flex:          1,
     fontSize:      typography.sm,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   headerRight: {
@@ -306,10 +311,10 @@ const styles = StyleSheet.create({
 
   // Status card
   statusCard: {
-    backgroundColor: colors.surface2,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     padding:         spacing.md,
     gap:             spacing.xs + 2,
   },
@@ -324,7 +329,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   infoLine: {
     flexDirection:  'row',
@@ -335,14 +340,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.8,
     marginTop:     2,
     flexShrink:    0,
   },
   infoValue: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     textAlign:  'right',
     flex:       1,
   },
@@ -351,11 +356,11 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize:  typography.xs,
-    color:     colors.red,
+    color:     th.colors.red,
   },
   noConnectDesc: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.sm * 1.5,
     marginTop:  spacing.xs,
   },
@@ -364,7 +369,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1.5,
     marginTop:     spacing.xs,
   },
@@ -375,32 +380,32 @@ const styles = StyleSheet.create({
     alignItems:        'center',
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   actionRowDanger: {
-    borderBottomColor: withOpacity(colors.red, 0.15),
+    borderBottomColor: withOpacity(th.colors.red, 0.15),
   },
   actionLabel: {
     fontSize: typography.base,
-    color:    colors.text,
+    color:    th.colors.text,
   },
   actionDesc: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   actionChevron: {
     fontSize: typography.lg,
-    color:    colors.muted,
+    color:    th.colors.muted,
     marginLeft: spacing.sm,
   },
   dangerLabel: {
-    color: colors.red,
+    color: th.colors.red,
   },
 
   separator: {
     height:          borders.thin,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     marginVertical:  spacing.xs,
   },
 
@@ -411,20 +416,20 @@ const styles = StyleSheet.create({
     gap:               spacing.sm,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   linkedIcon: {
     fontSize:   18,
-    color:      colors.green,
+    color:      th.colors.green,
   },
   linkedLabel: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   linkedDesc: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 1,
   },
 
@@ -435,28 +440,28 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
     marginTop:     spacing.xs,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: typography.xs, color: colors.muted },
+  dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.border },
+  dividerText: { fontSize: typography.xs, color: th.colors.muted },
 
   // Google button
   googleBtn: {
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
     alignItems:      'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
   },
   googleBtnText: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
 
   // Not connected CTA
   connectBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md + 2,
     alignItems:      'center',
     marginTop:       spacing.xs,
@@ -464,11 +469,11 @@ const styles = StyleSheet.create({
   connectBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   connectHint: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.6,
     textAlign:  'center',
     marginTop:  spacing.xs,
