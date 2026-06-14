@@ -11,10 +11,9 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
-import {
-  colors, spacing, typography, radius, borders,
-  resolveColor, withOpacity,
-} from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -130,6 +129,7 @@ function getSessionStatus(dayIndex, doneInCycle, activeTemplateId, templateId) {
 // ── ProgressHeader ─────────────────────────────────────────────────────────────
 
 function DotsRow({ doneInCycle, sessionsPerCycle }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.phDots}>
       {Array.from({ length: sessionsPerCycle }, (_, i) => {
@@ -154,6 +154,7 @@ function DotsRow({ doneInCycle, sessionsPerCycle }) {
 
 function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onChangeStage }) {
   const { t }     = useTranslation();
+  const styles    = useThemedStyles(makeStyles);
   const weekLabel = String(weekNum).padStart(2, '0');
 
   if (stageInfo) {
@@ -235,7 +236,9 @@ function exercisePreview(template, allExercises, language, count) {
 /** Featured card for the next (or in-progress) session — the main CTA of the home. */
 function HeroSessionCard({ template, lastSession, allExercises, status, onPress, language, hasOverride }) {
   const { t }  = useTranslation();
-  const accent = resolveColor(template?.color ?? 'var(--day1)');
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accent = resolveColor(th, template?.color ?? 'var(--day1)');
   const exerciseNames = exercisePreview(template, allExercises, language, 3);
   const isActive    = status === 'active';
   const timeText    = isActive
@@ -260,7 +263,7 @@ function HeroSessionCard({ template, lastSession, allExercises, status, onPress,
             <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
           )}
         </View>
-        <Text style={[styles.heroTime, isActive && { color: colors.accent }]}>{timeText}</Text>
+        <Text style={[styles.heroTime, isActive && { color: th.colors.accent }]}>{timeText}</Text>
       </View>
       <Text style={styles.heroName} numberOfLines={1}>{template?.name ?? ''}</Text>
       {exerciseNames ? (
@@ -278,7 +281,9 @@ function HeroSessionCard({ template, lastSession, allExercises, status, onPress,
 /** Compact row for the rest of the cycle: done sessions dimmed, pending neutral. */
 function CompactSessionCard({ template, lastSession, status, orderNum, onPress, hasOverride }) {
   const { t }  = useTranslation();
-  const accent = resolveColor(template?.color ?? 'var(--day1)');
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accent = resolveColor(th, template?.color ?? 'var(--day1)');
   const done   = status === 'done';
   const rel    = relativeTime(lastSession?.timestamp, t);
   const meta   = done
@@ -296,7 +301,7 @@ function CompactSessionCard({ template, lastSession, status, orderNum, onPress, 
     >
       <View style={styles.cmpLeft}>
         {done
-          ? <CheckIcon size={15} color={colors.green} />
+          ? <CheckIcon size={15} color={th.colors.green} />
           : <Text style={styles.cmpOrder}>{orderNum}</Text>}
       </View>
       <View style={styles.cmpInfo}>
@@ -322,6 +327,8 @@ function CompactSessionCard({ template, lastSession, status, orderNum, onPress, 
 
 function ArchiveModal({ programName, onConfirm, onClose }) {
   const { t }    = useTranslation();
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
   const insets   = useSafeAreaInsets();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -329,7 +336,7 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
       <View style={[styles.bottomSheet, { paddingBottom: Math.max(spacing.xxl, insets.bottom + spacing.lg) }]}>
         <Text style={styles.sheetTitle}>{t('home.archiveModal.title')}</Text>
         <Text style={styles.archiveDesc}>
-          <Text style={{ color: colors.text, fontWeight: typography.semibold }}>{programName}</Text>
+          <Text style={{ color: th.colors.text, fontWeight: typography.semibold }}>{programName}</Text>
           {'\n'}{t('home.archiveModal.desc')}
         </Text>
         <ArchiveOption
@@ -352,13 +359,15 @@ function ArchiveModal({ programName, onConfirm, onClose }) {
 }
 
 function ArchiveOption({ label, desc, onPress, danger }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.archiveOption, danger && styles.archiveOptionDanger]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      <Text style={[styles.archiveOptionLabel, danger && { color: colors.red }]}>{label}</Text>
+      <Text style={[styles.archiveOptionLabel, danger && { color: th.colors.red }]}>{label}</Text>
       <Text style={styles.archiveOptionDesc}>{desc}</Text>
     </TouchableOpacity>
   );
@@ -368,6 +377,7 @@ function ArchiveOption({ label, desc, onPress, danger }) {
 
 function StagePickerModal({ program, onSelect, onClose }) {
   const { t }      = useTranslation();
+  const styles     = useThemedStyles(makeStyles);
   const insets     = useSafeAreaInsets();
   const currentIdx = program.currentStageIndex ?? 0;
   return (
@@ -409,6 +419,7 @@ function StagePickerModal({ program, onSelect, onClose }) {
 // ── ProgramBtn ─────────────────────────────────────────────────────────────────
 
 function ProgramBtn({ label, onPress, icon }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={styles.programBtn}
@@ -469,23 +480,6 @@ function ChevronRightIcon({ size = 14, color }) {
   );
 }
 
-function EyeIcon({ size = 14, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
-      <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.5} />
-    </Svg>
-  );
-}
-
-function PencilIcon({ size = 14, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
 function BarbellIcon({ size = 14, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -499,6 +493,7 @@ function BarbellIcon({ size = 14, color }) {
 // muted — the hierarchy comes from the icon, the colour and the divider above.
 
 function SectionHeader({ label, icon, muted }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.secHeader}>
       {icon}
@@ -513,6 +508,8 @@ export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
@@ -549,7 +546,7 @@ export default function HomeScreen() {
   // ── Status cards data ────────────────────────────────────────────────────────
   const driveConnected  = driveBackup.enabled && !driveBackup.needsReconnect;
   const driveWarn       = driveBackup.enabled && driveBackup.needsReconnect;
-  const driveIconColor  = driveWarn ? colors.orange : driveConnected ? colors.green : colors.muted;
+  const driveIconColor  = driveWarn ? th.colors.orange : driveConnected ? th.colors.green : th.colors.muted;
   const driveSub        = driveWarn
     ? t('home.reconnect')
     : driveConnected
@@ -558,7 +555,7 @@ export default function HomeScreen() {
 
   const trainerOk        = !!clientSync.slotId && !clientSync.syncErrorAt && !clientSync.pendingUpload;
   const trainerWarn      = !!clientSync.slotId && (!!clientSync.syncErrorAt || clientSync.pendingUpload);
-  const trainerIconColor = trainerWarn ? colors.orange : trainerOk ? colors.blue : colors.muted;
+  const trainerIconColor = trainerWarn ? th.colors.orange : trainerOk ? th.colors.blue : th.colors.muted;
   const trainerTitle     = (trainerOk || trainerWarn)
     ? (clientSync.trainerName ?? t('home.trainer'))
     : t('home.trainer');
@@ -651,7 +648,7 @@ export default function HomeScreen() {
               {/* ── SESIONES ── (hero + pending sessions + free session) */}
               <View style={styles.section}>
                 <SectionHeader
-                  icon={<BarbellIcon size={14} color={colors.accent} />}
+                  icon={<BarbellIcon size={14} color={th.colors.accent} />}
                   label={t('home.sessions').toUpperCase()}
                 />
                 {(() => {
@@ -701,9 +698,6 @@ export default function HomeScreen() {
                           }
                         />
                       )}
-                      {rest.length > 0 && (
-                        <Text style={styles.subLabel}>{t('home.restOfCycle').toUpperCase()}</Text>
-                      )}
                       {rest.map((d) => (
                         <CompactSessionCard
                           key={d.templateId}
@@ -744,12 +738,10 @@ export default function HomeScreen() {
                 <View style={styles.programActions}>
                   <ProgramBtn
                     label={t('home.viewProgram')}
-                    icon={<EyeIcon size={14} color={colors.mutedLight} />}
                     onPress={() => navigate('programPrint')}
                   />
                   <ProgramBtn
                     label={t('home.edit')}
-                    icon={<PencilIcon size={14} color={colors.mutedLight} />}
                     onPress={() => navigate('programEditor')}
                   />
                   <TouchableOpacity
@@ -811,11 +803,11 @@ export default function HomeScreen() {
             <CloudIcon size={18} color={driveIconColor} />
             <View style={styles.statusInfo}>
               <Text style={styles.statusTitle} numberOfLines={1}>Drive</Text>
-              <Text style={[styles.statusSub, driveWarn && { color: colors.orange }]} numberOfLines={1}>
+              <Text style={[styles.statusSub, driveWarn && { color: th.colors.orange }]} numberOfLines={1}>
                 {driveSub}
               </Text>
             </View>
-            <ChevronRightIcon size={13} color={colors.muted2} />
+            <ChevronRightIcon size={13} color={th.colors.muted2} />
           </TouchableOpacity>
 
           {/* Entrenador */}
@@ -829,11 +821,11 @@ export default function HomeScreen() {
             <PersonIcon size={18} color={trainerIconColor} />
             <View style={styles.statusInfo}>
               <Text style={styles.statusTitle} numberOfLines={1}>{trainerTitle}</Text>
-              <Text style={[styles.statusSub, trainerWarn && { color: colors.orange }]} numberOfLines={1}>
+              <Text style={[styles.statusSub, trainerWarn && { color: th.colors.orange }]} numberOfLines={1}>
                 {trainerSub}
               </Text>
             </View>
-            <ChevronRightIcon size={13} color={colors.muted2} />
+            <ChevronRightIcon size={13} color={th.colors.muted2} />
           </TouchableOpacity>
 
         </View>
@@ -866,11 +858,11 @@ export default function HomeScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
 
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
   content: {
     padding:       spacing.xl,
@@ -891,20 +883,13 @@ const styles = StyleSheet.create({
     fontSize:      11,
     fontWeight:    typography.semibold,
     letterSpacing: 1.5,
-    color:         colors.muted,
+    color:         th.colors.muted,
     textTransform: 'uppercase',
   },
   secHeaderLabelMuted: {
-    color: colors.muted2,
-  },
-  subLabel: {
-    fontSize:      10,
-    fontWeight:    typography.medium,
-    letterSpacing: 1,
-    color:         colors.muted2,
-    paddingLeft:   2,
-    marginTop:     5,
-    marginBottom:  -1,
+    color:      th.colors.muted2,
+    fontSize:   10,
+    fontWeight: typography.regular,
   },
 
   // ── Stage/week header (C+) ────────────────────────────────────────────────────
@@ -912,10 +897,10 @@ const styles = StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     gap:             spacing.md,
-    backgroundColor: '#101010',
+    backgroundColor: th.colors.bg,
     borderWidth:     borders.thin,
-    borderColor:     '#242424',
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     paddingVertical: 13,
     paddingHorizontal: spacing.md + 2,
   },
@@ -926,7 +911,7 @@ const styles = StyleSheet.create({
   cpWeekNum: {
     fontSize:      26,
     fontWeight:    typography.bold,
-    color:         colors.text,
+    color:         th.colors.text,
     lineHeight:    26,
     letterSpacing: -1,
   },
@@ -934,14 +919,14 @@ const styles = StyleSheet.create({
     fontSize:      9,
     fontWeight:    typography.semibold,
     letterSpacing: 1,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     marginTop:     3,
     textTransform: 'uppercase',
   },
   cpDivider: {
     width:           1,
     alignSelf:       'stretch',
-    backgroundColor: '#242424',
+    backgroundColor: th.colors.border,
   },
   cpRight: {
     flex:     1,
@@ -957,30 +942,30 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize:   13,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   cpStageLabel: {
     fontSize:   11,
     fontWeight: typography.regular,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
   },
   cpMenu: {
     fontSize:      16,
-    color:         colors.muted,
+    color:         th.colors.muted,
     lineHeight:    16,
     letterSpacing: 1,
     paddingLeft:   spacing.sm,
   },
   cpBar: {
     height:          4,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     borderRadius:    2,
     overflow:        'hidden',
     marginBottom:    6,
   },
   cpBarFill: {
     height:          '100%',
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
     borderRadius:    2,
   },
   cpRightBottom: {
@@ -990,7 +975,7 @@ const styles = StyleSheet.create({
   },
   cpWeekInStage: {
     fontSize: 11,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
 
   // ── Program label ────────────────────────────────────────────────────────────
@@ -1003,19 +988,19 @@ const styles = StyleSheet.create({
     fontSize:      typography.sm,
     fontWeight:    typography.bold,
     letterSpacing: 2,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     textTransform: 'uppercase',
     paddingLeft:   2,
   },
   progTrainer: {
     fontSize:  typography.xs,
-    color:     colors.muted2,
+    color:     th.colors.muted2,
     marginTop: 1,
     paddingLeft: 2,
   },
   progTrainerInline: {
     fontSize:      typography.xs,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     fontWeight:    typography.regular,
     letterSpacing: 0,
     textTransform: 'none',
@@ -1027,12 +1012,12 @@ const styles = StyleSheet.create({
   },
   progDriveIcon: {
     fontSize:  13,
-    color:     colors.green,
+    color:     th.colors.green,
     opacity:   0.8,
   },
   progDriveTime: {
     fontSize:      typography.xs - 1,
-    color:         colors.green,
+    color:         th.colors.green,
     opacity:       0.7,
     textAlign:     'right',
   },
@@ -1043,10 +1028,10 @@ const styles = StyleSheet.create({
     gap:           8,
   },
   phCard: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     '#242424',
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
   },
 
   // Stage card (left, wider)
@@ -1063,37 +1048,37 @@ const styles = StyleSheet.create({
   phStageLabel: {
     fontSize:      11,
     fontWeight:    typography.semibold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.2,
   },
   phStageMenu: {
     fontSize:      16,
-    color:         colors.muted,
+    color:         th.colors.muted,
     lineHeight:    16,
     letterSpacing: 1,
   },
   phStageName: {
     fontSize:     15,
     fontWeight:   typography.bold,
-    color:        colors.text,
+    color:        th.colors.text,
     lineHeight:   15 * 1.2,
     marginBottom: 3,
   },
   phStageWeek: {
     fontSize:     11,
     fontWeight:   typography.regular,
-    color:        colors.mutedLight,
+    color:        th.colors.mutedLight,
     marginBottom: spacing.sm,
   },
   phBar: {
     height:          4,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     borderRadius:    2,
     overflow:        'hidden',
   },
   phBarFill: {
     height:          '100%',
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
     borderRadius:    2,
   },
 
@@ -1107,14 +1092,14 @@ const styles = StyleSheet.create({
   phWkTop: {
     fontSize:      11,
     fontWeight:    typography.semibold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   phWkNum: {
     fontSize:      22,
     fontWeight:    typography.bold,
-    color:         colors.text,
+    color:         th.colors.text,
     lineHeight:    22,
     letterSpacing: -0.5,
   },
@@ -1125,7 +1110,7 @@ const styles = StyleSheet.create({
   phWkSes: {
     fontSize:   11,
     fontWeight: typography.regular,
-    color:      colors.mutedLight,
+    color:      th.colors.mutedLight,
     textAlign:  'center',
   },
   phDots: {
@@ -1140,15 +1125,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   phDotDone: {
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
   phDotPending: {
-    backgroundColor: withOpacity(colors.accent, 0.15),
+    backgroundColor: withOpacity(th.colors.accent, 0.15),
     borderWidth:     1.5,
-    borderColor:     withOpacity(colors.accent, 0.5),
+    borderColor:     withOpacity(th.colors.accent, 0.5),
   },
   phDotIdle: {
-    backgroundColor: '#333333',
+    backgroundColor: th.colors.border,
   },
 
   // Week pill (no stages, full width)
@@ -1168,21 +1153,21 @@ const styles = StyleSheet.create({
   phPillLabel: {
     fontSize:      11,
     fontWeight:    typography.semibold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   phPillNum: {
     fontSize:      22,
     fontWeight:    typography.bold,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: -0.5,
     lineHeight:    22,
   },
   phPillDivider: {
     width:           1,
     height:          26,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     marginRight:     spacing.lg,
   },
   phPillRight: {
@@ -1198,18 +1183,19 @@ const styles = StyleSheet.create({
     fontSize:      11,
     fontWeight:    typography.semibold,
     letterSpacing: 1,
-    color:         colors.mutedLight,
+    color:         th.colors.mutedLight,
     paddingLeft:   2,
     marginBottom:  1,
   },
 
   // Hero (next / in-progress session)
   heroCard: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.35),
-    borderRadius:    radius.md,
+    borderColor:     withOpacity(th.colors.accent, 0.35),
+    borderRadius:    th.radius.md,
     padding:         spacing.md + 2,
+    marginBottom:    spacing.xs + 2,
   },
   heroTop: {
     flexDirection:  'row',
@@ -1229,8 +1215,8 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   adaptedChip: {
-    backgroundColor:   withOpacity(colors.blue, 0.14),
-    borderRadius:      radius.full,
+    backgroundColor:   withOpacity(th.colors.blue, 0.14),
+    borderRadius:      th.radius.full,
     paddingHorizontal: 7,
     paddingVertical:   1,
     flexShrink:        0,
@@ -1238,7 +1224,7 @@ const styles = StyleSheet.create({
   adaptedChipText: {
     fontSize:      9,
     fontWeight:    typography.bold,
-    color:         colors.blue,
+    color:         th.colors.blue,
     letterSpacing: 0.5,
   },
   heroTag: {
@@ -1248,22 +1234,22 @@ const styles = StyleSheet.create({
   },
   heroTime: {
     fontSize: 11,
-    color:    colors.mutedLight,
+    color:    th.colors.mutedLight,
   },
   heroName: {
     fontSize:     17,
     fontWeight:   typography.semibold,
-    color:        colors.text,
+    color:        th.colors.text,
     marginBottom: 3,
   },
   heroEx: {
     fontSize:     12,
-    color:        colors.mutedLight,
+    color:        th.colors.mutedLight,
     marginBottom: spacing.sm,
   },
   heroCta: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm + 2,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm + 2,
     paddingVertical: 11,
     alignItems:      'center',
     marginTop:       spacing.md,
@@ -1271,7 +1257,7 @@ const styles = StyleSheet.create({
   heroCtaText: {
     fontSize:      14,
     fontWeight:    typography.bold,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
     letterSpacing: 0.5,
   },
 
@@ -1280,11 +1266,11 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm + 2,
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
+    borderColor:       th.colors.borderCard,
     borderLeftWidth:   3,
-    borderRadius:      radius.md,
+    borderRadius:      th.radius.md,
     paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.md,
   },
@@ -1298,7 +1284,7 @@ const styles = StyleSheet.create({
   cmpOrder: {
     fontSize:   12,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   cmpInfo: {
     flex:     1,
@@ -1308,44 +1294,44 @@ const styles = StyleSheet.create({
   cmpTitle: {
     fontSize:   13,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   cmpMeta: {
     fontSize: 11,
-    color:    colors.mutedLight,
+    color:    th.colors.mutedLight,
   },
   cmpBtn: {
     borderWidth:       borders.thin,
-    borderColor:       '#333333',
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: 10,
     paddingVertical:   5,
   },
   cmpBtnText: {
     fontSize:   11,
     fontWeight: typography.medium,
-    color:      colors.mutedLight,
+    color:      th.colors.mutedLight,
   },
 
   // ── Stage advance banner ──────────────────────────────────────────────────────
   stageBanner: {
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.25),
-    borderRadius:    radius.md,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.sm,
   },
   stageBannerLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1.5,
   },
   stageBannerText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.sm * 1.5,
   },
   stageBannerBtns: {
@@ -1355,28 +1341,28 @@ const styles = StyleSheet.create({
   },
   stageBannerAdvanceBtn: {
     flex:            2,
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.sm + 2,
     alignItems:      'center',
   },
   stageBannerAdvanceBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
     letterSpacing: 0.5,
   },
   stageBannerContinueBtn: {
     flex:            1,
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.3),
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.accent, 0.3),
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.sm + 2,
     alignItems:      'center',
   },
   stageBannerContinueBtnText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 
@@ -1392,44 +1378,45 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     gap:             6,
     paddingVertical: spacing.sm + 1,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
   },
   programBtnText: {
     fontSize:   typography.sm + 1,
-    fontWeight: typography.medium,
-    color:      colors.mutedLight,
+    fontWeight: typography.regular,
+    color:      th.colors.mutedLight,
   },
   programBtnMore: {
     width:           46,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
     justifyContent:  'center',
   },
   programBtnMoreText: {
     fontSize:      15,
-    color:         colors.mutedLight,
+    color:         th.colors.mutedLight,
     letterSpacing: 1,
   },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
   freeSessionBtn: {
     paddingVertical: spacing.sm + 1,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
     borderStyle:     'dashed',
-    borderColor:     '#333333',
+    borderColor:     th.colors.border,
     alignItems:      'center',
+    marginTop:       spacing.xs + 2,
   },
   freeSessionBtnText: {
     fontSize:      typography.sm + 1,
     fontWeight:    typography.medium,
-    color:         colors.mutedLight,
+    color:         th.colors.mutedLight,
     letterSpacing: 0.3,
   },
 
@@ -1442,13 +1429,13 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 40 },
   emptyText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     lineHeight: typography.base * 1.7,
   },
   newProgramBtn: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.md,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.md,
     paddingHorizontal: spacing.xxl,
     paddingVertical:   spacing.lg,
     marginTop:         spacing.sm,
@@ -1456,7 +1443,7 @@ const styles = StyleSheet.create({
   newProgramBtnText: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
 
@@ -1466,11 +1453,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
   bottomSheet: {
-    backgroundColor:      colors.surface,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor:      th.colors.surface,
+    borderTopLeftRadius:  th.radius.lg,
+    borderTopRightRadius: th.radius.lg,
     borderTopWidth:       borders.thin,
-    borderTopColor:       colors.border,
+    borderTopColor:       th.colors.border,
     padding:              spacing.xl,
     paddingBottom:        spacing.xxl,
     gap:                  spacing.sm,
@@ -1478,48 +1465,48 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
     marginBottom:  spacing.xs,
   },
   archiveDesc: {
     fontSize:     typography.sm,
-    color:        colors.muted,
+    color:        th.colors.muted,
     lineHeight:   typography.sm * 1.6,
     marginBottom: spacing.xs,
   },
   archiveOption: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
   archiveOptionDanger: {
-    borderColor:     'rgba(248,113,113,0.3)',
-    backgroundColor: 'rgba(248,113,113,0.05)',
+    borderColor:     withOpacity(th.colors.red, 0.3),
+    backgroundColor: withOpacity(th.colors.red, 0.05),
   },
   archiveOptionLabel: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   archiveOptionDesc: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 3,
   },
   cancelBtn: {
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
     marginTop:       spacing.xs,
   },
   cancelBtnText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 
@@ -1533,16 +1520,16 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm,
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.md,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.md,
     paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.md - 2,
   },
   statusCardWarn: {
-    backgroundColor: withOpacity(colors.orange, 0.06),
-    borderColor:     withOpacity(colors.orange, 0.4),
+    backgroundColor: withOpacity(th.colors.orange, 0.06),
+    borderColor:     withOpacity(th.colors.orange, 0.4),
   },
   statusInfo: {
     flex:     1,
@@ -1551,11 +1538,11 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize:   12,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   statusSub: {
     fontSize:  11,
-    color:     colors.mutedLight,
+    color:     th.colors.mutedLight,
     marginTop: 1,
   },
 
@@ -1564,15 +1551,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   stageOption: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
   stageOptionActive: {
-    backgroundColor: withOpacity(colors.accent, 0.06),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
   stageOptionHeader: {
     flexDirection:  'row',
@@ -1583,19 +1570,19 @@ const styles = StyleSheet.create({
   stageOptionName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   stageOptionNameActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
   stageActiveLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
   stageOptionDesc: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 });

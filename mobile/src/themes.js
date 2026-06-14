@@ -101,3 +101,20 @@ export const THEMES = {
 export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy];
 
 export const DEFAULT_THEME = 'dark';
+
+// ─── CSS-var resolver (theme-aware) ───────────────────────────────────────────
+// The shared data layer stores session colours as CSS-var strings (e.g.
+// 'var(--day1)'). Resolve them against the ACTIVE theme so day colours change
+// with the theme, not against a frozen palette.
+const VAR_TO_KEY = {
+  'var(--day1)': 'day1', 'var(--day2)': 'day2', 'var(--day3)': 'day3',
+  'var(--day4)': 'day4', 'var(--day5)': 'day5', 'var(--day6)': 'day6',
+  'var(--accent)': 'accent', 'var(--bg)': 'bg', 'var(--surface)': 'surface',
+  'var(--text)': 'text', 'var(--muted)': 'muted', 'var(--border)': 'border',
+  'var(--green)': 'green',
+};
+
+export function resolveColor(t, cssVar) {
+  const key = VAR_TO_KEY[cssVar];
+  return key ? (t.colors[key] ?? cssVar) : cssVar;
+}
