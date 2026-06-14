@@ -18,6 +18,8 @@ import { spacing, typography, borders, withOpacity } from './theme';
 
 // ─── Radius presets ───────────────────────────────────────────────────────────
 const ROUNDED = { xs: 4, sm: 6, md: 10, lg: 16, xl: 22, full: 9999 };
+// Space — slightly softer corners (web: card 12 / btn·input 8).
+const SOFT    = { xs: 4, sm: 8, md: 12, lg: 16, xl: 22, full: 9999 };
 
 // ─── System fonts (custom fonts land in a later phase) ────────────────────────
 const SYSTEM_FONTS = { display: undefined, body: undefined };
@@ -89,6 +91,28 @@ const earthyColors = {
   day4: '#8c5858', day5: '#786830', day6: '#605880',
 };
 
+// Space — light, modern: light-grey bg, white surfaces, black accent.
+const spaceColors = {
+  bg:         '#efefef',
+  surface:    '#ffffff',
+  surface2:   '#d6d6d6',
+  text:       '#0a0a0a',
+  mutedLight: '#444444',
+  muted:      '#666666',
+  muted2:     '#aaaaaa',
+  accent:     '#111111',
+  onAccent:   '#ffffff',
+  headerBg:   '#e6e6e6',
+  border:     '#cecece',
+  borderCard: '#c0c0c0',
+  green:      '#1a7a30',
+  orange:     '#a04010',
+  red:        '#a02020',
+  blue:       '#335599',
+  day1: '#111111', day2: '#335599', day3: '#226644',
+  day4: '#774499', day5: '#aa5500', day6: '#995566',
+};
+
 // ─── Theme objects ────────────────────────────────────────────────────────────
 function makeTheme({ id, name, scheme, colors, radius = ROUNDED, fonts = SYSTEM_FONTS }) {
   return { id, name, scheme, colors, radius, fonts, spacing, typography, borders, withOpacity };
@@ -98,10 +122,11 @@ export const THEMES = {
   dark:     makeTheme({ id: 'dark',     name: 'Oscuro',   scheme: 'dark',  colors: darkColors }),
   midnight: makeTheme({ id: 'midnight', name: 'Midnight', scheme: 'dark',  colors: midnightColors }),
   earthy:   makeTheme({ id: 'earthy',   name: 'Earthy',   scheme: 'light', colors: earthyColors }),
+  space:    makeTheme({ id: 'space',    name: 'Space',    scheme: 'light', colors: spaceColors, radius: SOFT }),
 };
 
 /** Ordered list for theme pickers. */
-export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy];
+export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy, THEMES.space];
 
 export const DEFAULT_THEME = 'dark';
 
