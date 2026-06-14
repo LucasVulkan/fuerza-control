@@ -246,6 +246,9 @@ export const useStore = create(
         i18n.changeLanguage(lang);
       },
 
+      // Active UI theme (see src/themes.js). Persisted; consumed via useTheme().
+      setTheme: (name) => set({ theme: name }),
+
       setActiveProgram: (programId) =>
         set((state) => ({ profile: { ...state.profile, activeProgramId: programId } })),
 
@@ -2985,6 +2988,7 @@ export const useStore = create(
         driveBackup: state.driveBackup,
         trainerSync: state.trainerSync,
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
+        theme:       state.theme,        // active UI theme
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

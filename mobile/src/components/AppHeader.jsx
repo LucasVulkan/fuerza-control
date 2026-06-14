@@ -24,6 +24,7 @@ import ClientGoogleLinkModal from './ClientGoogleLinkModal';
 import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
+import { THEME_LIST } from '../themes';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -205,6 +206,8 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
   const trainerSync          = useStore((s) => s.trainerSync);
   const setTrainerName       = useStore((s) => s.setTrainerName);
   const driveBackup          = useStore((s) => s.driveBackup);
+  const theme                = useStore((s) => s.theme ?? 'dark');
+  const setTheme             = useStore((s) => s.setTheme);
 
   const lang           = profile.language      ?? 'es';
   const unit           = profile.weightUnit    ?? 'kg';
@@ -376,6 +379,22 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
           {/* ── CONFIGURACIÓN ── */}
           <CategoryCard title={t('header.sectionConfig')}>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>{t('header.theme')}</Text>
+              <View style={styles.toggleBtns}>
+                {THEME_LIST.map((th) => (
+                  <TouchableOpacity
+                    key={th.id}
+                    style={[styles.toggleBtn, theme === th.id && styles.toggleBtnActive]}
+                    onPress={() => { if (theme !== th.id) setTheme(th.id); }}
+                  >
+                    <Text style={[styles.toggleBtnText, theme === th.id && styles.toggleBtnTextActive]}>
+                      {th.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <View style={styles.toggleRow}>
               <Text style={styles.toggleLabel}>{t('header.language')}</Text>
               <View style={styles.toggleBtns}>
