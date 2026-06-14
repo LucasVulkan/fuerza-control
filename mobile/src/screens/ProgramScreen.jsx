@@ -19,14 +19,16 @@ import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
-function ShareIcon({ size = 18, color = colors.muted }) {
+function ShareIcon({ size = 18, color }) {
+  const th = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
       <Path
         d="M12 36V60C12 61.5913 12.6321 63.1174 13.7574 64.2426C14.8826 65.3679 16.4087 66 18 66H54C55.5913 66 57.1174 65.3679 58.2426 64.2426C59.3679 63.1174 60 61.5913 60 60V36M24 18L36 6L48 18M36 6L36 45"
-        stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+        stroke={color ?? th.colors.muted} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
       />
     </Svg>
   );
@@ -43,6 +45,7 @@ function getAllProgramDays(program) {
 
 function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
   const { t }      = useTranslation();
+  const styles     = useThemedStyles(makeStyles);
   const dayCount   = getAllProgramDays(program).length;
   const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
   const structureStr = stageCount
@@ -92,6 +95,8 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
 
 function CreateModal({ visible, onClose, onCreate }) {
   const { t }          = useTranslation();
+  const th             = useTheme();
+  const styles         = useThemedStyles(makeStyles);
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
 
@@ -118,7 +123,7 @@ function CreateModal({ visible, onClose, onCreate }) {
             value={name}
             onChangeText={setName}
             placeholder={t('templates.newModal.namePlaceholder')}
-            placeholderTextColor={colors.muted2}
+            placeholderTextColor={th.colors.muted2}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={handleCreate}
@@ -162,19 +167,22 @@ function CreateModal({ visible, onClose, onCreate }) {
 // ── Context menu ───────────────────────────────────────────────────────────────
 
 function MenuOption({ label, onPress, danger }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={styles.menuOption}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.menuOptionText, danger && { color: colors.red }]}>{label}</Text>
+      <Text style={[styles.menuOptionText, danger && { color: th.colors.red }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
   const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -192,6 +200,8 @@ function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
 
 function AssignToClientModal({ program, clients, onAssign, onClose }) {
   const { t }      = useTranslation();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
   const clientList = useMemo(
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
@@ -227,7 +237,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
                     onPress={() => setClientId(c.id)}
                     activeOpacity={0.75}
                   >
-                    <Text style={[styles.clientOptionText, isSelected && { color: colors.accent }]}>
+                    <Text style={[styles.clientOptionText, isSelected && { color: th.colors.accent }]}>
                       {c.name}
                     </Text>
                     {isSelected && (
@@ -243,7 +253,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
           <TextInput
             style={styles.nameInput}
             placeholder={t('templates.assignModal.programNamePlaceholder')}
-            placeholderTextColor={colors.muted2}
+            placeholderTextColor={th.colors.muted2}
             value={customName}
             onChangeText={setCustomName}
             returnKeyType="done"
@@ -273,6 +283,7 @@ function AssignToClientModal({ program, clients, onAssign, onClose }) {
 
 export default function ProgramScreen() {
   const { t }       = useTranslation();
+  const styles      = useThemedStyles(makeStyles);
   const insets      = useSafeAreaInsets();
   const navigation  = useNavigation();
 
@@ -489,10 +500,10 @@ export default function ProgramScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Sub-header (below AppHeader)
@@ -500,7 +511,7 @@ const styles = StyleSheet.create({
     paddingTop:        spacing.lg,
     paddingBottom:     spacing.lg,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   subHeaderRow: {
     flexDirection:     'row',
@@ -511,19 +522,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   newBtn: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.sm,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs + 2,
   },
   newBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 0.5,
   },
 
@@ -536,10 +547,10 @@ const styles = StyleSheet.create({
 
   // Template card
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     padding:         spacing.md,
     gap:             spacing.sm,
   },
@@ -556,33 +567,33 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      '#b0b0b0',
+    color:      th.colors.mutedLight,
   },
   cardMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   badge: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.25),
-    borderRadius:    radius.xs,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.xs,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
   },
   badgeText: {
     fontSize:   typography.xs,
     fontWeight: typography.bold,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
   cardIconBtn: {
     width:           36,
     height:          36,
-    borderRadius:    radius.md,
-    backgroundColor: colors.surface2,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
     justifyContent:  'center',
   },
@@ -597,10 +608,10 @@ const styles = StyleSheet.create({
   cardBtnSecondary: {
     flex:              1,
     height:            36,
-    borderRadius:      radius.md,
+    borderRadius:      th.radius.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
     alignItems:        'center',
     justifyContent:    'center',
     paddingHorizontal: spacing.sm,
@@ -608,21 +619,21 @@ const styles = StyleSheet.create({
   cardBtnText: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   cardBtnIcon: {
     width:           36,
     height:          36,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   cardBtnIconText: {
     fontSize:   18,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 20,
   },
 
@@ -638,31 +649,31 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   emptyBody: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     lineHeight: typography.base * 1.6,
     maxWidth:   260,
   },
   newBtnLarge: {
     marginTop:         spacing.sm,
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.md,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.md,
     paddingHorizontal: spacing.xxl,
     paddingVertical:   spacing.lg,
   },
   newBtnLargeText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
   proBtn: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.sm,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
     marginTop:         spacing.xs,
@@ -670,7 +681,7 @@ const styles = StyleSheet.create({
   proBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   hideTabBtn: {
     marginTop:         spacing.sm,
@@ -679,7 +690,7 @@ const styles = StyleSheet.create({
   },
   hideTabBtnText: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
   },
 
@@ -696,8 +707,8 @@ const styles = StyleSheet.create({
 
   // Create modal — centered card (full border radius)
   centerModal: {
-    backgroundColor: colors.surface,
-    borderRadius:    radius.lg,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
     padding:         spacing.xl,
     paddingBottom:   spacing.xxl,
     gap:             spacing.md,
@@ -705,22 +716,22 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 1,
   },
   nameInput: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.35),
-    borderRadius:    radius.sm,
-    color:           colors.text,
+    borderColor:     withOpacity(th.colors.accent, 0.35),
+    borderRadius:    th.radius.sm,
+    color:           th.colors.text,
     fontSize:        typography.md,
     padding:         spacing.md,
   },
   fieldLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1.5,
   },
   sessionPicker: {
@@ -730,24 +741,24 @@ const styles = StyleSheet.create({
   sessionBtn: {
     flex:            1,
     height:          44,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   sessionBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.1),
-    borderColor:     withOpacity(colors.accent, 0.4),
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
   },
   sessionBtnText: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   sessionBtnTextActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
   modalActions: {
     flexDirection: 'row',
@@ -756,55 +767,55 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex:            1,
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
   },
   cancelBtnText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   createBtn: {
     flex:            2,
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
-    backgroundColor: colors.accent,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
   },
   createBtnDisabled: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
   },
   createBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
   createBtnTextDisabled: {
-    color: colors.muted,
+    color: th.colors.muted,
   },
 
   // Context menu
   contextMenu: {
-    backgroundColor:      colors.surface2,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor:      th.colors.surface2,
+    borderTopLeftRadius:  th.radius.lg,
+    borderTopRightRadius: th.radius.lg,
     borderTopWidth:       borders.thin,
-    borderTopColor:       colors.border,
+    borderTopColor:       th.colors.border,
     overflow:             'hidden',
   },
   menuOption: {
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   menuOptionDanger: {},
   menuOptionText: {
     fontSize:   typography.base,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
 
@@ -815,49 +826,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   assignModal: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     padding:         spacing.xl,
     gap:             spacing.md,
   },
   modalSub: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: -spacing.xs,
   },
   clientOption: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
     marginBottom:      spacing.xs,
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
   },
   clientOptionActive: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.1),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
   },
   clientOptionText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     flex:       1,
   },
   clientOptionCheck: {
     fontSize:   typography.base,
     fontWeight: typography.heavy,
-    color:      colors.accent,
+    color:      th.colors.accent,
     marginLeft: spacing.sm,
   },
   emptyText: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
     paddingVertical: spacing.md,
   },

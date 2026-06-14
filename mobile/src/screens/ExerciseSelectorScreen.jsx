@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ const PATTERNS = [
 
 export default function ExerciseSelectorScreen({ navigation, route }) {
   const { t } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const {
     templateId,
     currentExerciseId = null,
@@ -163,7 +166,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         <TextInput
           style={styles.searchInput}
           placeholder={t('exerciseSelector.searchPlaceholder')}
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={th.colors.muted}
           value={search}
           onChangeText={setSearch}
           autoCorrect={false}
@@ -262,24 +265,24 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (th) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
   },
   headerTitle: {
     fontSize: typography.md, fontWeight: typography.bold,
-    color: colors.text, letterSpacing: 0.3,
+    color: th.colors.text, letterSpacing: 0.3,
   },
-  closeBtn: { fontSize: 18, color: colors.muted, padding: spacing.xs },
+  closeBtn: { fontSize: 18, color: th.colors.muted, padding: spacing.xs },
 
   searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   searchInput: {
-    backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.md, color: colors.text, fontSize: typography.base,
+    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
+    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.base,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
   },
 
@@ -289,12 +292,12 @@ const styles = StyleSheet.create({
   },
   tab: {
     paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
-    backgroundColor: colors.surface2, borderRadius: radius.sm,
-    borderWidth: borders.thin, borderColor: colors.border,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
+    borderWidth: borders.thin, borderColor: th.colors.border,
   },
-  tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  tabText: { fontSize: typography.base, color: colors.muted, fontWeight: typography.medium },
-  tabTextActive: { color: colors.onAccent },
+  tabActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
+  tabText: { fontSize: typography.base, color: th.colors.muted, fontWeight: typography.medium },
+  tabTextActive: { color: th.colors.onAccent },
 
   // Wrapper View con padding — evita el clipping vertical de Android en horizontal ScrollView
   patternPickerWrap: {
@@ -307,64 +310,64 @@ const styles = StyleSheet.create({
   },
   patternChip: {
     paddingHorizontal: spacing.sm, paddingVertical: 4,
-    backgroundColor: colors.surface2, borderRadius: radius.sm,
-    borderWidth: borders.thin, borderColor: colors.border,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
+    borderWidth: borders.thin, borderColor: th.colors.border,
   },
-  patternChipActive: { backgroundColor: `rgba(232,255,71,0.12)`, borderColor: `rgba(232,255,71,0.4)` },
-  patternChipText: { fontSize: typography.xs, color: colors.muted },
-  patternChipTextActive: { color: colors.accent },
+  patternChipActive: { backgroundColor: withOpacity(th.colors.accent, 0.12), borderColor: withOpacity(th.colors.accent, 0.4) },
+  patternChipText: { fontSize: typography.xs, color: th.colors.muted },
+  patternChipTextActive: { color: th.colors.accent },
 
   countRow: {
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs,
   },
-  countText: { fontSize: typography.xs, color: colors.muted2, letterSpacing: 0.5 },
+  countText: { fontSize: typography.xs, color: th.colors.muted2, letterSpacing: 0.5 },
 
   // Botón crear — fila dashed accent
   createBtn: {
     marginHorizontal: spacing.lg, marginBottom: spacing.xs,
     paddingVertical: spacing.sm,
-    borderWidth: borders.thin, borderColor: `rgba(232,255,71,0.45)`,
-    borderStyle: 'dashed', borderRadius: radius.sm,
+    borderWidth: borders.thin, borderColor: withOpacity(th.colors.accent, 0.45),
+    borderStyle: 'dashed', borderRadius: th.radius.sm,
     alignItems: 'center',
   },
-  createBtnText: { fontSize: typography.xs, color: colors.accent, fontWeight: typography.medium },
+  createBtnText: { fontSize: typography.xs, color: th.colors.accent, fontWeight: typography.medium },
 
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   exerciseRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
   },
-  exerciseName: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
-  exerciseMeta: { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
+  exerciseName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
+  exerciseMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
   customBadge: {
-    backgroundColor: `rgba(232,255,71,0.1)`, borderWidth: borders.thin,
-    borderColor: `rgba(232,255,71,0.3)`, borderRadius: radius.xs,
+    backgroundColor: withOpacity(th.colors.accent, 0.1), borderWidth: borders.thin,
+    borderColor: withOpacity(th.colors.accent, 0.3), borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
-  customBadgeText: { fontSize: 9, color: colors.accent, letterSpacing: 0.8 },
-  chevron: { fontSize: 16, color: colors.muted, marginLeft: spacing.xs },
+  customBadgeText: { fontSize: 9, color: th.colors.accent, letterSpacing: 0.8 },
+  chevron: { fontSize: 16, color: th.colors.muted, marginLeft: spacing.xs },
   checkbox: {
-    width: 22, height: 22, borderRadius: radius.xs,
-    borderWidth: 1.5, borderColor: colors.border,
+    width: 22, height: 22, borderRadius: th.radius.xs,
+    borderWidth: 1.5, borderColor: th.colors.border,
     alignItems: 'center', justifyContent: 'center',
     marginLeft: spacing.sm,
   },
-  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkboxTick: { fontSize: 13, fontWeight: typography.heavy, color: colors.onAccent, lineHeight: 16 },
+  checkboxOn: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
+  checkboxTick: { fontSize: 13, fontWeight: typography.heavy, color: th.colors.onAccent, lineHeight: 16 },
   addBar: {
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
-    borderTopWidth: borders.thin, borderTopColor: colors.border,
-    backgroundColor: colors.bg,
+    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
+    backgroundColor: th.colors.bg,
   },
   addBarBtn: {
-    backgroundColor: colors.accent, borderRadius: radius.md,
+    backgroundColor: th.colors.accent, borderRadius: th.radius.md,
     paddingVertical: spacing.md, alignItems: 'center',
   },
   addBarText: {
     fontSize: typography.base, fontWeight: typography.heavy,
-    color: colors.onAccent, letterSpacing: 0.5,
+    color: th.colors.onAccent, letterSpacing: 0.5,
   },
   emptyState: { alignItems: 'center', paddingTop: 40 },
-  emptyText: { fontSize: typography.base, color: colors.muted },
+  emptyText: { fontSize: typography.base, color: th.colors.muted },
 });

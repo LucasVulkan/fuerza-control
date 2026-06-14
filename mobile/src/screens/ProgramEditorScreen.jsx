@@ -6,11 +6,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import DayEditorCard from '../components/editor/DayEditorCard';
 
 export default function ProgramEditorScreen({ navigation, route }) {
   const { t } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
   const programs              = useStore((s) => s.programs);
@@ -223,7 +226,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
             onBlur={commitName}
             onSubmitEditing={commitName}
             placeholder="Nombre del programa"
-            placeholderTextColor={colors.muted2}
+            placeholderTextColor={th.colors.muted2}
             returnKeyType="done"
           />
         </View>
@@ -274,7 +277,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
                     onBlur={commitStageName}
                     onSubmitEditing={commitStageName}
                     placeholder={t('editor.stageName')}
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={th.colors.muted}
                     returnKeyType="done"
                   />
                   <View style={styles.stageWeeksRow}>
@@ -350,13 +353,13 @@ export default function ProgramEditorScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (th) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
   // Header
   headerWrap: {
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -366,27 +369,27 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
   },
   backBtn: { padding: spacing.xs },
-  backIcon: { fontSize: 26, color: colors.muted, lineHeight: 30 },
+  backIcon: { fontSize: 26, color: th.colors.muted, lineHeight: 30 },
   headerTitle: {
     fontSize: typography.base, fontWeight: typography.bold,
-    letterSpacing: 0.5, color: colors.text,
+    letterSpacing: 0.5, color: th.colors.text,
   },
   saveBtnHeader: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius: th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 3,
     flexShrink: 0,
   },
   saveBtnHeaderText: {
     fontSize: typography.sm, fontWeight: typography.heavy,
-    color: colors.onAccent, letterSpacing: 0.5,
+    color: th.colors.onAccent, letterSpacing: 0.5,
   },
   saveBtnHeaderClean: {
-    backgroundColor: colors.surface2,
-    borderWidth: borders.thin, borderColor: colors.border,
+    backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin, borderColor: th.colors.border,
   },
-  saveBtnHeaderTextClean: { color: colors.muted },
+  saveBtnHeaderTextClean: { color: th.colors.muted },
   programNameWrap: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
@@ -395,21 +398,21 @@ const styles = StyleSheet.create({
   programNameInput: {
     fontSize: typography.base,
     fontWeight: typography.bold,
-    color: colors.text,
-    backgroundColor: colors.surface2,
+    color: th.colors.text,
+    backgroundColor: th.colors.surface2,
     borderWidth: borders.thin,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
   },
 
   // Stage card (scrollable, not full-width)
   stageCard: {
-    backgroundColor:  colors.surface,
+    backgroundColor:  th.colors.surface,
     borderWidth:      borders.thin,
-    borderColor:      colors.border,
-    borderRadius:     radius.md,
+    borderColor:      th.colors.border,
+    borderRadius:     th.radius.md,
     overflow:         'hidden',
   },
   stageTabsContent: { paddingHorizontal: spacing.xs },
@@ -418,12 +421,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  stageTabActive: { borderBottomColor: colors.accent },
-  stageTabText: { fontSize: typography.sm, color: colors.muted },
-  stageTabTextActive: { color: colors.accent, fontWeight: typography.medium },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
+  stageTabActive: { borderBottomColor: th.colors.accent },
+  stageTabText: { fontSize: typography.sm, color: th.colors.muted },
+  stageTabTextActive: { color: th.colors.accent, fontWeight: typography.medium },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: th.colors.accent },
   addStageTab: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, justifyContent: 'center' },
-  addStageTabText: { fontSize: 18, color: colors.muted, lineHeight: 22 },
+  addStageTabText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
 
   // Stage meta
   stageMeta: {
@@ -431,9 +434,9 @@ const styles = StyleSheet.create({
     alignItems:       'center',
     paddingHorizontal: spacing.lg,
     paddingVertical:  spacing.sm,
-    backgroundColor:  colors.surface2,
+    backgroundColor:  th.colors.surface2,
     borderTopWidth:   borders.thin,
-    borderTopColor:   colors.border,
+    borderTopColor:   th.colors.border,
     gap:              spacing.sm,
   },
   stageFields: {
@@ -446,11 +449,11 @@ const styles = StyleSheet.create({
     flex:              1,
     fontSize:          typography.sm,
     fontWeight:        typography.medium,
-    color:             colors.text,
-    backgroundColor:   colors.surface,
+    color:             th.colors.text,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
   },
@@ -459,14 +462,14 @@ const styles = StyleSheet.create({
     width:           44,
     textAlign:       'center',
     fontSize:        typography.sm,
-    color:           colors.text,
-    backgroundColor: colors.surface,
+    color:           th.colors.text,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.xs + 2,
   },
-  stageWeeksLabel: { fontSize: typography.xs, color: colors.muted },
+  stageWeeksLabel: { fontSize: typography.xs, color: th.colors.muted },
   stageActions: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -476,44 +479,44 @@ const styles = StyleSheet.create({
   activateBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   4,
-    backgroundColor:   withOpacity(colors.accent, 0.1),
+    backgroundColor:   withOpacity(th.colors.accent, 0.1),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.3),
-    borderRadius:      radius.sm,
+    borderColor:       withOpacity(th.colors.accent, 0.3),
+    borderRadius:      th.radius.sm,
   },
-  activateBtnText: { fontSize: typography.xs, color: colors.accent },
+  activateBtnText: { fontSize: typography.xs, color: th.colors.accent },
   deleteStageBtn: {
     width:           28,
     height:          28,
     alignItems:      'center',
     justifyContent:  'center',
-    borderRadius:    radius.sm,
-    backgroundColor: withOpacity(colors.red ?? '#ef4444', 0.08),
+    borderRadius:    th.radius.sm,
+    backgroundColor: withOpacity(th.colors.red ?? th.colors.red, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.red ?? '#ef4444', 0.25),
+    borderColor:     withOpacity(th.colors.red ?? th.colors.red, 0.25),
   },
-  deleteStageBtnText: { fontSize: 13, color: colors.muted2 },
+  deleteStageBtnText: { fontSize: 13, color: th.colors.muted2 },
 
   // Content
   scrollContent: {
     paddingHorizontal: spacing.xl, paddingTop: spacing.md,
     paddingBottom: spacing.xxl, gap: spacing.sm,
   },
-  changesHint: { fontSize: typography.xs, color: colors.muted, lineHeight: 18, marginBottom: 4 },
+  changesHint: { fontSize: typography.xs, color: th.colors.muted, lineHeight: 18, marginBottom: 4 },
   addSessionBtn: {
     paddingVertical: spacing.md + 2,
-    borderRadius: radius.md,
+    borderRadius: th.radius.md,
     borderWidth: 1, borderStyle: 'dashed',
-    borderColor: withOpacity(colors.accent, 0.4),
+    borderColor: withOpacity(th.colors.accent, 0.4),
     alignItems: 'center',
-    backgroundColor: withOpacity(colors.accent, 0.04),
+    backgroundColor: withOpacity(th.colors.accent, 0.04),
     marginTop: 4,
   },
-  addSessionBtnText: { fontSize: typography.base, color: colors.accent },
+  addSessionBtnText: { fontSize: typography.base, color: th.colors.accent },
   convertToStagesBtn: {
-    paddingVertical: spacing.md, borderRadius: radius.md,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border,
+    paddingVertical: spacing.md, borderRadius: th.radius.md,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.border,
     alignItems: 'center', marginTop: 4,
   },
-  convertToStagesBtnText: { fontSize: typography.sm, color: colors.muted },
+  convertToStagesBtnText: { fontSize: typography.sm, color: th.colors.muted },
 });

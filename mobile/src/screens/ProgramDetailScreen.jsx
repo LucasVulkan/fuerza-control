@@ -8,12 +8,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, resolveColor } from '../theme';
+import { spacing, typography, borders } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 
 // ── Exercise row ───────────────────────────────────────────────────────────────
 
 function ExerciseRow({ exConfig, def, isLast }) {
   const { i18n } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
@@ -44,7 +47,9 @@ function ExerciseRow({ exConfig, def, isLast }) {
 // ── Day section ────────────────────────────────────────────────────────────────
 
 function DaySection({ day, template, allExercises }) {
-  const accent    = resolveColor(template?.color ?? 'var(--day1)');
+  const th        = useTheme();
+  const styles    = useThemedStyles(makeStyles);
+  const accent    = resolveColor(th, template?.color ?? 'var(--day1)');
   const exercises = template?.exercises ?? [];
 
   return (
@@ -86,6 +91,7 @@ function DaySection({ day, template, allExercises }) {
 export default function ProgramDetailScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  const styles     = useThemedStyles(makeStyles);
 
   const ui                = useStore((s) => s.ui);
   const programs          = useStore((s) => s.programs);
@@ -153,10 +159,10 @@ export default function ProgramDetailScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Header
@@ -166,13 +172,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   backBtn: { padding: spacing.xs },
   backIcon: {
     fontSize:   26,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 30,
   },
   headerCenter: {
@@ -182,11 +188,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize:   typography.md,
     fontWeight: typography.bold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   headerSub: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   // Content
   content: {
@@ -219,15 +225,15 @@ const styles = StyleSheet.create({
   },
   dayEmphasis: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // Exercise list
   exList: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
   exRow: {
@@ -236,7 +242,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   exRowLast: {
@@ -245,24 +251,24 @@ const styles = StyleSheet.create({
   exNum: {
     width:     20,
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'right',
   },
   exInfo: { flex: 1 },
   exName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   exMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
 
   noExercises: {
     fontSize:    typography.sm,
-    color:       colors.muted2,
+    color:       th.colors.muted2,
     paddingLeft: spacing.sm,
     fontStyle:   'italic',
   },
@@ -275,6 +281,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 });

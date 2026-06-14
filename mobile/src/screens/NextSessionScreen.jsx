@@ -16,7 +16,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 /** Input type for an exercise (matches ExerciseCard's fallback logic). */
 function inputTypeFor(exConfig, def) {
@@ -59,6 +60,8 @@ function lastSummary(lastExData, inputType) {
 
 export default function NextSessionScreen({ navigation, route }) {
   const { t } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const clientId = route.params?.clientId;
 
@@ -235,7 +238,7 @@ export default function NextSessionScreen({ navigation, route }) {
                           onBlur={() => commitField(exerciseId, key)}
                           keyboardType={key === 'reps' || key === 'time' ? 'numeric' : 'decimal-pad'}
                           placeholder="—"
-                          placeholderTextColor={colors.muted2}
+                          placeholderTextColor={th.colors.muted2}
                         />
                       </View>
                     ))}
@@ -246,7 +249,7 @@ export default function NextSessionScreen({ navigation, route }) {
                     onChangeText={(v) => setField(exerciseId, 'note', v)}
                     onBlur={() => commitField(exerciseId, 'note')}
                     placeholder={t('nextSession.notePlaceholder')}
-                    placeholderTextColor={colors.muted2}
+                    placeholderTextColor={th.colors.muted2}
                     multiline
                   />
                 </View>
@@ -274,71 +277,71 @@ export default function NextSessionScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (th) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
   },
   backBtn: { padding: spacing.xs },
-  backIcon: { fontSize: 26, color: colors.muted, lineHeight: 30 },
-  headerKicker: { fontSize: 10, letterSpacing: 1, color: colors.muted, fontWeight: typography.semibold },
-  headerName: { fontSize: typography.lg, fontWeight: typography.bold, color: colors.text },
+  backIcon: { fontSize: 26, color: th.colors.muted, lineHeight: 30 },
+  headerKicker: { fontSize: 10, letterSpacing: 1, color: th.colors.muted, fontWeight: typography.semibold },
+  headerName: { fontSize: typography.lg, fontWeight: typography.bold, color: th.colors.text },
   clearBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  clearText: { fontSize: typography.sm, color: colors.muted },
+  clearText: { fontSize: typography.sm, color: th.colors.muted },
 
-  selectorWrap: { flexGrow: 0, borderBottomWidth: borders.thin, borderBottomColor: colors.border },
+  selectorWrap: { flexGrow: 0, borderBottomWidth: borders.thin, borderBottomColor: th.colors.border },
   selector: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.xs },
   sessTab: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm - 1,
-    borderRadius: radius.full, borderWidth: borders.thin, borderColor: colors.border,
-    backgroundColor: colors.surface2,
+    borderRadius: th.radius.full, borderWidth: borders.thin, borderColor: th.colors.border,
+    backgroundColor: th.colors.surface2,
   },
-  sessTabActive: { backgroundColor: withOpacity(colors.blue, 0.14), borderColor: withOpacity(colors.blue, 0.5) },
-  sessTabText: { fontSize: typography.sm, color: colors.muted, maxWidth: 180 },
-  sessTabTextActive: { color: colors.blue, fontWeight: typography.medium },
+  sessTabActive: { backgroundColor: withOpacity(th.colors.blue, 0.14), borderColor: withOpacity(th.colors.blue, 0.5) },
+  sessTabText: { fontSize: typography.sm, color: th.colors.muted, maxWidth: 180 },
+  sessTabTextActive: { color: th.colors.blue, fontWeight: typography.medium },
 
-  hint: { fontSize: typography.xs, color: colors.muted, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  hint: { fontSize: typography.xs, color: th.colors.muted, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
 
   list: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
   exCard: {
-    backgroundColor: colors.surface, borderWidth: borders.thin, borderColor: colors.border,
-    borderLeftWidth: 3, borderLeftColor: withOpacity(colors.blue, 0.55),
-    borderRadius: radius.md, padding: spacing.md,
+    backgroundColor: th.colors.surface, borderWidth: borders.thin, borderColor: th.colors.border,
+    borderLeftWidth: 3, borderLeftColor: withOpacity(th.colors.blue, 0.55),
+    borderRadius: th.radius.md, padding: spacing.md,
   },
-  exName: { fontSize: typography.base, fontWeight: typography.semibold, color: colors.text },
-  exLast: { fontSize: typography.xs, color: colors.muted, marginTop: 3, marginBottom: spacing.sm },
+  exName: { fontSize: typography.base, fontWeight: typography.semibold, color: th.colors.text },
+  exLast: { fontSize: typography.xs, color: th.colors.muted, marginTop: 3, marginBottom: spacing.sm },
   fieldsRow: { flexDirection: 'row', gap: spacing.sm },
   field: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.sm, paddingHorizontal: spacing.sm,
+    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
+    borderRadius: th.radius.sm, paddingHorizontal: spacing.sm,
   },
-  fieldLabel: { fontSize: typography.xs, color: colors.muted2 },
+  fieldLabel: { fontSize: typography.xs, color: th.colors.muted2 },
   fieldInput: {
-    flex: 1, textAlign: 'right', color: colors.blue,
+    flex: 1, textAlign: 'right', color: th.colors.blue,
     fontSize: typography.md, fontWeight: typography.semibold,
     paddingVertical: spacing.sm,
   },
   noteInput: {
-    marginTop: spacing.sm, backgroundColor: colors.surface2,
-    borderWidth: borders.thin, borderColor: colors.border, borderRadius: radius.sm,
+    marginTop: spacing.sm, backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin, borderColor: th.colors.border, borderRadius: th.radius.sm,
     paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
-    color: colors.text, fontSize: typography.sm, minHeight: 38,
+    color: th.colors.text, fontSize: typography.sm, minHeight: 38,
   },
 
   footer: {
     paddingHorizontal: spacing.lg, paddingTop: spacing.md,
-    borderTopWidth: borders.thin, borderTopColor: colors.border, backgroundColor: colors.bg,
+    borderTopWidth: borders.thin, borderTopColor: th.colors.border, backgroundColor: th.colors.bg,
   },
-  sendBtn: { backgroundColor: colors.blue, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
-  sendBtnDisabled: { backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border },
-  sendText: { fontSize: typography.base, fontWeight: typography.heavy, color: '#0a0a0a', letterSpacing: 0.3 },
-  sendTextDisabled: { color: colors.muted },
-  footerNote: { fontSize: typography.xs, color: colors.muted, textAlign: 'center', marginTop: spacing.sm },
+  sendBtn: { backgroundColor: th.colors.blue, borderRadius: th.radius.md, paddingVertical: spacing.md, alignItems: 'center' },
+  sendBtnDisabled: { backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border },
+  sendText: { fontSize: typography.base, fontWeight: typography.heavy, color: th.colors.onAccent, letterSpacing: 0.3 },
+  sendTextDisabled: { color: th.colors.muted },
+  footerNote: { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center', marginTop: spacing.sm },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  emptyText: { fontSize: typography.base, color: colors.muted, textAlign: 'center' },
+  emptyText: { fontSize: typography.base, color: th.colors.muted, textAlign: 'center' },
 });
