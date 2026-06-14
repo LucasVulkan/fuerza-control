@@ -13,16 +13,17 @@ import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ── Progression chip colors ────────────────────────────────────────────────────
 
-const CHIP_COLORS = {
-  up:   { bg: withOpacity(colors.green,  0.1), border: withOpacity(colors.green,  0.3), text: colors.green  },
-  down: { bg: 'rgba(248,113,113,0.1)',         border: 'rgba(248,113,113,0.3)',         text: colors.red    },
-  hold: { bg: withOpacity(colors.accent, 0.08), border: withOpacity(colors.accent, 0.3), text: colors.accent },
-  info: { bg: colors.surface2,                  border: colors.border,                   text: colors.muted  },
-};
+const chipColors = (th) => ({
+  up:   { bg: withOpacity(th.colors.green,  0.1),  border: withOpacity(th.colors.green,  0.3), text: th.colors.green  },
+  down: { bg: withOpacity(th.colors.red,    0.1),  border: withOpacity(th.colors.red,    0.3), text: th.colors.red    },
+  hold: { bg: withOpacity(th.colors.accent, 0.08), border: withOpacity(th.colors.accent, 0.3), text: th.colors.accent },
+  info: { bg: th.colors.surface2,                  border: th.colors.border,                   text: th.colors.muted  },
+});
 
 // ── buildTarget ───────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ function buildSetLabel(set, index, fmt) {
 // ── SetPill ───────────────────────────────────────────────────────────────────
 
 function SetPill({ set, index, fmt }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.setPill}>
       <Text style={styles.setPillText}>{buildSetLabel(set, index, fmt)}</Text>
@@ -90,6 +92,8 @@ export default function ExerciseCard({
   overrideEx,
 }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
 
   // Trainer note (instructions written in the program editor)
@@ -275,7 +279,8 @@ export default function ExerciseCard({
     try { return getProgression(exConfig, def, lastExercise.sets, t); }
     catch { return null; }
   })();
-  const chipStyle  = progression ? (CHIP_COLORS[progression.type] ?? CHIP_COLORS.info) : null;
+  const CHIP = chipColors(th);
+  const chipStyle  = progression ? (CHIP[progression.type] ?? CHIP.info) : null;
   const targetLabel = buildTarget(def, exConfig, t);
 
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
@@ -412,7 +417,7 @@ export default function ExerciseCard({
           {/* Coach target chip (next-session prescription) */}
           {hasCoachTarget ? (
             <View style={[styles.chip, styles.coachChip]}>
-              <Text style={[styles.chipText, { color: colors.blue }]}>◎  {t('workout.coachTarget')}</Text>
+              <Text style={[styles.chipText, { color: th.colors.blue }]}>◎  {t('workout.coachTarget')}</Text>
             </View>
           ) : null}
 
@@ -583,7 +588,7 @@ export default function ExerciseCard({
                 value={clientNote ?? ''}
                 onChangeText={onClientNoteChange}
                 placeholder={t('workout.clientNotePlaceholder')}
-                placeholderTextColor={colors.muted2}
+                placeholderTextColor={th.colors.muted2}
                 multiline
                 maxLength={280}
               />
@@ -605,12 +610,12 @@ export default function ExerciseCard({
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
     paddingBottom:   spacing.xs,
   },
@@ -637,15 +642,15 @@ const styles = StyleSheet.create({
   name: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
     flexShrink: 1,
   },
   keyBadge: {
     fontSize:          typography.xs,
     fontWeight:        typography.bold,
-    color:             colors.accent,
-    backgroundColor:   withOpacity(colors.accent, 0.1),
-    borderRadius:      radius.sm,
+    color:             th.colors.accent,
+    backgroundColor:   withOpacity(th.colors.accent, 0.1),
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.xs,
     paddingVertical:   2,
     overflow:          'hidden',
@@ -653,16 +658,16 @@ const styles = StyleSheet.create({
   },
   target: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   tempoInline: {
     fontSize:      typography.xs,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     letterSpacing: 2,
   },
   collapseBtn: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   headerRight: {
@@ -681,21 +686,21 @@ const styles = StyleSheet.create({
   trainerNote: {
     marginHorizontal:  spacing.md,
     marginBottom:      spacing.sm,
-    backgroundColor:   withOpacity(colors.accent, 0.07),
+    backgroundColor:   withOpacity(th.colors.accent, 0.07),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.25),
-    borderRadius:      radius.sm,
+    borderColor:       withOpacity(th.colors.accent, 0.25),
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   5,
   },
   trainerNoteText: {
     fontSize:   typography.xs,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: 17,
   },
   trainerNoteName: {
     fontWeight: typography.bold,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
 
   // Client feedback note
@@ -704,13 +709,13 @@ const styles = StyleSheet.create({
     marginTop:        spacing.xs,
   },
   clientNoteInput: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.sm,
-    color:             colors.text,
+    color:             th.colors.text,
     fontSize:          typography.sm,
     minHeight:         44,
     textAlignVertical: 'top',
@@ -721,7 +726,7 @@ const styles = StyleSheet.create({
     marginHorizontal:  spacing.md,
     marginBottom:      spacing.sm,
     borderWidth:       borders.thin,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   5,
   },
@@ -730,32 +735,32 @@ const styles = StyleSheet.create({
     fontWeight: typography.regular,
   },
   coachChip: {
-    backgroundColor: withOpacity(colors.blue, 0.1),
-    borderColor:     withOpacity(colors.blue, 0.3),
+    backgroundColor: withOpacity(th.colors.blue, 0.1),
+    borderColor:     withOpacity(th.colors.blue, 0.3),
   },
 
   // Coach one-off note strip
   coachNote: {
     marginHorizontal:  spacing.md,
     marginBottom:      spacing.sm,
-    backgroundColor:   withOpacity(colors.blue, 0.07),
+    backgroundColor:   withOpacity(th.colors.blue, 0.07),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.blue, 0.25),
-    borderRadius:      radius.sm,
+    borderColor:       withOpacity(th.colors.blue, 0.25),
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   5,
   },
   coachNoteText: {
     fontSize:   typography.xs,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: 17,
   },
   coachNoteName: {
     fontWeight: typography.bold,
-    color:      colors.blue,
+    color:      th.colors.blue,
   },
   coachNoteTag: {
-    color: colors.muted,
+    color: th.colors.muted,
   },
 
   // Column headers
@@ -768,7 +773,7 @@ const styles = StyleSheet.create({
   colLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     letterSpacing: 0.8,
   },
 
@@ -783,14 +788,14 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     paddingVertical:  spacing.sm,
     borderWidth:      borders.thin,
-    borderColor:      colors.border,
+    borderColor:      th.colors.border,
     borderStyle:      'dashed',
-    borderRadius:     radius.sm,
+    borderRadius:     th.radius.sm,
     alignItems:       'center',
   },
   addSetText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 
@@ -819,17 +824,17 @@ const styles = StyleSheet.create({
   doneIcon: {
     width:           22,
     height:          22,
-    borderRadius:    radius.full,
-    backgroundColor: withOpacity(colors.green, 0.15),
+    borderRadius:    th.radius.full,
+    backgroundColor: withOpacity(th.colors.green, 0.15),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.green, 0.4),
+    borderColor:     withOpacity(th.colors.green, 0.4),
     alignItems:      'center',
     justifyContent:  'center',
     marginTop:       2,
   },
   doneIconText: {
     fontSize:   11,
-    color:      colors.green,
+    color:      th.colors.green,
     fontWeight: typography.bold,
   },
   pillsRow: {
@@ -838,30 +843,30 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
   },
   setPill: {
-    backgroundColor:   'rgba(74,222,128,0.08)',
+    backgroundColor:   withOpacity(th.colors.green, 0.08),
     borderWidth:       borders.thin,
-    borderColor:       'rgba(74,222,128,0.3)',
-    borderRadius:      radius.sm,
+    borderColor:       withOpacity(th.colors.green, 0.3),
+    borderRadius:      th.radius.sm,
     paddingHorizontal: 7,
     paddingVertical:   2,
   },
   setPillText: {
     fontSize:   typography.xs,
     fontWeight: typography.medium,
-    color:      colors.green,
+    color:      th.colors.green,
   },
   addSetBtnSmall: {
     flexShrink:        0,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
+    borderColor:       th.colors.border,
     borderStyle:       'dashed',
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
   },
   addSetSmallText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 });

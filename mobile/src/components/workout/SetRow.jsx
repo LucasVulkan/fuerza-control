@@ -18,7 +18,8 @@ import {
   StyleSheet, PanResponder, Keyboard, Pressable, Animated,
 } from 'react-native';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
 
 const STEP_PX  = 8;
 const H_THRESH = 12;
@@ -26,6 +27,7 @@ const H_THRESH = 12;
 // ── TimerButton ───────────────────────────────────────────────────────────────
 
 function TimerButton({ onTime }) {
+  const styles = useThemedStyles(makeStyles);
   const [running,  setRunning]  = useState(false);
   const baseRef    = useRef(0);      // accumulated seconds before current segment
   const startRef   = useRef(null);   // Date.now() when current segment started
@@ -80,6 +82,8 @@ function InputCell({
   showHint   = false,
   isDone     = false,
 }) {
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
   const inputRef = useRef(null);
   const [editing,      setEditing]      = useState(false);
   const [scrollActive, setScrollActive] = useState(false);
@@ -187,7 +191,7 @@ function InputCell({
           onChangeText={(v) => { setLocalValue(v); onChangeText(v); }}
           keyboardType={keyboardType}
           placeholder="—"
-          placeholderTextColor={colors.muted2}
+          placeholderTextColor={th.colors.muted2}
           selectTextOnFocus
           returnKeyType="done"
           textAlign="center"
@@ -274,6 +278,7 @@ export default function SetRow({
   showRpe = false,     // exercise has 'Registrar RPE' enabled
   onRpeChange,
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       {onCopyPrev ? (
@@ -395,7 +400,7 @@ export default function SetRow({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   row: {
     flexDirection:   'row',
     alignItems:      'center',
@@ -405,12 +410,12 @@ const styles = StyleSheet.create({
   setNum: {
     width:         20,
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.5,
     textAlign:     'right',
   },
   setNumActive: {
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.semibold,
   },
 
@@ -418,21 +423,21 @@ const styles = StyleSheet.create({
 
   input: {
     width:             '100%',
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingVertical:   spacing.xs + 2,
     paddingHorizontal: spacing.xs,
     alignItems:        'center',
     justifyContent:    'center',
   },
   inputEditing: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.accent,
-    borderRadius:      radius.sm,
-    color:             colors.text,
+    borderColor:       th.colors.accent,
+    borderRadius:      th.radius.sm,
+    color:             th.colors.text,
     fontSize:          typography.md,
     fontWeight:        typography.semibold,
     textAlign:         'center',
@@ -440,45 +445,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   inputScrollActive: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   inputAccentOverlay: {
     position:        'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     borderWidth:     borders.thin,
-    borderColor:     colors.accent,
-    borderRadius:    radius.sm,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     th.colors.accent,
+    borderRadius:    th.radius.sm,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   inputDone: {
-    borderColor: withOpacity(colors.green, 0.3),
+    borderColor: withOpacity(th.colors.green, 0.3),
   },
   inputPrev: {
-    borderColor: colors.borderCard,
+    borderColor: th.colors.borderCard,
   },
   inputCoach: {
-    borderColor: withOpacity(colors.blue, 0.4),
+    borderColor: withOpacity(th.colors.blue, 0.4),
   },
 
   valueText: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
     textAlign:  'center',
   },
   valueTextPrev: {
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     fontWeight: typography.regular,
   },
   valueTextCoach: {
-    color:      colors.blue,
+    color:      th.colors.blue,
     fontWeight: typography.regular,
   },
   placeholder: {
     fontSize:   typography.md,
     fontWeight: typography.regular,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     textAlign:  'center',
   },
 
@@ -500,50 +505,50 @@ const styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: 5,
   },
-  arrow:       { fontSize: 11, color: colors.muted,  opacity: 0.55, lineHeight: 13 },
-  arrowActive: { color: colors.accent, opacity: 1 },
+  arrow:       { fontSize: 11, color: th.colors.muted,  opacity: 0.55, lineHeight: 13 },
+  arrowActive: { color: th.colors.accent, opacity: 1 },
 
   // Done button
   doneBtn: {
     width:           36,
     height:          36,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   doneBtnActive: {
-    borderColor:     colors.green,
-    backgroundColor: 'rgba(74,222,128,0.1)',
+    borderColor:     th.colors.green,
+    backgroundColor: withOpacity(th.colors.green, 0.1),
   },
-  doneMark:       { fontSize: 16, color: colors.muted },
-  doneMarkActive: { color: colors.green },
+  doneMark:       { fontSize: 16, color: th.colors.muted },
+  doneMarkActive: { color: th.colors.green },
 
   // Timer button
   timerBtn: {
     width:           36,
     height:          36,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   timerBtnRunning: {
-    borderColor:     withOpacity(colors.accent, 0.5),
-    backgroundColor: withOpacity(colors.accent, 0.1),
+    borderColor:     withOpacity(th.colors.accent, 0.5),
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
   },
   timerBtnIcon: {
     fontSize:           13,
-    color:              colors.muted,
+    color:              th.colors.muted,
     lineHeight:         13,
     includeFontPadding: false,
     textAlign:          'center',
   },
   timerBtnIconRunning: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
 });

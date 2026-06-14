@@ -11,7 +11,9 @@ import Svg, { Circle } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard from '../components/workout/ExerciseCard';
-import { resolveColor, colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
 
 // ── Floating rest timer ───────────────────────────────────────────────────────
@@ -23,6 +25,8 @@ const SWIPE_THRESHOLD = 80;
 
 function RestTimerFloat({ timer, onStop, bottomOffset }) {
   const { t }      = useTranslation();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
 
@@ -89,7 +93,7 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RING_RADIUS}
-            stroke={withOpacity(colors.accent, 0.18)}
+            stroke={withOpacity(th.colors.accent, 0.18)}
             strokeWidth={3.5}
             fill="none"
           />
@@ -97,7 +101,7 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RING_RADIUS}
-            stroke={colors.accent}
+            stroke={th.colors.accent}
             strokeWidth={3.5}
             fill="none"
             strokeDasharray={CIRCUMFERENCE}
@@ -123,6 +127,8 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 
 function NotesModal({ visible, value, onChange, onClose }) {
   const { t } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {/*
@@ -152,7 +158,7 @@ function NotesModal({ visible, value, onChange, onClose }) {
             multiline
             autoFocus
             placeholder={t('workout.notesPlaceholder')}
-            placeholderTextColor={colors.muted2}
+            placeholderTextColor={th.colors.muted2}
             textAlignVertical="top"
           />
           <Text style={styles.notesHint}>{t('workout.notesSavedWith')}</Text>
@@ -168,6 +174,8 @@ export default function WorkoutScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t }      = useTranslation();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
 
   const [notesOpen, setNotesOpen] = useState(false);
 
@@ -226,7 +234,7 @@ export default function WorkoutScreen() {
   const isFree = activeSession.templateId === '__free__';
 
   // Colors
-  const accentColor = resolveColor(template?.color ?? 'var(--accent)');
+  const accentColor = resolveColor(th,template?.color ?? 'var(--accent)');
 
   function handleSave() {
     const result = saveSession();
@@ -269,7 +277,7 @@ export default function WorkoutScreen() {
         <View style={styles.headerCenter}>
           {isFree ? (
             <>
-              <Text style={[styles.sesTag, { color: colors.accent }]}>
+              <Text style={[styles.sesTag, { color: th.colors.accent }]}>
                 {t('freeSession.badge').toUpperCase()}
               </Text>
               <TextInput
@@ -277,7 +285,7 @@ export default function WorkoutScreen() {
                 value={activeSession.freeSessionName ?? ''}
                 onChangeText={updateFreeSessionName}
                 placeholder={t('freeSession.namePlaceholder')}
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={th.colors.muted}
                 returnKeyType="done"
                 maxLength={60}
               />
@@ -423,13 +431,13 @@ export default function WorkoutScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
   errorText: {
-    color:     colors.muted,
+    color:     th.colors.muted,
     fontSize:  typography.base,
     textAlign: 'center',
     marginTop: spacing.xxl,
@@ -440,10 +448,10 @@ const styles = StyleSheet.create({
     position:          'absolute',
     left:              spacing.lg,
     right:             spacing.lg,
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.lg,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.lg,
     flexDirection:     'row',
     alignItems:        'center',
     paddingVertical:   spacing.sm,
@@ -467,27 +475,27 @@ const styles = StyleSheet.create({
     position:   'absolute',
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   timerExName: {
     flex:       1,
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.sm * 1.4,
   },
   timerSkipBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.35),
-    backgroundColor:   withOpacity(colors.accent, 0.08),
+    borderColor:       withOpacity(th.colors.accent, 0.35),
+    backgroundColor:   withOpacity(th.colors.accent, 0.08),
   },
   timerSkipText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
 
   // Header
@@ -498,12 +506,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   backBtn: { padding: spacing.xs },
   backIcon: {
     fontSize:   26,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 30,
   },
   headerCenter: {
@@ -524,52 +532,52 @@ const styles = StyleSheet.create({
   sesName: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.xl * 1.2,
   },
   driveIcon: {
     fontSize:   12,
-    color:      colors.green,
+    color:      th.colors.green,
     lineHeight: typography.xl * 1.2,
     opacity:    0.75,
   },
   trainerCredit: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontStyle:  'italic',
   },
   freeNameInput: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.xl * 1.2,
     padding:    0,
     minHeight:  typography.xl * 1.2,
   },
   freeBanner: {
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
     borderWidth:     1,
-    borderColor:     withOpacity(colors.accent, 0.18),
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.accent, 0.18),
+    borderRadius:    th.radius.sm,
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     marginBottom:    spacing.xs,
   },
   freeBannerText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.6,
     textAlign:  'center',
   },
   notesBtn: {
     padding:         spacing.xs + 2,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
   },
   notesBtnActive: {
-    borderColor:     withOpacity(colors.accent, 0.4),
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
   notesIcon: { fontSize: 16 },
 
@@ -583,33 +591,33 @@ const styles = StyleSheet.create({
   // Add exercise (ad-hoc)
   addExBtn: {
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.3),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
     borderStyle:     'dashed',
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
-    backgroundColor: withOpacity(colors.accent, 0.04),
+    backgroundColor: withOpacity(th.colors.accent, 0.04),
     marginTop:       spacing.xs,
   },
   addExBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.medium,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 0.5,
   },
 
   // Save / discard
   saveBtn: {
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     paddingVertical: spacing.md + 4,
     alignItems:      'center',
     marginTop:       spacing.sm,
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
   saveBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
     letterSpacing: 1,
   },
   discardBtn: {
@@ -618,7 +626,7 @@ const styles = StyleSheet.create({
   },
   discardText: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // Notes modal
@@ -627,11 +635,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   modalSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor: th.colors.surface,
+    borderTopLeftRadius:  th.radius.lg,
+    borderTopRightRadius: th.radius.lg,
     borderTopWidth:  borders.thin,
-    borderTopColor:  colors.border,
+    borderTopColor:  th.colors.border,
     padding:         spacing.xl,
     paddingBottom:   spacing.xxl,
     gap:             spacing.md,
@@ -639,8 +647,8 @@ const styles = StyleSheet.create({
   modalHandle: {
     width:           40,
     height:          4,
-    borderRadius:    radius.full,
-    backgroundColor: colors.border,
+    borderRadius:    th.radius.full,
+    backgroundColor: th.colors.border,
     alignSelf:       'center',
     marginBottom:    spacing.sm,
   },
@@ -652,26 +660,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 1,
   },
   modalSaveBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
   },
   modalSaveBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.onAccent,
+    color:      th.colors.onAccent,
   },
   notesInput: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.4),
-    borderRadius:    radius.md,
-    color:           colors.text,
+    borderColor:     withOpacity(th.colors.accent, 0.4),
+    borderRadius:    th.radius.md,
+    color:           th.colors.text,
     fontSize:        typography.base,
     lineHeight:      typography.base * 1.7,
     padding:         spacing.md,
@@ -679,6 +687,6 @@ const styles = StyleSheet.create({
   },
   notesHint: {
     fontSize: typography.xs,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
 });

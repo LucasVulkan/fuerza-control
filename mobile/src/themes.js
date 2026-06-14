@@ -78,7 +78,7 @@ const earthyColors = {
   muted2:     '#9a8e7e',
   accent:     '#6a9458',
   onAccent:   '#ffffff',
-  headerBg:   '#33291c',
+  headerBg:   '#4c453a',
   border:     '#b5afa2',
   borderCard: '#b5afa2',
   green:      '#5a8c48',
