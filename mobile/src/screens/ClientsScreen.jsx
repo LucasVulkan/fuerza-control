@@ -27,7 +27,9 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import ProgressTab from '../components/stats/ProgressTab';
-import { colors, spacing, typography, radius, borders, withOpacity, resolveColor } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
 
@@ -48,11 +50,11 @@ function weeklyTarget(program) {
 }
 
 /** Adherence procedural status → theme color. */
-function adherenceColor(status) {
-  if (status === STATUS.AT_RISK)  return colors.red;
-  if (status === STATUS.SLIPPING) return colors.orange;
-  if (status === STATUS.ON_TRACK) return colors.green;
-  return colors.muted; // no_data / muted
+function adherenceColor(th, status) {
+  if (status === STATUS.AT_RISK)  return th.colors.red;
+  if (status === STATUS.SLIPPING) return th.colors.orange;
+  if (status === STATUS.ON_TRACK) return th.colors.green;
+  return th.colors.muted; // no_data / muted
 }
 
 function parseImportFile(jsonString) {
@@ -71,7 +73,8 @@ function parseImportFile(jsonString) {
 // ── Inline SVG icon helper ─────────────────────────────────────────────────────
 
 function HeaderIcon({ d, size = 14, active = false }) {
-  const stroke = active ? colors.accent : colors.muted;
+  const th = useTheme();
+  const stroke = active ? th.colors.accent : th.colors.muted;
   return (
     <Svg viewBox="0 0 24 24" width={size} height={size} fill="none"
       stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -80,13 +83,15 @@ function HeaderIcon({ d, size = 14, active = false }) {
   );
 }
 
-function ShareIcon({ size = 18, color = colors.muted }) {
+function ShareIcon({ size = 18, color }) {
+  const th = useTheme();
+  const c  = color ?? th.colors.muted;
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="6"  cy="12" r="3" stroke={color} strokeWidth={1.8} />
-      <Circle cx="18" cy="6"  r="3" stroke={color} strokeWidth={1.8} />
-      <Circle cx="18" cy="18" r="3" stroke={color} strokeWidth={1.8} />
-      <Path d="M8.7 10.7l6.6 -3.4M8.7 13.3l6.6 3.4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Circle cx="6"  cy="12" r="3" stroke={c} strokeWidth={1.8} />
+      <Circle cx="18" cy="6"  r="3" stroke={c} strokeWidth={1.8} />
+      <Circle cx="18" cy="18" r="3" stroke={c} strokeWidth={1.8} />
+      <Path d="M8.7 10.7l6.6 -3.4M8.7 13.3l6.6 3.4" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -94,6 +99,7 @@ function ShareIcon({ size = 18, color = colors.muted }) {
 // ── Filter chip ────────────────────────────────────────────────────────────────
 
 function FilterChip({ label, active, onPress, count }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, active && styles.chipActive]}
@@ -113,6 +119,7 @@ function FilterChip({ label, active, onPress, count }) {
 }
 
 function AccentBtn({ label, onPress, small, disabled }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.accentBtn, small && styles.accentBtnSmall, disabled && { opacity: 0.4 }]}
@@ -125,20 +132,21 @@ function AccentBtn({ label, onPress, small, disabled }) {
 }
 
 function GhostBtn({ label, onPress, danger }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity style={styles.ghostBtn} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.ghostBtnText, danger && { color: colors.red }]}>{label}</Text>
+      <Text style={[styles.ghostBtnText, danger && { color: th.colors.red }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 // ── Status dot ─────────────────────────────────────────────────────────────────
 
-const STATUS_COLORS = { active: null, paused: colors.orange, inactive: colors.red };
-
 // ── Accordion (for Info tab sections) ─────────────────────────────────────────
 
 function Accordion({ label, open, onToggle, children }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.accordion}>
       <TouchableOpacity style={styles.accordionHeader} onPress={onToggle} activeOpacity={0.7}>
@@ -182,6 +190,8 @@ function getPillVariant(s, exConfig) {
 }
 
 function ClientSessionCard({ session, onDelete }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { i18n, t }   = useTranslation();
   const { fmt: fmtW } = useWeightUnit();
   const [open, setOpen] = useState(false);
@@ -197,7 +207,7 @@ function ClientSessionCard({ session, onDelete }) {
   const name       = isFree
     ? (session.sessionName || t('freeSession.historyLabel'))
     : (template?.name ?? t('clients.sessionFallback'));
-  const accent     = resolveColor(template?.color ?? 'var(--accent)');
+  const accent     = resolveColor(th, template?.color ?? 'var(--accent)');
   const durMin     = session.duration ? Math.round(session.duration / 60000) : null;
   const hasNotes   = !!session.notes?.trim()
                   || (session.exercises ?? []).some((e) => !!e.note);
@@ -300,6 +310,7 @@ function ClientSessionCard({ session, onDelete }) {
 // ── Exercise mini-card (progress tab) ─────────────────────────────────────────
 
 function ExerciseMiniCard({ exerciseId, logs }) {
+  const styles = useThemedStyles(makeStyles);
   const { i18n } = useTranslation();
   const { fmt: fmtW, toDisplay: wDisplay } = useWeightUnit();
 
@@ -350,6 +361,7 @@ function ExerciseMiniCard({ exerciseId, logs }) {
 // ── Client import modal ────────────────────────────────────────────────────────
 
 function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -410,6 +422,8 @@ function ActiveProgramHero({
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete,
 }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const isEs = i18n.language?.startsWith('es');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -488,7 +502,7 @@ function ActiveProgramHero({
 
       {/* Next session in the rotation → prescription editor */}
       <TouchableOpacity style={styles.heroNext} onPress={onPrescribe} activeOpacity={0.85}>
-        <TargetIcon size={20} color={colors.blue} />
+        <TargetIcon size={20} color={th.colors.blue} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.heroNextLabel}>{t('clients.nextInCycle')}</Text>
           <Text style={styles.heroNextVal} numberOfLines={1}>
@@ -556,7 +570,7 @@ function ActiveProgramHero({
             <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
-            <Text style={[styles.contextMenuText, { color: colors.red }]}>{t('clients.menuDelete')}</Text>
+            <Text style={[styles.contextMenuText, { color: th.colors.red }]}>{t('clients.menuDelete')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -567,6 +581,8 @@ function ActiveProgramHero({
 // ── Archived (previous) program row — compact ───────────────────────────────────
 
 function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExport, onReactivate, onDelete }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t, i18n } = useTranslation();
   const isEs = i18n.language?.startsWith('es');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -586,10 +602,10 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <Text style={styles.archMeta} numberOfLines={1}>{meta}</Text>
       </View>
       <TouchableOpacity onPress={onView} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <EyeIcon size={17} color={colors.muted2} />
+        <EyeIcon size={17} color={th.colors.muted2} />
       </TouchableOpacity>
       <TouchableOpacity onPress={onExport} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <DownloadIcon size={17} color={colors.muted2} />
+        <DownloadIcon size={17} color={th.colors.muted2} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
         <Text style={styles.archDots}>⋯</Text>
@@ -599,13 +615,13 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
         <View style={styles.contextMenu}>
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onReactivate(); }}>
-            <Text style={[styles.contextMenuText, { color: colors.accent }]}>{t('clients.menuReactivate')}</Text>
+            <Text style={[styles.contextMenuText, { color: th.colors.accent }]}>{t('clients.menuReactivate')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
             <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
-            <Text style={[styles.contextMenuText, { color: colors.red }]}>{t('clients.menuDelete')}</Text>
+            <Text style={[styles.contextMenuText, { color: th.colors.red }]}>{t('clients.menuDelete')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -616,6 +632,8 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
 // ── New program modal ──────────────────────────────────────────────────────────
 
 function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const [tab,              setTab]              = useState(templatePrograms.length > 0 ? 'blank' : 'blank');
   const [name,             setName]             = useState('');
@@ -649,7 +667,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
               <TextInput
                 style={styles.input}
                 placeholder="Nombre del programa"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={th.colors.muted}
                 value={name}
                 onChangeText={setName}
                 autoFocus
@@ -680,7 +698,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
                     style={[styles.templateOption, fromTemplateId === p.id && styles.templateOptionActive]}
                     onPress={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
                   >
-                    <Text style={[styles.templateOptionName, fromTemplateId === p.id && { color: colors.accent }]}>
+                    <Text style={[styles.templateOptionName, fromTemplateId === p.id && { color: th.colors.accent }]}>
                       {p.name}
                     </Text>
                     <Text style={styles.templateOptionMeta}>{p.days?.length ?? 0} sesiones</Text>
@@ -690,7 +708,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
               <TextInput
                 style={styles.input}
                 placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={th.colors.muted}
                 value={fromTemplateName}
                 onChangeText={setFromTemplateName}
               />
@@ -714,6 +732,8 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
 // ── Global add billing modal ──────────────────────────────────────────────────
 
 function GlobalAddBillingModal({ clients, onClose }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const addClientBilling = useStore((s) => s.addClientBilling);
   const showToast        = useStore((s) => s.showToast);
@@ -756,7 +776,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
                 style={[styles.templateOption, clientId === c.id && styles.templateOptionActive]}
                 onPress={() => setClientId(c.id)}
               >
-                <Text style={[styles.templateOptionName, clientId === c.id && { color: colors.accent }]}>
+                <Text style={[styles.templateOptionName, clientId === c.id && { color: th.colors.accent }]}>
                   {c.name}
                 </Text>
               </TouchableOpacity>
@@ -768,7 +788,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="Fecha (AAAA-MM-DD)"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={date}
               onChangeText={setDate}
               returnKeyType="next"
@@ -776,7 +796,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
             <TextInput
               style={[styles.input, { width: 90, textAlign: 'center' }]}
               placeholder="0.00"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
@@ -789,7 +809,7 @@ function GlobalAddBillingModal({ clients, onClose }) {
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="Concepto"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={concept}
               onChangeText={setConcept}
               returnKeyType="done"
@@ -818,6 +838,8 @@ function GlobalAddBillingModal({ clients, onClose }) {
 // ── Global billing view ────────────────────────────────────────────────────────
 
 function GlobalBillingView({ clients, onClose, onSelectClient }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -876,9 +898,9 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
         {/* Summary tiles */}
         <View style={styles.billingRow}>
           {[
-            { label: 'FACTURADO', value: `${total.toFixed(2)}€`,   color: colors.text },
-            { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,    color: colors.green },
-            { label: 'PENDIENTE', value: `${pending.toFixed(2)}€`, color: pending > 0 ? colors.orange : colors.muted },
+            { label: 'FACTURADO', value: `${total.toFixed(2)}€`,   color: th.colors.text },
+            { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,    color: th.colors.green },
+            { label: 'PENDIENTE', value: `${pending.toFixed(2)}€`, color: pending > 0 ? th.colors.orange : th.colors.muted },
           ].map(({ label, value, color }) => (
             <View key={label} style={styles.billingTile}>
               <Text style={styles.billingTileLabel}>{label}</Text>
@@ -963,6 +985,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
 // ── Client info sheet (⋯ modal) ────────────────────────────────────────────────
 
 function ClientInfoSheet({ client, onClose, onConnectCloud }) {
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const showToast = useStore((s) => s.showToast);
   const [copied,  setCopied]  = useState(false);
@@ -1079,6 +1102,8 @@ function CloudUpIcon({ size = 20, color }) {
 // and tucks the rest (next session, edit program, info) behind this sheet.
 
 function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const run = (fn) => () => { onClose(); fn(); };
   return (
@@ -1089,7 +1114,7 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
         <Text style={styles.infoSheetName}>{client.name}</Text>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
-          <ChartIcon color={colors.muted} />
+          <ChartIcon color={th.colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
           {newSessionsCount > 0 && (
             <View style={styles.actionBadge}>
@@ -1099,19 +1124,19 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
-          <TargetIcon color={colors.blue} />
-          <Text style={[styles.actionLabel, { color: colors.blue }]}>{t('clients.actNextSession')}</Text>
+          <TargetIcon color={th.colors.blue} />
+          <Text style={[styles.actionLabel, { color: th.colors.blue }]}>{t('clients.actNextSession')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
-          <PencilIcon color={colors.muted} />
+          <PencilIcon color={th.colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actEditProgram')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onInfo)} activeOpacity={0.7}>
-          <PersonIcon color={colors.muted} />
+          <PersonIcon color={th.colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actInfo')}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </TouchableOpacity>
@@ -1138,6 +1163,8 @@ function syncAgo(isoStr) {
 
 /** Ephemeral filter pill that doubles as an attention counter. */
 function AttentionPill({ label, count, color, active, onPress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.attnPill, { backgroundColor: active ? color : withOpacity(color, 0.12) }]}
@@ -1146,11 +1173,11 @@ function AttentionPill({ label, count, color, active, onPress }) {
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.attnPillText, { color: active ? colors.bg : color }]}>{label}</Text>
+      <Text style={[styles.attnPillText, { color: active ? th.colors.bg : color }]}>{label}</Text>
       <View style={[styles.attnPillBadge, {
-        backgroundColor: active ? withOpacity(colors.bg, 0.25) : withOpacity(color, 0.2),
+        backgroundColor: active ? withOpacity(th.colors.bg, 0.25) : withOpacity(color, 0.2),
       }]}>
-        <Text style={[styles.attnPillBadgeText, { color: active ? colors.bg : color }]}>{count}</Text>
+        <Text style={[styles.attnPillBadgeText, { color: active ? th.colors.bg : color }]}>{count}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -1161,6 +1188,8 @@ function ClientListCard({
   adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const programDirty = client.programDirty ?? false;
   const showDirty    = isConnected && programDirty;
   // Unsent next-session prescriptions (incl. a failed send) → blue upload button.
@@ -1202,7 +1231,7 @@ function ClientListCard({
   const paceBehind   = paceHasData && paceRounded < paceTarget;
 
   // Status dot color
-  const dotColor = showDirty ? colors.orange : colors.green;
+  const dotColor = showDirty ? th.colors.orange : th.colors.green;
 
   return (
     <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
@@ -1215,7 +1244,7 @@ function ClientListCard({
         )}
         <Text style={[
           styles.cDate,
-          adherence && requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
+          adherence && requiresAttention(adherence.status) && { color: adherenceColor(th, adherence.status) },
         ]}>
           {lastStr}
         </Text>
@@ -1237,12 +1266,12 @@ function ClientListCard({
               <View style={styles.cStatusDot} />
             )}
             <Text
-              style={[styles.cProgName, showDirty && { color: colors.orange }]}
+              style={[styles.cProgName, showDirty && { color: th.colors.orange }]}
               numberOfLines={1}
             >
               {activeProgram.name}
               {currentStage?.name ? (
-                <Text style={[styles.cStageName, showDirty && { color: colors.orange }]}>
+                <Text style={[styles.cStageName, showDirty && { color: th.colors.orange }]}>
                   {' · '}{currentStage.name}
                 </Text>
               ) : null}
@@ -1253,8 +1282,8 @@ function ClientListCard({
               orange when below target, red/orange when adherence needs attention. */}
           <Text style={[
             styles.cProgMeta,
-            paceBehind && { color: colors.orange },
-            adherence && requiresAttention(adherence.status) && { color: adherenceColor(adherence.status) },
+            paceBehind && { color: th.colors.orange },
+            adherence && requiresAttention(adherence.status) && { color: adherenceColor(th, adherence.status) },
           ]}>
             {paceHasData
               ? t('clients.weekPace', { rate: paceRateStr, target: paceTarget })
@@ -1295,11 +1324,11 @@ function ClientListCard({
                 </View>
               ) : (
                 <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-                  stroke={colors.text} strokeWidth={3} strokeLinecap="round">
+                  stroke={th.colors.text} strokeWidth={3} strokeLinecap="round">
                   <Path d="M18 20V10M12 20V4M6 20v-6" />
                 </Svg>
               )}
-              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: colors.orange }]}>
+              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: th.colors.orange }]}>
                 {t('clients.btnViewProgress')}
               </Text>
             </TouchableOpacity>
@@ -1339,6 +1368,8 @@ function ClientListCard({
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function ClientsScreen() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -2072,8 +2103,8 @@ export default function ClientsScreen() {
               <RefreshControl
                 refreshing={refreshingHistory}
                 onRefresh={handleRefreshHistory}
-                tintColor={colors.accent}
-                colors={[colors.accent]}
+                tintColor={th.colors.accent}
+                colors={[th.colors.accent]}
               />
             ) : undefined}
           >
@@ -2141,19 +2172,19 @@ export default function ClientsScreen() {
                 <View style={{ marginBottom: spacing.md }}>
                   <View style={styles.statusRow}>
                     {[
-                      { id: 'active',   label: t('clients.statusActive'),   color: colors.green },
-                      { id: 'paused',   label: t('clients.statusPaused'),   color: colors.orange },
-                      { id: 'inactive', label: t('clients.statusInactive'), color: colors.red },
+                      { id: 'active',   label: t('clients.statusActive'),   color: th.colors.green },
+                      { id: 'paused',   label: t('clients.statusPaused'),   color: th.colors.orange },
+                      { id: 'inactive', label: t('clients.statusInactive'), color: th.colors.red },
                     ].map(({ id, label, color }) => {
                       const isSel = (selectedClient.status ?? 'active') === id;
                       return (
                         <TouchableOpacity
                           key={id}
-                          style={[styles.statusBtn, { borderColor: isSel ? color : colors.border, backgroundColor: isSel ? `${color}18` : colors.surface2 }]}
+                          style={[styles.statusBtn, { borderColor: isSel ? color : th.colors.border, backgroundColor: isSel ? `${color}18` : th.colors.surface2 }]}
                           onPress={() => updateClientInfo(selectedClientId, { status: id })}
                         >
                           {isSel && <View style={[styles.statusDot, { backgroundColor: color }]} />}
-                          <Text style={[styles.statusBtnText, { color: isSel ? color : colors.muted }]}>{label}</Text>
+                          <Text style={[styles.statusBtnText, { color: isSel ? color : th.colors.muted }]}>{label}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -2193,7 +2224,7 @@ export default function ClientsScreen() {
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
                       placeholder="Crear nueva etiqueta…"
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={th.colors.muted}
                       value={newTag}
                       onChangeText={setNewTag}
                       returnKeyType="done"
@@ -2240,7 +2271,7 @@ export default function ClientsScreen() {
                     <TextInput
                       style={styles.input}
                       placeholder={placeholder}
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={th.colors.muted}
                       defaultValue={selectedClient[key] ?? ''}
                       onEndEditing={(e) => updateClientInfo(selectedClientId, { [key]: e.nativeEvent.text })}
                       returnKeyType="done"
@@ -2254,7 +2285,7 @@ export default function ClientsScreen() {
                   <TextInput
                     style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
                     placeholder="Notas sobre el cliente…"
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={th.colors.muted}
                     multiline
                     defaultValue={selectedClient.notes ?? ''}
                     onEndEditing={(e) => updateClientInfo(selectedClientId, { notes: e.nativeEvent.text })}
@@ -2273,7 +2304,7 @@ export default function ClientsScreen() {
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
                     placeholder="Fecha (AAAA-MM-DD)"
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={th.colors.muted}
                     value={weightDate}
                     onChangeText={setWeightDate}
                     returnKeyType="next"
@@ -2281,7 +2312,7 @@ export default function ClientsScreen() {
                   <TextInput
                     style={[styles.input, { width: 80, textAlign: 'center' }]}
                     placeholder="Peso"
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={th.colors.muted}
                     keyboardType="decimal-pad"
                     value={weightValue}
                     onChangeText={setWeightValue}
@@ -2319,9 +2350,9 @@ export default function ClientsScreen() {
                   return (
                     <View style={[styles.billingRow, { marginBottom: spacing.md }]}>
                       {[
-                        { label: 'FACTURADO', value: `${total.toFixed(2)}€`,         color: colors.text },
-                        { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,          color: colors.green },
-                        { label: 'PENDIENTE', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? colors.orange : colors.muted },
+                        { label: 'FACTURADO', value: `${total.toFixed(2)}€`,         color: th.colors.text },
+                        { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,          color: th.colors.green },
+                        { label: 'PENDIENTE', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? th.colors.orange : th.colors.muted },
                       ].map(({ label, value, color }) => (
                         <View key={label} style={styles.billingTile}>
                           <Text style={styles.billingTileLabel}>{label}</Text>
@@ -2338,7 +2369,7 @@ export default function ClientsScreen() {
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
                       placeholder="Fecha (AAAA-MM-DD)"
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={th.colors.muted}
                       value={billDate}
                       onChangeText={setBillDate}
                       returnKeyType="next"
@@ -2346,7 +2377,7 @@ export default function ClientsScreen() {
                     <TextInput
                       style={[styles.input, { width: 90, textAlign: 'center' }]}
                       placeholder="0.00"
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={th.colors.muted}
                       keyboardType="decimal-pad"
                       value={billAmount}
                       onChangeText={setBillAmount}
@@ -2357,7 +2388,7 @@ export default function ClientsScreen() {
                     <TextInput
                       style={[styles.input, { flex: 1 }]}
                       placeholder="Concepto"
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={th.colors.muted}
                       value={billConcept}
                       onChangeText={setBillConcept}
                       returnKeyType="done"
@@ -2426,7 +2457,7 @@ export default function ClientsScreen() {
             {/* SVG llave grande */}
             <View style={styles.keyTabIcon}>
               <Svg viewBox="0 0 24 24" width={48} height={48} fill="none"
-                stroke={withOpacity(colors.accent, 0.5)} strokeWidth={1.5}
+                stroke={withOpacity(th.colors.accent, 0.5)} strokeWidth={1.5}
                 strokeLinecap="round" strokeLinejoin="round">
                 <Path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
               </Svg>
@@ -2452,7 +2483,7 @@ export default function ClientsScreen() {
                       }}
                     >
                       <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-                        stroke={keyTabCopied ? colors.green : colors.accent}
+                        stroke={keyTabCopied ? th.colors.green : th.colors.accent}
                         strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                         {keyTabCopied
                           ? <Path d="M20 6L9 17l-5-5" />
@@ -2550,7 +2581,7 @@ export default function ClientsScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
-            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={colors.muted} strokeWidth={1.8} strokeLinecap="round">
+            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={th.colors.muted} strokeWidth={1.8} strokeLinecap="round">
               <Path d="M3 6h18M3 10h18M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
             </Svg>
           </TouchableOpacity>
@@ -2571,13 +2602,13 @@ export default function ClientsScreen() {
           {/* Search input */}
           <View style={styles.searchInputWrap}>
             <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
-              stroke={withOpacity(colors.text, 0.55)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              stroke={withOpacity(th.colors.text, 0.55)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
             </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar cliente…"
-              placeholderTextColor={withOpacity(colors.text, 0.45)}
+              placeholderTextColor={withOpacity(th.colors.text, 0.45)}
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
@@ -2591,7 +2622,7 @@ export default function ClientsScreen() {
             activeOpacity={0.7}
           >
             <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-              stroke={tagFilterRow.length > 0 ? colors.accent : withOpacity(colors.text, 0.55)}
+              stroke={tagFilterRow.length > 0 ? th.colors.accent : withOpacity(th.colors.text, 0.55)}
               strokeWidth={2} strokeLinecap="round">
               <Path d="M4 6h16M7 12h10M10 18h4" />
             </Svg>
@@ -2611,7 +2642,7 @@ export default function ClientsScreen() {
             <AttentionPill
               label={t('clients.atRiskPill')}
               count={atRiskCount}
-              color={colors.red}
+              color={th.colors.red}
               active={adherenceFilter === 'at_risk'}
               onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
             />
@@ -2620,7 +2651,7 @@ export default function ClientsScreen() {
             <AttentionPill
               label={t('clients.unreviewedPill')}
               count={unreviewedCount}
-              color={colors.accent}
+              color={th.colors.accent}
               active={adherenceFilter === 'unreviewed'}
               onPress={() => setAdherenceFilter((f) => (f === 'unreviewed' ? null : 'unreviewed'))}
             />
@@ -2629,21 +2660,21 @@ export default function ClientsScreen() {
           {/* Status cycling pill */}
           <TouchableOpacity style={styles.statusPill} onPress={cycleStatus} activeOpacity={0.75}>
             <Text style={[styles.statusPillText, {
-              color: statusFilter === 'active' ? colors.green
-                   : statusFilter === 'inactive' ? colors.red
-                   : colors.text,
+              color: statusFilter === 'active' ? th.colors.green
+                   : statusFilter === 'inactive' ? th.colors.red
+                   : th.colors.text,
             }]}>
               {statusFilter === 'active' ? 'Activos' : statusFilter === 'inactive' ? 'Inactivos' : 'Todos'}
             </Text>
             <View style={[styles.statusPillBadge, {
-              backgroundColor: statusFilter === 'active'   ? withOpacity(colors.green, 0.15)
-                             : statusFilter === 'inactive' ? withOpacity(colors.red,   0.15)
-                             : withOpacity(colors.text,   0.1),
+              backgroundColor: statusFilter === 'active'   ? withOpacity(th.colors.green, 0.15)
+                             : statusFilter === 'inactive' ? withOpacity(th.colors.red,   0.15)
+                             : withOpacity(th.colors.text,   0.1),
             }]}>
               <Text style={[styles.statusPillBadgeText, {
-                color: statusFilter === 'active' ? colors.green
-                     : statusFilter === 'inactive' ? colors.red
-                     : colors.text,
+                color: statusFilter === 'active' ? th.colors.green
+                     : statusFilter === 'inactive' ? th.colors.red
+                     : th.colors.text,
               }]}>
                 {statusFilter === 'active'
                   ? clientCounts.active
@@ -2679,7 +2710,7 @@ export default function ClientsScreen() {
       {/* Global pending-uploads banner — between filters and the card list */}
       {pendingClients.length > 0 && (
         <View style={styles.pendingBanner}>
-          <CloudUpIcon size={19} color={colors.blue} />
+          <CloudUpIcon size={19} color={th.colors.blue} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.pendingTitle} numberOfLines={1}>
               {t('clients.pendingClients', { count: pendingClients.length })}
@@ -2719,8 +2750,8 @@ export default function ClientsScreen() {
             <RefreshControl
               refreshing={refreshingList}
               onRefresh={handleRefreshList}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
+              tintColor={th.colors.accent}
+              colors={[th.colors.accent]}
             />
           }
           renderItem={({ item: client }) => {
@@ -2840,7 +2871,7 @@ export default function ClientsScreen() {
             <TextInput
               style={styles.tagSheetSearchInput}
               placeholder="Buscar etiqueta…"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={tagSearchText}
               onChangeText={setTagSearchText}
               returnKeyType="search"
@@ -2869,8 +2900,8 @@ export default function ClientsScreen() {
                         <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
                           {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
                         </View>
-                        <Text style={[styles.tagSheetItemText, selected && { color: colors.accent }]}>{name}</Text>
-                        {selected && <Text style={{ color: colors.accent, fontSize: typography.sm }}>✓</Text>}
+                        <Text style={[styles.tagSheetItemText, selected && { color: th.colors.accent }]}>{name}</Text>
+                        {selected && <Text style={{ color: th.colors.accent, fontSize: typography.sm }}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}
@@ -2917,7 +2948,7 @@ export default function ClientsScreen() {
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="Nueva etiqueta…"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={tagCreateText}
               onChangeText={setTagCreateText}
               returnKeyType="done"
@@ -2968,7 +2999,7 @@ export default function ClientsScreen() {
                         onPress={() => { const t = tagRenameText.trim(); if (t) renameTag(id, t); setTagRenameId(null); }}
                         hitSlop={8}
                       >
-                        <Text style={[styles.tagMgrActionText, { color: colors.accent }]}>✓</Text>
+                        <Text style={[styles.tagMgrActionText, { color: th.colors.accent }]}>✓</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.tagMgrActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
                         <Text style={styles.tagMgrActionText}>✕</Text>
@@ -3004,7 +3035,7 @@ export default function ClientsScreen() {
                         }}
                         hitSlop={8}
                       >
-                        <Text style={[styles.tagMgrActionText, { color: colors.red }]}>✕</Text>
+                        <Text style={[styles.tagMgrActionText, { color: th.colors.red }]}>✕</Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -3024,7 +3055,7 @@ export default function ClientsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Nombre del cliente"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={newClientName}
               onChangeText={setNewClientName}
               autoFocus
@@ -3044,10 +3075,10 @@ export default function ClientsScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // ── List header ──
@@ -3055,7 +3086,7 @@ const styles = StyleSheet.create({
     paddingTop:        spacing.lg,
     paddingBottom:     spacing.xs,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.md,   // more breathing room between header rows
   },
 
@@ -3069,7 +3100,7 @@ const styles = StyleSheet.create({
   listTitle: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   // Sync inline (below title)
@@ -3083,19 +3114,19 @@ const styles = StyleSheet.create({
     width:           6,
     height:          6,
     borderRadius:    3,
-    backgroundColor: colors.muted2,
+    backgroundColor: th.colors.muted2,
   },
-  syncDotInlineActive: { backgroundColor: colors.green },
+  syncDotInlineActive: { backgroundColor: th.colors.green },
   syncLabelInline: {
     fontSize: typography.xs,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
 
   billingBtn: {
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     width:             32,
     height:            32,
     alignItems:        'center',
@@ -3116,38 +3147,38 @@ const styles = StyleSheet.create({
   searchSideBtn: {
     width:           42,
     height:          42,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
     justifyContent:  'center',
     flexShrink:      0,
   },
   searchSideBtnActive: {
-    borderColor:     withOpacity(colors.accent, 0.4),
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
   searchSideBtnIcon: {
     fontSize:   20,
-    color:      withOpacity(colors.text, 0.55),
+    color:      withOpacity(th.colors.text, 0.55),
     lineHeight: 24,
   },
   searchInputWrap: {
     flex:              1,
     flexDirection:     'row',
     alignItems:        'center',
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     gap:               spacing.sm,
     height:            42,
   },
   searchInput: {
     flex:     1,
-    color:    colors.text,
+    color:    th.colors.text,
     fontSize: typography.base,
   },
 
@@ -3171,7 +3202,7 @@ const styles = StyleSheet.create({
     paddingLeft:       spacing.lg,
     paddingRight:      spacing.sm + 2,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     flexShrink:        0,
   },
   attnPillText: {
@@ -3179,7 +3210,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.semibold,
   },
   attnPillBadge: {
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     minWidth:          20,
     height:            20,
     alignItems:        'center',
@@ -3198,19 +3229,19 @@ const styles = StyleSheet.create({
     gap:               spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     borderWidth:       1.5,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface,
     flexShrink:        0,
   },
   statusPillText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   statusPillBadge: {
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     minWidth:          20,
     height:            20,
     alignItems:        'center',
@@ -3221,7 +3252,7 @@ const styles = StyleSheet.create({
   statusPillBadgeText: {
     fontSize:   11,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   // Tag pills in filter row — same height as statusPill
   tagRowPill: {
@@ -3230,28 +3261,28 @@ const styles = StyleSheet.create({
     paddingLeft:       spacing.lg,
     paddingRight:      spacing.sm,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
+    borderColor:       th.colors.border,
     gap:               spacing.sm,   // more gap between text and ×
     flexShrink:        0,
   },
   tagRowPillActive: {
-    borderColor:     colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   tagRowPillText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
-  tagRowPillTextActive: { color: colors.accent },
+  tagRowPillTextActive: { color: th.colors.accent },
   tagRowPillX: {
     fontSize:   14,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     lineHeight: 16,
   },
-  tagRowPillXActive: { color: colors.accent },
+  tagRowPillXActive: { color: th.colors.accent },
 
   // Legacy — keep chip styles for compatibility with other views
   chip: {
@@ -3259,31 +3290,31 @@ const styles = StyleSheet.create({
     alignItems:        'center',
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   chipActive: {
-    borderColor:     withOpacity(colors.accent, 0.4),
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
   chipText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
-  chipTextActive: { color: colors.accent },
+  chipTextActive: { color: th.colors.accent },
   chipCountBadge: {
     marginLeft:      4,
-    backgroundColor: colors.surface,
-    borderRadius:    radius.full,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.full,
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  chipCountText: { fontSize: typography.xs, color: colors.muted },
-  chipCountBadgeActive: { backgroundColor: withOpacity(colors.accent, 0.15) },
-  chipCountTextActive: { color: colors.accent },
+  chipCountText: { fontSize: typography.xs, color: th.colors.muted },
+  chipCountBadgeActive: { backgroundColor: withOpacity(th.colors.accent, 0.15) },
+  chipCountTextActive: { color: th.colors.accent },
   syncIndicator: {},
   syncDot: {},
   syncDotActive: {},
@@ -3308,11 +3339,11 @@ const styles = StyleSheet.create({
     bottom:               0,
     left:                 0,
     right:                0,
-    backgroundColor:      colors.surface,
-    borderTopLeftRadius:  radius.xl,
-    borderTopRightRadius: radius.xl,
+    backgroundColor:      th.colors.surface,
+    borderTopLeftRadius:  th.radius.xl,
+    borderTopRightRadius: th.radius.xl,
     borderTopWidth:       borders.thin,
-    borderTopColor:       colors.borderCard,
+    borderTopColor:       th.colors.borderCard,
     paddingBottom:        spacing.xxl,
     paddingTop:           spacing.sm,
   },
@@ -3326,40 +3357,40 @@ const styles = StyleSheet.create({
   tagSheetTitle: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   tagSheetManage: {
     fontSize:   typography.sm,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.medium,
   },
   tagSheetClear: {
     fontSize: typography.sm,
-    color:    colors.red,
+    color:    th.colors.red,
   },
   tagSheetSearch: {
     paddingHorizontal: spacing.xl,
     paddingBottom:     spacing.sm,
   },
   tagSheetSearchInput: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
-    color:             colors.text,
+    color:             th.colors.text,
     fontSize:          typography.base,
   },
   tagSheetCreateRow: {
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   tagSheetCreateText: {
     fontSize:   typography.base,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.medium,
   },
   tagSheetItem: {
@@ -3369,48 +3400,48 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   tagSheetItemActive: {
-    backgroundColor: `${colors.accent}08`,
+    backgroundColor: `${th.colors.accent}08`,
   },
   tagSheetCheck: {
     width:           20,
     height:          20,
     borderRadius:    4,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
     flexShrink:      0,
   },
   tagSheetCheckActive: {
-    backgroundColor: colors.accent,
-    borderColor:     colors.accent,
+    backgroundColor: th.colors.accent,
+    borderColor:     th.colors.accent,
   },
   tagSheetCheckMark: {
     fontSize:   11,
-    color:      colors.bg,
+    color:      th.colors.bg,
     fontWeight: typography.bold,
     lineHeight: 14,
   },
   tagSheetItemText: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   tagSheetApply: {
     margin:          spacing.xl,
     marginBottom:    spacing.sm,
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
   tagSheetApplyText: {
     fontSize:      typography.sm,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
 
@@ -3422,7 +3453,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom:     spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   tagMgrItem: {
     flexDirection:     'row',
@@ -3430,17 +3461,17 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   tagMgrName: {
     fontSize:   typography.base,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   tagMgrMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   tagMgrActionBtn: {
@@ -3451,7 +3482,7 @@ const styles = StyleSheet.create({
   },
   tagMgrActionText: {
     fontSize:   16,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 20,
   },
 
@@ -3469,18 +3500,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   emptyBody: {
     fontSize:    typography.sm,
-    color:       colors.muted,
+    color:       th.colors.muted,
     textAlign:   'center',
     lineHeight:  typography.sm * 1.6,
     marginBottom: spacing.lg,
   },
   proBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
     marginTop:       spacing.xs,
@@ -3488,7 +3519,7 @@ const styles = StyleSheet.create({
   proBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   hideTabBtn: {
     marginTop:         spacing.sm,
@@ -3497,12 +3528,12 @@ const styles = StyleSheet.create({
   },
   hideTabBtnText: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
   },
   emptyText: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
     paddingVertical: spacing.xl,
   },
@@ -3513,11 +3544,11 @@ const styles = StyleSheet.create({
     bottom:               0,
     left:                 0,
     right:                0,
-    backgroundColor:      colors.surface,
-    borderTopLeftRadius:  radius.xl,
-    borderTopRightRadius: radius.xl,
+    backgroundColor:      th.colors.surface,
+    borderTopLeftRadius:  th.radius.xl,
+    borderTopRightRadius: th.radius.xl,
     borderTopWidth:       borders.thin,
-    borderTopColor:       colors.borderCard,
+    borderTopColor:       th.colors.borderCard,
     paddingHorizontal:    spacing.xl,
     paddingBottom:        spacing.xxl,
     paddingTop:           spacing.sm,
@@ -3526,7 +3557,7 @@ const styles = StyleSheet.create({
   infoSheetHandle: {
     width:           36,
     height:          4,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     borderRadius:    2,
     alignSelf:       'center',
     marginBottom:    spacing.sm,
@@ -3534,7 +3565,7 @@ const styles = StyleSheet.create({
   infoSheetName: {
     fontSize:   typography.md,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     marginBottom: spacing.xs,
   },
   infoCodeRow: {
@@ -3544,45 +3575,45 @@ const styles = StyleSheet.create({
   },
   infoCodeBox: {
     flex:              1,
-    backgroundColor:   withOpacity(colors.accent, 0.06),
+    backgroundColor:   withOpacity(th.colors.accent, 0.06),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.2),
-    borderRadius:      radius.md,
+    borderColor:       withOpacity(th.colors.accent, 0.2),
+    borderRadius:      th.radius.md,
     padding:           spacing.md,
     gap:               3,
   },
   infoCodeLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
   infoCodeText: {
     fontSize:      typography.md,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 3,
   },
   infoCodeSub: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   infoCopyBtn: {
     width:           44,
     height:          44,
-    borderRadius:    radius.md,
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderRadius:    th.radius.md,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.2),
+    borderColor:     withOpacity(th.colors.accent, 0.2),
     alignItems:      'center',
     justifyContent:  'center',
   },
   infoCopyBtnText: { fontSize: 20 },
   infoSheetBtnAccent: {
-    backgroundColor:   withOpacity(colors.accent, 0.08),
+    backgroundColor:   withOpacity(th.colors.accent, 0.08),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.25),
-    borderRadius:      radius.md,
+    borderColor:       withOpacity(th.colors.accent, 0.25),
+    borderRadius:      th.radius.md,
     alignItems:        'center',
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
@@ -3590,7 +3621,7 @@ const styles = StyleSheet.create({
   infoSheetBtnTextAccent: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
 
   // ── Key tab ───────────────────────────────────────────────────────────────────
@@ -3605,9 +3636,9 @@ const styles = StyleSheet.create({
     width:           88,
     height:          88,
     borderRadius:    44,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.15),
+    borderColor:     withOpacity(th.colors.accent, 0.15),
     alignItems:      'center',
     justifyContent:  'center',
     marginBottom:    spacing.xs,
@@ -3620,7 +3651,7 @@ const styles = StyleSheet.create({
   keyTabLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1.2,
     textAlign:     'center',
   },
@@ -3632,10 +3663,10 @@ const styles = StyleSheet.create({
   },
   keyTabCodeBox: {
     flex:              1,
-    backgroundColor:   withOpacity(colors.accent, 0.06),
+    backgroundColor:   withOpacity(th.colors.accent, 0.06),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.2),
-    borderRadius:      radius.md,
+    borderColor:       withOpacity(th.colors.accent, 0.2),
+    borderRadius:      th.radius.md,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.lg,
     alignItems:        'center',
@@ -3643,36 +3674,36 @@ const styles = StyleSheet.create({
   keyTabCodeText: {
     fontSize:      22,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 4,
   },
   keyTabCopyBtn: {
     width:           52,
     height:          52,
-    borderRadius:    radius.md,
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderRadius:    th.radius.md,
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.2),
+    borderColor:     withOpacity(th.colors.accent, 0.2),
     alignItems:      'center',
     justifyContent:  'center',
   },
   keyTabSubtitle: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     lineHeight: typography.sm * 1.5,
     paddingHorizontal: spacing.md,
   },
   keyTabNoSlotText: {
     fontSize:  typography.base,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
   },
   keyTabConnectBtn: {
-    backgroundColor:   withOpacity(colors.accent, 0.08),
+    backgroundColor:   withOpacity(th.colors.accent, 0.08),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.25),
-    borderRadius:      radius.md,
+    borderColor:       withOpacity(th.colors.accent, 0.25),
+    borderRadius:      th.radius.md,
     alignItems:        'center',
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.xl,
@@ -3680,15 +3711,15 @@ const styles = StyleSheet.create({
   keyTabConnectBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
 
   // ── Client list card ──────────────────────────────────────────────────────────
   cCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     padding:         spacing.md,
     gap:             spacing.md,   // space between the three visual blocks
   },
@@ -3701,17 +3732,17 @@ const styles = StyleSheet.create({
   cName: {
     fontSize:   typography.lg,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     flexShrink: 1,
   },
   cDate: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     flexShrink: 0,
   },
   cStreak: {
     fontSize:   typography.xs,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     flexShrink: 0,
   },
   cInfoBtnWrap: {
@@ -3720,12 +3751,12 @@ const styles = StyleSheet.create({
   },
   cInfoBtn: {
     fontSize:   typography.sm,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.semibold,
   },
   cMoreBtn: {
     fontSize:      18,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     lineHeight:    18,
   },
@@ -3738,46 +3769,46 @@ const styles = StyleSheet.create({
     marginTop:         spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm + 1,
-    borderRadius:      radius.md,
-    backgroundColor:   withOpacity(colors.blue, 0.1),
+    borderRadius:      th.radius.md,
+    backgroundColor:   withOpacity(th.colors.blue, 0.1),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.blue, 0.35),
+    borderColor:       withOpacity(th.colors.blue, 0.35),
   },
-  pendingTitle: { fontSize: typography.sm + 1, color: colors.text },
-  pendingSub:   { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
+  pendingTitle: { fontSize: typography.sm + 1, color: th.colors.text },
+  pendingSub:   { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
   pendingBtn: {
-    backgroundColor:   colors.blue,
-    borderRadius:      radius.sm,
+    backgroundColor:   th.colors.blue,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs + 3,
     flexShrink:        0,
   },
-  pendingBtnText: { fontSize: typography.sm, fontWeight: typography.semibold, color: colors.bg },
+  pendingBtnText: { fontSize: typography.sm, fontWeight: typography.semibold, color: th.colors.bg },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',
     alignItems:      'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     gap:             spacing.sm,
   },
   actionRowNext: {
-    backgroundColor: withOpacity(colors.blue, 0.08),
+    backgroundColor: withOpacity(th.colors.blue, 0.08),
   },
   actionLabel: {
     flex:       1,
     fontSize:   typography.md,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   actionChevron: {
     fontSize: 18,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
   actionBadge: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.full,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.full,
     minWidth:          20,
     height:            20,
     alignItems:        'center',
@@ -3787,7 +3818,7 @@ const styles = StyleSheet.create({
   actionBadgeText: {
     fontSize:   11,
     fontWeight: typography.bold,
-    color:      colors.onAccent,
+    color:      th.colors.onAccent,
   },
   // Program block — rows 2+3+4 grouped with tight gap
   cProgramBlock: {
@@ -3804,16 +3835,16 @@ const styles = StyleSheet.create({
     width:           8,
     height:          8,
     borderRadius:    4,
-    backgroundColor: colors.green,
+    backgroundColor: th.colors.green,
     flexShrink:      0,
   },
   cStatusBadge: {
     width:           18,
     height:          18,
     borderRadius:    5,
-    backgroundColor: withOpacity(colors.orange, 0.18),
+    backgroundColor: withOpacity(th.colors.orange, 0.18),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.orange, 0.5),
+    borderColor:     withOpacity(th.colors.orange, 0.5),
     alignItems:      'center',
     justifyContent:  'center',
     flexShrink:      0,
@@ -3821,7 +3852,7 @@ const styles = StyleSheet.create({
   cStatusBadgeText: {
     fontSize:   10,
     fontWeight: typography.bold,
-    color:      colors.orange,
+    color:      th.colors.orange,
     lineHeight: 12,
   },
   cStatusIcon: {
@@ -3833,18 +3864,18 @@ const styles = StyleSheet.create({
   cProgName: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      colors.accent,
+    color:      th.colors.accent,
     flex:       1,
   },
   cStageName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
   // Row 3: meta
   cProgMeta: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   // Row 4: counters + button
   cRow4: {
@@ -3862,13 +3893,13 @@ const styles = StyleSheet.create({
   cWeekNum: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.base * 1.1,
   },
   cWeekLabel: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   cDots: {
     flexDirection: 'row',
@@ -3882,12 +3913,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   cDotFull: {
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
   cDotEmpty: {
     backgroundColor: 'transparent',
     borderWidth:     1.5,
-    borderColor:     colors.muted2,
+    borderColor:     th.colors.muted2,
   },
   // Contextual buttons — all share the same base dimensions
   cBtnOutline: {
@@ -3896,9 +3927,9 @@ const styles = StyleSheet.create({
     gap:               spacing.xs + 1,
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.md,
+    borderRadius:      th.radius.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.muted2,
+    borderColor:       th.colors.muted2,
     backgroundColor:   'transparent',
     position:          'absolute',
     bottom:            0,
@@ -3907,16 +3938,16 @@ const styles = StyleSheet.create({
   cBtnOutlineText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   cBtnOutlineNew: {
-    borderColor: colors.orange,
+    borderColor: th.colors.orange,
   },
   sessionsBadge: {
     width:           17,
     height:          17,
     borderRadius:    9,
-    backgroundColor: colors.orange,
+    backgroundColor: th.colors.orange,
     alignItems:      'center',
     justifyContent:  'center',
   },
@@ -3929,8 +3960,8 @@ const styles = StyleSheet.create({
   cBtnOrange: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.md,
-    backgroundColor:   colors.orange,
+    borderRadius:      th.radius.md,
+    backgroundColor:   th.colors.orange,
     position:          'absolute',
     bottom:            0,
     right:             0,
@@ -3938,13 +3969,13 @@ const styles = StyleSheet.create({
   cBtnOrangeText: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   cBtnOverride: {
     paddingHorizontal: spacing.md + 2,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.md,
-    backgroundColor:   colors.blue,
+    borderRadius:      th.radius.md,
+    backgroundColor:   th.colors.blue,
     position:          'absolute',
     bottom:            0,
     right:             0,
@@ -3952,19 +3983,19 @@ const styles = StyleSheet.create({
   cBtnOverrideText: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   cBtnAccent: {
     paddingHorizontal: spacing.md + 4,
     paddingVertical:   spacing.xs + 4,
-    borderRadius:      radius.md,
-    backgroundColor:   colors.accent,
+    borderRadius:      th.radius.md,
+    backgroundColor:   th.colors.accent,
     flexShrink:        0,
   },
   cBtnAccentText: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
   // No program state
   cNoProgramRow: {
@@ -3977,17 +4008,17 @@ const styles = StyleSheet.create({
     height:       9,
     borderRadius: 5,
     borderWidth:  1.5,
-    borderColor:  colors.muted,
+    borderColor:  th.colors.muted,
     flexShrink:   0,
   },
   cNoProgramTitle: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontStyle:  'italic',
   },
   cNoProgramSub: {
     fontSize:   typography.xs,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     marginTop:  2,
     marginLeft: 15,
   },
@@ -4001,14 +4032,14 @@ const styles = StyleSheet.create({
   },
   cTagPill: {
     borderWidth:       borders.thin,
-    borderColor:       colors.muted2,
-    borderRadius:      radius.full,
+    borderColor:       th.colors.muted2,
+    borderRadius:      th.radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical:   1,
   },
   cTagPillText: {
     fontSize:   9,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.regular,
   },
 
@@ -4024,10 +4055,10 @@ const styles = StyleSheet.create({
   cIconBtn: {
     width:           32,
     height:          32,
-    borderRadius:    radius.sm,
-    backgroundColor: colors.surface2,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
     justifyContent:  'center',
   },
@@ -4061,26 +4092,26 @@ const styles = StyleSheet.create({
     alignItems:        'center',
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   cTagSelectableActive: {
-    backgroundColor: `${colors.accent}14`,
-    borderColor:     `${colors.accent}40`,
+    backgroundColor: `${th.colors.accent}14`,
+    borderColor:     `${th.colors.accent}40`,
   },
   cTagSelectableTick: {
     fontSize:   typography.xs,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.bold,
   },
   cTagSelectableText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
-  cTagSelectableTextActive: { color: colors.accent },
+  cTagSelectableTextActive: { color: th.colors.accent },
 
   // Legacy action button stubs
   cActions: {},
@@ -4090,7 +4121,7 @@ const styles = StyleSheet.create({
   cBtnFlatText: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   cBtnFlatIcon: {
     width:           32,
@@ -4101,48 +4132,48 @@ const styles = StyleSheet.create({
   },
   cBtnFlatIconText: {
     fontSize:   18,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 20,
   },
   cBtnSecondary: {
     flex:              1,
     height:            34,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
     alignItems:        'center',
     justifyContent:    'center',
     paddingHorizontal: spacing.xs,
   },
   cBtnPrimary: {
-    backgroundColor: withOpacity(colors.orange, 0.12),
-    borderColor:     withOpacity(colors.orange, 0.4),
+    backgroundColor: withOpacity(th.colors.orange, 0.12),
+    borderColor:     withOpacity(th.colors.orange, 0.4),
   },
   cBtnBlue:             {},
   cBtnText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
-  cBtnTextPrimary: { color: colors.orange },
-  cBtnTextBlue:    { color: colors.blue   },
+  cBtnTextPrimary: { color: th.colors.orange },
+  cBtnTextBlue:    { color: th.colors.blue   },
   cBtnAssignActive: {
-    backgroundColor: withOpacity(colors.accent, 0.10),
-    borderColor:     withOpacity(colors.accent, 0.35),
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
+    borderColor:     withOpacity(th.colors.accent, 0.35),
   },
-  cBtnTextAssignActive: { color: colors.accent },
+  cBtnTextAssignActive: { color: th.colors.accent },
   cBtnIcon: {
     width:           34,
     height:          34,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  cBtnIconText:         { color: colors.muted, fontSize: typography.base },
+  cBtnIconText:         { color: th.colors.muted, fontSize: typography.base },
 
   // ── Detail header ──
   detailHeader: {
@@ -4151,20 +4182,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   backBtn: { padding: 4 },
   backIcon: {
     fontSize:   26,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 28,
   },
   detailName: {
     flex:       1,
     fontSize:   typography.md,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   detailHeaderRight: {
     flexDirection: 'row',
@@ -4173,21 +4204,21 @@ const styles = StyleSheet.create({
   },
   detailHeaderBtn: {
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs + 2,
   },
   detailHeaderBtnText: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // ── Tab bar ──
   tabBar: {
     flexDirection:     'row',
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   tabBarItem: {
     flex:       1,
@@ -4198,10 +4229,10 @@ const styles = StyleSheet.create({
   tabBarIcon: { fontSize: 14 },
   tabBarLabel: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     letterSpacing: 0.3,
   },
-  tabBarLabelActive: { color: colors.accent },
+  tabBarLabelActive: { color: th.colors.accent },
   tabBarUnderline: {
     position:      'absolute',
     bottom:        0,
@@ -4210,7 +4241,7 @@ const styles = StyleSheet.create({
     height:        2,
     backgroundColor: 'transparent',
   },
-  tabBarUnderlineActive: { backgroundColor: colors.accent },
+  tabBarUnderlineActive: { backgroundColor: th.colors.accent },
 
   // ── Tab content ──
   histFilterRow: {
@@ -4225,21 +4256,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   histFilterBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  histFilterBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
-  histFilterBtnTextActive: { color: colors.accent },
+  histFilterBtnText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
+  histFilterBtnTextActive: { color: th.colors.accent },
 
   refreshHistoryBtn: {
-    backgroundColor: `${colors.accent}18`,
+    backgroundColor: `${th.colors.accent}18`,
     borderWidth:     1,
-    borderColor:     `${colors.accent}40`,
-    borderRadius:    radius.sm,
+    borderColor:     `${th.colors.accent}40`,
+    borderRadius:    th.radius.sm,
     paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.md,
     alignItems:        'center',
@@ -4247,7 +4278,7 @@ const styles = StyleSheet.create({
   refreshHistoryBtnText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
   tabContent: {
     padding: spacing.xl,
@@ -4256,23 +4287,23 @@ const styles = StyleSheet.create({
 
   // ── Program card ──
   progCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     overflow:        'hidden',
     padding:         spacing.md,
     gap:             spacing.sm,
   },
   progCardActive: {
-    borderColor: `${colors.accent}50`,
+    borderColor: `${th.colors.accent}50`,
   },
   progCardHead: {
     flexDirection:     'row',
     alignItems:        'center',
     padding:           spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.sm,
   },
   progCardNameRow: {
@@ -4284,11 +4315,11 @@ const styles = StyleSheet.create({
   progCardName: {
     fontSize:   typography.base,
     fontWeight: typography.semibold,
-    color:      '#b0b0b0',
+    color:      th.colors.mutedLight,
   },
   progCardMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   progCardTop: {
@@ -4298,12 +4329,12 @@ const styles = StyleSheet.create({
   },
   progCardStructure: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   progCardLastSession: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 1,
   },
   progShareIcon: {
@@ -4311,23 +4342,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   activeBadge: {
-    backgroundColor: `${colors.accent}18`,
+    backgroundColor: `${th.colors.accent}18`,
     borderWidth:     borders.thin,
-    borderColor:     `${colors.accent}50`,
-    borderRadius:    radius.xs,
+    borderColor:     `${th.colors.accent}50`,
+    borderRadius:    th.radius.xs,
     paddingHorizontal: spacing.xs,
     paddingVertical:   1,
   },
   activeBadgeText: {
     fontSize:      7,
     fontWeight:    typography.heavy,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
   starBtn: { padding: 4 },
   starIcon: {
     fontSize: 22,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   progCardActions: {
     flexDirection: 'row',
@@ -4340,22 +4371,22 @@ const styles = StyleSheet.create({
   },
   progCardActionText: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   progCardActionDivider: {
     width:           1,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
   },
 
   // ── Active program hero ──
   heroCard: {
-    borderColor: `${colors.accent}40`,
+    borderColor: `${th.colors.accent}40`,
     gap:         spacing.md - 2,
   },
   heroName: {
     fontSize:   typography.md,
     fontWeight: typography.semibold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   heroStage: {
     gap: spacing.xs,
@@ -4368,47 +4399,47 @@ const styles = StyleSheet.create({
   heroStageLabel: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   heroStageMeta: {
     fontSize: typography.sm,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
   heroBar: {
     height:          5,
-    borderRadius:    radius.full,
-    backgroundColor: colors.surface2,
+    borderRadius:    th.radius.full,
+    backgroundColor: th.colors.surface2,
     overflow:        'hidden',
   },
   heroBarFill: {
     height:          '100%',
-    backgroundColor: colors.accent,
-    borderRadius:    radius.full,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.full,
   },
   heroNext: {
     flexDirection:   'row',
     alignItems:      'center',
     gap:             spacing.sm,
     padding:         spacing.sm + 2,
-    borderRadius:    radius.md,
-    backgroundColor: withOpacity(colors.blue, 0.10),
+    borderRadius:    th.radius.md,
+    backgroundColor: withOpacity(th.colors.blue, 0.10),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.blue, 0.30),
+    borderColor:     withOpacity(th.colors.blue, 0.30),
   },
   heroNextLabel: {
     fontSize: typography.xs,
-    color:    withOpacity(colors.blue, 0.85),
+    color:    withOpacity(th.colors.blue, 0.85),
   },
   heroNextVal: {
     fontSize:   typography.md,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     marginTop:  1,
   },
   heroPrepare: {
     fontSize:   typography.sm,
     fontWeight: typography.semibold,
-    color:      colors.blue,
+    color:      th.colors.blue,
   },
   heroMetaLine: {
     flexDirection: 'row',
@@ -4417,36 +4448,36 @@ const styles = StyleSheet.create({
   },
   heroMetaText: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   heroStreak: {
     fontSize: typography.sm,
-    color:    colors.orange,
+    color:    th.colors.orange,
   },
   heroSubMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted2,
+    color:     th.colors.muted2,
     marginTop: -spacing.xs + 1,
   },
 
   // ── No active program ──
   noActiveBox: {
     padding:         spacing.lg,
-    borderRadius:    radius.lg,
+    borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.borderCard,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
     gap:             spacing.xs,
   },
   noActiveTitle: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   noActiveSub: {
     fontSize: typography.xs,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
 
   // ── Previous (archived) programs ──
@@ -4462,24 +4493,24 @@ const styles = StyleSheet.create({
   },
   archChevron: {
     fontSize: typography.sm,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
     width:    14,
   },
   archHeaderLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.medium,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.5,
   },
   archCount: {
-    backgroundColor:   colors.surface2,
-    borderRadius:      radius.full,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical:   1,
   },
   archCountText: {
     fontSize: typography.xs,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
   archRow: {
     flexDirection:   'row',
@@ -4487,18 +4518,18 @@ const styles = StyleSheet.create({
     gap:             spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: `${colors.surface}80`,
+    borderColor:     th.colors.border,
+    backgroundColor: `${th.colors.surface}80`,
   },
   archName: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   archMeta: {
     fontSize:  typography.xs,
-    color:     colors.muted2,
+    color:     th.colors.muted2,
     marginTop: 2,
   },
   archIcon: {
@@ -4506,18 +4537,18 @@ const styles = StyleSheet.create({
   },
   archDots: {
     fontSize:  typography.base,
-    color:     colors.muted2,
+    color:     th.colors.muted2,
     width:     18,
     textAlign: 'center',
   },
 
   // ── Session card ──
   sessionCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
+    borderColor:     th.colors.borderCard,
     borderLeftWidth: 3,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
     marginBottom:    spacing.xs,
   },
@@ -4541,11 +4572,11 @@ const styles = StyleSheet.create({
   sessionName: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   sessionDate: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   sessionCardRight: {
@@ -4555,19 +4586,19 @@ const styles = StyleSheet.create({
   },
   sessionDelete: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
     padding:  4,
   },
   sessionChevron: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   sessionBody: {
     paddingHorizontal: spacing.md,
     paddingBottom:     spacing.md,
     gap:               spacing.xs,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
   sessionExRow: {
     flexDirection: 'row',
@@ -4577,29 +4608,29 @@ const styles = StyleSheet.create({
   sessionExName: {
     flex:       1,
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   sessionExSets: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   sessionNotes: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontStyle:  'italic',
     marginTop:  spacing.xs,
     paddingTop: spacing.xs,
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
   },
 
   // ── Client SessionCard (same format as HistoryScreen) ──────────────────────
   sesCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
   sesCardHeader: {
@@ -4623,7 +4654,7 @@ const styles = StyleSheet.create({
   sesName: {
     fontSize:   typography.base,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   sesMeta: {
     flexDirection: 'row',
@@ -4632,12 +4663,12 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
     marginTop:     3,
   },
-  sesDate:    { fontSize: typography.xs, color: colors.muted },
-  sesMetaSep: { fontSize: typography.xs, color: colors.muted2 },
+  sesDate:    { fontSize: typography.xs, color: th.colors.muted },
+  sesMetaSep: { fontSize: typography.xs, color: th.colors.muted2 },
   sesNoteTag: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.25),
+    borderColor:     withOpacity(th.colors.accent, 0.25),
     borderRadius:    3,
     paddingHorizontal: 5,
     paddingVertical:   1,
@@ -4645,7 +4676,7 @@ const styles = StyleSheet.create({
   sesNoteTagText: {
     fontSize:      8,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 0.5,
   },
   sesCardRight: {
@@ -4654,38 +4685,38 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
     flexShrink:    0,
   },
-  sesDelete:      { fontSize: typography.base, color: colors.muted2 },
-  sesChevron:     { fontSize: typography.base, color: colors.muted },
+  sesDelete:      { fontSize: typography.base, color: th.colors.muted2 },
+  sesChevron:     { fontSize: typography.base, color: th.colors.muted },
   sesChevronOpen: { transform: [{ rotate: '180deg' }] },
   sesDetail: {
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
   },
   sesNoteSection: {
     padding:         spacing.md,
-    backgroundColor: withOpacity(colors.accent, 0.04),
+    backgroundColor: withOpacity(th.colors.accent, 0.04),
     borderLeftWidth: 2,
-    borderLeftColor: withOpacity(colors.accent, 0.3),
+    borderLeftColor: withOpacity(th.colors.accent, 0.3),
   },
   sesNoteSectionText: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.sm * 1.6,
   },
   sesExSection: {
     padding:        spacing.md,
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
     gap:            spacing.xs,
   },
   sesExName: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   sesExNote: {
     fontSize:   typography.xs,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontStyle:  'italic',
     lineHeight: 16,
   },
@@ -4695,25 +4726,25 @@ const styles = StyleSheet.create({
     gap:           spacing.xs,
   },
   sesPill: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
   },
-  sesPillDone:        { backgroundColor: 'rgba(74,222,128,0.08)', borderColor: 'rgba(74,222,128,0.3)' },
-  sesPillPartial:     { backgroundColor: 'rgba(251,146,60,0.10)', borderColor: 'rgba(251,146,60,0.35)' },
-  sesPillText:        { fontSize: typography.xs, color: colors.muted },
-  sesPillTextDone:    { color: colors.green },
-  sesPillTextPartial: { color: '#fb923c' },
+  sesPillDone:        { backgroundColor: withOpacity(th.colors.green, 0.08), borderColor: withOpacity(th.colors.green, 0.3) },
+  sesPillPartial:     { backgroundColor: withOpacity(th.colors.orange, 0.10), borderColor: withOpacity(th.colors.orange, 0.35) },
+  sesPillText:        { fontSize: typography.xs, color: th.colors.muted },
+  sesPillTextDone:    { color: th.colors.green },
+  sesPillTextPartial: { color: th.colors.orange },
 
   // ── Exercise mini card ──
   exMiniCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
     marginBottom:    spacing.xs,
   },
@@ -4725,38 +4756,38 @@ const styles = StyleSheet.create({
   exMiniName: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   exMiniLast: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   exMiniArrow: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   exMiniBody: {
     paddingHorizontal: spacing.md,
     paddingBottom:     spacing.md,
     gap:               2,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
   exMiniRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     paddingVertical: 4,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
-  exMiniDate: { fontSize: typography.xs, color: colors.muted },
-  exMiniVal:  { fontSize: typography.xs, color: colors.text, fontWeight: typography.medium },
+  exMiniDate: { fontSize: typography.xs, color: th.colors.muted },
+  exMiniVal:  { fontSize: typography.xs, color: th.colors.text, fontWeight: typography.medium },
 
   // ── Info tab ──
   accordion: {
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   accordionHeader: {
     flexDirection:  'row',
@@ -4768,14 +4799,14 @@ const styles = StyleSheet.create({
   accordionLabel: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
-  accordionArrow: { fontSize: 16, color: colors.muted },
+  accordionArrow: { fontSize: 16, color: th.colors.muted },
   accordionBody:  { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
 
   fieldLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     marginBottom:  spacing.xs,
     marginTop:     spacing.xs,
@@ -4783,17 +4814,17 @@ const styles = StyleSheet.create({
   },
   fieldHint: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
     marginTop: 4,
   },
   input: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
-    color:             colors.text,
+    color:             th.colors.text,
     fontSize:          typography.base,
   },
   statusRow: {
@@ -4803,7 +4834,7 @@ const styles = StyleSheet.create({
   statusBtn: {
     flex:            1,
     paddingVertical: spacing.sm,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
     alignItems:      'center',
     flexDirection:   'row',
@@ -4822,9 +4853,9 @@ const styles = StyleSheet.create({
 
   // ── Weight list ──
   weightList: {
-    borderRadius:  radius.sm,
+    borderRadius:  th.radius.sm,
     borderWidth:   borders.thin,
-    borderColor:   colors.borderCard,
+    borderColor:   th.colors.borderCard,
     overflow:      'hidden',
   },
   weightRow: {
@@ -4833,44 +4864,44 @@ const styles = StyleSheet.create({
     padding:         spacing.sm + 2,
     paddingHorizontal: spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:             spacing.sm,
   },
-  weightDate: { flex: 1, fontSize: typography.sm, color: colors.muted },
-  weightVal:  { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
-  deleteIcon: { fontSize: typography.sm, color: colors.muted, padding: 4 },
+  weightDate: { flex: 1, fontSize: typography.sm, color: th.colors.muted },
+  weightVal:  { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
+  deleteIcon: { fontSize: typography.sm, color: th.colors.muted, padding: 4 },
 
   deleteClientBtn: {
     marginHorizontal: spacing.xl,
     marginTop:        spacing.xl,
     marginBottom:     spacing.md,
     paddingVertical:  spacing.md,
-    borderRadius:     radius.sm,
-    backgroundColor:  `${colors.red}15`,
+    borderRadius:     th.radius.sm,
+    backgroundColor:  `${th.colors.red}15`,
     borderWidth:      borders.thin,
-    borderColor:      `${colors.red}40`,
+    borderColor:      `${th.colors.red}40`,
     alignItems:       'center',
   },
   deleteClientBtnText: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.red,
+    color:      th.colors.red,
   },
 
   // ── Billing tiles ──
   billingRow: { flexDirection: 'row', gap: spacing.xs },
   billingTile: {
     flex:            1,
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.sm,
     padding:         spacing.sm,
     alignItems:      'center',
   },
   billingTileLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     marginBottom:  3,
   },
@@ -4892,25 +4923,25 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
     gap:             spacing.xs,
     paddingVertical: spacing.xs + 1,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: withOpacity(colors.surface2, 0.35),
+    borderColor:     th.colors.border,
+    backgroundColor: withOpacity(th.colors.surface2, 0.35),
   },
   billFilterBtnActive: {
-    borderColor:     withOpacity(colors.accent, 0.3),
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
   billFilterBtnText: {
     fontSize:   typography.sm,
     fontWeight: typography.regular,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
-  billFilterBtnTextActive: { color: withOpacity(colors.accent, 0.9) },
+  billFilterBtnTextActive: { color: withOpacity(th.colors.accent, 0.9) },
   billFilterBadge: {
     backgroundColor:   'transparent',
     borderWidth:       1,
-    borderColor:       colors.border,
+    borderColor:       th.colors.border,
     borderRadius:      999,
     minWidth:          22,
     height:            22,
@@ -4919,22 +4950,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   billFilterBadgeActive: {
-    backgroundColor: colors.accent,
-    borderColor:     colors.accent,
+    backgroundColor: th.colors.accent,
+    borderColor:     th.colors.accent,
   },
   billFilterBadgeText: {
     fontSize:   11,
     fontWeight: typography.bold,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
-  billFilterBadgeTextActive: { color: colors.bg },
+  billFilterBadgeTextActive: { color: th.colors.bg },
 
   // ── Billing entries ──
   billEntry: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     flexDirection:   'row',
     alignItems:      'center',
@@ -4943,52 +4974,52 @@ const styles = StyleSheet.create({
   },
   billClientLink: {
     fontSize:      typography.xs,
-    color:         colors.accent,
+    color:         th.colors.accent,
     marginBottom:  2,
   },
   billConcept: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
-  billDate: { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
+  billDate: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
   billAmount: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   // Pill style for existing entries (compact)
   billStatusBtn: {
     borderWidth:       borders.thin,
-    borderColor:       `${colors.orange}50`,
-    backgroundColor:   `${colors.orange}10`,
-    borderRadius:      radius.xs,
+    borderColor:       `${th.colors.orange}50`,
+    backgroundColor:   `${th.colors.orange}10`,
+    borderRadius:      th.radius.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical:   3,
   },
   // Taller variant for the ADD form toggle (matches input height)
   billStatusBtnForm: {
     borderWidth:       borders.thin,
-    borderColor:       `${colors.orange}50`,
-    backgroundColor:   `${colors.orange}10`,
-    borderRadius:      radius.sm,
+    borderColor:       `${th.colors.orange}50`,
+    backgroundColor:   `${th.colors.orange}10`,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.sm,
   },
   billStatusBtnPaid: {
-    borderColor:     `${colors.green}50`,
-    backgroundColor: `${colors.green}10`,
+    borderColor:     `${th.colors.green}50`,
+    backgroundColor: `${th.colors.green}10`,
   },
   billStatusText: {
     fontSize: typography.xs,
-    color:    colors.orange,
+    color:    th.colors.orange,
   },
-  billStatusTextPaid: { color: colors.green },
+  billStatusTextPaid: { color: th.colors.green },
 
   // ── Buttons ──
   accentBtn: {
-    backgroundColor:   colors.accent,
-    borderRadius:      radius.sm,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
   },
@@ -4999,7 +5030,7 @@ const styles = StyleSheet.create({
   accentBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
   accentBtnTextSmall: { fontSize: typography.base, letterSpacing: 0.5 },
@@ -5007,12 +5038,12 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
   },
   ghostBtnText: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // ── Modals ──
@@ -5029,22 +5060,22 @@ const styles = StyleSheet.create({
     pointerEvents:  'box-none',
   },
   modalCard: {
-    backgroundColor:   colors.surface,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.lg,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.lg,
     padding:           spacing.xl,
     gap:               spacing.md,
   },
   modalTitle: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 1,
   },
   modalSub: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   modalActions: {
     flexDirection: 'row',
@@ -5055,20 +5086,20 @@ const styles = StyleSheet.create({
 
   // ── Import options ──
   importOption: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
   importOptionLabel: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   importOptionDesc: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
 
@@ -5080,55 +5111,55 @@ const styles = StyleSheet.create({
   tabBtn: {
     flex:            1,
     paddingVertical: spacing.sm,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
   },
   tabBtnActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+    borderColor:     `${th.colors.accent}50`,
+    backgroundColor: `${th.colors.accent}12`,
   },
-  tabBtnText: { fontSize: typography.sm, color: colors.muted },
-  tabBtnTextActive: { color: colors.accent },
+  tabBtnText: { fontSize: typography.sm, color: th.colors.muted },
+  tabBtnTextActive: { color: th.colors.accent },
 
   numRow: { flexDirection: 'row', gap: spacing.xs },
   numBtn: {
     flex:            1,
     height:          44,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   numBtnActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+    borderColor:     `${th.colors.accent}50`,
+    backgroundColor: `${th.colors.accent}12`,
   },
-  numBtnText: { fontSize: typography.xl, color: colors.text, fontWeight: typography.heavy },
-  numBtnTextActive: { color: colors.accent },
+  numBtnText: { fontSize: typography.xl, color: th.colors.text, fontWeight: typography.heavy },
+  numBtnTextActive: { color: th.colors.accent },
 
   templateOption: {
     padding:         spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     marginBottom:    spacing.xs,
   },
   templateOptionActive: {
-    borderColor:     `${colors.accent}50`,
-    backgroundColor: `${colors.accent}12`,
+    borderColor:     `${th.colors.accent}50`,
+    backgroundColor: `${th.colors.accent}12`,
   },
   templateOptionName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
-  templateOptionMeta: { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
+  templateOptionMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
 
   // ── Context menu ──
   contextMenu: {
@@ -5136,16 +5167,16 @@ const styles = StyleSheet.create({
     bottom:          spacing.xxl * 2,
     left:            spacing.xl,
     right:           spacing.xl,
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
   contextMenuItem: {
     padding:           spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
-  contextMenuText: { fontSize: typography.base, color: colors.text },
+  contextMenuText: { fontSize: typography.base, color: th.colors.text },
 });
