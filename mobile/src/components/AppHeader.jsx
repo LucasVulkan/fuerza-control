@@ -23,9 +23,9 @@ import ClientCodeModal       from './ClientCodeModal';
 import ClientGoogleLinkModal from './ClientGoogleLinkModal';
 import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
-import { colors, spacing, typography, borders, radius } from '../theme';
+import { spacing, typography, borders } from '../theme';
 import { THEME_LIST } from '../themes';
-import { useTheme } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -65,15 +65,16 @@ function parseImportFile(jsonString) {
 // ── FIT logo (SVG paths) ───────────────────────────────────────────────────────
 
 function FitLogo({ height = 22 }) {
+  const th = useTheme();
   const width = height * (378 / 126);
   return (
     <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
       {/* I */}
-      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={colors.accent} />
+      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={th.colors.accent} />
       {/* T */}
-      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={colors.accent} />
+      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={th.colors.accent} />
       {/* F */}
-      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={colors.accent} />
+      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={th.colors.accent} />
     </Svg>
   );
 }
@@ -81,13 +82,14 @@ function FitLogo({ height = 22 }) {
 // ── Icon ───────────────────────────────────────────────────────────────────────
 
 function Icon({ d, size = 18 }) {
+  const th = useTheme();
   return (
     <Svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={colors.accent}
+      stroke={th.colors.accent}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -100,6 +102,7 @@ function Icon({ d, size = 18 }) {
 // ── MenuItem ──────────────────────────────────────────────────────────────────
 
 function MenuItem({ icon, label, subtitle, onPress, disabled, badge }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.menuItem, disabled && styles.menuItemDisabled]}
@@ -125,6 +128,7 @@ function MenuItem({ icon, label, subtitle, onPress, disabled, badge }) {
 // ── CategoryCard ──────────────────────────────────────────────────────────────
 
 function CategoryCard({ title, children }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.category}>
       <Text style={styles.categoryTitle}>{title}</Text>
@@ -136,6 +140,7 @@ function CategoryCard({ title, children }) {
 // ── Archived programs modal ───────────────────────────────────────────────────
 
 function ArchivedProgramsModal({ onClose }) {
+  const styles = useThemedStyles(makeStyles);
   const { t }          = useTranslation();
   const programs       = useStore((s) => s.programs);
   const restoreProgram = useStore((s) => s.restoreProgram);
@@ -191,6 +196,8 @@ function ArchivedProgramsModal({ onClose }) {
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode, onLinkGoogle }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t }         = useTranslation();
   const insets        = useSafeAreaInsets();
   const [exporting,    setExporting]   = useState(null);
@@ -471,7 +478,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
                       value={trainerSync.trainerName ?? ''}
                       onChangeText={(v) => setTrainerName(v)}
                       placeholder="Nombre visible para tus clientes"
-                      placeholderTextColor={colors.muted2}
+                      placeholderTextColor={th.colors.muted2}
                       returnKeyType="done"
                       maxLength={40}
                     />
@@ -511,6 +518,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 export default function AppHeader() {
   const { t }                 = useTranslation();
   const th                    = useTheme();
+  const styles                = useThemedStyles(makeStyles);
   const [settingsOpen,      setSettingsOpen]      = useState(false);
   const [importState,       setImportState]       = useState(null);
   const [picking,           setPicking]           = useState(false);
@@ -600,7 +608,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
+      <View style={[styles.header, { backgroundColor: th.th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
           <Text style={styles.appNameForma}>Forma</Text>
           <View style={{ marginTop: 4 }}><FitLogo height={14} /></View>
@@ -678,7 +686,7 @@ export default function AppHeader() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   // Header row
   header: {
     flexDirection:     'row',
@@ -686,7 +694,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   appNameContainer: {
     flexDirection: 'row',
@@ -697,19 +705,19 @@ const styles = StyleSheet.create({
   appNameForma: {
     fontSize:      typography.xl,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
   },
   appNameFit: {
     fontSize:      typography.xl,
     fontFamily:    'BarlowCondensed_800ExtraBold_Italic',
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 2,
   },
   clockText: {
     flex:       1,
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     letterSpacing: 0.3,
   },
@@ -720,21 +728,21 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     fontSize:   26,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 28,
   },
 
   // Pending upload banner
   pendingBanner: {
-    backgroundColor:   `${colors.orange}1e`,
+    backgroundColor:   `${th.colors.orange}1e`,
     borderBottomWidth: borders.thin,
-    borderBottomColor: `${colors.orange}4d`,
+    borderBottomColor: `${th.colors.orange}4d`,
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.sm,
   },
   pendingBannerText: {
     fontSize:   typography.xs,
-    color:      colors.orange,
+    color:      th.colors.orange,
     textAlign:  'center',
     lineHeight: typography.xs * 1.5,
   },
@@ -750,9 +758,9 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     maxHeight:            '88%',
-    backgroundColor:      colors.surface,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor:      th.colors.surface,
+    borderTopLeftRadius:  th.radius.lg,
+    borderTopRightRadius: th.radius.lg,
     paddingHorizontal:    spacing.lg,
     paddingTop:           spacing.sm,
   },
@@ -763,23 +771,23 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width:           40,
     height:          4,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     borderRadius:    2,
   },
   settingsTitle: {
     fontSize:      typography.sm,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
     marginBottom:  spacing.md,
   },
 
   // Category card
   category: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     1,
-    borderColor:     `${colors.accent}2e`,
-    borderRadius:    radius.lg,
+    borderColor:     `${th.colors.accent}2e`,
+    borderRadius:    th.radius.lg,
     padding:         spacing.md,
     marginBottom:    spacing.sm,
     gap:             6,
@@ -787,7 +795,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 2,
     marginBottom:  2,
   },
@@ -799,10 +807,10 @@ const styles = StyleSheet.create({
     gap:            spacing.sm,
     paddingVertical:   spacing.sm + 2,
     paddingHorizontal: spacing.sm,
-    borderRadius:   radius.md,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderRadius:   th.radius.md,
+    backgroundColor: `${th.colors.text}06`,
     borderWidth:    1,
-    borderColor:    'rgba(255,255,255,0.05)',
+    borderColor:    `${th.colors.text}0d`,
   },
   menuItemDisabled: {
     opacity: 0.45,
@@ -815,11 +823,11 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize:   typography.base,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   menuItemSubtitle: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 1,
   },
 
@@ -829,13 +837,13 @@ const styles = StyleSheet.create({
     paddingVertical:   3,
     borderRadius:      999,
     borderWidth:       1,
-    borderColor:       `${colors.accent}59`,
-    backgroundColor:   `${colors.accent}0f`,
+    borderColor:       `${th.colors.accent}59`,
+    backgroundColor:   `${th.colors.accent}0f`,
   },
   badgeText: {
     fontSize:   typography.xs,
     fontWeight: typography.bold,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
 
   // Toggles (inside category cards)
@@ -845,11 +853,11 @@ const styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingVertical:   spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   toggleLabel: {
     fontSize: typography.base,
-    color:    colors.text,
+    color:    th.colors.text,
     flex:     1,
   },
   toggleBtns: {
@@ -859,21 +867,21 @@ const styles = StyleSheet.create({
   toggleBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   toggleBtnActive: {
-    borderColor:     colors.accent,
-    backgroundColor: `${colors.accent}18`,
+    borderColor:     th.colors.accent,
+    backgroundColor: `${th.colors.accent}18`,
   },
   toggleBtnText: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   toggleBtnTextActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
 
   // Trainer name field
@@ -881,24 +889,24 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:               spacing.xs,
   },
   nameFieldLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   nameFieldInput: {
     fontSize:          typography.base,
-    color:             colors.text,
+    color:             th.colors.text,
     paddingVertical:   spacing.xs,
     paddingHorizontal: spacing.sm,
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
   },
 
   // Archived programs modal
@@ -912,22 +920,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   archivedModal: {
-    backgroundColor: colors.surface,
-    borderRadius:    radius.lg,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
+    borderColor:     th.colors.borderCard,
     padding:         spacing.xl,
     gap:             spacing.md,
   },
   archivedTitle: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   archivedEmpty: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
     paddingVertical: spacing.md,
   },
@@ -936,42 +944,42 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
     gap:             spacing.sm,
   },
   archivedName: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   archivedDate: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   restoreBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
-    borderRadius:      radius.sm,
-    backgroundColor:   `${colors.accent}18`,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   `${th.colors.accent}18`,
     borderWidth:       borders.thin,
-    borderColor:       `${colors.accent}40`,
+    borderColor:       `${th.colors.accent}40`,
   },
   restoreBtnText: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
   archivedCloseBtn: {
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
   },
   archivedCloseBtnText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 });
