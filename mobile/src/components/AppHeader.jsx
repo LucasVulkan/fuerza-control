@@ -25,6 +25,7 @@ import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
 import { colors, spacing, typography, borders, radius } from '../theme';
 import { THEME_LIST } from '../themes';
+import { useTheme } from '../useTheme';
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -509,6 +510,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive
 
 export default function AppHeader() {
   const { t }                 = useTranslation();
+  const th                    = useTheme();
   const [settingsOpen,      setSettingsOpen]      = useState(false);
   const [importState,       setImportState]       = useState(null);
   const [picking,           setPicking]           = useState(false);
@@ -598,7 +600,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
           <Text style={styles.appNameForma}>Forma</Text>
           <View style={{ marginTop: 4 }}><FitLogo height={14} /></View>
