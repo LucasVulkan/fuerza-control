@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
-import { colors, borders } from '../theme';
+import { borders } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
 import HistoryScreen    from '../screens/HistoryScreen';
 import StatsScreen      from '../screens/StatsScreen';
@@ -41,6 +42,7 @@ function tabIcon(name) {
 
 // Fondo sólido que se extiende detrás de la barra del sistema (edge-to-edge fix)
 function TabBarBackground() {
+  const styles = useThemedStyles(makeStyles);
   return <View style={[StyleSheet.absoluteFillObject, styles.tabBarBg]} />;
 }
 
@@ -48,6 +50,8 @@ function TabBarBackground() {
 function MainTabs() {
   const insets         = useSafeAreaInsets();
   const { t }          = useTranslation();
+  const th             = useTheme();
+  const styles         = useThemedStyles(makeStyles);
   const isPro          = useStore((s) => s.profile?.isPro          ?? true);
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
@@ -67,8 +71,8 @@ function MainTabs() {
             height:        56 + insets.bottom,
           },
         ],
-        tabBarActiveTintColor:   colors.accent,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarActiveTintColor:   th.colors.accent,
+        tabBarInactiveTintColor: th.colors.muted,
         tabBarLabelStyle: styles.tabLabel,
         sceneStyle: styles.scene,
       }}
@@ -96,7 +100,7 @@ function MainTabs() {
             tabBarLabel: t('tabs.clients'),
             tabBarIcon:  tabIcon('people'),
             tabBarBadge: pendingClients > 0 ? pendingClients : undefined,
-            tabBarBadgeStyle: { backgroundColor: colors.blue, color: colors.onAccent, fontSize: 10 },
+            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 10 },
           }}
         />
       )}
@@ -113,6 +117,7 @@ function MainTabs() {
 
 // ── Root stack ─────────────────────────────────────────────────────────────────
 export default function RootNavigator() {
+  const styles       = useThemedStyles(makeStyles);
   const hasHydrated  = useStore((s) => s._hasHydrated);
   const initialRoute = useStore((s) => s._initialRoute ?? 'Main');
 
@@ -197,30 +202,30 @@ export default function RootNavigator() {
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   root: {
     flex: 1,
   },
   hydrating: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
   tabBar: {
     backgroundColor: 'transparent', // el background lo pone TabBarBackground
-    borderTopColor:  colors.border,
+    borderTopColor:  th.colors.border,
     borderTopWidth:  borders.thin,
     elevation:       0,             // quita la sombra de Android
   },
   tabBarBg: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
   },
   tabLabel: {
     fontSize: 9,
   },
   scene: {
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
   stackContent: {
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 });

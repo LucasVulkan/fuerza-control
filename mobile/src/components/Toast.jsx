@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, selectToast } from '../../store/useStore';
-import { colors, spacing, typography, radius, withOpacity } from '../theme';
+import { spacing, typography, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 /**
  * Global toast overlay — renders ui.toast from the store.
@@ -15,26 +16,28 @@ import { colors, spacing, typography, radius, withOpacity } from '../theme';
  *   'neutral' — dark:             informational (timer, clipboard, deletions)
  */
 
-const TOAST_COLORS = {
+const toastColors = (th) => ({
   success: {
     bg:     '#132d1e',
-    text:   colors.green,
-    border: withOpacity(colors.green, 0.28),
+    text:   th.colors.green,
+    border: withOpacity(th.colors.green, 0.28),
   },
   error: {
     bg:     '#2d1313',
-    text:   colors.red,
-    border: withOpacity(colors.red, 0.28),
+    text:   th.colors.red,
+    border: withOpacity(th.colors.red, 0.28),
   },
   neutral: {
-    bg:     colors.text,
-    text:   colors.bg,
+    bg:     th.colors.text,
+    text:   th.colors.bg,
     border: null,
   },
-};
+});
 
 export default function Toast() {
   const insets  = useSafeAreaInsets();
+  const th      = useTheme();
+  const styles  = useThemedStyles(makeStyles);
   const toast   = useStore(selectToast);
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -63,7 +66,8 @@ export default function Toast() {
     }
   }, [toast?.id, toast]);
 
-  const scheme = TOAST_COLORS[displayType] ?? TOAST_COLORS.neutral;
+  const TOAST  = toastColors(th);
+  const scheme = TOAST[displayType] ?? TOAST.neutral;
 
   return (
     <Animated.View
@@ -86,12 +90,12 @@ export default function Toast() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   toast: {
     position:          'absolute',
     alignSelf:         'center',
     maxWidth:          '80%',
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.sm + 2,
     shadowColor:       '#000',
