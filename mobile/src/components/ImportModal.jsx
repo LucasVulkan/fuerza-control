@@ -17,7 +17,8 @@ import {
   Modal, View, Text, TouchableOpacity, Switch, ScrollView, StyleSheet,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ function typeLabel(exportType, hasLog) {
 // ── Radio option (program-mode picker) ────────────────────────────────────────
 
 function RadioOption({ label, desc, selected, onPress }) {
+  const s = useThemedStyles(makeS);
   return (
     <TouchableOpacity
       style={[s.radioOption, selected && s.radioOptionSelected]}
@@ -50,6 +52,8 @@ function RadioOption({ label, desc, selected, onPress }) {
 // ── Section toggle row (backup) ───────────────────────────────────────────────
 
 function SectionRow({ label, desc, enabled, disabled, onToggle }) {
+  const th = useTheme();
+  const s = useThemedStyles(makeS);
   return (
     <TouchableOpacity
       style={[s.sectionRow, enabled && !disabled && s.sectionRowActive]}
@@ -57,15 +61,15 @@ function SectionRow({ label, desc, enabled, disabled, onToggle }) {
       activeOpacity={disabled ? 1 : 0.7}
     >
       <View style={s.sectionInfo}>
-        <Text style={[s.sectionLabel, disabled && { color: colors.muted2 }]}>{label}</Text>
+        <Text style={[s.sectionLabel, disabled && { color: th.colors.muted2 }]}>{label}</Text>
         {desc ? <Text style={s.sectionDesc}>{desc}</Text> : null}
       </View>
       <Switch
         value={enabled}
         onValueChange={disabled ? undefined : onToggle}
         disabled={disabled}
-        trackColor={{ false: colors.border, true: colors.accent }}
-        thumbColor={enabled ? '#FFFFFF' : colors.muted}
+        trackColor={{ false: th.colors.border, true: th.colors.accent }}
+        thumbColor={enabled ? '#FFFFFF' : th.colors.muted}
       />
     </TouchableOpacity>
   );
@@ -74,6 +78,8 @@ function SectionRow({ label, desc, enabled, disabled, onToggle }) {
 // ── Backup sections (full-backup flow) ────────────────────────────────────────
 
 function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) {
+  const th = useTheme();
+  const s = useThemedStyles(makeS);
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
@@ -126,7 +132,7 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
             activeOpacity={hasTemplates ? 0.7 : 1}
           >
             <View style={s.sectionInfo}>
-              <Text style={[s.sectionLabel, !hasTemplates && { color: colors.muted2 }]}>
+              <Text style={[s.sectionLabel, !hasTemplates && { color: th.colors.muted2 }]}>
                 Plantillas de programa
               </Text>
               <Text style={s.sectionDesc}>
@@ -137,8 +143,8 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
               value={sections.templates && hasTemplates}
               onValueChange={hasTemplates ? () => onToggle('templates') : undefined}
               disabled={!hasTemplates}
-              trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={sections.templates && hasTemplates ? '#FFFFFF' : colors.muted}
+              trackColor={{ false: th.colors.border, true: th.colors.accent }}
+              thumbColor={sections.templates && hasTemplates ? '#FFFFFF' : th.colors.muted}
             />
           </TouchableOpacity>
           {sections.templates && hasTemplates && (
@@ -186,6 +192,7 @@ const PROGRAM_MODES = (hasLog) => [
 ];
 
 function ProgramModes({ hasLog, selectedMode, onSelect }) {
+  const s = useThemedStyles(makeS);
   const modes = PROGRAM_MODES(hasLog);
   return (
     <View style={s.modeList}>
@@ -205,6 +212,7 @@ function ProgramModes({ hasLog, selectedMode, onSelect }) {
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 export default function ImportModal({ fileName, parsedData, onImport, onClose }) {
+  const s = useThemedStyles(makeS);
   const exportType = parsedData?.exportType ?? 'program';
   const isBackup   = exportType === 'full';
   const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
@@ -315,7 +323,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeS = (th) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -326,10 +334,10 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   sheet: {
-    backgroundColor: colors.surface,
-    borderRadius:    radius.lg,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
+    borderColor:     th.colors.borderCard,
     padding:         spacing.xl,
     gap:             spacing.md,
     maxHeight:       '88%',
@@ -337,7 +345,7 @@ const s = StyleSheet.create({
   title: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
   },
   fileRow: {
@@ -348,20 +356,20 @@ const s = StyleSheet.create({
   fileName: {
     flex:     1,
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   badge: {
-    backgroundColor:   withOpacity(colors.accent, 0.1),
+    backgroundColor:   withOpacity(th.colors.accent, 0.1),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.3),
-    borderRadius:      radius.sm,
+    borderColor:       withOpacity(th.colors.accent, 0.3),
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
   },
   badgeText: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 0.5,
   },
 
@@ -371,16 +379,16 @@ const s = StyleSheet.create({
 
   // Warning
   warning: {
-    backgroundColor: 'rgba(248,113,113,0.08)',
+    backgroundColor: withOpacity(th.colors.red, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     'rgba(248,113,113,0.3)',
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.red, 0.3),
+    borderRadius:    th.radius.sm,
     padding:         spacing.sm,
     marginBottom:    spacing.xs,
   },
   warningText: {
     fontSize:   typography.xs,
-    color:      colors.red,
+    color:      th.colors.red,
     lineHeight: typography.xs * 1.6,
   },
 
@@ -391,47 +399,47 @@ const s = StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     gap:             spacing.sm,
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
   radioOptionSelected: {
-    borderColor:     withOpacity(colors.accent, 0.5),
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     withOpacity(th.colors.accent, 0.5),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   radioCircle: {
     width:          20,
     height:         20,
     borderRadius:   10,
     borderWidth:    2,
-    borderColor:    colors.border,
+    borderColor:    th.colors.border,
     alignItems:     'center',
     justifyContent: 'center',
     flexShrink:     0,
   },
   radioCircleSelected: {
-    borderColor: colors.accent,
+    borderColor: th.colors.accent,
   },
   radioDot: {
     width:           10,
     height:          10,
     borderRadius:    5,
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
   radioLabel: {
     fontSize:     typography.base,
     fontWeight:   typography.medium,
-    color:        colors.text,
+    color:        th.colors.text,
     marginBottom: 2,
   },
   radioLabelSelected: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
   radioDesc: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.6,
   },
 
@@ -440,40 +448,40 @@ const s = StyleSheet.create({
   sectionRow: {
     flexDirection:   'row',
     alignItems:      'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     padding:         spacing.sm,
     gap:             spacing.sm,
   },
   sectionRowActive: {
-    backgroundColor: withOpacity(colors.accent, 0.05),
-    borderColor:     withOpacity(colors.accent, 0.25),
+    backgroundColor: withOpacity(th.colors.accent, 0.05),
+    borderColor:     withOpacity(th.colors.accent, 0.25),
   },
   sectionInfo: { flex: 1 },
   sectionLabel: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   sectionDesc: {
     fontSize:  typography.xs,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
 
   // Template card
   templateCard: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     overflow:        'hidden',
   },
   templateCardActive: {
-    backgroundColor: withOpacity(colors.accent, 0.05),
-    borderColor:     withOpacity(colors.accent, 0.25),
+    backgroundColor: withOpacity(th.colors.accent, 0.05),
+    borderColor:     withOpacity(th.colors.accent, 0.25),
   },
   templateCardRow: {
     flexDirection: 'row',
@@ -487,27 +495,27 @@ const s = StyleSheet.create({
     padding:        spacing.sm,
     paddingTop:     spacing.xs,
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
   },
   modeBtn: {
     flex:            1,
     paddingVertical: spacing.xs + 2,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
   },
   modeBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.1),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
   modeBtnText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
-  modeBtnTextActive: { color: colors.accent },
+  modeBtnTextActive: { color: th.colors.accent },
 
   // ── Actions row (always visible) ─────────────────────────────────────────
   actions: {
@@ -518,29 +526,29 @@ const s = StyleSheet.create({
   cancelBtn: {
     flex:            1,
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     alignItems:      'center',
   },
   cancelText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   importBtn: {
     flex:            2,
     paddingVertical: spacing.md,
-    borderRadius:    radius.sm,
-    backgroundColor: colors.accent,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
   },
-  importBtnDisabled: { backgroundColor: colors.surface2 },
+  importBtnDisabled: { backgroundColor: th.colors.surface2 },
   importBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 1,
   },
-  importBtnTextDisabled: { color: colors.muted },
+  importBtnTextDisabled: { color: th.colors.muted },
 });

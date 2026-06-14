@@ -11,9 +11,11 @@
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useThemedStyles } from '../useTheme';
 
 export default function ProgramUpdateModal() {
+  const styles = useThemedStyles(makeStyles);
   const pending                    = useStore((s) => s.clientSync?.pendingProgramUpdate);
   const applyPendingProgramUpdate  = useStore((s) => s.applyPendingProgramUpdate);
   const dismissPendingProgramUpdate = useStore((s) => s.dismissPendingProgramUpdate);
@@ -72,6 +74,7 @@ export default function ProgramUpdateModal() {
 }
 
 function ActionBtn({ label, sub, onPress, accent }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.actionBtn, accent && styles.actionBtnAccent]}
@@ -84,7 +87,7 @@ function ActionBtn({ label, sub, onPress, accent }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -95,10 +98,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius:    radius.lg,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
+    borderColor:     th.colors.borderCard,
     overflow:        'hidden',
     maxHeight:       '80%',
   },
@@ -111,14 +114,14 @@ const styles = StyleSheet.create({
   tag: {
     fontSize:        typography.xs,
     fontWeight:      typography.heavy,
-    color:           colors.accent,
+    color:           th.colors.accent,
     letterSpacing:   1.5,
     marginBottom:    spacing.xs,
   },
   title: {
     fontSize:   typography.lg,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.lg * 1.3,
   },
 
@@ -129,10 +132,10 @@ const styles = StyleSheet.create({
   diffBox: {
     marginHorizontal: spacing.xl,
     marginBottom:     spacing.md,
-    backgroundColor:  withOpacity(colors.accent, 0.05),
+    backgroundColor:  withOpacity(th.colors.accent, 0.05),
     borderWidth:      borders.thin,
-    borderColor:      withOpacity(colors.accent, 0.2),
-    borderRadius:     radius.sm,
+    borderColor:      withOpacity(th.colors.accent, 0.2),
+    borderRadius:     th.radius.sm,
     padding:          spacing.md,
     gap:              spacing.xs,
   },
@@ -142,13 +145,13 @@ const styles = StyleSheet.create({
     alignItems:    'flex-start',
   },
   diffDot: {
-    color:    colors.accent,
+    color:    th.colors.accent,
     fontSize: typography.base,
   },
   diffText: {
     flex:       1,
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.sm * 1.5,
   },
 
@@ -159,32 +162,32 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   actionBtn: {
-    backgroundColor: colors.surface2,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
     gap:             2,
   },
   actionBtnAccent: {
-    backgroundColor: colors.accent,
-    borderColor:     colors.accent,
+    backgroundColor: th.colors.accent,
+    borderColor:     th.colors.accent,
   },
   actionLabel: {
     fontSize:   typography.base,
     fontWeight: typography.bold,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   actionLabelAccent: {
-    color: colors.bg,
+    color: th.colors.bg,
   },
   actionSub: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   actionSubAccent: {
-    color: withOpacity(colors.bg, 0.7),
+    color: withOpacity(th.colors.bg, 0.7),
   },
 
   // Later
@@ -194,6 +197,6 @@ const styles = StyleSheet.create({
   },
   laterTxt: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 });

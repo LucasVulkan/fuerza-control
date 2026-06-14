@@ -25,7 +25,8 @@ import Constants        from 'expo-constants';
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { colors, spacing, typography, radius, borders } from '../theme';
+import { spacing, typography, borders } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -35,6 +36,8 @@ const GOOGLE_DISCOVERY = {
 };
 
 export default function ClientGoogleLinkModal({ visible, onClose }) {
+  const th     = useTheme();
+  const s = useThemedStyles(makeS);
   const linkGoogleForClient = useStore((s) => s.linkGoogleForClient);
   const showToast           = useStore((s) => s.showToast);
 
@@ -120,7 +123,7 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
               activeOpacity={0.85}
             >
               {loading
-                ? <ActivityIndicator color={colors.bg} />
+                ? <ActivityIndicator color={th.colors.bg} />
                 : <Text style={s.primaryBtnText}>Continuar con Google</Text>}
             </TouchableOpacity>
           </View>
@@ -131,6 +134,7 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
 }
 
 function InfoRow({ text }) {
+  const s = useThemedStyles(makeS);
   return (
     <View style={s.infoRow}>
       <Text style={s.infoDot}>·</Text>
@@ -139,7 +143,7 @@ function InfoRow({ text }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeS = (th) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -150,21 +154,21 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     padding:         spacing.xl,
     gap:             spacing.md,
   },
   title: {
     fontSize:   typography.lg,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   desc: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.sm * 1.5,
   },
   infoBox: { gap: spacing.xs },
@@ -175,18 +179,18 @@ const s = StyleSheet.create({
   },
   infoDot: {
     fontSize:   typography.sm,
-    color:      colors.accent,
+    color:      th.colors.accent,
     lineHeight: typography.sm * 1.4,
   },
   infoText: {
     flex:       1,
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.5,
   },
   unavailText: {
     fontSize:   typography.xs,
-    color:      colors.orange,
+    color:      th.colors.orange,
     textAlign:  'center',
     fontStyle:  'italic',
   },
@@ -196,8 +200,8 @@ const s = StyleSheet.create({
     marginTop:     spacing.xs,
   },
   primaryBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
@@ -205,17 +209,17 @@ const s = StyleSheet.create({
   primaryBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 0.5,
   },
   cancelBtn: {
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     alignItems:        'center',
     justifyContent:    'center',
   },
-  cancelBtnText: { fontSize: typography.base, color: colors.muted },
+  cancelBtnText: { fontSize: typography.base, color: th.colors.muted },
 });

@@ -24,7 +24,8 @@ import Constants        from 'expo-constants';
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,6 +35,8 @@ const GOOGLE_DISCOVERY = {
 };
 
 export default function ClientCodeModal({ visible, onClose, onSuccess, startWithGoogle = false }) {
+  const th = useTheme();
+  const s = useThemedStyles(makeS);
   const validateClientCode    = useStore((s) => s.validateClientCode);
   const linkToTrainer         = useStore((s) => s.linkToTrainer);
   const validateGoogleClient  = useStore((s) => s.validateGoogleClient);
@@ -201,7 +204,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
                 Buscando tu cuenta de entrenador vinculada…
               </Text>
 
-              {googleLoading && <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.sm }} />}
+              {googleLoading && <ActivityIndicator color={th.colors.accent} style={{ marginVertical: spacing.sm }} />}
 
               {error && <Text style={s.errorText}>{error}</Text>}
 
@@ -245,7 +248,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
               <TextInput
                 style={s.codeInput}
                 placeholder="XXXX-XXXX"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={th.colors.muted}
                 value={code}
                 onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
                 autoCapitalize="characters"
@@ -271,7 +274,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
                   activeOpacity={0.85}
                 >
                   {loading
-                    ? <ActivityIndicator color={colors.bg} />
+                    ? <ActivityIndicator color={th.colors.bg} />
                     : <Text style={s.primaryBtnText}>Continuar</Text>}
                 </TouchableOpacity>
               </View>
@@ -289,7 +292,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
                 activeOpacity={0.8}
               >
                 {googleLoading
-                  ? <ActivityIndicator color={colors.text} size="small" />
+                  ? <ActivityIndicator color={th.colors.text} size="small" />
                   : <Text style={s.googleBtnText}>Reconectarse con Google</Text>}
               </TouchableOpacity>
               {googleNoSlot && (
@@ -384,7 +387,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
                   activeOpacity={0.85}
                 >
                   {loading
-                    ? <ActivityIndicator color={colors.bg} />
+                    ? <ActivityIndicator color={th.colors.bg} />
                     : <Text style={s.primaryBtnText}>Conectar</Text>}
                 </TouchableOpacity>
               </View>
@@ -398,6 +401,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
 }
 
 function InfoRow({ text }) {
+  const s = useThemedStyles(makeS);
   return (
     <View style={s.infoRow}>
       <Text style={s.infoDot}>·</Text>
@@ -406,7 +410,7 @@ function InfoRow({ text }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeS = (th) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -417,32 +421,32 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.lg,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.lg,
     padding:         spacing.xl,
     gap:             spacing.md,
   },
   title: {
     fontSize:   typography.lg,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   subtitle: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     marginTop:  -spacing.xs,
     lineHeight: typography.sm * 1.5,
   },
   codeInput: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
-    color:             colors.text,
+    color:             th.colors.text,
     fontSize:          22,
     fontWeight:        typography.heavy,
     letterSpacing:     4,
@@ -456,11 +460,11 @@ const s = StyleSheet.create({
   },
   pasteBtnText: {
     fontSize: typography.xs,
-    color:    colors.accent,
+    color:    th.colors.accent,
   },
   errorText: {
     fontSize:  typography.xs,
-    color:     colors.red,
+    color:     th.colors.red,
     textAlign: 'center',
     marginTop: -spacing.xs,
   },
@@ -470,8 +474,8 @@ const s = StyleSheet.create({
     marginTop:     spacing.xs,
   },
   primaryBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
@@ -479,52 +483,52 @@ const s = StyleSheet.create({
   primaryBtnText: {
     fontSize:      typography.base,
     fontWeight:    typography.heavy,
-    color:         colors.bg,
+    color:         th.colors.bg,
     letterSpacing: 0.5,
   },
   cancelBtn: {
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     alignItems:        'center',
     justifyContent:    'center',
   },
-  cancelBtnText: { fontSize: typography.base, color: colors.muted },
+  cancelBtnText: { fontSize: typography.base, color: th.colors.muted },
 
   // Program found card
   programFound: {
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.25),
-    borderRadius:    radius.md,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.xs,
   },
   programFoundLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1,
   },
   programFoundName: {
     fontSize:   typography.md,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
 
   // Warning box
   warnBox: {
-    backgroundColor: withOpacity(colors.orange, 0.08),
+    backgroundColor: withOpacity(th.colors.orange, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.orange, 0.3),
-    borderRadius:    radius.sm,
+    borderColor:     withOpacity(th.colors.orange, 0.3),
+    borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
   warnText: {
     fontSize:   typography.xs,
-    color:      colors.orange,
+    color:      th.colors.orange,
     lineHeight: typography.xs * 1.5,
   },
 
@@ -535,7 +539,7 @@ const s = StyleSheet.create({
   histSectionLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.8,
     marginBottom:  2,
   },
@@ -544,25 +548,25 @@ const s = StyleSheet.create({
     alignItems:      'flex-start',
     gap:             spacing.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     padding:         spacing.sm,
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
   },
   histOptionActive: {
-    borderColor:     withOpacity(colors.accent, 0.4),
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   histOptionTitle: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     marginBottom: 2,
   },
-  histOptionTitleActive: { color: colors.accent },
+  histOptionTitleActive: { color: th.colors.accent },
   histOptionDesc: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.5,
   },
   // Radio button
@@ -571,18 +575,18 @@ const s = StyleSheet.create({
     height:         18,
     borderRadius:   9,
     borderWidth:    2,
-    borderColor:    colors.border,
+    borderColor:    th.colors.border,
     alignItems:     'center',
     justifyContent: 'center',
     marginTop:      2,
     flexShrink:     0,
   },
-  radioActive: { borderColor: colors.accent },
+  radioActive: { borderColor: th.colors.accent },
   radioDot: {
     width:           8,
     height:          8,
     borderRadius:    4,
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
   },
 
   // Google reconnect
@@ -592,30 +596,30 @@ const s = StyleSheet.create({
     gap:           spacing.sm,
     marginTop:     spacing.xs,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: typography.xs, color: colors.muted },
+  dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.border },
+  dividerText: { fontSize: typography.xs, color: th.colors.muted },
   googleBtn: {
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.sm,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.sm + 2,
     alignItems:      'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
   },
   googleBtnText: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   googleNoSlotText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     lineHeight: typography.xs * 1.5,
   },
   googleUnavailText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     fontStyle:  'italic',
   },
@@ -631,13 +635,13 @@ const s = StyleSheet.create({
   },
   infoDot: {
     fontSize:  typography.sm,
-    color:     colors.accent,
+    color:     th.colors.accent,
     lineHeight: typography.sm * 1.4,
   },
   infoText: {
     flex:       1,
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: typography.xs * 1.5,
   },
 });

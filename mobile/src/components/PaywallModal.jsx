@@ -13,7 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }                                     from '../../store/useStore';
-import { colors, spacing, typography, borders, radius } from '../theme';
+import { spacing, typography, borders } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── Feature list ──────────────────────────────────────────────────────────────
 
@@ -28,6 +29,8 @@ const PRO_FEATURES = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PaywallModal({ onClose }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const getOffering      = useStore((s) => s.getOffering);
   const purchasePackage  = useStore((s) => s.purchasePackage);
@@ -121,7 +124,7 @@ export default function PaywallModal({ onClose }) {
 
           {/* Packages */}
           {loading ? (
-            <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.xl }} />
+            <ActivityIndicator color={th.colors.accent} style={{ marginVertical: spacing.xl }} />
           ) : packages.length === 0 ? (
             <View style={styles.noProducts}>
               <Text style={styles.noProductsTxt}>
@@ -163,7 +166,7 @@ export default function PaywallModal({ onClose }) {
               activeOpacity={0.85}
             >
               {purchasing
-                ? <ActivityIndicator size="small" color={colors.bg} />
+                ? <ActivityIndicator size="small" color={th.colors.bg} />
                 : <Text style={styles.ctaTxt}>
                     {selectedPkg
                       ? `Comprar por ${selectedPkg.product.priceString}`
@@ -180,7 +183,7 @@ export default function PaywallModal({ onClose }) {
             disabled={restoring}
           >
             {restoring
-              ? <ActivityIndicator size="small" color={colors.muted} />
+              ? <ActivityIndicator size="small" color={th.colors.muted} />
               : <Text style={styles.restoreTxt}>Restaurar compra anterior</Text>
             }
           </TouchableOpacity>
@@ -196,15 +199,15 @@ export default function PaywallModal({ onClose }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    backgroundColor:      colors.surface,
-    borderTopLeftRadius:  radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor:      th.colors.surface,
+    borderTopLeftRadius:  th.radius.lg,
+    borderTopRightRadius: th.radius.lg,
     paddingHorizontal:    spacing.xl,
     paddingTop:           spacing.sm,
     maxHeight:            '90%',
@@ -212,7 +215,7 @@ const styles = StyleSheet.create({
   handle: {
     width:           40,
     height:          4,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     borderRadius:    2,
     alignSelf:       'center',
     marginBottom:    spacing.md,
@@ -228,26 +231,26 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf:       'flex-start',
-    backgroundColor: `${colors.accent}22`,
-    color:           colors.accent,
+    backgroundColor: `${th.colors.accent}22`,
+    color:           th.colors.accent,
     fontSize:        typography.xs,
     fontWeight:      typography.heavy,
     letterSpacing:   2,
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     `${colors.accent}44`,
+    borderColor:     `${th.colors.accent}44`,
     marginBottom:    spacing.xs,
   },
   title: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   subtitle: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 4,
     maxWidth:  260,
   },
@@ -256,7 +259,7 @@ const styles = StyleSheet.create({
   },
   closeX: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // Features
@@ -275,7 +278,7 @@ const styles = StyleSheet.create({
   },
   featureTxt: {
     fontSize: typography.base,
-    color:    colors.text,
+    color:    th.colors.text,
     flex:     1,
   },
 
@@ -288,60 +291,60 @@ const styles = StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     padding:         spacing.md,
-    borderRadius:    radius.md,
+    borderRadius:    th.radius.md,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     gap:             spacing.sm,
   },
   packageCardActive: {
-    borderColor:     colors.accent,
-    backgroundColor: `${colors.accent}0d`,
+    borderColor:     th.colors.accent,
+    backgroundColor: `${th.colors.accent}0d`,
   },
   radio: {
     width:        18,
     height:       18,
     borderRadius: 9,
     borderWidth:  borders.medium,
-    borderColor:  colors.border,
+    borderColor:  th.colors.border,
   },
   radioActive: {
-    borderColor:     colors.accent,
-    backgroundColor: colors.accent,
+    borderColor:     th.colors.accent,
+    backgroundColor: th.colors.accent,
   },
   pkgTitle: {
     fontSize:   typography.base,
     fontWeight: typography.medium,
-    color:      colors.muted,
+    color:      th.colors.muted,
   },
   pkgTitleActive: {
-    color: colors.text,
+    color: th.colors.text,
   },
   pkgPrice: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     marginTop: 2,
   },
   saveBadge: {
     position:        'absolute',
     top:             -1,
     right:           spacing.sm,
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
-    borderRadius:    radius.xs,
+    borderRadius:    th.radius.xs,
   },
   saveBadgeTxt: {
     fontSize:   typography.xs - 1,
     fontWeight: typography.heavy,
-    color:      colors.bg,
+    color:      th.colors.bg,
     letterSpacing: 0.5,
   },
 
   // CTA
   ctaBtn: {
-    backgroundColor: colors.accent,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md + 2,
     alignItems:      'center',
     marginBottom:    spacing.md,
@@ -349,7 +352,7 @@ const styles = StyleSheet.create({
   ctaTxt: {
     fontSize:   typography.base,
     fontWeight: typography.heavy,
-    color:      colors.bg,
+    color:      th.colors.bg,
   },
 
   // Restore
@@ -360,13 +363,13 @@ const styles = StyleSheet.create({
   },
   restoreTxt: {
     fontSize: typography.sm,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
 
   // Legal
   legal: {
     fontSize:    typography.xs,
-    color:       colors.muted2,
+    color:       th.colors.muted2,
     textAlign:   'center',
     lineHeight:  typography.xs * 1.6,
     paddingHorizontal: spacing.sm,
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
   },
   noProductsTxt: {
     fontSize:  typography.sm,
-    color:     colors.muted,
+    color:     th.colors.muted,
     textAlign: 'center',
   },
 });
