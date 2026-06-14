@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 const PATTERNS = [
   { value: 'vertical_pull',   label: 'Tracción vertical' },
@@ -38,6 +39,7 @@ function generateCustomId() {
 
 // ─── StepField — igual que en ExerciseEditorInline ────────────────────────────
 function StepField({ label, value, onChange, min, max }) {
+  const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
   const numVal = Number(value);
@@ -69,19 +71,19 @@ function StepField({ label, value, onChange, min, max }) {
   );
 }
 
-const sf = StyleSheet.create({
+const makeSf = (th) => StyleSheet.create({
   card: {
     flex:            1,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     padding:         spacing.sm + 2,
     gap:             6,
   },
   label: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.5,
     fontWeight:    typography.medium,
     textAlign:     'center',
@@ -90,14 +92,14 @@ const sf = StyleSheet.create({
   btn: {
     width:           36,
     height:          36,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  btnText: { fontSize: 18, color: colors.muted, lineHeight: 22 },
+  btnText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
   valueInput: {
     flex:               1,
     textAlign:          'center',
@@ -105,7 +107,7 @@ const sf = StyleSheet.create({
     includeFontPadding: false,
     fontSize:           typography.lg,
     fontWeight:         typography.bold,
-    color:              colors.text,
+    color:              th.colors.text,
     backgroundColor:    'transparent',
     height:             36,
     paddingVertical:    0,
@@ -113,6 +115,8 @@ const sf = StyleSheet.create({
 });
 
 export default function CustomExerciseScreen({ navigation, route }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { templateId, currentExerciseId, sessionMode = false } = route.params ?? {};
   const insets = useSafeAreaInsets();
 
@@ -229,7 +233,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, errors.name && styles.inputError]}
               placeholder="Ej: Press Pallof con cable"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={form.name}
               onChangeText={(v) => set_('name', v)}
             />
@@ -306,7 +310,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
                 onChangeText={(v) => set_('tempo', v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
                 maxLength={4}
                 placeholder="—"
-                placeholderTextColor={colors.muted2}
+                placeholderTextColor={th.colors.muted2}
                 keyboardType="default"
                 autoCapitalize="characters"
               />
@@ -339,8 +343,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
             <Switch
               value={form.isUnilateral}
               onValueChange={(v) => set_('isUnilateral', v)}
-              trackColor={{ false: colors.surface2, true: withOpacity(colors.accent, 0.4) }}
-              thumbColor={form.isUnilateral ? colors.accent : colors.muted}
+              trackColor={{ false: th.colors.surface2, true: withOpacity(th.colors.accent, 0.4) }}
+              thumbColor={form.isUnilateral ? th.colors.accent : th.colors.muted}
             />
           </View>
 
@@ -350,7 +354,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, { height: 72, textAlignVertical: 'top', paddingTop: spacing.sm }]}
               placeholder="Ej: Mantener la columna neutra..."
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={th.colors.muted}
               value={form.notes}
               onChangeText={(v) => set_('notes', v)}
               multiline
@@ -425,108 +429,108 @@ export default function CustomExerciseScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (th) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
   },
   headerTitle: {
     fontSize: typography.xl, fontWeight: typography.heavy,
-    color: colors.text, letterSpacing: 1,
+    color: th.colors.text, letterSpacing: 1,
   },
-  closeBtn: { fontSize: 20, color: colors.muted },
+  closeBtn: { fontSize: 20, color: th.colors.muted },
 
   form: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.lg },
   field: {},
   stepRow: { flexDirection: 'row', gap: spacing.sm },
-  label: { fontSize: typography.xs, color: colors.muted, letterSpacing: 1.5, marginBottom: spacing.xs },
+  label: { fontSize: typography.xs, color: th.colors.muted, letterSpacing: 1.5, marginBottom: spacing.xs },
 
   input: {
-    backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.md, color: colors.text, fontSize: typography.md,
+    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
+    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.md,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
   },
-  inputError: { borderColor: colors.red },
-  errorText: { fontSize: typography.xs, color: colors.red, marginTop: 4 },
+  inputError: { borderColor: th.colors.red },
+  errorText: { fontSize: typography.xs, color: th.colors.red, marginTop: 4 },
 
   // Tipo selector (same design as ExerciseEditorInline)
   segRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   segBtn: {
     flex: 1, paddingVertical: spacing.sm + 2,
-    borderRadius: radius.sm, borderWidth: borders.thin, borderColor: colors.border,
-    backgroundColor: colors.surface2, alignItems: 'center',
+    borderRadius: th.radius.sm, borderWidth: borders.thin, borderColor: th.colors.border,
+    backgroundColor: th.colors.surface2, alignItems: 'center',
   },
-  segBtnActive: { backgroundColor: withOpacity(colors.accent, 0.10), borderColor: withOpacity(colors.accent, 0.40) },
-  segLabel:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
-  segLabelActive: { color: colors.accent },
+  segBtnActive: { backgroundColor: withOpacity(th.colors.accent, 0.10), borderColor: withOpacity(th.colors.accent, 0.40) },
+  segLabel:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
+  segLabelActive: { color: th.colors.accent },
 
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   chip: {
     paddingHorizontal: spacing.sm + 2, paddingVertical: 6,
-    backgroundColor: colors.surface2, borderRadius: radius.sm,
-    borderWidth: borders.thin, borderColor: colors.border,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
+    borderWidth: borders.thin, borderColor: th.colors.border,
   },
-  chipActive:     { backgroundColor: withOpacity(colors.accent, 0.12), borderColor: withOpacity(colors.accent, 0.4) },
-  chipText:       { fontSize: typography.xs, color: colors.muted },
-  chipTextActive: { color: colors.accent },
+  chipActive:     { backgroundColor: withOpacity(th.colors.accent, 0.12), borderColor: withOpacity(th.colors.accent, 0.4) },
+  chipText:       { fontSize: typography.xs, color: th.colors.muted },
+  chipTextActive: { color: th.colors.accent },
 
 
   tempoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   tempoInput: {
-    backgroundColor: colors.surface2, borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.md, color: colors.text, fontSize: typography.lg,
+    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
+    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.lg,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
     width: 80, textAlign: 'center', letterSpacing: 5,
   },
-  tempoHint: { fontSize: typography.xs, color: colors.muted2, lineHeight: 18 },
+  tempoHint: { fontSize: typography.xs, color: th.colors.muted2, lineHeight: 18 },
 
   switchRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    borderTopWidth: borders.thin, borderTopColor: colors.border,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
+    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
     paddingHorizontal: 2,
   },
-  switchLabel: { fontSize: typography.base, color: colors.text },
+  switchLabel: { fontSize: typography.base, color: th.colors.text },
 
   advancedToggle: { paddingVertical: spacing.xs },
-  advancedToggleText: { fontSize: typography.sm, color: colors.muted },
+  advancedToggleText: { fontSize: typography.sm, color: th.colors.muted },
   advancedSection: { gap: spacing.sm },
 
   selectOption: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    backgroundColor: colors.surface2, borderRadius: radius.sm,
-    borderWidth: borders.thin, borderColor: colors.border,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
+    borderWidth: borders.thin, borderColor: th.colors.border,
     marginBottom: spacing.xs,
   },
-  selectOptionActive:     { backgroundColor: withOpacity(colors.accent, 0.1), borderColor: withOpacity(colors.accent, 0.4) },
-  selectOptionText:       { fontSize: typography.sm, color: colors.muted },
-  selectOptionTextActive: { color: colors.accent },
+  selectOptionActive:     { backgroundColor: withOpacity(th.colors.accent, 0.1), borderColor: withOpacity(th.colors.accent, 0.4) },
+  selectOptionText:       { fontSize: typography.sm, color: th.colors.muted },
+  selectOptionTextActive: { color: th.colors.accent },
 
   footer: {
     flexDirection: 'row', gap: spacing.sm,
     paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    borderTopWidth: borders.thin, borderTopColor: colors.border,
-    backgroundColor: colors.bg,
+    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
+    backgroundColor: th.colors.bg,
   },
   cancelBtn: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 13, borderRadius: radius.md,
-    borderWidth: borders.thin, borderColor: colors.border,
+    paddingVertical: 13, borderRadius: th.radius.md,
+    borderWidth: borders.thin, borderColor: th.colors.border,
   },
-  cancelBtnText: { fontSize: typography.base, color: colors.text },
+  cancelBtnText: { fontSize: typography.base, color: th.colors.text },
   createExBtn: {
     flex: 2, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 13, borderRadius: radius.md,
-    backgroundColor: colors.accent,
+    paddingVertical: 13, borderRadius: th.radius.md,
+    backgroundColor: th.colors.accent,
   },
   createExBtnText: {
     fontSize:      typography.lg,
     fontWeight:    typography.heavy,
-    color:         colors.onAccent,
+    color:         th.colors.onAccent,
     letterSpacing: 1,
   },
 });

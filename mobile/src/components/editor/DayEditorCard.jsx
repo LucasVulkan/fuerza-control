@@ -8,7 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { colors, spacing, typography, radius, borders, resolveColor, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
+import { resolveColor } from '../../themes';
 import ExerciseEditorInline from './ExerciseEditorInline';
 
 // LayoutAnimation must be enabled explicitly on Android
@@ -37,6 +39,8 @@ function ExerciseRow({
   onSwipeDelete,
 }) {
   const { t } = useTranslation();
+  const th    = useTheme();
+  const rs    = useThemedStyles(makeRs);
 
   const dragX   = useRef(new Animated.Value(0)).current;
   const modeRef = useRef(null); // 'h' | 'v' | null
@@ -56,12 +60,12 @@ function ExerciseRow({
 
   const bgColor = dragX.interpolate({
     inputRange: [0, 30, SWIPE_DELETE],
-    outputRange: ['rgba(239,68,68,0)', 'rgba(239,68,68,0.06)', 'rgba(239,68,68,0.2)'],
+    outputRange: [withOpacity(th.colors.red, 0), withOpacity(th.colors.red, 0.06), withOpacity(th.colors.red, 0.2)],
     extrapolate: 'clamp',
   });
   const gripColor = dragX.interpolate({
     inputRange: [0, SWIPE_DELETE],
-    outputRange: [colors.muted2, '#ef4444'],
+    outputRange: [th.colors.muted2, th.colors.red],
     extrapolate: 'clamp',
   });
   const nameOpacity = dragX.interpolate({
@@ -156,27 +160,27 @@ function ExerciseRow({
   );
 }
 
-const rs = StyleSheet.create({
+const makeRs = (th) => StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
     gap: spacing.sm, minHeight: ITEM_HEIGHT,
-    borderBottomWidth: borders.thin, borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
+    backgroundColor: th.colors.surface,
   },
   grip: { fontSize: 18, lineHeight: 22, flexShrink: 0 },
-  exName: { fontSize: typography.base, fontWeight: typography.medium, color: colors.text },
-  exMeta: { fontSize: typography.xs, color: colors.muted, marginTop: 1 },
-  deleteLabel: { fontSize: typography.sm, color: '#ef4444', fontWeight: typography.medium },
+  exName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
+  exMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
+  deleteLabel: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
   editBtn: {
-    backgroundColor: colors.surface2,
-    borderWidth: borders.thin, borderColor: colors.border,
-    borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 5,
+    backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin, borderColor: th.colors.border,
+    borderRadius: th.radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 5,
     flexShrink: 0,
   },
-  editBtnActive: { backgroundColor: withOpacity(colors.accent, 0.1), borderColor: withOpacity(colors.accent, 0.35) },
-  editBtnText: { fontSize: 11, color: colors.muted },
-  editBtnTextActive: { color: colors.accent },
+  editBtnActive: { backgroundColor: withOpacity(th.colors.accent, 0.1), borderColor: withOpacity(th.colors.accent, 0.35) },
+  editBtnText: { fontSize: 11, color: th.colors.muted },
+  editBtnTextActive: { color: th.colors.accent },
 });
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -203,6 +207,9 @@ function CheckIcon({ size = 16, color }) {
 
 export default function DayEditorCard({ templateId, onRemove, navigation }) {
   const { t } = useTranslation();
+  const th     = useTheme();
+  const rs     = useThemedStyles(makeRs);
+  const styles = useThemedStyles(makeStyles);
 
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
@@ -245,7 +252,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
 
   if (!template) return null;
 
-  const color = resolveColor(template.color ?? 'var(--accent)');
+  const color = resolveColor(th, template.color ?? 'var(--accent)');
 
   // ── Drag handlers ─────────────────────────────────────────────────────────
 
@@ -368,7 +375,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
               onChangeText={setNameValue}
               onBlur={commitName}
               onSubmitEditing={commitName}
-              style={[styles.sesName, { color, borderBottomWidth: 1, borderBottomColor: colors.accent }]}
+              style={[styles.sesName, { color, borderBottomWidth: 1, borderBottomColor: th.colors.accent }]}
             />
           ) : (
             <Text style={[styles.sesName, { color }]} numberOfLines={1}>
@@ -378,7 +385,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
           <Text style={styles.subLabel}>
             {template.exercises.length}{' '}
             {template.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}
-            {isEdited ? <Text style={{ color: colors.accent }}> · {t('editor.edited')}</Text> : null}
+            {isEdited ? <Text style={{ color: th.colors.accent }}> · {t('editor.edited')}</Text> : null}
           </Text>
         </View>
         <View style={styles.headerBtns}>
@@ -388,12 +395,12 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
             style={styles.iconBtn}
           >
             {editingName
-              ? <CheckIcon size={16} color={colors.accent} />
-              : <PencilIcon size={15} color={colors.muted} />}
+              ? <CheckIcon size={16} color={th.colors.accent} />
+              : <PencilIcon size={15} color={th.colors.muted} />}
           </TouchableOpacity>
           {onRemove && (
             <TouchableOpacity hitSlop={8} onPress={onRemove} style={[styles.iconBtn, { marginLeft: spacing.xs }]}>
-              <Text style={[styles.iconBtnText, { color: colors.muted2 }]}>✕</Text>
+              <Text style={[styles.iconBtnText, { color: th.colors.muted2 }]}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -434,7 +441,7 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
                 { transform: [{ translateY: overlayDY }] },
               ]}
             >
-              <Text style={[rs.grip, { color: colors.muted2 }]}>⠿</Text>
+              <Text style={[rs.grip, { color: th.colors.muted2 }]}>⠿</Text>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={rs.exName} numberOfLines={1}>
                   {draggingDef?.name ?? draggingExConfig.exerciseId}
@@ -522,13 +529,13 @@ export default function DayEditorCard({ templateId, onRemove, navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth: borders.thin,
-    borderColor: colors.border,
+    borderColor: th.colors.border,
     borderLeftWidth: 3,
-    borderRadius: radius.md,
+    borderRadius: th.radius.md,
     overflow: 'hidden',
   },
   header: {
@@ -537,31 +544,31 @@ const styles = StyleSheet.create({
   },
   sesTag: {
     fontSize: 9, fontWeight: typography.bold,
-    color: colors.muted2, letterSpacing: 1,
+    color: th.colors.muted2, letterSpacing: 1,
     textTransform: 'uppercase', marginBottom: 1,
   },
   sesName: {
     fontSize: typography.base, fontWeight: typography.bold,
     lineHeight: typography.base * 1.2,
   },
-  subLabel: { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
+  subLabel: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
   headerBtns: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   iconBtn: { padding: spacing.xs },
-  iconBtnText: { fontSize: 12, color: colors.muted },
-  chevron: { fontSize: 16, color: colors.muted, marginLeft: 4 },
+  iconBtnText: { fontSize: 12, color: th.colors.muted },
+  chevron: { fontSize: 16, color: th.colors.muted, marginLeft: 4 },
 
   body: {
-    borderTopWidth: borders.thin, borderTopColor: colors.border,
+    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
     overflow: 'visible',
   },
   emptyHint: {
-    fontSize: typography.xs, color: colors.muted,
+    fontSize: typography.xs, color: th.colors.muted,
     padding: spacing.md, textAlign: 'center',
   },
   // ── Exercise editor modal ────────────────────────────────────────────────
   modalSafe: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
   modalTopbar: {
     flexDirection:     'row',
@@ -569,25 +576,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   modalExTag: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
   },
   modalExName: {
     fontSize:   typography.lg,
     fontWeight: typography.bold,
-    color:      colors.text,
+    color:      th.colors.text,
     marginTop:  2,
   },
   modalAcceptBtn: {
-    backgroundColor:   colors.accent,
+    backgroundColor:   th.colors.accent,
     paddingHorizontal: spacing.md,
     paddingVertical:   8,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     marginLeft:        spacing.md,
     alignItems:        'center',
     justifyContent:    'center',
@@ -595,7 +602,7 @@ const styles = StyleSheet.create({
   modalAcceptTxt: {
     fontSize:   typography.sm,
     fontWeight: typography.heavy,
-    color:      colors.onAccent,
+    color:      th.colors.onAccent,
     letterSpacing: 0.5,
   },
   bodyActions: {
@@ -605,29 +612,29 @@ const styles = StyleSheet.create({
   },
   addExBtn: {
     paddingVertical: spacing.md,
-    borderRadius: radius.sm,
+    borderRadius: th.radius.sm,
     borderWidth: 1, borderStyle: 'dashed',
-    borderColor: withOpacity(colors.accent, 0.4),
+    borderColor: withOpacity(th.colors.accent, 0.4),
     alignItems: 'center',
-    backgroundColor: withOpacity(colors.accent, 0.04),
+    backgroundColor: withOpacity(th.colors.accent, 0.04),
   },
-  addExBtnText: { fontSize: typography.sm, color: colors.accent },
+  addExBtnText: { fontSize: typography.sm, color: th.colors.accent },
   restoreBtn: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
+    borderRadius: th.radius.sm,
     borderWidth: borders.thin,
-    borderColor: colors.border,
+    borderColor: th.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  restoreBtnText: { fontSize: typography.xs, color: colors.muted },
+  restoreBtnText: { fontSize: typography.xs, color: th.colors.muted },
 
   overlayRow: {
     position: 'absolute', left: 0, right: 0,
     elevation: 12, zIndex: 100,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8,
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
   },
 });

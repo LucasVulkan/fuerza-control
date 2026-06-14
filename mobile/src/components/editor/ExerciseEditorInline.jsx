@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils/progression';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ─── StepField ────────────────────────────────────────────────────────────────
 
 function StepField({ label, value, onChange, min, max }) {
+  const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
   const numVal = Number(value);
@@ -43,19 +45,19 @@ function StepField({ label, value, onChange, min, max }) {
   );
 }
 
-const sf = StyleSheet.create({
+const makeSf = (th) => StyleSheet.create({
   card: {
     flex:            1,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
     padding:         spacing.sm + 2,
     gap:             6,
   },
   label: {
     fontSize:      typography.xs,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 0.5,
     fontWeight:    typography.medium,
     textAlign:     'center',
@@ -68,16 +70,16 @@ const sf = StyleSheet.create({
   stepBtn: {
     width:           36,
     height:          36,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface2,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   stepText: {
     fontSize:   18,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 22,
   },
   valueInput: {
@@ -87,7 +89,7 @@ const sf = StyleSheet.create({
     includeFontPadding: false,
     fontSize:           typography.lg,
     fontWeight:         typography.bold,
-    color:              colors.text,
+    color:              th.colors.text,
     backgroundColor:    'transparent',
     height:             40,
     paddingVertical:    0,
@@ -97,6 +99,7 @@ const sf = StyleSheet.create({
 // ─── ToggleRow ────────────────────────────────────────────────────────────────
 
 function ToggleRow({ label, value, onChange }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity style={styles.toggleRow} onPress={() => onChange(!value)} activeOpacity={0.7}>
       <Text style={styles.toggleLabel}>{label}</Text>
@@ -110,6 +113,7 @@ function ToggleRow({ label, value, onChange }) {
 // ─── SegPicker ────────────────────────────────────────────────────────────────
 
 function SegPicker({ options, value, onChange }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.segRow}>
       {options.map((opt) => (
@@ -130,6 +134,7 @@ function SegPicker({ options, value, onChange }) {
 // ─── IncrementInput ───────────────────────────────────────────────────────────
 
 function IncrementInput({ value, onChange, unit }) {
+  const styles = useThemedStyles(makeStyles);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
 
@@ -156,6 +161,8 @@ function IncrementInput({ value, onChange, unit }) {
 // ─── ExerciseEditorInline ─────────────────────────────────────────────────────
 
 export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t }                  = useTranslation();
   const { label: weightLabel } = useWeightUnit();
   const updateExerciseParams   = useStore((s) => s.updateExerciseParams);
@@ -525,7 +532,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
               onChangeText={(v) => setTempo(v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
               maxLength={4}
               placeholder="—"
-              placeholderTextColor={colors.muted2}
+              placeholderTextColor={th.colors.muted2}
               keyboardType="default"
               autoCapitalize="characters"
               returnKeyType="done"
@@ -540,7 +547,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
               value={trainerNote}
               onChangeText={setTrainerNote}
               placeholder={t('exerciseEditor.trainerNotePlaceholder')}
-              placeholderTextColor={colors.muted2}
+              placeholderTextColor={th.colors.muted2}
               multiline
               maxLength={280}
             />
@@ -570,7 +577,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
 
   container: {
     padding:       spacing.lg,
@@ -588,7 +595,7 @@ const styles = StyleSheet.create({
   secTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
@@ -596,7 +603,7 @@ const styles = StyleSheet.create({
   subSecTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.muted,
+    color:         th.colors.muted,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop:     spacing.lg,
@@ -606,13 +613,13 @@ const styles = StyleSheet.create({
   // ── Dividers ───────────────────────────────────────────────────────────────
   divider: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
   },
 
   // ── Hints ─────────────────────────────────────────────────────────────────
   hint: {
     fontSize:   typography.xs,
-    color:      colors.muted2,
+    color:      th.colors.muted2,
     lineHeight: typography.xs * 1.5,
     marginTop:  spacing.xs,
   },
@@ -625,22 +632,22 @@ const styles = StyleSheet.create({
   metricBtn: {
     paddingHorizontal: spacing.md,
     paddingVertical:   4,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface,
   },
   metricBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.10),
-    borderColor:     withOpacity(colors.accent, 0.40),
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
+    borderColor:     withOpacity(th.colors.accent, 0.40),
   },
   metricBtnText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   metricBtnTextActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
 
   // ── Field grid ─────────────────────────────────────────────────────────────
@@ -657,23 +664,23 @@ const styles = StyleSheet.create({
   segBtn: {
     flex:            1,
     paddingVertical: spacing.sm,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
   },
   segBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.10),
-    borderColor:     withOpacity(colors.accent, 0.40),
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
+    borderColor:     withOpacity(th.colors.accent, 0.40),
   },
   segLabel: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   segLabelActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
 
   // ── Increment input ────────────────────────────────────────────────────────
@@ -683,15 +690,15 @@ const styles = StyleSheet.create({
     gap:           spacing.sm,
   },
   incrInput: {
-    backgroundColor:    colors.surface,
+    backgroundColor:    th.colors.surface,
     borderWidth:        borders.thin,
-    borderColor:        colors.border,
-    borderRadius:       radius.sm,
+    borderColor:        th.colors.border,
+    borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.md,
     height:             38,
     fontSize:           typography.md,
     fontWeight:         typography.medium,
-    color:              colors.text,
+    color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
@@ -699,7 +706,7 @@ const styles = StyleSheet.create({
   },
   incrUnit: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
 
@@ -714,20 +721,20 @@ const styles = StyleSheet.create({
   incrMinMeta: { flex: 1 },
   incrMinLabel: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
 
   // ── Options card ───────────────────────────────────────────────────────────
   optionsCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.border,
+    borderRadius:    th.radius.md,
   },
   optionsDivider: {
     height:          borders.thin,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
   },
 
   // ── Toggle ─────────────────────────────────────────────────────────────────
@@ -740,30 +747,30 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   track: {
     width:           40,
     height:          22,
     borderRadius:    11,
-    backgroundColor: colors.border,
+    backgroundColor: th.colors.border,
     padding:         2,
     justifyContent:  'center',
   },
   trackOn: {
-    backgroundColor: withOpacity(colors.accent, 0.25),
+    backgroundColor: withOpacity(th.colors.accent, 0.25),
     borderWidth:     1,
-    borderColor:     withOpacity(colors.accent, 0.6),
+    borderColor:     withOpacity(th.colors.accent, 0.6),
   },
   thumb: {
     width:           18,
     height:          18,
     borderRadius:    9,
-    backgroundColor: colors.muted,
+    backgroundColor: th.colors.muted,
   },
   thumbOn: {
-    backgroundColor: colors.accent,
+    backgroundColor: th.colors.accent,
     transform:       [{ translateX: 18 }],
   },
 
@@ -777,7 +784,7 @@ const styles = StyleSheet.create({
     gap:               spacing.sm,
   },
   tempoMeta: { flex: 1, gap: 2 },
-  tempoHint: { fontSize: 9, color: colors.muted2, lineHeight: 13, marginTop: 2 },
+  tempoHint: { fontSize: 9, color: th.colors.muted2, lineHeight: 13, marginTop: 2 },
   noteBlock: {
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
@@ -785,27 +792,27 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     marginTop:        spacing.xs,
-    backgroundColor:  colors.surface2,
+    backgroundColor:  th.colors.surface2,
     borderWidth:      borders.thin,
-    borderColor:      colors.border,
-    borderRadius:     radius.sm,
+    borderColor:      th.colors.border,
+    borderRadius:     th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:  spacing.sm,
-    color:            colors.text,
+    color:            th.colors.text,
     fontSize:         typography.sm,
     minHeight:        60,
     textAlignVertical: 'top',
   },
   tempoInput: {
-    backgroundColor:    colors.surface2,
+    backgroundColor:    th.colors.surface2,
     borderWidth:        borders.thin,
-    borderColor:        colors.border,
-    borderRadius:       radius.sm,
+    borderColor:        th.colors.border,
+    borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.sm,
     paddingVertical:    7,
     fontSize:           typography.md,
     fontWeight:         typography.semibold,
-    color:              colors.text,
+    color:              th.colors.text,
     width:              72,
     textAlign:          'center',
     textAlignVertical:  'center',
@@ -822,14 +829,14 @@ const styles = StyleSheet.create({
     flex:            1,
     alignItems:      'center',
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius:    radius.sm,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
   },
   substituteBtnText: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
   },
   restoreBtn: {
@@ -837,11 +844,11 @@ const styles = StyleSheet.create({
     justifyContent:    'center',
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
+    borderColor:       th.colors.border,
   },
   restoreBtnDisabled:     { opacity: 0.35 },
-  restoreBtnText:         { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
+  restoreBtnText:         { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
   restoreBtnTextDisabled: {},
 });
