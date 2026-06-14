@@ -608,7 +608,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <View style={[styles.header, { backgroundColor: th.th.colors.headerBg }]}>
+      <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
           <Text style={styles.appNameForma}>Forma</Text>
           <View style={{ marginTop: 4 }}><FitLogo height={14} /></View>
