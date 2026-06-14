@@ -9,7 +9,8 @@ import { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Animated } from 'react-native';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
-import { colors, spacing, typography } from '../../theme';
+import { spacing, typography } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ function fmtAxisVal(v) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MiniLineChart({ data, metricLabel }) {
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
   const [chartW,   setChartW]   = useState(0);
   const [selected, setSelected] = useState(null);
 
@@ -181,7 +184,7 @@ export default function MiniLineChart({ data, metricLabel }) {
                       key={segI}
                       x1={pts[segI].x}     y1={yAnims[segI]}
                       x2={pts[segI + 1].x} y2={yAnims[segI + 1]}
-                      stroke={colors.accent}
+                      stroke={th.colors.accent}
                       strokeWidth={1.5}
                     />
                   ))}
@@ -192,8 +195,8 @@ export default function MiniLineChart({ data, metricLabel }) {
                         key={i}
                         cx={p.x} cy={yAnims[i]}
                         r={isSel ? 6 : 4}
-                        fill={colors.accent}
-                        stroke={isSel ? colors.bg : 'none'}
+                        fill={th.colors.accent}
+                        stroke={isSel ? th.colors.bg : 'none'}
                         strokeWidth={isSel ? 2 : 0}
                       />
                     );
@@ -209,7 +212,7 @@ export default function MiniLineChart({ data, metricLabel }) {
                 {pts.map((p) => {
                   const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
                   return (
-                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={colors.muted} textAnchor={anchor}>
+                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
                       {p.date}
                     </SvgText>
                   );
@@ -219,12 +222,12 @@ export default function MiniLineChart({ data, metricLabel }) {
                     <Rect
                       x={tooltipX - TW / 2} y={tooltipY}
                       width={TW} height={TH}
-                      fill={colors.surface2} stroke={colors.border} strokeWidth={1} rx={4}
+                      fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4}
                     />
-                    <SvgText x={dateStartX} y={tooltipY + 13} fontSize={8} fill={colors.muted} textAnchor="start">
+                    <SvgText x={dateStartX} y={tooltipY + 13} fontSize={8} fill={th.colors.muted} textAnchor="start">
                       {selected.date}
                     </SvgText>
-                    <SvgText x={valueStartX} y={tooltipY + 28} fontSize={11} fill={colors.accent} textAnchor="start">
+                    <SvgText x={valueStartX} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
                       {`${fmtAxisVal(selected.value)}${metricLabel ? ` ${metricLabel}` : ''}`}
                     </SvgText>
                   </G>
@@ -240,14 +243,14 @@ export default function MiniLineChart({ data, metricLabel }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   row:  { flexDirection: 'row', alignItems: 'flex-start', paddingBottom: spacing.sm },
   yAxis: { width: Y_AXIS_W },
   yLabel: {
     position:   'absolute',
     right:      4,
     fontSize:   8,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'right',
     width:      Y_AXIS_W - 4,
     lineHeight: 10,
@@ -262,5 +265,5 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     paddingLeft:     Y_AXIS_W,
   },
-  emptyText: { fontSize: typography.xs, color: colors.muted, textAlign: 'center' },
+  emptyText: { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center' },
 });

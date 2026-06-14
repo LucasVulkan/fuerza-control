@@ -17,7 +17,9 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { resolveColor, colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
 
 // ── buildSetLabel ──────────────────────────────────────────────────────────────
@@ -90,6 +92,7 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
 
 function WorkoutCalendar({ onDayPress, selectedDate }) {
   const { t }            = useTranslation();
+  const cal              = useThemedStyles(makeCal);
   const workoutLog       = useStore((s) => s.workoutLog);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const userPrograms     = useStore((s) => s.userPrograms);
@@ -187,13 +190,13 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
   );
 }
 
-const cal = StyleSheet.create({
+const makeCal = (th) => StyleSheet.create({
   wrap: {
     paddingHorizontal: spacing.xl,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
 
   // Navigation row
@@ -205,12 +208,12 @@ const cal = StyleSheet.create({
   },
   navBtn:     { padding: 4 },
   navBtnOff:  { opacity: 0.25 },
-  navIcon:    { fontSize: 24, color: colors.muted, lineHeight: 28 },
-  navIconOff: { color: colors.muted2 },
+  navIcon:    { fontSize: 24, color: th.colors.muted, lineHeight: 28 },
+  navIconOff: { color: th.colors.muted2 },
   monthLabel: {
     fontSize:      typography.sm,
     fontWeight:    typography.bold,
-    color:         colors.text,
+    color:         th.colors.text,
     letterSpacing: 0.5,
   },
 
@@ -224,7 +227,7 @@ const cal = StyleSheet.create({
     flex:          1,
     textAlign:     'center',
     fontSize:      9,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     letterSpacing: 0.5,
   },
 
@@ -237,18 +240,18 @@ const cal = StyleSheet.create({
   cell: {
     flex:           1,
     height:         CELL_H,
-    borderRadius:   radius.xs + 1,
+    borderRadius:   th.radius.xs + 1,
     alignItems:     'center',
     justifyContent: 'center',
   },
-  cellTrained: { backgroundColor: colors.accent },
-  cellToday:   { borderWidth: 1, borderColor: withOpacity(colors.accent, 0.55) },
+  cellTrained: { backgroundColor: th.colors.accent },
+  cellToday:   { borderWidth: 1, borderColor: withOpacity(th.colors.accent, 0.55) },
   // Selected trained day — green so it's clearly distinct from unselected yellow
-  cellSel:     { backgroundColor: colors.green },
+  cellSel:     { backgroundColor: th.colors.green },
 
-  dayNum:        { fontSize: 10, color: colors.muted2 },
-  dayNumTrained: { fontSize: 11, fontWeight: typography.bold, color: colors.onAccent },
-  dayNumToday:   { color: colors.accent, fontWeight: typography.medium },
+  dayNum:        { fontSize: 10, color: th.colors.muted2 },
+  dayNumTrained: { fontSize: 11, fontWeight: typography.bold, color: th.colors.onAccent },
+  dayNumToday:   { color: th.colors.accent, fontWeight: typography.medium },
 
   // Tiny session-label overlay — bottom-right corner of trained cell
   sesLetter: {
@@ -257,7 +260,7 @@ const cal = StyleSheet.create({
     right:      2,
     fontSize:   7,
     fontWeight: typography.bold,
-    color:      colors.onAccent,
+    color:      th.colors.onAccent,
     lineHeight: 8,
   },
 });
@@ -266,6 +269,8 @@ const cal = StyleSheet.create({
 
 function SessionCard({ session, onDelete }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { fmt: fmtWeight } = useWeightUnit();
   const [open, setOpen] = useState(false);
 
@@ -279,7 +284,7 @@ function SessionCard({ session, onDelete }) {
   const template = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
   const label    = template?.label ?? '?';
   const name     = session.sessionName ?? (isFree ? t('freeSession.historyLabel') : (template?.name ?? session.sessionTemplateId));
-  const accent   = isFree ? colors.muted : resolveColor(template?.color ?? 'var(--accent)');
+  const accent   = isFree ? th.colors.muted : resolveColor(th,template?.color ?? 'var(--accent)');
 
   // exConfig lookup for pill range comparisons
   const exConfigs = useMemo(() => {
@@ -326,7 +331,7 @@ function SessionCard({ session, onDelete }) {
       >
         <View style={styles.cardHeaderLeft}>
           {/* "Sesión A" tag — or "Sesión libre" badge */}
-          <Text style={[styles.cardSesTag, { color: isFree ? colors.accent : accent }]} numberOfLines={1}>
+          <Text style={[styles.cardSesTag, { color: isFree ? th.colors.accent : accent }]} numberOfLines={1}>
             {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
           </Text>
           {/* Session name in white */}
@@ -436,6 +441,7 @@ function SessionCard({ session, onDelete }) {
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   const workoutLog     = useStore((s) => s.workoutLog);
   const deleteLogEntry = useStore((s) => s.deleteLogEntry);
@@ -628,10 +634,10 @@ export default function HistoryScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Scope selector
@@ -645,29 +651,29 @@ const styles = StyleSheet.create({
   scopeBtn: {
     flex:            1,
     paddingVertical: spacing.sm,
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     alignItems:      'center',
   },
   scopeBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
   scopeBtnText: {
     fontSize:   typography.sm,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
   scopeBtnTextActive: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
 
   // Stage pills
   stagePillsRow: {
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   stagePillsContent: {
     paddingHorizontal: spacing.xl,
@@ -679,26 +685,26 @@ const styles = StyleSheet.create({
   stagePill: {
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs,
-    borderRadius:      radius.full,
+    borderRadius:      th.radius.full,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   stagePillActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
   stagePillText: {
     fontSize:   typography.xs,
-    color:      colors.muted,
+    color:      th.colors.muted,
     fontWeight: typography.medium,
   },
-  stagePillTextActive: { color: colors.accent },
+  stagePillTextActive: { color: th.colors.accent },
   stagePillReset: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs,
   },
-  stagePillResetText: { fontSize: typography.xs, color: colors.muted },
+  stagePillResetText: { fontSize: typography.xs, color: th.colors.muted },
 
   // List
   listContent: {
@@ -715,17 +721,17 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 32 },
   emptyText: {
     fontSize:   typography.base,
-    color:      colors.muted,
+    color:      th.colors.muted,
     textAlign:  'center',
     lineHeight: typography.base * 1.7,
   },
 
   // ── SessionCard ──────────────────────────────────────────────────────────────
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
     marginHorizontal: spacing.xl,
   },
@@ -753,7 +759,7 @@ const styles = StyleSheet.create({
   cardSesName: {
     fontSize:   typography.base,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.base * 1.2,
   },
 
@@ -766,16 +772,16 @@ const styles = StyleSheet.create({
   },
   cardDate: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   cardMetaSep: {
     fontSize: typography.xs,
-    color:    colors.muted2,
+    color:    th.colors.muted2,
   },
   noteTag: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.25),
+    borderColor:     withOpacity(th.colors.accent, 0.25),
     borderRadius:    3,
     paddingHorizontal: 5,
     paddingVertical:   1,
@@ -783,13 +789,13 @@ const styles = StyleSheet.create({
   noteTagText: {
     fontSize:      8,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 0.5,
   },
   adaptedTag: {
-    backgroundColor:   withOpacity(colors.blue, 0.1),
+    backgroundColor:   withOpacity(th.colors.blue, 0.1),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.blue, 0.3),
+    borderColor:       withOpacity(th.colors.blue, 0.3),
     borderRadius:      3,
     paddingHorizontal: 5,
     paddingVertical:   1,
@@ -797,7 +803,7 @@ const styles = StyleSheet.create({
   adaptedTagText: {
     fontSize:      8,
     fontWeight:    typography.bold,
-    color:         colors.blue,
+    color:         th.colors.blue,
     letterSpacing: 0.5,
   },
   cardHeaderRight: {
@@ -807,51 +813,51 @@ const styles = StyleSheet.create({
     flexShrink:    0,
   },
   deleteBtn:     { padding: spacing.xs },
-  deleteBtnText: { fontSize: typography.base, color: colors.muted2 },
+  deleteBtnText: { fontSize: typography.base, color: th.colors.muted2 },
   chevron: {
     fontSize: typography.base,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
 
   // Detail
   detail: {
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
   },
   noteSection: {
     padding:         spacing.md,
-    backgroundColor: withOpacity(colors.accent, 0.04),
+    backgroundColor: withOpacity(th.colors.accent, 0.04),
     borderLeftWidth: 2,
-    borderLeftColor: withOpacity(colors.accent, 0.3),
+    borderLeftColor: withOpacity(th.colors.accent, 0.3),
     gap:             spacing.xs,
   },
   noteSectionLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 1.5,
     opacity:       0.8,
   },
   noteSectionText: {
     fontSize:   typography.sm,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.sm * 1.6,
   },
   exSection: {
     padding:        spacing.md,
     borderTopWidth: borders.thin,
-    borderTopColor: colors.border,
+    borderTopColor: th.colors.border,
     gap:            spacing.xs,
   },
   exName: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   exNote: {
     fontSize:   typography.xs,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontStyle:  'italic',
     lineHeight: 16,
   },
@@ -863,32 +869,32 @@ const styles = StyleSheet.create({
 
   // Pills — base (gray = not done)
   setPill: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
   },
   // Green — done and within range
   setPillDone: {
-    backgroundColor: 'rgba(74,222,128,0.08)',
-    borderColor:     'rgba(74,222,128,0.3)',
+    backgroundColor: withOpacity(th.colors.green, 0.08),
+    borderColor:     withOpacity(th.colors.green, 0.3),
   },
   // Orange — done but below range
   setPillPartial: {
-    backgroundColor: 'rgba(251,146,60,0.10)',
-    borderColor:     'rgba(251,146,60,0.35)',
+    backgroundColor: withOpacity(th.colors.orange, 0.10),
+    borderColor:     withOpacity(th.colors.orange, 0.35),
   },
   setPillText: {
     fontSize: typography.xs,
-    color:    colors.muted,
+    color:    th.colors.muted,
   },
   setPillTextDone: {
-    color: colors.green,
+    color: th.colors.green,
   },
   setPillTextPartial: {
-    color: '#fb923c',
+    color: th.colors.orange,
   },
 
   // ── Date filter chip ─────────────────────────────────────────────────────────
@@ -899,23 +905,23 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.sm,
     gap:               spacing.xs,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
-    backgroundColor:   withOpacity(colors.accent, 0.06),
+    borderBottomColor: th.colors.border,
+    backgroundColor:   withOpacity(th.colors.accent, 0.06),
   },
   dateFilterLabel: {
     flex:       1,
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.accent,
+    color:      th.colors.accent,
   },
   dateFilterClose: {
     padding:         4,
-    borderRadius:    radius.sm,
-    backgroundColor: withOpacity(colors.accent, 0.12),
+    borderRadius:    th.radius.sm,
+    backgroundColor: withOpacity(th.colors.accent, 0.12),
   },
   dateFilterCloseText: {
     fontSize:   typography.xs,
-    color:      colors.accent,
+    color:      th.colors.accent,
     fontWeight: typography.bold,
   },
 });

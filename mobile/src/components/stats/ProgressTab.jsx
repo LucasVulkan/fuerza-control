@@ -23,7 +23,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore }      from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../../theme';
+import { spacing, typography, borders, withOpacity } from '../../theme';
+import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
 
@@ -241,6 +242,7 @@ function buildSessionSummary(exercise, def, fmtWeight) {
 // ── SetPills — compact per-set chips ─────────────────────────────────────────
 
 function SetPills({ exercise, def, fmtWeight }) {
+  const styles = useThemedStyles(makeStyles);
   const done = exercise?.sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? [];
   if (!done.length) return <Text style={styles.modalSesSummary}>—</Text>;
 
@@ -425,6 +427,8 @@ function computeExSessionDeltas(logs, def, metricOverride = null) {
 // ── SVG line chart ─────────────────────────────────────────────────────────────
 
 function MiniLineChart({ data, metricLabel }) {
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
   const [chartW,   setChartW]   = useState(0);
   const [selected, setSelected] = useState(null);
 
@@ -534,22 +538,22 @@ function MiniLineChart({ data, metricLabel }) {
         <Svg width={svgW} height={CHART_H}>
           {yTicks.map(({ y }, i) => (
             <Line key={`grid-${i}`} x1={C_PAD_L} y1={y} x2={svgW - C_PAD_R} y2={y}
-              stroke={colors.border} strokeWidth={0.5} opacity={0.5}
+              stroke={th.colors.border} strokeWidth={0.5} opacity={0.5}
             />
           ))}
           {pts.slice(1).map((_, segI) => (
             <AnimatedLine key={segI}
               x1={pts[segI].x} y1={yAnims[segI]}
               x2={pts[segI + 1].x} y2={yAnims[segI + 1]}
-              stroke={colors.accent} strokeWidth={1.5}
+              stroke={th.colors.accent} strokeWidth={1.5}
             />
           ))}
           {pts.map((p, i) => {
             const isSel = selected?.i === i;
             return (
               <AnimatedCircle key={i} cx={p.x} cy={yAnims[i]}
-                r={isSel ? 6 : 4} fill={colors.accent}
-                stroke={isSel ? colors.bg : 'none'} strokeWidth={isSel ? 2 : 0}
+                r={isSel ? 6 : 4} fill={th.colors.accent}
+                stroke={isSel ? th.colors.bg : 'none'} strokeWidth={isSel ? 2 : 0}
               />
             );
           })}
@@ -559,7 +563,7 @@ function MiniLineChart({ data, metricLabel }) {
         {pts.map((p) => {
           const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
           return (
-            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={colors.muted} textAnchor={anchor}>
+            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
               {p.date}
             </SvgText>
           );
@@ -567,9 +571,9 @@ function MiniLineChart({ data, metricLabel }) {
         {selected && (
           <G>
             <Rect x={tooltipX - TW / 2} y={tooltipY} width={TW} height={TH}
-              fill={colors.surface2} stroke={colors.border} strokeWidth={1} rx={4} />
-            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={colors.muted}  textAnchor="start">{selected.date}</SvgText>
-            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={colors.accent} textAnchor="start">
+              fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4} />
+            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={th.colors.muted}  textAnchor="start">{selected.date}</SvgText>
+            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
               {fmtAxisVal(selected.value)}{metricLabel ? ` ${metricLabel}` : ''}
             </SvgText>
           </G>
@@ -610,6 +614,8 @@ function MiniLineChart({ data, metricLabel }) {
 
 function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLogs: initRawLogs, programTemplateIds }) {
   const insets = useSafeAreaInsets();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { i18n } = useTranslation();
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
 
@@ -817,7 +823,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   }, [filteredLogs, activeMetric, wDisplay, pctMode]);
 
   const loadImpStr   = loadImprovePct !== null ? `${loadImprovePct > 0 ? '+' : ''}${loadImprovePct}%` : '—';
-  const loadImpColor = loadImprovePct !== null ? (loadImprovePct >= 0 ? colors.green : colors.orange) : colors.muted;
+  const loadImpColor = loadImprovePct !== null ? (loadImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
   const lastLoadSubStr = (() => {
     if (lastSesLoadDelta === null) return null;
     const sign = lastSesLoadDelta >= 0 ? '+' : '−';
@@ -830,7 +836,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   })();
 
   const volImpStr   = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
-  const volImpColor = volImprovePct !== null ? (volImprovePct >= 0 ? colors.green : colors.orange) : colors.muted;
+  const volImpColor = volImprovePct !== null ? (volImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
   const lastVolSubStr = (() => {
     if (lastSesVolDelta === null) return null;
     const sign = lastSesVolDelta >= 0 ? '+' : '−';
@@ -889,7 +895,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               <TextInput
                 style={styles.exPickerSearch}
                 placeholder="Buscar ejercicio..."
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={th.colors.muted}
                 value={exPickerSearch}
                 onChangeText={setExPickerSearch}
                 autoCorrect={false}
@@ -949,7 +955,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               <View style={styles.modalStatTile}>
                 {e1rmData ? (
                   <>
-                    <Text style={[styles.modalStatValue, { color: colors.accent }]}>
+                    <Text style={[styles.modalStatValue, { color: th.colors.accent }]}>
                       {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
                     </Text>
                     <Text style={styles.modalStatLabel}>1RM EST.</Text>
@@ -959,7 +965,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   </>
                 ) : (
                   <>
-                    <Text style={[styles.modalStatValue, { color: colors.accent }]}>{prDisplay ?? '—'}</Text>
+                    <Text style={[styles.modalStatValue, { color: th.colors.accent }]}>{prDisplay ?? '—'}</Text>
                     <Text style={styles.modalStatLabel}>PR</Text>
                     <Text style={styles.modalStatSub} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
@@ -1001,7 +1007,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             <View style={styles.modalSesSection}>
               <Text style={styles.modalSesSectionLabel}>SESIONES</Text>
               {[...sessionDeltas].reverse().map(({ timestamp, val, delta, isPR, metricId, exercise }) => {
-                const deltaColor = delta !== null ? (delta >= 0 ? colors.green : colors.orange) : colors.muted;
+                const deltaColor = delta !== null ? (delta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
                 const deltaStr  = delta !== null ? (() => {
                   const sign = delta > 0 ? '+' : '';
                   if (metricId === 'kg' || metricId === 'e1rm') {
@@ -1050,6 +1056,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
 function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, programTemplateIds }) {
   const { i18n } = useTranslation();
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
   const [modalVisible, setModalVisible] = useState(false);
 
   const effectiveLogs  = allLogs ?? periodLogs ?? [];
@@ -1076,7 +1084,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
             {improvePct !== null && (
               <Text>
                 {' · '}
-                <Text style={{ color: improvePct >= 0 ? colors.green : colors.orange }}>
+                <Text style={{ color: improvePct >= 0 ? th.colors.green : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
                 {' progreso'}
@@ -1105,6 +1113,8 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
 
 export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { i18n } = useTranslation();
   const { fmt: fmtWeight, toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -1176,17 +1186,17 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
   // Display strings
   const improveStr   = improvePct !== null ? `${improvePct > 0 ? '+' : ''}${improvePct}%` : '—';
-  const improveColor = improvePct !== null ? (improvePct >= 0 ? colors.green : colors.orange) : colors.muted;
+  const improveColor = improvePct !== null ? (improvePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
   const loadSubArrow = lastLoadDelta === null ? '→' : lastLoadDelta >= 0 ? '↑' : '↓';
   const loadSubStr   = lastLoadDelta !== null
     ? `${loadSubArrow} ${lastLoadDelta > 0 ? '+' : ''}${lastLoadDelta}% últ. ses.`
     : null;
-  const loadSubColor = lastLoadDelta !== null ? (lastLoadDelta >= 0 ? colors.green : colors.orange) : colors.muted;
+  const loadSubColor = lastLoadDelta !== null ? (lastLoadDelta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
 
   const volStr      = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
-  const volColor    = volImprovePct !== null ? (volImprovePct >= 0 ? colors.green : colors.orange) : colors.muted;
+  const volColor    = volImprovePct !== null ? (volImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
   const volSubArrow = lastSesDelta === null ? '→' : lastSesDelta >= 0 ? '↑' : '↓';
-  const volSubColor = lastSesDelta !== null ? (lastSesDelta >= 0 ? colors.green : colors.orange) : colors.muted;
+  const volSubColor = lastSesDelta !== null ? (lastSesDelta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
   const volSubStr   = lastSesVol
     ? `${volSubArrow} ${fmtVol(lastSesVol, wDisplay)} ${weightLabel} últ. ses.`
     : null;
@@ -1233,8 +1243,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={colors.accent}
-          colors={[colors.accent]}
+          tintColor={th.colors.accent}
+          colors={[th.colors.accent]}
         />
       ) : undefined}
     >
@@ -1295,7 +1305,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       <TextInput
         style={styles.searchInput}
         placeholder="Buscar ejercicio..."
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={th.colors.muted}
         value={search}
         onChangeText={setSearch}
         autoCorrect={false}
@@ -1404,7 +1414,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   content: { padding: spacing.xl, gap: spacing.md },
 
@@ -1417,15 +1427,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   ctrlBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  ctrlBtnText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.regular },
-  ctrlBtnTextActive: { color: colors.accent },
+  ctrlBtnText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.regular },
+  ctrlBtnTextActive: { color: th.colors.accent },
   btnGroup:          { flexDirection: 'row', gap: spacing.xs, flex: 1 },
   ctrlBtnFull:       { flex: 1, alignItems: 'center', paddingVertical: spacing.xs + 1 },
 
@@ -1433,26 +1443,26 @@ const styles = StyleSheet.create({
   scopeToggle: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface,
   },
   scopeToggleActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  scopeToggleText:       { fontSize: typography.sm, color: colors.muted, fontWeight: typography.medium },
-  scopeToggleTextActive: { color: colors.accent },
+  scopeToggleText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
+  scopeToggleTextActive: { color: th.colors.accent },
 
   // ── Summary tiles ──────────────────────────────────────────────────────────
   statsGrid: { flexDirection: 'row', gap: spacing.sm },
   statTile: {
     flex:            1,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
@@ -1460,20 +1470,20 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize:   typography.xl,
     fontWeight: typography.heavy,
-    color:      colors.accent,
+    color:      th.colors.accent,
     lineHeight: typography.xl * 1.15,
     textAlign:  'center',
   },
   statLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     letterSpacing: 0.4,
     marginTop:     1,
     textAlign:     'center',
   },
   statSub: {
     fontSize:   9,
-    color:      colors.muted,
+    color:      th.colors.muted,
     lineHeight: 13,
     marginTop:  6,
     textAlign:  'center',
@@ -1481,11 +1491,11 @@ const styles = StyleSheet.create({
 
   // ── Search ─────────────────────────────────────────────────────────────────
   searchInput: {
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    borderRadius:      radius.md,
-    color:             colors.text,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.md,
+    color:             th.colors.text,
     fontSize:          typography.base,
     paddingHorizontal: spacing.md,
     paddingVertical:   10,
@@ -1500,11 +1510,11 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     fontWeight:    typography.bold,
     letterSpacing: 1.2,
   },
-  sectionCount: { fontSize: typography.xs, color: colors.muted2 },
+  sectionCount: { fontSize: typography.xs, color: th.colors.muted2 },
 
   // ── Exercise dropdown selector ─────────────────────────────────────────────
   dropWrapper: { zIndex: 100, elevation: 10 },
@@ -1514,19 +1524,19 @@ const styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface,
   },
-  dropBtnText: { fontSize: typography.base, color: colors.muted, fontWeight: typography.regular, flex: 1 },
-  dropArrow:   { fontSize: 10, color: colors.muted, marginLeft: spacing.sm },
+  dropBtnText: { fontSize: typography.base, color: th.colors.muted, fontWeight: typography.regular, flex: 1 },
+  dropArrow:   { fontSize: 10, color: th.colors.muted, marginLeft: spacing.sm },
   dropList: {
     position:        'absolute',
-    borderRadius:    radius.sm,
+    borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
-    borderColor:     colors.border,
-    backgroundColor: colors.surface,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface,
     overflow:        'hidden',
     shadowColor:     '#000',
     shadowOffset:    { width: 0, height: 4 },
@@ -1541,27 +1551,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     gap:               spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   dropCheck: {
     width: 16, height: 16, borderRadius: 3,
-    borderWidth: borders.thin, borderColor: colors.border,
-    backgroundColor: colors.surface2,
+    borderWidth: borders.thin, borderColor: th.colors.border,
+    backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  dropCheckActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  dropCheckMark:   { fontSize: 9, color: colors.bg, lineHeight: 11 },
-  dropItemText:    { flex: 1, fontSize: typography.base, color: colors.muted },
+  dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
+  dropCheckMark:   { fontSize: 9, color: th.colors.bg, lineHeight: 11 },
+  dropItemText:    { flex: 1, fontSize: typography.base, color: th.colors.muted },
   dropResetBtn:    { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, alignItems: 'center' },
-  dropResetText:   { fontSize: typography.sm, color: colors.muted },
+  dropResetText:   { fontSize: typography.sm, color: th.colors.muted },
 
   // ── Exercise list ──────────────────────────────────────────────────────────
   exerciseList: { gap: spacing.xs },
   exCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
   exRow: {
@@ -1570,18 +1580,18 @@ const styles = StyleSheet.create({
     padding:       spacing.md,
     gap:           spacing.sm,
   },
-  exName: { fontSize: typography.sm, fontWeight: typography.medium, color: colors.text },
-  exSub:  { fontSize: typography.xs, color: colors.muted, marginTop: 2 },
+  exName: { fontSize: typography.sm, fontWeight: typography.medium, color: th.colors.text },
+  exSub:  { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
   verBtn: {
     paddingVertical:   4,
     paddingHorizontal: spacing.sm,
-    borderRadius:      radius.sm,
+    borderRadius:      th.radius.sm,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
     flexShrink:        0,
   },
-  verBtnText: { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
+  verBtnText: { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
 
   // ── Modal ──────────────────────────────────────────────────────────────────
   modalOverlay: {
@@ -1589,9 +1599,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor:      colors.bg,
-    borderTopLeftRadius:  radius.xl,
-    borderTopRightRadius: radius.xl,
+    backgroundColor:      th.colors.bg,
+    borderTopLeftRadius:  th.radius.xl,
+    borderTopRightRadius: th.radius.xl,
     flex:                 1,
     marginTop:            44,
     paddingTop:           spacing.sm,
@@ -1602,7 +1612,7 @@ const styles = StyleSheet.create({
     alignItems:    'center',
   },
   dragHandle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border,
+    width: 40, height: 4, borderRadius: 2, backgroundColor: th.colors.border,
   },
   modalHeader: {
     flexDirection:     'row',
@@ -1611,7 +1621,7 @@ const styles = StyleSheet.create({
     paddingBottom:     spacing.md,
     gap:               spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   modalTitleBtn: {
     flex:              1,
@@ -1619,33 +1629,33 @@ const styles = StyleSheet.create({
     alignItems:        'center',
     gap:               spacing.xs,
     minWidth:          0,
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical:   spacing.xs + 2,
   },
   modalTitleBtnOpen: {
-    borderColor: colors.accent,
-    backgroundColor: withOpacity(colors.accent, 0.06),
+    borderColor: th.colors.accent,
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   modalTitle: {
     flex:       1,
     fontSize:   typography.md,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.md * 1.3,
   },
   modalTitleArrow: {
     fontSize:   18,
     fontWeight: typography.bold,
-    color:      colors.muted,
+    color:      th.colors.muted,
     flexShrink: 0,
     lineHeight: 20,
   },
   modalTitleArrowOpen: {
-    color: colors.accent,
+    color: th.colors.accent,
   },
   // Exercise picker — floats absolutely over content
   exPicker: {
@@ -1653,10 +1663,10 @@ const styles = StyleSheet.create({
     left:              spacing.lg,
     right:             spacing.lg,
     zIndex:            20,
-    backgroundColor:   colors.surface,
-    borderRadius:      radius.md,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
+    borderColor:       th.colors.borderCard,
     overflow:          'hidden',
     // Shadow
     shadowColor:       '#000',
@@ -1667,34 +1677,34 @@ const styles = StyleSheet.create({
   },
   exPickerSearch: {
     margin:            spacing.sm,
-    backgroundColor:   colors.surface2,
+    backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
-    borderColor:       colors.borderCard,
-    borderRadius:      radius.sm,
+    borderColor:       th.colors.borderCard,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
     fontSize:          typography.base,
-    color:             colors.text,
+    color:             th.colors.text,
   },
   exPickerList:     { maxHeight: 380 },
   exPickerItem: {
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm + 3,
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
   },
-  exPickerItemActive:     { backgroundColor: withOpacity(colors.accent, 0.07) },
-  exPickerItemText:       { fontSize: typography.base, color: colors.text },
-  exPickerItemTextActive: { color: colors.accent, fontWeight: typography.semibold },
+  exPickerItemActive:     { backgroundColor: withOpacity(th.colors.accent, 0.07) },
+  exPickerItemText:       { fontSize: typography.base, color: th.colors.text },
+  exPickerItemTextActive: { color: th.colors.accent, fontWeight: typography.semibold },
   modalCloseBtn: {
     width:           28,
-    borderRadius:    radius.sm,
-    backgroundColor: colors.surface2,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
     flexShrink:      0,
   },
-  modalCloseText: { fontSize: typography.sm, color: colors.muted },
+  modalCloseText: { fontSize: typography.sm, color: th.colors.muted },
   modalFiltersRow: {
     flexDirection:     'row',
     gap:               spacing.xs,
@@ -1711,10 +1721,10 @@ const styles = StyleSheet.create({
   },
   modalStatTile: {
     flex:            1,
-    backgroundColor: colors.surface,
+    backgroundColor: th.colors.surface,
     borderWidth:     borders.thin,
-    borderColor:     colors.borderCard,
-    borderRadius:    radius.md,
+    borderColor:     th.colors.borderCard,
+    borderRadius:    th.radius.md,
     padding:         spacing.md,
     minHeight:       90,
     justifyContent:  'center',
@@ -1723,16 +1733,16 @@ const styles = StyleSheet.create({
   modalStatValue: {
     fontSize:   typography.md,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
     lineHeight: typography.md * 1.2,
   },
-  modalStatLabel: { fontSize: typography.xs, color: colors.muted2, letterSpacing: 0.4 },
-  modalStatSub:   { fontSize: 9, color: colors.muted, marginTop: 2 },
+  modalStatLabel: { fontSize: typography.xs, color: th.colors.muted2, letterSpacing: 0.4 },
+  modalStatSub:   { fontSize: 9, color: th.colors.muted, marginTop: 2 },
 
   // Chart
   chartSection: {
     borderTopWidth:    borders.thin,
-    borderTopColor:    colors.border,
+    borderTopColor:    th.colors.border,
     padding:           spacing.xl,
     paddingHorizontal: spacing.xl,
     gap:               spacing.sm,
@@ -1749,11 +1759,11 @@ const styles = StyleSheet.create({
   yAxisArea:        { width: Y_AXIS_W },
   yAxisLabel: {
     position: 'absolute', right: 4, fontSize: 8,
-    color: colors.muted, textAlign: 'right', width: Y_AXIS_W - 4, lineHeight: 10,
+    color: th.colors.muted, textAlign: 'right', width: Y_AXIS_W - 4, lineHeight: 10,
   },
   chartContentArea: { flex: 1, minHeight: CHART_H, overflow: 'hidden' },
   chartEmpty:       { paddingVertical: spacing.lg, alignItems: 'center' },
-  chartEmptyText:   { fontSize: typography.xs, color: colors.muted, textAlign: 'center' },
+  chartEmptyText:   { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center' },
 
   // Modal session list
   modalSesSection: {
@@ -1762,7 +1772,7 @@ const styles = StyleSheet.create({
   },
   modalSesSectionLabel: {
     fontSize:      typography.xs,
-    color:         colors.muted2,
+    color:         th.colors.muted2,
     fontWeight:    typography.bold,
     letterSpacing: 1.2,
     marginBottom:  spacing.xs,
@@ -1772,16 +1782,16 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     paddingVertical: 7,
     borderTopWidth:  borders.thin,
-    borderTopColor:  colors.border,
+    borderTopColor:  th.colors.border,
     gap:             spacing.sm,
   },
   modalSesLeft: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 100 },
-  modalSesDate:    { fontSize: typography.xs, color: colors.muted },
+  modalSesDate:    { fontSize: typography.xs, color: th.colors.muted },
   modalSesDelta:   { fontSize: typography.xs, fontWeight: typography.bold },
   modalSesSummary: {
     flex:       1,
     fontSize:   typography.xs,
-    color:      colors.text,
+    color:      th.colors.text,
     fontWeight: typography.medium,
     textAlign:  'right',
   },
@@ -1795,30 +1805,30 @@ const styles = StyleSheet.create({
     gap:            3,
   },
   setPill: {
-    backgroundColor: colors.surface2,
+    backgroundColor: th.colors.surface2,
     borderWidth:     0.5,
-    borderColor:     colors.border,
+    borderColor:     th.colors.border,
     borderRadius:    3,
     paddingHorizontal: 5,
     paddingVertical:   2,
   },
-  setPillText:   { fontSize: 10, color: colors.text,  fontWeight: typography.medium },
-  setPillWeight: { fontSize: 10, color: colors.muted, fontWeight: typography.medium, marginRight: 1 },
+  setPillText:   { fontSize: 10, color: th.colors.text,  fontWeight: typography.medium },
+  setPillWeight: { fontSize: 10, color: th.colors.muted, fontWeight: typography.medium, marginRight: 1 },
 
   prPill: {
     paddingHorizontal: 6,
     paddingVertical:   2,
-    backgroundColor:   withOpacity(colors.accent, 0.12),
+    backgroundColor:   withOpacity(th.colors.accent, 0.12),
     borderWidth:       borders.thin,
-    borderColor:       withOpacity(colors.accent, 0.4),
-    borderRadius:      radius.xs,
+    borderColor:       withOpacity(th.colors.accent, 0.4),
+    borderRadius:      th.radius.xs,
     flexShrink:        0,
   },
-  prPillText: { fontSize: 8, fontWeight: typography.bold, color: colors.accent, letterSpacing: 0.5 },
-  modalSesEmpty: { fontSize: typography.xs, color: colors.muted, paddingVertical: spacing.md, textAlign: 'center' },
+  prPillText: { fontSize: 8, fontWeight: typography.bold, color: th.colors.accent, letterSpacing: 0.5 },
+  modalSesEmpty: { fontSize: typography.xs, color: th.colors.muted, paddingVertical: spacing.md, textAlign: 'center' },
 
   // ── Empty state ────────────────────────────────────────────────────────────
   emptyState: { alignItems: 'center', padding: spacing.xxl, gap: spacing.md },
   emptyIcon:  { fontSize: 32 },
-  emptyText:  { fontSize: typography.base, color: colors.muted, textAlign: 'center', lineHeight: typography.base * 1.7 },
+  emptyText:  { fontSize: typography.base, color: th.colors.muted, textAlign: 'center', lineHeight: typography.base * 1.7 },
 });

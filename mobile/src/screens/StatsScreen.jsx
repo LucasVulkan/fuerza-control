@@ -9,10 +9,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore }    from '../../store/useStore';
 import AppHeader       from '../components/AppHeader';
 import ProgressTab     from '../components/stats/ProgressTab';
-import { colors }      from '../theme';
+import { useThemedStyles } from '../useTheme';
 
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(makeStyles);
 
   const workoutLog           = useStore((s) => s.workoutLog);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
@@ -46,6 +47,6 @@ export default function StatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (th) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: th.colors.bg },
 });

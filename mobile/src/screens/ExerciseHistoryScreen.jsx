@@ -15,7 +15,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { colors, spacing, typography, radius, borders, withOpacity } from '../theme';
+import { spacing, typography, borders, withOpacity } from '../theme';
+import { useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { summarizeSets } from '../../../src/utils/progression';
 
@@ -73,6 +74,7 @@ function getMetrics(def, allLogs, weightLabel) {
 export default function ExerciseHistoryScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  const styles     = useThemedStyles(makeStyles);
   const { params } = useRoute();
   const { i18n }   = useTranslation();
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
@@ -261,10 +263,10 @@ export default function ExerciseHistoryScreen() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
-    backgroundColor: colors.bg,
+    backgroundColor: th.colors.bg,
   },
 
   // Header
@@ -274,16 +276,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   backBtn:     { width: 36, alignItems: 'center' },
-  backIcon:    { fontSize: 28, color: colors.muted, lineHeight: 32 },
+  backIcon:    { fontSize: 28, color: th.colors.muted, lineHeight: 32 },
   headerTitle: {
     flex:       1,
     textAlign:  'center',
     fontSize:   typography.base,
     fontWeight: typography.heavy,
-    color:      colors.text,
+    color:      th.colors.text,
   },
   headerRight: { width: 36 },
 
@@ -303,27 +305,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   periodBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  periodBtnText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
-  periodBtnTextActive: { color: colors.accent },
+  periodBtnText:       { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
+  periodBtnTextActive: { color: th.colors.accent },
 
   // Meta (count + PR)
   meta: { paddingHorizontal: spacing.xl },
-  metaText: { fontSize: typography.sm, color: colors.muted },
+  metaText: { fontSize: typography.sm, color: th.colors.muted },
 
   // Chart card
   chartCard: {
     marginHorizontal: spacing.xl,
-    backgroundColor:  colors.surface,
+    backgroundColor:  th.colors.surface,
     borderWidth:      borders.thin,
-    borderColor:      colors.borderCard,
-    borderRadius:     radius.md,
+    borderColor:      th.colors.borderCard,
+    borderRadius:     th.radius.md,
     overflow:         'hidden',
     paddingTop:       spacing.sm,
   },
@@ -338,23 +340,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius:      5,
     borderWidth:       borders.thin,
-    borderColor:       colors.border,
-    backgroundColor:   colors.surface2,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
   },
   metricBtnActive: {
-    backgroundColor: withOpacity(colors.accent, 0.08),
-    borderColor:     withOpacity(colors.accent, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  metricBtnText:       { fontSize: typography.xs, color: colors.muted, fontWeight: typography.medium },
-  metricBtnTextActive: { color: colors.accent },
+  metricBtnText:       { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
+  metricBtnTextActive: { color: th.colors.accent },
 
   // Table
   table: {
     marginHorizontal: spacing.xl,
-    backgroundColor:  colors.surface,
+    backgroundColor:  th.colors.surface,
     borderWidth:      borders.thin,
-    borderColor:      colors.borderCard,
-    borderRadius:     radius.md,
+    borderColor:      th.colors.borderCard,
+    borderRadius:     th.radius.md,
     overflow:         'hidden',
   },
   row: {
@@ -364,18 +366,18 @@ const styles = StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     borderBottomWidth: borders.thin,
-    borderBottomColor: colors.border,
+    borderBottomColor: th.colors.border,
   },
   rowLeft: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.xs,
   },
-  rowDate: { fontSize: typography.sm, color: colors.muted },
+  rowDate: { fontSize: typography.sm, color: th.colors.muted },
   prBadge: {
-    backgroundColor: withOpacity(colors.accent, 0.12),
+    backgroundColor: withOpacity(th.colors.accent, 0.12),
     borderWidth:     borders.thin,
-    borderColor:     withOpacity(colors.accent, 0.4),
+    borderColor:     withOpacity(th.colors.accent, 0.4),
     borderRadius:    3,
     paddingHorizontal: 5,
     paddingVertical:   1,
@@ -383,13 +385,13 @@ const styles = StyleSheet.create({
   prBadgeText: {
     fontSize:      8,
     fontWeight:    typography.bold,
-    color:         colors.accent,
+    color:         th.colors.accent,
     letterSpacing: 0.5,
   },
   rowSets: {
     fontSize:   typography.sm,
     fontWeight: typography.medium,
-    color:      colors.text,
+    color:      th.colors.text,
     textAlign:  'right',
     flexShrink: 1,
     marginLeft: spacing.sm,
@@ -397,6 +399,6 @@ const styles = StyleSheet.create({
 
   // Empty state
   empty:     { padding: spacing.xl, alignItems: 'center' },
-  emptyText: { fontSize: typography.sm, color: colors.muted, textAlign: 'center' },
+  emptyText: { fontSize: typography.sm, color: th.colors.muted, textAlign: 'center' },
 });
 
