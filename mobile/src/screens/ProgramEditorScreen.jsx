@@ -8,9 +8,11 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import DayEditorCard from '../components/editor/DayEditorCard';
+import { resolveColor } from '../themes';
+import { sessionStats } from '../utils/sessionStats';
+import DragSheet from '../components/DragSheet';
 
-export default function ProgramEditorScreen({ navigation, route }) {
+export default function ProgramEditorScreen({ navigation }) {
   const { t } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -18,11 +20,13 @@ export default function ProgramEditorScreen({ navigation, route }) {
 
   const programs              = useStore((s) => s.programs);
   const userPrograms          = useStore((s) => s.userPrograms); // subscribe for dirty-state reactivity
+  const sessionTemplates      = useStore((s) => s.sessionTemplates);
+  const exerciseLibrary       = useStore((s) => s.exerciseLibrary);
+  const customExercises       = useStore((s) => s.customExercises);
   const profile               = useStore((s) => s.profile);
   const ui                    = useStore((s) => s.ui);
   const beginEditSession      = useStore((s) => s.beginEditSession);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
-  const removeSessionFromProgram = useStore((s) => s.removeSessionFromProgram);
   const renameProgram              = useStore((s) => s.renameProgram);
   const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const addStageToProgram     = useStore((s) => s.addStageToProgram);
@@ -36,22 +40,24 @@ export default function ProgramEditorScreen({ navigation, route }) {
   const isFromClients = !!ui._editingProgramId;
   const hasStages     = (activeProgram?.stages?.length ?? 0) > 0;
 
+  const allExercises = useMemo(
+    () => ({ ...exerciseLibrary, ...customExercises }),
+    [exerciseLibrary, customExercises],
+  );
+
   const [nameValue, setNameValue]               = useState(activeProgram?.name ?? '');
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
+  const [stageSheetOpen, setStageSheetOpen]     = useState(false);
 
   const selectedStage = hasStages ? (activeProgram?.stages?.[selectedStageIdx] ?? null) : null;
-  const [stageName, setStageName]   = useState(selectedStage?.name ?? '');
-  const [stageWeeks, setStageWeeks] = useState(String(selectedStage?.durationWeeks ?? 4));
+  const [stageName, setStageName] = useState(selectedStage?.name ?? '');
 
   useEffect(() => {
     beginEditSession();
   }, []);
 
   useEffect(() => {
-    if (selectedStage) {
-      setStageName(selectedStage.name);
-      setStageWeeks(String(selectedStage.durationWeeks ?? 4));
-    }
+    if (selectedStage) setStageName(selectedStage.name);
   }, [selectedStageIdx, activeProgram?.stages?.length]);
 
   useEffect(() => {
@@ -78,7 +84,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
   }
 
   // True if the live store diverges from the entry snapshot, or a text field
-  // holds an uncommitted edit (name / stage name / stage weeks).
+  // holds an uncommitted edit (program name / stage name).
   function hasUnsavedChanges() {
     const st   = useStore.getState();
     const snap = st._editSnapshot;
@@ -88,10 +94,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
     if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
     if (JSON.stringify(st.userPrograms) !== JSON.stringify(snap.userPrograms)) return true;
     if (nameValue.trim() !== (activeProgram?.name ?? '')) return true;
-    if (selectedStage) {
-      if (stageName.trim() !== (selectedStage.name ?? '')) return true;
-      if (String(stageWeeks) !== String(selectedStage.durationWeeks ?? 4)) return true;
-    }
+    if (selectedStage && stageName.trim() !== (selectedStage.name ?? '')) return true;
     return false;
   }
 
@@ -120,13 +123,13 @@ export default function ProgramEditorScreen({ navigation, route }) {
     });
     return sub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, editingId, nameValue, stageName, stageWeeks, selectedStage, activeProgram]);
+  }, [navigation, editingId, nameValue, stageName, selectedStage, activeProgram]);
 
   // Reactive dirty flag for the header Save button.
   const dirty = useMemo(
     () => hasUnsavedChanges(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [programs, userPrograms, nameValue, stageName, stageWeeks, selectedStageIdx],
+    [programs, userPrograms, nameValue, stageName, selectedStageIdx],
   );
 
   if (!activeProgram) return null;
@@ -134,6 +137,21 @@ export default function ProgramEditorScreen({ navigation, route }) {
   const editorDays = hasStages
     ? (activeProgram.stages[selectedStageIdx]?.days ?? [])
     : (activeProgram.days ?? []);
+
+  // ── Program summary ─────────────────────────────────────────────────────────
+  const summaryLine = hasStages
+    ? t('editor.programSummary', {
+        stages:   activeProgram.stages.length,
+        weeks:    activeProgram.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
+        sessions: activeProgram.stages.reduce((a, s) => a + (s.days?.length ?? 0), 0),
+      })
+    : t('editor.programSummarySimple', {
+        sessions: editorDays.length,
+        sets: editorDays.reduce((a, { sessionTemplateId }) => {
+          const template = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+          return a + sessionStats(template, allExercises).sets;
+        }, 0),
+      });
 
   function commitName() {
     const trimmed = nameValue.trim();
@@ -145,15 +163,6 @@ export default function ProgramEditorScreen({ navigation, route }) {
     const trimmed = stageName.trim();
     if (trimmed && trimmed !== selectedStage?.name) updateStage(editingId, selectedStageIdx, { name: trimmed });
     else setStageName(selectedStage?.name ?? '');
-  }
-
-  function commitStageWeeks() {
-    const n = parseInt(stageWeeks);
-    if (!isNaN(n) && n > 0 && n !== selectedStage?.durationWeeks) {
-      updateStage(editingId, selectedStageIdx, { durationWeeks: n });
-    } else {
-      setStageWeeks(String(selectedStage?.durationWeeks ?? 4));
-    }
   }
 
   function handleAddStage() {
@@ -173,6 +182,7 @@ export default function ProgramEditorScreen({ navigation, route }) {
         {
           text: 'Eliminar', style: 'destructive',
           onPress: () => {
+            setStageSheetOpen(false);
             removeStageFromProgram(editingId, selectedStageIdx);
             setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
             showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
@@ -187,7 +197,6 @@ export default function ProgramEditorScreen({ navigation, route }) {
     Keyboard.dismiss();
     commitName();
     commitStageName();
-    commitStageWeeks();
     // Mark any clients that have this program assigned as needing a re-upload
     markProgramDirtyForClients(editingId);
     showToast(t('editor.toastSaved'), 2200, 'success');
@@ -195,6 +204,8 @@ export default function ProgramEditorScreen({ navigation, route }) {
     useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
     navigation.goBack();
   }
+
+  const isStageActive = selectedStageIdx === (activeProgram.currentStageIndex ?? 0);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -238,80 +249,71 @@ export default function ProgramEditorScreen({ navigation, route }) {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Stage section — scrolls with content, card style */}
+        {/* ── Summary ── */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+          <Text style={styles.summaryMain}>{summaryLine}</Text>
+        </View>
+
+        {/* ── Stages: timeline + selected stage row ── */}
         {hasStages && (
-          <View style={styles.stageCard}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.stageTabsContent}
-            >
+          <View>
+            <Text style={styles.secTitle}>{t('editor.sectionStages')}</Text>
+
+            <View style={styles.timeline}>
               {activeProgram.stages.map((stage, idx) => {
                 const isSelected = idx === selectedStageIdx;
                 const isActive   = idx === (activeProgram.currentStageIndex ?? 0);
                 return (
                   <TouchableOpacity
                     key={stage.id ?? idx}
-                    style={[styles.stageTab, isSelected && styles.stageTabActive]}
+                    style={[
+                      styles.timelineSeg,
+                      { flex: Math.max(1, stage.durationWeeks ?? 1) },
+                      isSelected && styles.timelineSegSelected,
+                    ]}
                     onPress={() => setSelectedStageIdx(idx)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.stageTabText, isSelected && styles.stageTabTextActive]}>
-                      {stage.name}
+                    <Text
+                      style={[styles.timelineName, isSelected && styles.timelineNameSelected]}
+                      numberOfLines={1}
+                    >
+                      {stage.name}{isActive ? ' ●' : ''}
                     </Text>
-                    {isActive && <View style={styles.activeDot} />}
+                    <Text style={styles.timelineWeeks}>
+                      {t('editor.weeksShort', { weeks: stage.durationWeeks ?? 0 })}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
-              <TouchableOpacity style={styles.addStageTab} onPress={handleAddStage}>
-                <Text style={styles.addStageTabText}>＋</Text>
+              <TouchableOpacity style={styles.timelineAdd} onPress={handleAddStage}>
+                <Text style={styles.timelineAddText}>＋</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
 
             {selectedStage && (
-              <View style={styles.stageMeta}>
-                <View style={styles.stageFields}>
-                  <TextInput
-                    style={styles.stageNameInput}
-                    value={stageName}
-                    onChangeText={setStageName}
-                    onBlur={commitStageName}
-                    onSubmitEditing={commitStageName}
-                    placeholder={t('editor.stageName')}
-                    placeholderTextColor={th.colors.muted}
-                    returnKeyType="done"
-                  />
-                  <View style={styles.stageWeeksRow}>
-                    <TextInput
-                      style={styles.stageWeeksInput}
-                      value={stageWeeks}
-                      onChangeText={setStageWeeks}
-                      onBlur={commitStageWeeks}
-                      onSubmitEditing={commitStageWeeks}
-                      keyboardType="numeric"
-                      returnKeyType="done"
-                    />
-                    <Text style={styles.stageWeeksLabel}>{t('editor.stageWeeks')}</Text>
+              <TouchableOpacity
+                style={styles.stageRow}
+                onPress={() => setStageSheetOpen(true)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.stageRowTitleRow}>
+                    <Text style={styles.stageRowTitle} numberOfLines={1}>{selectedStage.name}</Text>
+                    {isStageActive && (
+                      <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>
+                    )}
                   </View>
+                  <Text style={styles.stageRowSub}>
+                    {t('editor.stageCardMeta', {
+                      weeks:    selectedStage.durationWeeks ?? 0,
+                      sessions: selectedStage.days?.length ?? 0,
+                    })}
+                  </Text>
                 </View>
-                <View style={styles.stageActions}>
-                  {selectedStageIdx !== (activeProgram.currentStageIndex ?? 0) && (
-                    <TouchableOpacity
-                      style={styles.activateBtn}
-                      onPress={() => {
-                        setCurrentStage(editingId, selectedStageIdx);
-                        showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
-                      }}
-                    >
-                      <Text style={styles.activateBtnText}>{t('editor.stageActivate')}</Text>
-                    </TouchableOpacity>
-                  )}
-                  {activeProgram.stages.length > 1 && (
-                    <TouchableOpacity style={styles.deleteStageBtn} hitSlop={12} onPress={handleDeleteStage}>
-                      <Text style={styles.deleteStageBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -320,35 +322,150 @@ export default function ProgramEditorScreen({ navigation, route }) {
           <Text style={styles.changesHint}>{t('editor.changesHint')}</Text>
         )}
 
-        {editorDays.map(({ sessionTemplateId }) => (
-          <DayEditorCard
-            key={sessionTemplateId}
-            templateId={sessionTemplateId}
-            navigation={navigation}
-            onRemove={
-              editorDays.length > 1
-                ? () => removeSessionFromProgram(editingId, sessionTemplateId)
-                : null
-            }
-          />
-        ))}
-
-        <TouchableOpacity
-          style={styles.addSessionBtn}
-          onPress={() => addSessionToProgram(editingId, hasStages ? selectedStageIdx : null)}
-        >
-          <Text style={styles.addSessionBtnText}>
-            {hasStages ? t('editor.addSessionToStage') : t('editor.addSession')}
+        {/* ── Sessions of the selected stage ── */}
+        <View>
+          <Text style={styles.secTitle}>
+            {hasStages && selectedStage
+              ? t('editor.sessionsOf', { stage: selectedStage.name })
+              : t('editor.sectionSessions')}
           </Text>
-        </TouchableOpacity>
 
-        {!hasStages && (
-          <TouchableOpacity style={styles.convertToStagesBtn} onPress={handleAddStage}>
-            <Text style={styles.convertToStagesBtnText}>{t('editor.convertToStages')}</Text>
+          <View style={{ gap: spacing.sm }}>
+            {editorDays.map(({ sessionTemplateId }) => {
+              const template = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+              if (!template) return null;
+              const color = resolveColor(th, template.color ?? 'var(--accent)');
+              const stats = sessionStats(template, allExercises);
+              return (
+                <TouchableOpacity
+                  key={sessionTemplateId}
+                  style={[styles.sessionCard, { borderLeftColor: color }]}
+                  onPress={() => navigation.navigate('SessionEditor', {
+                    templateId: sessionTemplateId,
+                    programId:  editingId,
+                    stageIdx:   hasStages ? selectedStageIdx : null,
+                  })}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.sesTag}>{`Sesión ${template.label ?? ''}`}</Text>
+                    <Text style={[styles.sesName, { color }]} numberOfLines={1}>
+                      {template.name ?? ''}
+                    </Text>
+                    <Text style={styles.sesMeta}>
+                      {stats.minutes > 0
+                        ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
+                        : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
+                    </Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={styles.addSessionBtn}
+            onPress={() => addSessionToProgram(editingId, hasStages ? selectedStageIdx : null)}
+          >
+            <Text style={styles.addSessionBtnText}>
+              {hasStages && selectedStage
+                ? t('editor.addSessionNamed', { stage: selectedStage.name })
+                : t('editor.addSession')}
+            </Text>
           </TouchableOpacity>
-        )}
+
+          {!hasStages && (
+            <TouchableOpacity style={styles.convertToStagesBtn} onPress={handleAddStage}>
+              <Text style={styles.convertToStagesBtnText}>{t('editor.convertToStages')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
       </ScrollView>
+
+      {/* ── Stage settings sheet ── */}
+      <DragSheet
+        visible={stageSheetOpen}
+        onClose={() => { commitStageName(); setStageSheetOpen(false); }}
+        title={t('editor.stageSheetTitle')}
+      >
+        {selectedStage && (
+          <View style={styles.sheetBody}>
+
+            <View>
+              <Text style={styles.secTitle}>{t('editor.stageNameLabel')}</Text>
+              <TextInput
+                style={styles.sheetInput}
+                value={stageName}
+                onChangeText={setStageName}
+                onBlur={commitStageName}
+                onSubmitEditing={commitStageName}
+                placeholder={t('editor.stageName')}
+                placeholderTextColor={th.colors.muted2}
+                returnKeyType="done"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.secTitle}>{t('editor.stageDurationLabel')}</Text>
+              <View style={styles.weeksRow}>
+                <Text style={styles.weeksLabel}>{t('editor.stageWeeksUnit')}</Text>
+                <View style={styles.weeksControls}>
+                  <TouchableOpacity
+                    style={styles.weeksBtn}
+                    onPress={() => updateStage(editingId, selectedStageIdx, {
+                      durationWeeks: Math.max(1, (selectedStage.durationWeeks ?? 4) - 1),
+                    })}
+                  >
+                    <Text style={styles.weeksBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.weeksValue}>{selectedStage.durationWeeks ?? 4}</Text>
+                  <TouchableOpacity
+                    style={styles.weeksBtn}
+                    onPress={() => updateStage(editingId, selectedStageIdx, {
+                      durationWeeks: Math.min(52, (selectedStage.durationWeeks ?? 4) + 1),
+                    })}
+                  >
+                    <Text style={[styles.weeksBtnText, { color: th.colors.accent }]}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.secTitle}>{t('editor.stageStateLabel')}</Text>
+              {isStageActive ? (
+                <View style={styles.stateRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stateTitle}>{t('editor.stageIsActive')}</Text>
+                    <Text style={styles.stateHint}>{t('editor.stageActiveHint')}</Text>
+                  </View>
+                  <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.activateBtn}
+                  onPress={() => {
+                    setCurrentStage(editingId, selectedStageIdx);
+                    showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
+                  }}
+                >
+                  <Text style={styles.activateBtnText}>{t('editor.stageActivateBtn')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {activeProgram.stages.length > 1 && (
+              <TouchableOpacity style={styles.deleteStageBtn} onPress={handleDeleteStage}>
+                <Text style={styles.deleteStageBtnText}>{t('editor.stageDeleteBtn')}</Text>
+              </TouchableOpacity>
+            )}
+
+          </View>
+        )}
+      </DragSheet>
+
     </SafeAreaView>
   );
 }
@@ -407,102 +524,138 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm + 2,
   },
 
-  // Stage card (scrollable, not full-width)
-  stageCard: {
-    backgroundColor:  th.colors.surface,
-    borderWidth:      borders.thin,
-    borderColor:      th.colors.border,
-    borderRadius:     th.radius.md,
-    overflow:         'hidden',
-  },
-  stageTabsContent: { paddingHorizontal: spacing.xs },
-  stageTab: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  stageTabActive: { borderBottomColor: th.colors.accent },
-  stageTabText: { fontSize: typography.sm, color: th.colors.muted },
-  stageTabTextActive: { color: th.colors.accent, fontWeight: typography.medium },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: th.colors.accent },
-  addStageTab: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, justifyContent: 'center' },
-  addStageTabText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
-
-  // Stage meta
-  stageMeta: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical:  spacing.sm,
-    backgroundColor:  th.colors.surface2,
-    borderTopWidth:   borders.thin,
-    borderTopColor:   th.colors.border,
-    gap:              spacing.sm,
-  },
-  stageFields: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
-  stageNameInput: {
-    flex:              1,
-    fontSize:          typography.sm,
-    fontWeight:        typography.medium,
-    color:             th.colors.text,
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-  },
-  stageWeeksRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  stageWeeksInput: {
-    width:           44,
-    textAlign:       'center',
-    fontSize:        typography.sm,
-    color:           th.colors.text,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.xs + 2,
-  },
-  stageWeeksLabel: { fontSize: typography.xs, color: th.colors.muted },
-  stageActions: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    marginLeft:    spacing.sm,
-  },
-  activateBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   4,
-    backgroundColor:   withOpacity(th.colors.accent, 0.1),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.accent, 0.3),
-    borderRadius:      th.radius.sm,
-  },
-  activateBtnText: { fontSize: typography.xs, color: th.colors.accent },
-  deleteStageBtn: {
-    width:           28,
-    height:          28,
-    alignItems:      'center',
-    justifyContent:  'center',
-    borderRadius:    th.radius.sm,
-    backgroundColor: withOpacity(th.colors.red ?? th.colors.red, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.red ?? th.colors.red, 0.25),
-  },
-  deleteStageBtnText: { fontSize: 13, color: th.colors.muted2 },
-
   // Content
   scrollContent: {
     paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    paddingBottom: spacing.xxl, gap: spacing.sm,
+    paddingBottom: spacing.xxl, gap: spacing.lg,
   },
-  changesHint: { fontSize: typography.xs, color: th.colors.muted, lineHeight: 18, marginBottom: 4 },
+  changesHint: { fontSize: typography.xs, color: th.colors.muted, lineHeight: 18 },
+
+  secTitle: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         th.colors.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+
+  // Summary
+  summaryCard: {
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+  },
+  summaryTag: {
+    fontSize:      typography.xs - 1,
+    fontWeight:    typography.heavy,
+    color:         withOpacity(th.colors.accent, 0.7),
+    letterSpacing: 1.2,
+    marginBottom:  2,
+  },
+  summaryMain: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      th.colors.accent,
+  },
+
+  // Stage timeline
+  timeline: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  timelineSeg: {
+    backgroundColor: th.colors.surface,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.sm,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.xs,
+    alignItems: 'center',
+    gap: 1,
+    minWidth: 0,
+  },
+  timelineSegSelected: {
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
+    borderColor: withOpacity(th.colors.accent, 0.5),
+  },
+  timelineName: {
+    fontSize: typography.xs - 1,
+    fontWeight: typography.bold,
+    letterSpacing: 0.3,
+    color: th.colors.muted,
+    textTransform: 'uppercase',
+  },
+  timelineNameSelected: { color: th.colors.accent },
+  timelineWeeks: { fontSize: typography.xs - 1, color: th.colors.muted2 },
+  timelineAdd: {
+    width: 34,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.border,
+    borderRadius: th.radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  timelineAddText: { fontSize: typography.lg, color: th.colors.muted },
+
+  // Selected stage row
+  stageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    backgroundColor: th.colors.surface,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.sm,
+  },
+  stageRowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  stageRowTitle: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    color: th.colors.text,
+    flexShrink: 1,
+  },
+  stageRowSub: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
+  activeBadge: {
+    fontSize: 9,
+    fontWeight: typography.heavy,
+    letterSpacing: 0.6,
+    color: th.colors.onAccent,
+    backgroundColor: th.colors.accent,
+    borderRadius: th.radius.xs,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  chevron: { fontSize: typography.xl, color: th.colors.muted2 },
+
+  // Session cards
+  sessionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: th.colors.surface,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderLeftWidth: 3,
+    borderRadius: th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  sesTag: {
+    fontSize: 9, fontWeight: typography.bold,
+    color: th.colors.muted2, letterSpacing: 1,
+    textTransform: 'uppercase', marginBottom: 1,
+  },
+  sesName: {
+    fontSize: typography.base, fontWeight: typography.bold,
+    lineHeight: typography.base * 1.2,
+  },
+  sesMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
+
   addSessionBtn: {
     paddingVertical: spacing.md + 2,
     borderRadius: th.radius.md,
@@ -510,13 +663,89 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor: withOpacity(th.colors.accent, 0.4),
     alignItems: 'center',
     backgroundColor: withOpacity(th.colors.accent, 0.04),
-    marginTop: 4,
+    marginTop: spacing.sm,
   },
   addSessionBtnText: { fontSize: typography.base, color: th.colors.accent },
   convertToStagesBtn: {
     paddingVertical: spacing.md, borderRadius: th.radius.md,
     borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.border,
-    alignItems: 'center', marginTop: 4,
+    alignItems: 'center', marginTop: spacing.sm,
   },
   convertToStagesBtnText: { fontSize: typography.sm, color: th.colors.muted },
+
+  // Stage sheet
+  sheetBody: {
+    gap: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sheetInput: {
+    fontSize: typography.md,
+    fontWeight: typography.semibold,
+    color: th.colors.text,
+    backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  weeksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  weeksLabel: { fontSize: typography.sm, color: th.colors.mutedLight },
+  weeksControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  weeksBtn: {
+    width: 36, height: 36,
+    borderRadius: th.radius.sm,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    backgroundColor: th.colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  weeksBtnText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
+  weeksValue: {
+    fontSize: typography.xl,
+    fontWeight: typography.bold,
+    color: th.colors.text,
+    minWidth: 28,
+    textAlign: 'center',
+  },
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: th.colors.surface2,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    borderRadius: th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.sm,
+  },
+  stateTitle: { fontSize: typography.sm, fontWeight: typography.semibold, color: th.colors.text },
+  stateHint:  { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
+  activateBtn: {
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: withOpacity(th.colors.accent, 0.1),
+    borderWidth: borders.thin,
+    borderColor: withOpacity(th.colors.accent, 0.3),
+    borderRadius: th.radius.md,
+    alignItems: 'center',
+  },
+  activateBtnText: { fontSize: typography.sm, color: th.colors.accent, fontWeight: typography.medium },
+  deleteStageBtn: {
+    paddingVertical: spacing.sm + 2,
+    borderRadius: th.radius.md,
+    borderWidth: borders.thin,
+    borderColor: withOpacity(th.colors.red, 0.3),
+    alignItems: 'center',
+  },
+  deleteStageBtnText: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
 });

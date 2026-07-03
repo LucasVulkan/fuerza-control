@@ -527,7 +527,34 @@
     "resetConfirm": "¿Restaurar este día a los valores originales?",
     "toastReset": "Día restaurado",
     "toastExDeleted": "Ejercicio eliminado",
-    "toastExAdded": "Ejercicio añadido"
+    "toastExAdded": "Ejercicio añadido",
+    "sessionMeta": "{{ex}} ejercicios · {{sets}} series · ~{{min}} min",
+    "sessionMetaNoTime": "{{ex}} ejercicios · {{sets}} series",
+    "programSummary": "{{stages}} etapas · {{weeks}} semanas · {{sessions}} sesiones",
+    "programSummarySimple": "{{sessions}} sesiones · {{sets}} series",
+    "sectionStages": "Etapas",
+    "sectionSessions": "Sesiones",
+    "sessionsOf": "Sesiones · {{stage}}",
+    "addSessionNamed": "＋ Añadir sesión a {{stage}}",
+    "stageCardMeta": "{{weeks}} semanas · {{sessions}} sesiones",
+    "stageSheetTitle": "Etapa",
+    "stageNameLabel": "Nombre",
+    "stageDurationLabel": "Duración",
+    "stageWeeksUnit": "Semanas",
+    "stageStateLabel": "Estado",
+    "stageActiveBadge": "ACTIVA",
+    "stageActivateBtn": "Activar esta etapa",
+    "stageActiveHint": "Es la etapa que entrena el atleta ahora",
+    "stageIsActive": "Etapa activa",
+    "stageDeleteBtn": "Eliminar etapa",
+    "sessionDeleteBtn": "Eliminar sesión",
+    "sessionRestoreBtn": "Restaurar sesión original",
+    "weeksShort": "{{weeks}} sem",
+    "badges": {
+      "auto": "AUTO",
+      "fixed": "FIJA",
+      "submax": "SUBMÁX"
+    }
   },
   "exerciseSelector": {
     "title": "SELECCIONAR EJERCICIO",
@@ -636,6 +663,34 @@
     "incrFixedRepsLabel": "+ reps",
     "incrMinLabel": "Mín. disponible",
     "incrMinHint": "Placa más pequeña disponible (ej. 2.5 kg)",
+    "progModes": {
+      "auto": "Automática",
+      "fixed": "Fija",
+      "submax": "Submáx"
+    },
+    "progModeDesc": {
+      "auto": "La app sugiere subidas según tu rendimiento",
+      "fixed": "Objetivo fijo — la app no sugiere cambios",
+      "submax": "Sin objetivo de reps — el atleta decide, solo registro"
+    },
+    "configDone": "Hecho",
+    "stepType": "Qué progresa",
+    "stepEval": "Cuándo se cumple",
+    "stepIncr": "Cuánto sube",
+    "summaryTitle": "RESUMEN",
+    "summaryProg": {
+      "double": "Sube {{inc}} al completar {{eval}} a {{max}} reps",
+      "weight": "Sube {{inc}} al completar {{eval}}",
+      "reps": "Añade {{inc}} reps al completar {{eval}}",
+      "time": "Sube el objetivo de tiempo al completar {{eval}}",
+      "fixed": "Objetivo fijo, sin progresión automática",
+      "submax": "Series submáximas, solo registro"
+    },
+    "summaryEval": {
+      "all_complete": "todas las series",
+      "pct": "el {{pct}} % de las series",
+      "rpe": "todas las series con RPE ≤ {{rpe}}"
+    },
     "progressionModels": {
       "double_progression": { "label": "Doble progresión", "desc": "Peso + reps" },
       "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    },

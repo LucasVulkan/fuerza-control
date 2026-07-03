@@ -6,6 +6,7 @@ import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import DragSheet from '../DragSheet';
 
 // ─── StepField ────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,11 @@ function IncrementInput({ value, onChange, unit }) {
 }
 
 // ─── ExerciseEditorInline ─────────────────────────────────────────────────────
+//
+// Layout: live summary card → VOLUMEN (always visible) → PROGRESIÓN as a
+// 3-mode picker (auto | fixed | submax); the automatic mode's detail config
+// (type / evaluation / increment) lives in a bottom sheet so casual users
+// never see it.
 
 export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
   const th     = useTheme();
@@ -174,6 +180,15 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   );
   const initMetric = initInputType === 'time' || initInputType === 'weight_time' ? 'time' : 'reps';
 
+  // Progression mode: 'auto' (engine suggests), 'fixed' (target, no suggestions),
+  // 'submax' (no target, log only). Stored 'none' type splits into fixed/submax
+  // by the persisted progressionModel ('submax' marks true submax).
+  const storedModel = exConfig.progressionModel ?? def?.progressionModel;
+  const initMode = initProg.type === 'none'
+    ? (storedModel === 'submax' ? 'submax' : 'fixed')
+    : 'auto';
+  const initType = initProg.type === 'none' ? 'double' : initProg.type;
+
   const initialRef = useRef({
     sets:           exConfig.sets         ?? 3,
     restSec:        exConfig.restSec      ?? 90,
@@ -187,7 +202,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     trainerNote:    exConfig.trainerNote  ?? '',
     trackRpe:       exConfig.trackRpe     ?? false,
     evalMaxRpe:     initProg.evaluation.maxRpe ?? 8,
-    progType:       initProg.type,
+    progMode:       initMode,
+    progType:       initType,
     evalMode:       initProg.evaluation.mode,
     evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
     incrType:       initProg.increment.type === 'stepped' ? 'fixed' : initProg.increment.type,
@@ -210,6 +226,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
   const [trackRpe,       setTrackRpe]       = useState(i.trackRpe);
   const [evalMaxRpe,     setEvalMaxRpe]     = useState(i.evalMaxRpe);
+  const [progMode,       setProgMode]       = useState(i.progMode);
   const [progType,       setProgType]       = useState(i.progType);
   const [evalMode,       setEvalMode]       = useState(i.evalMode);
   const [evalPct,        setEvalPct]        = useState(i.evalPct);
@@ -217,6 +234,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [incrFixedValue, setIncrFixedValue] = useState(i.incrFixedValue);
   const [incrPctValue,   setIncrPctValue]   = useState(i.incrPctValue);
   const [incrMin,        setIncrMin]        = useState(i.incrMin);
+  const [sheetOpen,      setSheetOpen]      = useState(false);
 
   const stateRef  = useRef(null);
   const dirtyRef  = useRef(false);
@@ -227,13 +245,13 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   stateRef.current = {
     sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
     trackRpe, evalMaxRpe,
-    progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
+    progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
   };
 
   const commitValues = useCallback((s) => {
     const isTimeMode = s.metric === 'time';
-    const isNoneType = s.progType === 'none';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
+    const effType    = s.progMode === 'auto' ? s.progType : 'none';
 
     const updates = {
       sets: s.sets, restSec: s.restSec, inputType,
@@ -241,9 +259,13 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
       trackRpe:     s.trackRpe,
-      progressionModel: LEGACY_TYPE_MAP[s.progType] ?? 'double_progression',
+      // 'fixed' keeps double_progression so the target range still renders in
+      // the workout; 'submax' is the marker that distinguishes the two modes.
+      progressionModel: s.progMode === 'auto'
+        ? (LEGACY_TYPE_MAP[s.progType] ?? 'double_progression')
+        : s.progMode === 'submax' ? 'submax' : 'double_progression',
       progression: {
-        type:      s.progType,
+        type:      effType,
         direction: 'increase',
         evaluation: {
           // RPE mode only makes sense when RPE is being recorded
@@ -266,7 +288,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     if (isTimeMode) {
       updates.minTime = s.minTime; updates.maxTime = s.maxTime;
       updates.minReps = null;      updates.maxReps = null;
-    } else if (!isNoneType) {
+    } else if (s.progMode !== 'submax') {
       updates.minReps = s.minReps; updates.maxReps = s.maxReps;
     }
 
@@ -283,7 +305,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
       trackRpe, evalMaxRpe,
-      progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
+      progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
 
   useEffect(() => {
     return () => {
@@ -298,6 +320,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     minTime !== i.minTime || maxTime !== i.maxTime ||
     metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
     trainerNote !== i.trainerNote || trackRpe !== i.trackRpe || evalMaxRpe !== i.evalMaxRpe ||
+    progMode !== i.progMode ||
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
     incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
     incrPctValue !== i.incrPctValue || incrMin !== i.incrMin;
@@ -310,7 +333,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
     setTrainerNote(i.trainerNote);
     setTrackRpe(i.trackRpe);   setEvalMaxRpe(i.evalMaxRpe);
-    setProgType(i.progType);   setEvalMode(i.evalMode);         setEvalPct(i.evalPct);
+    setProgMode(i.progMode);   setProgType(i.progType);
+    setEvalMode(i.evalMode);   setEvalPct(i.evalPct);
     setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue);
     setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
     commitValues(i);
@@ -326,22 +350,18 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     onClose();
   }
 
-  const isTime         = metric === 'time';
-  const isNone         = progType === 'none';
-  const showRepsRange  = !isTime && !isNone;
-  const showTimeRange  = isTime;
-  const showWeightIncr = progType === 'weight' || progType === 'double';
-  const showTimeIncr   = progType === 'time';
-  const showRepsIncr   = progType === 'reps';
-  const showIncrement  = showWeightIncr || showTimeIncr || showRepsIncr;
+  const isTime        = metric === 'time';
+  const showRepsRange = !isTime && progMode !== 'submax';
+  const showTimeRange = isTime;
+  const showRepsIncr  = progType === 'reps';
+  const showTimeIncr  = progType === 'time';
 
-  const PROG_TYPES = [
-    { id: 'double', label: t('exerciseEditor.progTypes.double') },
-    { id: 'weight', label: t('exerciseEditor.progTypes.weight') },
-    { id: 'reps',   label: t('exerciseEditor.progTypes.reps')   },
-    { id: 'time',   label: t('exerciseEditor.progTypes.time')   },
-    { id: 'none',   label: t('exerciseEditor.progTypes.none')   },
-  ];
+  const PROG_MODES = ['auto', 'fixed', 'submax'].map((id) => ({
+    id, label: t(`exerciseEditor.progModes.${id}`),
+  }));
+  const PROG_TYPES = ['double', 'weight', 'reps', 'time'].map((id) => ({
+    id, label: t(`exerciseEditor.progTypes.${id}`),
+  }));
   const EVAL_MODES = [
     { id: 'all_complete', label: t('exerciseEditor.evalModes.all_complete') },
     { id: 'pct',          label: t('exerciseEditor.evalModes.pct')          },
@@ -353,8 +373,37 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     { id: 'pct',   label: t('exerciseEditor.incrTypes.pct')   },
   ];
 
+  // ── Live summary ────────────────────────────────────────────────────────────
+  const effEvalMode = evalMode === 'rpe' && !trackRpe ? 'all_complete' : evalMode;
+  const rangeTxt = isTime
+    ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
+    : progMode === 'submax'
+      ? t('workout.submax', 'submáx')
+      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+  const volumeLine = `${sets} × ${rangeTxt} · ${restSec} s`;
+
+  const incTxt = progType === 'reps'
+    ? String(incrFixedValue)
+    : incrType === 'pct'
+      ? `${incrPctValue} %`
+      : `${incrFixedValue} ${showTimeIncr ? 's' : weightLabel}`;
+  const progLine = progMode === 'auto'
+    ? t(`exerciseEditor.summaryProg.${progType}`, {
+        inc:  incTxt,
+        eval: t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
+        max:  isTime ? maxTime : maxReps,
+      })
+    : t(`exerciseEditor.summaryProg.${progMode}`);
+
   return (
     <View style={styles.container}>
+
+      {/* ══ RESUMEN ══════════════════════════════════════════════════════════ */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+        <Text style={styles.summaryMain}>{volumeLine}</Text>
+        <Text style={styles.summarySub}>{progLine}</Text>
+      </View>
 
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
       <View>
@@ -393,114 +442,19 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       {/* ══ PROGRESIÓN ═══════════════════════════════════════════════════════ */}
       <View>
         <Text style={styles.secTitle}>{t('exerciseEditor.sectionProgression')}</Text>
+        <SegPicker options={PROG_MODES} value={progMode} onChange={setProgMode} />
+        <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
 
-        <View style={[styles.segRow, { marginBottom: spacing.xs }]}>
-          {PROG_TYPES.slice(0, 3).map((pt) => (
-            <TouchableOpacity
-              key={pt.id}
-              style={[styles.segBtn, progType === pt.id && styles.segBtnActive]}
-              onPress={() => setProgType(pt.id)}
-            >
-              <Text style={[styles.segLabel, progType === pt.id && styles.segLabelActive]}>
-                {pt.label}
+        {progMode === 'auto' && (
+          <TouchableOpacity style={styles.progRow} onPress={() => setSheetOpen(true)} activeOpacity={0.7}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.progRowTitle}>{t(`exerciseEditor.progTypes.${progType}`)}</Text>
+              <Text style={styles.progRowSub}>
+                {t(`exerciseEditor.evalModes.${effEvalMode}`)} · +{incTxt}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.segRow}>
-          {PROG_TYPES.slice(3).map((pt) => (
-            <TouchableOpacity
-              key={pt.id}
-              style={[styles.segBtn, progType === pt.id && styles.segBtnActive]}
-              onPress={() => setProgType(pt.id)}
-            >
-              <Text style={[styles.segLabel, progType === pt.id && styles.segLabelActive]}>
-                {pt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          <View style={[styles.segBtn, { opacity: 0 }]} pointerEvents="none" />
-        </View>
-
-        {!isNone && (
-          <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
-        )}
-
-        {/* ── Evaluación ── */}
-        {!isNone && (
-          <>
-            <Text style={styles.subSecTitle}>{t('exerciseEditor.sectionEvaluation')}</Text>
-            <SegPicker options={EVAL_MODES} value={evalMode} onChange={setEvalMode} />
-            <Text style={styles.hint}>{t(`exerciseEditor.evalModeDesc.${evalMode}`)}</Text>
-            {evalMode === 'pct' && (
-              <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-                <StepField
-                  label={`${t('exerciseEditor.evalPctLabel')} (%)`}
-                  value={evalPct}
-                  onChange={setEvalPct}
-                  min={50}
-                  max={100}
-                />
-                <View style={{ flex: 1 }} />
-              </View>
-            )}
-            {evalMode === 'rpe' && (
-              <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-                <StepField
-                  label={t('exerciseEditor.maxRpeLabel')}
-                  value={evalMaxRpe}
-                  onChange={setEvalMaxRpe}
-                  min={6}
-                  max={10}
-                />
-                <View style={{ flex: 1 }} />
-              </View>
-            )}
-          </>
-        )}
-
-        {/* ── Incremento ── */}
-        {showIncrement && (
-          <>
-            <Text style={styles.subSecTitle}>{t('exerciseEditor.sectionIncrement')}</Text>
-            {showRepsIncr ? (
-              <View style={styles.fieldRow}>
-                <StepField
-                  label={t('exerciseEditor.incrFixedRepsLabel')}
-                  value={incrFixedValue}
-                  onChange={setIncrFixedValue}
-                  min={1}
-                  max={10}
-                />
-                <View style={{ flex: 1 }} />
-              </View>
-            ) : (
-              <>
-                <SegPicker options={INCR_TYPES} value={incrType} onChange={setIncrType} />
-                <Text style={styles.hint}>{t(`exerciseEditor.incrTypeDesc.${incrType}`)}</Text>
-                <View style={{ marginTop: spacing.sm }}>
-                  <IncrementInput
-                    value={incrType === 'pct' ? incrPctValue : incrFixedValue}
-                    onChange={incrType === 'pct' ? setIncrPctValue : setIncrFixedValue}
-                    unit={incrType === 'pct' ? '%' : (showTimeIncr ? 's' : weightLabel)}
-                  />
-                </View>
-                {incrType === 'pct' && (
-                  <View style={styles.incrMinRow}>
-                    <View style={styles.incrMinMeta}>
-                      <Text style={styles.incrMinLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
-                      <Text style={styles.hint}>{t('exerciseEditor.incrMinHint')}</Text>
-                    </View>
-                    <IncrementInput
-                      value={incrMin}
-                      onChange={setIncrMin}
-                      unit={showTimeIncr ? 's' : weightLabel}
-                    />
-                  </View>
-                )}
-              </>
-            )}
-          </>
+            </View>
+            <Text style={styles.progRowChevron}>›</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -571,6 +525,108 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
         </TouchableOpacity>
       </View>
 
+      {/* ══ SHEET: configuración de la progresión automática ═════════════════ */}
+      <DragSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title={t('exerciseEditor.sectionProgression')}
+      >
+            <View style={styles.sheetBody}>
+
+              {/* 1 · Qué progresa */}
+              <View>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepType')}
+                </Text>
+                <SegPicker options={PROG_TYPES} value={progType} onChange={setProgType} />
+                <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
+              </View>
+
+              {/* 2 · Cuándo se cumple */}
+              <View>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepEval')}
+                </Text>
+                <SegPicker options={EVAL_MODES} value={effEvalMode} onChange={setEvalMode} />
+                <Text style={styles.hint}>{t(`exerciseEditor.evalModeDesc.${effEvalMode}`)}</Text>
+                {evalMode === 'pct' && (
+                  <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                    <StepField
+                      label={`${t('exerciseEditor.evalPctLabel')} (%)`}
+                      value={evalPct}
+                      onChange={setEvalPct}
+                      min={50}
+                      max={100}
+                    />
+                    <View style={{ flex: 1 }} />
+                  </View>
+                )}
+                {evalMode === 'rpe' && trackRpe && (
+                  <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                    <StepField
+                      label={t('exerciseEditor.maxRpeLabel')}
+                      value={evalMaxRpe}
+                      onChange={setEvalMaxRpe}
+                      min={6}
+                      max={10}
+                    />
+                    <View style={{ flex: 1 }} />
+                  </View>
+                )}
+              </View>
+
+              {/* 3 · Cuánto sube */}
+              <View>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepIncr')}
+                </Text>
+                {showRepsIncr ? (
+                  <View style={styles.fieldRow}>
+                    <StepField
+                      label={t('exerciseEditor.incrFixedRepsLabel')}
+                      value={incrFixedValue}
+                      onChange={setIncrFixedValue}
+                      min={1}
+                      max={10}
+                    />
+                    <View style={{ flex: 1 }} />
+                  </View>
+                ) : (
+                  <>
+                    <SegPicker options={INCR_TYPES} value={incrType} onChange={setIncrType} />
+                    <Text style={styles.hint}>{t(`exerciseEditor.incrTypeDesc.${incrType}`)}</Text>
+                    <View style={{ marginTop: spacing.sm }}>
+                      <IncrementInput
+                        value={incrType === 'pct' ? incrPctValue : incrFixedValue}
+                        onChange={incrType === 'pct' ? setIncrPctValue : setIncrFixedValue}
+                        unit={incrType === 'pct' ? '%' : (showTimeIncr ? 's' : weightLabel)}
+                      />
+                    </View>
+                    {incrType === 'pct' && (
+                      <View style={styles.incrMinRow}>
+                        <View style={styles.incrMinMeta}>
+                          <Text style={styles.incrMinLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
+                          <Text style={styles.hint}>{t('exerciseEditor.incrMinHint')}</Text>
+                        </View>
+                        <IncrementInput
+                          value={incrMin}
+                          onChange={setIncrMin}
+                          unit={showTimeIncr ? 's' : weightLabel}
+                        />
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+
+              {/* Resultado en lenguaje natural */}
+              <View style={styles.summaryCard}>
+                <Text style={styles.summarySub}>{progLine}</Text>
+              </View>
+
+            </View>
+      </DragSheet>
+
     </View>
   );
 }
@@ -585,28 +641,40 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.lg,
   },
 
-  // ── Section headers ────────────────────────────────────────────────────────
-  sectionHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    marginBottom:   spacing.sm,
+  // ── Summary card ───────────────────────────────────────────────────────────
+  summaryCard: {
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    gap:             2,
   },
+  summaryTag: {
+    fontSize:      typography.xs - 1,
+    fontWeight:    typography.heavy,
+    color:         withOpacity(th.colors.accent, 0.7),
+    letterSpacing: 1.2,
+    marginBottom:  2,
+  },
+  summaryMain: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      th.colors.accent,
+  },
+  summarySub: {
+    fontSize:   typography.sm,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.5,
+  },
+
+  // ── Section headers ────────────────────────────────────────────────────────
   secTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
     color:         th.colors.muted,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
-  },
-  subSecTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginTop:     spacing.lg,
     marginBottom:  spacing.sm,
   },
 
@@ -624,30 +692,32 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:  spacing.xs,
   },
 
-  // ── Metric pills ───────────────────────────────────────────────────────────
-  metricBtns: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  metricBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   4,
-    borderRadius:      th.radius.sm,
+  // ── Progression config row (auto mode) ─────────────────────────────────────
+  progRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    marginTop:         spacing.sm,
+    backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
     borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm + 2,
+    gap:               spacing.sm,
   },
-  metricBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.10),
-    borderColor:     withOpacity(th.colors.accent, 0.40),
+  progRowTitle: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      th.colors.text,
   },
-  metricBtnText: {
-    fontSize:   typography.xs,
+  progRowSub: {
+    fontSize: typography.xs,
+    color:    th.colors.muted,
+  },
+  progRowChevron: {
+    fontSize:   typography.xl,
     color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  metricBtnTextActive: {
-    color: th.colors.accent,
+    lineHeight: typography.xl + 2,
   },
 
   // ── Field grid ─────────────────────────────────────────────────────────────
@@ -851,4 +921,21 @@ const makeStyles = (th) => StyleSheet.create({
   restoreBtnDisabled:     { opacity: 0.35 },
   restoreBtnText:         { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
   restoreBtnTextDisabled: {},
+
+  // ── Bottom sheet body ──────────────────────────────────────────────────────
+  sheetBody: {
+    gap:           spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  stepTitle: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         th.colors.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+  stepNum: {
+    color: th.colors.accent,
+  },
 });
