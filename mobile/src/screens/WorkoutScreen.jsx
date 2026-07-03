@@ -16,6 +16,28 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
 
+// ── Elapsed session clock ─────────────────────────────────────────────────────
+// Derived from activeSession.startedAt (wall clock), so it survives app
+// minimize/kill without any background logic — the tick only repaints.
+
+function ElapsedClock({ startedAt }) {
+  const styles = useThemedStyles(makeStyles);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!startedAt) return null;
+  const s  = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  const txt = hh > 0
+    ? `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    : `${mm}:${String(ss).padStart(2, '0')}`;
+  return <Text style={styles.elapsedClock}>{txt}</Text>;
+}
+
 // ── Floating rest timer ───────────────────────────────────────────────────────
 
 const RING_SIZE      = 64;
@@ -280,15 +302,18 @@ export default function WorkoutScreen() {
               <Text style={[styles.sesTag, { color: th.colors.accent }]}>
                 {t('freeSession.badge').toUpperCase()}
               </Text>
-              <TextInput
-                style={styles.freeNameInput}
-                value={activeSession.freeSessionName ?? ''}
-                onChangeText={updateFreeSessionName}
-                placeholder={t('freeSession.namePlaceholder')}
-                placeholderTextColor={th.colors.muted}
-                returnKeyType="done"
-                maxLength={60}
-              />
+              <View style={styles.sesNameRow}>
+                <TextInput
+                  style={[styles.freeNameInput, { flex: 1 }]}
+                  value={activeSession.freeSessionName ?? ''}
+                  onChangeText={updateFreeSessionName}
+                  placeholder={t('freeSession.namePlaceholder')}
+                  placeholderTextColor={th.colors.muted}
+                  returnKeyType="done"
+                  maxLength={60}
+                />
+                <ElapsedClock startedAt={activeSession.startedAt} />
+              </View>
             </>
           ) : (
             <>
@@ -299,6 +324,7 @@ export default function WorkoutScreen() {
                 <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
                   {template.name ?? ''}
                 </Text>
+                <ElapsedClock startedAt={activeSession.startedAt} />
               </View>
             </>
           )}
@@ -534,6 +560,13 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.heavy,
     color:      th.colors.text,
     lineHeight: typography.xl * 1.2,
+  },
+  elapsedClock: {
+    fontSize:    typography.sm,
+    fontWeight:  typography.semibold,
+    color:       th.colors.muted,
+    fontVariant: ['tabular-nums'],
+    flexShrink:  0,
   },
   driveIcon: {
     fontSize:   12,
