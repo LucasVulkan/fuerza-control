@@ -37,6 +37,7 @@ import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
+import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -716,15 +717,66 @@ export const useStore = create(
       updateExerciseParams: (templateId, exerciseId, updates) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
+        const current = template.exercises.find((ex) => ex.exerciseId === exerciseId);
         const updatedExercises = template.exercises.map((ex) =>
           ex.exerciseId === exerciseId ? { ...ex, ...updates } : ex
         );
-        set((s) => ({
-          userPrograms: {
+
+        // Linked instances (same exerciseId + linkGroup elsewhere in the
+        // program) receive the same config update. Group membership itself
+        // (linkGroup) never propagates.
+        const group = 'linkGroup' in updates ? updates.linkGroup : current?.linkGroup;
+        const sibUpdates = { ...updates };
+        delete sibUpdates.linkGroup;
+        let siblingIds = [];
+        if (group && Object.keys(sibUpdates).length) {
+          const program = get().programs[template.programId];
+          siblingIds = linkGroupTemplateIds(program, exerciseId, group, get().getEffectiveTemplate)
+            .filter((tid) => tid !== templateId);
+        }
+
+        set((s) => {
+          const nextUserPrograms = {
             ...s.userPrograms,
             [templateId]: { ...template, exercises: updatedExercises },
-          },
-        }));
+          };
+          for (const tid of siblingIds) {
+            const tpl = s.userPrograms[tid] ?? s.sessionTemplates[tid];
+            const sibEx = tpl?.exercises?.find((ex) => ex.exerciseId === exerciseId);
+            if (!tpl || !sibEx) continue;
+            const merged = { ...sibEx, ...sibUpdates };
+            // Skip no-op writes so untouched siblings don't gain an "edited" copy.
+            if (JSON.stringify(merged) === JSON.stringify(sibEx)) continue;
+            nextUserPrograms[tid] = {
+              ...tpl,
+              exercises: tpl.exercises.map((ex) => ex.exerciseId === exerciseId ? merged : ex),
+            };
+          }
+          return { userPrograms: nextUserPrograms };
+        });
+      },
+
+      // Joins/leaves a link group. Joining a group with existing members
+      // adopts the group's config (the group is the source of truth).
+      // Pass '__new__' to create a fresh group, null to unlink.
+      setExerciseLinkGroup: (templateId, exerciseId, groupId) => {
+        const getTpl = get().getEffectiveTemplate;
+        const template = getTpl(templateId);
+        if (!template) return null;
+        const gid = groupId === '__new__' ? generateId('lnk') : (groupId ?? null);
+
+        let updates = { linkGroup: gid };
+        if (gid) {
+          const program = get().programs[template.programId];
+          const memberTid = linkGroupTemplateIds(program, exerciseId, gid, getTpl)
+            .find((tid) => tid !== templateId);
+          const canonical = memberTid
+            ? getTpl(memberTid)?.exercises?.find((e) => e.exerciseId === exerciseId)
+            : null;
+          if (canonical) updates = { ...pickLinkedConfig(canonical), linkGroup: gid };
+        }
+        get().updateExerciseParams(templateId, exerciseId, updates);
+        return gid;
       },
 
       replaceExercise: (templateId, oldExerciseId, newExerciseId) => {
@@ -1530,10 +1582,19 @@ export const useStore = create(
         const exNote = (exerciseId) =>
           sessionExNotes[exerciseId]?.trim() ? { note: sessionExNotes[exerciseId].trim() } : {};
 
+        const ownerProgramForLinks = template?.programId ? programs[template.programId] : null;
         const exercises = template.exercises
-          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec }) => {
+          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec, linkGroup }) => {
             const setsData = activeSession.setsState[exerciseId] ?? [];
-            const lastExData = lastSession?.exercises.find((e) => e.exerciseId === exerciseId);
+            // Linked exercises autofill from the group's latest performance
+            // (any session of the group), not just this template's.
+            const lastExData = linkGroup
+              ? lastLinkedExercise(
+                  workoutLog,
+                  linkGroupTemplateIds(ownerProgramForLinks, exerciseId, linkGroup, get().getEffectiveTemplate),
+                  exerciseId,
+                )
+              : lastSession?.exercises.find((e) => e.exerciseId === exerciseId);
             const lastSets = lastExData?.sets ?? [];
             const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);

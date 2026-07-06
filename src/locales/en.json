@@ -687,6 +687,11 @@
       "fixed": "Fixed",
       "submax": "Submax"
     },
+    "linkLabel": "Cross-session link",
+    "linkHint": "Shares configuration and history with the same exercise in other sessions. Editing one edits all.",
+    "linkNone": "None",
+    "linkNew": "＋ New group",
+    "linkGroupN": "Group {{n}}",
     "progModeDesc": {
       "auto": "The app suggests increases based on your performance",
       "fixed": "Fixed target — the app won't suggest changes",

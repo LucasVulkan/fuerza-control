@@ -17,6 +17,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { resolveProgressionConfig } from '../../../src/utils/progression';
+import { exerciseLinkGroups } from '../../../src/utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -61,7 +62,7 @@ function progMode(exConfig, def) {
 // the body opens the exercise editor.
 
 function ExerciseRow({
-  exConfig, def, onPress,
+  exConfig, def, onPress, linkBadge,
   onDragStart, onDragMove, onDragEnd,
   onSwipeDelete,
 }) {
@@ -176,6 +177,7 @@ function ExerciseRow({
               <Text style={[rs.badge, mode === 'auto' ? rs.badgeAuto : rs.badgeNeutral]}>
                 {t(`editor.badges.${mode}`)}
               </Text>
+              {linkBadge ? <Text style={[rs.badge, rs.badgeLink]}>{linkBadge}</Text> : null}
               {exConfig.isUnilateral ? <Text style={[rs.badge, rs.badgeUni]}>UNI</Text> : null}
               {exConfig.trackRpe ? <Text style={[rs.badge, rs.badgeRpe]}>RPE</Text> : null}
             </View>
@@ -209,6 +211,7 @@ const makeRs = (th) => StyleSheet.create({
   },
   badgeAuto:    { backgroundColor: withOpacity(th.colors.accent, 0.12), color: th.colors.accent },
   badgeNeutral: { backgroundColor: th.colors.surface2, color: th.colors.muted },
+  badgeLink:    { backgroundColor: withOpacity(th.colors.green, 0.12), color: th.colors.green },
   badgeUni:     { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
   badgeRpe:     { backgroundColor: withOpacity(th.colors.blue, 0.12), color: th.colors.blue },
   deleteLabel: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
@@ -310,6 +313,16 @@ export default function SessionEditorScreen({ navigation, route }) {
   const color = resolveColor(th, template.color ?? 'var(--accent)');
   const stats = sessionStats(template, allExercises);
   const patternEntries = Object.entries(stats.patternSets).sort((a, b) => b[1] - a[1]);
+
+  // "G1"/"G2" badge for linked exercises (group number = order of appearance
+  // of that exercise's groups within the program).
+  const getTpl = (tid) => userPrograms[tid] ?? sessionTemplates[tid];
+  function linkBadgeFor(exConfig) {
+    if (!exConfig.linkGroup) return null;
+    const groups = exerciseLinkGroups(program, exConfig.exerciseId, getTpl);
+    const idx = groups.findIndex((g) => g.id === exConfig.linkGroup);
+    return idx >= 0 ? `G${idx + 1}` : 'G1';
+  }
 
   // ── Drag handlers ─────────────────────────────────────────────────────────
 
@@ -535,6 +548,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 <ExerciseRow
                   exConfig={exConfig}
                   def={allExercises[exConfig.exerciseId]}
+                  linkBadge={linkBadgeFor(exConfig)}
                   onPress={() => setEditingExId(exConfig.exerciseId)}
                   onDragStart={() => handleDragStart(exConfig.exerciseId)}
                   onDragMove={(dy) => handleDragMove(exConfig.exerciseId, dy)}

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils/progression';
+import { exerciseLinkGroups, exerciseInstanceCount } from '../../../../src/utils/exerciseLinks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -166,13 +167,9 @@ function IncrementInput({ value, onChange, unit }) {
 // (type / evaluation / increment) lives in a bottom sheet so casual users
 // never see it.
 
-export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t }                  = useTranslation();
-  const { label: weightLabel } = useWeightUnit();
-  const updateExerciseParams   = useStore((s) => s.updateExerciseParams);
-
+// Editor state derived from an exConfig — used at mount and to re-sync after
+// joining a link group (which may adopt the group's config).
+function computeInitial(exConfig, def) {
   const initProg = resolveProgressionConfig(exConfig, def);
 
   const initInputType = exConfig.inputType ?? (
@@ -189,7 +186,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     : 'auto';
   const initType = initProg.type === 'none' ? 'double' : initProg.type;
 
-  const initialRef = useRef({
+  return {
     sets:           exConfig.sets         ?? 3,
     restSec:        exConfig.restSec      ?? 90,
     minReps:        exConfig.minReps      ?? def?.minReps ?? 8,
@@ -210,7 +207,21 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     incrFixedValue: initProg.increment.value        ?? 2.5,
     incrPctValue:   initProg.increment.pct          ?? 5,
     incrMin:        initProg.increment.minIncrement ?? 0,
-  });
+  };
+}
+
+export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }                  = useTranslation();
+  const { label: weightLabel } = useWeightUnit();
+  const updateExerciseParams   = useStore((s) => s.updateExerciseParams);
+  const setExerciseLinkGroup   = useStore((s) => s.setExerciseLinkGroup);
+  const programs               = useStore((s) => s.programs);
+  const sessionTemplatesAll    = useStore((s) => s.sessionTemplates);
+  const userProgramsAll        = useStore((s) => s.userPrograms);
+
+  const initialRef = useRef(computeInitial(exConfig, def));
 
   const i = initialRef.current;
 
@@ -348,6 +359,39 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       existingPatterns: [],
     });
     onClose();
+  }
+
+  // ── Cross-session linking ───────────────────────────────────────────────────
+  const getTpl       = (tid) => userProgramsAll[tid] ?? sessionTemplatesAll[tid];
+  const ownerProgram = programs[getTpl(templateId)?.programId];
+  const linkGroups   = exerciseLinkGroups(ownerProgram, exConfig.exerciseId, getTpl);
+  const showLinking  = exerciseInstanceCount(ownerProgram, exConfig.exerciseId, getTpl) > 1;
+  const currentGroup = exConfig.linkGroup ?? null;
+
+  function applyValues(v) {
+    setSets(v.sets);           setRestSec(v.restSec);
+    setMinReps(v.minReps);     setMaxReps(v.maxReps);
+    setMinTime(v.minTime);     setMaxTime(v.maxTime);
+    setMetric(v.metric);       setIsUnilateral(v.isUnilateral); setTempo(v.tempo);
+    setTrainerNote(v.trainerNote);
+    setTrackRpe(v.trackRpe);   setEvalMaxRpe(v.evalMaxRpe);
+    setProgMode(v.progMode);   setProgType(v.progType);
+    setEvalMode(v.evalMode);   setEvalPct(v.evalPct);
+    setIncrType(v.incrType);   setIncrFixedValue(v.incrFixedValue);
+    setIncrPctValue(v.incrPctValue); setIncrMin(v.incrMin);
+  }
+
+  function handleLinkSelect(gid) {
+    if (gid !== '__new__' && (gid ?? null) === currentGroup) return;
+    // Flush pending edits first so the debounced commit can't clobber the
+    // config adopted from the group.
+    clearTimeout(timerRef.current);
+    if (dirtyRef.current) { commitValues(stateRef.current); dirtyRef.current = false; }
+    setExerciseLinkGroup(templateId, exConfig.exerciseId, gid);
+    // Joining a group may adopt its config — re-sync the editor's local state.
+    const fresh = useStore.getState().getEffectiveTemplate(templateId)
+      ?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId);
+    if (fresh) applyValues(computeInitial(fresh, def));
   }
 
   const isTime        = metric === 'time';
@@ -506,6 +550,47 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
               maxLength={280}
             />
           </View>
+
+          {/* Vinculación entre sesiones — solo si el ejercicio existe en más sesiones */}
+          {showLinking && (
+            <>
+              <View style={styles.optionsDivider} />
+              <View style={styles.noteBlock}>
+                <Text style={styles.toggleLabel}>{t('exerciseEditor.linkLabel')}</Text>
+                <Text style={styles.tempoHint}>{t('exerciseEditor.linkHint')}</Text>
+                <View style={styles.linkList}>
+                  <TouchableOpacity
+                    style={[styles.linkRow, !currentGroup && styles.linkRowActive]}
+                    onPress={() => handleLinkSelect(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.linkRowText, !currentGroup && styles.linkRowTextActive]}>
+                      {t('exerciseEditor.linkNone')}
+                    </Text>
+                  </TouchableOpacity>
+                  {linkGroups.map((g, idx) => (
+                    <TouchableOpacity
+                      key={g.id}
+                      style={[styles.linkRow, currentGroup === g.id && styles.linkRowActive]}
+                      onPress={() => handleLinkSelect(g.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.linkRowText, currentGroup === g.id && styles.linkRowTextActive]}>
+                        {t('exerciseEditor.linkGroupN', { n: idx + 1 })} · {g.sessions.join(', ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.linkRow, styles.linkRowDashed]}
+                    onPress={() => handleLinkSelect('__new__')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.linkRowText}>{t('exerciseEditor.linkNew')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -872,6 +957,35 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:         typography.sm,
     minHeight:        60,
     textAlignVertical: 'top',
+  },
+  // ── Cross-session linking ──────────────────────────────────────────────────
+  linkList: {
+    gap:       spacing.xs,
+    marginTop: spacing.sm,
+  },
+  linkRow: {
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    borderWidth:       borders.thin,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
+  },
+  linkRowActive: {
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
+    borderColor:     withOpacity(th.colors.accent, 0.40),
+  },
+  linkRowDashed: {
+    borderStyle:     'dashed',
+    backgroundColor: 'transparent',
+  },
+  linkRowText: {
+    fontSize:   typography.sm,
+    color:      th.colors.muted,
+    fontWeight: typography.medium,
+  },
+  linkRowTextActive: {
+    color: th.colors.accent,
   },
   tempoInput: {
     backgroundColor:    th.colors.surface2,

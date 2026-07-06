@@ -687,6 +687,11 @@
       "fixed": "Fija",
       "submax": "Submáx"
     },
+    "linkLabel": "Vinculación entre sesiones",
+    "linkHint": "Comparte configuración e historial con el mismo ejercicio en otras sesiones. Editar uno edita todos.",
+    "linkNone": "Ninguna",
+    "linkNew": "＋ Nuevo grupo",
+    "linkGroupN": "Grupo {{n}}",
     "progModeDesc": {
       "auto": "La app sugiere subidas según tu rendimiento",
       "fixed": "Objetivo fijo — la app no sugiere cambios",

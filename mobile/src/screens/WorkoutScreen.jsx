@@ -15,6 +15,7 @@ import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
+import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
 
 // ── Elapsed session clock ─────────────────────────────────────────────────────
 // Derived from activeSession.startedAt (wall clock), so it survives app
@@ -244,11 +245,22 @@ export default function WorkoutScreen() {
   // Trainer's one-off prescription for this session (if any), keyed by exercise.
   const sessionOverride = clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
 
+  // Linked exercises read the group's latest performance (any session of the
+  // group); unlinked ones keep the same-template reference.
+  const ownerProgram = template?.programId ? useStore.getState().programs[template.programId] : null;
+  const getEffectiveTemplate = (tid) => userPrograms[tid] ?? sessionTemplates[tid];
+
   const exercises = (template?.exercises ?? []).map((exConfig) => ({
     exConfig,
     def:         allExercises[exConfig.exerciseId],
     setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
-    lastExercise: lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
+    lastExercise: exConfig.linkGroup
+      ? lastLinkedExercise(
+          workoutLog,
+          linkGroupTemplateIds(ownerProgram, exConfig.exerciseId, exConfig.linkGroup, getEffectiveTemplate),
+          exConfig.exerciseId,
+        )
+      : lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
     overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
   }));
 
