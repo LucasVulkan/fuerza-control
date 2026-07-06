@@ -21,6 +21,14 @@ import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
+import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
+
+// Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
+const BLOCK_BADGE_STYLE = {
+  amrap:    'badgeBlockAmrap',
+  emom:     'badgeBlockEmom',
+  for_time: 'badgeBlockForTime',
+};
 
 // ── buildSetLabel ──────────────────────────────────────────────────────────────
 
@@ -430,6 +438,24 @@ function SessionCard({ session, onDelete }) {
               </View>
             );
           })}
+
+          {/* Conditioning blocks — v1: just the score, one line per block */}
+          {(session.blocks ?? []).map((block) => (
+            <View key={block.blockId} style={styles.blockLine}>
+              <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
+                <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
+                  {t(`blocks.formats.${block.format}`).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.blockLineName} numberOfLines={1}>
+                {block.name ?? t(`blocks.formats.${block.format}`)}
+              </Text>
+              <Text style={styles.blockLineScore}>
+                {formatBlockScore(block.result, block.format)}
+                {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
     </View>
@@ -861,6 +887,41 @@ const makeStyles = (th) => StyleSheet.create({
     fontStyle:  'italic',
     lineHeight: 16,
   },
+
+  // ── Conditioning blocks (v1: one compact line per block) ────────────────────
+  blockLine: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            spacing.xs,
+    padding:        spacing.md,
+    borderTopWidth: borders.thin,
+    borderTopColor: th.colors.border,
+  },
+  badge: {
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical:   1,
+    borderRadius:      th.radius.xs,
+  },
+  badgeText: { fontSize: 9, fontWeight: typography.bold, letterSpacing: 0.5 },
+  badgeBlockAmrap:       { backgroundColor: withOpacity(th.colors.accent, 0.12) },
+  badgeBlockAmrapText:   { color: th.colors.accent },
+  badgeBlockEmom:        { backgroundColor: withOpacity(th.colors.blue, 0.12) },
+  badgeBlockEmomText:    { color: th.colors.blue },
+  badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
+  badgeBlockForTimeText: { color: th.colors.orange },
+  blockLineName: {
+    flex:       1,
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      th.colors.text,
+  },
+  blockLineScore: {
+    fontSize:      typography.sm,
+    fontWeight:    typography.bold,
+    color:         th.colors.text,
+    fontVariant:   ['tabular-nums'],
+  },
+
   setPills: {
     flexDirection: 'row',
     flexWrap:      'wrap',

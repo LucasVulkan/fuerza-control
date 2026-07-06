@@ -38,7 +38,7 @@ import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
-import { forTimeElapsed } from '../../src/utils/conditioningBlocks';
+import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -1384,7 +1384,7 @@ export const useStore = create(
           }));
         });
         set({
-          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '' },
+          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '', blockState: {} },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
@@ -1400,6 +1400,7 @@ export const useStore = create(
             exerciseNotes: {},
             adHocExercises: [],
             freeSessionName: '',
+            blockState: {},
           },
           ui: { ...get().ui, view: 'workout' },
         });
@@ -1808,7 +1809,29 @@ export const useStore = create(
           })
           .filter(Boolean);
 
-        if (exercises.length === 0) return { ok: false, error: 'Sin datos registrados' };
+        // Conditioning blocks — snapshot config + result for every block that
+        // was actually started (unstarted blocks leave no trace, per spec §2.4).
+        // The config is copied here (not referenced) so the log stays true to
+        // what was actually run even if the trainer edits the block afterwards.
+        const blockState = activeSession.blockState ?? {};
+        const blocksLog = (template.blocks ?? [])
+          .filter((block) => blockState[block.id]?.startedAt)
+          .map((block) => ({
+            blockId: block.id,
+            format: block.format,
+            name: block.name,
+            capSec: block.capSec,
+            intervalSec: block.intervalSec,
+            rounds: block.rounds,
+            emomMode: block.emomMode,
+            movements: block.movements,
+            result: buildBlockResult(block, blockState[block.id], Date.now()),
+          }));
+
+        // A block-only session (metcon day, no strength data) is still a session.
+        if (exercises.length === 0 && blocksLog.length === 0) {
+          return { ok: false, error: 'Sin datos registrados' };
+        }
 
         // Tag the entry if the trainer had prescribed targets for this session.
         const wasAdapted = !!get().clientSync.pendingOverrides?.[activeSession.templateId];
@@ -1825,6 +1848,7 @@ export const useStore = create(
           // `exercises`, so the recap can't reconstruct the plan without this.
           plannedSets: template.exercises.reduce((a, ex) => a + (ex.sets ?? 0), 0),
           ...(wasAdapted ? { adapted: true } : {}),
+          ...(blocksLog.length > 0 ? { blocks: blocksLog } : {}),
           exercises: [
             ...exercises,
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({

@@ -119,6 +119,25 @@ export function detectPRs(entry, workoutLog) {
 }
 
 /**
+ * Result of the previous entry (same template, earlier timestamp) that logged
+ * a block with this `blockId` — for the recap's block delta chip (§7.2).
+ * Returns null when there's no such entry (new block / first run).
+ */
+export function prevBlockResult(entry, workoutLog, blockId) {
+  const prevEntries = (workoutLog ?? [])
+    .filter((e) =>
+      e.id !== entry.id &&
+      e.sessionTemplateId === entry.sessionTemplateId &&
+      e.timestamp <= entry.timestamp)
+    .sort((a, b) => b.timestamp - a.timestamp);
+  for (const e of prevEntries) {
+    const block = (e.blocks ?? []).find((b) => b.blockId === blockId);
+    if (block) return block.result;
+  }
+  return null;
+}
+
+/**
  * Per-exercise delta vs the previous entry of the same template.
  * Delta priority: top-set weight → reps at top weight → time → sets count → equal.
  * Returns null when there is nothing to compare against (free session or

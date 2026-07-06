@@ -206,6 +206,11 @@
     "cappedTag": "(cap)",
     "recapSection": "Blocks",
     "deleteConfirm": "Delete \"{{name}}\"?",
+    "delta": {
+      "roundsShort": "round",
+      "repsShort": "rep",
+      "completedShort": "int"
+    },
     "meta": {
       "amrap_one": "{{min}} min · {{count}} movement",
       "amrap_other": "{{min}} min · {{count}} movements",

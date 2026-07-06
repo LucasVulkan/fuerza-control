@@ -11,7 +11,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
-import { recapStats, detectPRs, compareToLast, doneSets, doneDrops } from '../../../src/utils/sessionRecap';
+import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../../../src/utils/sessionRecap';
+import { formatBlockScore, compareBlockResults } from '../../../src/utils/conditioningBlocks';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -24,6 +25,13 @@ function TrophyIcon({ size = 17, color }) {
     </Svg>
   );
 }
+
+// Same badge-per-format mapping as SessionEditorScreen's block rows.
+const BLOCK_BADGE_STYLE = {
+  amrap:    'badgeBlockAmrap',
+  emom:     'badgeBlockEmom',
+  for_time: 'badgeBlockForTime',
+};
 
 function fmtDuration(ms) {
   const s  = Math.max(0, Math.floor((ms ?? 0) / 1000));
@@ -133,6 +141,40 @@ export default function SessionRecapScreen({ navigation, route }) {
     );
   }
 
+  // Block delta chip — compareBlockResults returns a structured { better, kind, diff },
+  // NOT a pre-formatted string, so the i18n text is built here.
+  function blockDeltaChip(delta) {
+    if (delta.kind === null) return null; // no previous entry with this blockId
+    if (delta.kind === 'equal') {
+      return (
+        <View style={[styles.chip, styles.chip_eq]}>
+          <Text style={[styles.chipText, styles.chipText_eq]}>=</Text>
+        </View>
+      );
+    }
+    const tone = delta.better ? 'up' : 'dn';
+    let txt;
+    if (delta.kind === 'time') {
+      const sign = delta.diff < 0 ? '−' : '+';
+      const abs  = Math.abs(delta.diff);
+      const mm   = Math.floor(abs / 60);
+      const ss   = Math.floor(abs % 60);
+      txt = `${sign}${mm}:${String(ss).padStart(2, '0')}`;
+    } else {
+      const sign  = delta.diff > 0 ? '+' : '−';
+      const abs   = Math.abs(delta.diff);
+      const label = delta.kind === 'rounds' ? t('blocks.delta.roundsShort')
+        : delta.kind === 'reps' ? t('blocks.delta.repsShort')
+        : t('blocks.delta.completedShort');
+      txt = `${sign}${abs}${label ? ` ${label}` : ''}`;
+    }
+    return (
+      <View style={[styles.chip, styles[`chip_${tone}`]]}>
+        <Text style={[styles.chipText, styles[`chipText_${tone}`]]}>{txt}</Text>
+      </View>
+    );
+  }
+
   const sessionNote = entry.notes?.trim();
 
   return (
@@ -199,6 +241,38 @@ export default function SessionRecapScreen({ navigation, route }) {
                   </View>
                 </View>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* Conditioning blocks — only blocks that were actually started */}
+        {entry.blocks?.length > 0 && (
+          <View>
+            <Text style={styles.secTitle}>{t('blocks.recapSection')}</Text>
+            <View style={styles.card}>
+              {entry.blocks.map((block, i) => {
+                const prev  = prevBlockResult(entry, workoutLog, block.blockId);
+                const delta = compareBlockResults(block.format, block.result, prev);
+                return (
+                  <View key={block.blockId} style={[styles.row, i === entry.blocks.length - 1 && styles.rowLast]}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={styles.blockNameRow}>
+                        <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
+                          <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
+                            {t(`blocks.formats.${block.format}`).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.exName}>{block.name ?? t(`blocks.formats.${block.format}`)}</Text>
+                      </View>
+                      <Text style={styles.blockScore}>
+                        {formatBlockScore(block.result, block.format)}
+                        {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
+                      </Text>
+                    </View>
+                    {blockDeltaChip(delta)}
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}
@@ -335,6 +409,27 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.muted2,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+
+  blockNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  badge: {
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 1,
+    borderRadius: th.radius.xs,
+  },
+  badgeText: { fontSize: 9, fontWeight: typography.bold, letterSpacing: 0.5 },
+  badgeBlockAmrap:       { backgroundColor: withOpacity(th.colors.accent, 0.12) },
+  badgeBlockAmrapText:   { color: th.colors.accent },
+  badgeBlockEmom:        { backgroundColor: withOpacity(th.colors.blue, 0.12) },
+  badgeBlockEmomText:    { color: th.colors.blue },
+  badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
+  badgeBlockForTimeText: { color: th.colors.orange },
+  blockScore: {
+    fontSize: typography.lg,
+    fontWeight: typography.heavy,
+    color: th.colors.text,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
 
   chip: {
