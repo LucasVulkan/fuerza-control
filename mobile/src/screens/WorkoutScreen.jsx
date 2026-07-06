@@ -261,8 +261,9 @@ export default function WorkoutScreen() {
   function handleSave() {
     const result = saveSession();
     if (!result.ok) { showToast(result.error, 2200, 'error'); return; }
-    showToast(t('workout.sessionSaved'), 2200, 'success');
-    setTimeout(() => navigation.navigate('Main', { screen: 'Home' }), 800);
+    // The recap IS the confirmation — replace so back can't return to the
+    // (now empty) workout screen.
+    navigation.replace('SessionRecap', { entryId: result.entryId });
   }
 
   function handleDiscard() {

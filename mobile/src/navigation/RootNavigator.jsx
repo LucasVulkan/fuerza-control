@@ -19,6 +19,7 @@ import OnboardingScreen    from '../screens/OnboardingScreen';
 import ProgramDetailScreen    from '../screens/ProgramDetailScreen';
 import ProgramEditorScreen   from '../screens/ProgramEditorScreen';
 import SessionEditorScreen   from '../screens/SessionEditorScreen';
+import SessionRecapScreen    from '../screens/SessionRecapScreen';
 import NextSessionScreen      from '../screens/NextSessionScreen';
 import ExerciseSelectorScreen from '../screens/ExerciseSelectorScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
@@ -168,6 +169,11 @@ export default function RootNavigator() {
           name="SessionEditor"
           component={SessionEditorScreen}
           options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="SessionRecap"
+          component={SessionRecapScreen}
+          options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
         <Stack.Screen
           name="NextSession"

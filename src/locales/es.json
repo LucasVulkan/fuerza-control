@@ -560,6 +560,21 @@
       "submax": "SUBMÁX"
     }
   },
+  "recap": {
+    "completed": "SESIÓN COMPLETADA",
+    "duration": "Duración",
+    "volume": "Volumen",
+    "sets": "Series",
+    "prs": "Récords personales",
+    "vsLast": "Vs. última sesión",
+    "exercises": "Ejercicios",
+    "previous": "anterior",
+    "bestSet": "Mejor serie",
+    "topWeight": "Peso máx",
+    "repsShort": "rep",
+    "setsShort": "serie",
+    "done": "HECHO"
+  },
   "exerciseSelector": {
     "title": "SELECCIONAR EJERCICIO",
     "searchPlaceholder": "Buscar ejercicio...",

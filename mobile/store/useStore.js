@@ -1503,7 +1503,7 @@ export const useStore = create(
             activeSession: INITIAL_ACTIVE_SESSION,
             ui:            { ...s.ui, homeTab: 'session' },
           }));
-          return { ok: true };
+          return { ok: true, entryId: logEntry.id };
         }
 
         // ── Regular template session ───────────────────────────────────────────
@@ -1555,6 +1555,9 @@ export const useStore = create(
           duration: activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
           bodyWeight: null,
+          // Full planned volume of the template — skipped exercises drop out of
+          // `exercises`, so the recap can't reconstruct the plan without this.
+          plannedSets: template.exercises.reduce((a, ex) => a + (ex.sets ?? 0), 0),
           ...(wasAdapted ? { adapted: true } : {}),
           exercises: [
             ...exercises,
@@ -1641,7 +1644,7 @@ export const useStore = create(
           get().uploadHistoryToTrainer().catch(() => {});
         }
 
-        return { ok: true };
+        return { ok: true, entryId: logEntry.id };
       },
 
       discardSession: () => {

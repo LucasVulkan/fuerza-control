@@ -560,6 +560,21 @@
       "submax": "SUBMAX"
     }
   },
+  "recap": {
+    "completed": "SESSION COMPLETE",
+    "duration": "Duration",
+    "volume": "Volume",
+    "sets": "Sets",
+    "prs": "Personal records",
+    "vsLast": "Vs. last session",
+    "exercises": "Exercises",
+    "previous": "previous",
+    "bestSet": "Best set",
+    "topWeight": "Top weight",
+    "repsShort": "rep",
+    "setsShort": "set",
+    "done": "DONE"
+  },
   "exerciseSelector": {
     "title": "SELECT EXERCISE",
     "searchPlaceholder": "Search exercise...",
