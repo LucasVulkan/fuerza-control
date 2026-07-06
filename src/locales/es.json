@@ -700,6 +700,19 @@
   "clients": {
     "title": "Clientes",
     "newBtn": "+ Cliente",
+    "filterSheet": {
+      "title": "Filtros",
+      "status": "Estado",
+      "sort": "Orden",
+      "tags": "Etiquetas",
+      "statusAll": "Todos",
+      "statusActive": "Activos",
+      "statusInactive": "Inactivos",
+      "sortRecent": "Actividad ↓",
+      "sortIdle": "Actividad ↑",
+      "sortName": "Nombre A–Z",
+      "clear": "Limpiar filtros"
+    },
     "searchPlaceholder": "Buscar cliente...",
     "filterActive": "Activos",
     "filterInactive": "Inactivos",

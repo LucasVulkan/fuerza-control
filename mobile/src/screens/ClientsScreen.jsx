@@ -26,6 +26,7 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
+import DragSheet from '../components/DragSheet';
 import ProgressTab from '../components/stats/ProgressTab';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -1447,37 +1448,30 @@ export default function ClientsScreen() {
   const [search,           setSearch]           = useState('');
   const [statusFilter,     setStatusFilter]     = useState('active'); // 'active'|'inactive'|'all'
   const [tagFilter,        setTagFilter]        = useState([]);    // active tag IDs (used in filter)
-  const [tagFilterRow,     setTagFilterRow]     = useState([]);    // all tag IDs shown in the row
-  const [showTagSheet,     setShowTagSheet]     = useState(false);
-  const [sortDir,          setSortDir]          = useState('desc'); // always sort by last session
+  const [showFilterSheet,  setShowFilterSheet]  = useState(false);
+  const [sortMode,         setSortMode]         = useState('recent'); // 'recent'|'idle'|'name'
   const [adherenceFilter,  setAdherenceFilter]  = useState(null);   // null | 'at_risk' | 'unreviewed'
 
-  function cycleStatus() {
-    setAdherenceFilter(null); // status cycle and adherence pills are exclusive modes
-    setStatusFilter((s) => s === 'active' ? 'inactive' : s === 'inactive' ? 'all' : 'active');
-  }
-  function addTagToRow(id) {
-    if (!tagFilterRow.includes(id)) setTagFilterRow((p) => [...p, id]);
-    if (!tagFilter.includes(id))    setTagFilter((p) => [...p, id]);
-  }
-  function toggleTagActive(id) {
+  function toggleTagFilter(id) {
     setTagFilter((p) => p.includes(id) ? p.filter((t) => t !== id) : [...p, id]);
   }
-  function removeTagFromRow(id) {
-    setTagFilterRow((p) => p.filter((t) => t !== id));
-    setTagFilter((p) => p.filter((t) => t !== id));
+  function clearFilters() {
+    setStatusFilter('active');
+    setTagFilter([]);
+    setSortMode('recent');
+    setAdherenceFilter(null);
   }
+  // Filters that diverge from the default view — drives the badge + applied row.
+  const activeFilterCount = tagFilter.length + (statusFilter !== 'active' ? 1 : 0);
   const [showNewClient,    setShowNewClient]     = useState(false);
   const [newClientName,    setNewClientName]     = useState('');
 
   // Detail - tags input
   const [newTag,           setNewTag]           = useState('');
 
-  // Tag manager
-  const [showTagManager,   setShowTagManager]   = useState(false);
+  // Tag management (inline in the filter sheet)
   const [tagRenameId,      setTagRenameId]      = useState(null);
   const [tagRenameText,    setTagRenameText]    = useState('');
-  const [tagCreateText,    setTagCreateText]    = useState('');
   const [tagSearchText,    setTagSearchText]    = useState('');
 
   // Detail - programs tab
@@ -1618,13 +1612,15 @@ export default function ClientsScreen() {
       list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)); // most idle first
     } else if (effectiveAdherenceFilter === 'unreviewed') {
       list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // most recent first
+    } else if (sortMode === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortMode === 'idle') {
+      list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0));
     } else {
-      list.sort((a, b) => sortDir === 'desc'
-        ? (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)
-        : (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0));
+      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // recent first
     }
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortDir, clientLogs, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
+  }, [clients, search, statusFilter, tagFilter, sortMode, clientLogs, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
 
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
@@ -2561,25 +2557,27 @@ export default function ClientsScreen() {
       {/* ── List header ── */}
       <View style={styles.listHeader}>
 
-        {/* Row 1: Title + icon + New client button */}
+        {/* Row 1: Title + trainer tools (connectivity · billing) + New client */}
         <View style={styles.listTitleRow}>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
             <Text style={styles.listTitle}>CLIENTES</Text>
-            {/* Sync status below title */}
-            <TouchableOpacity style={styles.syncInline} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
-              <View style={[
-                styles.syncDotInline,
-                (trainerSync.mode === 'google' || trainerSync.mode === 'code') && styles.syncDotInlineActive,
-              ]} />
-              <Text style={styles.syncLabelInline}>
-                {trainerSync.mode === 'google' || trainerSync.mode === 'code'
-                  ? `${t('clients.syncActive')}: ${trainerSync.mode === 'google' ? 'Google' : t('clients.syncModeCode')}`
-                  : trainerSync.mode === 'offline'
-                  ? t('clients.syncOff')
-                  : t('clients.syncSetup')}
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.listTitleCount}>· {clientCounts.total}</Text>
           </View>
+          {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
+          <TouchableOpacity style={styles.billingBtn} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
+            <Svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke={th.colors.muted} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+            </Svg>
+            <View style={[
+              styles.syncStatusDot,
+              {
+                backgroundColor:
+                  trainerSync.mode === 'google' || trainerSync.mode === 'code' ? th.colors.green
+                  : trainerSync.mode === 'offline' ? th.colors.muted2
+                  : th.colors.orange,
+              },
+            ]} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
             <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={th.colors.muted} strokeWidth={1.8} strokeLinecap="round">
               <Path d="M3 6h18M3 10h18M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
@@ -2588,18 +2586,8 @@ export default function ClientsScreen() {
           <AccentBtn label={t('clients.newBtn')} onPress={() => setShowNewClient(true)} small />
         </View>
 
-        {/* Row 2: Sort [↓↑] + Search + Filter [≡] */}
+        {/* Row 2: Search + Filters */}
         <View style={styles.searchRow}>
-          {/* Sort direction button */}
-          <TouchableOpacity
-            style={styles.searchSideBtn}
-            onPress={() => setSortDir((d) => d === 'desc' ? 'asc' : 'desc')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.searchSideBtnIcon}>{sortDir === 'desc' ? '↓' : '↑'}</Text>
-          </TouchableOpacity>
-
-          {/* Search input */}
           <View style={styles.searchInputWrap}>
             <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
               stroke={withOpacity(th.colors.text, 0.55)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -2615,95 +2603,84 @@ export default function ClientsScreen() {
             />
           </View>
 
-          {/* Filter / tag sheet button */}
+          {/* Filter sheet button — badge shows how many filters are applied */}
           <TouchableOpacity
-            style={[styles.searchSideBtn, tagFilterRow.length > 0 && styles.searchSideBtnActive]}
-            onPress={() => setShowTagSheet(true)}
+            style={[styles.searchSideBtn, activeFilterCount > 0 && styles.searchSideBtnActive]}
+            onPress={() => setShowFilterSheet(true)}
             activeOpacity={0.7}
           >
             <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-              stroke={tagFilterRow.length > 0 ? th.colors.accent : withOpacity(th.colors.text, 0.55)}
+              stroke={activeFilterCount > 0 ? th.colors.accent : withOpacity(th.colors.text, 0.55)}
               strokeWidth={2} strokeLinecap="round">
               <Path d="M4 6h16M7 12h10M10 18h4" />
             </Svg>
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Row 3: Status cycle + active tag pills */}
-        <ScrollView
-          style={styles.filterRowScroll}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Attention pills — ephemeral: only when there's something to act on */}
-          {atRiskCount > 0 && (
-            <AttentionPill
-              label={t('clients.atRiskPill')}
-              count={atRiskCount}
-              color={th.colors.red}
-              active={adherenceFilter === 'at_risk'}
-              onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
-            />
-          )}
-          {unreviewedCount > 0 && (
-            <AttentionPill
-              label={t('clients.unreviewedPill')}
-              count={unreviewedCount}
-              color={th.colors.accent}
-              active={adherenceFilter === 'unreviewed'}
-              onPress={() => setAdherenceFilter((f) => (f === 'unreviewed' ? null : 'unreviewed'))}
-            />
-          )}
+        {/* Row 3 — conditional: attention pills + applied filters. Hidden when
+            there's nothing to show, so the default state is two clean rows. */}
+        {(atRiskCount > 0 || unreviewedCount > 0 || activeFilterCount > 0) && (
+          <ScrollView
+            style={styles.filterRowScroll}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Attention pills — ephemeral: only when there's something to act on */}
+            {atRiskCount > 0 && (
+              <AttentionPill
+                label={t('clients.atRiskPill')}
+                count={atRiskCount}
+                color={th.colors.red}
+                active={adherenceFilter === 'at_risk'}
+                onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
+              />
+            )}
+            {unreviewedCount > 0 && (
+              <AttentionPill
+                label={t('clients.unreviewedPill')}
+                count={unreviewedCount}
+                color={th.colors.accent}
+                active={adherenceFilter === 'unreviewed'}
+                onPress={() => setAdherenceFilter((f) => (f === 'unreviewed' ? null : 'unreviewed'))}
+              />
+            )}
 
-          {/* Status cycling pill */}
-          <TouchableOpacity style={styles.statusPill} onPress={cycleStatus} activeOpacity={0.75}>
-            <Text style={[styles.statusPillText, {
-              color: statusFilter === 'active' ? th.colors.green
-                   : statusFilter === 'inactive' ? th.colors.red
-                   : th.colors.text,
-            }]}>
-              {statusFilter === 'active' ? 'Activos' : statusFilter === 'inactive' ? 'Inactivos' : 'Todos'}
-            </Text>
-            <View style={[styles.statusPillBadge, {
-              backgroundColor: statusFilter === 'active'   ? withOpacity(th.colors.green, 0.15)
-                             : statusFilter === 'inactive' ? withOpacity(th.colors.red,   0.15)
-                             : withOpacity(th.colors.text,   0.1),
-            }]}>
-              <Text style={[styles.statusPillBadgeText, {
-                color: statusFilter === 'active' ? th.colors.green
-                     : statusFilter === 'inactive' ? th.colors.red
-                     : th.colors.text,
-              }]}>
-                {statusFilter === 'active'
-                  ? clientCounts.active
-                  : statusFilter === 'inactive'
-                  ? clientCounts.inactive
-                  : clientCounts.total}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Active tag pills */}
-          {tagFilterRow.map((id) => {
-            const tagName = allTags.find((tg) => tg.id === id)?.name;
-            if (!tagName) return null;
-            const isActive = tagFilter.includes(id);
-            return (
-              <View key={id} style={[styles.tagRowPill, isActive && styles.tagRowPillActive]}>
-                <TouchableOpacity onPress={() => toggleTagActive(id)} activeOpacity={0.7}>
-                  <Text style={[styles.tagRowPillText, isActive && styles.tagRowPillTextActive]}>
-                    {tagName}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => removeTagFromRow(id)} hitSlop={8} activeOpacity={0.7}>
-                  <Text style={[styles.tagRowPillX, isActive && styles.tagRowPillXActive]}>×</Text>
+            {/* Applied status filter (only when it diverges from the default) */}
+            {statusFilter !== 'active' && (
+              <View style={[styles.tagRowPill, styles.tagRowPillActive]}>
+                <Text style={[styles.tagRowPillText, styles.tagRowPillTextActive]}>
+                  {statusFilter === 'inactive'
+                    ? t('clients.filterSheet.statusInactive')
+                    : t('clients.filterSheet.statusAll')}
+                </Text>
+                <TouchableOpacity onPress={() => setStatusFilter('active')} hitSlop={8} activeOpacity={0.7}>
+                  <Text style={[styles.tagRowPillX, styles.tagRowPillXActive]}>×</Text>
                 </TouchableOpacity>
               </View>
-            );
-          })}
-        </ScrollView>
+            )}
+
+            {/* Applied tag filters */}
+            {tagFilter.map((id) => {
+              const tagName = allTags.find((tg) => tg.id === id)?.name;
+              if (!tagName) return null;
+              return (
+                <View key={id} style={[styles.tagRowPill, styles.tagRowPillActive]}>
+                  <Text style={[styles.tagRowPillText, styles.tagRowPillTextActive]}>{tagName}</Text>
+                  <TouchableOpacity onPress={() => toggleTagFilter(id)} hitSlop={8} activeOpacity={0.7}>
+                    <Text style={[styles.tagRowPillX, styles.tagRowPillXActive]}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
 
       </View>
 
@@ -2847,204 +2824,193 @@ export default function ClientsScreen() {
         isFirstTime={isFirstTimeSync}
       />
 
-      {/* Tag filter bottom sheet */}
-      <Modal visible={showTagSheet} transparent animationType="slide" onRequestClose={() => setShowTagSheet(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowTagSheet(false)} />
-        <View style={styles.tagSheet}>
-          <View style={styles.infoSheetHandle} />
-          <View style={styles.tagSheetHeader}>
-            <Text style={styles.tagSheetTitle}>Etiquetas</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              {tagFilter.length > 0 && (
-                <TouchableOpacity onPress={() => setTagFilter([])} hitSlop={8} activeOpacity={0.7}>
-                  <Text style={styles.tagSheetClear}>Limpiar</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => { setShowTagSheet(false); setShowTagManager(true); }} hitSlop={8} activeOpacity={0.7}>
-                <Text style={styles.tagSheetManage}>Gestionar ›</Text>
-              </TouchableOpacity>
+      {/* Unified filter sheet: status + sort + tags */}
+      <DragSheet
+        visible={showFilterSheet}
+        onClose={() => { setShowFilterSheet(false); setTagSearchText(''); }}
+        title={t('clients.filterSheet.title')}
+      >
+        <View style={styles.filterSheetBody}>
+
+          {/* Estado */}
+          <View>
+            <Text style={styles.filterSecTitle}>{t('clients.filterSheet.status')}</Text>
+            <View style={styles.filterSegRow}>
+              {[
+                { id: 'all',      label: t('clients.filterSheet.statusAll'),      count: clientCounts.total },
+                { id: 'active',   label: t('clients.filterSheet.statusActive'),   count: clientCounts.active },
+                { id: 'inactive', label: t('clients.filterSheet.statusInactive'), count: clientCounts.inactive },
+              ].map(({ id, label, count }) => {
+                const active = statusFilter === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.filterSegBtn, active && styles.filterSegBtnActive]}
+                    onPress={() => { setAdherenceFilter(null); setStatusFilter(id); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.filterSegLabel, active && styles.filterSegLabelActive]}>
+                      {label} <Text style={styles.filterSegCount}>{count}</Text>
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
-          {/* Search + inline create */}
-          <View style={styles.tagSheetSearch}>
-            <TextInput
-              style={styles.tagSheetSearchInput}
-              placeholder="Buscar etiqueta…"
-              placeholderTextColor={th.colors.muted}
-              value={tagSearchText}
-              onChangeText={setTagSearchText}
-              returnKeyType="search"
-            />
+          {/* Orden */}
+          <View>
+            <Text style={styles.filterSecTitle}>{t('clients.filterSheet.sort')}</Text>
+            <View style={styles.filterSegRow}>
+              {[
+                { id: 'recent', label: t('clients.filterSheet.sortRecent') },
+                { id: 'idle',   label: t('clients.filterSheet.sortIdle') },
+                { id: 'name',   label: t('clients.filterSheet.sortName') },
+              ].map(({ id, label }) => {
+                const active = sortMode === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.filterSegBtn, active && styles.filterSegBtnActive]}
+                    onPress={() => setSortMode(id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.filterSegLabel, active && styles.filterSegLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
-          <ScrollView style={{ maxHeight: 260 }} keyboardShouldPersistTaps="handled">
+          {/* Etiquetas — selección + gestión inline (crear, renombrar, borrar) */}
+          <View>
+            <Text style={styles.filterSecTitle}>{t('clients.filterSheet.tags')}</Text>
+
+            <View style={styles.tagSearchRow}>
+              <View style={[styles.tagSheetSearch, { flex: 1 }]}>
+                <TextInput
+                  style={styles.tagSheetSearchInput}
+                  placeholder="Buscar etiqueta…"
+                  placeholderTextColor={th.colors.muted}
+                  value={tagSearchText}
+                  onChangeText={setTagSearchText}
+                  returnKeyType="search"
+                />
+              </View>
+              <AccentBtn
+                label="＋"
+                small
+                disabled={
+                  !tagSearchText.trim() ||
+                  allTags.some((tg) => tg.name.toLowerCase() === tagSearchText.trim().toLowerCase())
+                }
+                onPress={() => {
+                  const name = tagSearchText.trim();
+                  if (!name) return;
+                  const newId = createTag(name);
+                  setTagFilter((prev) => [...prev, newId]);
+                  setTagSearchText('');
+                }}
+              />
+            </View>
+
             {(() => {
               const filtered = tagSearchText.trim()
-                ? allTags.filter((t) => t.name.toLowerCase().includes(tagSearchText.toLowerCase()))
+                ? allTags.filter((tg) => tg.name.toLowerCase().includes(tagSearchText.toLowerCase()))
                 : allTags;
-              const exactMatch = allTags.some(
-                (t) => t.name.toLowerCase() === tagSearchText.trim().toLowerCase()
-              );
               return (
                 <>
                   {filtered.map(({ id, name }) => {
-                    const selected = tagFilterRow.includes(id);
-                    return (
-                      <TouchableOpacity
-                        key={id}
-                        style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}
-                        onPress={() => selected ? removeTagFromRow(id) : addTagToRow(id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
-                          {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
+                    const selected   = tagFilter.includes(id);
+                    const isRenaming = tagRenameId === id;
+                    const usedBy = Object.values(clients ?? {}).filter((c) => (c.tags ?? []).includes(id)).length;
+
+                    if (isRenaming) {
+                      const commitRename = () => {
+                        const trimmed = tagRenameText.trim();
+                        if (trimmed) renameTag(id, trimmed);
+                        setTagRenameId(null);
+                      };
+                      return (
+                        <View key={id} style={styles.tagSheetItem}>
+                          <TextInput
+                            style={[styles.input, { flex: 1 }]}
+                            value={tagRenameText}
+                            onChangeText={setTagRenameText}
+                            autoFocus
+                            returnKeyType="done"
+                            onSubmitEditing={commitRename}
+                          />
+                          <TouchableOpacity style={styles.tagActionBtn} onPress={commitRename} hitSlop={8}>
+                            <Text style={[styles.tagActionText, { color: th.colors.accent }]}>✓</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.tagActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
+                            <Text style={styles.tagActionText}>✕</Text>
+                          </TouchableOpacity>
                         </View>
-                        <Text style={[styles.tagSheetItemText, selected && { color: th.colors.accent }]}>{name}</Text>
-                        {selected && <Text style={{ color: th.colors.accent, fontSize: typography.sm }}>✓</Text>}
-                      </TouchableOpacity>
+                      );
+                    }
+
+                    return (
+                      <View key={id} style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}>
+                        <TouchableOpacity
+                          style={styles.tagSelectArea}
+                          onPress={() => toggleTagFilter(id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
+                            {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
+                          </View>
+                          <Text style={[styles.tagSheetItemText, selected && { color: th.colors.accent }]}>{name}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.tagActionBtn}
+                          onPress={() => { setTagRenameId(id); setTagRenameText(name); }}
+                          hitSlop={8}
+                        >
+                          <Text style={styles.tagActionText}>✎</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.tagActionBtn}
+                          onPress={() => {
+                            if (usedBy === 0) { deleteTag(id); return; }
+                            Alert.alert(
+                              t('clients.deleteTagTitle'),
+                              t('clients.deleteTagConfirm', { name, count: usedBy }),
+                              [
+                                { text: t('common.cancel'), style: 'cancel' },
+                                { text: t('common.delete'), style: 'destructive', onPress: () => deleteTag(id) },
+                              ]
+                            );
+                          }}
+                          hitSlop={8}
+                        >
+                          <Text style={[styles.tagActionText, { color: th.colors.red }]}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
-                  {tagSearchText.trim() && !exactMatch && (
-                    <TouchableOpacity
-                      style={styles.tagSheetCreateRow}
-                      onPress={() => {
-                        const newId = createTag(tagSearchText.trim());
-                        setTagFilter((prev) => [...prev, newId]);
-                        setTagSearchText('');
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.tagSheetCreateText}>＋ Crear «{tagSearchText.trim()}»</Text>
-                    </TouchableOpacity>
-                  )}
-                  {filtered.length === 0 && !tagSearchText.trim() && (
+                  {filtered.length === 0 && (
                     <Text style={[styles.emptyText, { paddingHorizontal: spacing.xl }]}>
-                      Sin etiquetas. Créalas desde el perfil de un cliente.
+                      {tagSearchText.trim()
+                        ? 'Sin resultados — crea la etiqueta con ＋'
+                        : 'Sin etiquetas. Escribe un nombre y pulsa ＋'}
                     </Text>
                   )}
                 </>
               );
             })()}
-          </ScrollView>
-
-          <TouchableOpacity style={styles.tagSheetApply} onPress={() => { setShowTagSheet(false); setTagSearchText(''); }} activeOpacity={0.85}>
-            <Text style={styles.tagSheetApplyText}>Aplicar</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      {/* Tag manager bottom sheet */}
-      <Modal visible={showTagManager} transparent animationType="slide" onRequestClose={() => setShowTagManager(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowTagManager(false)} />
-        <View style={styles.tagSheet}>
-          <View style={styles.infoSheetHandle} />
-          <View style={styles.tagSheetHeader}>
-            <Text style={styles.tagSheetTitle}>Gestionar etiquetas</Text>
           </View>
 
-          {/* Create new tag */}
-          <View style={styles.tagMgrCreateRow}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Nueva etiqueta…"
-              placeholderTextColor={th.colors.muted}
-              value={tagCreateText}
-              onChangeText={setTagCreateText}
-              returnKeyType="done"
-              onSubmitEditing={() => {
-                const t = tagCreateText.trim();
-                if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) return;
-                createTag(t);
-                setTagCreateText('');
-              }}
-            />
-            <AccentBtn
-              label="＋"
-              small
-              disabled={!tagCreateText.trim() || allTags.some((tag) => tag.name.toLowerCase() === tagCreateText.trim().toLowerCase())}
-              onPress={() => {
-                const t = tagCreateText.trim();
-                if (!t) return;
-                createTag(t);
-                setTagCreateText('');
-              }}
-            />
-          </View>
+          {/* Limpiar */}
+          {(activeFilterCount > 0 || sortMode !== 'recent') && (
+            <TouchableOpacity style={styles.filterClearBtn} onPress={clearFilters} activeOpacity={0.7}>
+              <Text style={styles.filterClearBtnText}>{t('clients.filterSheet.clear')}</Text>
+            </TouchableOpacity>
+          )}
 
-          <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
-            {allTags.length === 0 ? (
-              <Text style={[styles.emptyText, { paddingHorizontal: spacing.xl }]}>Sin etiquetas creadas aún</Text>
-            ) : allTags.map(({ id, name }) => {
-              const isRenaming = tagRenameId === id;
-              const usedBy = Object.values(clients ?? {}).filter((c) => (c.tags ?? []).includes(id)).length;
-              return (
-                <View key={id} style={styles.tagMgrItem}>
-                  {isRenaming ? (
-                    <>
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        value={tagRenameText}
-                        onChangeText={setTagRenameText}
-                        autoFocus
-                        returnKeyType="done"
-                        onSubmitEditing={() => {
-                          const t = tagRenameText.trim();
-                          if (t) renameTag(id, t);
-                          setTagRenameId(null);
-                        }}
-                      />
-                      <TouchableOpacity
-                        style={styles.tagMgrActionBtn}
-                        onPress={() => { const t = tagRenameText.trim(); if (t) renameTag(id, t); setTagRenameId(null); }}
-                        hitSlop={8}
-                      >
-                        <Text style={[styles.tagMgrActionText, { color: th.colors.accent }]}>✓</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.tagMgrActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
-                        <Text style={styles.tagMgrActionText}>✕</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.tagMgrName}>{name}</Text>
-                        {usedBy > 0 && (
-                          <Text style={styles.tagMgrMeta}>{usedBy} cliente{usedBy > 1 ? 's' : ''}</Text>
-                        )}
-                      </View>
-                      <TouchableOpacity
-                        style={styles.tagMgrActionBtn}
-                        onPress={() => { setTagRenameId(id); setTagRenameText(name); }}
-                        hitSlop={8}
-                      >
-                        <Text style={styles.tagMgrActionText}>✎</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.tagMgrActionBtn}
-                        onPress={() => {
-                          if (usedBy === 0) { deleteTag(id); return; }
-                          Alert.alert(
-                            t('clients.deleteTagTitle'),
-                            t('clients.deleteTagConfirm', { name, count: usedBy }),
-                            [
-                              { text: t('common.cancel'), style: 'cancel' },
-                              { text: t('common.delete'), style: 'destructive', onPress: () => deleteTag(id) },
-                            ]
-                          );
-                        }}
-                        hitSlop={8}
-                      >
-                        <Text style={[styles.tagMgrActionText, { color: th.colors.red }]}>✕</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              );
-            })}
-          </ScrollView>
         </View>
-      </Modal>
+      </DragSheet>
 
       {/* New client modal */}
       <Modal visible={showNewClient} transparent animationType="fade" onRequestClose={() => setShowNewClient(false)}>
@@ -3103,25 +3069,111 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.muted,
     letterSpacing: 2,
   },
-  // Sync inline (below title)
-  syncInline: {
+  listTitleCount: {
+    fontSize:   typography.sm,
+    fontWeight: typography.semibold,
+    color:      th.colors.muted2,
+  },
+  // Connectivity status dot (on the cloud icon button)
+  syncStatusDot: {
+    position:     'absolute',
+    top:          4,
+    right:        4,
+    width:        7,
+    height:       7,
+    borderRadius: 4,
+    borderWidth:  1.5,
+    borderColor:  th.colors.bg,
+  },
+  // Filter button badge (nº of applied filters)
+  filterBadge: {
+    position:        'absolute',
+    top:             3,
+    right:           3,
+    minWidth:        14,
+    height:          14,
+    borderRadius:    7,
+    backgroundColor: th.colors.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: 3,
+  },
+  filterBadgeText: {
+    fontSize:   9,
+    fontWeight: typography.heavy,
+    color:      th.colors.onAccent,
+  },
+  // Unified filter sheet
+  filterSheetBody: {
+    gap:           spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  filterSecTitle: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         th.colors.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+  filterSegRow: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           4,
-    marginTop:     2,
+    gap:           spacing.xs,
   },
-  syncDotInline: {
-    width:           6,
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: th.colors.muted2,
+  filterSegBtn: {
+    flex:            1,
+    paddingVertical: spacing.sm,
+    borderRadius:    th.radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
   },
-  syncDotInlineActive: { backgroundColor: th.colors.green },
-  syncLabelInline: {
+  filterSegBtnActive: {
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
+    borderColor:     withOpacity(th.colors.accent, 0.40),
+  },
+  filterSegLabel: {
+    fontSize:   typography.sm,
+    color:      th.colors.muted,
+    fontWeight: typography.medium,
+  },
+  filterSegLabelActive: {
+    color: th.colors.accent,
+  },
+  filterSegCount: {
     fontSize: typography.xs,
     color:    th.colors.muted2,
   },
-
+  tagSearchRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  tagActionBtn: {
+    padding: spacing.xs,
+  },
+  tagActionText: {
+    fontSize: 14,
+    color:    th.colors.muted,
+  },
+  tagSelectArea: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  filterClearBtn: {
+    paddingVertical: spacing.sm + 2,
+    borderRadius:    th.radius.md,
+    borderWidth:     borders.thin,
+    borderColor:     th.colors.border,
+    alignItems:      'center',
+  },
+  filterClearBtnText: {
+    fontSize: typography.sm,
+    color:    th.colors.muted,
+  },
   billingBtn: {
     backgroundColor:   th.colors.surface,
     borderWidth:       borders.thin,
@@ -3222,39 +3274,7 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:   11,
     fontWeight: typography.bold,
   },
-  // Status cycle pill
-  statusPill: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      th.radius.full,
-    borderWidth:       1.5,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface,
-    flexShrink:        0,
-  },
-  statusPillText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  statusPillBadge: {
-    borderRadius:      th.radius.full,
-    minWidth:          20,
-    height:            20,
-    alignItems:        'center',
-    justifyContent:    'center',
-    paddingHorizontal: 5,
-    flexShrink:        0,
-  },
-  statusPillBadgeText: {
-    fontSize:   11,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
-  },
-  // Tag pills in filter row — same height as statusPill
+  // Tag pills in filter row
   tagRowPill: {
     flexDirection:     'row',
     alignItems:        'center',

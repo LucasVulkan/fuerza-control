@@ -700,6 +700,19 @@
   "clients": {
     "title": "Clients",
     "newBtn": "+ Client",
+    "filterSheet": {
+      "title": "Filters",
+      "status": "Status",
+      "sort": "Sort",
+      "tags": "Tags",
+      "statusAll": "All",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "sortRecent": "Activity ↓",
+      "sortIdle": "Activity ↑",
+      "sortName": "Name A–Z",
+      "clear": "Clear filters"
+    },
     "searchPlaceholder": "Search client...",
     "filterActive": "Active",
     "filterInactive": "Inactive",
