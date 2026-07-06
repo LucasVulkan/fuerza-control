@@ -74,6 +74,18 @@ async function _ensureTrainerSession(trainerSync) {
   }
 }
 
+// Dropset actions all touch the `drops` array of the LAST work set only
+// (dropset is prescribed as "last set carries drops", never an arbitrary one).
+function updateLastSetDrops(setsState, exerciseId, updater) {
+  const sets = setsState[exerciseId] ?? [];
+  if (sets.length === 0) return setsState;
+  const lastIdx = sets.length - 1;
+  const updated = sets.map((st, i) =>
+    i === lastIdx ? { ...st, drops: updater(st.drops ?? [], st) } : st
+  );
+  return { ...setsState, [exerciseId]: updated };
+}
+
 const INITIAL_PROFILE = {
   name: 'Usuario',
   activeProgramId: null,
@@ -1402,9 +1414,17 @@ export const useStore = create(
         if (nowDone) {
           const exDef = exerciseLibrary[exerciseId] ?? customExercises?.[exerciseId];
           const template = activeSession.templateId ? get().getEffectiveTemplate(activeSession.templateId) : null;
-          const exConfig = template?.exercises?.find((e) => e.exerciseId === exerciseId);
-          const restSec = exConfig?.restSec ?? exDef?.restSec ?? 90;
-          get().startRestTimer(restSec, exDef?.name ?? exerciseId);
+          const exIdx    = template?.exercises?.findIndex((e) => e.exerciseId === exerciseId) ?? -1;
+          const exConfig = exIdx >= 0 ? template.exercises[exIdx] : null;
+          // Superset: only the LAST member of the chain rests — a member
+          // chained to the next (supersetWithNext) alternates with no rest.
+          // Guarded by exIdx < length-1 so a stale flag on a now-last exercise
+          // (its former chain partner was deleted) can't silently kill its timer.
+          const hasNext = exIdx >= 0 && exIdx < template.exercises.length - 1;
+          if (!(exConfig?.supersetWithNext && hasNext)) {
+            const restSec = exConfig?.restSec ?? exDef?.restSec ?? 90;
+            get().startRestTimer(restSec, exDef?.name ?? exerciseId);
+          }
         }
       },
 
@@ -1506,6 +1526,55 @@ export const useStore = create(
             },
           };
         });
+      },
+
+      // Dropset — sub-series on the last work set, no rest timer, prefilled at
+      // −20% of the previous weight (mother set or last drop), rounded to 2.5.
+      addDropToLastSet: (exerciseId) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            setsState: updateLastSetDrops(s.activeSession.setsState, exerciseId, (drops, motherSet) => {
+              const prevWeight = drops.length > 0
+                ? parseFloat(drops[drops.length - 1].weight)
+                : parseFloat(motherSet.weight);
+              const nextWeight = !isNaN(prevWeight)
+                ? String(Math.max(0, Math.round((prevWeight * 0.8) / 2.5) * 2.5))
+                : '';
+              return [...drops, { weight: nextWeight, reps: '', done: false }];
+            }),
+          },
+        }));
+      },
+
+      updateDropField: (exerciseId, dropIndex, field, value) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            setsState: updateLastSetDrops(s.activeSession.setsState, exerciseId, (drops) =>
+              drops.map((d, i) => i === dropIndex ? { ...d, [field]: value } : d)),
+          },
+        }));
+      },
+
+      toggleDropDone: (exerciseId, dropIndex) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            setsState: updateLastSetDrops(s.activeSession.setsState, exerciseId, (drops) =>
+              drops.map((d, i) => i === dropIndex ? { ...d, done: !d.done } : d)),
+          },
+        }));
+      },
+
+      removeDropFromLastSet: (exerciseId, dropIndex) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            setsState: updateLastSetDrops(s.activeSession.setsState, exerciseId, (drops) =>
+              drops.filter((_, i) => i !== dropIndex)),
+          },
+        }));
       },
 
       getProgressionRecommendation: (templateId, exerciseId) => {

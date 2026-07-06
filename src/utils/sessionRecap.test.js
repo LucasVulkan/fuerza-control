@@ -36,6 +36,22 @@ describe('recapStats', () => {
     expect(s.setsDone).toBe(3);
     expect(s.setsPlanned).toBe(6);
   });
+
+  it('dropset: adds drop volume, but drops count as neither sets done nor planned', () => {
+    const dropSet = set(80, 8, { drops: [{ weight: '60', reps: '10', done: true }, { weight: '45', reps: '8', done: true }] });
+    const e = entry({ exercises: [{ exerciseId: 'squat', totalSets: 1, sets: [dropSet] }] });
+    const s = recapStats(e);
+    // 80×8 (640) + 60×10 (600) + 45×8 (360) = 1600
+    expect(s.volume).toBe(1600);
+    expect(s.setsDone).toBe(1);
+    expect(s.setsPlanned).toBe(1);
+  });
+
+  it('dropset: undone drops with no data are ignored', () => {
+    const dropSet = set(80, 8, { drops: [{ weight: '', reps: '', done: false }] });
+    const e = entry({ exercises: [{ exerciseId: 'squat', totalSets: 1, sets: [dropSet] }] });
+    expect(recapStats(e).volume).toBe(640);
+  });
 });
 
 describe('detectPRs', () => {
@@ -68,6 +84,14 @@ describe('detectPRs', () => {
 
   it('matching the record is not a PR', () => {
     const now = entry({ exercises: [{ exerciseId: 'bench', sets: [set(100, 5)] }] });
+    expect(detectPRs(now, [prevLog, now])).toEqual([]);
+  });
+
+  it('dropset reps/weight never count toward a PR (fatigue reps, not comparable)', () => {
+    // Mother set matches the record; a huge drop (fatigue reps at lower weight)
+    // must not fabricate a PR — drops live outside doneSets().
+    const dropSet = set(100, 5, { drops: [{ weight: '999', reps: '999', done: true }] });
+    const now = entry({ exercises: [{ exerciseId: 'bench', sets: [dropSet] }] });
     expect(detectPRs(now, [prevLog, now])).toEqual([]);
   });
 

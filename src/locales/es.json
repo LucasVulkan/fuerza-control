@@ -149,6 +149,10 @@
     "sessionLabel": "Sesión {{label}}",
     "trainerCredit": "por {{name}}",
     "addSetBtn": "Añadir serie",
+    "dropsetLabel": "Drops · sin descanso",
+    "addDropBtn": "Añadir drop",
+    "supersetHeader": "Superserie · {{count}} rondas · alternando",
+    "supersetFooter": "Descanso {{sec}}s tras cada ronda",
     "keyBadge": "CLAVE",
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión"
@@ -687,6 +691,11 @@
       "fixed": "Fija",
       "submax": "Submáx"
     },
+    "dropsetLabel": "Dropset en la última serie",
+    "dropsetHint": "Al terminar la última serie podrás añadir sub-series a peso decreciente, sin descanso.",
+    "dropsetSummary": "última con dropset",
+    "supersetLabel": "En superserie con el siguiente",
+    "supersetHint": "Se alternará con el siguiente ejercicio, sin descanso entre ambos. El descanso de este ejercicio no se usará.",
     "linkLabel": "Vinculación entre sesiones",
     "linkHint": "Comparte configuración e historial con el mismo ejercicio en otras sesiones. Editar uno edita todos.",
     "linkNone": "Ninguna",

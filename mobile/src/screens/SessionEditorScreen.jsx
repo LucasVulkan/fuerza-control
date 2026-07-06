@@ -63,6 +63,7 @@ function progMode(exConfig, def) {
 
 function ExerciseRow({
   exConfig, def, onPress, linkBadge,
+  isSSMember, ssConnectDown,
   onDragStart, onDragMove, onDragEnd,
   onSwipeDelete,
 }) {
@@ -159,7 +160,13 @@ function ExerciseRow({
 
   return (
     <Animated.View
-      style={[rs.row, { backgroundColor: bgColor }, { transform: [{ translateX: dragX }] }]}
+      style={[
+        rs.row,
+        isSSMember && rs.rowSS,
+        ssConnectDown && rs.rowSSConnected,
+        { backgroundColor: bgColor },
+        { transform: [{ translateX: dragX }] },
+      ]}
       {...panResponder.panHandlers}
     >
       <Animated.Text style={[rs.grip, { color: gripColor }]}>⠿</Animated.Text>
@@ -178,6 +185,7 @@ function ExerciseRow({
                 {t(`editor.badges.${mode}`)}
               </Text>
               {linkBadge ? <Text style={[rs.badge, rs.badgeLink]}>{linkBadge}</Text> : null}
+              {isSSMember ? <Text style={[rs.badge, rs.badgeSS]}>SS</Text> : null}
               {exConfig.isUnilateral ? <Text style={[rs.badge, rs.badgeUni]}>UNI</Text> : null}
               {exConfig.trackRpe ? <Text style={[rs.badge, rs.badgeRpe]}>RPE</Text> : null}
             </View>
@@ -214,6 +222,11 @@ const makeRs = (th) => StyleSheet.create({
   badgeLink:    { backgroundColor: withOpacity(th.colors.green, 0.12), color: th.colors.green },
   badgeUni:     { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
   badgeRpe:     { backgroundColor: withOpacity(th.colors.blue, 0.12), color: th.colors.blue },
+  badgeSS:      { backgroundColor: withOpacity(th.colors.accent, 0.14), color: th.colors.accent },
+  // Superset chain — continuous accent strip on the left; the connecting
+  // member's bottom border is dropped so it visually merges into the next row.
+  rowSS:          { borderLeftWidth: 3, borderLeftColor: th.colors.accent },
+  rowSSConnected: { borderBottomWidth: 0 },
   deleteLabel: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
   chevron: { fontSize: typography.lg, color: th.colors.muted2, flexShrink: 0 },
 });
@@ -437,6 +450,9 @@ export default function SessionEditorScreen({ navigation, route }) {
     ? template.exercises.find((ex) => ex.exerciseId === editingExId) ?? null
     : null;
   const editingDef = editingExId ? allExercises[editingExId] : null;
+  const editingExHasNext = editingExId
+    ? orderedExercises.findIndex((ex) => ex.exerciseId === editingExId) < orderedExercises.length - 1
+    : false;
 
   // The dragged item's content for the floating overlay
   const draggingExConfig = draggingId
@@ -541,14 +557,18 @@ export default function SessionEditorScreen({ navigation, route }) {
             <Text style={styles.emptyHint}>{t('editor.addExercise')}</Text>
           )}
 
-          {orderedExercises.map((exConfig) => {
+          {orderedExercises.map((exConfig, idx) => {
             const isDragging = draggingId === exConfig.exerciseId;
+            const prevEx = orderedExercises[idx - 1];
+            const isSSMember = !!exConfig.supersetWithNext || !!prevEx?.supersetWithNext;
             return (
               <View key={exConfig.exerciseId} style={[{ overflow: 'visible' }, isDragging && { opacity: 0 }]}>
                 <ExerciseRow
                   exConfig={exConfig}
                   def={allExercises[exConfig.exerciseId]}
                   linkBadge={linkBadgeFor(exConfig)}
+                  isSSMember={isSSMember}
+                  ssConnectDown={!!exConfig.supersetWithNext}
                   onPress={() => setEditingExId(exConfig.exerciseId)}
                   onDragStart={() => handleDragStart(exConfig.exerciseId)}
                   onDragMove={(dy) => handleDragMove(exConfig.exerciseId, dy)}
@@ -659,6 +679,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                   def={editingDef}
                   onClose={() => setEditingExId(null)}
                   navigation={navigation}
+                  hasNextExercise={editingExHasNext}
                 />
               </ScrollView>
             </KeyboardAvoidingView>

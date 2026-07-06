@@ -86,6 +86,11 @@ export default function ExerciseCard({
   onFieldChange,
   onToggleDone,
   onAddSet,
+  onAddDrop,
+  onDropFieldChange,
+  onToggleDropDone,
+  onRemoveDrop,
+  groupLabel,
   trainerName,
   clientNote,
   onClientNoteChange,
@@ -121,7 +126,13 @@ export default function ExerciseCard({
 
   const [hintSetIndex, setHintSetIndex] = useState(0);
 
-  const allDone              = setsState.length > 0 && setsState.every((s) => s.done);
+  // Dropset: checking the last work set is NOT the end of the exercise — the
+  // drops come next. Hold the auto-collapse until at least one drop exists and
+  // every drop is checked (adding a new undone drop re-opens the card).
+  const workDone  = setsState.length > 0 && setsState.every((s) => s.done);
+  const lastDrops = exConfig.dropset ? (setsState[setsState.length - 1]?.drops ?? []) : [];
+  const dropsDone = !exConfig.dropset || (lastDrops.length > 0 && lastDrops.every((d) => d.done));
+  const allDone   = workDone && dropsDone;
   const [collapsed,  setCollapsed]  = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const isCollapsed          = collapsed && !manualOpen;
@@ -316,7 +327,10 @@ export default function ExerciseCard({
               <Text style={styles.doneIconText}>✓</Text>
             </View>
             <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text style={styles.name}>{name}</Text>
+              <View style={styles.collapsedNameRow}>
+                <Text style={styles.name}>{name}</Text>
+                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
+              </View>
               <View style={styles.pillsRow}>
                 {setsState.map((set, i) => (
                   <SetPill key={i} set={set} index={i} fmt={fmt} />
@@ -341,7 +355,10 @@ export default function ExerciseCard({
               <Text style={styles.doneIconText}>✓</Text>
             </View>
             <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text style={styles.name}>{name}</Text>
+              <View style={styles.collapsedNameRow}>
+                <Text style={styles.name}>{name}</Text>
+                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
+              </View>
               <View style={styles.pillsRow}>
                 {setsState.map((set, i) => (
                   <SetPill key={i} set={set} index={i} fmt={fmt} />
@@ -374,6 +391,7 @@ export default function ExerciseCard({
               {/* Name row — badge inline to the right */}
               <View style={styles.nameRow}>
                 <Text style={styles.name} numberOfLines={2}>{name}</Text>
+                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
                 {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
               </View>
 
@@ -580,6 +598,47 @@ export default function ExerciseCard({
             })}
           </View>
 
+          {/* Dropset — sub-series on the last work set, no rest, shown once it's done */}
+          {exConfig.dropset && setsState.length > 0 && setsState[setsState.length - 1].done ? (
+            <View style={styles.dropBlock}>
+              <Text style={styles.dropBlockLabel}>{t('workout.dropsetLabel').toUpperCase()}</Text>
+              {(setsState[setsState.length - 1].drops ?? []).map((drop, di) => {
+                const prevDrop = lastExercise?.sets?.[setsState.length - 1]?.drops?.[di];
+                const prevDropWeight = prevDrop?.weight != null && prevDrop.weight !== ''
+                  ? String(toDisplay(prevDrop.weight)) : '';
+                const prevDropReps = prevDrop?.reps != null && prevDrop.reps !== ''
+                  ? String(prevDrop.reps) : '';
+                return (
+                  <View key={di} style={styles.dropRowWrap}>
+                    <View style={{ flex: 1 }}>
+                      <SetRow
+                        index={di}
+                        label={`D${di + 1}`}
+                        set={drop}
+                        inputType="weight_reps"
+                        weightDisplay={drop.weight !== '' && drop.weight != null ? String(toDisplay(drop.weight)) : ''}
+                        prevWeightDisplay={prevDropWeight}
+                        prevReps={prevDropReps}
+                        weightScrollStep={weightScrollStep}
+                        onWeightChange={(v) =>
+                          onDropFieldChange(di, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '')
+                        }
+                        onRepsChange={(v) => onDropFieldChange(di, 'reps', v)}
+                        onToggleDone={() => onToggleDropDone(di)}
+                      />
+                    </View>
+                    <TouchableOpacity style={styles.dropRemoveBtn} onPress={() => onRemoveDrop(di)} hitSlop={8}>
+                      <Text style={styles.dropRemoveText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+              <TouchableOpacity style={styles.addDropBtn} onPress={onAddDrop} activeOpacity={0.7}>
+                <Text style={styles.addDropText}>+ {t('workout.addDropBtn')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           {/* Client feedback note */}
           {onClientNoteChange && (noteInputOpen || hasClientNote) ? (
             <View style={styles.clientNoteWrap}>
@@ -655,6 +714,21 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   2,
     overflow:          'hidden',
     letterSpacing:     0.5,
+  },
+  collapsedNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  groupBadge: {
+    fontSize:          typography.xs,
+    fontWeight:        typography.bold,
+    color:             th.colors.accent,
+    backgroundColor:   withOpacity(th.colors.accent, 0.12),
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical:   2,
+    overflow:          'hidden',
   },
   target: {
     fontSize: typography.xs,
@@ -780,6 +854,44 @@ const makeStyles = (th) => StyleSheet.create({
   // Sets
   setList: {
     paddingHorizontal: spacing.md,
+  },
+
+  // Dropset sub-block
+  dropBlock: {
+    marginHorizontal: spacing.md,
+    marginTop:        spacing.sm,
+    paddingLeft:      spacing.sm,
+    borderLeftWidth:  2,
+    borderLeftColor:  th.colors.orange ?? th.colors.accent,
+  },
+  dropBlockLabel: {
+    fontSize:      typography.xs - 1,
+    fontWeight:    typography.bold,
+    color:         th.colors.orange ?? th.colors.accent,
+    letterSpacing: 0.8,
+    marginBottom:  spacing.xs,
+  },
+  dropRowWrap: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  dropRemoveBtn: {
+    padding: spacing.xs,
+  },
+  dropRemoveText: {
+    fontSize: typography.sm,
+    color:    th.colors.muted2,
+  },
+  addDropBtn: {
+    marginTop:       spacing.xs,
+    paddingVertical: spacing.xs + 2,
+    alignItems:      'center',
+  },
+  addDropText: {
+    fontSize:   typography.xs,
+    color:      th.colors.muted,
+    fontWeight: typography.medium,
   },
 
   // Add set

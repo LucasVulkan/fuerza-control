@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
-import { recapStats, detectPRs, compareToLast, doneSets } from '../../../src/utils/sessionRecap';
+import { recapStats, detectPRs, compareToLast, doneSets, doneDrops } from '../../../src/utils/sessionRecap';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -78,12 +78,26 @@ export default function SessionRecapScreen({ navigation, route }) {
     exerciseId: ex.exerciseId, sets: doneSets(ex), note: ex.note ?? null, delta: null,
   }));
 
+  // Dropset — the last work set may carry sub-series at decreasing weight;
+  // shown chained onto the line with "→" so they read as a continuation.
+  function dropsSuffix(sets) {
+    const drops = doneDrops(sets[sets.length - 1] ?? {});
+    if (!drops.length) return '';
+    return ' → ' + drops.map((d) => {
+      const w = parseFloat(d.weight);
+      if (w > 0 && d.reps) return `${fmt(w)}×${d.reps}`;
+      if (d.reps)          return `${d.reps}`;
+      return '·';
+    }).join(' → ');
+  }
+
   function setsLine(sets) {
     if (!sets.length) return '—';
     const weights = sets.map((s) => parseFloat(s.weight)).filter((w) => w > 0);
     const sameW = weights.length === sets.length && weights.every((w) => w === weights[0]);
     if (sameW) {
-      return `${fmt(weights[0])} × ${sets.map((s) => s.reps || (s.time ? `${s.time}s` : '·')).join(' · ')}`;
+      return `${fmt(weights[0])} × ${sets.map((s) => s.reps || (s.time ? `${s.time}s` : '·')).join(' · ')}`
+        + dropsSuffix(sets);
     }
     return sets.map((s) => {
       const w = parseFloat(s.weight);
@@ -91,7 +105,7 @@ export default function SessionRecapScreen({ navigation, route }) {
       if (s.reps)          return `${s.reps}`;
       if (s.time)          return `${s.time}s`;
       return '·';
-    }).join(' · ');
+    }).join(' · ') + dropsSuffix(sets);
   }
 
   function deltaChip(delta) {

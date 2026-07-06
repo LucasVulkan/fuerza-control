@@ -11,6 +11,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard from '../components/workout/ExerciseCard';
+import SupersetBlock from '../components/workout/SupersetBlock';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
@@ -216,6 +217,10 @@ export default function WorkoutScreen() {
   const updateSetField        = useStore((s) => s.updateSetField);
   const toggleSetDone         = useStore((s) => s.toggleSetDone);
   const addSetToSession       = useStore((s) => s.addSetToSession);
+  const addDropToLastSet      = useStore((s) => s.addDropToLastSet);
+  const updateDropField       = useStore((s) => s.updateDropField);
+  const toggleDropDone        = useStore((s) => s.toggleDropDone);
+  const removeDropFromLastSet = useStore((s) => s.removeDropFromLastSet);
   const updateSessionNotes    = useStore((s) => s.updateSessionNotes);
   const saveSession           = useStore((s) => s.saveSession);
   const discardSession        = useStore((s) => s.discardSession);
@@ -263,6 +268,15 @@ export default function WorkoutScreen() {
       : lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
     overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
   }));
+
+  // Group consecutive exercises chained via exConfig.supersetWithNext into
+  // superset blocks; everything else stays a standalone 1-item "group".
+  const exerciseGroups = [];
+  for (const item of exercises) {
+    const prevGroup = exerciseGroups[exerciseGroups.length - 1];
+    if (prevGroup?.[prevGroup.length - 1].exConfig.supersetWithNext) prevGroup.push(item);
+    else exerciseGroups.push([item]);
+  }
 
   // Free session flag
   const isFree = activeSession.templateId === '__free__';
@@ -372,24 +386,42 @@ export default function WorkoutScreen() {
             </View>
           )}
 
-          {exercises.map(({ exConfig, def, setsState, lastExercise, overrideEx }) => (
-            <ExerciseCard
-              key={exConfig.exerciseId}
-              exConfig={exConfig}
-              def={def}
-              setsState={setsState}
-              lastExercise={lastExercise}
-              overrideEx={overrideEx}
-              onFieldChange={(setIdx, field, value) =>
-                updateSetField(exConfig.exerciseId, setIdx, field, value)
-              }
-              onToggleDone={(setIdx) => toggleSetDone(exConfig.exerciseId, setIdx)}
-              onAddSet={() => addSetToSession(exConfig.exerciseId)}
-              trainerName={template?.trainerName}
-              clientNote={activeSession.exerciseNotes?.[exConfig.exerciseId] ?? ''}
-              onClientNoteChange={(text) => setExerciseNote(exConfig.exerciseId, text)}
-            />
-          ))}
+          {exerciseGroups.map((group) => {
+            const isSuperset = group.length > 1;
+            const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
+              <ExerciseCard
+                key={exConfig.exerciseId}
+                exConfig={exConfig}
+                def={def}
+                setsState={setsState}
+                lastExercise={lastExercise}
+                overrideEx={overrideEx}
+                groupLabel={isSuperset ? `A${idx + 1}` : undefined}
+                onFieldChange={(setIdx, field, value) =>
+                  updateSetField(exConfig.exerciseId, setIdx, field, value)
+                }
+                onToggleDone={(setIdx) => toggleSetDone(exConfig.exerciseId, setIdx)}
+                onAddSet={() => addSetToSession(exConfig.exerciseId)}
+                onAddDrop={() => addDropToLastSet(exConfig.exerciseId)}
+                onDropFieldChange={(dropIdx, field, value) =>
+                  updateDropField(exConfig.exerciseId, dropIdx, field, value)
+                }
+                onToggleDropDone={(dropIdx) => toggleDropDone(exConfig.exerciseId, dropIdx)}
+                onRemoveDrop={(dropIdx) => removeDropFromLastSet(exConfig.exerciseId, dropIdx)}
+                trainerName={template?.trainerName}
+                clientNote={activeSession.exerciseNotes?.[exConfig.exerciseId] ?? ''}
+                onClientNoteChange={(text) => setExerciseNote(exConfig.exerciseId, text)}
+              />
+            ));
+            if (!isSuperset) return cards[0];
+            const rounds  = Math.max(...group.map((g) => g.exConfig.sets ?? 0));
+            const restSec = group[group.length - 1].exConfig.restSec ?? 90;
+            return (
+              <SupersetBlock key={group[0].exConfig.exerciseId} rounds={rounds} restSec={restSec}>
+                {cards}
+              </SupersetBlock>
+            );
+          })}
 
           {/* Ad-hoc exercises added during this session */}
           {(activeSession.adHocExercises ?? []).map((adHoc) => {

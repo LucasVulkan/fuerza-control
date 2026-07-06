@@ -207,10 +207,12 @@ function computeInitial(exConfig, def) {
     incrFixedValue: initProg.increment.value        ?? 2.5,
     incrPctValue:   initProg.increment.pct          ?? 5,
     incrMin:        initProg.increment.minIncrement ?? 0,
+    dropset:        exConfig.dropset ?? false,
+    supersetWithNext: exConfig.supersetWithNext ?? false,
   };
 }
 
-export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation }) {
+export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation, hasNextExercise }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }                  = useTranslation();
@@ -245,6 +247,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [incrFixedValue, setIncrFixedValue] = useState(i.incrFixedValue);
   const [incrPctValue,   setIncrPctValue]   = useState(i.incrPctValue);
   const [incrMin,        setIncrMin]        = useState(i.incrMin);
+  const [dropset,        setDropset]        = useState(i.dropset);
+  const [supersetWithNext, setSupersetWithNext] = useState(i.supersetWithNext);
   const [sheetOpen,      setSheetOpen]      = useState(false);
 
   const stateRef  = useRef(null);
@@ -257,6 +261,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
     trackRpe, evalMaxRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
+    dropset, supersetWithNext,
   };
 
   const commitValues = useCallback((s) => {
@@ -270,6 +275,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
       trackRpe:     s.trackRpe,
+      dropset:      s.dropset || null,
+      supersetWithNext: s.supersetWithNext || null,
       // 'fixed' keeps double_progression so the target range still renders in
       // the workout; 'submax' is the marker that distinguishes the two modes.
       progressionModel: s.progMode === 'auto'
@@ -316,7 +323,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
       trackRpe, evalMaxRpe,
-      progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin]);
+      progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
+      supersetWithNext]);
 
   useEffect(() => {
     return () => {
@@ -334,7 +342,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     progMode !== i.progMode ||
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
     incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
-    incrPctValue !== i.incrPctValue || incrMin !== i.incrMin;
+    incrPctValue !== i.incrPctValue || incrMin !== i.incrMin ||
+    dropset !== i.dropset || supersetWithNext !== i.supersetWithNext;
 
   function handleRestore() {
     clearTimeout(timerRef.current);
@@ -348,6 +357,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setEvalMode(i.evalMode);   setEvalPct(i.evalPct);
     setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue);
     setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
+    setDropset(i.dropset);
+    setSupersetWithNext(i.supersetWithNext);
     commitValues(i);
     dirtyRef.current = false;
   }
@@ -379,6 +390,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setEvalMode(v.evalMode);   setEvalPct(v.evalPct);
     setIncrType(v.incrType);   setIncrFixedValue(v.incrFixedValue);
     setIncrPctValue(v.incrPctValue); setIncrMin(v.incrMin);
+    setDropset(v.dropset);
+    setSupersetWithNext(v.supersetWithNext);
   }
 
   function handleLinkSelect(gid) {
@@ -424,7 +437,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     : progMode === 'submax'
       ? t('workout.submax', 'submáx')
       : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
-  const volumeLine = `${sets} × ${rangeTxt} · ${restSec} s`;
+  const volumeLine = `${sets} × ${rangeTxt} · ${restSec} s`
+    + (dropset ? ` · ${t('exerciseEditor.dropsetSummary')}` : '');
 
   const incTxt = progType === 'reps'
     ? String(incrFixedValue)
@@ -518,6 +532,28 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
               if (!v && evalMode === 'rpe') setEvalMode('all_complete');
             }}
           />
+          {!isTime && (
+            <>
+              <View style={styles.optionsDivider} />
+              <ToggleRow
+                label={t('exerciseEditor.dropsetLabel')}
+                value={dropset}
+                onChange={setDropset}
+              />
+              {dropset && <Text style={styles.dropsetHint}>{t('exerciseEditor.dropsetHint')}</Text>}
+            </>
+          )}
+          {hasNextExercise && (
+            <>
+              <View style={styles.optionsDivider} />
+              <ToggleRow
+                label={t('exerciseEditor.supersetLabel')}
+                value={supersetWithNext}
+                onChange={setSupersetWithNext}
+              />
+              {supersetWithNext && <Text style={styles.dropsetHint}>{t('exerciseEditor.supersetHint')}</Text>}
+            </>
+          )}
           <View style={styles.optionsDivider} />
           <View style={styles.tempoRow}>
             <View style={styles.tempoMeta}>
@@ -937,6 +973,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     gap:               spacing.sm,
+  },
+  dropsetHint: {
+    fontSize:          typography.xs,
+    color:             th.colors.muted2,
+    lineHeight:        typography.xs * 1.5,
+    paddingHorizontal: spacing.md,
+    paddingBottom:     spacing.sm,
+    marginTop:         -spacing.xs,
   },
   tempoMeta: { flex: 1, gap: 2 },
   tempoHint: { fontSize: 9, color: th.colors.muted2, lineHeight: 13, marginTop: 2 },

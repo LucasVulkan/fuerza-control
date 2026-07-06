@@ -257,6 +257,7 @@ function InputCell({
 export default function SetRow({
   index,
   set,
+  label,               // overrides the default "S{index+1}" (used by drop rows: "D1"…)
   inputType,           // 'weight_reps' | 'reps' | 'time' | 'weight_time'
   weightDisplay,
   prevWeightDisplay,
@@ -279,14 +280,15 @@ export default function SetRow({
   onRpeChange,
 }) {
   const styles = useThemedStyles(makeStyles);
+  const numLabel = label ?? `S${index + 1}`;
   return (
     <View style={styles.row}>
       {onCopyPrev ? (
         <TouchableOpacity onPress={onCopyPrev} hitSlop={8}>
-          <Text style={[styles.setNum, isActive && styles.setNumActive]}>S{index + 1}</Text>
+          <Text style={[styles.setNum, isActive && styles.setNumActive]}>{numLabel}</Text>
         </TouchableOpacity>
       ) : (
-        <Text style={[styles.setNum, isActive && styles.setNumActive]}>S{index + 1}</Text>
+        <Text style={[styles.setNum, isActive && styles.setNumActive]}>{numLabel}</Text>
       )}
 
       {/* ── weight_reps ── */}

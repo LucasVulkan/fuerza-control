@@ -18,6 +18,11 @@ export function doneSets(ex) {
   );
 }
 
+/** Dropset sub-series that count: explicitly done or carrying any data. */
+export function doneDrops(set) {
+  return (set.drops ?? []).filter((d) => d.done || d.weight !== '' || d.reps !== '');
+}
+
 /**
  * Totals for the hero row: volume (kg), sets done vs planned.
  * Planned comes from entry.plannedSets (captured at save time — skipped
@@ -33,6 +38,10 @@ export function recapStats(entry) {
     for (const s of done) {
       const w = num(s.weight), r = num(s.reps);
       if (w > 0 && r > 0) volume += w * r;
+      for (const d of doneDrops(s)) {
+        const dw = num(d.weight), dr = num(d.reps);
+        if (dw > 0 && dr > 0) volume += dw * dr;
+      }
     }
   }
   const setsPlanned = entry.plannedSets != null ? entry.plannedSets : fallbackPlanned;
