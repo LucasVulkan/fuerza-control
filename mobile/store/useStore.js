@@ -205,6 +205,7 @@ export const useStore = create(
       tagRegistry: [],   // [{ id, name }] — global tag list
       userPrograms: {},
       customExercises: {},
+      blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
       _editSnapshot: null,
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
@@ -830,6 +831,49 @@ export const useStore = create(
         }));
       },
 
+      // ── Conditioning blocks (AMRAP/EMOM/for time) — editor actions ──────────
+      // Same immutable pattern as updateExerciseParams/reorderExercise: read
+      // the effective template, write the copy to userPrograms.
+
+      addBlockToSession: (templateId, block) => {
+        const template = get().getEffectiveTemplate(templateId);
+        if (!template) return;
+        const blocks = [...(template.blocks ?? []), block];
+        set((s) => ({
+          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+        }));
+      },
+
+      updateBlock: (templateId, blockId, updates) => {
+        const template = get().getEffectiveTemplate(templateId);
+        if (!template) return;
+        const blocks = (template.blocks ?? []).map((b) => b.id === blockId ? { ...b, ...updates } : b);
+        set((s) => ({
+          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+        }));
+      },
+
+      removeBlockFromSession: (templateId, blockId) => {
+        const template = get().getEffectiveTemplate(templateId);
+        if (!template) return;
+        const blocks = (template.blocks ?? []).filter((b) => b.id !== blockId);
+        set((s) => ({
+          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+        }));
+      },
+
+      // Presets — frozen copies (device-global, not synced): inserting one
+      // into a session just copies its fields with a fresh block id.
+      saveBlockPreset: (block) => {
+        const { id: _id, ...rest } = block;
+        const preset = { presetId: generateId('bpre'), ...rest };
+        set((s) => ({ blockPresets: [...(s.blockPresets ?? []), preset] }));
+      },
+
+      deleteBlockPreset: (presetId) => {
+        set((s) => ({ blockPresets: (s.blockPresets ?? []).filter((p) => p.presetId !== presetId) }));
+      },
+
       addExercise: (templateId, exerciseId) => {
         const template = get().getEffectiveTemplate(templateId);
         const { exerciseLibrary, customExercises } = get();
@@ -995,6 +1039,7 @@ export const useStore = create(
           // The copy starts unlinked — otherwise edits to it would propagate
           // back to the original through the link group.
           exercises: (src.exercises ?? []).map((ex) => ({ ...ex, linkGroup: null })),
+          blocks: (src.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
         };
         const newDays = [...days, { sessionTemplateId: tplId, label }];
 
@@ -1126,6 +1171,7 @@ export const useStore = create(
             id: newTplId,
             programId,
             exercises: (tpl?.exercises ?? []).map((ex) => ({ ...ex, linkGroup: remapGroup(ex.linkGroup) })),
+            blocks: (tpl?.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
           };
           return { sessionTemplateId: newTplId, label };
         });
@@ -3226,6 +3272,7 @@ export const useStore = create(
         activeSession: state.activeSession,
         userPrograms: state.userPrograms,
         customExercises: state.customExercises,
+        blockPresets: state.blockPresets,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,
