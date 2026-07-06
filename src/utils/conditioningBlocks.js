@@ -19,20 +19,34 @@ export function amrapFinished(block, startedAt, now) {
 }
 
 /**
+ * Total EMOM intervals. A "round" is one full cycle through the movements:
+ * in rotate mode a round spans movements.length intervals (so every movement
+ * is done the same number of times); in 'all' mode each interval already
+ * covers every movement, so a round IS an interval. A single-movement (or
+ * empty) EMOM has one interval per round either way.
+ */
+export function emomTotalIntervals(block) {
+  const rounds = block.rounds ?? 1;
+  const moves  = block.movements?.length ?? 0;
+  if (block.emomMode === 'all' || moves <= 1) return rounds;
+  return rounds * moves;
+}
+
+/**
  * Which EMOM interval is live right now.
- * `interval` is 0-based and clamps to rounds-1 once the whole block has
- * elapsed (kill-recovery: an arbitrarily large `now` still resolves cleanly).
+ * `interval` is 0-based and clamps to the last interval once the whole block
+ * has elapsed (kill-recovery: an arbitrarily large `now` still resolves).
  */
 export function emomPosition(block, startedAt, now) {
   const intervalSec = block.intervalSec ?? 60;
-  const rounds = block.rounds ?? 1;
+  const total = emomTotalIntervals(block);
   if (startedAt == null) {
     return { interval: 0, intervalRemaining: intervalSec, finished: false };
   }
   const elapsed = Math.floor((now - startedAt) / 1000);
-  const totalSec = intervalSec * rounds;
+  const totalSec = intervalSec * total;
   if (elapsed >= totalSec) {
-    return { interval: rounds - 1, intervalRemaining: 0, finished: true };
+    return { interval: total - 1, intervalRemaining: 0, finished: true };
   }
   const interval = Math.floor(elapsed / intervalSec);
   const intervalRemaining = intervalSec - (elapsed % intervalSec);
@@ -70,7 +84,7 @@ export function buildBlockResult(block, blockState, now) {
   }
 
   if (block.format === 'emom') {
-    const total = block.rounds ?? 0;
+    const total = emomTotalIntervals(block);
     const pos = emomPosition(block, startedAt, now);
     const transpired = pos.finished ? total : pos.interval;
     const completed = Math.max(0, transpired - (failed?.length ?? 0));
@@ -138,6 +152,6 @@ export function compareBlockResults(format, now, prev) {
 /** Rough duration estimate for sessionStats — same role as a set's work+rest. */
 export function blockEstimatedSec(block) {
   if (block.format === 'amrap') return block.capSec ?? 600;
-  if (block.format === 'emom') return (block.intervalSec ?? 60) * (block.rounds ?? 1);
+  if (block.format === 'emom') return (block.intervalSec ?? 60) * emomTotalIntervals(block);
   return block.capSec ?? 600; // for_time
 }

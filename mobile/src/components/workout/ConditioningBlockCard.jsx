@@ -11,7 +11,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import {
-  amrapRemaining, emomPosition, forTimeElapsed, currentMovement,
+  amrapRemaining, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
   buildBlockResult, formatBlockScore,
 } from '../../../../src/utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -97,6 +97,7 @@ export default function ConditioningBlockCard({
       : t('blocks.meta.forTime', { rounds: block.rounds ?? 0, count });
 
   // Live derivations (running only; utils clamp on their own)
+  const emomTotal = block.format === 'emom' ? emomTotalIntervals(block) : 0;
   const pos       = block.format === 'emom' && state?.startedAt ? emomPosition(block, state.startedAt, now) : null;
   const remaining = block.format === 'amrap' && state?.startedAt ? amrapRemaining(block, state.startedAt, now) : null;
   const ft        = block.format === 'for_time' && state?.startedAt ? forTimeElapsed(block, state.startedAt, now) : null;
@@ -267,7 +268,7 @@ export default function ConditioningBlockCard({
       {block.format === 'emom' && pos && (
         <>
           <Text style={styles.clockSub}>
-            {t('blocks.intervalOf', { k: pos.interval + 1, n: block.rounds ?? 0 })}
+            {t('blocks.intervalOf', { k: pos.interval + 1, n: emomTotal })}
           </Text>
           <Text style={[styles.bigClock, { color }]}>{fmtClock(pos.intervalRemaining)}</Text>
 
@@ -276,7 +277,7 @@ export default function ConditioningBlockCard({
             {(block.emomMode === 'all' ? movements : [currentMovement(block, pos.interval)].filter(Boolean))
               .map((m, i) => <Text key={i} style={styles.moveTxt}>{moveLine(m)}</Text>)}
           </View>
-          {block.emomMode !== 'all' && movements.length > 1 && pos.interval + 1 < (block.rounds ?? 0) && (
+          {block.emomMode !== 'all' && movements.length > 1 && pos.interval + 1 < emomTotal && (
             <Text style={styles.nextUpTxt}>
               {t('blocks.nextUp')}: {moveLine(currentMovement(block, pos.interval + 1))}
             </Text>
@@ -284,7 +285,7 @@ export default function ConditioningBlockCard({
 
           {/* Interval dots — tap a past one to toggle done/fail */}
           <View style={styles.dotsGrid}>
-            {Array.from({ length: block.rounds ?? 0 }, (_, i) => {
+            {Array.from({ length: emomTotal }, (_, i) => {
               const isPast    = i < pos.interval;
               const isCurrent = i === pos.interval;
               const isFailed  = failed.includes(i);

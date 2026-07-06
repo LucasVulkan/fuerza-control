@@ -214,8 +214,8 @@
     "meta": {
       "amrap_one": "{{min}} min · {{count}} movimiento",
       "amrap_other": "{{min}} min · {{count}} movimientos",
-      "emom_one": "{{n}} × {{interval}} · {{count}} movimiento",
-      "emom_other": "{{n}} × {{interval}} · {{count}} movimientos",
+      "emom_one": "{{n}} rondas · {{interval}} · {{count}} movimiento",
+      "emom_other": "{{n}} rondas · {{interval}} · {{count}} movimientos",
       "forTime_one": "{{rounds}} rondas · {{count}} movimiento",
       "forTime_other": "{{rounds}} rondas · {{count}} movimientos"
     }

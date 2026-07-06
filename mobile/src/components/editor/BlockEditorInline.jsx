@@ -309,7 +309,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
               />
             </View>
             <View style={styles.fieldRow}>
-              <StepField label={t('blocks.roundsLabel')} value={rounds} onChange={setRounds} min={2} max={40} />
+              <StepField label={t('blocks.roundsLabel')} value={rounds} onChange={setRounds} min={1} max={40} />
               <View style={{ flex: 1 }} />
             </View>
             {movements.length >= 2 && (

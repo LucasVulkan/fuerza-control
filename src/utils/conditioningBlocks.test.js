@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  amrapRemaining, amrapFinished, emomPosition, forTimeElapsed, currentMovement,
+  amrapRemaining, amrapFinished, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
   buildBlockResult, formatBlockScore, compareBlockResults, blockEstimatedSec,
 } from './conditioningBlocks';
 
@@ -60,6 +60,28 @@ describe('emomPosition', () => {
     expect(pos.finished).toBe(true);
     expect(pos.interval).toBe(9);
   });
+
+  it('a "round" is a full cycle: rotate mode spans movements.length intervals', () => {
+    // 5 rounds × 3 movements = 15 intervals; every movement done 5 times.
+    const rot = { format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] };
+    expect(emomTotalIntervals(rot)).toBe(15);
+    // interval 14 is the last, still live at 14×60s
+    expect(emomPosition(rot, T0, T0 + 14 * 60_000).interval).toBe(14);
+    expect(emomPosition(rot, T0, T0 + 14 * 60_000).finished).toBe(false);
+    // finished only after all 15 intervals
+    expect(emomPosition(rot, T0, T0 + 15 * 60_000).finished).toBe(true);
+  });
+
+  it("'all' mode: a round is a single interval (every movement each minute)", () => {
+    const all = { format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'all', movements: [{}, {}, {}] };
+    expect(emomTotalIntervals(all)).toBe(5);
+    expect(emomPosition(all, T0, T0 + 5 * 60_000).finished).toBe(true);
+  });
+
+  it('single-movement EMOM: rounds == intervals either way', () => {
+    const one = { format: 'emom', intervalSec: 60, rounds: 8, emomMode: 'rotate', movements: [{}] };
+    expect(emomTotalIntervals(one)).toBe(8);
+  });
 });
 
 describe('forTimeElapsed', () => {
@@ -110,6 +132,13 @@ describe('buildBlockResult', () => {
     const block = { format: 'emom', intervalSec: 60, rounds: 10 };
     const state = { startedAt: T0, failed: [3, 7], timeSec: null };
     expect(buildBlockResult(block, state, T0 + 600_000)).toEqual({ completed: 8, total: 10, failed: [3, 7] });
+  });
+
+  it('emom rotate: score total is the full interval count, not the round count', () => {
+    // 5 rounds × 3 movements = 15 intervals; finished, one failed → 14/15.
+    const block = { format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] };
+    const state = { startedAt: T0, failed: [2], timeSec: null };
+    expect(buildBlockResult(block, state, T0 + 15 * 60_000)).toEqual({ completed: 14, total: 15, failed: [2] });
   });
 
   it('for_time: finished (timeSec set) → capped derived from the frozen score', () => {
@@ -177,6 +206,9 @@ describe('blockEstimatedSec', () => {
   });
   it('emom uses intervalSec × rounds', () => {
     expect(blockEstimatedSec({ format: 'emom', intervalSec: 60, rounds: 10 })).toBe(600);
+  });
+  it('emom rotate: intervalSec × (rounds × movements)', () => {
+    expect(blockEstimatedSec({ format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] })).toBe(900);
   });
   it('for_time falls back to 600 with no cap', () => {
     expect(blockEstimatedSec({ format: 'for_time', capSec: null })).toBe(600);
