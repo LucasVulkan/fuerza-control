@@ -38,6 +38,7 @@ import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
+import { forTimeElapsed } from '../../src/utils/conditioningBlocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -110,6 +111,7 @@ const INITIAL_ACTIVE_SESSION = {
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
+  blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
 };
 
 const INITIAL_UI = {
@@ -1621,6 +1623,86 @@ export const useStore = create(
               drops.filter((_, i) => i !== dropIndex)),
           },
         }));
+      },
+
+      // ── Conditioning blocks — workout runtime ───────────────────────────────
+      // Wall-clock only (spec §4): the source of truth is startedAt; the UI
+      // derives everything else per render via src/utils/conditioningBlocks.
+
+      startBlock: (blockId) => {
+        const { activeSession } = get();
+        const template = activeSession.templateId
+          ? get().getEffectiveTemplate(activeSession.templateId) : null;
+        const block = template?.blocks?.find((b) => b.id === blockId);
+        if (!block) return;
+
+        const startedAt = Date.now();
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            blockState: {
+              ...(s.activeSession.blockState ?? {}),
+              [blockId]: { startedAt, finishedAt: null, rounds: 0, extraReps: 0, failed: [], timeSec: null },
+            },
+          },
+        }));
+
+        // A block has its own clock — the rest timer (and its notification)
+        // yields to it.
+        get().stopRestTimer();
+
+        // Native chronometer notification for formats with a known end
+        // (amrap: cap; emom: interval×rounds). for_time has no known end.
+        const endMs = block.format === 'amrap' && block.capSec ? block.capSec * 1000
+          : block.format === 'emom' ? (block.intervalSec ?? 60) * (block.rounds ?? 1) * 1000
+          : null;
+        if (endMs) {
+          const name = block.name || i18n.t(`blocks.formats.${block.format}`);
+          showCountdownNotification(name, startedAt + endMs).catch(() => {});
+        }
+      },
+
+      updateBlockState: (blockId, patch) => {
+        set((s) => {
+          const current = s.activeSession.blockState?.[blockId];
+          if (!current) return s;
+          return {
+            activeSession: {
+              ...s.activeSession,
+              blockState: { ...s.activeSession.blockState, [blockId]: { ...current, ...patch } },
+            },
+          };
+        });
+      },
+
+      finishBlock: (blockId) => {
+        const { activeSession } = get();
+        const st = activeSession.blockState?.[blockId];
+        if (!st || st.finishedAt) return;
+        const template = activeSession.templateId
+          ? get().getEffectiveTemplate(activeSession.templateId) : null;
+        const block = template?.blocks?.find((b) => b.id === blockId);
+
+        const patch = { finishedAt: Date.now() };
+        // for_time: freeze the score at the moment of finishing (unless the
+        // athlete's time was already set, e.g. reopened + refinished).
+        if (block?.format === 'for_time' && st.timeSec == null) {
+          patch.timeSec = forTimeElapsed(block, st.startedAt, Date.now()).elapsedSec;
+        }
+        get().updateBlockState(blockId, patch);
+
+        // Drop the block's countdown notification — but never kill an active
+        // rest timer's (they share the same native notification slot).
+        if (!get().ui.restTimer.active) dismissCountdownNotification().catch(() => {});
+      },
+
+      resetBlock: (blockId) => {
+        set((s) => {
+          const next = { ...(s.activeSession.blockState ?? {}) };
+          delete next[blockId];
+          return { activeSession: { ...s.activeSession, blockState: next } };
+        });
+        if (!get().ui.restTimer.active) dismissCountdownNotification().catch(() => {});
       },
 
       getProgressionRecommendation: (templateId, exerciseId) => {
@@ -3295,7 +3377,7 @@ export const useStore = create(
         if (state.activeSession?.templateId) {
           const age = Date.now() - (state.activeSession.startedAt ?? 0);
           if (age > 12 * 60 * 60 * 1000) {
-            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '' };
+            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '', blockState: {} };
           }
         }
 

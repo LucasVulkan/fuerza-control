@@ -12,6 +12,7 @@ import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard from '../components/workout/ExerciseCard';
 import SupersetBlock from '../components/workout/SupersetBlock';
+import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
@@ -232,6 +233,10 @@ export default function WorkoutScreen() {
   const addAdHocSet           = useStore((s) => s.addAdHocSet);
   const updateFreeSessionName = useStore((s) => s.updateFreeSessionName);
   const setExerciseNote       = useStore((s) => s.setExerciseNote);
+  const startBlock            = useStore((s) => s.startBlock);
+  const updateBlockState      = useStore((s) => s.updateBlockState);
+  const finishBlock           = useStore((s) => s.finishBlock);
+  const resetBlock            = useStore((s) => s.resetBlock);
 
   // Derive template + exercises
   const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
@@ -451,6 +456,20 @@ export default function WorkoutScreen() {
               />
             );
           })}
+
+          {/* Conditioning blocks — after all strength work (spec §2.1) */}
+          {(template?.blocks ?? []).map((block) => (
+            <ConditioningBlockCard
+              key={block.id}
+              block={block}
+              state={activeSession.blockState?.[block.id] ?? null}
+              allExercises={allExercises}
+              onStart={() => startBlock(block.id)}
+              onUpdate={(patch) => updateBlockState(block.id, patch)}
+              onFinish={() => finishBlock(block.id)}
+              onReset={() => resetBlock(block.id)}
+            />
+          ))}
 
           {/* Add exercise to session (ad-hoc) */}
           <TouchableOpacity
