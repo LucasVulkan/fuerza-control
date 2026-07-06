@@ -23,6 +23,9 @@ import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
+import BlockEditorInline from '../components/editor/BlockEditorInline';
+import DragSheet from '../components/DragSheet';
+import { generateId } from '../../../src/utils/formatters';
 
 // LayoutAnimation must be enabled explicitly on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -55,6 +58,41 @@ function progMode(exConfig, def) {
   const prog = resolveProgressionConfig(exConfig, def);
   if (prog.type !== 'none') return 'auto';
   return (exConfig.progressionModel ?? def?.progressionModel) === 'submax' ? 'submax' : 'fixed';
+}
+
+// ─── Block row meta + badges ───────────────────────────────────────────────────
+
+const BLOCK_BADGE_STYLE = {
+  amrap:    'badgeBlockAmrap',
+  emom:     'badgeBlockEmom',
+  for_time: 'badgeBlockForTime',
+};
+
+function blockMeta(block, t) {
+  const count = block.movements?.length ?? 0;
+  if (block.format === 'amrap') {
+    return t('blocks.meta.amrap', { count, min: Math.round((block.capSec ?? 600) / 60) });
+  }
+  if (block.format === 'emom') {
+    const mm = Math.floor((block.intervalSec ?? 60) / 60);
+    const ss = (block.intervalSec ?? 60) % 60;
+    return t('blocks.meta.emom', { count, n: block.rounds ?? 10, interval: `${mm}:${String(ss).padStart(2, '0')}` });
+  }
+  return t('blocks.meta.forTime', { count, rounds: block.rounds ?? 3 });
+}
+
+function defaultBlock() {
+  return {
+    id: generateId('blk'),
+    format: 'amrap',
+    capSec: 600,
+    intervalSec: null,
+    rounds: null,
+    emomMode: 'rotate',
+    movements: [],
+    name: null,
+    notes: null,
+  };
 }
 
 // ─── ExerciseRow ──────────────────────────────────────────────────────────────
@@ -229,7 +267,45 @@ const makeRs = (th) => StyleSheet.create({
   rowSSConnected: { borderBottomWidth: 0 },
   deleteLabel: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
   chevron: { fontSize: typography.lg, color: th.colors.muted2, flexShrink: 0 },
+  badgeBlockAmrap:   { backgroundColor: withOpacity(th.colors.accent, 0.12), color: th.colors.accent },
+  badgeBlockEmom:    { backgroundColor: withOpacity(th.colors.blue, 0.12),   color: th.colors.blue },
+  badgeBlockForTime: { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
+  removeBtn: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
 });
+
+// ─── BlockRow ─────────────────────────────────────────────────────────────────
+// No drag, no swipe (v1 — few blocks per session, order = creation order).
+
+function BlockRow({ block, onPress, onRemove }) {
+  const { t } = useTranslation();
+  const rs = useThemedStyles(makeRs);
+
+  return (
+    <View style={rs.row}>
+      <TouchableOpacity
+        style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+          <Text style={rs.exName} numberOfLines={1}>
+            {block.name ?? t(`blocks.formats.${block.format}`)}
+          </Text>
+          <View style={rs.metaRow}>
+            <Text style={[rs.badge, rs[BLOCK_BADGE_STYLE[block.format]]]}>
+              {t(`blocks.formats.${block.format}`).toUpperCase()}
+            </Text>
+            <Text style={rs.exMeta}>{blockMeta(block, t)}</Text>
+          </View>
+        </View>
+        <Text style={rs.chevron}>›</Text>
+      </TouchableOpacity>
+      <TouchableOpacity hitSlop={8} onPress={onRemove}>
+        <Text style={rs.removeBtn}>✕</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -277,6 +353,10 @@ export default function SessionEditorScreen({ navigation, route }) {
   const removeSessionFromProgram   = useStore((s) => s.removeSessionFromProgram);
   const duplicateSessionInProgram  = useStore((s) => s.duplicateSessionInProgram);
   const showToast        = useStore((s) => s.showToast);
+  const blockPresets          = useStore((s) => s.blockPresets);
+  const addBlockToSession     = useStore((s) => s.addBlockToSession);
+  const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
+  const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = userPrograms[templateId] ?? sessionTemplates[templateId];
@@ -294,10 +374,13 @@ export default function SessionEditorScreen({ navigation, route }) {
     if (id === templateId) return;
     setEditingName(false);
     setEditingExId(null);
+    setEditingBlockId(null);
     setTemplateId(id);
   }
 
   const [editingExId, setEditingExId] = useState(null);
+  const [editingBlockId, setEditingBlockId] = useState(null);
+  const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue]     = useState('');
   const nameToggleGuard               = useRef(0); // debounces blur→re-press on the edit toggle
@@ -405,6 +488,53 @@ export default function SessionEditorScreen({ navigation, route }) {
     navigation.navigate('ExerciseSelector', { templateId, existingPatterns });
   }
 
+  function handleAddBlock() {
+    if (blockPresets.length > 0) {
+      Alert.alert(
+        t('blocks.addBlock'),
+        '',
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('blocks.newBlock'), onPress: createNewBlock },
+          { text: t('blocks.fromPreset'), onPress: () => setPresetSheetOpen(true) },
+        ]
+      );
+    } else {
+      createNewBlock();
+    }
+  }
+
+  function createNewBlock() {
+    const block = defaultBlock();
+    addBlockToSession(templateId, block);
+    setEditingBlockId(block.id);
+  }
+
+  function handlePickPreset(preset) {
+    const { presetId: _presetId, ...rest } = preset;
+    const block = { ...rest, id: generateId('blk') };
+    addBlockToSession(templateId, block);
+    setPresetSheetOpen(false);
+    setEditingBlockId(block.id);
+  }
+
+  function handleRemoveBlock(block) {
+    Alert.alert(
+      t('blocks.deleteBlock'),
+      t('blocks.deleteConfirm', { name: block.name ?? t(`blocks.formats.${block.format}`) }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('blocks.deleteBlock'), style: 'destructive',
+          onPress: () => {
+            if (editingBlockId === block.id) setEditingBlockId(null);
+            removeBlockFromSession(templateId, block.id);
+          },
+        },
+      ]
+    );
+  }
+
   function handleDeleteSession() {
     Alert.alert(
       t('editor.sessionDeleteBtn'),
@@ -453,6 +583,11 @@ export default function SessionEditorScreen({ navigation, route }) {
   const editingExHasNext = editingExId
     ? orderedExercises.findIndex((ex) => ex.exerciseId === editingExId) < orderedExercises.length - 1
     : false;
+
+  // Editing block — resolved for modal
+  const editingBlock = editingBlockId
+    ? (template.blocks ?? []).find((b) => b.id === editingBlockId) ?? null
+    : null;
 
   // The dragged item's content for the floating overlay
   const draggingExConfig = draggingId
@@ -600,9 +735,30 @@ export default function SessionEditorScreen({ navigation, route }) {
           )}
         </View>
 
+        {/* ── Blocks (AMRAP/EMOM/for time) — after exercises, no drag/swipe v1 ── */}
+        {template.blocks?.length > 0 && (
+          <View>
+            <Text style={styles.secTitle}>{t('blocks.sectionTitle')}</Text>
+            <View style={styles.listCard}>
+              {template.blocks.map((block) => (
+                <BlockRow
+                  key={block.id}
+                  block={block}
+                  onPress={() => setEditingBlockId(block.id)}
+                  onRemove={() => handleRemoveBlock(block)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* ── Actions ── */}
         <TouchableOpacity style={styles.addExBtn} onPress={handleAddExercise}>
           <Text style={styles.addExBtnText}>{t('editor.addExercise')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.addBlockBtn} onPress={handleAddBlock}>
+          <Text style={styles.addBlockBtnText}>{t('blocks.addBlock')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -686,6 +842,92 @@ export default function SessionEditorScreen({ navigation, route }) {
           </SafeAreaView>
         </Modal>
       )}
+
+      {/* ── Block editor modal ── */}
+      {editingBlock && (
+        <Modal
+          visible
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setEditingBlockId(null)}
+        >
+          <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
+            {/* Header */}
+            <View style={styles.modalTopbar}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.modalExTag}>{t('blocks.sectionTitle').toUpperCase()}</Text>
+                <Text style={styles.modalExName} numberOfLines={1}>
+                  {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalAcceptBtn}
+                onPress={() => setEditingBlockId(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalAcceptTxt}>Aceptar</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Content */}
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <BlockEditorInline
+                  templateId={templateId}
+                  block={editingBlock}
+                  allExercises={allExercises}
+                  onClose={() => setEditingBlockId(null)}
+                  navigation={navigation}
+                />
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </Modal>
+      )}
+
+      {/* ── Preset picker sheet ── */}
+      <DragSheet
+        visible={presetSheetOpen}
+        onClose={() => setPresetSheetOpen(false)}
+        title={t('blocks.fromPreset')}
+      >
+        <View style={{ paddingBottom: spacing.sm }}>
+          {blockPresets.map((preset) => (
+            <View key={preset.presetId} style={styles.presetRow}>
+              <TouchableOpacity
+                style={{ flex: 1, minWidth: 0 }}
+                onPress={() => handlePickPreset(preset)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.presetName} numberOfLines={1}>
+                  {preset.name ?? t(`blocks.formats.${preset.format}`)}
+                </Text>
+                <Text style={styles.presetMeta}>{blockMeta(preset, t)}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                hitSlop={8}
+                onPress={() => {
+                  Alert.alert(
+                    t('blocks.deletePreset'),
+                    t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('blocks.deletePreset'), style: 'destructive', onPress: () => deleteBlockPreset(preset.presetId) },
+                    ]
+                  );
+                }}
+              >
+                <Text style={rs.removeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </DragSheet>
 
     </SafeAreaView>
   );
@@ -791,6 +1033,16 @@ const makeStyles = (th) => StyleSheet.create({
     overflow: 'hidden',
   },
 
+  // Section title (blocks)
+  secTitle: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         th.colors.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+
   // List
   listCard: {
     backgroundColor: th.colors.surface,
@@ -821,6 +1073,22 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.04),
   },
   addExBtnText: { fontSize: typography.base, color: th.colors.accent },
+  addBlockBtn: {
+    paddingVertical: spacing.md,
+    borderRadius: th.radius.md,
+    borderWidth: 1, borderStyle: 'dashed',
+    borderColor: th.colors.border,
+    alignItems: 'center',
+  },
+  addBlockBtnText: { fontSize: typography.base, color: th.colors.mutedLight },
+  presetRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
+    gap: spacing.sm,
+  },
+  presetName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
+  presetMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
   footerBtn: {
     paddingVertical: spacing.sm,
     alignItems: 'center',

@@ -168,6 +168,7 @@
   "blocks": {
     "formats": { "amrap": "AMRAP", "emom": "EMOM", "for_time": "For time" },
     "sectionTitle": "Bloques",
+    "formatLabel": "Formato",
     "addBlock": "＋ Añadir bloque",
     "newBlock": "Nuevo bloque",
     "fromPreset": "Desde preset",

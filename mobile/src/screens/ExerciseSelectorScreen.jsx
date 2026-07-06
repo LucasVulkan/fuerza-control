@@ -34,6 +34,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     currentExerciseId = null,
     existingPatterns = [],
     sessionMode = false,   // true → add to active session (adHoc), not to the template
+    blockPicker = false,   // true → picking a movement for a conditioning block (see BlockEditorInline)
   } = route.params ?? {};
 
   const language = useStore((s) => s.profile.language);
@@ -42,6 +43,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const addExercise      = useStore((s) => s.addExercise);
   const replaceExercise  = useStore((s) => s.replaceExercise);
   const addAdHocExercise = useStore((s) => s.addAdHocExercise);
+  const setBlockPickerResult = useStore((s) => s.setBlockPickerResult);
   const showToast        = useStore((s) => s.showToast);
 
   const allLibrary = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
@@ -52,8 +54,8 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const [filterMode, setFilterMode] = useState(defaultMode);
   const [selectedPattern, setSelectedPattern] = useState(currentDef?.pattern ?? '');
 
-  // Multi-select only when ADDING (replace mode stays a single pick).
-  const multiSelect = !currentExerciseId;
+  // Multi-select only when ADDING (replace/block-picker modes stay a single pick).
+  const multiSelect = !currentExerciseId && !blockPicker;
   const [selectedIds, setSelectedIds] = useState([]);
   function toggleSelect(exerciseId) {
     setSelectedIds((prev) =>
@@ -105,7 +107,9 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   }, [search, filterMode, selectedPattern, allExercises, currentExerciseId, existingPatterns, language]);
 
   function handleSelect(exerciseId) {
-    if (sessionMode) {
+    if (blockPicker) {
+      setBlockPickerResult(exerciseId);
+    } else if (sessionMode) {
       addAdHocExercise(exerciseId);
       showToast('Ejercicio añadido', 2200, 'success');
     } else if (currentExerciseId) {
