@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recapStats, detectPRs, compareToLast } from './sessionRecap';
+import { recapStats, detectPRs, compareToLast, prevBlockResult } from './sessionRecap';
 
 const set = (weight, reps, extra = {}) => ({ weight: String(weight), reps: String(reps), time: '', done: true, ...extra });
 const bw  = (reps) => ({ weight: '', reps: String(reps), time: '', done: true });
@@ -165,6 +165,36 @@ describe('compareToLast', () => {
     expect(compareToLast(free, [last, free])).toBeNull();
     const first = entry({ tpl: 'tpl_never_done', exercises: [] });
     expect(compareToLast(first, [last, first])).toBeNull();
+  });
+});
+
+describe('prevBlockResult', () => {
+  it('finds the result of the same blockId in the latest earlier entry', () => {
+    const old = entry({ id: 'log_b1', ts: 400, exercises: [] });
+    old.blocks = [{ blockId: 'blk_1', result: { rounds: 5, extraReps: 3 } }];
+    const now = entry({ exercises: [] });
+    expect(prevBlockResult(now, [old, now], 'blk_1')).toEqual({ rounds: 5, extraReps: 3 });
+  });
+
+  it('no previous entry with that blockId → null', () => {
+    const old = entry({ id: 'log_b2', ts: 400, exercises: [] });
+    old.blocks = [{ blockId: 'blk_other', result: { rounds: 5, extraReps: 0 } }];
+    const now = entry({ exercises: [] });
+    expect(prevBlockResult(now, [old, now], 'blk_1')).toBeNull();
+  });
+
+  it('picks the latest of several earlier entries with the same blockId', () => {
+    const oldest = entry({ id: 'log_b3', ts: 100, exercises: [] });
+    oldest.blocks = [{ blockId: 'blk_1', result: { rounds: 3, extraReps: 0 } }];
+    const latest = entry({ id: 'log_b4', ts: 500, exercises: [] });
+    latest.blocks = [{ blockId: 'blk_1', result: { rounds: 6, extraReps: 2 } }];
+    const now = entry({ exercises: [] });
+    expect(prevBlockResult(now, [oldest, latest, now], 'blk_1')).toEqual({ rounds: 6, extraReps: 2 });
+  });
+
+  it('a brand-new block (never logged before) → null, no chip', () => {
+    const now = entry({ exercises: [] });
+    expect(prevBlockResult(now, [now], 'blk_new')).toBeNull();
   });
 });
 
