@@ -894,6 +894,63 @@ export const useStore = create(
         }
       },
 
+      // Clones a session (edited version wins) into the same stage/program.
+      // Returns the new template id so the caller can jump to the copy.
+      duplicateSessionInProgram: (programId, templateId) => {
+        const { programs, sessionTemplates, userPrograms } = get();
+        const program = programs[programId];
+        if (!program) return null;
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const dayColors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
+        const hasStages = program.stages?.length > 0;
+
+        let stageIdx = null;
+        let days;
+        if (hasStages) {
+          stageIdx = program.stages.findIndex((st) => st.days.some((d) => d.sessionTemplateId === templateId));
+          if (stageIdx < 0) return null;
+          days = program.stages[stageIdx].days;
+        } else {
+          days = program.days ?? [];
+          if (!days.some((d) => d.sessionTemplateId === templateId)) return null;
+        }
+
+        const src = userPrograms[templateId] ?? sessionTemplates[templateId];
+        if (!src) return null;
+
+        const i = days.length;
+        const label = labels[i] ?? String(i + 1);
+        const tplId = generateId('tpl');
+        const newTemplate = {
+          ...src,
+          id: tplId,
+          programId,
+          label,
+          name: `${src.name ?? 'Sesión'} (copia)`,
+          color: dayColors[i % dayColors.length],
+          // The copy starts unlinked — otherwise edits to it would propagate
+          // back to the original through the link group.
+          exercises: (src.exercises ?? []).map((ex) => ({ ...ex, linkGroup: null })),
+        };
+        const newDays = [...days, { sessionTemplateId: tplId, label }];
+
+        if (hasStages) {
+          const newStages = program.stages.map((st, idx) =>
+            idx === stageIdx ? { ...st, days: newDays } : st
+          );
+          set((s) => ({
+            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+            programs: { ...s.programs, [programId]: { ...program, stages: newStages } },
+          }));
+        } else {
+          set((s) => ({
+            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+            programs: { ...s.programs, [programId]: { ...program, days: newDays } },
+          }));
+        }
+        return tplId;
+      },
+
       removeSessionFromProgram: (programId, templateId) => {
         const { programs } = get();
         const program = programs[programId];
@@ -978,6 +1035,61 @@ export const useStore = create(
         if (!program?.stages) return;
         const newStages = program.stages.map((st, i) => i === stageIndex ? { ...st, ...updates } : st);
         set((s) => ({ programs: { ...s.programs, [programId]: { ...program, stages: newStages } } }));
+      },
+
+      // Clones a stage (sessions included, edited versions win) right after the
+      // source. Returns the new stage index so the caller can select it.
+      duplicateStageInProgram: (programId, stageIndex) => {
+        const { programs, sessionTemplates, userPrograms } = get();
+        const program = programs[programId];
+        const src = program?.stages?.[stageIndex];
+        if (!src) return null;
+
+        const updatedSessionTemplates = { ...sessionTemplates };
+        // Link groups are remapped to fresh ids: copies stay linked to each
+        // other (within the new stage) but never to the original stage.
+        const groupMap = {};
+        const remapGroup = (g) => {
+          if (!g) return null;
+          if (!groupMap[g]) groupMap[g] = generateId('lnk');
+          return groupMap[g];
+        };
+        const newDays = (src.days ?? []).map(({ sessionTemplateId, label }) => {
+          const tpl = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+          const newTplId = generateId('tpl');
+          updatedSessionTemplates[newTplId] = {
+            ...(tpl ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
+            id: newTplId,
+            programId,
+            exercises: (tpl?.exercises ?? []).map((ex) => ({ ...ex, linkGroup: remapGroup(ex.linkGroup) })),
+          };
+          return { sessionTemplateId: newTplId, label };
+        });
+
+        const newStage = {
+          id: generateId('stage'),
+          name: `${src.name} (copia)`,
+          durationWeeks: src.durationWeeks ?? 4,
+          days: newDays,
+        };
+        const newStages = [
+          ...program.stages.slice(0, stageIndex + 1),
+          newStage,
+          ...program.stages.slice(stageIndex + 1),
+        ];
+        // The copy lands after the source — shift the active index if it
+        // pointed past the insertion point.
+        const cur = program.currentStageIndex ?? 0;
+        const newCur = stageIndex < cur ? cur + 1 : cur;
+
+        set((s) => ({
+          sessionTemplates: updatedSessionTemplates,
+          programs: {
+            ...s.programs,
+            [programId]: { ...program, stages: newStages, currentStageIndex: newCur },
+          },
+        }));
+        return stageIndex + 1;
       },
 
       removeStageFromProgram: (programId, stageIndex) => {

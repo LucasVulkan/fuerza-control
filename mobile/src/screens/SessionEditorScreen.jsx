@@ -258,7 +258,8 @@ export default function SessionEditorScreen({ navigation, route }) {
   const reorderExercise  = useStore((s) => s.reorderExercise);
   const renameSession    = useStore((s) => s.renameSession);
   const restoreSession   = useStore((s) => s.restoreSession);
-  const removeSessionFromProgram = useStore((s) => s.removeSessionFromProgram);
+  const removeSessionFromProgram   = useStore((s) => s.removeSessionFromProgram);
+  const duplicateSessionInProgram  = useStore((s) => s.duplicateSessionInProgram);
   const showToast        = useStore((s) => s.showToast);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
@@ -570,6 +571,20 @@ export default function SessionEditorScreen({ navigation, route }) {
           <Text style={styles.addExBtnText}>{t('editor.addExercise')}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.dupBtn}
+          onPress={() => {
+            const newId = duplicateSessionInProgram(programId, templateId);
+            if (newId) {
+              switchSession(newId);
+              showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.dupBtnText}>{t('editor.sessionDuplicateBtn')}</Text>
+        </TouchableOpacity>
+
         {isEdited && (
           <TouchableOpacity
             style={styles.footerBtn}
@@ -776,6 +791,14 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center',
   },
   footerBtnText: { fontSize: typography.sm, color: th.colors.muted },
+  dupBtn: {
+    paddingVertical: spacing.sm + 2,
+    borderRadius: th.radius.md,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    alignItems: 'center',
+  },
+  dupBtnText: { fontSize: typography.sm, color: th.colors.mutedLight, fontWeight: typography.medium },
   deleteBtn: {
     paddingVertical: spacing.sm + 2,
     borderRadius: th.radius.md,

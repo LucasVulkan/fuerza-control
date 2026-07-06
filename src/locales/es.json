@@ -547,7 +547,11 @@
     "stageActiveHint": "Es la etapa que entrena el atleta ahora",
     "stageIsActive": "Etapa activa",
     "stageDeleteBtn": "Eliminar etapa",
+    "stageDuplicateBtn": "Duplicar etapa",
+    "toastStageDuplicated": "Etapa duplicada",
     "sessionDeleteBtn": "Eliminar sesión",
+    "sessionDuplicateBtn": "Duplicar sesión",
+    "toastSessionDuplicated": "Sesión duplicada",
     "sessionRestoreBtn": "Restaurar sesión original",
     "weeksShort": "{{weeks}} sem",
     "badges": {

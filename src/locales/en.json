@@ -547,7 +547,11 @@
     "stageActiveHint": "The stage the athlete is currently training",
     "stageIsActive": "Active stage",
     "stageDeleteBtn": "Delete stage",
+    "stageDuplicateBtn": "Duplicate stage",
+    "toastStageDuplicated": "Stage duplicated",
     "sessionDeleteBtn": "Delete session",
+    "sessionDuplicateBtn": "Duplicate session",
+    "toastSessionDuplicated": "Session duplicated",
     "sessionRestoreBtn": "Restore original session",
     "weeksShort": "{{weeks}} wk",
     "badges": {

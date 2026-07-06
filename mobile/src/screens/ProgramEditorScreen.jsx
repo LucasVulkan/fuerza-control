@@ -31,6 +31,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const addStageToProgram     = useStore((s) => s.addStageToProgram);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
+  const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
   const showToast             = useStore((s) => s.showToast);
@@ -456,6 +457,21 @@ export default function ProgramEditorScreen({ navigation }) {
               )}
             </View>
 
+            <TouchableOpacity
+              style={styles.dupStageBtn}
+              onPress={() => {
+                commitStageName(); // flush a pending rename so the copy inherits it
+                const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
+                if (newIdx != null) {
+                  setSelectedStageIdx(newIdx);
+                  showToast(t('editor.toastStageDuplicated'), 2200, 'success');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dupStageBtnText}>{t('editor.stageDuplicateBtn')}</Text>
+            </TouchableOpacity>
+
             {activeProgram.stages.length > 1 && (
               <TouchableOpacity style={styles.deleteStageBtn} onPress={handleDeleteStage}>
                 <Text style={styles.deleteStageBtnText}>{t('editor.stageDeleteBtn')}</Text>
@@ -740,6 +756,14 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center',
   },
   activateBtnText: { fontSize: typography.sm, color: th.colors.accent, fontWeight: typography.medium },
+  dupStageBtn: {
+    paddingVertical: spacing.sm + 2,
+    borderRadius: th.radius.md,
+    borderWidth: borders.thin,
+    borderColor: th.colors.border,
+    alignItems: 'center',
+  },
+  dupStageBtnText: { fontSize: typography.sm, color: th.colors.mutedLight, fontWeight: typography.medium },
   deleteStageBtn: {
     paddingVertical: spacing.sm + 2,
     borderRadius: th.radius.md,
