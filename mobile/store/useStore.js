@@ -118,6 +118,7 @@ const INITIAL_UI = {
   restTimer: { active: false, remaining: 0, total: 0, exerciseName: '', endAt: 0 },
   _editingProgramId: null,
   _viewingProgramId: null,
+  _blockPickerResult: null,
   homeTab: 'session',
 };
 
@@ -872,6 +873,13 @@ export const useStore = create(
 
       deleteBlockPreset: (presetId) => {
         set((s) => ({ blockPresets: (s.blockPresets ?? []).filter((p) => p.presetId !== presetId) }));
+      },
+
+      // Transient handoff for the block movement picker: ExerciseSelectorScreen
+      // writes the pick here instead of calling addExercise when navigated with
+      // `blockPicker: true`; BlockEditorInline consumes it in a useEffect and clears it.
+      setBlockPickerResult: (exerciseId) => {
+        set((s) => ({ ui: { ...s.ui, _blockPickerResult: exerciseId } }));
       },
 
       addExercise: (templateId, exerciseId) => {
