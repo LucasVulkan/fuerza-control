@@ -8,11 +8,15 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [strength-blocks.md](strength-blocks.md) — Dropset + Superserie | cerrada | 🟢 / 🟢🟡 | empezar por dropset |
+| [program-generator.md](program-generator.md) — Generador de programas | fase A lista; B/C especificadas | 🟢/🟡/🔴 | fase A = Sonnet; contenido de plantillas (fase C) = Fable+usuario |
 | [warmup-sets.md](warmup-sets.md) — Series de calentamiento | cerrada | 🟡 | granularidad solo en el bloque C |
-| [conditioning-blocks.md](conditioning-blocks.md) — AMRAP/EMOM/For time | cerrada | 🔴 | 4 fases; la fase 3 (runtime del workout) requiere revisión cuidadosa |
 
-Orden recomendado: dropset → superserie → calentamientos → bloques de acondicionamiento.
+## Implementadas (en testeo en dispositivo, julio 2026)
+
+| Spec | Estado |
+|---|---|
+| [strength-blocks.md](strength-blocks.md) — Dropset + Superserie | implementada (`92ab414`) |
+| [conditioning-blocks.md](conditioning-blocks.md) — AMRAP/EMOM/For time | implementada, 4 fases + fix rondas EMOM + resumen en editor (`a15ee07`) |
 
 ## Aparcado (decisión de producto pendiente, NO implementar)
 
