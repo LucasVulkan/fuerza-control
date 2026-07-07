@@ -218,6 +218,20 @@
       "emom_other": "{{n}} rondas · {{interval}} · {{count}} movimientos",
       "forTime_one": "{{rounds}} rondas · {{count}} movimiento",
       "forTime_other": "{{rounds}} rondas · {{count}} movimientos"
+    },
+    "summary": {
+      "amrapMain": "{{min}} min",
+      "amrapSub_one": "Recorre el movimiento las veces que puedas",
+      "amrapSub_other": "Recorre los {{count}} movimientos las veces que puedas",
+      "emomMain": "{{rounds}} rondas · {{interval}} por intervalo · {{total}} en total",
+      "emomSubOne": "Cada intervalo: el movimiento",
+      "emomSubRotate": "Cada intervalo: 1 movimiento, rotando entre los {{count}}",
+      "emomSubAll": "Cada intervalo: los {{count}} movimientos completos",
+      "forTimeMainCap": "{{rounds}} rondas · tope {{cap}} min",
+      "forTimeMainNoCap": "{{rounds}} rondas · sin tope",
+      "forTimeSub_one": "En cada ronda: el movimiento",
+      "forTimeSub_other": "En cada ronda: los {{count}} movimientos, en orden",
+      "empty": "Añade movimientos para definir el circuito"
     }
   },
   "history": {

@@ -2,9 +2,19 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
+import { emomTotalIntervals } from '../../../../src/utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+
+// Compact "M:SS" / "M min" for a duration in seconds — matches how the
+// workout clock reads, but collapses to whole minutes when there's no
+// remainder so "10 min" doesn't become "10:00".
+function fmtDuration(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, '0')}`;
+}
 
 // ─── Local pieces (copied from ExerciseEditorInline — same visual language) ───
 
@@ -271,8 +281,46 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   const FORMAT_OPTIONS = ['amrap', 'emom', 'for_time'].map((id) => ({ id, label: t(`blocks.formats.${id}`) }));
   const INTERVAL_OPTIONS = [30, 45, 60, 90, 120].map((s) => ({ id: s, label: `${s}s` }));
 
+  // ── Live summary — the single most important thing this editor answers:
+  // what happens each interval/round, how long it lasts, and whether the
+  // movements all sit inside one round or are spread across several.
+  const moveCount = movements.length;
+  let summaryMain, summarySub;
+  if (format === 'amrap') {
+    summaryMain = t('blocks.summary.amrapMain', { min: Math.round(capSec / 60) });
+    summarySub = moveCount > 0
+      ? t('blocks.summary.amrapSub', { count: moveCount })
+      : t('blocks.summary.empty');
+  } else if (format === 'emom') {
+    const totalIntervals = emomTotalIntervals({ format: 'emom', rounds, emomMode, movements });
+    summaryMain = t('blocks.summary.emomMain', {
+      rounds, interval: `${intervalSec}s`, total: fmtDuration(intervalSec * totalIntervals),
+    });
+    summarySub = moveCount === 0
+      ? t('blocks.summary.empty')
+      : moveCount === 1
+        ? t('blocks.summary.emomSubOne')
+        : emomMode === 'rotate'
+          ? t('blocks.summary.emomSubRotate', { count: moveCount })
+          : t('blocks.summary.emomSubAll', { count: moveCount });
+  } else {
+    summaryMain = hasCap
+      ? t('blocks.summary.forTimeMainCap', { rounds, cap: Math.round(capSec / 60) })
+      : t('blocks.summary.forTimeMainNoCap', { rounds });
+    summarySub = moveCount > 0
+      ? t('blocks.summary.forTimeSub', { count: moveCount })
+      : t('blocks.summary.empty');
+  }
+
   return (
     <View style={styles.container}>
+
+      {/* ══ RESUMEN ══════════════════════════════════════════════════════════ */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+        <Text style={styles.summaryMain}>{summaryMain}</Text>
+        <Text style={styles.summarySub}>{summarySub}</Text>
+      </View>
 
       {/* ══ FORMATO ══════════════════════════════════════════════════════════ */}
       <View>
@@ -448,6 +496,33 @@ const makeStyles = (th) => StyleSheet.create({
     padding:       spacing.lg,
     paddingBottom: spacing.xxl + spacing.lg,
     gap:           spacing.lg,
+  },
+
+  // ── Summary card ───────────────────────────────────────────────────────────
+  summaryCard: {
+    backgroundColor: withOpacity(th.colors.accent, 0.06),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(th.colors.accent, 0.25),
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    gap:             2,
+  },
+  summaryTag: {
+    fontSize:      typography.xs - 1,
+    fontWeight:    typography.heavy,
+    color:         withOpacity(th.colors.accent, 0.7),
+    letterSpacing: 1.2,
+    marginBottom:  2,
+  },
+  summaryMain: {
+    fontSize:   typography.md,
+    fontWeight: typography.semibold,
+    color:      th.colors.accent,
+  },
+  summarySub: {
+    fontSize:   typography.sm,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.5,
   },
 
   secTitle: {
