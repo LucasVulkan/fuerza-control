@@ -182,29 +182,81 @@ porque el generador descartó huecos pudiendo llenarlos.
 
 ---
 
-## 5. FASE B — Rediseño del flujo de onboarding 🟡 (Sonnet/Opus con esta spec)
+## 5. FASE B — Rediseño del flujo de onboarding 🟡 (Sonnet con esta spec)
 
-Decisiones de producto tomadas; detalle de UI a proponer al arrancar.
+Decisiones cerradas (no re-abrir sin consultar). Alcance: `OnboardingScreen.jsx`,
+`programGenerator.js` (solo lectura de `sessionMinutes` + recorte), locales.
 
-1. **Nuevo orden de preguntas**: nivel → **días/semana (1–7)** → **tiempo por
-   sesión (30/45/60/90 min)** → objetivo → equipo → limitaciones →
-   **distribución RECOMENDADA** (la app propone según días+nivel, con opción
-   "elegir otra"). Razón: hoy eliges distribución a ciegas y después los días
-   no encajan con ella.
-2. **Recomendación días→distribución** (tabla de partida, ajustable):
-   1-2d → full_body · 3d → full_body (beginner) o PPL (intermediate+) ·
-   4d → upper_lower · 5-6d → PPL o U/L+FB · 7d → PPL×2 con un día ligero.
-   El programa generado tiene las sesiones **de la plantilla** (2-4 distintas),
-   no una por día — el ciclo rotativo cubre la frecuencia.
-3. **Presupuesto de tiempo**: usar `sessionStats` (mobile/src/utils/sessionStats.js)
-   para estimar duración y recortar accesorios (nunca keys) hasta encajar en el
-   tiempo elegido. Orden de recorte: accesorios de grupos ya cubiertos primero.
-   Mostrar la duración estimada en el preview de cada sesión.
-4. **Preview mejorado**: duración estimada por sesión; acción "sustituir" por
-   ejercicio (reutilizar el selector con el patrón de reemplazo ya existente);
-   botón "regenerar" que re-tira candidatos con un seed distinto.
-5. 1 día y 7 días habilitados en el selector (con A6 + plantillas por ciclo ya
-   no rompen nada).
+### B1 — Nuevo orden de preguntas
+
+`nivel → disciplina → días/semana (1–7) → tiempo por sesión → objetivo →
+equipo → limitaciones → distribución (RECOMENDADA)`
+
+- La disciplina se mantiene donde está (identidad del entrenamiento); lo que se
+  mueve es la distribución: del principio al FINAL, ya con días+nivel+disciplina
+  conocidos para recomendar.
+- `StepDays` pasa a un selector genérico 1–7 (chips como el actual 2–6). Los
+  special-case de PPL (fijo 3) y U/L (2/4) DESAPARECEN de este paso — esa
+  lógica vive ahora en la recomendación de distribución.
+- Nuevo `StepTime`: 4 opciones tipo OptionCard — 30 / 45 / 60 / 90 min →
+  `answers.sessionMinutes` (default 60). Textos por `t()`.
+- `totalSteps` se recalcula (hay un paso más); el paso extra de advanced se
+  mantiene como esté.
+
+### B2 — Paso de distribución recomendada
+
+- Se calcula `recommended` con esta tabla (filtrada por `DIST_FOR[discipline]`
+  y los gates de nivel existentes; si la recomendada no pasa los gates, se
+  recomienda la siguiente compatible):
+  | días | recomendada |
+  |---|---|
+  | 1-2 | full_body |
+  | 3 | beginner → full_body · intermediate+ → push_pull_legs |
+  | 4 | upper_lower |
+  | 5-6 | intermediate+ → push_pull_legs · beginner → full_body |
+  | 7 | push_pull_legs (hint: "incluye al menos un día suave o de descanso activo") |
+- UI: las mismas OptionCard de hoy, con la recomendada PRIMERA y un badge
+  "Recomendado" (i18n); las demás siguen seleccionables con sus gates actuales.
+- Semántica NUEVA de `daysPerWeek` = **frecuencia** (cuántos días entrena), no
+  nº de sesiones. Para B, el nº de sesiones generadas sigue siendo
+  `min(daysPerWeek, 6)` con el ciclado de A6 (7 días → 6 sesiones distintas);
+  si `daysPerWeek > sesiones generadas`, el preview muestra un hint "tus N
+  sesiones rotan en ciclo — entrenas {{days}} días" (i18n). El desacople
+  completo (plantilla fija el nº de sesiones) llega en fase C.
+
+### B3 — Presupuesto de tiempo (recorte) ⚠️ revisión Fable al terminar
+
+En `generateProgram` (y en `adaptArchetype`), tras construir los ejercicios de
+cada sesión:
+
+1. Estimar segundos con la MISMA fórmula de `sessionStats`
+   (`sets × (35s trabajo + restSec)`; ejercicios de tiempo: punto medio del
+   rango). NO importar `mobile/src/utils/sessionStats.js` desde `src/utils/`
+   (rompe la frontera src↔mobile): duplicar la fórmula en un helper local
+   `estimateSessionSec(exercises)` con comentario apuntando a sessionStats.
+2. `exercisesPerSession` inicial según tiempo: 30min→3 · 45→4 · 60→5 · 90→6.
+   (Sustituye al actual `daysPerWeek <= 3 ? 5 : 4`.)
+3. Bucle de recorte: mientras `estimado > sessionMinutes×60` y queden
+   accesorios: quitar el ÚLTIMO accesorio cuyo `primaryGroup` ya esté cubierto
+   por otro ejercicio de la sesión; si no hay ninguno así, el último accesorio
+   a secas. Suelo duro: nunca bajar de 1 key + 2 accesorios (3 ejercicios) —
+   si aun así no cabe, se deja y el preview muestra la duración real.
+4. Los keys NUNCA se recortan por tiempo.
+
+### B4 — Preview
+
+- Mostrar duración estimada por sesión (aquí SÍ usar `sessionStats`, el preview
+  es código mobile) junto al nombre de cada sesión.
+- El hint de ciclo de B2 cuando días > sesiones.
+- OPCIONAL (solo si sale barato reutilizando el patrón de reemplazo existente):
+  acción "sustituir" por ejercicio. Si complica, dejarlo fuera y apuntarlo.
+
+### B5 — Tests
+
+Ampliar `programGenerator.test.js`: con `sessionMinutes: 30` ninguna sesión
+generada supera ~35 min estimados (margen por el suelo duro) y todas conservan
+≥1 key; con 90 min salen 6 ejercicios; invariantes existentes intactos con el
+nuevo parámetro presente y ausente (default 60).
 
 ## 6. FASE C — Biblioteca de plantillas + matching por puntuación 🟡/🔴
 
