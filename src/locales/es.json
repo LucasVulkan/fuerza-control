@@ -438,6 +438,10 @@
       }
     },
     "equipment": {
+      "bodyweight": {
+        "label": "Solo peso corporal",
+        "description": "Sin material — ejercicios con tu propio cuerpo."
+      },
       "machines": {
         "label": "Máquinas",
         "description": "Prensa, polea, curl, extensión..."

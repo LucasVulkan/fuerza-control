@@ -438,6 +438,10 @@
       }
     },
     "equipment": {
+      "bodyweight": {
+        "label": "Bodyweight only",
+        "description": "No equipment — exercises using just your body."
+      },
       "machines": {
         "label": "Machines",
         "description": "Leg press, cable, curl, extension..."

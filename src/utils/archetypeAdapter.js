@@ -17,6 +17,7 @@
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
+import { GOAL_PARAMS } from './programGenerator';
 
 const LIMITATION_GROUPS = {
   shoulder:   ['shoulders', 'chest'],
@@ -81,19 +82,30 @@ function findSubstitute({ pattern, primaryGroup, userLevel, userEquipment, exclu
 
 /**
  * Construye el exConfig final para un ejercicio del arquetipo.
+ * A4: si applyGoalParams (goal del usuario != goal del arquetipo) y el ejercicio
+ * es key con minReps no nulo (no es de tiempo/submáx), adopta reps/rest del goal
+ * elegido; sets = max(sets del arquetipo, sets del goal).
  */
-function buildExConfig(archetypeEx, resolvedExId, isLimited, limitations) {
+function buildExConfig(archetypeEx, resolvedExId, isLimited, limitations, applyGoalParams = false, goalParams = null) {
   const limitationNote = isLimited
     ? getLimitationNote(archetypeEx.primaryGroup, limitations)
     : null;
 
+  const isKey = archetypeEx.role === 'key';
+  const useGoalParams = applyGoalParams && isKey && archetypeEx.minReps !== null && goalParams;
+
+  const baseSets = useGoalParams ? Math.max(archetypeEx.sets, goalParams.sets) : archetypeEx.sets;
+  const baseRestSec = useGoalParams ? goalParams.restSec : archetypeEx.restSec;
+  const baseMinReps = useGoalParams ? goalParams.minReps : archetypeEx.minReps;
+  const baseMaxReps = useGoalParams ? goalParams.maxReps : archetypeEx.maxReps;
+
   return {
     exerciseId: resolvedExId,
-    isKey: archetypeEx.role === 'key',
-    sets: isLimited ? Math.min(archetypeEx.sets, 2) : archetypeEx.sets,
-    restSec: archetypeEx.restSec,
-    minReps: isLimited ? 12 : archetypeEx.minReps,
-    maxReps: isLimited ? 15 : archetypeEx.maxReps,
+    isKey,
+    sets: isLimited ? Math.min(baseSets, 2) : baseSets,
+    restSec: baseRestSec,
+    minReps: isLimited ? 12 : baseMinReps,
+    maxReps: isLimited ? 15 : baseMaxReps,
     progressionOverride: null,
     limitationNote,
   };
@@ -181,6 +193,11 @@ export function adaptArchetype(archetype, answers) {
   const sessionTemplates = {};
   const programDays = [];
 
+  // A4: si el objetivo elegido difiere del objetivo del arquetipo, los keys
+  // adoptan los parámetros del goal elegido (ver buildExConfig).
+  const applyGoalParams = goal !== archetype.goal;
+  const goalParams = GOAL_PARAMS[goal] ?? GOAL_PARAMS.hypertrophy;
+
   archetype.days.forEach((dayDef) => {
     const templateId = generateId('tpl');
     const usedIds = new Set();
@@ -190,8 +207,23 @@ export function adaptArchetype(archetype, answers) {
       const originalDef = EXERCISE_LIBRARY[archetypeEx.exerciseId];
       const isLimited = limitedGroups.includes(archetypeEx.primaryGroup);
 
-      // Si es key y el grupo está limitado — no añadir
-      if (archetypeEx.role === 'key' && isLimited) return;
+      // A3: si es key y el grupo está limitado, sustituir por variante suave
+      // (beginner, mismo pattern+grupo) en vez de eliminar. Solo si no hay
+      // sustituto se elimina el ejercicio.
+      if (archetypeEx.role === 'key' && isLimited) {
+        const sub = findSubstitute({
+          pattern: archetypeEx.pattern,
+          primaryGroup: archetypeEx.primaryGroup,
+          userLevel: 'beginner',
+          userEquipment: equipment,
+          excludeIds: [...usedIds],
+        });
+        if (!sub) return; // no hay sustituto — slot vacío
+        if (usedIds.has(sub.id)) return; // evitar duplicados en el día
+        usedIds.add(sub.id);
+        exercises.push(buildExConfig(archetypeEx, sub.id, isLimited, limitations, applyGoalParams, goalParams));
+        return;
+      }
 
       let resolvedId = archetypeEx.exerciseId;
 
@@ -218,7 +250,7 @@ export function adaptArchetype(archetype, answers) {
       if (usedIds.has(resolvedId)) return; // evitar duplicados en el día
       usedIds.add(resolvedId);
 
-      exercises.push(buildExConfig(archetypeEx, resolvedId, isLimited, limitations));
+      exercises.push(buildExConfig(archetypeEx, resolvedId, isLimited, limitations, applyGoalParams, goalParams));
     });
 
     // Ajustar según nivel

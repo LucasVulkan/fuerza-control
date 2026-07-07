@@ -8,7 +8,7 @@ import { generateId } from './formatters';
 
 // ─── Parámetros por objetivo ──────────────────────────────────────────────────
 
-const GOAL_PARAMS = {
+export const GOAL_PARAMS = {
   hypertrophy:  { sets: 3, minReps: 8,  maxReps: 12, restSec: 90  },
   strength:     { sets: 4, minReps: 5,  maxReps: 8,  restSec: 120 },
   max_strength: { sets: 5, minReps: 3,  maxReps: 5,  restSec: 180 },
@@ -181,7 +181,10 @@ function getCandidates({ primaryGroup, level, equipment, limitations, keyOnly = 
     if (!exerciseFitsEquipment(ex, equipment)) return false;
     if (excludedIds.has(ex.id)) return false;
     if (isLimited) {
-      if (keyOnly) return false;
+      // A3: sustituir por variante suave, no eliminar. Para keys: compounds
+      // beginner del grupo (proxy de "amable con la articulación"); si no hay,
+      // no-compound beginner.
+      if (keyOnly) return ex.level === 'beginner' && ex.isCompound;
       return ex.level === 'beginner';
     }
     if (keyOnly && ex.priority?.[goal] === 'low') return false;
@@ -189,6 +192,63 @@ function getCandidates({ primaryGroup, level, equipment, limitations, keyOnly = 
   });
 
   return sortByPriority(raw, goal);
+}
+
+const LEVEL_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
+
+/**
+ * A1: fallback en cascada para keys. El nivel es orientación, no barrera.
+ * 1. isKeyCandidate && isCompound, nivel ≤ usuario, priority≠low (estándar).
+ * 2. isKeyCandidate && isCompound, cualquier nivel — orden por cercanía de nivel.
+ * 3. isCompound del grupo, cualquier nivel — mismo orden.
+ *
+ * Con limitación (isLimited), el paso 1 ya viene relajado a beginner
+ * compound/no-compound del grupo (A3). Si ni así hay nada (grupo sin ningún
+ * ejercicio beginner en la biblioteca — p. ej. quads hoy), caer en los mismos
+ * escalones 2/3 que el caso no limitado: la cercanía de nivel prioriza lo menos
+ * avanzado disponible, y buildExConfig sigue aplicando la nota de limitación.
+ */
+function getKeyCandidatesWithFallback({ primaryGroup, level, equipment, limitations, goal, excludedIds }) {
+  const limitedGroups = getLimitedGroups(limitations);
+  const isLimited = limitedGroups.includes(primaryGroup);
+  const effectiveLevel = isLimited ? 'beginner' : level;
+
+  const step1 = getCandidates({ primaryGroup, level, equipment, limitations, keyOnly: true, goal, excludedIds });
+  if (step1.length) return step1;
+
+  // Cercanía de nivel primero (a 'beginner' si está limitado), priority como desempate
+  const byLevelCloseness = (candidates) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return [...candidates].sort((a, b) => {
+      const da = Math.abs(LEVEL_ORDER[a.level] - LEVEL_ORDER[effectiveLevel]);
+      const db = Math.abs(LEVEL_ORDER[b.level] - LEVEL_ORDER[effectiveLevel]);
+      if (da !== db) return da - db;
+      const pa = priorityOrder[a.priority?.[goal] ?? 'medium'];
+      const pb = priorityOrder[b.priority?.[goal] ?? 'medium'];
+      return pa - pb;
+    });
+  };
+
+  // Escalón 2: isKeyCandidate && isCompound, cualquier nivel
+  const step2raw = Object.values(EXERCISE_LIBRARY).filter((ex) => {
+    if (ex.primaryGroup !== primaryGroup) return false;
+    if (!ex.isKeyCandidate || !ex.isCompound) return false;
+    if (!exerciseFitsEquipment(ex, equipment)) return false;
+    if (excludedIds.has(ex.id)) return false;
+    return true;
+  });
+  const step2 = byLevelCloseness(step2raw);
+  if (step2.length) return step2;
+
+  // Escalón 3: isCompound del grupo, cualquier nivel
+  const step3raw = Object.values(EXERCISE_LIBRARY).filter((ex) => {
+    if (ex.primaryGroup !== primaryGroup) return false;
+    if (!ex.isCompound) return false;
+    if (!exerciseFitsEquipment(ex, equipment)) return false;
+    if (excludedIds.has(ex.id)) return false;
+    return true;
+  });
+  return byLevelCloseness(step3raw);
 }
 
 // ─── Generador principal ──────────────────────────────────────────────────────
@@ -221,13 +281,17 @@ export function generateProgram(answers) {
   // usedKeyIds se declara dentro del forEach — un key puede repetirse en días distintos
   const excludedByVariant = new Set();
 
-  const activeDays = patternDays
-    .slice(0, Math.min(daysPerWeek, patternDays.length))
-    .map((dayDef, i) => ({
+  // A6: si se piden más días que patrones disponibles, ciclar (día 4 = patrón 1
+  // otra vez) en vez de recortar en silencio. Label/color/templateId propios por
+  // día — el templateId ya se genera fresco por día más abajo.
+  const activeDays = Array.from({ length: Math.max(1, daysPerWeek) }, (_, i) => {
+    const dayDef = patternDays[i % patternDays.length];
+    return {
       ...dayDef,
       label: DAY_LABELS[i] ?? String(i + 1),
       color: DAY_COLORS[i] ?? '#e8ff47',
-    }));
+    };
+  });
 
   activeDays.forEach((dayDef) => {
     const templateId = generateId('tpl');
@@ -237,16 +301,19 @@ export function generateProgram(answers) {
     // ── Keys ─────────────────────────────────────────────────────────
     const keyGroups = [dayDef.keyGroup, dayDef.keyGroup2].filter(Boolean);
     const keyExercises = [];
+    const unfilledKeyGroups = []; // A2: hueco de key sin candidato → se rellena como accesorio
 
     keyGroups.slice(0, keysPerSession).forEach((keyGroup) => {
-      const candidates = getCandidates({
+      const candidates = getKeyCandidatesWithFallback({
         primaryGroup: keyGroup,
-        level, equipment, limitations,
-        keyOnly: true, goal,
+        level, equipment, limitations, goal,
         excludedIds: new Set([...excludedByVariant, ...usedInSession]),
       });
 
-      if (!candidates.length) return;
+      if (!candidates.length) {
+        unfilledKeyGroups.push(keyGroup);
+        return;
+      }
 
       const keyEx = candidates[0];
       usedInSession.add(keyEx.id);
@@ -258,8 +325,9 @@ export function generateProgram(answers) {
     const primaryKeyEx = keyExercises[0] ?? null;
 
     // ── Accesorios ───────────────────────────────────────────────────
+    // A2: huecos de key sin candidato pasan a intentarse como accesorio del mismo grupo (isKey: false)
     const accessoryCount = exercisesPerSession - keyExercises.length;
-    const accessorySlots = dayDef.accessories.slice(0, accessoryCount);
+    const accessorySlots = [...unfilledKeyGroups, ...dayDef.accessories].slice(0, accessoryCount);
 
     accessorySlots.forEach((group) => {
       const isLimited = limitedGroups.includes(group);
@@ -288,6 +356,18 @@ export function generateProgram(answers) {
             if (!exerciseFitsEquipment(ex, equipment)) return false;
             if (sessionExcluded.has(ex.id)) return false;
             return exerciseFitsLevel(ex, level);
+          }), goal
+        );
+      }
+
+      // Intento 4 (A2): cualquier grupo, cualquier nivel — con 43 ejercicios de
+      // peso corporal en la biblioteca esto no debería quedar vacío nunca.
+      if (!candidates.length) {
+        candidates = sortByPriority(
+          Object.values(EXERCISE_LIBRARY).filter((ex) => {
+            if (!exerciseFitsEquipment(ex, equipment)) return false;
+            if (sessionExcluded.has(ex.id)) return false;
+            return true;
           }), goal
         );
       }

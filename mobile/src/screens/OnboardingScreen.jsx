@@ -39,9 +39,13 @@ const LEVEL_IDS = ['beginner', 'intermediate', 'advanced'];
 const DISC_IDS  = ['standard', 'calisthenics', 'glutes_legs', 'strength'];
 const DIST_IDS  = ['full_body', 'upper_lower', 'push_pull_legs'];
 const GOAL_IDS  = ['hypertrophy', 'endurance', 'strength', 'max_strength'];
-const EQUIP_IDS = ['machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
+const EQUIP_IDS = ['bodyweight', 'machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
 const LIMIT_IDS = ['none', 'shoulder', 'lower_back', 'knee'];
 const PROG_IDS  = ['double_progression', 'linear', 'reps_progression'];
+
+// IDs exclusivos por campo: seleccionarlos limpia el resto y viceversa
+// (limitations: 'none' = sin limitaciones; equipment: 'bodyweight' = solo peso corporal).
+const EXCLUSIVE_IDS = { limitations: 'none', equipment: 'bodyweight' };
 
 const LEVEL_ORDER    = { beginner: 0, intermediate: 1, advanced: 2 };
 const DIST_MIN_LEVEL = { full_body: 'beginner', upper_lower: 'intermediate', push_pull_legs: 'intermediate' };
@@ -190,8 +194,9 @@ export default function OnboardingScreen() {
   function toggleMulti(field, id) {
     setAnswers((a) => {
       const current = a[field];
-      if (id === 'none') return { ...a, [field]: ['none'] };
-      const without = current.filter((x) => x !== 'none');
+      const exclusiveId = EXCLUSIVE_IDS[field];
+      if (id === exclusiveId) return { ...a, [field]: [exclusiveId] };
+      const without = exclusiveId ? current.filter((x) => x !== exclusiveId) : current;
       return {
         ...a,
         [field]: without.includes(id) ? without.filter((x) => x !== id) : [...without, id],
@@ -230,7 +235,12 @@ export default function OnboardingScreen() {
   async function handleFinish() {
     setLoading(true);
     try {
-      const result = await generateAndActivateProgram(answers);
+      // A5: 'bodyweight' es un id de UI, no de equipo real — se traduce a
+      // equipment: [] (exerciseFitsEquipment ya trata [] como "solo peso corporal").
+      const submitAnswers = answers.equipment.includes('bodyweight')
+        ? { ...answers, equipment: [] }
+        : answers;
+      const result = await generateAndActivateProgram(submitAnswers);
       if (fromApp) {
         // Desde dentro de la app: volver atrás sin mostrar preview
         navigation.goBack();
