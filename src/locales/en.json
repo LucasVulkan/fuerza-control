@@ -155,7 +155,12 @@
     "supersetFooter": "{{sec}}s rest after each round",
     "keyBadge": "KEY",
     "coachTarget": "Your trainer's target",
-    "thisSession": "this session"
+    "thisSession": "this session",
+    "warmup": {
+      "blockLabel": "Warmup",
+      "metaSuffix": " · C×{{count}}",
+      "noReference": "Warm-up sets are calculated once you enter your first work weight"
+    }
   },
   "freeSession": {
     "btn": "+ Free session",

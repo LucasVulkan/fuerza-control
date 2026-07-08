@@ -155,7 +155,12 @@
     "supersetFooter": "Descanso {{sec}}s tras cada ronda",
     "keyBadge": "CLAVE",
     "coachTarget": "Objetivo de tu entrenador",
-    "thisSession": "esta sesión"
+    "thisSession": "esta sesión",
+    "warmup": {
+      "blockLabel": "Calentamiento",
+      "metaSuffix": " · C×{{count}}",
+      "noReference": "Las C se calculan al escribir tu primer peso de trabajo"
+    }
   },
   "freeSession": {
     "btn": "+ Sesión libre",

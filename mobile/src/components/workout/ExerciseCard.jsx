@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
+import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../../src/utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
 import { spacing, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -119,6 +120,49 @@ export default function ExerciseCard({
     ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
 
   const hasTimer = inputType === 'time' || inputType === 'weight_time';
+
+  // ── Warmup sub-block (spec warmup-sets.md §1-3) ───────────────────────────
+  // Warmup rows live INSIDE setsState, before the work rows, flagged isWarmup —
+  // split here but keep each row's REAL index (toggleSetDone/updateSetField
+  // always address the flat array by that index).
+  const warmupStepsArr = exConfig.warmup ? warmupSteps(exConfig.warmup) : [];
+  const hasWarmup = warmupStepsArr.length > 0;
+  const warmupEntries = [];
+  const workEntries = [];
+  setsState.forEach((s, i) => (s.isWarmup ? warmupEntries : workEntries).push({ realIndex: i, set: s }));
+  // "última vez" ghosts only apply to work sets (spec §4) — filter isWarmup
+  // out of the historical exercise before pairing it up by relative position.
+  const lastWorkSets = (lastExercise?.sets ?? []).filter((s) => !s.isWarmup);
+
+  const firstWorkWeight = workEntries[0]?.set?.weight;
+  const typedFirstWorkWeight = firstWorkWeight !== '' && firstWorkWeight != null
+    ? parseFloat(firstWorkWeight) : undefined;
+  const workWeightKg = hasWarmup
+    ? resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight)
+    : null;
+  const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg);
+  const warmupNoReference = hasWarmup && workWeightKg == null;
+
+  // Bakes the computed weight/reps into any warmup row still blank (real
+  // value, not a ghost — same "pre-relleno" convention the dropset already
+  // uses for its first drop). Fires on mount if a reference already resolves
+  // (coach override / last session), and again once the athlete types their
+  // first work weight (workWeightKg flips from null). Never touches a row the
+  // athlete already filled — per-row blank check guards that.
+  useEffect(() => {
+    if (!hasWarmup || workWeightKg == null) return;
+    warmupEntries.forEach(({ realIndex, set }, wi) => {
+      const step = warmupComputed[wi];
+      if (!step) return;
+      if ((set.weight === '' || set.weight == null) && step.weightKg != null) {
+        onFieldChange(realIndex, 'weight', String(step.weightKg));
+      }
+      if ((set.reps === '' || set.reps == null) && step.reps != null) {
+        onFieldChange(realIndex, 'reps', String(step.reps));
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workWeightKg, hasWarmup]);
 
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
@@ -292,7 +336,8 @@ export default function ExerciseCard({
   })();
   const CHIP = chipColors(th);
   const chipStyle  = progression ? (CHIP[progression.type] ?? CHIP.info) : null;
-  const targetLabel = buildTarget(def, exConfig, t);
+  const targetLabel = buildTarget(def, exConfig, t)
+    + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
 
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
   return (
@@ -493,10 +538,44 @@ export default function ExerciseCard({
             <View style={{ width: 36 }} />
           </View>
 
+          {/* Warmup sub-block — sits above work sets, same flat array/index (spec §1) */}
+          {hasWarmup ? (
+            <View style={styles.warmupBlock}>
+              <Text style={styles.warmupBlockLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+              {warmupNoReference ? (
+                <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
+              ) : null}
+              {warmupEntries.map(({ realIndex, set }, wi) => (
+                <SetRow
+                  key={realIndex}
+                  index={realIndex}
+                  label={`C${wi + 1}`}
+                  set={set}
+                  inputType="weight_reps"
+                  isActive={realIndex === activeSetIdx}
+                  weightDisplay={
+                    set.weight !== '' && set.weight != null ? String(toDisplay(set.weight)) : ''
+                  }
+                  weightScrollStep={weightScrollStep}
+                  showHint={realIndex === hintSetIndex}
+                  onWeightChange={(v) => {
+                    onFieldChange(realIndex, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '');
+                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
+                  }}
+                  onRepsChange={(v) => {
+                    onFieldChange(realIndex, 'reps', v);
+                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
+                  }}
+                  onToggleDone={() => onToggleDone(realIndex)}
+                />
+              ))}
+            </View>
+          ) : null}
+
           {/* Sets */}
           <View style={styles.setList}>
-            {setsState.map((set, i) => {
-              const lastSet = lastExercise?.sets?.[i];
+            {workEntries.map(({ realIndex, set }, wi) => {
+              const lastSet = lastWorkSets[wi];
               const prevWeightDisplay = lastSet?.weight != null && lastSet?.weight !== ''
                 ? String(toDisplay(lastSet.weight)) : '';
               const prevReps = lastSet?.reps != null && lastSet?.reps !== ''
@@ -524,20 +603,20 @@ export default function ExerciseCard({
 
               return (
                 <SetRow
-                  key={i}
-                  index={i}
+                  key={realIndex}
+                  index={realIndex}
                   set={set}
                   inputType={inputType}
-                  isActive={i === activeSetIdx}
+                  isActive={realIndex === activeSetIdx}
                   showRpe={trackRpe}
                   onRpeChange={(v) => {
-                    if (v === '') { onFieldChange(i, 'rpe', ''); return; }
+                    if (v === '') { onFieldChange(realIndex, 'rpe', ''); return; }
                     const cleaned = String(v).replace(',', '.');
                     const n = parseFloat(cleaned);
                     if (isNaN(n)) return;
-                    onFieldChange(i, 'rpe', n > 10 ? '10' : n < 0 ? '0' : cleaned);
+                    onFieldChange(realIndex, 'rpe', n > 10 ? '10' : n < 0 ? '0' : cleaned);
                   }}
-                  onCopyPrev={i > 0 ? () => handleCopyFromPrev(i) : undefined}
+                  onCopyPrev={wi > 0 ? () => handleCopyFromPrev(realIndex) : undefined}
                   weightDisplay={
                     set.weight !== '' && set.weight != null
                       ? String(toDisplay(set.weight))
@@ -552,18 +631,18 @@ export default function ExerciseCard({
                   prevRpe={rpeRef.value}
                   prevRpeSource={rpeRef.source}
                   weightScrollStep={weightScrollStep}
-                  showHint={i === hintSetIndex}
+                  showHint={realIndex === hintSetIndex}
                   onWeightChange={(v) => {
-                    onFieldChange(i, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '');
-                    if (v !== '' && i >= hintSetIndex) setHintSetIndex(i + 1);
+                    onFieldChange(realIndex, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '');
+                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onRepsChange={(v) => {
-                    onFieldChange(i, 'reps', v);
-                    if (v !== '' && i >= hintSetIndex) setHintSetIndex(i + 1);
+                    onFieldChange(realIndex, 'reps', v);
+                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onTimeChange={(v) => {
-                    onFieldChange(i, 'time', v);
-                    if (v !== '' && i >= hintSetIndex) setHintSetIndex(i + 1);
+                    onFieldChange(realIndex, 'time', v);
+                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onToggleDone={() => {
                     if (!set.done) {
@@ -580,18 +659,18 @@ export default function ExerciseCard({
 
                       if (needsWeight && (set.weight === '' || set.weight == null)
                           && fillWeight != null && fillWeight !== '') {
-                        onFieldChange(i, 'weight', String(fillWeight));
+                        onFieldChange(realIndex, 'weight', String(fillWeight));
                       }
                       if (needsReps && (set.reps === '' || set.reps == null)
                           && fillReps != null && fillReps !== '') {
-                        onFieldChange(i, 'reps', String(fillReps));
+                        onFieldChange(realIndex, 'reps', String(fillReps));
                       }
                       if (needsTime && (set.time === '' || set.time == null)
                           && fillTime != null && fillTime !== '') {
-                        onFieldChange(i, 'time', String(fillTime));
+                        onFieldChange(realIndex, 'time', String(fillTime));
                       }
                     }
-                    onToggleDone(i);
+                    onToggleDone(realIndex);
                   }}
                 />
               );
@@ -854,6 +933,31 @@ const makeStyles = (th) => StyleSheet.create({
   // Sets
   setList: {
     paddingHorizontal: spacing.md,
+  },
+
+  // Warmup sub-block — sunken/dim, sits above the work sets
+  warmupBlock: {
+    marginHorizontal:  spacing.md,
+    marginBottom:      spacing.sm,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingTop:        spacing.xs,
+    paddingBottom:     2,
+    opacity:           0.85,
+  },
+  warmupBlockLabel: {
+    fontSize:      typography.xs - 1,
+    fontWeight:    typography.bold,
+    color:         th.colors.muted,
+    letterSpacing: 0.8,
+    marginBottom:  spacing.xs,
+  },
+  warmupBanner: {
+    fontSize:     typography.xs,
+    color:        th.colors.muted,
+    marginBottom: spacing.xs,
+    fontStyle:    'italic',
   },
 
   // Dropset sub-block
