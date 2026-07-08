@@ -1,30 +1,45 @@
 # Spec — Generador automático de programas (onboarding)
 
-> Estado: **diagnóstico cerrado (Fable, jul 2026) + fase A lista para implementar**.
-> Fases B y C especificadas a nivel de producto; sus detalles finos se cierran al
-> arrancarlas. Asignación de modelos en §9.
+> Estado: **diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
+> fusionadas** (`606ccdf` fase A, `eff1666` fase B — ver §4 y §5, marcadas al
+> final de cada una). **Pendiente: fase C** (§6) — biblioteca de plantillas +
+> matcher por puntuación; su contenido de entrenamiento es trabajo de Fable +
+> usuario, no delegable a código (§9). §1 describe la arquitectura TAL COMO
+> QUEDÓ tras A+B — léela así, no como "antes".
 >
-> Evidencia: stress-test de 21.600 combinaciones de respuestas del onboarding
-> (matriz nivel × disciplina × distribución × objetivo × días × equipo ×
-> limitaciones). Resultados: solo el 5% se resuelve por arquetipo (el camino de
-> calidad); 38.000+ sesiones generadas sin ningún ejercicio clave; 4.400+ con
-> menos de 3 ejercicios; 1.080 programas con menos días de los pedidos sin aviso.
+> Evidencia original del diagnóstico: stress-test de 21.600 combinaciones de
+> respuestas del onboarding (matriz nivel × disciplina × distribución ×
+> objetivo × días × equipo × limitaciones) sobre el sistema PRE-fase A.
+> Resultados: solo el 5% se resolvía por arquetipo (el camino de calidad);
+> 38.000+ sesiones generadas sin ningún ejercicio clave; 4.400+ con menos de 3
+> ejercicios; 1.080 programas con menos días de los pedidos sin aviso. Los
+> fixes de A+B corrigen estas causas — ver harness de 704 tests en
+> `src/utils/programGenerator.test.js`.
 
 ---
 
-## 1. Arquitectura actual (leer antes de tocar)
+## 1. Arquitectura (actualizada tras fases A+B — jul 2026)
 
 ```
 OnboardingScreen (mobile/src/screens/OnboardingScreen.jsx)
-  └─ answers = { level, discipline, distribution, daysPerWeek, goal, equipment[], limitations[] }
+  └─ B1: nivel → disciplina → días (1-7, frecuencia) → tiempo/sesión → objetivo
+         → equipo (incl. 'bodyweight') → limitaciones → distribución (B2: RECOMENDADA primero)
+  └─ answers = { level, discipline, distribution, daysPerWeek, sessionMinutes,
+                 goal, equipment[], limitations[] }
        └─ useStore.generateAndActivateProgram(answers)   [useStore.js ~línea 276]
             ├─ findBestArchetype(answers)   [src/data/archetypes.js]
             │    match EXACTO de discipline+distribution+goal+level+daysPerWeek
-            │    (con 2 niveles de relajación que también exigen daysPerWeek exacto)
+            │    (sin cambios en fase A/B — la fase C lo reemplaza por scoring)
             ├─ si hay arquetipo → adaptArchetype(arquetipo, answers)  [src/utils/archetypeAdapter.js]
-            │    sustituye ejercicios por equipo/nivel/limitación; recorta para beginner
+            │    sustituye ejercicios por equipo/nivel/limitación (A3: sustituye, no
+            │    elimina); aplica goal a los keys si difiere del arquetipo (A4);
+            │    recorta por sessionMinutes vía trimToTimeBudget (B3)
             └─ si no → generateProgram(answers)  [src/utils/programGenerator.js]
-                 monta sesiones desde cero con DISTRIBUTION_PATTERNS + getCandidates()
+                 monta sesiones con DISTRIBUTION_PATTERNS + getKeyCandidatesWithFallback
+                 (A1: cascada de nivel para keys, nunca vacío) + getCandidates (accesorios,
+                 4 intentos, A2); exercisesPerSession por sessionMinutes (B3);
+                 ciclar patrones si daysPerWeek pide más sesiones que las definidas (A6,
+                 capado a 6 — B2 reinterpreta daysPerWeek como frecuencia, no conteo)
 ```
 
 Biblioteca: `src/data/exerciseLibrary.js` — 182 ejercicios con campos
@@ -33,8 +48,9 @@ Biblioteca: `src/data/exerciseLibrary.js` — 182 ejercicios con campos
 `priority: { [goal]: high|medium|low }`, `relatedVariants`, `assistedVariantId`.
 
 Los programas de la app son **ciclos rotativos** (days se rotan; no semana
-natural). Esto importa: un programa de 3 sesiones sirve para cualquier
-frecuencia — la frecuencia solo cambia la velocidad de avance por el ciclo.
+natural). Esto importa: un programa de 3-6 sesiones sirve para cualquier
+frecuencia (1-7 días/semana) — la frecuencia solo cambia la velocidad de
+avance por el ciclo (B2).
 
 ## 2. Causas raíz (diagnóstico)
 
@@ -63,7 +79,7 @@ cirugía al sistema actual para que deje de producir programas rotos hoy.
 
 ---
 
-## 4. FASE A — Cirugía al generador actual 🟢 (Sonnet)
+## 4. FASE A — Cirugía al generador actual 🟢 ✅ IMPLEMENTADA (`606ccdf`)
 
 Objetivo: con CUALQUIER combinación de respuestas, cada sesión generada tiene
 ≥1 ejercicio clave, ≥4 ejercicios (salvo imposibilidad real de biblioteca), sin
@@ -182,7 +198,7 @@ porque el generador descartó huecos pudiendo llenarlos.
 
 ---
 
-## 5. FASE B — Rediseño del flujo de onboarding 🟡 (Sonnet con esta spec)
+## 5. FASE B — Rediseño del flujo de onboarding 🟡 ✅ IMPLEMENTADA (`eff1666`)
 
 Decisiones cerradas (no re-abrir sin consultar). Alcance: `OnboardingScreen.jsx`,
 `programGenerator.js` (solo lectura de `sessionMinutes` + recorte), locales.
@@ -295,8 +311,8 @@ no llevan extensión; node pelado no los resuelve).
 
 | Tarea | Modelo | Nota |
 |---|---|---|
-| Fase A completa | **Sonnet** | Cirugía localizada con tests de invariantes que la validan sola |
-| Fase B implementación | Sonnet/Opus | UI + recorte por tiempo; la spec fija las decisiones |
-| Fase C matcher + retirada del procedural | Sonnet | Mecánico con la spec |
-| **Fase C contenido de plantillas** | **Fable + usuario** | Diseño de programas de entrenamiento reales: requiere criterio de dominio profundo, balance de volumen/frecuencia/patrones por nivel. NO delegable a la spec |
-| Revisión de la fase B (recorte por tiempo) | Fable línea a línea | El recorte interactúa con keys/accesorios/limitaciones; fácil de romper sutilmente |
+| Fase A completa | **Sonnet** ✅ hecho | Cirugía localizada con tests de invariantes que la validan sola |
+| Fase B implementación | Sonnet/Opus ✅ hecho (Sonnet) | UI + recorte por tiempo; la spec fija las decisiones |
+| Revisión de la fase B (recorte por tiempo) | Fable línea a línea ✅ hecho | El recorte interactúa con keys/accesorios/limitaciones; fácil de romper sutilmente |
+| Fase C matcher + retirada del procedural | Sonnet | Mecánico con la spec — pendiente |
+| **Fase C contenido de plantillas** | **Fable + usuario** | Diseño de programas de entrenamiento reales: requiere criterio de dominio profundo, balance de volumen/frecuencia/patrones por nivel. NO delegable a la spec — pendiente |
