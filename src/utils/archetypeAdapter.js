@@ -125,33 +125,38 @@ function getLimitationNote(group, limitations) {
 function reduceForBeginner(exercises, userEquipment) {
   let result = [...exercises];
 
+  // El exConfig ya no lleva pattern/primaryGroup — se leen de la biblioteca.
+  const patternOf = (ex) => EXERCISE_LIBRARY[ex.exerciseId]?.pattern;
+  const groupOf   = (ex) => EXERCISE_LIBRARY[ex.exerciseId]?.primaryGroup;
+
   // Contar cuántos keys hay por patrón
   const keysByPattern = {};
   result.forEach((ex) => {
     if (ex.isKey) {
-      keysByPattern[ex.pattern] = (keysByPattern[ex.pattern] ?? 0) + 1;
+      keysByPattern[patternOf(ex)] = (keysByPattern[patternOf(ex)] ?? 0) + 1;
     }
   });
 
-  // Eliminar 1 key — el que tenga otro key del mismo patrón en el día
-  const removableKey = result.find(
-    (ex) => ex.isKey && (keysByPattern[ex.pattern] ?? 0) > 1
+  // Eliminar 1 key — el ÚLTIMO de un patrón duplicado (conserva el principal,
+  // que va antes en el día)
+  const removableKey = [...result].reverse().find(
+    (ex) => ex.isKey && (keysByPattern[patternOf(ex)] ?? 0) > 1
   );
   if (removableKey) {
     result = result.filter((ex) => ex !== removableKey);
-    keysByPattern[removableKey.pattern]--;
+    keysByPattern[patternOf(removableKey)]--;
   }
 
   // Eliminar 1 accessory (el último que no sea core)
   const removableAccessory = [...result].reverse().find(
-    (ex) => !ex.isKey && ex.primaryGroup !== 'core'
+    (ex) => !ex.isKey && groupOf(ex) !== 'core'
   );
   if (removableAccessory) {
     result = result.filter((ex) => ex !== removableAccessory);
   }
 
   // Añadir core si no hay ninguno
-  const hasCore = result.some((ex) => ex.primaryGroup === 'core');
+  const hasCore = result.some((ex) => groupOf(ex) === 'core');
   if (!hasCore) {
     const coreEx = DEFAULT_CORE_EXERCISES
       .map((id) => EXERCISE_LIBRARY[id])
@@ -315,8 +320,9 @@ export function adaptArchetype(archetype, answers) {
       exercises.push(buildExConfig(archetypeEx, resolvedId, isLimited, limitations, applyGoalParams, goalParams));
     });
 
-    // Ajustar según nivel
-    if (level === 'beginner') {
+    // Ajustar según nivel — solo si el arquetipo NO está ya diseñado para
+    // beginner (una plantilla beginner nativa no necesita reducción).
+    if (level === 'beginner' && archetype.level !== 'beginner') {
       exercises = reduceForBeginner(exercises, equipment);
     }
 

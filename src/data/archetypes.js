@@ -130,6 +130,65 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // FULL BODY · HIPERTROFIA · PRINCIPIANTE (máquinas/mancuernas, 3 sets,
+  // repetición parcial de patrones entre días para asentar técnica)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'fullbody_hypertrophy_beginner',
+    name: 'Full Body · Hipertrofia · Iniciación',
+    tags: ['full_body', 'hypertrophy', 'beginner'],
+    discipline: 'standard',
+    distribution: 'full_body',
+    goal: 'hypertrophy',
+    level: 'beginner',
+    daysPerWeek: 3,
+    days: [
+      {
+        label: 'A',
+        name: 'Tracción vertical, empuje y pierna',
+        color: 'var(--day1)',
+        emphasis: 'pull',
+        exercises: [
+          { exerciseId: 'pulldown_neutral',       role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'chest_press_machine',    role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'leg_press_standard',     role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'db_row_unilateral',      role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60, pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'lateral_raise_db',       role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60, pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'plank',                  role: 'accessory',sets: 3, minReps: null, maxReps: null, restSec: 45, pattern: 'core',        primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Cadera, empuje vertical y tracción horizontal',
+        color: 'var(--day2)',
+        emphasis: 'push',
+        exercises: [
+          { exerciseId: 'hip_thrust',             role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'shoulder_press_machine', role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'cable_row',              role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'leg_curl_lying',         role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'chest_fly_machine',      role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'crunch',                 role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45, pattern: 'core',            primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'C',
+        name: 'Tracción, empuje inclinado y sentadilla',
+        color: 'var(--day3)',
+        emphasis: 'pull',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',      role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'machine_incline_press',  role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'goblet_squat',           role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'bicep_curl_supination',  role: 'accessory',sets: 2, minReps: 10, maxReps: 12, restSec: 60, pattern: 'vertical_pull',   primaryGroup: 'arms' },
+          { exerciseId: 'tricep_pushdown',        role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60, pattern: 'vertical_push',   primaryGroup: 'arms' },
+          { exerciseId: 'leg_raise_lying',        role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 45, pattern: 'core',            primaryGroup: 'core' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // GLÚTEO PRIORITARIO · HIPERTROFIA · INTERMEDIO
   // ─────────────────────────────────────────────────────────────────────────
   {

@@ -226,6 +226,20 @@ describe('regresión — casos con nombre propio', () => {
     expect(result.program.days.length).toBe(5);
   });
 
+  it('arquetipo beginner nativo llega íntegro: 3 keys/día, sin reduceForBeginner', () => {
+    const result = runOnboarding({
+      level: 'beginner', discipline: 'standard', distribution: 'full_body',
+      daysPerWeek: 3, goal: 'hypertrophy',
+      equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+    });
+    expect(result.program.days.length).toBe(3);
+    result.program.days.forEach((d) => {
+      const tpl = result.sessionTemplates[d.sessionTemplateId];
+      expect(tpl.exercises.filter((e) => e.isKey).length).toBe(3);
+      expect(tpl.exercises.length).toBe(6);
+    });
+  });
+
   it('adaptArchetype con goal=strength sobre arquetipo hypertrophy → los keys llevan reps de fuerza (5-8)', () => {
     const archetype = findBestArchetype({
       discipline: 'standard', distribution: 'full_body', goal: 'hypertrophy',
