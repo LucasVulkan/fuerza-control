@@ -1,10 +1,21 @@
 # Spec — Series de calentamiento
 
-> Estado: **spec cerrada, lista para implementar**. Mockups aprobados
-> (`warmup_sets_editor_workout_mockup`). Decisión clave del usuario: granularidad
-> SOLO en el bloque de calentamiento — NO convertir las series de trabajo en
-> editables una a una (rompería evaluador de progresión, stats, plannedSets y sync;
-> pirámides/top-set serán una feature futura aparte).
+> Estado: **✅ IMPLEMENTADA (3 fases, Sonnet, jul 2026)**. Fase 1 — util puro
+> `src/utils/warmup.js` + exclusión `isWarmup` en `progression.js`/`sessionRecap.js`
+> (`45a74ee`). Fase 2 — bloque Calentamiento en `ExerciseEditorInline` + duración
+> estimada en `sessionStats.js` (`f04a254`). Fase 3 — sub-bloque C en `ExerciseCard`,
+> siembra de filas en `startSession`/`syncSessionSets`, rest timer propio en
+> `toggleSetDone`, autofill por grupo en `saveSession` (`8d7d187`). Decisión clave
+> del usuario: granularidad SOLO en el bloque de calentamiento — NO convertir las
+> series de trabajo en editables una a una (rompería evaluador de progresión, stats,
+> plannedSets y sync; pirámides/top-set serán una feature futura aparte).
+>
+> Ajuste sobre el texto original de esta spec, descubierto al implementar: §4 asumía
+> que `sessionRecap.js` ensambla el array que alimenta a `getProgression` — no es así,
+> el filtro real vive dentro de `getProgression` (`src/utils/progression.js`), único
+> punto compartido por los 3 consumidores reales. Y `startSession`/`syncSessionSets`
+> (no mencionados en el texto original) tuvieron que sembrar las filas `isWarmup` en
+> `setsState` — sin eso el bloque de calentamiento nunca tendría filas reales.
 
 ## 1. Modelo de datos
 

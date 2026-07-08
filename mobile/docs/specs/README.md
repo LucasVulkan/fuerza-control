@@ -9,7 +9,6 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); fase C EN PAUSA (4/~10-12 plantillas, ver §6.2) | 🔴 | contenido de plantillas (fase C) = Fable+usuario; onboarding "muy extenso", pendiente decidir si simplificar antes de seguir |
-| [warmup-sets.md](warmup-sets.md) — Series de calentamiento | cerrada | 🟡 | granularidad solo en el bloque C |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
 
@@ -17,6 +16,7 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 |---|---|
 | [strength-blocks.md](strength-blocks.md) — Dropset + Superserie | implementada (`92ab414`) |
 | [conditioning-blocks.md](conditioning-blocks.md) — AMRAP/EMOM/For time | implementada, 4 fases + fix rondas EMOM + resumen en editor (`a15ee07`) |
+| [warmup-sets.md](warmup-sets.md) — Series de calentamiento | implementada, 3 fases (`45a74ee` utils, `f04a254` editor, `8d7d187` workout) |
 
 ## Aparcado (decisión de producto pendiente, NO implementar)
 
