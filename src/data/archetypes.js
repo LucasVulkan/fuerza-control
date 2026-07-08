@@ -338,6 +338,65 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // FULL BODY · FUERZA · AVANZADO (5x5 clásico — squat/bench/row A y C,
+  // deadlift/OHP/squat pausada B; primer arquetipo de discipline='strength')
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'fullbody_strength_advanced',
+    name: 'Full Body · Fuerza',
+    tags: ['full_body', 'strength', 'advanced'],
+    discipline: 'strength',
+    distribution: 'full_body',
+    goal: 'strength',
+    level: 'advanced',
+    daysPerWeek: 3,
+    days: [
+      {
+        label: 'A',
+        name: 'Sentadilla, banca y remo',
+        color: 'var(--day1)',
+        emphasis: 'squat_bench_row',
+        exercises: [
+          { exerciseId: 'squat_barbell',       role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 180, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'bench_press_barbell', role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'barbell_row',         role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 120, pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'pull_up_neutral',     role: 'accessory',sets: 3, minReps: 6,  maxReps: 8,  restSec: 90,  pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'lateral_raise_db',    role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'plank',               role: 'accessory',sets: 3, minReps: null, maxReps: null, restSec: 60, pattern: 'core',          primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Peso muerto, press militar y sentadilla pausada',
+        color: 'var(--day2)',
+        emphasis: 'deadlift_ohp',
+        exercises: [
+          { exerciseId: 'deadlift_conventional', role: 'key',      sets: 3, minReps: 5,  maxReps: 5,  restSec: 180, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'overhead_press_barbell',role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 150, pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'box_squat_barbell',     role: 'key',      sets: 3, minReps: 5,  maxReps: 5,  restSec: 150, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'pull_up_supine',        role: 'accessory',sets: 3, minReps: 6,  maxReps: 8,  restSec: 90,  pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'ez_bar_curl',           role: 'accessory',sets: 3, minReps: 8,  maxReps: 10, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+          { exerciseId: 'dip',                   role: 'accessory',sets: 3, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'chest' },
+        ],
+      },
+      {
+        label: 'C',
+        name: 'Sentadilla, banca y remo',
+        color: 'var(--day3)',
+        emphasis: 'squat_bench_row',
+        exercises: [
+          { exerciseId: 'squat_barbell',       role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 180, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'bench_press_barbell', role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'barbell_row',         role: 'key',      sets: 4, minReps: 5,  maxReps: 5,  restSec: 120, pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'romanian_deadlift',   role: 'accessory',sets: 3, minReps: 6,  maxReps: 8,  restSec: 120, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'face_pull',           role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_pull', primaryGroup: 'shoulders' },
+          { exerciseId: 'ab_wheel_rollout',     role: 'accessory',sets: 3, minReps: 10, maxReps: 15, restSec: 60,  pattern: 'core',            primaryGroup: 'core' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // GLÚTEO PRIORITARIO · HIPERTROFIA · INTERMEDIO
   // ─────────────────────────────────────────────────────────────────────────
   {
