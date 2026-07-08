@@ -262,6 +262,40 @@ describe('regresión — casos con nombre propio', () => {
     expect(allKeyIds.filter((id) => id === 'romanian_deadlift_db').length).toBeGreaterThanOrEqual(2);
   });
 
+  it('upper/lower avanzado 4d: matchea distinto del intermedio, keys de barra libre con frecuencia 2, hack_squat no se sustituye pese a ser nivel intermedio', () => {
+    const resultAdv = runOnboarding({
+      level: 'advanced', discipline: 'standard', distribution: 'upper_lower',
+      daysPerWeek: 4, goal: 'hypertrophy',
+      equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+    });
+    expect(resultAdv.program.days.length).toBe(4);
+
+    const keyIdsByDay = resultAdv.program.days.map((d) => {
+      const tpl = resultAdv.sessionTemplates[d.sessionTemplateId];
+      expect(tpl.exercises.some((e) => e.isKey)).toBe(true);
+      return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
+    });
+    const allKeyIds = keyIdsByDay.flat();
+    expect(allKeyIds.filter((id) => id === 'bench_press_barbell').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'barbell_row').length).toBeGreaterThanOrEqual(2);
+    // hack_squat es nivel intermediate pero se mantiene como key en el
+    // arquetipo advanced (fitsLevel solo bloquea hacia arriba, no hacia abajo).
+    expect(allKeyIds.filter((id) => id === 'hack_squat').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'romanian_deadlift').length).toBeGreaterThanOrEqual(2);
+
+    // Un usuario intermedio sigue matcheando el arquetipo intermedio, no este.
+    const resultInt = runOnboarding({
+      level: 'intermediate', discipline: 'standard', distribution: 'upper_lower',
+      daysPerWeek: 4, goal: 'hypertrophy',
+      equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+    });
+    const intKeyIds = resultInt.program.days.flatMap((d) =>
+      resultInt.sessionTemplates[d.sessionTemplateId].exercises.filter((e) => e.isKey).map((e) => e.exerciseId)
+    );
+    expect(intKeyIds).not.toContain('bench_press_barbell');
+    expect(intKeyIds).not.toContain('barbell_row');
+  });
+
   it('adaptArchetype con goal=strength sobre arquetipo hypertrophy → los keys llevan reps de fuerza (5-8)', () => {
     const archetype = findBestArchetype({
       discipline: 'standard', distribution: 'full_body', goal: 'hypertrophy',
