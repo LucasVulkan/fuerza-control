@@ -34,8 +34,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SWIPE_DELETE = 150;
-const ITEM_HEIGHT  = 58;
+const ACTION_BTN_WIDTH = 75;
+const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2;
+const ITEM_HEIGHT      = 58;
 
 const SWAP_ANIM = {
   duration: 180,
@@ -96,59 +97,54 @@ function defaultBlock() {
 }
 
 // ─── ExerciseRow ──────────────────────────────────────────────────────────────
-// Grip (left 50 px) drags to reorder; right-swipe anywhere deletes; tapping
-// the body opens the exercise editor.
+// Grip (left 50 px) drags to reorder; right-swipe reveals a 2-button action
+// panel (sustituir / eliminar) underneath — tap a button to act, tap the row
+// again to close it. Tapping the body while closed opens the exercise editor.
 
 function ExerciseRow({
   exConfig, def, onPress, linkBadge,
   isSSMember, ssConnectDown,
   onDragStart, onDragMove, onDragEnd,
-  onSwipeDelete,
+  isOpen, onOpenChange,
+  onSwipeDelete, onSubstitute,
 }) {
   const { t } = useTranslation();
-  const th    = useTheme();
   const rs    = useThemedStyles(makeRs);
 
-  const dragX   = useRef(new Animated.Value(0)).current;
-  const modeRef = useRef(null); // 'h' | 'v' | null
+  const dragX    = useRef(new Animated.Value(0)).current;
+  const modeRef  = useRef(null); // 'h' | 'v' | null
   const vStarted = useRef(false);
+  const openRef  = useRef(false);
 
   // Callback refs prevent stale closures inside the once-created PanResponder
-  const onDragStartRef = useRef(onDragStart);
-  const onDragMoveRef  = useRef(onDragMove);
-  const onDragEndRef   = useRef(onDragEnd);
-  const onDeleteRef    = useRef(onSwipeDelete);
+  const onDragStartRef  = useRef(onDragStart);
+  const onDragMoveRef   = useRef(onDragMove);
+  const onDragEndRef    = useRef(onDragEnd);
+  const onOpenChangeRef = useRef(onOpenChange);
+  const onPressRef      = useRef(onPress);
   useEffect(() => {
-    onDragStartRef.current = onDragStart;
-    onDragMoveRef.current  = onDragMove;
-    onDragEndRef.current   = onDragEnd;
-    onDeleteRef.current    = onSwipeDelete;
+    onDragStartRef.current  = onDragStart;
+    onDragMoveRef.current   = onDragMove;
+    onDragEndRef.current    = onDragEnd;
+    onOpenChangeRef.current = onOpenChange;
+    onPressRef.current      = onPress;
   });
 
-  const bgColor = dragX.interpolate({
-    inputRange: [0, 30, SWIPE_DELETE],
-    outputRange: [withOpacity(th.colors.red, 0), withOpacity(th.colors.red, 0.06), withOpacity(th.colors.red, 0.2)],
-    extrapolate: 'clamp',
-  });
-  const gripColor = dragX.interpolate({
-    inputRange: [0, SWIPE_DELETE],
-    outputRange: [th.colors.muted2, th.colors.red],
-    extrapolate: 'clamp',
-  });
-  const nameOpacity = dragX.interpolate({
-    inputRange: [SWIPE_DELETE - 8, SWIPE_DELETE],
-    outputRange: [1, 0], extrapolate: 'clamp',
-  });
-  const labelOpacity = dragX.interpolate({
-    inputRange: [SWIPE_DELETE - 8, SWIPE_DELETE],
-    outputRange: [0, 1], extrapolate: 'clamp',
-  });
+  // Another row opened (or a parent action closed this one) — snap shut.
+  useEffect(() => {
+    if (!isOpen && openRef.current) {
+      openRef.current = false;
+      Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
+    }
+  }, [isOpen, dragX]);
 
   const panResponder = useRef(PanResponder.create({
     // Grip (leftmost 50 px): claim immediately → reliable vertical reorder.
-    onStartShouldSetPanResponder: (e) => e.nativeEvent.locationX < 50,
-    // Horizontal right-swipe anywhere: claim on movement → swipe-to-delete.
-    onMoveShouldSetPanResponder: (_, gs) => gs.dx > 8 && gs.dx > Math.abs(gs.dy) * 1.3,
+    // Disabled while open (a touch there should close the row, not drag it).
+    onStartShouldSetPanResponder: (e) => !openRef.current && e.nativeEvent.locationX < 50,
+    // Horizontal right-swipe anywhere: claim on movement → reveal actions.
+    // Disabled while already open — closing happens via tap, not drag.
+    onMoveShouldSetPanResponder: (_, gs) => !openRef.current && gs.dx > 8 && gs.dx > Math.abs(gs.dy) * 1.3,
     onPanResponderGrant: (e) => {
       modeRef.current = e.nativeEvent.locationX < 50 ? 'v' : null;
       vStarted.current = false;
@@ -161,7 +157,7 @@ function ExerciseRow({
         else return;
       }
       if (modeRef.current === 'h' && gs.dx > 0) {
-        dragX.setValue(gs.dx);
+        dragX.setValue(Math.min(gs.dx, SWIPE_OPEN));
       } else if (modeRef.current === 'v') {
         if (!vStarted.current) {
           vStarted.current = true;
@@ -172,14 +168,10 @@ function ExerciseRow({
     },
     onPanResponderRelease: (_, gs) => {
       if (modeRef.current === 'h') {
-        if (gs.dx >= SWIPE_DELETE) {
-          Animated.timing(dragX, { toValue: 500, duration: 120, useNativeDriver: false }).start(() => {
-            onDeleteRef.current(exConfig.exerciseId);
-          });
-          modeRef.current = null;
-          return;
-        }
-        Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
+        const opening = gs.dx >= SWIPE_OPEN / 2;
+        openRef.current = opening;
+        Animated.spring(dragX, { toValue: opening ? SWIPE_OPEN : 0, useNativeDriver: false, tension: 80 }).start();
+        onOpenChangeRef.current(opening);
       } else if (modeRef.current === 'v' && vStarted.current) {
         onDragEndRef.current();
       }
@@ -190,32 +182,59 @@ function ExerciseRow({
       if (modeRef.current === 'v' && vStarted.current) onDragEndRef.current();
       modeRef.current = null;
       vStarted.current = false;
-      Animated.spring(dragX, { toValue: 0, useNativeDriver: false }).start();
+      if (!openRef.current) Animated.spring(dragX, { toValue: 0, useNativeDriver: false }).start();
     },
   })).current;
+
+  function closeRow() {
+    openRef.current = false;
+    Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
+    onOpenChangeRef.current(false);
+  }
+
+  function handleBodyPress() {
+    if (openRef.current) { closeRow(); return; }
+    onPressRef.current();
+  }
 
   const mode = progMode(exConfig, def);
 
   return (
-    <Animated.View
-      style={[
-        rs.row,
-        isSSMember && rs.rowSS,
-        ssConnectDown && rs.rowSSConnected,
-        { backgroundColor: bgColor },
-        { transform: [{ translateX: dragX }] },
-      ]}
-      {...panResponder.panHandlers}
-    >
-      <Animated.Text style={[rs.grip, { color: gripColor }]}>⠿</Animated.Text>
+    <View style={{ position: 'relative' }}>
+      <View style={rs.actionPanel} pointerEvents="box-none">
+        <TouchableOpacity
+          style={[rs.actionBtn, rs.actionBtnSubstitute]}
+          onPress={() => { closeRow(); onSubstitute(exConfig.exerciseId); }}
+          activeOpacity={0.75}
+        >
+          <Text style={rs.actionBtnText}>{t('editor.rowSubstitute')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[rs.actionBtn, rs.actionBtnDelete]}
+          onPress={() => { closeRow(); onSwipeDelete(exConfig.exerciseId); }}
+          activeOpacity={0.75}
+        >
+          <Text style={rs.actionBtnText}>{t('editor.rowDelete')}</Text>
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity
-        style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
-        onPress={onPress}
-        activeOpacity={0.7}
+      <Animated.View
+        style={[
+          rs.row,
+          isSSMember && rs.rowSS,
+          ssConnectDown && rs.rowSSConnected,
+          { transform: [{ translateX: dragX }] },
+        ]}
+        {...panResponder.panHandlers}
       >
-        <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-          <Animated.View style={{ opacity: nameOpacity }}>
+        <Text style={rs.grip}>⠿</Text>
+
+        <TouchableOpacity
+          style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
+          onPress={handleBodyPress}
+          activeOpacity={0.7}
+        >
+          <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
             <Text style={rs.exName} numberOfLines={1}>{def?.name ?? exConfig.exerciseId}</Text>
             <View style={rs.metaRow}>
               <Text style={rs.exMeta}>{rowMeta(exConfig, t)}</Text>
@@ -227,14 +246,11 @@ function ExerciseRow({
               {exConfig.isUnilateral ? <Text style={[rs.badge, rs.badgeUni]}>UNI</Text> : null}
               {exConfig.trackRpe ? <Text style={[rs.badge, rs.badgeRpe]}>RPE</Text> : null}
             </View>
-          </Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: labelOpacity, justifyContent: 'center' }]}>
-            <Text style={rs.deleteLabel}>{t('editor.dropToDelete')}</Text>
-          </Animated.View>
-        </View>
-        <Text style={rs.chevron}>›</Text>
-      </TouchableOpacity>
-    </Animated.View>
+          </View>
+          <Text style={rs.chevron}>›</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -246,7 +262,7 @@ const makeRs = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
     backgroundColor: th.colors.surface,
   },
-  grip: { fontSize: 18, lineHeight: 22, flexShrink: 0 },
+  grip: { fontSize: 18, lineHeight: 22, flexShrink: 0, color: th.colors.muted2 },
   exName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2, flexWrap: 'wrap' },
   exMeta: { fontSize: typography.xs, color: th.colors.muted },
@@ -265,8 +281,22 @@ const makeRs = (th) => StyleSheet.create({
   // member's bottom border is dropped so it visually merges into the next row.
   rowSS:          { borderLeftWidth: 3, borderLeftColor: th.colors.accent },
   rowSSConnected: { borderBottomWidth: 0 },
-  deleteLabel: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
   chevron: { fontSize: typography.lg, color: th.colors.muted2, flexShrink: 0 },
+  // Action panel sits behind the row (position:absolute, left:0) and is
+  // progressively revealed as the row slides right on swipe.
+  actionPanel: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    flexDirection: 'row', width: SWIPE_OPEN,
+  },
+  actionBtn: {
+    width: ACTION_BTN_WIDTH, alignItems: 'center', justifyContent: 'center',
+  },
+  actionBtnSubstitute: { backgroundColor: th.colors.blue },
+  actionBtnDelete:     { backgroundColor: th.colors.red },
+  actionBtnText: {
+    fontSize: typography.xs, fontWeight: typography.bold, color: th.colors.onAccent,
+    textAlign: 'center', paddingHorizontal: 4,
+  },
   badgeBlockAmrap:   { backgroundColor: withOpacity(th.colors.accent, 0.12), color: th.colors.accent },
   badgeBlockEmom:    { backgroundColor: withOpacity(th.colors.blue, 0.12),   color: th.colors.blue },
   badgeBlockForTime: { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
@@ -375,11 +405,13 @@ export default function SessionEditorScreen({ navigation, route }) {
     setEditingName(false);
     setEditingExId(null);
     setEditingBlockId(null);
+    setOpenExId(null);
     setTemplateId(id);
   }
 
   const [editingExId, setEditingExId] = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
+  const [openExId, setOpenExId] = useState(null); // row with its swipe action panel revealed
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue]     = useState('');
@@ -479,6 +511,14 @@ export default function SessionEditorScreen({ navigation, route }) {
     if (editingExId === exerciseId) setEditingExId(null);
     removeExercise(templateId, exerciseId);
     showToast(t('editor.toastExDeleted'), 2200, 'neutral');
+  }
+
+  function handleSubstituteExercise(exerciseId) {
+    navigation.navigate('ExerciseSelector', {
+      templateId,
+      currentExerciseId: exerciseId,
+      existingPatterns: [],
+    });
   }
 
   function handleAddExercise() {
@@ -708,7 +748,10 @@ export default function SessionEditorScreen({ navigation, route }) {
                   onDragStart={() => handleDragStart(exConfig.exerciseId)}
                   onDragMove={(dy) => handleDragMove(exConfig.exerciseId, dy)}
                   onDragEnd={() => handleDragEnd(exConfig.exerciseId)}
+                  isOpen={openExId === exConfig.exerciseId}
+                  onOpenChange={(open) => setOpenExId(open ? exConfig.exerciseId : null)}
                   onSwipeDelete={handleRemoveExercise}
+                  onSubstitute={handleSubstituteExercise}
                 />
               </View>
             );
