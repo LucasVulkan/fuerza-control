@@ -24,6 +24,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useStore } from '../../store/useStore';
+import { sessionStats } from '../utils/sessionStats';
 import ImportModal from '../components/ImportModal';
 import ClientCodeModal from '../components/ClientCodeModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
@@ -58,6 +59,26 @@ const GOAL_MIN_LEVEL = { hypertrophy: 'beginner', endurance: 'beginner', strengt
 
 function goalAvailable(goalId, level) {
   return LEVEL_ORDER[level] >= LEVEL_ORDER[GOAL_MIN_LEVEL[goalId]];
+}
+
+function distAvailable(distId, level, discipline) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[DIST_MIN_LEVEL[distId]]
+    && DIST_FOR[distId].includes(discipline);
+}
+
+// B2: distribución recomendada según días/nivel (tabla de la spec §5-B2),
+// filtrada por los gates de disciplina y nivel; si la preferida no pasa,
+// cae a la siguiente compatible.
+function recommendDistribution({ daysPerWeek: d, level, discipline }) {
+  const beginner = level === 'beginner';
+  let preferred;
+  if (d <= 2)       preferred = 'full_body';
+  else if (d === 3) preferred = beginner ? 'full_body' : 'push_pull_legs';
+  else if (d === 4) preferred = 'upper_lower';
+  else if (d <= 6)  preferred = beginner ? 'full_body' : 'push_pull_legs';
+  else              preferred = 'push_pull_legs'; // 7 días — con hint de descanso activo
+  const ordered = [preferred, ...DIST_IDS.filter((id) => id !== preferred)];
+  return ordered.find((id) => distAvailable(id, level, discipline)) ?? 'full_body';
 }
 
 // ─── Import helper ────────────────────────────────────────────────────────────
@@ -179,13 +200,15 @@ export default function OnboardingScreen() {
     discipline:       null,
     distribution:     null,
     daysPerWeek:      3,
+    sessionMinutes:   60,
     goal:             null,
     equipment:        [],
     limitations:      [],
     progressionModel: 'double_progression',
   });
 
-  const totalSteps = answers.level === 'advanced' ? 8 : 7;
+  // B1: nivel → disciplina → días → tiempo → objetivo → equipo → limitaciones → distribución (+ progresión si advanced)
+  const totalSteps = answers.level === 'advanced' ? 9 : 8;
 
   function set_(field, value) {
     setAnswers((a) => ({ ...a, [field]: value }));
@@ -306,8 +329,7 @@ export default function OnboardingScreen() {
   }
 
   function nextStep() {
-    if (step === 6 && answers.level !== 'advanced') { handleFinish(); return; }
-    if (step === totalSteps - 1)                    { handleFinish(); return; }
+    if (step === totalSteps - 1) { handleFinish(); return; }
     setStep((s) => s + 1);
   }
   function prevStep() { setStep((s) => Math.max(0, s - 1)); }
@@ -339,6 +361,16 @@ export default function OnboardingScreen() {
           <Text style={styles.previewReady}>✓ PROGRAMA LISTO</Text>
           <Text style={styles.previewTitle}>{program.name}</Text>
           <Text style={styles.previewMeta}>{days.length} sesiones por ciclo</Text>
+          {/* B4: hint de ciclo cuando la frecuencia pedida supera las sesiones generadas */}
+          {answers.daysPerWeek > days.length && (
+            <Text style={styles.previewCycleHint}>
+              {t('onboarding.preview.cycleHint', {
+                sessions: days.length,
+                days: answers.daysPerWeek,
+                defaultValue: `Tus ${days.length} sesiones rotan en ciclo — entrenas ${answers.daysPerWeek} días a la semana.`,
+              })}
+            </Text>
+          )}
         </View>
 
         {/* Sesiones expandibles */}
@@ -365,6 +397,11 @@ export default function OnboardingScreen() {
                   <Text style={styles.previewSessionMeta}>
                     {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
                     {(tpl.exercises ?? []).length} ejercicios
+                    {/* B4: duración estimada por sesión (sessionStats es código mobile) */}
+                    {` · ${t('onboarding.preview.estimatedMinutes', {
+                      minutes: sessionStats(tpl, allEx).minutes,
+                      defaultValue: `~${sessionStats(tpl, allEx).minutes} min`,
+                    })}`}
                   </Text>
                   {isExpanded && (
                     <View style={styles.previewExList}>
@@ -675,21 +712,22 @@ export default function OnboardingScreen() {
         </Text>
       </View>
 
-      {/* Pasos */}
+      {/* Pasos — B1: nivel → disciplina → días → tiempo → objetivo → equipo → limitaciones → distribución */}
       {step === 0 && <StepLevel      answers={answers} set_={set_}        onNext={nextStep} onBack={() => setMode(null)} />}
       {step === 1 && <StepDiscipline answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 2 && <StepDistrib    answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 3 && <StepDays       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
+      {step === 2 && <StepDays       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
+      {step === 3 && <StepTime       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
       {step === 4 && <StepGoal       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
       {step === 5 && <StepEquipment  answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />}
-      {step === 6 && (
-        <StepLimitations
-          answers={answers} toggleMulti={toggleMulti}
+      {step === 6 && <StepLimitations answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />}
+      {step === 7 && (
+        <StepDistrib
+          answers={answers} set_={set_}
           onNext={nextStep} onBack={prevStep}
           isLast={answers.level !== 'advanced'}
         />
       )}
-      {step === 7 && answers.level === 'advanced' && (
+      {step === 8 && answers.level === 'advanced' && (
         <StepProgression answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} isLast />
       )}
     </View>
@@ -751,8 +789,14 @@ function StepDiscipline({ answers, set_, onNext, onBack }) {
   );
 }
 
-function StepDistrib({ answers, set_, onNext, onBack }) {
+// B2: paso de distribución al FINAL del wizard, con la recomendada primera
+// (según días+nivel+disciplina) y badge "Recomendado".
+function StepDistrib({ answers, set_, onNext, onBack, isLast }) {
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const recommended = recommendDistribution(answers);
+  const orderedIds = [recommended, ...DIST_IDS.filter((id) => id !== recommended)];
+
   return (
     <OnboardingStep
       title={t('onboarding.stepDistribution.title', 'Distribución')}
@@ -760,8 +804,9 @@ function StepDistrib({ answers, set_, onNext, onBack }) {
       onNext={onNext}
       onBack={onBack}
       nextDisabled={!answers.distribution}
+      isLast={isLast}
     >
-      {DIST_IDS.map((id) => {
+      {orderedIds.map((id) => {
         const levelOk     = LEVEL_ORDER[answers.level] >= LEVEL_ORDER[DIST_MIN_LEVEL[id]];
         const disciplineOk = DIST_FOR[id].includes(answers.discipline);
         const available    = levelOk && disciplineOk;
@@ -775,6 +820,7 @@ function StepDistrib({ answers, set_, onNext, onBack }) {
             key={id}
             label={t(`onboarding.distributions.${id}.label`, id)}
             description={t(`onboarding.distributions.${id}.description`, '')}
+            badge={id === recommended ? t('onboarding.stepDistribution.recommended', 'Recomendado') : undefined}
             selected={answers.distribution === id}
             disabled={!available}
             disabledReason={disabledReason}
@@ -782,83 +828,30 @@ function StepDistrib({ answers, set_, onNext, onBack }) {
           />
         );
       })}
+      {answers.daysPerWeek === 7 && (
+        <Text style={styles.hint}>
+          {t('onboarding.stepDistribution.sevenDaysHint', 'Con 7 días, incluye al menos un día suave o de descanso activo.')}
+        </Text>
+      )}
     </OnboardingStep>
   );
 }
 
+// B1: selector genérico de frecuencia 1–7. daysPerWeek = días que entrena por
+// semana (frecuencia), no nº de sesiones distintas — el ciclo rotativo hace el resto.
 function StepDays({ answers, set_, onNext, onBack }) {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-
-  // Push/Pull/Legs — fijo 3 días
-  if (answers.distribution === 'push_pull_legs') {
-    if (answers.daysPerWeek !== 3) set_('daysPerWeek', 3);
-    return (
-      <OnboardingStep
-        title={t('onboarding.stepDays.titlePPL', 'Push / Pull / Legs')}
-        subtitle={t('onboarding.stepDays.subtitlePPL', '3 sesiones en ciclo: Empuje, Tirón, Piernas.')}
-        onNext={onNext} onBack={onBack}
-      >
-        {[
-          t('onboarding.pplSessions.push', 'Push — Pecho, hombros, tríceps'),
-          t('onboarding.pplSessions.pull', 'Pull — Espalda, bíceps'),
-          t('onboarding.pplSessions.legs', 'Legs — Cuádriceps, isquios, glúteos'),
-        ].map((label, i) => (
-          <View key={i} style={styles.pplRow}>
-            <Text style={styles.pplLabel}>{label}</Text>
-          </View>
-        ))}
-        <Text style={styles.hint}>{t('onboarding.stepDays.pplCycleHint', 'Las sesiones se alternan en ciclo automáticamente.')}</Text>
-      </OnboardingStep>
-    );
-  }
-
-  // Upper/Lower — 2 o 4 días
-  if (answers.distribution === 'upper_lower') {
-    return (
-      <OnboardingStep
-        title={t('onboarding.stepDays.titleUpperLower', 'Upper / Lower')}
-        subtitle={t('onboarding.stepDays.subtitleUpperLower', '¿Cuántos días a la semana entrenas?')}
-        onNext={onNext} onBack={onBack}
-      >
-        {[
-          { n: 2, title: t('onboarding.upperLowerOptions.2sessions', '2 sesiones'), desc: t('onboarding.upperLowerOptions.2sessionsDesc', 'Upper A + Lower A') },
-          { n: 4, title: t('onboarding.upperLowerOptions.4sessions', '4 sesiones'), desc: t('onboarding.upperLowerOptions.4sessionsDesc', 'Upper A/B + Lower A/B') },
-        ].map(({ n, title, desc }) => (
-          <TouchableOpacity
-            key={n}
-            style={[styles.dayOption, answers.daysPerWeek === n && styles.dayOptionOn]}
-            onPress={() => set_('daysPerWeek', n)}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.dayOptionNum, answers.daysPerWeek === n && styles.dayOptionNumOn]}>{n}</Text>
-            <View>
-              <Text style={styles.dayOptionTitle}>{title}</Text>
-              <Text style={styles.dayOptionDesc}>{desc}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        <Text style={styles.hint}>{t('onboarding.stepDays.ulCycleHint', 'Las sesiones se alternan automáticamente.')}</Text>
-      </OnboardingStep>
-    );
-  }
-
-  // Full Body — selector de 2–6 días
-  const d    = answers.daysPerWeek;
-  const hint = d <= 2
-    ? ' · ' + t('onboarding.stepDays.allGroupsHint', 'Todos los grupos en cada sesión')
-    : d >= 4
-    ? ' · ' + t('onboarding.stepDays.moreVarietyHint', 'Mayor variedad de ejercicios')
-    : '';
+  const d = answers.daysPerWeek;
 
   return (
     <OnboardingStep
-      title={t('onboarding.stepDays.titleFullBody', 'Días por semana')}
-      subtitle={t('onboarding.stepDays.subtitleFullBody', '¿Cuántos días a la semana entrenas?')}
+      title={t('onboarding.stepDays.titleFrequency', 'Días por semana')}
+      subtitle={t('onboarding.stepDays.subtitleFrequency', '¿Cuántos días a la semana entrenas?')}
       onNext={onNext} onBack={onBack}
     >
       <View style={styles.dayBtns}>
-        {[2, 3, 4, 5, 6].map((n) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((n) => (
           <TouchableOpacity
             key={n}
             style={[styles.dayBtn, d === n && styles.dayBtnOn]}
@@ -870,8 +863,32 @@ function StepDays({ answers, set_, onNext, onBack }) {
         ))}
       </View>
       <Text style={styles.hint}>
-        {t('onboarding.stepDays.sessionsCount', { count: d, defaultValue: `${d} sesiones` })}{hint}
+        {t('onboarding.stepDays.daysCount', { count: d, defaultValue: `${d} días a la semana` })}
       </Text>
+    </OnboardingStep>
+  );
+}
+
+// B1: tiempo disponible por sesión → answers.sessionMinutes (presupuesto B3).
+const TIME_OPTIONS = [30, 45, 60, 90];
+
+function StepTime({ answers, set_, onNext, onBack }) {
+  const { t } = useTranslation();
+  return (
+    <OnboardingStep
+      title={t('onboarding.stepTime.title', 'Tiempo por sesión')}
+      subtitle={t('onboarding.stepTime.subtitle', '¿Cuánto tiempo tienes para entrenar cada día?')}
+      onNext={onNext} onBack={onBack}
+    >
+      {TIME_OPTIONS.map((min) => (
+        <OptionCard
+          key={min}
+          label={t(`onboarding.sessionTimes.${min}.label`, `${min} min`)}
+          description={t(`onboarding.sessionTimes.${min}.description`, '')}
+          selected={answers.sessionMinutes === min}
+          onClick={() => set_('sessionMinutes', min)}
+        />
+      ))}
     </OnboardingStep>
   );
 }
@@ -926,7 +943,7 @@ function StepEquipment({ answers, toggleMulti, onNext, onBack }) {
   );
 }
 
-function StepLimitations({ answers, toggleMulti, onNext, onBack, isLast }) {
+function StepLimitations({ answers, toggleMulti, onNext, onBack }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
@@ -934,7 +951,6 @@ function StepLimitations({ answers, toggleMulti, onNext, onBack, isLast }) {
       subtitle={t('onboarding.stepLimitations.subtitle', '¿Tienes alguna limitación física? (Selección múltiple)')}
       onNext={onNext} onBack={onBack}
       nextDisabled={answers.limitations.length === 0}
-      isLast={isLast}
     >
       {LIMIT_IDS.map((id) => (
         <OptionCard
@@ -1025,6 +1041,12 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:  typography.base,
     color:     th.colors.muted,
     marginTop: 4,
+  },
+  previewCycleHint: {
+    fontSize:   typography.sm,
+    color:      th.colors.accent,
+    marginTop:  4,
+    lineHeight: typography.sm * 1.5,
   },
   previewList: {
     paddingHorizontal: spacing.xl,
@@ -1313,36 +1335,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   dayBtnText:   { fontSize: 26, fontWeight: typography.heavy, color: th.colors.muted },
   dayBtnTextOn: { color: th.colors.accent },
-
-  dayOption: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.lg,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.lg,
-    marginBottom:    spacing.sm,
-  },
-  dayOptionOn: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  dayOptionNum:   { fontSize: 36, fontWeight: typography.heavy, color: th.colors.muted, lineHeight: 40 },
-  dayOptionNumOn: { color: th.colors.accent },
-  dayOptionTitle: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  dayOptionDesc:  { fontSize: typography.sm, color: th.colors.muted, marginTop: 2 },
-
-  pplRow: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.2),
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-    marginBottom:    spacing.sm,
-  },
-  pplLabel: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
 
   hint: { fontSize: typography.xs, color: th.colors.muted, marginTop: spacing.xs },
 

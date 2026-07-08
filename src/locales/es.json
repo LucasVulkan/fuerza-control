@@ -333,7 +333,9 @@
     },
     "stepDistribution": {
       "title": "¿Cómo distribuyes los días?",
-      "subtitle": "La distribución define la estructura de cada sesión."
+      "subtitle": "La distribución define la estructura de cada sesión.",
+      "recommended": "Recomendado",
+      "sevenDaysHint": "Con 7 días, incluye al menos un día suave o de descanso activo."
     },
     "stepDays": {
       "titleUpperLower": "Sesiones por ciclo",
@@ -342,12 +344,42 @@
       "subtitlePPL": "Push/Pull/Legs usa 3 sesiones distintas. Puedes repetir el ciclo con la frecuencia que quieras.",
       "titleFullBody": "¿Cuántas sesiones?",
       "subtitleFullBody": "Número de sesiones distintas por ciclo. A más sesiones, más variedad de ejercicios y patrones cubiertos.",
+      "titleFrequency": "Días por semana",
+      "subtitleFrequency": "¿Cuántos días a la semana entrenas?",
+      "daysCount": "{{count}} día a la semana",
+      "daysCount_other": "{{count}} días a la semana",
       "pplCycleHint": "Alterna A → B → C → A → B → C a tu ritmo",
       "ulCycleHint": "Puedes hacer 2 sesiones a la semana con 4 sesiones distintas — simplemente alternas el ciclo.",
       "sessionsCount": "{{count}} sesión por ciclo",
       "sessionsCount_other": "{{count}} sesiones por ciclo",
       "allGroupsHint": "Todos los grupos en cada sesión",
       "moreVarietyHint": "Mayor variedad de ejercicios y patrones"
+    },
+    "stepTime": {
+      "title": "Tiempo por sesión",
+      "subtitle": "¿Cuánto tiempo tienes para entrenar cada día?"
+    },
+    "sessionTimes": {
+      "30": {
+        "label": "30 min",
+        "description": "Sesiones exprés — solo lo esencial."
+      },
+      "45": {
+        "label": "45 min",
+        "description": "Sesiones compactas con lo importante."
+      },
+      "60": {
+        "label": "60 min",
+        "description": "La duración estándar de entrenamiento."
+      },
+      "90": {
+        "label": "90 min",
+        "description": "Sesiones largas con más volumen y variedad."
+      }
+    },
+    "preview": {
+      "cycleHint": "Tus {{sessions}} sesiones rotan en ciclo — entrenas {{days}} días a la semana.",
+      "estimatedMinutes": "~{{minutes}} min"
     },
     "stepGoal": {
       "title": "¿Cuál es tu objetivo?",

@@ -11,6 +11,7 @@ export default function OptionCard({
   label,
   description,
   detail,
+  badge,
   selected,
   disabled    = false,
   disabledReason,
@@ -39,7 +40,14 @@ export default function OptionCard({
 
       {/* Contenido */}
       <View style={styles.body}>
-        <Text style={[styles.label, disabled && styles.labelDim]}>{label}</Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, disabled && styles.labelDim]}>{label}</Text>
+          {badge ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+          ) : null}
+        </View>
 
         {description ? (
           <Text style={styles.desc}>{description}</Text>
@@ -97,7 +105,21 @@ const makeStyles = (th) => StyleSheet.create({
   check: { fontSize: 10, color: th.colors.onAccent, fontWeight: '700' },
 
   body:     { flex: 1 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   label:    { fontSize: typography.md, fontWeight: typography.medium, color: th.colors.text },
+  badge: {
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   2,
+  },
+  badgeText: {
+    fontSize:      10,
+    fontWeight:    typography.bold,
+    letterSpacing: 0.5,
+    color:         th.colors.onAccent,
+    textTransform: 'uppercase',
+  },
   labelDim: { color: th.colors.muted },
   desc: {
     fontSize:   typography.sm,

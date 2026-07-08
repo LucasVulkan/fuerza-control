@@ -333,7 +333,9 @@
     },
     "stepDistribution": {
       "title": "How do you split your days?",
-      "subtitle": "The split defines the structure of each session."
+      "subtitle": "The split defines the structure of each session.",
+      "recommended": "Recommended",
+      "sevenDaysHint": "With 7 days, include at least one easy or active-recovery day."
     },
     "stepDays": {
       "titleUpperLower": "Sessions per cycle",
@@ -342,12 +344,42 @@
       "subtitlePPL": "Push/Pull/Legs uses 3 distinct sessions. You can repeat the cycle as often as you want.",
       "titleFullBody": "How many sessions?",
       "subtitleFullBody": "Number of distinct sessions per cycle. More sessions means more exercise variety and patterns.",
+      "titleFrequency": "Days per week",
+      "subtitleFrequency": "How many days a week do you train?",
+      "daysCount": "{{count}} day per week",
+      "daysCount_other": "{{count}} days per week",
       "pplCycleHint": "Alternate A → B → C → A → B → C at your own pace",
       "ulCycleHint": "You can do 2 sessions per week with 4 distinct sessions — just alternate the cycle.",
       "sessionsCount": "{{count}} session per cycle",
       "sessionsCount_other": "{{count}} sessions per cycle",
       "allGroupsHint": "All muscle groups in each session",
       "moreVarietyHint": "More exercise variety and patterns"
+    },
+    "stepTime": {
+      "title": "Time per session",
+      "subtitle": "How much time do you have to train each day?"
+    },
+    "sessionTimes": {
+      "30": {
+        "label": "30 min",
+        "description": "Express sessions — just the essentials."
+      },
+      "45": {
+        "label": "45 min",
+        "description": "Compact sessions covering what matters."
+      },
+      "60": {
+        "label": "60 min",
+        "description": "The standard training session length."
+      },
+      "90": {
+        "label": "90 min",
+        "description": "Long sessions with more volume and variety."
+      }
+    },
+    "preview": {
+      "cycleHint": "Your {{sessions}} sessions rotate in a cycle — you train {{days}} days a week.",
+      "estimatedMinutes": "~{{minutes}} min"
     },
     "stepGoal": {
       "title": "What's your goal?",

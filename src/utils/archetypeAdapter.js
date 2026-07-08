@@ -174,6 +174,67 @@ function reduceForBeginner(exercises, userEquipment) {
   return result;
 }
 
+// ─── B3: presupuesto de tiempo ────────────────────────────────────────────────
+// Duplicado de programGenerator.js — misma fórmula espejo de `sessionStats`
+// (mobile/src/utils/sessionStats.js): sets × (35s trabajo + restSec); en
+// ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
+// No se comparte entre generateProgram/adaptArchetype a propósito: ambos
+// caminos ya duplican LIMITATION_GROUPS/getLimitedGroups de forma independiente.
+
+function estimateSessionSec(exercises) {
+  let seconds = 0;
+  for (const ex of exercises) {
+    const def = EXERCISE_LIBRARY[ex.exerciseId];
+    const n = ex.sets ?? 0;
+    const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
+    const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
+    seconds += n * (work + (ex.restSec ?? 90));
+  }
+  return seconds;
+}
+
+/**
+ * Recorta accesorios hasta caber en el presupuesto de `sessionMinutes` (B3.3-4).
+ * Ver comentario largo en programGenerator.js#trimToTimeBudget — mismas reglas:
+ * keys nunca se tocan, se quita el último accesorio con grupo ya cubierto
+ * (si no hay, el último accesorio a secas), suelo duro de 1 key + 2 accesorios.
+ */
+function trimToTimeBudget(exercises, sessionMinutes) {
+  if (!sessionMinutes) return exercises;
+  const budgetSec = sessionMinutes * 60;
+  const keyCount = exercises.filter((e) => e.isKey).length;
+  let result = exercises;
+
+  while (estimateSessionSec(result) > budgetSec) {
+    const accessories = result.filter((e) => !e.isKey);
+    if (accessories.length <= 2) break; // suelo duro: 1 key + 2 accesorios mínimo
+    if (result.length - accessories.length !== keyCount) break; // guarda, no debería pasar
+
+    const groupCounts = {};
+    result.forEach((e) => {
+      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
+      if (g) groupCounts[g] = (groupCounts[g] ?? 0) + 1;
+    });
+
+    let toRemove = null;
+    for (let i = result.length - 1; i >= 0; i--) {
+      const e = result[i];
+      if (e.isKey) continue;
+      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
+      if (g && groupCounts[g] > 1) { toRemove = e; break; }
+    }
+    if (!toRemove) {
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (!result[i].isKey) { toRemove = result[i]; break; }
+      }
+    }
+    if (!toRemove) break;
+    result = result.filter((e) => e !== toRemove);
+  }
+
+  return result;
+}
+
 // ─── Adaptador principal ──────────────────────────────────────────────────────
 
 /**
@@ -186,6 +247,7 @@ export function adaptArchetype(archetype, answers) {
     equipment = ['dumbbells', 'machines'],
     limitations = ['none'],
     goal = 'hypertrophy',
+    sessionMinutes = 60,
   } = answers;
 
   const limitedGroups = getLimitedGroups(limitations);
@@ -257,6 +319,9 @@ export function adaptArchetype(archetype, answers) {
     if (level === 'beginner') {
       exercises = reduceForBeginner(exercises, equipment);
     }
+
+    // B3: recortar accesorios si la sesión excede el presupuesto de tiempo.
+    exercises = trimToTimeBudget(exercises, sessionMinutes);
 
     // Añadir orden
     exercises = exercises.map((ex, idx) => ({ ...ex, order: idx + 1 }));

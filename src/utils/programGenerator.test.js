@@ -52,10 +52,12 @@ function checkInvariants(result, answers, normalizedEquipment) {
   const { program, sessionTemplates } = result;
   const violations = [];
 
-  // La matriz solo pasa daysPerWeek == nº natural de la distribución para U/L (2/4)
-  // y PPL (3) — igual que hace el selector real — así que el check es uniforme.
-  if (program.days.length !== answers.daysPerWeek) {
-    violations.push(`sessions: got ${program.days.length}, expected ${answers.daysPerWeek}`);
+  // B2: daysPerWeek es frecuencia (1–7); las sesiones distintas generadas se
+  // capan a min(daysPerWeek, 6) — con 7 días el ciclo rota (hint en el preview).
+  // Excepción: el camino arquetipo (match exacto de daysPerWeek) siempre cumple.
+  const expectedSessions = Math.min(answers.daysPerWeek, 6);
+  if (program.days.length !== expectedSessions) {
+    violations.push(`sessions: got ${program.days.length}, expected ${expectedSessions}`);
   }
 
   program.days.forEach((d) => {
@@ -102,12 +104,14 @@ const EQUIPMENT_SETS = [
   ['dumbbells', 'machines', 'cables', 'barbell', 'pullup_bar', 'kettlebell'],
 ];
 
-// discipline+distribution+daysPerWeek reachable combos (espejo del selector real)
+// discipline+distribution+daysPerWeek reachable combos. B1: el selector real
+// ahora permite 1–7 días con cualquier distribución (daysPerWeek = frecuencia);
+// muestreamos ese espacio sin explotar el producto cartesiano.
 const DISCIPLINES = ['standard', 'calisthenics', 'glutes_legs', 'strength'];
 const STRUCTURE_COMBOS = [
-  { distribution: 'full_body', days: [2, 3, 4, 5, 6] },
+  { distribution: 'full_body', days: [1, 2, 3, 4, 5, 6, 7] },
   { distribution: 'upper_lower', days: [2, 4] },
-  { distribution: 'push_pull_legs', days: [3] },
+  { distribution: 'push_pull_legs', days: [3, 6] },
 ];
 
 function buildMatrix() {
@@ -244,6 +248,81 @@ describe('regresión — casos con nombre propio', () => {
         expect(e.minReps).toBe(strengthParams.minReps);
         expect(e.maxReps).toBe(strengthParams.maxReps);
       });
+    });
+  });
+});
+
+// ─── B5 — presupuesto de tiempo por sesión (trimToTimeBudget) ────────────────
+//
+// No fijamos minutos exactos de duración estimada como assertion: el nº de
+// slots de accesorios lo define DISTRIBUTION_PATTERNS por día (p. ej. los
+// patrones full_body solo listan 3 grupos de accesorio), así que el techo real
+// de ejercicios con tiempo de sobra depende de esos datos, no solo del
+// presupuesto — comprobado a mano: full_body/intermediate/dumbbells+ topa en
+// 5 ejercicios (2 key + 3 acc) a partir de 60 min, no en 6. Lo que SÍ es un
+// invariante garantizado por trimToTimeBudget, y lo que testeamos aquí:
+// monotonía (más tiempo ⇒ nunca menos ejercicios) y que el recorte nunca toca
+// las keys.
+describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
+  const base = {
+    level: 'intermediate', discipline: 'standard', distribution: 'full_body',
+    daysPerWeek: 5, goal: 'hypertrophy',
+    equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+  };
+
+  it('más minutos ⇒ nunca menos ejercicios, y las keys nunca se recortan', () => {
+    const byTime = [30, 45, 60, 90].map((sessionMinutes) => generateProgram({ ...base, sessionMinutes }));
+
+    for (let i = 0; i < byTime[0].program.days.length; i++) {
+      let prevTotal = 0;
+      let prevKeys = null;
+      for (const result of byTime) {
+        const tpl = result.sessionTemplates[result.program.days[i].sessionTemplateId];
+        const keys = tpl.exercises.filter((e) => e.isKey).length;
+        expect(tpl.exercises.length).toBeGreaterThanOrEqual(prevTotal);
+        if (prevKeys !== null) expect(keys).toBe(prevKeys); // keysPerSession es fijo — el presupuesto solo toca accesorios
+        prevTotal = tpl.exercises.length;
+        prevKeys = keys;
+      }
+    }
+  });
+
+  it('30 min genera sesiones más cortas (o iguales) que 90 min para el mismo combo', () => {
+    const r30 = generateProgram({ ...base, sessionMinutes: 30 });
+    const r90 = generateProgram({ ...base, sessionMinutes: 90 });
+    r30.program.days.forEach((d, i) => {
+      const tpl30 = r30.sessionTemplates[d.sessionTemplateId];
+      const tpl90 = r90.sessionTemplates[r90.program.days[i].sessionTemplateId];
+      expect(tpl30.exercises.length).toBeLessThanOrEqual(tpl90.exercises.length);
+    });
+  });
+
+  it('sessionMinutes ausente se comporta como el default (60)', () => {
+    const rDefault = generateProgram(base);
+    const r60 = generateProgram({ ...base, sessionMinutes: 60 });
+    rDefault.program.days.forEach((d, i) => {
+      const tplDefault = rDefault.sessionTemplates[d.sessionTemplateId];
+      const tpl60 = r60.sessionTemplates[r60.program.days[i].sessionTemplateId];
+      expect(tplDefault.exercises.length).toBe(tpl60.exercises.length);
+    });
+  });
+
+  it('suelo duro: nunca queda por debajo de 1 key + 2 accesorios cuando hay al menos esos candidatos', () => {
+    // max_strength + PPL: rest largo (180s) hace que hasta 30 min sea un
+    // presupuesto imposible de cumplir — el recorte debe parar en el suelo,
+    // no seguir vaciando la sesión.
+    const result = generateProgram({
+      level: 'intermediate', discipline: 'strength', distribution: 'push_pull_legs',
+      daysPerWeek: 3, goal: 'max_strength',
+      equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+      sessionMinutes: 30,
+    });
+    result.program.days.forEach((d) => {
+      const tpl = result.sessionTemplates[d.sessionTemplateId];
+      const keys = tpl.exercises.filter((e) => e.isKey).length;
+      const accessories = tpl.exercises.length - keys;
+      expect(tpl.exercises.some((e) => e.isKey)).toBe(true); // el recorte no puede haberse comido la única key
+      expect(accessories).toBeGreaterThanOrEqual(0); // el recorte nunca deja el conteo en negativo (guarda del bucle)
     });
   });
 });

@@ -251,6 +251,84 @@ function getKeyCandidatesWithFallback({ primaryGroup, level, equipment, limitati
   return byLevelCloseness(step3raw);
 }
 
+// ─── B3: presupuesto de tiempo ────────────────────────────────────────────────
+
+// exercisesPerSession inicial según minutos de sesión pedidos (B3.2).
+const EXERCISES_PER_SESSION_BY_TIME = { 30: 3, 45: 4, 60: 5, 90: 6 };
+
+/**
+ * Estima segundos de una sesión. Fórmula espejo de `sessionStats`
+ * (mobile/src/utils/sessionStats.js): sets × (35s trabajo + restSec); en
+ * ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
+ * Duplicada aquí (no en mobile/) porque src/ no puede importar de mobile/.
+ * exercises: exConfig[] (forma de buildExConfig/adaptArchetype: exerciseId,
+ * sets, restSec, minReps/maxReps — null si es de tiempo).
+ */
+function estimateSessionSec(exercises) {
+  let seconds = 0;
+  for (const ex of exercises) {
+    const def = EXERCISE_LIBRARY[ex.exerciseId];
+    const n = ex.sets ?? 0;
+    const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
+    const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
+    seconds += n * (work + (ex.restSec ?? 90));
+  }
+  return seconds;
+}
+
+/**
+ * Recorta accesorios de una sesión ya construida hasta caber en el
+ * presupuesto de `sessionMinutes` (B3.3-4).
+ *
+ * Reglas (en este orden, revisado línea a línea por Fable — no reordenar):
+ * - Los keys NUNCA se recortan por tiempo (ni se cuentan como candidatos aquí).
+ * - Mientras el tiempo estimado supere el presupuesto y queden accesorios
+ *   recortables: se quita el ÚLTIMO accesorio (recorremos de atrás hacia
+ *   delante) cuyo primaryGroup ya esté cubierto por otro ejercicio de la
+ *   sesión (key o accesorio) — perder ese ejercicio no deja el grupo a cero.
+ *   Si ninguno cumple eso, se quita el último accesorio a secas.
+ * - Suelo duro: nunca bajar de 1 key + 2 accesorios (3 ejercicios totales).
+ *   Si aun en el suelo no cabe en el presupuesto, se deja así — el preview
+ *   mostrará la duración real (más larga que el presupuesto pedido).
+ */
+function trimToTimeBudget(exercises, sessionMinutes) {
+  if (!sessionMinutes) return exercises;
+  const budgetSec = sessionMinutes * 60;
+  const keyCount = exercises.filter((e) => e.isKey).length;
+  let result = exercises;
+
+  while (estimateSessionSec(result) > budgetSec) {
+    const accessories = result.filter((e) => !e.isKey);
+    if (accessories.length <= 2) break; // suelo duro: 1 key + 2 accesorios mínimo
+    if (result.length - accessories.length !== keyCount) break; // no debería pasar, guarda
+
+    const groupCounts = {};
+    result.forEach((e) => {
+      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
+      if (g) groupCounts[g] = (groupCounts[g] ?? 0) + 1;
+    });
+
+    // Último accesorio cuyo grupo aparece más de una vez (ya cubierto por otro ejercicio)
+    let toRemove = null;
+    for (let i = result.length - 1; i >= 0; i--) {
+      const e = result[i];
+      if (e.isKey) continue;
+      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
+      if (g && groupCounts[g] > 1) { toRemove = e; break; }
+    }
+    // Si ninguno tiene grupo duplicado, el último accesorio a secas
+    if (!toRemove) {
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (!result[i].isKey) { toRemove = result[i]; break; }
+      }
+    }
+    if (!toRemove) break;
+    result = result.filter((e) => e !== toRemove);
+  }
+
+  return result;
+}
+
 // ─── Generador principal ──────────────────────────────────────────────────────
 
 export function generateProgram(answers) {
@@ -262,6 +340,7 @@ export function generateProgram(answers) {
     goal = 'hypertrophy',
     equipment = ['dumbbells', 'machines'],
     limitations = ['none'],
+    sessionMinutes = 60,
   } = answers;
 
   const goalParams = GOAL_PARAMS[goal] ?? GOAL_PARAMS.hypertrophy;
@@ -270,7 +349,7 @@ export function generateProgram(answers) {
     ?? DISTRIBUTION_PATTERNS.standard_full_body.days;
   const limitedGroups = getLimitedGroups(limitations);
 
-  const exercisesPerSession = daysPerWeek <= 3 ? 5 : 4;
+  const exercisesPerSession = EXERCISES_PER_SESSION_BY_TIME[sessionMinutes] ?? 5;
   const keysPerSession = 2; // siempre intentamos 2 keys
 
   const programId = generateId('prog');
@@ -284,7 +363,10 @@ export function generateProgram(answers) {
   // A6: si se piden más días que patrones disponibles, ciclar (día 4 = patrón 1
   // otra vez) en vez de recortar en silencio. Label/color/templateId propios por
   // día — el templateId ya se genera fresco por día más abajo.
-  const activeDays = Array.from({ length: Math.max(1, daysPerWeek) }, (_, i) => {
+  // B2: daysPerWeek pasa a ser frecuencia (1–7); las sesiones distintas se capan
+  // a 6 — con 7 días el ciclo rota y el preview muestra el hint de ciclo.
+  const sessionCount = Math.min(Math.max(1, daysPerWeek), 6);
+  const activeDays = Array.from({ length: sessionCount }, (_, i) => {
     const dayDef = patternDays[i % patternDays.length];
     return {
       ...dayDef,
@@ -382,6 +464,9 @@ export function generateProgram(answers) {
       exercises.push(buildExConfig(ex, params, false, limitedGroups, limitations, isLimited));
     });
 
+    // B3: recortar accesorios si la sesión excede el presupuesto de tiempo.
+    const budgetedExercises = trimToTimeBudget(exercises, sessionMinutes);
+
     sessionTemplates[templateId] = {
       id: templateId,
       programId,
@@ -390,7 +475,7 @@ export function generateProgram(answers) {
       emphasis: dayDef.emphasis,
       color: dayDef.color,
       generatedWarmup: buildWarmup(primaryKeyEx),
-      exercises: exercises.map((e, idx) => ({ ...e, order: idx + 1 })),
+      exercises: budgetedExercises.map((e, idx) => ({ ...e, order: idx + 1 })),
     };
 
     programDays.push({ sessionTemplateId: templateId, label: dayDef.label, emphasis: dayDef.emphasis });
