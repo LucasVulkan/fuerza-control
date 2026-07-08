@@ -1,11 +1,15 @@
 import { blockEstimatedSec } from '../../../src/utils/conditioningBlocks';
+import { warmupSteps } from '../../../src/utils/warmup';
 
 // Transición/montaje por ejercicio o bloque: buscar máquina, montar peso, ajustar.
 const EXERCISE_OVERHEAD_SEC = 180;
 // Calentamiento general, una vez por sesión (si la sesión no está vacía).
-// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
-// para no contar el calentamiento dos veces.
+// Independiente de las series de calentamiento por ejercicio (warmup-sets,
+// ver más abajo) — ese es un bloque específico por ejercicio, este es el
+// calentamiento general de cuerpo completo antes de empezar.
 const SESSION_OVERHEAD_SEC = 480;
+// Por serie de calentamiento: ~35s de trabajo + su descanso propio.
+const WARMUP_SET_WORK_SEC = 35;
 
 /**
  * sessionStats — aggregate volume metrics for a session template.
@@ -32,6 +36,11 @@ export function sessionStats(template, allExercises) {
     // member — count 0 here so it isn't double-counted.
     const rest = ex.supersetWithNext ? 0 : (ex.restSec ?? 90);
     seconds += n * (work + rest) + EXERCISE_OVERHEAD_SEC;
+
+    if (ex.warmup) {
+      const nCalentamiento = warmupSteps(ex.warmup).length;
+      seconds += nCalentamiento * (WARMUP_SET_WORK_SEC + ex.warmup.restSec) + EXERCISE_OVERHEAD_SEC;
+    }
 
     const pattern = allExercises?.[ex.exerciseId]?.pattern;
     if (pattern) patternSets[pattern] = (patternSets[pattern] ?? 0) + n;

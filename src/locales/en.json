@@ -834,6 +834,17 @@
       "double_progression": { "label": "Double progression", "desc": "Weight + reps" },
       "time_progression":   { "label": "Time",               "desc": "Seconds"       },
       "submax":             { "label": "Submax",             "desc": "RIR / RPE"     }
+    },
+    "warmup": {
+      "title": "Warm-up",
+      "none": "None",
+      "auto": "Auto",
+      "custom": "Custom",
+      "setsLabel": "Warm-up sets",
+      "restLabel": "Rest between warm-ups",
+      "noTimer": "no timer",
+      "addStep": "＋ Add step",
+      "rampStep": "{{pct}}% × {{reps}}"
     }
   },
   "clients": {

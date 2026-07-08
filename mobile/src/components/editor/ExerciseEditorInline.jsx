@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils/progression';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../../../src/utils/exerciseLinks';
+import { warmupSteps } from '../../../../src/utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -160,6 +161,57 @@ function IncrementInput({ value, onChange, unit }) {
   );
 }
 
+// ─── WarmupStepRow ────────────────────────────────────────────────────────────
+
+function WarmupStepRow({ index, step, onChange, onRemove }) {
+  const styles = useThemedStyles(makeStyles);
+  const th = useTheme();
+  const [pctDraft, setPctDraft] = useState(String(step.pct));
+  const [repsDraft, setRepsDraft] = useState(String(step.reps));
+  useEffect(() => { setPctDraft(String(step.pct)); }, [step.pct]);
+  useEffect(() => { setRepsDraft(String(step.reps)); }, [step.reps]);
+
+  function commitPct() {
+    const n = parseInt(pctDraft, 10);
+    const c = isNaN(n) ? step.pct : Math.min(100, Math.max(1, n));
+    setPctDraft(String(c));
+    onChange({ ...step, pct: c });
+  }
+  function commitReps() {
+    const n = parseInt(repsDraft, 10);
+    const c = isNaN(n) ? step.reps : Math.min(50, Math.max(1, n));
+    setRepsDraft(String(c));
+    onChange({ ...step, reps: c });
+  }
+
+  return (
+    <View style={styles.warmupStepRow}>
+      <Text style={styles.warmupStepIdx}>{`C${index + 1}`}</Text>
+      <TextInput
+        style={styles.warmupStepInput}
+        keyboardType="numeric"
+        value={pctDraft}
+        onChangeText={(v) => setPctDraft(v.replace(/[^0-9]/g, ''))}
+        onBlur={commitPct}
+        selectTextOnFocus
+      />
+      <Text style={styles.warmupStepUnit}>%</Text>
+      <Text style={styles.warmupStepUnit}>×</Text>
+      <TextInput
+        style={styles.warmupStepInput}
+        keyboardType="numeric"
+        value={repsDraft}
+        onChangeText={(v) => setRepsDraft(v.replace(/[^0-9]/g, ''))}
+        onBlur={commitReps}
+        selectTextOnFocus
+      />
+      <TouchableOpacity style={styles.warmupStepRemove} onPress={onRemove} hitSlop={8}>
+        <Text style={[styles.warmupStepUnit, { color: th.colors.muted }]}>✕</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── ExerciseEditorInline ─────────────────────────────────────────────────────
 //
 // Layout: live summary card → VOLUMEN (always visible) → PROGRESIÓN as a
@@ -186,6 +238,8 @@ function computeInitial(exConfig, def) {
     : 'auto';
   const initType = initProg.type === 'none' ? 'double' : initProg.type;
 
+  const w = exConfig.warmup ?? null;
+
   return {
     sets:           exConfig.sets         ?? 3,
     restSec:        exConfig.restSec      ?? 90,
@@ -209,6 +263,10 @@ function computeInitial(exConfig, def) {
     incrMin:        initProg.increment.minIncrement ?? 0,
     dropset:        exConfig.dropset ?? false,
     supersetWithNext: exConfig.supersetWithNext ?? false,
+    warmupMode:        w ? w.mode : 'none',
+    warmupSets:        w?.mode === 'auto' ? w.sets : 2,
+    warmupCustomSteps: w?.mode === 'custom' ? w.steps : [{ pct: 50, reps: 8 }],
+    warmupRestSec:     w?.restSec ?? 60,
   };
 }
 
@@ -249,6 +307,10 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [incrMin,        setIncrMin]        = useState(i.incrMin);
   const [dropset,        setDropset]        = useState(i.dropset);
   const [supersetWithNext, setSupersetWithNext] = useState(i.supersetWithNext);
+  const [warmupMode,        setWarmupMode]        = useState(i.warmupMode);
+  const [warmupSets,        setWarmupSets]        = useState(i.warmupSets);
+  const [warmupCustomSteps, setWarmupCustomSteps] = useState(i.warmupCustomSteps);
+  const [warmupRestSec,     setWarmupRestSec]     = useState(i.warmupRestSec);
   const [sheetOpen,      setSheetOpen]      = useState(false);
 
   const stateRef  = useRef(null);
@@ -262,12 +324,18 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     trackRpe, evalMaxRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
     dropset, supersetWithNext,
+    warmupMode, warmupSets, warmupCustomSteps, warmupRestSec,
   };
 
   const commitValues = useCallback((s) => {
     const isTimeMode = s.metric === 'time';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
     const effType    = s.progMode === 'auto' ? s.progType : 'none';
+    const warmup = s.warmupMode === 'auto'
+      ? { mode: 'auto', sets: s.warmupSets, restSec: s.warmupRestSec }
+      : s.warmupMode === 'custom'
+        ? { mode: 'custom', steps: s.warmupCustomSteps, restSec: s.warmupRestSec }
+        : null;
 
     const updates = {
       sets: s.sets, restSec: s.restSec, inputType,
@@ -277,6 +345,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       trackRpe:     s.trackRpe,
       dropset:      s.dropset || null,
       supersetWithNext: s.supersetWithNext || null,
+      warmup,
       // 'fixed' keeps double_progression so the target range still renders in
       // the workout; 'submax' is the marker that distinguishes the two modes.
       progressionModel: s.progMode === 'auto'
@@ -324,7 +393,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
       trackRpe, evalMaxRpe,
       progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
-      supersetWithNext]);
+      supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
 
   useEffect(() => {
     return () => {
@@ -343,7 +412,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
     incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
     incrPctValue !== i.incrPctValue || incrMin !== i.incrMin ||
-    dropset !== i.dropset || supersetWithNext !== i.supersetWithNext;
+    dropset !== i.dropset || supersetWithNext !== i.supersetWithNext ||
+    warmupMode !== i.warmupMode || warmupSets !== i.warmupSets || warmupRestSec !== i.warmupRestSec ||
+    JSON.stringify(warmupCustomSteps) !== JSON.stringify(i.warmupCustomSteps);
 
   function handleRestore() {
     clearTimeout(timerRef.current);
@@ -359,6 +430,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
     setDropset(i.dropset);
     setSupersetWithNext(i.supersetWithNext);
+    setWarmupMode(i.warmupMode);   setWarmupSets(i.warmupSets);
+    setWarmupCustomSteps(i.warmupCustomSteps); setWarmupRestSec(i.warmupRestSec);
     commitValues(i);
     dirtyRef.current = false;
   }
@@ -392,6 +465,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     setIncrPctValue(v.incrPctValue); setIncrMin(v.incrMin);
     setDropset(v.dropset);
     setSupersetWithNext(v.supersetWithNext);
+    setWarmupMode(v.warmupMode);   setWarmupSets(v.warmupSets);
+    setWarmupCustomSteps(v.warmupCustomSteps); setWarmupRestSec(v.warmupRestSec);
   }
 
   function handleLinkSelect(gid) {
@@ -406,6 +481,19 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       ?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId);
     if (fresh) applyValues(computeInitial(fresh, def));
   }
+
+  function addWarmupStep() {
+    setWarmupCustomSteps((prev) => (prev.length >= 6 ? prev : [...prev, { pct: 50, reps: 8 }]));
+  }
+  function updateWarmupStep(idx, next) {
+    setWarmupCustomSteps((prev) => prev.map((st, i2) => (i2 === idx ? next : st)));
+  }
+  function removeWarmupStep(idx) {
+    setWarmupCustomSteps((prev) => prev.filter((_, i2) => i2 !== idx));
+  }
+  const warmupRampHint = warmupSteps({ mode: 'auto', sets: warmupSets })
+    .map((st) => t('exerciseEditor.warmup.rampStep', { pct: st.pct, reps: st.reps }))
+    .join(' · ');
 
   const isTime        = metric === 'time';
   const showRepsRange = !isTime && progMode !== 'submax';
@@ -493,6 +581,72 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
         ) : (
           <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
         )}
+
+        <View style={{ marginTop: spacing.md }}>
+          <Text style={styles.warmupLabel}>{t('exerciseEditor.warmup.title')}</Text>
+          <SegPicker
+            options={[
+              { id: 'none',   label: t('exerciseEditor.warmup.none') },
+              { id: 'auto',   label: t('exerciseEditor.warmup.auto') },
+              { id: 'custom', label: t('exerciseEditor.warmup.custom') },
+            ]}
+            value={warmupMode}
+            onChange={setWarmupMode}
+          />
+
+          {warmupMode === 'auto' && (
+            <>
+              <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                <StepField
+                  label={t('exerciseEditor.warmup.setsLabel')}
+                  value={warmupSets}
+                  onChange={setWarmupSets}
+                  min={1}
+                  max={4}
+                />
+                <View style={{ flex: 1 }} />
+              </View>
+              <Text style={styles.hint}>{warmupRampHint}</Text>
+            </>
+          )}
+
+          {warmupMode === 'custom' && (
+            <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
+              {warmupCustomSteps.map((step, idx) => (
+                <WarmupStepRow
+                  key={idx}
+                  index={idx}
+                  step={step}
+                  onChange={(next) => updateWarmupStep(idx, next)}
+                  onRemove={() => removeWarmupStep(idx)}
+                />
+              ))}
+              <TouchableOpacity
+                style={[styles.addStepBtn, warmupCustomSteps.length >= 6 && styles.addStepBtnDisabled]}
+                onPress={addWarmupStep}
+                disabled={warmupCustomSteps.length >= 6}
+              >
+                <Text style={styles.addStepText}>{t('exerciseEditor.warmup.addStep')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {warmupMode !== 'none' && (
+            <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+              <StepField
+                label={t('exerciseEditor.warmup.restLabel')}
+                value={warmupRestSec}
+                onChange={setWarmupRestSec}
+                min={0}
+                max={180}
+              />
+              <View style={{ flex: 1 }} />
+            </View>
+          )}
+          {warmupMode !== 'none' && warmupRestSec === 0 && (
+            <Text style={styles.hint}>{t('exerciseEditor.warmup.noTimer')}</Text>
+          )}
+        </View>
       </View>
 
       <View style={styles.divider} />
@@ -845,6 +999,64 @@ const makeStyles = (th) => StyleSheet.create({
   fieldRow: {
     flexDirection: 'row',
     gap:           spacing.sm,
+  },
+
+  // ── Warmup ─────────────────────────────────────────────────────────────────
+  warmupLabel: {
+    fontSize:     typography.sm,
+    fontWeight:   typography.medium,
+    color:        th.colors.text,
+    marginBottom: spacing.xs,
+  },
+  warmupStepRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  warmupStepIdx: {
+    width:      24,
+    fontSize:   typography.xs,
+    fontWeight: typography.bold,
+    color:      th.colors.muted,
+  },
+  warmupStepInput: {
+    flex:               1,
+    backgroundColor:    th.colors.surface,
+    borderWidth:        borders.thin,
+    borderColor:        th.colors.border,
+    borderRadius:       th.radius.sm,
+    height:             38,
+    fontSize:           typography.md,
+    fontWeight:         typography.medium,
+    color:              th.colors.text,
+    textAlign:          'center',
+    textAlignVertical:  'center',
+    includeFontPadding: false,
+  },
+  warmupStepUnit: {
+    fontSize:   typography.sm,
+    color:      th.colors.muted,
+    fontWeight: typography.medium,
+  },
+  warmupStepRemove: {
+    width:          28,
+    height:         28,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  addStepBtn: {
+    alignItems:      'center',
+    paddingVertical: spacing.sm,
+    borderRadius:    th.radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     th.colors.border,
+    borderStyle:     'dashed',
+  },
+  addStepBtnDisabled: { opacity: 0.35 },
+  addStepText: {
+    fontSize:   typography.sm,
+    color:      th.colors.muted,
+    fontWeight: typography.medium,
   },
 
   // ── Segmented picker ───────────────────────────────────────────────────────

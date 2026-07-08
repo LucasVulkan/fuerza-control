@@ -41,4 +41,12 @@ describe('sessionStats', () => {
     const template = { exercises: [], blocks: [{ format: 'emom', intervalSec: 60, rounds: 10 }] };
     expect(sessionStats(template, {}).minutes).toBeGreaterThan(0);
   });
+
+  it('an exercise with a warmup config estimates more duration than without it', () => {
+    const withWarmup = { exercises: [
+      { exerciseId: 'bench', sets: 3, restSec: 90, warmup: { mode: 'auto', sets: 3, restSec: 60 } },
+    ] };
+    const withoutWarmup = { exercises: [{ exerciseId: 'bench', sets: 3, restSec: 90 }] };
+    expect(sessionStats(withWarmup, {}).minutes).toBeGreaterThan(sessionStats(withoutWarmup, {}).minutes);
+  });
 });

@@ -834,6 +834,17 @@
       "double_progression": { "label": "Doble progresión", "desc": "Peso + reps" },
       "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    },
       "submax":             { "label": "Submáximo",         "desc": "RIR / RPE"   }
+    },
+    "warmup": {
+      "title": "Calentamiento",
+      "none": "Ninguno",
+      "auto": "Auto",
+      "custom": "Personalizado",
+      "setsLabel": "Series de calentamiento",
+      "restLabel": "Descanso entre calentamientos",
+      "noTimer": "sin temporizador",
+      "addStep": "＋ Añadir paso",
+      "rampStep": "{{pct}}% × {{reps}}"
     }
   },
   "clients": {
