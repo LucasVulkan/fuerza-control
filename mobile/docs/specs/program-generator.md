@@ -2,10 +2,11 @@
 
 > Estado: **diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
 > fusionadas** (`606ccdf` fase A, `eff1666` fase B — ver §4 y §5, marcadas al
-> final de cada una). **Pendiente: fase C** (§6) — biblioteca de plantillas +
-> matcher por puntuación; su contenido de entrenamiento es trabajo de Fable +
-> usuario, no delegable a código (§9). §1 describe la arquitectura TAL COMO
-> QUEDÓ tras A+B — léela así, no como "antes".
+> final de cada una). **Fase C EN PAUSA** (jul 2026, a petición del usuario:
+> "es muy extenso y no termino de tenerlo claro") — 4 de ~10-12 arquetipos
+> escritos y verificados (ver §6.1), matcher por puntuación y retirada del
+> procedural SIN EMPEZAR. §1 describe la arquitectura TAL COMO QUEDÓ tras A+B
+> — léela así, no como "antes".
 >
 > Evidencia original del diagnóstico: stress-test de 21.600 combinaciones de
 > respuestas del onboarding (matriz nivel × disciplina × distribución ×
@@ -274,23 +275,90 @@ generada supera ~35 min estimados (margen por el suelo duro) y todas conservan
 ≥1 key; con 90 min salen 6 ejercicios; invariantes existentes intactos con el
 nuevo parámetro presente y ausente (default 60).
 
-## 6. FASE C — Biblioteca de plantillas + matching por puntuación 🟡/🔴
+## 6. FASE C — Biblioteca de plantillas + matching por puntuación 🟡 EN PAUSA
 
-1. **Ampliar arquetipos a ~10-12** cubriendo: FB 2 sesiones (beginner), FB 3
-   (beginner e intermediate — el intermediate ya existe), FB avanzado (existe),
-   U/L 4, PPL 3 (intermediate), PPL 6 (advanced), glúteo (existe), glúteo U/L,
-   calistenia (existe), calistenia PPL, fuerza 3, fuerza U/L 4.
-   ⚠️ **El contenido de las plantillas (qué ejercicios, series, progresiones)
-   es trabajo de diseño de entrenamiento, no de código** — lo diseña el usuario
-   con Fable (ver §9). La estructura de datos ya existe en `archetypes.js`.
+### 6.1 Arquetipos escritos hasta la pausa (4 de ~10-12)
+
+Diseñados en conversación directa Fable+usuario, verificados uno a uno con
+scripts `vite-node` (matching correcto, sustitución segura si falta equipo,
+recorte por tiempo sin tocar keys, frecuencia≥2 en los keys principales) y
+tests de regresión en `programGenerator.test.js`:
+
+| Arquetipo | id | Commit |
+|---|---|---|
+| Full Body · Hipertrofia · Iniciación (3d) | `fullbody_hypertrophy_beginner` | `746840c` |
+| Upper/Lower · Hipertrofia · Intermedio (4d) | `upperlower_hypertrophy_intermediate` | `0234c96` |
+| Upper/Lower · Hipertrofia · Avanzado (4d, barra libre) | `upperlower_hypertrophy_advanced` | `0410156` |
+| Full Body · Fuerza · Avanzado (3d, 5×5) | `fullbody_strength_advanced` | `3e27ea0` |
+
+Decisiones de diseño reutilizables para las que faltan:
+- **Repetir el mismo ejercicio clave entre sesiones de la semana (frecuencia
+  ≥2)** en vez de dispersar variedad — ancla la progresión doble, que necesita
+  exposición repetida al mismo movimiento para detectar mejora.
+- **El nivel del arquetipo debe coincidir con el nivel real de sus keys** en la
+  biblioteca (`fitsLevel` sustituye en silencio cualquier ejercicio de nivel
+  superior al declarado). Un ejercicio de nivel INFERIOR al del arquetipo sí
+  puede colarse a propósito (p. ej. `hack_squat` intermedio dentro de un
+  arquetipo `advanced` — `fitsLevel` solo bloquea hacia arriba). Ver el bug
+  real que esto destapó en `reduceForBeginner` (commit `746840c`): leía
+  `pattern`/`primaryGroup` de campos que ya no existen en el exConfig.
+- **Volumen semanal por GRUPO muscular** (no por patrón de movimiento) como
+  referencia ~10-14 sets — tracciones verticales y horizontales suman al mismo
+  grupo (`back`), empuje horizontal y vertical NO (`chest` vs `shoulders` son
+  grupos distintos en la biblioteca).
+- Cuando el diseño pedido usa ejercicios de nivel `advanced` en la biblioteca
+  (barra libre: `bench_press_barbell`, `barbell_row`, `overhead_press_barbell`,
+  `squat_barbell`, `romanian_deadlift`), el arquetipo debe declararse
+  `level: 'advanced'` — si no, el sustitutor los cambia por versiones de
+  mancuerna en cuanto lo sirve a un usuario real. NO modificar un arquetipo de
+  nivel inferior existente para meter contenido de barra libre: crear uno
+  nuevo (ver `upperlower_hypertrophy_advanced`, que coexiste con
+  `upperlower_hypertrophy_intermediate` sin pisarse).
+- Verificar SIEMPRE con `sessionMinutes: 90` (plantilla íntegra, sin recorte)
+  Y con `sessionMinutes: 60` (recorte activo) — el recorte por tiempo (B3)
+  puede eliminar de forma legítima un accesorio redundante cuyo grupo ya
+  cubre el key del día; no es un bug si pasa, pero hay que verlo antes de dar
+  la plantilla por buena.
+
+**Hallazgo pendiente (no bloqueante, no se tocó)**: al escribir el primer
+arquetipo de `discipline: 'strength'` (`fullbody_strength_advanced`), el
+tier-3 de `findBestArchetype` (ignora nivel a propósito, ver §1) empezó a
+enrutar ahí a usuarios `beginner` con equipo casi nulo — casos que antes
+siempre caían al generador procedural. `adaptArchetype`'s `findSubstitute`
+solo relaja 2 niveles (pattern+group exacto → pattern solo) y no tiene la
+cascada de `getKeyCandidatesWithFallback` (A1) del procedural, así que para
+ejercicios de barra sin NINGÚN equipo a veces no hay candidato bodyweight de
+nivel beginner y el slot se descarta. Verificado caso a caso: son casos de
+biblioteca agotada, no huecos descartables por error (mismo tipo de excepción
+ya documentada en `EMPHASIS_KEY_GROUPS` del test). Umbral informativo del test
+subido de 10% a 11% con el análisis documentado inline (commit `3e27ea0`).
+Una cascada de sustitución tan robusta como A1 en `adaptArchetype` es
+candidata a hacerse dentro de esta misma fase C, antes o junto al matcher.
+
+### 6.2 Pendiente al retomar
+
+1. **Completar arquetipos que faltan** (~6-8 según la lista original: FB 2
+   sesiones beginner, FB 3 intermediate ya existe — revisar si aguanta,
+   PPL 3 intermediate, PPL 6 advanced, glúteo U/L, calistenia PPL, fuerza U/L
+   4). Sesión conjunta Fable+usuario, igual que las 4 ya hechas.
 2. **Matcher por puntuación** (reemplaza `findBestArchetype`): nunca devuelve
    null. Score = distribución (peso alto) + cercanía de días + disciplina +
    nivel (el adaptador ya corrige nivel) + objetivo (el adaptador ya corrige
-   objetivo tras A4). Desempate por orden en el array.
+   objetivo tras A4). Desempate por orden en el array. Con el matcher, el
+   tier-3 "ignora nivel" desaparece — su reemplazo por scoring puede resolver
+   también el hallazgo pendiente de arriba (el matcher elegiría un arquetipo
+   de nivel apropiado en vez de forzar el más cercano en discipline+distribución+días).
 3. **Retirar `generateProgram` del camino principal**: queda como utilidad
    interna del adaptador para rellenar huecos que la sustitución no cubra.
    No borrar el archivo; los tests de invariantes de A7 pasan a correr sobre
    el camino arquetipo→adaptador.
+4. **Revisar si el onboarding necesita simplificarse antes de esto** — el
+   propio usuario señaló que el flujo actual (disciplina + objetivo +
+   distribución + días + tiempo + equipo + limitaciones) es "muy extenso" y
+   no está claro si conviene reducirlo a una sola pregunta de identidad
+   ("qué tipo de programa quieres": calistenia/hipertrofia/glúteo-pierna/
+   fuerza/funcional) antes de seguir invirtiendo en más plantillas. No hay
+   decisión tomada — es la primera cosa a discutir al retomar.
 
 ## 7. Qué NO tocar (todas las fases)
 
@@ -314,5 +382,5 @@ no llevan extensión; node pelado no los resuelve).
 | Fase A completa | **Sonnet** ✅ hecho | Cirugía localizada con tests de invariantes que la validan sola |
 | Fase B implementación | Sonnet/Opus ✅ hecho (Sonnet) | UI + recorte por tiempo; la spec fija las decisiones |
 | Revisión de la fase B (recorte por tiempo) | Fable línea a línea ✅ hecho | El recorte interactúa con keys/accesorios/limitaciones; fácil de romper sutilmente |
-| Fase C matcher + retirada del procedural | Sonnet | Mecánico con la spec — pendiente |
-| **Fase C contenido de plantillas** | **Fable + usuario** | Diseño de programas de entrenamiento reales: requiere criterio de dominio profundo, balance de volumen/frecuencia/patrones por nivel. NO delegable a la spec — pendiente |
+| Fase C matcher + retirada del procedural | Sonnet | Mecánico con la spec — pendiente, EN PAUSA |
+| **Fase C contenido de plantillas** | **Fable + usuario** | Diseño de programas de entrenamiento reales: requiere criterio de dominio profundo, balance de volumen/frecuencia/patrones por nivel. NO delegable a la spec — 4/~10-12 hechas (§6.1), EN PAUSA |
