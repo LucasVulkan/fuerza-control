@@ -189,6 +189,77 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // UPPER/LOWER · HIPERTROFIA · INTERMEDIO (ejercicios repetidos a propósito
+  // entre A/B — ancla la progresión doble en vez de dispersar variedad)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'upperlower_hypertrophy_intermediate',
+    name: 'Upper/Lower · Hipertrofia',
+    tags: ['upper_lower', 'hypertrophy', 'intermediate'],
+    discipline: 'standard',
+    distribution: 'upper_lower',
+    goal: 'hypertrophy',
+    level: 'intermediate',
+    daysPerWeek: 4,
+    days: [
+      {
+        label: 'A',
+        name: 'Tren superior A',
+        color: 'var(--day1)',
+        emphasis: 'upper',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',    role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'bench_press_db',       role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'seated_row_neutral',   role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'chest_fly_db',         role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'lateral_raise_db',     role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'bicep_curl_supination',role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Tren inferior A',
+        color: 'var(--day2)',
+        emphasis: 'lower',
+        exercises: [
+          { exerciseId: 'hack_squat',            role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db',  role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge', primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'leg_curl_lying',        role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'hip_hinge', primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'bulgarian_split_squat', role: 'accessory',sets: 3, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'cable_crunch',          role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'core',      primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'C',
+        name: 'Tren superior B',
+        color: 'var(--day3)',
+        emphasis: 'upper',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',  role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'bench_press_db',     role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'seated_row_neutral', role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'chest_fly_db',       role: 'accessory',sets: 2, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'shoulder_press_db',  role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'tricep_pushdown',    role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'arms' },
+        ],
+      },
+      {
+        label: 'D',
+        name: 'Tren inferior B',
+        color: 'var(--day4)',
+        emphasis: 'lower',
+        exercises: [
+          { exerciseId: 'hack_squat',           role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db', role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge', primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'leg_extension',        role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'calf_raise_machine',   role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'calf_raise',primaryGroup: 'legs_lower' },
+          { exerciseId: 'cable_crunch',         role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'core',      primaryGroup: 'core' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // GLÚTEO PRIORITARIO · HIPERTROFIA · INTERMEDIO
   // ─────────────────────────────────────────────────────────────────────────
   {

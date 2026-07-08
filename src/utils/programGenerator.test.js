@@ -240,6 +240,28 @@ describe('regresión — casos con nombre propio', () => {
     });
   });
 
+  it('upper/lower intermedio 4d: 4 sesiones, keys de tracción/empuje/pierna con frecuencia 2, keys nunca recortados por tiempo', () => {
+    const result = runOnboarding({
+      level: 'intermediate', discipline: 'standard', distribution: 'upper_lower',
+      daysPerWeek: 4, goal: 'hypertrophy',
+      equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
+    });
+    expect(result.program.days.length).toBe(4);
+
+    const keyIdsByDay = result.program.days.map((d) => {
+      const tpl = result.sessionTemplates[d.sessionTemplateId];
+      expect(tpl.exercises.some((e) => e.isKey)).toBe(true);
+      return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
+    });
+    const allKeyIds = keyIdsByDay.flat();
+    // pull (pulldown_pronated), push (bench_press_db) y pierna (hack_squat +
+    // romanian_deadlift_db) aparecen como key al menos 2 veces en la semana.
+    expect(allKeyIds.filter((id) => id === 'pulldown_pronated').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'bench_press_db').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'hack_squat').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'romanian_deadlift_db').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('adaptArchetype con goal=strength sobre arquetipo hypertrophy → los keys llevan reps de fuerza (5-8)', () => {
     const archetype = findBestArchetype({
       discipline: 'standard', distribution: 'full_body', goal: 'hypertrophy',
