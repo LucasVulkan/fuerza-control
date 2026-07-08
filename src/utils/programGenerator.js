@@ -256,11 +256,20 @@ function getKeyCandidatesWithFallback({ primaryGroup, level, equipment, limitati
 // exercisesPerSession inicial según minutos de sesión pedidos (B3.2).
 const EXERCISES_PER_SESSION_BY_TIME = { 30: 3, 45: 4, 60: 5, 90: 6 };
 
+// Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
+const EXERCISE_OVERHEAD_SEC = 180;
+// Calentamiento general, una vez por sesión (si la sesión no está vacía).
+// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
+// para no contar el calentamiento dos veces.
+const SESSION_OVERHEAD_SEC = 480;
+
 /**
  * Estima segundos de una sesión. Fórmula espejo de `sessionStats`
- * (mobile/src/utils/sessionStats.js): sets × (35s trabajo + restSec); en
- * ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
- * Duplicada aquí (no en mobile/) porque src/ no puede importar de mobile/.
+ * (mobile/src/utils/sessionStats.js): por ejercicio, sets × (35s trabajo +
+ * restSec) + overhead de transición; en ejercicios de tiempo el "trabajo" es
+ * el punto medio de minTime–maxTime; más un calentamiento general único por
+ * sesión no vacía. Duplicada aquí (no en mobile/) porque src/ no puede
+ * importar de mobile/.
  * exercises: exConfig[] (forma de buildExConfig/adaptArchetype: exerciseId,
  * sets, restSec, minReps/maxReps — null si es de tiempo).
  */
@@ -271,8 +280,9 @@ function estimateSessionSec(exercises) {
     const n = ex.sets ?? 0;
     const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
     const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
-    seconds += n * (work + (ex.restSec ?? 90));
+    seconds += n * (work + (ex.restSec ?? 90)) + EXERCISE_OVERHEAD_SEC;
   }
+  if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
   return seconds;
 }
 

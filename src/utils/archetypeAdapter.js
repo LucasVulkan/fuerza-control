@@ -186,6 +186,13 @@ function reduceForBeginner(exercises, userEquipment) {
 // No se comparte entre generateProgram/adaptArchetype a propósito: ambos
 // caminos ya duplican LIMITATION_GROUPS/getLimitedGroups de forma independiente.
 
+// Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
+const EXERCISE_OVERHEAD_SEC = 180;
+// Calentamiento general, una vez por sesión (si la sesión no está vacía).
+// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
+// para no contar el calentamiento dos veces.
+const SESSION_OVERHEAD_SEC = 480;
+
 function estimateSessionSec(exercises) {
   let seconds = 0;
   for (const ex of exercises) {
@@ -193,8 +200,9 @@ function estimateSessionSec(exercises) {
     const n = ex.sets ?? 0;
     const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
     const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
-    seconds += n * (work + (ex.restSec ?? 90));
+    seconds += n * (work + (ex.restSec ?? 90)) + EXERCISE_OVERHEAD_SEC;
   }
+  if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
   return seconds;
 }
 
