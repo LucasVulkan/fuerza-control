@@ -2225,7 +2225,10 @@ export const useStore = create(
         });
         const usedExIds = new Set(
           [...Object.values(relTpl), ...Object.values(relUP)]
-            .flatMap((t) => (t.exercises ?? []).map((e) => e.exerciseId))
+            .flatMap((t) => [
+              ...(t.exercises ?? []).map((e) => e.exerciseId),
+              ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
+            ])
         );
         const relCustom = {};
         Object.entries(customExercises ?? {}).forEach(([id, def]) => {
@@ -2289,7 +2292,10 @@ export const useStore = create(
         });
         const usedExIds = new Set(
           [...Object.values(relTpl), ...Object.values(relUP)]
-            .flatMap((t) => (t.exercises ?? []).map((e) => e.exerciseId))
+            .flatMap((t) => [
+              ...(t.exercises ?? []).map((e) => e.exerciseId),
+              ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
+            ])
         );
         const relCustom = {};
         Object.entries(customExercises ?? {}).forEach(([id, def]) => {
