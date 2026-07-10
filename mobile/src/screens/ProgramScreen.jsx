@@ -49,7 +49,11 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
   const dayCount   = getAllProgramDays(program).length;
   const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
   const structureStr = stageCount
-    ? `${stageCount} etapas · ${dayCount} días/ciclo`
+    ? t('editor.programSummary', {
+        stages:   stageCount,
+        weeks:    program.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
+        sessions: program.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
+      })
     : dayCount > 0 ? `${dayCount} días/ciclo` : null;
 
   return (

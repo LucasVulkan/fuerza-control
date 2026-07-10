@@ -144,7 +144,7 @@ export default function ProgramEditorScreen({ navigation }) {
     ? t('editor.programSummary', {
         stages:   activeProgram.stages.length,
         weeks:    activeProgram.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
-        sessions: activeProgram.stages.reduce((a, s) => a + (s.days?.length ?? 0), 0),
+        sessions: activeProgram.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
       })
     : t('editor.programSummarySimple', {
         sessions: editorDays.length,
