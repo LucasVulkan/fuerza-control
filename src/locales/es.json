@@ -159,7 +159,9 @@
     "warmup": {
       "blockLabel": "Calentamiento",
       "metaSuffix": " · C×{{count}}",
-      "noReference": "Las C se calculan al escribir tu primer peso de trabajo"
+      "restLabel": "Descanso {{sec}}s",
+      "noTimer": "Sin temporizador",
+      "noReference": "Los pesos se calculan al escribir tu primer peso de trabajo"
     }
   },
   "freeSession": {

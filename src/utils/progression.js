@@ -398,7 +398,7 @@ function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps
 export function getProgression(exConfig, def, lastSets, t) {
   if (!lastSets?.length) return null;
 
-  const doneSets = lastSets.filter((s) => !s.isWarmup && (s.done || s.weight || s.reps || s.time));
+  const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time);
   if (!doneSets.length) return null;
 
   const prog = resolveProgressionConfig(exConfig, def);

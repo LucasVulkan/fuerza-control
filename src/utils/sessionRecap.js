@@ -11,10 +11,10 @@ const num = (v) => {
   return isNaN(n) ? null : n;
 };
 
-/** Sets that count: explicitly done or carrying any data. Warmup sets never count. */
+/** Sets that count: explicitly done or carrying any data. */
 export function doneSets(ex) {
   return (ex.sets ?? []).filter(
-    (s) => !s.isWarmup && (s.done || s.weight !== '' || s.reps !== '' || s.time !== '')
+    (s) => s.done || s.weight !== '' || s.reps !== '' || s.time !== ''
   );
 }
 

@@ -10,6 +10,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Easing }
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
+import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../../src/utils/warmup';
@@ -121,20 +122,16 @@ export default function ExerciseCard({
 
   const hasTimer = inputType === 'time' || inputType === 'weight_time';
 
-  // ── Warmup sub-block (spec warmup-sets.md §1-3) ───────────────────────────
-  // Warmup rows live INSIDE setsState, before the work rows, flagged isWarmup —
-  // split here but keep each row's REAL index (toggleSetDone/updateSetField
-  // always address the flat array by that index).
+  // ── Warmup pills (spec warmup-sets.md §7) ─────────────────────────────────
+  // Informational only — NOT part of setsState, nothing is persisted. Purely
+  // recalculated on every render from the current work weight; a tap only
+  // flips local "tapped" styling and optionally fires the rest timer.
+  const startRestTimer = useStore((s) => s.startRestTimer);
   const warmupStepsArr = exConfig.warmup ? warmupSteps(exConfig.warmup) : [];
   const hasWarmup = warmupStepsArr.length > 0;
-  const warmupEntries = [];
-  const workEntries = [];
-  setsState.forEach((s, i) => (s.isWarmup ? warmupEntries : workEntries).push({ realIndex: i, set: s }));
-  // "última vez" ghosts only apply to work sets (spec §4) — filter isWarmup
-  // out of the historical exercise before pairing it up by relative position.
-  const lastWorkSets = (lastExercise?.sets ?? []).filter((s) => !s.isWarmup);
+  const [warmupTapped, setWarmupTapped] = useState(() => new Set());
 
-  const firstWorkWeight = workEntries[0]?.set?.weight;
+  const firstWorkWeight = setsState[0]?.weight;
   const typedFirstWorkWeight = firstWorkWeight !== '' && firstWorkWeight != null
     ? parseFloat(firstWorkWeight) : undefined;
   const workWeightKg = hasWarmup
@@ -142,27 +139,20 @@ export default function ExerciseCard({
     : null;
   const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg);
   const warmupNoReference = hasWarmup && workWeightKg == null;
+  const warmupRestSec = exConfig.warmup?.restSec ?? 60;
 
-  // Bakes the computed weight/reps into any warmup row still blank (real
-  // value, not a ghost — same "pre-relleno" convention the dropset already
-  // uses for its first drop). Fires on mount if a reference already resolves
-  // (coach override / last session), and again once the athlete types their
-  // first work weight (workWeightKg flips from null). Never touches a row the
-  // athlete already filled — per-row blank check guards that.
-  useEffect(() => {
-    if (!hasWarmup || workWeightKg == null) return;
-    warmupEntries.forEach(({ realIndex, set }, wi) => {
-      const step = warmupComputed[wi];
-      if (!step) return;
-      if ((set.weight === '' || set.weight == null) && step.weightKg != null) {
-        onFieldChange(realIndex, 'weight', String(step.weightKg));
+  function toggleWarmupPill(i) {
+    setWarmupTapped((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) {
+        next.delete(i);
+      } else {
+        next.add(i);
+        if (warmupRestSec > 0) startRestTimer(warmupRestSec, def?.name ?? exConfig.exerciseId);
       }
-      if ((set.reps === '' || set.reps == null) && step.reps != null) {
-        onFieldChange(realIndex, 'reps', String(step.reps));
-      }
+      return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workWeightKg, hasWarmup]);
+  }
 
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
@@ -538,44 +528,50 @@ export default function ExerciseCard({
             <View style={{ width: 36 }} />
           </View>
 
-          {/* Warmup sub-block — sits above work sets, same flat array/index (spec §1) */}
+          {/* Warmup pills — informational row, not logged (spec §7) */}
           {hasWarmup ? (
             <View style={styles.warmupBlock}>
-              <Text style={styles.warmupBlockLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+              <View style={styles.warmupBlockHeader}>
+                <Text style={styles.warmupBlockLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+                <Text style={styles.warmupBlockMeta}>
+                  {warmupRestSec > 0
+                    ? t('workout.warmup.restLabel', { sec: warmupRestSec })
+                    : t('workout.warmup.noTimer')}
+                </Text>
+              </View>
               {warmupNoReference ? (
                 <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
               ) : null}
-              {warmupEntries.map(({ realIndex, set }, wi) => (
-                <SetRow
-                  key={realIndex}
-                  index={realIndex}
-                  label={`C${wi + 1}`}
-                  set={set}
-                  inputType="weight_reps"
-                  isActive={realIndex === activeSetIdx}
-                  weightDisplay={
-                    set.weight !== '' && set.weight != null ? String(toDisplay(set.weight)) : ''
-                  }
-                  weightScrollStep={weightScrollStep}
-                  showHint={realIndex === hintSetIndex}
-                  onWeightChange={(v) => {
-                    onFieldChange(realIndex, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '');
-                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
-                  }}
-                  onRepsChange={(v) => {
-                    onFieldChange(realIndex, 'reps', v);
-                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
-                  }}
-                  onToggleDone={() => onToggleDone(realIndex)}
-                />
-              ))}
+              <View style={styles.warmupPillsRow}>
+                {warmupComputed.map((step, wi) => {
+                  const tapped = warmupTapped.has(wi);
+                  const label = step.weightKg != null
+                    ? `${fmt(toDisplay(step.weightKg))}×${step.reps}`
+                    : `${warmupStepsArr[wi].pct}%×${step.reps}`;
+                  return (
+                    <View key={wi} style={styles.warmupPillWrap}>
+                      {wi > 0 ? <Text style={styles.warmupArrow}>→</Text> : null}
+                      <TouchableOpacity
+                        style={[styles.warmupPill, tapped && styles.warmupPillTapped]}
+                        onPress={() => toggleWarmupPill(wi)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.warmupPillText, tapped && styles.warmupPillTextTapped]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           ) : null}
 
           {/* Sets */}
           <View style={styles.setList}>
-            {workEntries.map(({ realIndex, set }, wi) => {
-              const lastSet = lastWorkSets[wi];
+            {setsState.map((set, realIndex) => {
+              const wi = realIndex;
+              const lastSet = lastExercise?.sets?.[wi];
               const prevWeightDisplay = lastSet?.weight != null && lastSet?.weight !== ''
                 ? String(toDisplay(lastSet.weight)) : '';
               const prevReps = lastSet?.reps != null && lastSet?.reps !== ''
@@ -935,29 +931,71 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
 
-  // Warmup sub-block — sunken/dim, sits above the work sets
+  // Warmup pills — informational row, not part of the log
   warmupBlock: {
     marginHorizontal:  spacing.md,
     marginBottom:      spacing.sm,
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
-    paddingTop:        spacing.xs,
-    paddingBottom:     2,
-    opacity:           0.85,
+    paddingVertical:   spacing.xs,
+  },
+  warmupBlockHeader: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+    marginBottom:   spacing.xs,
   },
   warmupBlockLabel: {
     fontSize:      typography.xs - 1,
     fontWeight:    typography.bold,
     color:         th.colors.muted,
     letterSpacing: 0.8,
-    marginBottom:  spacing.xs,
+  },
+  warmupBlockMeta: {
+    fontSize: typography.xs - 1,
+    color:    th.colors.muted2,
   },
   warmupBanner: {
     fontSize:     typography.xs,
     color:        th.colors.muted,
     marginBottom: spacing.xs,
     fontStyle:    'italic',
+  },
+  warmupPillsRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    alignItems:    'center',
+    gap:           4,
+  },
+  warmupPillWrap: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           4,
+  },
+  warmupArrow: {
+    fontSize: typography.xs,
+    color:    th.colors.muted2,
+  },
+  warmupPill: {
+    backgroundColor:   th.colors.surface,
+    borderWidth:       borders.thin,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs,
+  },
+  warmupPillTapped: {
+    backgroundColor: withOpacity(th.colors.green, 0.1),
+    borderColor:     withOpacity(th.colors.green, 0.3),
+  },
+  warmupPillText: {
+    fontSize:   typography.xs,
+    fontWeight: typography.medium,
+    color:      th.colors.muted,
+  },
+  warmupPillTextTapped: {
+    color: th.colors.green,
   },
 
   // Dropset sub-block

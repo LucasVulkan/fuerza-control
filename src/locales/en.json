@@ -159,7 +159,9 @@
     "warmup": {
       "blockLabel": "Warmup",
       "metaSuffix": " · C×{{count}}",
-      "noReference": "Warm-up sets are calculated once you enter your first work weight"
+      "restLabel": "Rest {{sec}}s",
+      "noTimer": "No timer",
+      "noReference": "Weights are calculated once you enter your first work weight"
     }
   },
   "freeSession": {

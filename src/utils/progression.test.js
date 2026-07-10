@@ -60,20 +60,3 @@ describe('getProgression — guards', () => {
     expect(getProgression(rpeConfig(8), def, [], t)).toBeNull();
   });
 });
-
-describe('getProgression — warmup sets excluded', () => {
-  const cfg = { exerciseId: 'test', sets: 3, minReps: 4, maxReps: 6, inputType: 'weight_reps' };
-
-  test('a warmup set mixed into lastSets is ignored, as if absent', () => {
-    const withWarmup = [
-      { weight: '40', reps: '10', rpe: '', done: true, isWarmup: true },
-      ...sets('7'),
-    ];
-    expect(getProgression(cfg, def, withWarmup, t)).toEqual(getProgression(cfg, def, sets('7'), t));
-  });
-
-  test('lastSets with ONLY warmup sets → no progression (as if no history)', () => {
-    const onlyWarmup = [{ weight: '40', reps: '10', rpe: '', done: true, isWarmup: true }];
-    expect(getProgression(cfg, def, onlyWarmup, t)).toBeNull();
-  });
-});

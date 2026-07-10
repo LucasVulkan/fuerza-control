@@ -83,16 +83,6 @@ describe('resolveWorkWeight', () => {
     expect(resolveWorkWeight(null, lastExercise, 60)).toBe(80);
   });
 
-  it('top set excludes warmup sets', () => {
-    const lastExercise = {
-      sets: [
-        { weight: '200', reps: '5', time: '', done: true, isWarmup: true },
-        { weight: '80', reps: '5', time: '', done: true },
-      ],
-    };
-    expect(resolveWorkWeight(null, lastExercise, null)).toBe(80);
-  });
-
   it('no override, no last exercise → falls back to the typed first work weight', () => {
     expect(resolveWorkWeight(null, null, 65)).toBe(65);
     expect(resolveWorkWeight(undefined, { sets: [] }, 65)).toBe(65);

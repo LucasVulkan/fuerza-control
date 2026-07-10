@@ -34,7 +34,6 @@ import {
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
 import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { getProgression } from '../../src/utils/progression';
-import { warmupSteps } from '../../src/utils/warmup';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
@@ -1379,17 +1378,10 @@ export const useStore = create(
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const setsState = {};
-        template.exercises.forEach(({ exerciseId, sets, warmup }) => {
-          // Warmup rows live INSIDE the same flat array, BEFORE the work rows
-          // (spec warmup-sets.md §1) — flagged isWarmup so every index-based
-          // consumer (toggleSetDone, updateSetField, saveSession) tells them apart.
-          const warmupRows = warmupSteps(warmup).map(() => ({
-            weight: '', reps: '', time: '', done: false, isWarmup: true,
-          }));
-          const workRows = Array.from({ length: sets }, () => ({
+        template.exercises.forEach(({ exerciseId, sets }) => {
+          setsState[exerciseId] = Array.from({ length: sets }, () => ({
             weight: '', reps: '', time: '', done: false,
           }));
-          setsState[exerciseId] = [...warmupRows, ...workRows];
         });
         set({
           activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '', blockState: {} },
@@ -1438,32 +1430,14 @@ export const useStore = create(
         const setsState = { ...activeSession.setsState };
         let changed = false;
         const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
-        const emptyWarmupSet = () => ({ weight: '', reps: '', time: '', done: false, isWarmup: true });
 
-        template.exercises.forEach(({ exerciseId, sets, warmup }) => {
+        template.exercises.forEach(({ exerciseId, sets }) => {
           const existing = setsState[exerciseId] ?? [];
-          const existingWarmup = existing.filter((s) => s.isWarmup);
-          const existingWork   = existing.filter((s) => !s.isWarmup);
-          const wantWarmup     = warmupSteps(warmup).length;
-
-          let nextWarmup = existingWarmup;
-          if (existingWarmup.length !== wantWarmup) {
+          if (existing.length !== sets) {
             changed = true;
-            nextWarmup = existingWarmup.length < wantWarmup
-              ? [...existingWarmup, ...Array.from({ length: wantWarmup - existingWarmup.length }, emptyWarmupSet)]
-              : existingWarmup.slice(0, wantWarmup);
-          }
-
-          let nextWork = existingWork;
-          if (existingWork.length !== sets) {
-            changed = true;
-            nextWork = existingWork.length < sets
-              ? [...existingWork, ...Array.from({ length: sets - existingWork.length }, emptySet)]
-              : existingWork.slice(0, sets);
-          }
-
-          if (nextWarmup !== existingWarmup || nextWork !== existingWork) {
-            setsState[exerciseId] = [...nextWarmup, ...nextWork];
+            setsState[exerciseId] = existing.length < sets
+              ? [...existing, ...Array.from({ length: sets - existing.length }, emptySet)]
+              : existing.slice(0, sets);
           }
         });
 
@@ -1496,23 +1470,14 @@ export const useStore = create(
           const exIdx    = template?.exercises?.findIndex((e) => e.exerciseId === exerciseId) ?? -1;
           const exConfig = exIdx >= 0 ? template.exercises[exIdx] : null;
 
-          if (set_.isWarmup) {
-            // Warmup sets rest on their own configured value (spec §3) —
-            // 0 means no timer at all, and superset chaining doesn't apply here.
-            const warmupRest = exConfig?.warmup?.restSec ?? 60;
-            if (warmupRest > 0) {
-              get().startRestTimer(warmupRest, exDef?.name ?? exerciseId);
-            }
-          } else {
-            // Superset: only the LAST member of the chain rests — a member
-            // chained to the next (supersetWithNext) alternates with no rest.
-            // Guarded by exIdx < length-1 so a stale flag on a now-last exercise
-            // (its former chain partner was deleted) can't silently kill its timer.
-            const hasNext = exIdx >= 0 && exIdx < template.exercises.length - 1;
-            if (!(exConfig?.supersetWithNext && hasNext)) {
-              const restSec = exConfig?.restSec ?? exDef?.restSec ?? 90;
-              get().startRestTimer(restSec, exDef?.name ?? exerciseId);
-            }
+          // Superset: only the LAST member of the chain rests — a member
+          // chained to the next (supersetWithNext) alternates with no rest.
+          // Guarded by exIdx < length-1 so a stale flag on a now-last exercise
+          // (its former chain partner was deleted) can't silently kill its timer.
+          const hasNext = exIdx >= 0 && exIdx < template.exercises.length - 1;
+          if (!(exConfig?.supersetWithNext && hasNext)) {
+            const restSec = exConfig?.restSec ?? exDef?.restSec ?? 90;
+            get().startRestTimer(restSec, exDef?.name ?? exerciseId);
           }
         }
       },
@@ -1813,7 +1778,6 @@ export const useStore = create(
           if (s.done && lastSet) {
             return {
               weight: lastSet.weight ?? '', reps: lastSet.reps ?? '', time: lastSet.time ?? '', done: true,
-              ...(s.isWarmup ? { isWarmup: true } : {}),
             };
           }
           return s;
@@ -1837,18 +1801,7 @@ export const useStore = create(
                 )
               : lastSession?.exercises.find((e) => e.exerciseId === exerciseId);
             const lastSets = lastExData?.sets ?? [];
-            // Autofill del ✓ empareja C-con-C y trabajo-con-trabajo por posición
-            // relativa dentro de cada grupo (spec §4) — el nº de series de
-            // calentamiento puede variar entre sesiones, así que el índice
-            // absoluto del array plano no sirve de referencia.
-            const lastWarmupSets = lastSets.filter((s) => s.isWarmup);
-            const lastWorkSets   = lastSets.filter((s) => !s.isWarmup);
-            let warmupSeen = 0, workSeen = 0;
-            const resolved = setsData.map((s) =>
-              s.isWarmup
-                ? resolveSet(s, lastWarmupSets[warmupSeen++])
-                : resolveSet(s, lastWorkSets[workSeen++])
-            );
+            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
             return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId) };

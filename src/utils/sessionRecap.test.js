@@ -112,21 +112,6 @@ describe('detectPRs', () => {
     const prs = detectPRs(now, [oldHigh, now]);
     expect(prs).toEqual([{ exerciseId: 'legpress', kind: 'weight', value: 210, prev: 200 }]);
   });
-
-  it('warmup sets never feed a PR, on either side (high-rep so e1RM is skipped)', () => {
-    const warmup = (weight, reps) => set(weight, reps, { isWarmup: true });
-    // A huge warmup weight must not fabricate a PR, and a huge prior warmup
-    // must not block (or inflate) a real one.
-    const prevWithWarmup = entry({
-      id: 'log_wu', ts: 400,
-      exercises: [{ exerciseId: 'legpress', sets: [warmup(300, 15), set(200, 15)] }],
-    });
-    const now = entry({
-      exercises: [{ exerciseId: 'legpress', sets: [warmup(999, 15), set(210, 15)] }],
-    });
-    const prs = detectPRs(now, [prevWithWarmup, now]);
-    expect(prs).toEqual([{ exerciseId: 'legpress', kind: 'weight', value: 210, prev: 200 }]);
-  });
 });
 
 describe('compareToLast', () => {
@@ -180,19 +165,6 @@ describe('compareToLast', () => {
     expect(compareToLast(free, [last, free])).toBeNull();
     const first = entry({ tpl: 'tpl_never_done', exercises: [] });
     expect(compareToLast(first, [last, first])).toBeNull();
-  });
-
-  it('warmup sets are excluded from the comparison, on both sides', () => {
-    const warmup = (weight, reps) => set(weight, reps, { isWarmup: true });
-    const withWarmup = entry({
-      exercises: [{ exerciseId: 'bench', sets: [warmup(40, 12), set(82.5, 8)] }],
-    });
-    const withoutWarmup = entry({
-      exercises: [{ exerciseId: 'bench', sets: [set(82.5, 8)] }],
-    });
-    expect(compareToLast(withWarmup, [last, withWarmup])).toEqual(
-      compareToLast(withoutWarmup, [last, withoutWarmup])
-    );
   });
 });
 
@@ -250,17 +222,6 @@ describe('recapStats — data types', () => {
 
   it('empty session → zeros', () => {
     expect(recapStats(entry({ exercises: [] }))).toEqual({ volume: 0, setsDone: 0, setsPlanned: 0 });
-  });
-
-  it('warmup sets never count toward volume or setsDone (as if absent)', () => {
-    const warmup = (weight, reps) => set(weight, reps, { isWarmup: true });
-    const withWarmup = entry({
-      exercises: [{ exerciseId: 'squat', totalSets: 2, sets: [warmup(60, 5), set(100, 5), set(100, 5)] }],
-    });
-    const withoutWarmup = entry({
-      exercises: [{ exerciseId: 'squat', totalSets: 2, sets: [set(100, 5), set(100, 5)] }],
-    });
-    expect(recapStats(withWarmup)).toEqual(recapStats(withoutWarmup));
   });
 });
 
