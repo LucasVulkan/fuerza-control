@@ -97,6 +97,7 @@ export default function ExerciseCard({
   clientNote,
   onClientNoteChange,
   overrideEx,
+  activeSetIndex = -1,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -157,8 +158,6 @@ export default function ExerciseCard({
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
-
-  const [hintSetIndex, setHintSetIndex] = useState(0);
 
   // Dropset: checking the last work set is NOT the end of the exercise — the
   // drops come next. Hold the auto-collapse until at least one drop exists and
@@ -304,9 +303,6 @@ export default function ExerciseCard({
   const handleCollapse = useCallback(() => {
     startCollapse(() => setManualOpen(false));
   }, [startCollapse]);
-
-  // ── Active set (first undone) ─────────────────────────────────────────────
-  const activeSetIdx = setsState.findIndex((s) => !s.done);
 
   function handleCopyFromPrev(setIdx) {
     const prev = setsState[setIdx - 1];
@@ -603,7 +599,7 @@ export default function ExerciseCard({
                   index={realIndex}
                   set={set}
                   inputType={inputType}
-                  isActive={realIndex === activeSetIdx}
+                  isActive={realIndex === activeSetIndex}
                   showRpe={trackRpe}
                   onRpeChange={(v) => {
                     if (v === '') { onFieldChange(realIndex, 'rpe', ''); return; }
@@ -627,18 +623,15 @@ export default function ExerciseCard({
                   prevRpe={rpeRef.value}
                   prevRpeSource={rpeRef.source}
                   weightScrollStep={weightScrollStep}
-                  showHint={realIndex === hintSetIndex}
+                  showHint={realIndex === activeSetIndex}
                   onWeightChange={(v) => {
                     onFieldChange(realIndex, 'weight', v !== '' ? String(toKg(parseFloat(v))) : '');
-                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onRepsChange={(v) => {
                     onFieldChange(realIndex, 'reps', v);
-                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onTimeChange={(v) => {
                     onFieldChange(realIndex, 'time', v);
-                    if (v !== '' && realIndex >= hintSetIndex) setHintSetIndex(realIndex + 1);
                   }}
                   onToggleDone={() => {
                     if (!set.done) {

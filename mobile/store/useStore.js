@@ -1450,11 +1450,12 @@ export const useStore = create(
         const { activeSession, exerciseLibrary, customExercises } = get();
         const sets = activeSession.setsState[exerciseId] ?? [];
         const set_ = sets[setIndex];
-        if (!set_) return;
+        if (!set_) return { changed: false, done: false };
         const hasData = set_.weight !== '' || set_.reps !== '' || set_.time !== '';
         const nowDone = !set_.done;
         // Actualizar visualmente solo si tiene datos propios o ya estaba marcado (para desmarcar)
-        if (hasData || set_.done) {
+        const changed = hasData || set_.done;
+        if (changed) {
           const updatedSets = sets.map((s, i) => i === setIndex ? { ...s, done: nowDone } : s);
           set((s) => ({
             activeSession: {
@@ -1480,6 +1481,7 @@ export const useStore = create(
             get().startRestTimer(restSec, exDef?.name ?? exerciseId);
           }
         }
+        return { changed, done: nowDone };
       },
 
       updateSetField: (exerciseId, setIndex, field, value) => {
@@ -1541,6 +1543,8 @@ export const useStore = create(
       },
 
       toggleAdHocSetDone: (exerciseId, setIdx) => {
+        const prevDone = get().activeSession.adHocExercises
+          .find((ex) => ex.exerciseId === exerciseId)?.setsState[setIdx]?.done;
         set((s) => ({
           activeSession: {
             ...s.activeSession,
@@ -1552,6 +1556,7 @@ export const useStore = create(
             ),
           },
         }));
+        return { changed: true, done: !prevDone };
       },
 
       addAdHocSet: (exerciseId) => {

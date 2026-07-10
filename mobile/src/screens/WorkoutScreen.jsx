@@ -19,6 +19,48 @@ import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
 import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
 
+// ── Global "active set" pointer ───────────────────────────────────────────────
+// Only one set in the whole workout screen is "active" (highlight) at a time,
+// following real training order: exercise 1 → 2 → …, and within a superset
+// group, interleaved by round (A1-S1, A2-S1, A1-S2, A2-S2, …) since that's how
+// rest actually works for supersets (toggleSetDone rests only on the last
+// member of the chain). Ad-hoc exercises come last, in the order they were added.
+
+function buildActiveSlots(exerciseGroups, adHocExercises) {
+  const slots = [];
+  for (const group of exerciseGroups) {
+    if (group.length === 1) {
+      const { exConfig, setsState } = group[0];
+      setsState.forEach((s, i) => slots.push({ exerciseId: exConfig.exerciseId, setIndex: i, done: s.done }));
+    } else {
+      const maxLen = Math.max(...group.map((g) => g.setsState.length));
+      for (let round = 0; round < maxLen; round++) {
+        for (const { exConfig, setsState } of group) {
+          if (round < setsState.length) {
+            slots.push({ exerciseId: exConfig.exerciseId, setIndex: round, done: setsState[round].done });
+          }
+        }
+      }
+    }
+  }
+  for (const adHoc of adHocExercises ?? []) {
+    adHoc.setsState.forEach((s, i) => slots.push({ exerciseId: adHoc.exerciseId, setIndex: i, done: s.done }));
+  }
+  return slots;
+}
+
+function computeActiveSet(slots, afterExerciseId = null, afterSetIndex = -1) {
+  let startPos = 0;
+  if (afterExerciseId != null) {
+    const idx = slots.findIndex((s) => s.exerciseId === afterExerciseId && s.setIndex === afterSetIndex);
+    if (idx >= 0) startPos = idx + 1;
+  }
+  for (let i = startPos; i < slots.length; i++) {
+    if (!slots[i].done) return { exerciseId: slots[i].exerciseId, setIndex: slots[i].setIndex };
+  }
+  return null;
+}
+
 // ── Elapsed session clock ─────────────────────────────────────────────────────
 // Derived from activeSession.startedAt (wall clock), so it survives app
 // minimize/kill without any background logic — the tick only repaints.
@@ -283,6 +325,60 @@ export default function WorkoutScreen() {
     else exerciseGroups.push([item]);
   }
 
+  // Global active-set pointer (highlight) — recalculated when the "shape" of
+  // the session changes (sets/exercises added or removed), preserved otherwise.
+  // Adjust-during-render idiom (React docs: "You Might Not Need an Effect")
+  // instead of useEffect, so this also covers the initial mount for free.
+  const [activePointer, setActivePointer] = useState(null);
+  const [lastShapeKey, setLastShapeKey] = useState(null);
+  const shapeKey = [
+    ...exerciseGroups.flat().map((g) => `${g.exConfig.exerciseId}:${g.setsState.length}`),
+    ...(activeSession.adHocExercises ?? []).map((a) => `${a.exerciseId}:${a.setsState.length}`),
+  ].join('|');
+  if (shapeKey !== lastShapeKey) {
+    setLastShapeKey(shapeKey);
+    setActivePointer((prev) => {
+      const slots = buildActiveSlots(exerciseGroups, activeSession.adHocExercises);
+      const stillValid = prev && slots.some(
+        (s) => s.exerciseId === prev.exerciseId && s.setIndex === prev.setIndex && !s.done
+      );
+      return stillValid ? prev : computeActiveSet(slots);
+    });
+  }
+
+  function handleToggleDone(exerciseId, setIdx) {
+    const result = toggleSetDone(exerciseId, setIdx);
+    if (!result?.changed) return;
+    const slots = buildActiveSlots(exerciseGroups, activeSession.adHocExercises);
+    setActivePointer(
+      result.done
+        ? computeActiveSet(slots, exerciseId, setIdx)
+        : { exerciseId, setIndex: setIdx }
+    );
+  }
+  function handleFieldChange(exerciseId, setIdx, field, value) {
+    updateSetField(exerciseId, setIdx, field, value);
+    const unit = exerciseGroups.flat().find((g) => g.exConfig.exerciseId === exerciseId);
+    const wasDone = unit?.setsState[setIdx]?.done;
+    if (!wasDone) setActivePointer({ exerciseId, setIndex: setIdx });
+  }
+  function handleAdHocToggleDone(exerciseId, setIdx) {
+    const result = toggleAdHocSetDone(exerciseId, setIdx);
+    if (!result?.changed) return;
+    const slots = buildActiveSlots(exerciseGroups, activeSession.adHocExercises);
+    setActivePointer(
+      result.done
+        ? computeActiveSet(slots, exerciseId, setIdx)
+        : { exerciseId, setIndex: setIdx }
+    );
+  }
+  function handleAdHocFieldChange(exerciseId, setIdx, field, value) {
+    updateAdHocSet(exerciseId, setIdx, field, value);
+    const unit = (activeSession.adHocExercises ?? []).find((a) => a.exerciseId === exerciseId);
+    const wasDone = unit?.setsState[setIdx]?.done;
+    if (!wasDone) setActivePointer({ exerciseId, setIndex: setIdx });
+  }
+
   // Free session flag
   const isFree = activeSession.templateId === '__free__';
 
@@ -402,10 +498,11 @@ export default function WorkoutScreen() {
                 lastExercise={lastExercise}
                 overrideEx={overrideEx}
                 groupLabel={isSuperset ? `A${idx + 1}` : undefined}
+                activeSetIndex={activePointer?.exerciseId === exConfig.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
-                  updateSetField(exConfig.exerciseId, setIdx, field, value)
+                  handleFieldChange(exConfig.exerciseId, setIdx, field, value)
                 }
-                onToggleDone={(setIdx) => toggleSetDone(exConfig.exerciseId, setIdx)}
+                onToggleDone={(setIdx) => handleToggleDone(exConfig.exerciseId, setIdx)}
                 onAddSet={() => addSetToSession(exConfig.exerciseId)}
                 onAddDrop={() => addDropToLastSet(exConfig.exerciseId)}
                 onDropFieldChange={(dropIdx, field, value) =>
@@ -446,10 +543,11 @@ export default function WorkoutScreen() {
                 def={def}
                 setsState={adHoc.setsState}
                 lastExercise={null}
+                activeSetIndex={activePointer?.exerciseId === adHoc.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
-                  updateAdHocSet(adHoc.exerciseId, setIdx, field, value)
+                  handleAdHocFieldChange(adHoc.exerciseId, setIdx, field, value)
                 }
-                onToggleDone={(setIdx) => toggleAdHocSetDone(adHoc.exerciseId, setIdx)}
+                onToggleDone={(setIdx) => handleAdHocToggleDone(adHoc.exerciseId, setIdx)}
                 onAddSet={() => addAdHocSet(adHoc.exerciseId)}
                 clientNote={activeSession.exerciseNotes?.[adHoc.exerciseId] ?? ''}
                 onClientNoteChange={(text) => setExerciseNote(adHoc.exerciseId, text)}
