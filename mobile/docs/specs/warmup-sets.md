@@ -1,21 +1,21 @@
 # Spec — Series de calentamiento
 
-> Estado: **✅ IMPLEMENTADA (3 fases, Sonnet, jul 2026)**. Fase 1 — util puro
-> `src/utils/warmup.js` + exclusión `isWarmup` en `progression.js`/`sessionRecap.js`
-> (`45a74ee`). Fase 2 — bloque Calentamiento en `ExerciseEditorInline` + duración
-> estimada en `sessionStats.js` (`f04a254`). Fase 3 — sub-bloque C en `ExerciseCard`,
-> siembra de filas en `startSession`/`syncSessionSets`, rest timer propio en
-> `toggleSetDone`, autofill por grupo en `saveSession` (`8d7d187`). Decisión clave
-> del usuario: granularidad SOLO en el bloque de calentamiento — NO convertir las
-> series de trabajo en editables una a una (rompería evaluador de progresión, stats,
-> plannedSets y sync; pirámides/top-set serán una feature futura aparte).
+> Estado: **✅ IMPLEMENTADA, Fase 3 REDISEÑADA (jul 2026)**. Fase 1 — util puro
+> `src/utils/warmup.js` (`45a74ee`). Fase 2 — bloque Calentamiento en
+> `ExerciseEditorInline` + duración estimada en `sessionStats.js` (`f04a254`, SIN
+> cambios en el rediseño). Fase 3 original (`8d7d187`) hacía el calentamiento
+> interactivo — filas C1/C2/C3 editables DENTRO de `setsState`, con ✓ propio y
+> timer — pero tras verlo en uso el usuario pidió que el calentamiento pierda
+> protagonismo: pasa a ser una fila de **pills no-registradas** (§3), sin compartir
+> estructura con las series de trabajo. Esto revierte toda la integración de la
+> Fase 3 original en `setsState`/`toggleSetDone`/`saveSession` — ver §7.
 >
-> Ajuste sobre el texto original de esta spec, descubierto al implementar: §4 asumía
-> que `sessionRecap.js` ensambla el array que alimenta a `getProgression` — no es así,
-> el filtro real vive dentro de `getProgression` (`src/utils/progression.js`), único
-> punto compartido por los 3 consumidores reales. Y `startSession`/`syncSessionSets`
-> (no mencionados en el texto original) tuvieron que sembrar las filas `isWarmup` en
-> `setsState` — sin eso el bloque de calentamiento nunca tendría filas reales.
+> Ajuste sobre el texto original de esta spec, descubierto al implementar la Fase 1:
+> §4 (ya retirada) asumía que `sessionRecap.js` ensambla el array que alimenta a
+> `getProgression` — no es así, el filtro vivía dentro de `getProgression`
+> (`src/utils/progression.js`). Con el rediseño de la Fase 3 este filtro (y el de
+> `sessionRecap.js`) se retira por completo: el calentamiento nunca entra en
+> `exercise.sets`, así que no hay nada que excluir.
 
 ## 1. Modelo de datos
 
@@ -37,8 +37,11 @@ Rampas del modo `auto` (constantes, no configurables):
 | 3 | 40%×10 · 60%×6 · 80%×3 |
 | 4 | 40%×10 · 55%×8 · 70%×5 · 85%×2 |
 
-En el log, las series de calentamiento se guardan DENTRO de `exercise.sets` con
-flag: `{ weight, reps, time:'', done, isWarmup: true }`, ANTES de las de trabajo.
+El calentamiento **NO se guarda en el log**. No hay fila `isWarmup` en
+`exercise.sets` ni en ningún sitio persistido — es una capa puramente visual,
+calculada en vivo a partir de `exConfig.warmup` y del peso de trabajo resuelto
+(§2). Cerrar el ejercicio, cambiar de sesión o reabrir la app reinicia
+cualquier marca de "hecho" sobre las pills — no hay nada que recordar.
 
 ## 2. Peso de referencia y cálculo
 
@@ -76,37 +79,82 @@ workWeight null → weights null; custom steps arbitrarios; cascada de referenci
 - Entra en el autosave debounced existente (`commitValues`).
 - La frase RESUMEN del editor no cambia (sigue describiendo el trabajo).
 
-### Workout (`ExerciseCard`)
-- Sub-bloque visualmente hundido (fondo más oscuro, valores atenuados, índices
-  C1/C2/C3) ENCIMA de las series de trabajo. Ver mockup.
-- Pre-relleno de peso/reps por `computeWarmupWeights`; inputs editables normales.
-- ✓ de una C → si `restSec > 0`, dispara el rest timer con ESE valor (no el del
-  ejercicio); si 0, no dispara nada.
-- La meta line del header añade `· C×3`.
-- `allDone` (colapso de la card) INCLUYE las C.
-- Sin columna RPE en las C aunque `trackRpe` esté activo.
-- Sin referencia de peso: banner "las C se calculan al escribir tu primer peso de
-  trabajo" (mockup) — al teclear el primer peso de trabajo se rellenan las C vacías.
+### Workout (`ExerciseCard`) — diseño vigente (Fase 3-bis)
+Fila no-registrada ENCIMA de las series de trabajo, fuera de `setsState`:
 
-## 4. Exclusiones (dónde filtrar `isWarmup`)
+```
+Calentamiento ·············· 90s descanso
+[ 40kg×10 ] → [ 55kg×8 ] → [ 70kg×5 ]
+```
 
-| Consumidor | Regla |
-|---|---|
-| Progresión (`getProgression` — el array `lastSets` que se le pasa) | filtrar isWarmup al ensamblar |
-| Fantasmas "última vez" (SetRow prev*) | solo series de trabajo |
-| Autofill del ✓ en `saveSession` | mapear C con C y trabajo con trabajo (las C se autofillan de las C previas) |
-| `plannedSets` | solo trabajo (`ex.sets`) — las C no suman |
-| `recapStats` (volumen y series) | filtrar isWarmup |
-| `detectPRs` / `compareToLast` | filtrar isWarmup (en `doneSets` de sessionRecap: excluir isWarmup) |
-| `sessionStats` (duración estimada) | SÍ contar las C: `nCalent × (35 + warmup.restSec)` |
+- Label "Calentamiento" + el `restSec` configurado como texto plano (SIN
+  temporizador propio de fila — es informativo, salvo el tap descrito abajo).
+- Una pill por paso, encadenadas con una flecha, con el peso×reps calculado
+  **en vivo** por `computeWarmupWeights(warmupSteps(exConfig.warmup), workWeightKg)`.
+  `workWeightKg` sale de la cascada de §2, SIEMPRE recalculada en cada render
+  (si el atleta cambia el peso de su primera serie de trabajo después de haber
+  tocado alguna pill, los números de las pills — tocadas o no — se actualizan
+  igual; no hay snapshot congelado por pill).
+- Estado por pill: **local al componente, NO persistido** — `useState` con el
+  set de índices tocados, se reinicia en cada montaje (cambio de sesión,
+  reapertura de la app). Gris por defecto → toca la pill → verde + dispara
+  `startRestTimer(exConfig.warmup.restSec, nombreDelEjercicio)` (si `restSec >
+  0`; si es 0, la pill solo cambia de color, sin timer). Tocar una pill ya
+  verde la desmarca (vuelve a gris) sin efecto secundario.
+- Sin referencia de peso (`workWeightKg == null`): las pills muestran el % y
+  las reps pero sin kg (p. ej. "40% × 10") o un hint corto de que faltan datos
+  — decisión de implementación, no bloqueante.
+- Las pills NO participan en `allDone`/colapso de la card, ni en la meta line
+  como conteo obligatorio (opcional mantener `· C×N` si aporta).
+- Nunca aparece columna RPE aquí — no aplica a algo no registrado.
+
+## 4. Consumidores — ya NO requieren filtrar nada
+
+Al no entrar el calentamiento en `exercise.sets`, ningún consumidor necesita
+excluirlo: `getProgression`, fantasmas "última vez", `saveSession`,
+`plannedSets`, `recapStats`, `detectPRs`/`compareToLast` funcionan exactamente
+como si el calentamiento no existiera como dato. La única pieza que SÍ conoce
+el calentamiento fuera de la UI del workout es `sessionStats` (duración
+estimada), que sigue sumando `nCalent × (35 + warmup.restSec)` por ejercicio a
+partir de la CONFIG (`exConfig.warmup`), no de filas registradas — sin cambios
+aquí.
 
 ## 5. i18n (es/en, sección `exerciseEditor.warmup` + `workout.warmup`)
-Ninguno/Auto/Personalizado, "Calentamiento", "Series de calentamiento",
-"＋ Añadir paso", "Descanso entre calentamientos", "sin temporizador",
-hint de rampa, banner de referencia pendiente. (Definir claves al implementar,
-patrón `_one/_other` si hay plurales.)
+`exerciseEditor.warmup.*` (Fase 2, editor) sin cambios. `workout.warmup.*`
+(Fase 3-bis, fila de pills): label "Calentamiento", texto de descanso,
+hint de "sin referencia" reescrito para el diseño de pills (ya no habla de
+"C×N vacías", habla de peso pendiente). Repasar `metaSuffix`/`noReference`
+existentes y ajustarlos o retirarlos según haga falta.
 
 ## 6. Fases
-1. 🟢 `src/utils/warmup.js` + tests + filtros `isWarmup` en sessionRecap (con tests).
-2. 🟡 Editor (bloque Calentamiento con 3 modos + restSec).
-3. 🟡 Workout (sub-bloque C, pre-relleno, timer propio, autofill/save con flag) + exclusiones de §4 restantes.
+1. 🟢 `src/utils/warmup.js` + tests (reutilizado tal cual por la Fase 3-bis).
+2. 🟢 Editor (bloque Calentamiento con 3 modos + restSec) — sin cambios en el rediseño.
+3. 🟢→🔁 Workout — REDISEÑADO de sub-bloque C editable a fila de pills no-registradas (Fase 3-bis). Ver §7.
+
+## 7. Fase 3-bis — qué se revierte y qué se construye
+
+**Se retira** (todo lo que integraba el calentamiento en `setsState`):
+- `startSession`: siembra de `warmupRows` con `isWarmup: true`.
+- `syncSessionSets`: resize independiente del grupo warmup/work.
+- `toggleSetDone`: branch `if (set_.isWarmup)` (rest timer propio por fila).
+- `saveSession`: preservación de `isWarmup` en `resolveSet` y el emparejamiento
+  C-con-C / trabajo-con-trabajo por grupo relativo — vuelve al emparejamiento
+  posicional simple de antes.
+- `ExerciseCard`: split `warmupEntries`/`workEntries`, el `useEffect` de
+  "hornear" valores en filas C en blanco, y el sub-bloque `SetRow` C1/C2/C3.
+- Filtro `!s.isWarmup &&` en `getProgression` (`src/utils/progression.js`) y en
+  `doneSets` (`src/utils/sessionRecap.js`) — dead code una vez el calentamiento
+  no entra nunca en `exercise.sets`.
+- Import no usado de `warmupSteps` en `useStore.js` si queda huérfano.
+
+**Se construye** (nuevo, dentro de `ExerciseCard`):
+- Fila de pills descrita en §3, usando `warmupSteps`/`computeWarmupWeights`/
+  `resolveWorkWeight` de `src/utils/warmup.js` (sin cambios en ese util — se
+  reutiliza para cálculo en vivo en vez de para sembrar filas).
+- Estado local `Set<number>` de pills tocadas + handler de tap que llama a
+  `startRestTimer` (acción de store ya existente, independiente de
+  `toggleSetDone`).
+
+**No cambia**: `ExerciseEditorInline` (Fase 2), `sessionStats.js` (duración
+estimada), el modelo de datos de `exConfig.warmup` (§1, salvo que ya no
+describe cómo se guarda en el log — porque no se guarda).
