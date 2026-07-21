@@ -339,6 +339,14 @@ function SessionCard({ session, onDelete }) {
   const hasNotes    = !!session.notes?.trim()
                    || (session.exercises ?? []).some((e) => !!e.note);
 
+  // Same "has data" criteria used by the expanded exercise list below.
+  const exerciseCount = useMemo(
+    () => (session.exercises ?? []).filter(
+      (e) => (e.sets ?? []).some((s) => s.done || s.weight || s.reps || s.time),
+    ).length,
+    [session.exercises],
+  );
+
   function handleDelete() {
     Alert.alert(
       t('history.deleteTitle'),
@@ -363,25 +371,31 @@ function SessionCard({ session, onDelete }) {
           <Text style={styles.cardSesTag} numberOfLines={1}>
             {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
           </Text>
-          {/* Session name in white */}
-          <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
-          {/* Meta: date · stage · duration · nota */}
-          <View style={styles.cardMeta}>
-            <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-            {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
-            {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
-            {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-            {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
-            {hasNotes && (
-              <View style={styles.noteTag}>
-                <Text style={styles.noteTagText}>NOTA</Text>
-              </View>
-            )}
-            {session.adapted && (
-              <View style={styles.adaptedTag}>
-                <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-              </View>
-            )}
+          <View style={styles.cardTitleBlock}>
+            {/* Session name in white */}
+            <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
+            {/* Meta: date · stage · exercises · duration · nota */}
+            <View style={styles.cardMeta}>
+              <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
+              {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
+              {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
+              {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
+              {exerciseCount > 0 && (
+                <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
+              )}
+              {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
+              {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
+              {hasNotes && (
+                <View style={styles.noteTag}>
+                  <Text style={styles.noteTagText}>NOTA</Text>
+                </View>
+              )}
+              {session.adapted && (
+                <View style={styles.adaptedTag}>
+                  <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -692,7 +706,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Scope selector
   scopeRow: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 15,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
   },
@@ -703,7 +717,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
   },
   stagePillsContent: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 15,
     paddingVertical:   spacing.sm,
     gap:               spacing.xs,
     flexDirection:     'row',
@@ -735,7 +749,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // List
   listContent: {
-    gap: spacing.sm,
+    gap: 10,
   },
 
   // Empty state
@@ -758,17 +772,22 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     overflow:        'hidden',
-    marginHorizontal: spacing.xl,
+    marginHorizontal: 15,
   },
   cardHeader: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    padding:         spacing.md,
-    gap:             spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: 15,
+    paddingVertical:   10,
+    gap:               spacing.sm,
   },
   cardHeaderLeft: {
     flex: 1,
-    gap:  2,
+    gap:  6,
+  },
+  // Nombre + subtítulo van pegados (0px) — el gap de 6 vive entre el tag y este bloque
+  cardTitleBlock: {
+    gap: 0,
   },
 
   // "Sesión A" tag line — siempre en accent, sin color por-programa (Figma no
@@ -776,7 +795,6 @@ const makeStyles = (th) => StyleSheet.create({
   cardSesTag: {
     ...textStyles.cardType,
     textTransform: 'uppercase',
-    marginBottom:  4,
     color:         th.colors.accent,
   },
   // Session name
@@ -790,7 +808,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     flexWrap:      'wrap',
     gap:           spacing.xs,
-    marginTop:     3,
   },
   cardDate: {
     ...textStyles.subtitle,
@@ -835,12 +852,12 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:    0,
   },
   deleteBtn:     { padding: spacing.xs },
-  deleteBtnText: { fontSize: typography.base, color: th.colors.muted2 },
+  deleteBtnText: { fontSize: 18, color: th.colors.muted2 },
 
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)
   detail: {
-    gap: spacing.sm,
+    gap: 10,
     paddingBottom: spacing.sm,
   },
   noteSection: {
@@ -864,7 +881,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exSection: {
     paddingHorizontal: spacing.md,
-    gap:               spacing.xs,
+    gap:               2,
   },
   exName: {
     fontSize:   typography.sm,
@@ -915,7 +932,7 @@ const makeStyles = (th) => StyleSheet.create({
   setPills: {
     flexDirection: 'row',
     flexWrap:      'wrap',
-    gap:           spacing.xs,
+    gap:           6,
   },
   // One weight-run: the weight pill glued to its reps/RPE pills.
   setGroup: {
@@ -969,7 +986,7 @@ const makeStyles = (th) => StyleSheet.create({
   dateFilterRow: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 15,
     paddingVertical:   spacing.sm,
     gap:               spacing.xs,
     borderBottomWidth: borders.thin,

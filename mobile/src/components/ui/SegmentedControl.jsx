@@ -37,6 +37,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
     padding:         4,
+    gap:             6,
   },
   option: {
     flex:            1,
