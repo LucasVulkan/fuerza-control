@@ -119,7 +119,7 @@ const spaceColors = {
 // FormaFit — first theme of the Figma redesign: near-black bg, lime accent.
 const formaFitColors = {
   bg:         '#141414',
-  surface:    '#2a2a2a',
+  surface:    '#252525',
   surface2:   '#3a3a3a',
   text:       '#e6e6e6',
   mutedLight: '#818181',
