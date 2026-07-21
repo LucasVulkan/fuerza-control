@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import {
   amrapRemaining, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
   buildBlockResult, formatBlockScore,
@@ -70,6 +71,14 @@ export default function ConditioningBlockCard({
     const id = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [running]);
+
+  // Keep the screen awake while a block is running — the user is watching
+  // the clock, not touching the screen (unlike normal sets).
+  useEffect(() => {
+    if (!running) return;
+    activateKeepAwakeAsync(block.id, { suppressDeactivateWarnings: true });
+    return () => deactivateKeepAwake(block.id);
+  }, [running, block.id]);
 
   const now       = Date.now();
   const movements = block.movements ?? [];
