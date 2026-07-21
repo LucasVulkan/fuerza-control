@@ -884,9 +884,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               2,
   },
   exName: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
+    ...textStyles.cardType,
+    color: th.colors.text,
   },
   exNote: {
     fontSize:   typography.xs,
