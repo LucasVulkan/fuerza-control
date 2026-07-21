@@ -524,75 +524,76 @@ function SessionCard({ session, onDelete }) {
   );
 
   return (
-    <Animated.View
-      style={{
-        maxHeight: cardMaxH,
-        overflow:  'hidden',
-        opacity:   exitOpacity,
-        transform: [{ translateX: exitX }],
-      }}
-    >
-      <View style={styles.card}>
-        {/* Header — tap to expand */}
-        <TouchableOpacity
-          style={styles.cardHeader}
-          onPress={toggleOpen}
-          activeOpacity={0.75}
-        >
-          <View style={styles.cardHeaderLeft}>
-            {/* "Sesión A" tag — or "Sesión libre" badge */}
-            <Text style={styles.cardSesTag} numberOfLines={1}>
-              {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
-            </Text>
-            <View style={styles.cardTitleBlock}>
-              {/* Session name in white */}
-              <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
-              {/* Meta: date · stage · exercises · duration · nota */}
-              <View style={styles.cardMeta}>
-                <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-                {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
-                {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
-                {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
-                {exerciseCount > 0 && (
-                  <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
-                )}
-                {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-                {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
-                {hasNotes && (
-                  <View style={styles.noteTag}>
-                    <Text style={styles.noteTagText}>NOTA</Text>
-                  </View>
-                )}
-                {session.adapted && (
-                  <View style={styles.adaptedTag}>
-                    <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-                  </View>
-                )}
+    // Two nested Animated.Views on purpose: maxHeight isn't native-driver-compatible,
+    // so it must live on its own node, separate from the native-driven opacity/
+    // transform below — mixing them on one style object poisons the JS-driven node
+    // (RN tries to hand the whole style object to native, fails on maxHeight, then
+    // throws "Attempting to run JS driven animation on animated node that has been
+    // moved to native" the next time cardMaxH is animated with useNativeDriver:false).
+    <Animated.View style={{ maxHeight: cardMaxH, overflow: 'hidden' }}>
+      <Animated.View style={{ opacity: exitOpacity, transform: [{ translateX: exitX }] }}>
+        <View style={styles.card}>
+          {/* Header — tap to expand */}
+          <TouchableOpacity
+            style={styles.cardHeader}
+            onPress={toggleOpen}
+            activeOpacity={0.75}
+          >
+            <View style={styles.cardHeaderLeft}>
+              {/* "Sesión A" tag — or "Sesión libre" badge */}
+              <Text style={styles.cardSesTag} numberOfLines={1}>
+                {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
+              </Text>
+              <View style={styles.cardTitleBlock}>
+                {/* Session name in white */}
+                <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
+                {/* Meta: date · stage · exercises · duration · nota */}
+                <View style={styles.cardMeta}>
+                  <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
+                  {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
+                  {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
+                  {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
+                  {exerciseCount > 0 && (
+                    <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
+                  )}
+                  {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
+                  {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
+                  {hasNotes && (
+                    <View style={styles.noteTag}>
+                      <Text style={styles.noteTagText}>NOTA</Text>
+                    </View>
+                  )}
+                  {session.adapted && (
+                    <View style={styles.adaptedTag}>
+                      <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
-          </View>
 
-          <View style={styles.cardHeaderRight}>
-            <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-              <Text style={styles.deleteBtnText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+            <View style={styles.cardHeaderRight}>
+              <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
+                <Text style={styles.deleteBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
 
-        {/* Hidden off-flow measurer — reports the detail's natural height via
-            onLayout regardless of the animated maxHeight below, so the target
-            height for the expand animation is known even before first open. */}
-        <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
-          {detailContent}
-        </View>
-
-        {/* Expanded detail — animated height + opacity crossfade */}
-        <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
-          <Animated.View style={{ opacity: detailOpacity }}>
+          {/* Hidden off-flow measurer — reports the detail's natural height via
+              onLayout regardless of the animated maxHeight below, so the target
+              height for the expand animation is known even before first open. */}
+          <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
             {detailContent}
+          </View>
+
+          {/* Expanded detail — animated height + opacity crossfade */}
+          <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
+            <Animated.View style={{ opacity: detailOpacity }}>
+              {detailContent}
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
-      </View>
+        </View>
+      </Animated.View>
     </Animated.View>
   );
 }
