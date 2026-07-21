@@ -45,6 +45,7 @@ export const colors = {
 
 // ─── Spacing scale ────────────────────────────────────────────────────────────
 export const spacing = {
+  xxs: 2,
   xs:  4,
   sm:  8,
   md:  12,
@@ -85,6 +86,20 @@ export const typography = {
   tight:  1.2,
   normal: 1.5,
   loose:  1.8,
+};
+
+// ─── Composite text styles (Figma text/* tokens with exact tracking) ──────────
+// `typography` above only has loose sizes/weights shared by all screens — these
+// are exact Figma text styles (size + weight + letter-spacing bundled) used by
+// the FormaFit redesign. Do not fold into `typography`, which other screens
+// already consume as-is.
+export const textStyles = {
+  cardType:   { fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
+  cardTitle:  { fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
+  subtitle:   { fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
+  tag:        { fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
+  spacingTag: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
+  btnAction:  { fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
 };
 
 // ─── Border widths ────────────────────────────────────────────────────────────
