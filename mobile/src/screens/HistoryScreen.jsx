@@ -402,17 +402,24 @@ function SessionCard({ session, onDelete }) {
           text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
-            Animated.parallel([
-              Animated.timing(exitX, {
-                toValue: 500, duration: 240, easing: Easing.in(Easing.ease), useNativeDriver: true,
-              }),
-              Animated.timing(exitOpacity, {
-                toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true,
-              }),
-              Animated.timing(cardMaxH, {
-                toValue: 0, duration: 240, easing: Easing.inOut(Easing.ease), useNativeDriver: false,
-              }),
-            ]).start(({ finished }) => {
+            // exitX/exitOpacity run on the native (UI) thread — buttery at 60fps
+            // regardless of JS thread load. cardMaxH can't: `maxHeight` isn't
+            // native-driver-compatible (RN limitation, not fixable without a
+            // library like react-native-reanimated for real native layout
+            // animations), so it's JS-driven and visibly steppier, especially
+            // in Expo Go dev builds. Starting it ~40% into the slide (not in
+            // perfect parallel) reads as one continuous "swipe away, then the
+            // gap closes" gesture instead of two motions competing for
+            // attention at the same instant.
+            Animated.timing(exitX, {
+              toValue: 500, duration: 240, easing: Easing.in(Easing.ease), useNativeDriver: true,
+            }).start();
+            Animated.timing(exitOpacity, {
+              toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true,
+            }).start();
+            Animated.timing(cardMaxH, {
+              toValue: 0, duration: 260, delay: 100, easing: Easing.inOut(Easing.ease), useNativeDriver: false,
+            }).start(({ finished }) => {
               if (finished) onDelete(session.id);
             });
           },
