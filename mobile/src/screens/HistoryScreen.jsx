@@ -929,9 +929,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: 2,
   },
   weightPillText: {
-    fontSize: typography.xs,
+    ...textStyles.tag,
   },
-  weightPillNum:  { color: th.colors.accent, fontWeight: typography.bold },
+  weightPillNum:  { color: th.colors.accent },
   weightPillUnit: { color: th.colors.text },
   weightPillX:    { color: th.colors.mutedLight },
 
@@ -955,8 +955,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     withOpacity(th.colors.orange, 0.35),
   },
   setPillText: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
+    ...textStyles.tag,
+    color: th.colors.muted,
   },
   setPillTextDone: {
     color: th.colors.accent,
