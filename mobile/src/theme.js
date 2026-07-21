@@ -44,12 +44,20 @@ export const colors = {
 };
 
 // ─── Spacing scale ────────────────────────────────────────────────────────────
+// Mirrors Figma's `space/*` variables exactly (name AND value) — this is the
+// authoritative scale for the FormaFit redesign, not an app-invented one.
+// Confirmed across independent extractions: xs=2 (history.md, progress.md),
+// xs2=4 (RACIONALIZACION.md §1), sm=6 (program-editor.md, exercice.md,
+// segmented-control.md), sm2=8 (exercice-editor-elements.md), md=10 (history.md,
+// modales.md, sesion-editor.md...), lg=15 (history.md, bloques-amrap.md,
+// modales.md), xl=20 (modales.md), xxl=28 (RACIONALIZACION.md §1).
 export const spacing = {
-  xxs: 2,
-  xs:  4,
-  sm:  8,
-  md:  12,
-  lg:  16,
+  xs:  2,
+  xs2: 4,
+  sm:  6,
+  sm2: 8,
+  md:  10,
+  lg:  15,
   xl:  20,
   xxl: 28,
 };

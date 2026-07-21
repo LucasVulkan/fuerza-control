@@ -6,11 +6,13 @@
  */
 import { useRef, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
-import { textStyles } from '../../theme';
+import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
-const PAD = 4;
-const GAP = 6;
+// Contenedor: space/xs2=4 (padding), space/sm=6 (gap) — ambos confirmados en
+// mobile/docs/figma-extraction/components/segmented-control.md.
+const PAD = spacing.xs2;
+const GAP = spacing.sm;
 
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
@@ -94,7 +96,7 @@ const makeStyles = (th) => StyleSheet.create({
   option: {
     flex:            1,
     borderRadius:    th.radius.sm,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm2, // space/sm2=8 (Group together, botón seleccionado)
     alignItems:      'center',
   },
   optionText: {

@@ -755,7 +755,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Scope selector
   scopeRow: {
-    paddingHorizontal: 15,
+    paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
   },
@@ -766,7 +766,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
   },
   stagePillsContent: {
-    paddingHorizontal: 15,
+    paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
     gap:               spacing.xs,
     flexDirection:     'row',
@@ -798,7 +798,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // List
   listContent: {
-    gap: 10,
+    gap: spacing.md,
   },
 
   // Empty state
@@ -821,18 +821,18 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     overflow:        'hidden',
-    marginHorizontal: 15,
+    marginHorizontal: spacing.lg,
   },
   cardHeader: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingHorizontal: 15,
-    paddingVertical:   10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
   cardHeaderLeft: {
     flex: 1,
-    gap:  6,
+    gap:  spacing.sm,
   },
   // Nombre + subtítulo van pegados (0px) — el gap de 6 vive entre el tag y este bloque
   cardTitleBlock: {
@@ -906,7 +906,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)
   detail: {
-    gap: 10,
+    gap: spacing.md,
     paddingBottom: spacing.sm,
   },
   detailMeasurer: {
@@ -936,8 +936,8 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.sm * 1.6,
   },
   exSection: {
-    paddingHorizontal: 15,
-    gap:               2,
+    paddingHorizontal: spacing.lg,
+    gap:               spacing.xs,
   },
   exName: {
     ...textStyles.cardType,
@@ -987,18 +987,18 @@ const makeStyles = (th) => StyleSheet.create({
   setPills: {
     flexDirection: 'row',
     flexWrap:      'wrap',
-    gap:           6,
+    gap:           spacing.sm,
   },
   // One weight-run: the weight pill glued to its reps/RPE pills.
   setGroup: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           2,
+    gap:           spacing.xs,
   },
 
   // Weight pill — no background, three colored spans ("80" / "Kg" / " x")
   weightPill: {
-    paddingVertical: 2,
+    paddingVertical: spacing.xs,
   },
   weightPillText: {
     ...textStyles.tag,
@@ -1014,7 +1014,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       th.colors.border,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
+    paddingVertical:   spacing.xs,
   },
   // Accent — done and within range (FormaFit: no green here, accent instead)
   setPillDone: {
@@ -1041,7 +1041,7 @@ const makeStyles = (th) => StyleSheet.create({
   dateFilterRow: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingHorizontal: 15,
+    paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
     gap:               spacing.xs,
     borderBottomWidth: borders.thin,
