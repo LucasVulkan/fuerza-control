@@ -5,7 +5,7 @@
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
 import { useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
@@ -34,10 +34,12 @@ export default function SegmentedControl({ options, value, onChange }) {
       translateX.setValue(toValue);
       return;
     }
-    Animated.timing(translateX, {
+    // Spring en vez de timing: da un pequeño rebote natural al asentarse en vez
+    // de un frenado lineal/eased seco — más "satisfactorio" sin código extra.
+    Animated.spring(translateX, {
       toValue,
-      duration:        200,
-      easing:          Easing.out(Easing.ease),
+      tension:         260,
+      friction:        22,
       useNativeDriver: true,
     }).start();
   }, [activeIndex, containerWidth, segmentWidth, translateX]);
