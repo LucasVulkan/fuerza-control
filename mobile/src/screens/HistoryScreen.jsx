@@ -338,6 +338,17 @@ function SessionCard({ session, onDelete }) {
     contentHeight.current = e.nativeEvent.layout.height;
   }, []);
 
+  // ── Delete exit animation (slide right + fade + height collapse) ───────────
+  // Same translateX/opacity exit used by ExerciseCard's swipe panel, plus a
+  // maxHeight collapse (same technique as detailH above) so siblings slide up
+  // into place instead of snapping the instant the item leaves workoutLog.
+  // CARD_UNCONSTRAINED must clear any real card's natural height — never
+  // animated except by this exit, so it just needs to not clip normal content.
+  const CARD_UNCONSTRAINED = 9999;
+  const [exitX]       = useState(() => new Animated.Value(0));
+  const [exitOpacity] = useState(() => new Animated.Value(1));
+  const [cardMaxH]    = useState(() => new Animated.Value(CARD_UNCONSTRAINED));
+
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -387,7 +398,25 @@ function SessionCard({ session, onDelete }) {
       t('history.deleteConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(session.id) },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            Animated.parallel([
+              Animated.timing(exitX, {
+                toValue: 500, duration: 240, easing: Easing.in(Easing.ease), useNativeDriver: true,
+              }),
+              Animated.timing(exitOpacity, {
+                toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true,
+              }),
+              Animated.timing(cardMaxH, {
+                toValue: 0, duration: 240, easing: Easing.inOut(Easing.ease), useNativeDriver: false,
+              }),
+            ]).start(({ finished }) => {
+              if (finished) onDelete(session.id);
+            });
+          },
+        },
       ],
     );
   }
@@ -495,67 +524,76 @@ function SessionCard({ session, onDelete }) {
   );
 
   return (
-    <View style={styles.card}>
-      {/* Header — tap to expand */}
-      <TouchableOpacity
-        style={styles.cardHeader}
-        onPress={toggleOpen}
-        activeOpacity={0.75}
-      >
-        <View style={styles.cardHeaderLeft}>
-          {/* "Sesión A" tag — or "Sesión libre" badge */}
-          <Text style={styles.cardSesTag} numberOfLines={1}>
-            {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
-          </Text>
-          <View style={styles.cardTitleBlock}>
-            {/* Session name in white */}
-            <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
-            {/* Meta: date · stage · exercises · duration · nota */}
-            <View style={styles.cardMeta}>
-              <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-              {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
-              {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
-              {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
-              {exerciseCount > 0 && (
-                <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
-              )}
-              {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-              {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
-              {hasNotes && (
-                <View style={styles.noteTag}>
-                  <Text style={styles.noteTagText}>NOTA</Text>
-                </View>
-              )}
-              {session.adapted && (
-                <View style={styles.adaptedTag}>
-                  <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-                </View>
-              )}
+    <Animated.View
+      style={{
+        maxHeight: cardMaxH,
+        overflow:  'hidden',
+        opacity:   exitOpacity,
+        transform: [{ translateX: exitX }],
+      }}
+    >
+      <View style={styles.card}>
+        {/* Header — tap to expand */}
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={toggleOpen}
+          activeOpacity={0.75}
+        >
+          <View style={styles.cardHeaderLeft}>
+            {/* "Sesión A" tag — or "Sesión libre" badge */}
+            <Text style={styles.cardSesTag} numberOfLines={1}>
+              {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
+            </Text>
+            <View style={styles.cardTitleBlock}>
+              {/* Session name in white */}
+              <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
+              {/* Meta: date · stage · exercises · duration · nota */}
+              <View style={styles.cardMeta}>
+                <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
+                {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
+                {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
+                {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
+                {exerciseCount > 0 && (
+                  <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
+                )}
+                {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
+                {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
+                {hasNotes && (
+                  <View style={styles.noteTag}>
+                    <Text style={styles.noteTagText}>NOTA</Text>
+                  </View>
+                )}
+                {session.adapted && (
+                  <View style={styles.adaptedTag}>
+                    <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.cardHeaderRight}>
-          <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-            <Text style={styles.deleteBtnText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+          <View style={styles.cardHeaderRight}>
+            <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
+              <Text style={styles.deleteBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
 
-      {/* Hidden off-flow measurer — reports the detail's natural height via
-          onLayout regardless of the animated maxHeight below, so the target
-          height for the expand animation is known even before first open. */}
-      <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
-        {detailContent}
-      </View>
-
-      {/* Expanded detail — animated height + opacity crossfade */}
-      <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
-        <Animated.View style={{ opacity: detailOpacity }}>
+        {/* Hidden off-flow measurer — reports the detail's natural height via
+            onLayout regardless of the animated maxHeight below, so the target
+            height for the expand animation is known even before first open. */}
+        <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
           {detailContent}
+        </View>
+
+        {/* Expanded detail — animated height + opacity crossfade */}
+        <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
+          <Animated.View style={{ opacity: detailOpacity }}>
+            {detailContent}
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
