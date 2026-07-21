@@ -7,15 +7,16 @@
  *  - Pills: verde = completada en rango, naranja = por debajo del rango, gris = sin completar
  *  - buildSetLabel cubre todas las combinaciones: weight×reps, weight×time, reps, time
  */
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
-  ScrollView, Alert, StyleSheet, Animated, Easing,
+  View, Text, TouchableOpacity,
+  ScrollView, Alert, StyleSheet,
 } from 'react-native';
-// Reanimated (aliased — coexists with core RN Animated above, used for the
-// expand/collapse accordion) drives the delete-card exit + sibling reflow:
-// standard `exiting`/`layout` primitives, not hand-rolled height math.
-import Reanimated, { LinearTransition, SlideOutRight } from 'react-native-reanimated';
+// Reanimated drives both the delete-card exit + sibling reflow (`exiting`/
+// `layout`) and the detail accordion (`FadeIn`/`FadeOut` + the card's own
+// `layout` animates the height change) — one animation system, no JS-driven
+// Animated.Value height chase fighting the UI-thread layout transition.
+import Reanimated, { LinearTransition, SlideOutRight, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
@@ -38,16 +39,21 @@ const BLOCK_BADGE_STYLE = {
 // omitWeight: true when the weight is already shown by the group's own weight
 // pill (see groupSetsByWeight) — the reps/time pill then shows only reps/@RPE.
 
+// omitWeight=true (the only case actually used, by the set pills below) returns
+// { main, rpeNum } instead of a string — Figma renders the "@" glyph in a
+// dimmer tint than the RPE number and the main value, so the pill needs the
+// pieces split for per-span coloring. No space before "@" (Figma: "12@8").
 function buildSetLabel(s, i, fmtWeight, omitWeight = false) {
   const hasW = s.weight && Number(s.weight) > 0;
   const hasR = s.reps   && Number(s.reps)   > 0;
   const hasT = s.time   && Number(s.time)   > 0;
-  const rpe  = s.rpe && Number(s.rpe) > 0 ? ` @${s.rpe}` : '';
+  const rpeNum = s.rpe && Number(s.rpe) > 0 ? String(s.rpe) : '';
   if (omitWeight) {
-    if (hasR) return `${s.reps}${rpe}`;
-    if (hasT) return `${s.time}s${rpe}`;
-    return `S${i + 1}`;
+    if (hasR) return { main: `${s.reps}`, rpeNum };
+    if (hasT) return { main: `${s.time}s`, rpeNum };
+    return { main: `S${i + 1}`, rpeNum: '' };
   }
+  const rpe = rpeNum ? ` @${rpeNum}` : '';
   if (hasW && hasR) return `${fmtWeight(s.weight)}×${s.reps}${rpe}`;
   if (hasW && hasT) return `${fmtWeight(s.weight)}×${s.time}s${rpe}`;
   if (hasR)         return `${s.reps} reps${rpe}`;
@@ -307,40 +313,7 @@ function SessionCard({ session, onDelete }) {
   const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
 
-  // ── Expand/collapse animation (height + opacity crossfade) ─────────────────
-  // Same building block as ExerciseCard (Animated.Value maxHeight, useNativeDriver:
-  // false because maxHeight isn't natively animatable), simplified for a plain
-  // accordion: no auto-collapse, no dynamic content growth once open — just a
-  // 0 ↔ measured-height toggle. `open` itself doesn't drive render (detailContent
-  // stays mounted, the animation shows/hides it), so a plain ref covers it.
-  // The Animated.Values use useState (not useRef(...).current, as ExerciseCard
-  // does) — this project's react-hooks/refs lint rule flags accessing `.current`
-  // during render, same reason SegmentedControl.jsx uses this pattern.
-  const isOpenRef        = useRef(false);
-  const contentHeight    = useRef(0);
-  const [detailH]        = useState(() => new Animated.Value(0));
-  const [detailOpacity]  = useState(() => new Animated.Value(0));
-
-  const toggleOpen = useCallback(() => {
-    const next = !isOpenRef.current;
-    isOpenRef.current = next;
-    Animated.timing(detailH, {
-      toValue: next ? contentHeight.current : 0,
-      duration: 220,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
-    }).start();
-    Animated.timing(detailOpacity, {
-      toValue: next ? 1 : 0,
-      duration: 180,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
-    }).start();
-  }, [detailH, detailOpacity]);
-
-  const onMeasureDetail = useCallback((e) => {
-    contentHeight.current = e.nativeEvent.layout.height;
-  }, []);
+  const [open, setOpen] = useState(false);
 
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
@@ -399,8 +372,7 @@ function SessionCard({ session, onDelete }) {
     );
   }
 
-  // Shared between the visible (animated) detail and the hidden off-flow
-  // measurer below — same content, so the measured height matches exactly.
+  // Rendered only while `open` — see the FadeIn/FadeOut wrapper below.
   const detailContent = (
     <View style={styles.detail}>
       {!!session.notes?.trim() && (
@@ -442,6 +414,7 @@ function SessionCard({ session, onDelete }) {
                   ) : null}
                   {group.sets.map((s, i) => {
                     const variant = getPillVariant(s, exCfg);
+                    const { main, rpeNum } = buildSetLabel(s, i, fmtWeight, true);
                     return (
                       <View
                         key={`set-${gi}-${i}`}
@@ -458,7 +431,21 @@ function SessionCard({ session, onDelete }) {
                             variant === 'partial' && styles.setPillTextPartial,
                           ]}
                         >
-                          {buildSetLabel(s, i, fmtWeight, true)}
+                          {main}
+                          {rpeNum ? (
+                            <>
+                              <Text
+                                style={[
+                                  styles.setPillRpeAt,
+                                  variant === 'done'    && styles.setPillRpeAtDone,
+                                  variant === 'partial' && styles.setPillRpeAtPartial,
+                                ]}
+                              >
+                                @
+                              </Text>
+                              {rpeNum}
+                            </>
+                          ) : null}
                         </Text>
                       </View>
                     );
@@ -511,7 +498,7 @@ function SessionCard({ session, onDelete }) {
           {/* Header — tap to expand */}
           <TouchableOpacity
             style={styles.cardHeader}
-            onPress={toggleOpen}
+            onPress={() => setOpen((o) => !o)}
             activeOpacity={0.75}
           >
             <View style={styles.cardHeaderLeft}>
@@ -554,19 +541,13 @@ function SessionCard({ session, onDelete }) {
             </View>
           </TouchableOpacity>
 
-          {/* Hidden off-flow measurer — reports the detail's natural height via
-              onLayout regardless of the animated maxHeight below, so the target
-              height for the expand animation is known even before first open. */}
-          <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
-            {detailContent}
-          </View>
-
-          {/* Expanded detail — animated height + opacity crossfade */}
-          <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
-            <Animated.View style={{ opacity: detailOpacity }}>
+          {/* Expanded detail — the card's own `layout` (LinearTransition, on the
+              outer Reanimated.View) animates the resulting height change. */}
+          {open && (
+            <Reanimated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)}>
               {detailContent}
-            </Animated.View>
-          </Animated.View>
+            </Reanimated.View>
+          )}
       </View>
     </Reanimated.View>
   );
@@ -726,7 +707,8 @@ export default function HistoryScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
-      <FlatList
+      <Reanimated.FlatList
+        itemLayoutAnimation={LinearTransition.duration(240)}
         data={filtered}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={listHeader}
@@ -922,13 +904,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.sm,
   },
-  detailMeasurer: {
-    position: 'absolute',
-    opacity:  0,
-    left:     0,
-    right:    0,
-    top:      0,
-  },
   noteSection: {
     padding:         spacing.md,
     backgroundColor: withOpacity(th.colors.accent, 0.04),
@@ -1009,9 +984,11 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
   },
 
-  // Weight pill — no background, three colored spans ("80" / "Kg" / " x")
+  // Weight pill — no background, three colored spans ("80" / "Kg" / " x").
+  // pl-only (no pr) so the "x" sits glued to the following reps pill group.
   weightPill: {
-    paddingVertical: spacing.xs,
+    paddingLeft:     spacing.sm,
+    paddingVertical: spacing.sm,
   },
   weightPillText: {
     ...textStyles.tag,
@@ -1020,28 +997,23 @@ const makeStyles = (th) => StyleSheet.create({
   weightPillUnit: { color: th.colors.text },
   weightPillX:    { color: th.colors.mutedLight },
 
-  // Pills — base (gray = not done)
+  // Pills — base (gray = not done). No border in Figma for any pill variant.
   setPill: {
     backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
+    borderRadius:      th.radius.xs,
+    padding:           spacing.sm,
   },
   // Accent — done and within range (FormaFit: no green here, accent instead)
   setPillDone: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderColor:     withOpacity(th.colors.accent, 0.3),
+    backgroundColor: th.tint.accent10,
   },
   // Orange — done but below range
   setPillPartial: {
-    backgroundColor: withOpacity(th.colors.orange, 0.10),
-    borderColor:     withOpacity(th.colors.orange, 0.35),
+    backgroundColor: th.tint.orange30,
   },
   setPillText: {
     ...textStyles.tag,
-    color: th.colors.muted,
+    color: th.colors.mutedLight,
   },
   setPillTextDone: {
     color: th.colors.accent,
@@ -1049,6 +1021,11 @@ const makeStyles = (th) => StyleSheet.create({
   setPillTextPartial: {
     color: th.colors.orange,
   },
+  // The "@" glyph in "12@8" — dimmer than the surrounding numbers, which stay
+  // in the pill's solid variant color (Figma: only the "@" span is tinted).
+  setPillRpeAt:        { color: th.colors.mutedLight },
+  setPillRpeAtDone:    { color: th.tint.accent50 },
+  setPillRpeAtPartial: { color: th.tint.orange50 },
 
   // ── Date filter chip ─────────────────────────────────────────────────────────
   dateFilterRow: {

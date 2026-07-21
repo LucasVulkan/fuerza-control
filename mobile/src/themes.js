@@ -139,8 +139,18 @@ const formaFitColors = {
 };
 
 // ─── Theme objects ────────────────────────────────────────────────────────────
-function makeTheme({ id, name, scheme, colors, radius = ROUNDED, fonts = SYSTEM_FONTS }) {
-  return { id, name, scheme, colors, radius, fonts, spacing, typography, borders, withOpacity };
+function makeTheme({ id, name, scheme, colors, radius = ROUNDED, fonts = SYSTEM_FONTS, tint }) {
+  const derivedTint = {
+    accent10: withOpacity(colors.accent, 0.1),
+    accent50: withOpacity(colors.accent, 0.5),
+    red30:    withOpacity(colors.red, 0.3),
+    red50:    withOpacity(colors.red, 0.5),
+    orange30: withOpacity(colors.orange, 0.3),
+    orange50: withOpacity(colors.orange, 0.5),
+    blue30:   withOpacity(colors.blue, 0.3),
+    blue70:   withOpacity(colors.blue, 0.7),
+  };
+  return { id, name, scheme, colors, radius, fonts, spacing, typography, borders, withOpacity, tint: { ...derivedTint, ...tint } };
 }
 
 export const THEMES = {
@@ -148,7 +158,14 @@ export const THEMES = {
   midnight: makeTheme({ id: 'midnight', name: 'Midnight', scheme: 'dark',  colors: midnightColors }),
   earthy:   makeTheme({ id: 'earthy',   name: 'Earthy',   scheme: 'light', colors: earthyColors }),
   space:    makeTheme({ id: 'space',    name: 'Space',    scheme: 'light', colors: spaceColors, radius: SOFT }),
-  formaFit: makeTheme({ id: 'formaFit', name: 'FormaFit', scheme: 'dark',  colors: formaFitColors, radius: FORMAFIT_RADIUS }),
+  formaFit: makeTheme({ id: 'formaFit', name: 'FormaFit', scheme: 'dark',  colors: formaFitColors, radius: FORMAFIT_RADIUS, tint: {
+    accent10: 'rgba(184, 255, 0, 0.1)',   // tint/accent-10 (base #b8ff00, NO #aae216)
+    accent50: 'rgba(184, 255, 0, 0.5)',   // tint/accent-50
+    red30:    'rgba(189, 6, 0, 0.3)',     // tint/red-30 (base #bd0600)
+    red50:    'rgba(255, 94, 88, 0.5)',   // tint/red-50
+    blue30:   'rgba(0, 62, 195, 0.3)',    // tint/blue-30
+    blue70:   'rgba(89, 142, 255, 0.7)',  // tint/blue-70
+  } }),
 };
 
 /** Ordered list for theme pickers. */

@@ -4,9 +4,9 @@
  * Variante "Group together" de Figma (FormaFit). No implementa la variante
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
-import { useRef, useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
@@ -19,29 +19,19 @@ export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
   const [containerWidth, setContainerWidth] = useState(0);
-  const translateX  = useSharedValue(0);
-  const hasMeasured  = useRef(false);
 
   const n = options.length;
   const segmentWidth = n > 0 ? (containerWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
   const activeIndex  = Math.max(0, options.findIndex((o) => o.id === value));
 
-  useEffect(() => {
-    if (containerWidth === 0) return;
-    const toValue = PAD + activeIndex * (segmentWidth + GAP);
-    if (!hasMeasured.current) {
-      // First measurement — snap into place instead of sliding in from x=0.
-      hasMeasured.current = true;
-      translateX.value = toValue;
-      return;
-    }
-    // Rebote natural al asentarse — corre como worklet en el hilo de UI, no en
-    // JS (a diferencia de Animated.spring de RN), así que va perfectamente fluido.
-    translateX.value = withSpring(toValue, { damping: 18, stiffness: 220 });
-  }, [activeIndex, containerWidth, segmentWidth, translateX]);
-
+  // Target computed inline inside the worklet (not via a useEffect that sets a
+  // shared value after paint) — Reanimated only animates changes to the style,
+  // so the very first render lands directly on the correct position with no
+  // stale-frame flash, and every subsequent change springs naturally.
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+    transform: [{
+      translateX: withSpring(PAD + activeIndex * (segmentWidth + GAP), { damping: 18, stiffness: 220 }),
+    }],
   }));
 
   return (
