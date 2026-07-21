@@ -109,49 +109,120 @@ wrapper reutilizable también, ya que el superset ya existe en el modelo de dato
   más comprimido). `104:690` "Workout Screen full header" es el mismo estado que
   `104:313` pero con el body y footer completos.
 
-## 5. Preguntas de producto abiertas (requieren tu decisión, no solo visual)
+## 5. Preguntas de producto — RESUELTAS por el usuario (jul 2026)
 
-1. **Carga/RPE/fatiga** (conecta con la conversación de ayer): confirmado que en NINGÚN
-   mock hay tendencia agregada de RPE ni fatiga — solo una card "CARGA" (% de volumen) y
-   una "1RM". El RPE se captura por serie (toggle en Exercice Editor) y se ve como color
-   de pill, nunca agregado. La decisión sigue completamente abierta, el diseño no la
-   resuelve ni la contradice.
-2. El selector KG/REPS/VOL/1RM en Exercice implica un gráfico de tendencia que **no
-   existe** en ningún mock — ¿entra en alcance o no?
-3. Program Editor: fila suelta "Etapa 5" no encaja con el segmented control de 3 etapas
-   — placeholder raro o error de mock, confirmar con diseño.
-4. Bloques EMOM: el mock muestra "AMRAP" seleccionado en el control de Formato (debería
-   ser EMOM) — probable copia-pega sin actualizar, no bloqueante.
-5. **Azul como color semántico**: aparece consistentemente para "originado por el
-   entrenador / próxima acción" (tag "Bloque" en Sesion Editor, sub-banner "próxima
-   sesión", fila "Entrenador relacionado" en Modal, Chips Variant3) — nunca para UI
-   genérica. Recomiendo adoptarlo formalmente como 3er color semántico (accent=positivo,
-   red=alerta, blue=entrenador/siguiente-acción) en vez de tratarlo como suelto.
-6. **Ningún mock de editor (Exercice Editor, Sesion Editor) muestra acciones de
-   "sustituir"/"eliminar" ejercicio** — la app YA las tiene vía swipe (implementado esta
-   sesión). Confirmar si Figma las omite a propósito (viven detrás del swipe, coincide
-   con la app real) o si simplemente no se mockearon.
-7. "Tipo de EMOM" (Repetir bloque / Rotar ejercicios) — confirmar si ya existe en el
-   código o es alcance nuevo.
-8. Nombres de etapa libres ("Volumen" en vez de "Etapa 3") — el modelo ya tiene
-   `stage.name`, probablemente ya soportado, solo confirmar.
-9. Dos cards "CARGA" idénticas en Progress (mock con datos duplicados) — probablemente
-   deberían ser 2 métricas reales distintas (¿volumen total y frecuencia?) — confirmar.
+1. **Carga/RPE/fatiga**: sigue sin resolverse en el diseño — el usuario confirma que las
+   cards de Progress son EXACTAMENTE las que ya existen hoy en la app (carga y volumen,
+   ver punto 9 más abajo), sin nada nuevo salvo restyle de color. La decisión de
+   producto sobre RPE/fatiga agregados sigue totalmente abierta e independiente de este
+   rediseño.
+2. **Resuelto**: el gráfico de Exercice/Progress es el mismo que ya existe en el código
+   hoy, solo con colores actualizados — no hay que diseñarlo ni construirlo de cero, es
+   restyle puro. El selector KG/REPS/VOL/1RM ya debe estar resuelto en el código actual.
+3. **Resuelto**: la fila "Etapa 5" NO es una fila suelta ni un error — es el mismo
+   elemento de "editar etapa" que ya existe hoy, con nombre placeholder. No hay
+   inconsistencia real, era una lectura equivocada del mock.
+4. **Resuelto**: confirmado error de copiar/pegar (el Formato debería mostrar EMOM
+   seleccionado, no AMRAP). No bloqueante, no representa ninguna decisión de diseño.
+5. **Resuelto**: el azul (y sus tints) es SIEMPRE "relacionado con el entrenador" — sin
+   excepciones. Adoptarlo formalmente como 3er color semántico: accent=positivo/propio,
+   red=alerta, blue=entrenador/externo.
+6. **Resuelto, con funcionalidad nueva** — ver §5-bis.
+7. **Resuelto**: "Tipo de EMOM" ya existe en código y UI, pero HOY vive como toggle
+   dentro de un setting; en el rediseño pasa a ser una opción principal arriba (más
+   visible, mismo dato subyacente). Es un cambio de jerarquía de información, no de
+   modelo de datos.
+8. **Resuelto**: nombres de etapa funcionan igual que hoy — al crear usa "Etapa N" por
+   defecto, editable como ya se puede hacer. Sin cambios de modelo.
+9. **Resuelto**: las dos cards "CARGA" duplicadas en el mock son placeholder — en
+   realidad representan **Carga** y **Volumen**, las dos métricas que la app ya muestra
+   hoy en Progress. Sin funcionalidad nueva ahí, solo restyle.
+
+## 5-bis. Aclaraciones adicionales del usuario (importantes para no perder al implementar)
+
+- **Pills — los "hex sueltos" son en realidad 2 colores intencionales, no un bug**: el
+  usuario usa sistemáticamente `color/accent` para el número (kg/reps) y `color/text`
+  para la unidad/símbolo ("Kg", "x", "@") dentro de la misma pill — de ahí la aparente
+  inconsistencia que detectaron los subagentes. La intención de 2 colores por pill es
+  CORRECTA y debe respetarse en el código; lo único a vigilar en la implementación RN es
+  vincular cada uno a su token (`th.colors.accent` / `th.colors.text`) en vez de
+  hardcodear, independientemente de si el Figma origen los tiene bien vinculados o no.
+- **Segmented control — solo 2 de las 3 variantes se usan**: "Group together" (1 línea)
+  se usa para cualquier selección entre múltiples opciones genérica. "Individual
+  buttons" (la variante 2) **NO se usa en ningún sitio** — descartarla, no portarla.
+  "Etapas" (2 líneas) se usa EXCLUSIVAMENTE para seleccionar etapa de programa, donde la
+  segunda línea siempre muestra el nº de semanas de esa etapa — no es un modo genérico
+  de "2 líneas", es específico de etapas.
+- **Historial y Progress — calendario y gráfica se mantienen tal cual**: ambos elementos
+  ya existen en el código actual y NO están en el mock de Figma (se omitieron a
+  propósito) — no tocarlos salvo actualización de color. No interpretar su ausencia en
+  Figma como "hay que quitarlos".
+- **Buttons — una variante puede mapear a más de una acción real**: por ejemplo "Toggle
+  text ON" se usa tanto para conexiones (Conectado/Conectar) como para "omitir
+  sesión/bloque de entreno" — al construir la primitiva Buttons, no asumir un
+  significado único por variante visual, es un estilo reutilizable para varias acciones.
+- **Modal entries/settings = estandarización de TODOS los modales "..." de la app**: no
+  es un componente nuevo aislado, es el reemplazo unificado de cualquier menú contextual
+  que hoy se abre con un botón "···" en cualquier pantalla. Construirlo como primitiva
+  de la fase 2 y usarlo para reemplazar los menús contextuales existentes conforme se
+  restylee cada pantalla (SessionEditorScreen, ClientsScreen, ProgramScreen, etc. tienen
+  hoy implementaciones propias que deberían converger en este único patrón).
+- **Header de Workout — simplificado a 2 estados, no una animación de 4 pasos**: la
+  referencia real es "workout expandido" (`workout-full-header.md`) y "workout
+  colapsado" (`workout-header-collapse.md`) — el mismo header ocupando menos espacio,
+  NO una interpolación continua ligada al scroll. Los 4 "WS mockup" eran exploración de
+  ese mismo concepto, no la referencia final — tratar solo expandido/colapsado como los
+  2 estados reales a implementar (simplifica bastante la ingeniería frente a lo que
+  sugería la secuencia de 4 fotogramas).
+- **Lista agrupada — radio confirmado**: 2px (`radius/xxs`) en todos los corners
+  interiores de cada fila; los corners exteriores de la primera y última fila usan un
+  radio mayor. Coincide exactamente con lo que ya documentaron los subagentes — sin
+  cambios sobre lo ya recogido en §3.
+
+## 5-ter. Funcionalidad NUEVA confirmada (no es solo restyle — necesita su propio diseño/lógica)
+
+- **Exercice Editor**: añadir dos botones al final ("Eliminar" / "Sustituir"), aunque
+  esas acciones YA viven en el swipe de la fila (implementado esta sesión) — son un
+  segundo punto de entrada explícito, no un reemplazo del swipe. Ambos coexisten.
+- **Sesion Editor**: el header pasa a tener un icono "···" que abre un modal (via el
+  patrón unificado de §5-bis) con **Duplicar sesión / Eliminar sesión / Renombrar
+  sesión** — confirmar al llegar a esa pantalla si "duplicar" reutiliza la acción de
+  store que ya existe (memoria: "duplicar sesión/etapa" ya implementado) o si hace falta
+  lógica nueva para eliminar/renombrar una sesión individual (distinto de programa).
+- **HomeView — mini calendario semanal real**: el selector de días (L M X J V S D + fila
+  de dots) NO es decorativo — es una funcionalidad nueva que debe reflejar días
+  REALMENTE entrenados (día completado = dot lleno), derivable de `workoutLog`
+  (timestamps de sesiones guardadas) pero requiere lógica de agregación nueva, no existe
+  hoy tal cual.
+- **HomeView — orden FIJO de las Sesion Cards**: cambio de comportamiento respecto a
+  hoy — las tarjetas de sesión mantienen su orden por letra a medida que se completan
+  ("la A siempre será la primera"), en vez de reordenarse. Hay que localizar la lógica
+  de orden/rotación actual (relacionada con `stageSessionsCompleted`/`sessPerCycle` en
+  `ActiveProgramHero`, a confirmar el sitio exacto) y decidir cómo separar "qué sesión
+  toca a continuación" (que sigue siendo dinámico) de "en qué orden se listan las
+  tarjetas" (que pasa a ser fijo).
 
 ## 6. Orden de migración recomendado
 
-**Antes de tocar código**: arreglar el bug sistemático de Pills en el propio Figma
-(cascada automática), y resolver las preguntas del §5 que bloquean decisiones de diseño
-(sobre todo la 5 y la 6, que afectan a qué se construye).
+**Antes de tocar código**: nada bloquea ya — todas las preguntas de producto están
+resueltas (§5). El único trabajo previo opcional es corregir en Figma el detalle de
+vinculación de variables de Pills si el usuario quiere pulirlo, pero no es bloqueante
+para empezar (la implementación RN vinculará los tokens correctamente de todos modos).
 
 1. **Tokens** → `mobile/src/themes.js`, incluye las familias nuevas (blue/green/white,
    xxs/full, xxl/xs2, hero).
-2. **Primitivas nuevas** (§2, tabla 1): Buttons, Pills, Chips, Segmented control,
-   ProgressCard, GroupedListRow.
-3. **Restyle por pantalla**, de menor a mayor riesgo:
-   HomeView → History → Progress/Exercice (comparten ProgressCard + lista agrupada) →
-   Clients/Templates (listas independientes) → Program Editor → Sesion Editor/Exercice
-   Editor (lista agrupada + filas de opciones) → Editores AMRAP/EMOM → **Workout
-   Screen al final** (el header colapsable por scroll es la pieza de mayor complejidad
-   de ingeniería de todo el set, y `ExerciseCard` es donde vive toda la lógica de
-   dropset/superserie/calentamiento que hay que preservar con más cuidado).
+2. **Primitivas nuevas** (§2, tabla 1, con las correcciones de §5-bis): Buttons, Pills,
+   Chips, Segmented control (solo 2 variantes reales), ProgressCard, GroupedListRow,
+   Modal unificado (reemplaza los menús "···" existentes).
+3. **Restyle por pantalla**, de menor a mayor riesgo — HomeView ahora tiene 2 piezas de
+   funcionalidad nueva (§5-ter) además del restyle, así que si se prefiere calentar con
+   una pantalla de restyle puro antes, empezar por History:
+   HomeView (restyle + calendario semanal + orden fijo) → History → Progress/Exercice
+   (comparten ProgressCard + lista agrupada) → Clients/Templates (listas independientes)
+   → Program Editor → Sesion Editor (+ modal "···" nuevo) / Exercice Editor (+ botones
+   eliminar/sustituir) → Editores AMRAP/EMOM → **Workout Screen al final** (header
+   expandido/colapsado — más simple de lo estimado, ver §5-bis — y `ExerciseCard`, donde
+   vive toda la lógica de dropset/superserie/calentamiento a preservar con más cuidado).
+4. **Pantallas sin diseño en Figma** (onboarding, menú, algunos modales): quedan fuera
+   de este barrido — al terminar todo lo que sí tiene mock, hacer inventario de lo que
+   falta y decidir aparte.
