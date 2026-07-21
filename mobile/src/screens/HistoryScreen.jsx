@@ -7,10 +7,10 @@
  *  - Pills: verde = completada en rango, naranja = por debajo del rango, gris = sin completar
  *  - buildSetLabel cubre todas las combinaciones: weight×reps, weight×time, reps, time
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  ScrollView, Alert, StyleSheet,
+  ScrollView, Alert, StyleSheet, Animated, Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -302,7 +302,41 @@ function SessionCard({ session, onDelete }) {
   const styles = useThemedStyles(makeStyles);
   const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
-  const [open, setOpen] = useState(false);
+
+  // ── Expand/collapse animation (height + opacity crossfade) ─────────────────
+  // Same building block as ExerciseCard (Animated.Value maxHeight, useNativeDriver:
+  // false because maxHeight isn't natively animatable), simplified for a plain
+  // accordion: no auto-collapse, no dynamic content growth once open — just a
+  // 0 ↔ measured-height toggle. `open` itself doesn't drive render (detailContent
+  // stays mounted, the animation shows/hides it), so a plain ref covers it.
+  // The Animated.Values use useState (not useRef(...).current, as ExerciseCard
+  // does) — this project's react-hooks/refs lint rule flags accessing `.current`
+  // during render, same reason SegmentedControl.jsx uses this pattern.
+  const isOpenRef        = useRef(false);
+  const contentHeight    = useRef(0);
+  const [detailH]        = useState(() => new Animated.Value(0));
+  const [detailOpacity]  = useState(() => new Animated.Value(0));
+
+  const toggleOpen = useCallback(() => {
+    const next = !isOpenRef.current;
+    isOpenRef.current = next;
+    Animated.timing(detailH, {
+      toValue: next ? contentHeight.current : 0,
+      duration: 220,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+    Animated.timing(detailOpacity, {
+      toValue: next ? 1 : 0,
+      duration: 180,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+  }, [detailH, detailOpacity]);
+
+  const onMeasureDetail = useCallback((e) => {
+    contentHeight.current = e.nativeEvent.layout.height;
+  }, []);
 
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
@@ -358,12 +392,114 @@ function SessionCard({ session, onDelete }) {
     );
   }
 
+  // Shared between the visible (animated) detail and the hidden off-flow
+  // measurer below — same content, so the measured height matches exactly.
+  const detailContent = (
+    <View style={styles.detail}>
+      {!!session.notes?.trim() && (
+        <View style={styles.noteSection}>
+          <Text style={styles.noteSectionLabel}>NOTA</Text>
+          <Text style={styles.noteSectionText}>{session.notes}</Text>
+        </View>
+      )}
+
+      {(session.exercises ?? []).map((ex) => {
+        const def    = allExercises[ex.exerciseId];
+        const exName = def
+          ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
+          : ex.exerciseId;
+
+        const hasSets = (ex.sets ?? []).some(
+          (s) => s.done || s.weight || s.reps || s.time,
+        );
+        if (!hasSets) return null;
+
+        const exCfg = exConfigs[ex.exerciseId];
+
+        return (
+          <View key={ex.exerciseId} style={styles.exSection}>
+            <Text style={styles.exName}>{exName}</Text>
+            <View style={styles.setPills}>
+              {/* Logged sets — grouped by consecutive weight runs: one
+                  weightless weight-pill followed by its reps/RPE pills */}
+              {groupSetsByWeight(ex.sets ?? []).map((group, gi) => (
+                <View key={`grp-${gi}`} style={styles.setGroup}>
+                  {group.weight ? (
+                    <View style={styles.weightPill}>
+                      <Text style={styles.weightPillText}>
+                        <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
+                        <Text style={styles.weightPillUnit}>{unitLabel}</Text>
+                        <Text style={styles.weightPillX}>{' x'}</Text>
+                      </Text>
+                    </View>
+                  ) : null}
+                  {group.sets.map((s, i) => {
+                    const variant = getPillVariant(s, exCfg);
+                    return (
+                      <View
+                        key={`set-${gi}-${i}`}
+                        style={[
+                          styles.setPill,
+                          variant === 'done'    && styles.setPillDone,
+                          variant === 'partial' && styles.setPillPartial,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.setPillText,
+                            variant === 'done'    && styles.setPillTextDone,
+                            variant === 'partial' && styles.setPillTextPartial,
+                          ]}
+                        >
+                          {buildSetLabel(s, i, fmtWeight, true)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+              {/* Planned but not started */}
+              {Array.from({
+                length: Math.max(0, (ex.totalSets ?? ex.sets?.length ?? 0) - (ex.sets?.length ?? 0)),
+              }).map((_, i) => (
+                <View key={`empty-${i}`} style={styles.setPill}>
+                  <Text style={styles.setPillText}>—</Text>
+                </View>
+              ))}
+            </View>
+            {!!ex.note && (
+              <Text style={styles.exNote}>📝 {ex.note}</Text>
+            )}
+          </View>
+        );
+      })}
+
+      {/* Conditioning blocks — v1: just the score, one line per block */}
+      {(session.blocks ?? []).map((block) => (
+        <View key={block.blockId} style={styles.blockLine}>
+          <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
+            <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
+              {t(`blocks.formats.${block.format}`).toUpperCase()}
+            </Text>
+          </View>
+          <Text style={styles.blockLineName} numberOfLines={1}>
+            {block.name ?? t(`blocks.formats.${block.format}`)}
+          </Text>
+          <Text style={styles.blockLineScore}>
+            {formatBlockScore(block.result, block.format)}
+            {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <View style={styles.card}>
       {/* Header — tap to expand */}
       <TouchableOpacity
         style={styles.cardHeader}
-        onPress={() => setOpen((o) => !o)}
+        onPress={toggleOpen}
         activeOpacity={0.75}
       >
         <View style={styles.cardHeaderLeft}>
@@ -406,106 +542,19 @@ function SessionCard({ session, onDelete }) {
         </View>
       </TouchableOpacity>
 
-      {/* Expanded detail */}
-      {open && (
-        <View style={styles.detail}>
-          {!!session.notes?.trim() && (
-            <View style={styles.noteSection}>
-              <Text style={styles.noteSectionLabel}>NOTA</Text>
-              <Text style={styles.noteSectionText}>{session.notes}</Text>
-            </View>
-          )}
+      {/* Hidden off-flow measurer — reports the detail's natural height via
+          onLayout regardless of the animated maxHeight below, so the target
+          height for the expand animation is known even before first open. */}
+      <View pointerEvents="none" style={styles.detailMeasurer} onLayout={onMeasureDetail}>
+        {detailContent}
+      </View>
 
-          {(session.exercises ?? []).map((ex) => {
-            const def    = allExercises[ex.exerciseId];
-            const exName = def
-              ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
-              : ex.exerciseId;
-
-            const hasSets = (ex.sets ?? []).some(
-              (s) => s.done || s.weight || s.reps || s.time,
-            );
-            if (!hasSets) return null;
-
-            const exCfg = exConfigs[ex.exerciseId];
-
-            return (
-              <View key={ex.exerciseId} style={styles.exSection}>
-                <Text style={styles.exName}>{exName}</Text>
-                <View style={styles.setPills}>
-                  {/* Logged sets — grouped by consecutive weight runs: one
-                      weightless weight-pill followed by its reps/RPE pills */}
-                  {groupSetsByWeight(ex.sets ?? []).map((group, gi) => (
-                    <View key={`grp-${gi}`} style={styles.setGroup}>
-                      {group.weight ? (
-                        <View style={styles.weightPill}>
-                          <Text style={styles.weightPillText}>
-                            <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
-                            <Text style={styles.weightPillUnit}>{unitLabel}</Text>
-                            <Text style={styles.weightPillX}>{' x'}</Text>
-                          </Text>
-                        </View>
-                      ) : null}
-                      {group.sets.map((s, i) => {
-                        const variant = getPillVariant(s, exCfg);
-                        return (
-                          <View
-                            key={`set-${gi}-${i}`}
-                            style={[
-                              styles.setPill,
-                              variant === 'done'    && styles.setPillDone,
-                              variant === 'partial' && styles.setPillPartial,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.setPillText,
-                                variant === 'done'    && styles.setPillTextDone,
-                                variant === 'partial' && styles.setPillTextPartial,
-                              ]}
-                            >
-                              {buildSetLabel(s, i, fmtWeight, true)}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ))}
-                  {/* Planned but not started */}
-                  {Array.from({
-                    length: Math.max(0, (ex.totalSets ?? ex.sets?.length ?? 0) - (ex.sets?.length ?? 0)),
-                  }).map((_, i) => (
-                    <View key={`empty-${i}`} style={styles.setPill}>
-                      <Text style={styles.setPillText}>—</Text>
-                    </View>
-                  ))}
-                </View>
-                {!!ex.note && (
-                  <Text style={styles.exNote}>📝 {ex.note}</Text>
-                )}
-              </View>
-            );
-          })}
-
-          {/* Conditioning blocks — v1: just the score, one line per block */}
-          {(session.blocks ?? []).map((block) => (
-            <View key={block.blockId} style={styles.blockLine}>
-              <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
-                <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
-                  {t(`blocks.formats.${block.format}`).toUpperCase()}
-                </Text>
-              </View>
-              <Text style={styles.blockLineName} numberOfLines={1}>
-                {block.name ?? t(`blocks.formats.${block.format}`)}
-              </Text>
-              <Text style={styles.blockLineScore}>
-                {formatBlockScore(block.result, block.format)}
-                {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+      {/* Expanded detail — animated height + opacity crossfade */}
+      <Animated.View style={{ maxHeight: detailH, overflow: 'hidden' }}>
+        <Animated.View style={{ opacity: detailOpacity }}>
+          {detailContent}
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 }
@@ -859,6 +908,13 @@ const makeStyles = (th) => StyleSheet.create({
   detail: {
     gap: 10,
     paddingBottom: spacing.sm,
+  },
+  detailMeasurer: {
+    position: 'absolute',
+    opacity:  0,
+    left:     0,
+    right:    0,
+    top:      0,
   },
   noteSection: {
     padding:         spacing.md,
