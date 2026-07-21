@@ -20,6 +20,9 @@ import { spacing, typography, borders, withOpacity } from './theme';
 const ROUNDED = { xs: 4, sm: 6, md: 10, lg: 16, xl: 22, full: 9999 };
 // Space — slightly softer corners (web: card 12 / btn·input 8).
 const SOFT    = { xs: 4, sm: 8, md: 12, lg: 16, xl: 22, full: 9999 };
+// FormaFit — Figma's own radius scale. No dedicated "xl" in Figma; falls back
+// to "lg" so components already reading th.radius.xl don't break.
+const FORMAFIT_RADIUS = { xxs: 2, xs: 4, sm: 6, md: 10, lg: 18, xl: 18, full: 9999 };
 
 // ─── System fonts (custom fonts land in a later phase) ────────────────────────
 const SYSTEM_FONTS = { display: undefined, body: undefined };
@@ -113,6 +116,28 @@ const spaceColors = {
   day4: '#774499', day5: '#aa5500', day6: '#995566',
 };
 
+// FormaFit — first theme of the Figma redesign: near-black bg, lime accent.
+const formaFitColors = {
+  bg:         '#141414',
+  surface:    '#2a2a2a',
+  surface2:   '#3a3a3a',
+  text:       '#e6e6e6',
+  mutedLight: '#818181',
+  muted:      '#4d4d4d',
+  muted2:     '#4d4d4d',
+  accent:     '#aae216',
+  onAccent:   '#000000',
+  headerBg:   '#141414',
+  border:     '#3a3a3a',
+  borderCard: '#3a3a3a',
+  green:      '#66fa39',
+  orange:     '#fb923c',
+  red:        '#ff0900',
+  blue:       '#4c85ff',
+  day1: '#aae216', day2: '#ff6b35', day3: '#4c85ff',
+  day4: '#a78bfa', day5: '#66fa39', day6: '#f472b6',
+};
+
 // ─── Theme objects ────────────────────────────────────────────────────────────
 function makeTheme({ id, name, scheme, colors, radius = ROUNDED, fonts = SYSTEM_FONTS }) {
   return { id, name, scheme, colors, radius, fonts, spacing, typography, borders, withOpacity };
@@ -123,10 +148,11 @@ export const THEMES = {
   midnight: makeTheme({ id: 'midnight', name: 'Midnight', scheme: 'dark',  colors: midnightColors }),
   earthy:   makeTheme({ id: 'earthy',   name: 'Earthy',   scheme: 'light', colors: earthyColors }),
   space:    makeTheme({ id: 'space',    name: 'Space',    scheme: 'light', colors: spaceColors, radius: SOFT }),
+  formaFit: makeTheme({ id: 'formaFit', name: 'FormaFit', scheme: 'dark',  colors: formaFitColors, radius: FORMAFIT_RADIUS }),
 };
 
 /** Ordered list for theme pickers. */
-export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy, THEMES.space];
+export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy, THEMES.space, THEMES.formaFit];
 
 export const DEFAULT_THEME = 'dark';
 

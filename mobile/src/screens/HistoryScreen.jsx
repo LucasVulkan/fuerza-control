@@ -16,10 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../theme';
-import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
+import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
+import { useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
 
@@ -31,18 +31,40 @@ const BLOCK_BADGE_STYLE = {
 };
 
 // ── buildSetLabel ──────────────────────────────────────────────────────────────
+// omitWeight: true when the weight is already shown by the group's own weight
+// pill (see groupSetsByWeight) — the reps/time pill then shows only reps/@RPE.
 
-function buildSetLabel(s, i, fmtWeight) {
+function buildSetLabel(s, i, fmtWeight, omitWeight = false) {
   const hasW = s.weight && Number(s.weight) > 0;
   const hasR = s.reps   && Number(s.reps)   > 0;
   const hasT = s.time   && Number(s.time)   > 0;
   const rpe  = s.rpe && Number(s.rpe) > 0 ? ` @${s.rpe}` : '';
+  if (omitWeight) {
+    if (hasR) return `${s.reps}${rpe}`;
+    if (hasT) return `${s.time}s${rpe}`;
+    return `S${i + 1}`;
+  }
   if (hasW && hasR) return `${fmtWeight(s.weight)}×${s.reps}${rpe}`;
   if (hasW && hasT) return `${fmtWeight(s.weight)}×${s.time}s${rpe}`;
   if (hasR)         return `${s.reps} reps${rpe}`;
   if (hasT)         return `${s.time}s${rpe}`;
   if (hasW)         return `${fmtWeight(s.weight)}${rpe}`;
   return `S${i + 1}`;
+}
+
+// ── groupSetsByWeight ────────────────────────────────────────────────────────
+// Groups consecutive sets sharing the same weight into runs, so the UI can
+// render one weightless weight-pill followed by its reps/RPE pills.
+
+function groupSetsByWeight(sets) {
+  const groups = [];
+  for (const s of sets) {
+    const w = s.weight || null;
+    const last = groups[groups.length - 1];
+    if (last && last.weight === w) last.sets.push(s);
+    else groups.push({ weight: w, sets: [s] });
+  }
+  return groups;
 }
 
 // ── getPillVariant ─────────────────────────────────────────────────────────────
@@ -277,9 +299,9 @@ const makeCal = (th) => StyleSheet.create({
 
 function SessionCard({ session, onDelete }) {
   const { t, i18n } = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { fmt: fmtWeight } = useWeightUnit();
+  const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
+  const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
   const [open, setOpen] = useState(false);
 
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -292,7 +314,6 @@ function SessionCard({ session, onDelete }) {
   const template = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
   const label    = template?.label ?? '?';
   const name     = session.sessionName ?? (isFree ? t('freeSession.historyLabel') : (template?.name ?? session.sessionTemplateId));
-  const accent   = isFree ? th.colors.muted : resolveColor(th,template?.color ?? 'var(--accent)');
 
   // exConfig lookup for pill range comparisons
   const exConfigs = useMemo(() => {
@@ -333,13 +354,13 @@ function SessionCard({ session, onDelete }) {
     <View style={styles.card}>
       {/* Header — tap to expand */}
       <TouchableOpacity
-        style={[styles.cardHeader, { borderLeftColor: accent }]}
+        style={styles.cardHeader}
         onPress={() => setOpen((o) => !o)}
         activeOpacity={0.75}
       >
         <View style={styles.cardHeaderLeft}>
           {/* "Sesión A" tag — or "Sesión libre" badge */}
-          <Text style={[styles.cardSesTag, { color: isFree ? th.colors.accent : accent }]} numberOfLines={1}>
+          <Text style={styles.cardSesTag} numberOfLines={1}>
             {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
           </Text>
           {/* Session name in white */}
@@ -368,7 +389,6 @@ function SessionCard({ session, onDelete }) {
           <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
             <Text style={styles.deleteBtnText}>✕</Text>
           </TouchableOpacity>
-          <Text style={[styles.chevron, open && styles.chevronOpen]}>▾</Text>
         </View>
       </TouchableOpacity>
 
@@ -399,30 +419,44 @@ function SessionCard({ session, onDelete }) {
               <View key={ex.exerciseId} style={styles.exSection}>
                 <Text style={styles.exName}>{exName}</Text>
                 <View style={styles.setPills}>
-                  {/* Logged sets */}
-                  {(ex.sets ?? []).map((s, i) => {
-                    const variant = getPillVariant(s, exCfg);
-                    return (
-                      <View
-                        key={`set-${i}`}
-                        style={[
-                          styles.setPill,
-                          variant === 'done'    && styles.setPillDone,
-                          variant === 'partial' && styles.setPillPartial,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.setPillText,
-                            variant === 'done'    && styles.setPillTextDone,
-                            variant === 'partial' && styles.setPillTextPartial,
-                          ]}
-                        >
-                          {buildSetLabel(s, i, fmtWeight)}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                  {/* Logged sets — grouped by consecutive weight runs: one
+                      weightless weight-pill followed by its reps/RPE pills */}
+                  {groupSetsByWeight(ex.sets ?? []).map((group, gi) => (
+                    <View key={`grp-${gi}`} style={styles.setGroup}>
+                      {group.weight ? (
+                        <View style={styles.weightPill}>
+                          <Text style={styles.weightPillText}>
+                            <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
+                            <Text style={styles.weightPillUnit}>{unitLabel}</Text>
+                            <Text style={styles.weightPillX}>{' x'}</Text>
+                          </Text>
+                        </View>
+                      ) : null}
+                      {group.sets.map((s, i) => {
+                        const variant = getPillVariant(s, exCfg);
+                        return (
+                          <View
+                            key={`set-${gi}-${i}`}
+                            style={[
+                              styles.setPill,
+                              variant === 'done'    && styles.setPillDone,
+                              variant === 'partial' && styles.setPillPartial,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.setPillText,
+                                variant === 'done'    && styles.setPillTextDone,
+                                variant === 'partial' && styles.setPillTextPartial,
+                              ]}
+                            >
+                              {buildSetLabel(s, i, fmtWeight, true)}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
                   {/* Planned but not started */}
                   {Array.from({
                     length: Math.max(0, (ex.totalSets ?? ex.sets?.length ?? 0) - (ex.sets?.length ?? 0)),
@@ -564,24 +598,14 @@ export default function HistoryScreen() {
 
       {/* Scope selector */}
       <View style={styles.scopeRow}>
-        {[
-          { id: 'program', label: t('history.currentProgram') },
-          { id: 'all',     label: t('history.all') },
-        ].map(({ id, label }) => {
-          const active = scope === id;
-          return (
-            <TouchableOpacity
-              key={id}
-              style={[styles.scopeBtn, active && styles.scopeBtnActive]}
-              onPress={() => handleScope(id)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.scopeBtnText, active && styles.scopeBtnTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <SegmentedControl
+          options={[
+            { id: 'program', label: t('history.currentProgram') },
+            { id: 'all',     label: t('history.all') },
+          ]}
+          value={scope}
+          onChange={handleScope}
+        />
       </View>
 
       {/* Stage pills */}
@@ -668,32 +692,9 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Scope selector
   scopeRow: {
-    flexDirection:     'row',
-    gap:               spacing.sm,
     paddingHorizontal: spacing.xl,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
-  },
-  scopeBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-  },
-  scopeBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-  },
-  scopeBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  scopeBtnTextActive: {
-    color: th.colors.accent,
   },
 
   // Stage pills
@@ -755,8 +756,6 @@ const makeStyles = (th) => StyleSheet.create({
   // ── SessionCard ──────────────────────────────────────────────────────────────
   card: {
     backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
     borderRadius:    th.radius.md,
     overflow:        'hidden',
     marginHorizontal: spacing.xl,
@@ -765,7 +764,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     padding:         spacing.md,
-    borderLeftWidth: 3,
     gap:             spacing.sm,
   },
   cardHeaderLeft: {
@@ -773,20 +771,18 @@ const makeStyles = (th) => StyleSheet.create({
     gap:  2,
   },
 
-  // "Sesión A" tag line
+  // "Sesión A" tag line — siempre en accent, sin color por-programa (Figma no
+  // distingue color de sesión por programa)
   cardSesTag: {
-    fontSize:      10,
-    fontWeight:    typography.bold,
-    letterSpacing: 1,
+    ...textStyles.cardType,
     textTransform: 'uppercase',
     marginBottom:  4,
+    color:         th.colors.accent,
   },
   // Session name
   cardSesName: {
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    lineHeight: typography.base * 1.2,
+    ...textStyles.cardTitle,
+    color: th.colors.text,
   },
 
   cardMeta: {
@@ -797,8 +793,8 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:     3,
   },
   cardDate: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
+    ...textStyles.subtitle,
+    color: th.colors.mutedLight,
   },
   cardMetaSep: {
     fontSize: typography.xs,
@@ -840,16 +836,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   deleteBtn:     { padding: spacing.xs },
   deleteBtnText: { fontSize: typography.base, color: th.colors.muted2 },
-  chevron: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
-  chevronOpen: { transform: [{ rotate: '180deg' }] },
 
-  // Detail
+  // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
+  // ningún separador interno en la tarjeta expandida)
   detail: {
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   noteSection: {
     padding:         spacing.md,
@@ -871,10 +863,8 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.sm * 1.6,
   },
   exSection: {
-    padding:        spacing.md,
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
-    gap:            spacing.xs,
+    paddingHorizontal: spacing.md,
+    gap:               spacing.xs,
   },
   exName: {
     fontSize:   typography.sm,
@@ -890,12 +880,10 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Conditioning blocks (v1: one compact line per block) ────────────────────
   blockLine: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            spacing.xs,
-    padding:        spacing.md,
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.xs,
+    paddingHorizontal: spacing.md,
   },
   badge: {
     paddingHorizontal: spacing.xs + 2,
@@ -922,11 +910,30 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant:   ['tabular-nums'],
   },
 
+  // Outer wrap — groups (weight-pill + its reps pills) wrap as a unit, with a
+  // bigger gap between groups than inside one.
   setPills: {
     flexDirection: 'row',
     flexWrap:      'wrap',
     gap:           spacing.xs,
   },
+  // One weight-run: the weight pill glued to its reps/RPE pills.
+  setGroup: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           2,
+  },
+
+  // Weight pill — no background, three colored spans ("80" / "Kg" / " x")
+  weightPill: {
+    paddingVertical: 2,
+  },
+  weightPillText: {
+    fontSize: typography.xs,
+  },
+  weightPillNum:  { color: th.colors.accent, fontWeight: typography.bold },
+  weightPillUnit: { color: th.colors.text },
+  weightPillX:    { color: th.colors.mutedLight },
 
   // Pills — base (gray = not done)
   setPill: {
@@ -937,10 +944,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
   },
-  // Green — done and within range
+  // Accent — done and within range (FormaFit: no green here, accent instead)
   setPillDone: {
-    backgroundColor: withOpacity(th.colors.green, 0.08),
-    borderColor:     withOpacity(th.colors.green, 0.3),
+    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    borderColor:     withOpacity(th.colors.accent, 0.3),
   },
   // Orange — done but below range
   setPillPartial: {
@@ -952,7 +959,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:    th.colors.muted,
   },
   setPillTextDone: {
-    color: th.colors.green,
+    color: th.colors.accent,
   },
   setPillTextPartial: {
     color: th.colors.orange,
