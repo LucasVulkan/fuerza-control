@@ -5,7 +5,8 @@
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
 import { useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
@@ -18,8 +19,8 @@ export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
   const [containerWidth, setContainerWidth] = useState(0);
-  const [translateX] = useState(() => new Animated.Value(0));
-  const hasMeasured   = useRef(false);
+  const translateX  = useSharedValue(0);
+  const hasMeasured  = useRef(false);
 
   const n = options.length;
   const segmentWidth = n > 0 ? (containerWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
@@ -31,18 +32,17 @@ export default function SegmentedControl({ options, value, onChange }) {
     if (!hasMeasured.current) {
       // First measurement — snap into place instead of sliding in from x=0.
       hasMeasured.current = true;
-      translateX.setValue(toValue);
+      translateX.value = toValue;
       return;
     }
-    // Spring en vez de timing: da un pequeño rebote natural al asentarse en vez
-    // de un frenado lineal/eased seco — más "satisfactorio" sin código extra.
-    Animated.spring(translateX, {
-      toValue,
-      tension:         260,
-      friction:        22,
-      useNativeDriver: true,
-    }).start();
+    // Rebote natural al asentarse — corre como worklet en el hilo de UI, no en
+    // JS (a diferencia de Animated.spring de RN), así que va perfectamente fluido.
+    translateX.value = withSpring(toValue, { damping: 18, stiffness: 220 });
   }, [activeIndex, containerWidth, segmentWidth, translateX]);
+
+  const highlightStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
     <View
@@ -53,11 +53,8 @@ export default function SegmentedControl({ options, value, onChange }) {
         <Animated.View
           style={[
             styles.highlight,
-            {
-              width:            segmentWidth,
-              backgroundColor:  th.colors.accent,
-              transform:        [{ translateX }],
-            },
+            { width: segmentWidth, backgroundColor: th.colors.accent },
+            highlightStyle,
           ]}
         />
       )}

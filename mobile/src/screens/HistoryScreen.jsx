@@ -12,6 +12,10 @@ import {
   View, Text, FlatList, TouchableOpacity,
   ScrollView, Alert, StyleSheet, Animated, Easing,
 } from 'react-native';
+// Reanimated (aliased — coexists with core RN Animated above, used for the
+// expand/collapse accordion) drives the delete-card exit + sibling reflow:
+// standard `exiting`/`layout` primitives, not hand-rolled height math.
+import Reanimated, { LinearTransition, SlideOutRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
@@ -338,17 +342,6 @@ function SessionCard({ session, onDelete }) {
     contentHeight.current = e.nativeEvent.layout.height;
   }, []);
 
-  // ── Delete exit animation (slide right + fade + height collapse) ───────────
-  // Same translateX/opacity exit used by ExerciseCard's swipe panel, plus a
-  // maxHeight collapse (same technique as detailH above) so siblings slide up
-  // into place instead of snapping the instant the item leaves workoutLog.
-  // CARD_UNCONSTRAINED must clear any real card's natural height — never
-  // animated except by this exit, so it just needs to not clip normal content.
-  const CARD_UNCONSTRAINED = 9999;
-  const [exitX]       = useState(() => new Animated.Value(0));
-  const [exitOpacity] = useState(() => new Animated.Value(1));
-  const [cardMaxH]    = useState(() => new Animated.Value(CARD_UNCONSTRAINED));
-
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -398,32 +391,10 @@ function SessionCard({ session, onDelete }) {
       t('history.deleteConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: () => {
-            // exitX/exitOpacity run on the native (UI) thread — buttery at 60fps
-            // regardless of JS thread load. cardMaxH can't: `maxHeight` isn't
-            // native-driver-compatible (RN limitation, not fixable without a
-            // library like react-native-reanimated for real native layout
-            // animations), so it's JS-driven and visibly steppier, especially
-            // in Expo Go dev builds. Starting it ~40% into the slide (not in
-            // perfect parallel) reads as one continuous "swipe away, then the
-            // gap closes" gesture instead of two motions competing for
-            // attention at the same instant.
-            Animated.timing(exitX, {
-              toValue: 500, duration: 240, easing: Easing.in(Easing.ease), useNativeDriver: true,
-            }).start();
-            Animated.timing(exitOpacity, {
-              toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true,
-            }).start();
-            Animated.timing(cardMaxH, {
-              toValue: 0, duration: 260, delay: 100, easing: Easing.inOut(Easing.ease), useNativeDriver: false,
-            }).start(({ finished }) => {
-              if (finished) onDelete(session.id);
-            });
-          },
-        },
+        // No manual exit animation here — the Reanimated.View wrapper below
+        // (exiting={SlideOutRight}) intercepts the unmount that follows
+        // onDelete() and animates it + the sibling reflow on the UI thread.
+        { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(session.id) },
       ],
     );
   }
@@ -531,15 +502,12 @@ function SessionCard({ session, onDelete }) {
   );
 
   return (
-    // Two nested Animated.Views on purpose: maxHeight isn't native-driver-compatible,
-    // so it must live on its own node, separate from the native-driven opacity/
-    // transform below — mixing them on one style object poisons the JS-driven node
-    // (RN tries to hand the whole style object to native, fails on maxHeight, then
-    // throws "Attempting to run JS driven animation on animated node that has been
-    // moved to native" the next time cardMaxH is animated with useNativeDriver:false).
-    <Animated.View style={{ maxHeight: cardMaxH, overflow: 'hidden' }}>
-      <Animated.View style={{ opacity: exitOpacity, transform: [{ translateX: exitX }] }}>
-        <View style={styles.card}>
+    // Reanimated's standard list-item primitives, not hand-rolled height math:
+    // `exiting` plays the exit animation on the UI thread and defers the actual
+    // unmount until it finishes; `layout` on every card (this one included) makes
+    // siblings glide into the freed space automatically once it does.
+    <Reanimated.View layout={LinearTransition.duration(240)} exiting={SlideOutRight.duration(240)}>
+      <View style={styles.card}>
           {/* Header — tap to expand */}
           <TouchableOpacity
             style={styles.cardHeader}
@@ -599,9 +567,8 @@ function SessionCard({ session, onDelete }) {
               {detailContent}
             </Animated.View>
           </Animated.View>
-        </View>
-      </Animated.View>
-    </Animated.View>
+      </View>
+    </Reanimated.View>
   );
 }
 

@@ -17,5 +17,13 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // mobile/ uses react-native-reanimated (useSharedValue/.value mutation is
+      // its intentional API, not a bug) — without this flag the compiler's
+      // static rules don't recognize SharedValue as a known-mutable shape and
+      // flag every `.value =` assignment as an immutability violation.
+      'react-hooks/immutability':        ['error', { environment: { enableCustomTypeDefinitionForReanimated: true } }],
+      'react-hooks/incompatible-library': ['warn',  { environment: { enableCustomTypeDefinitionForReanimated: true } }],
+    },
   },
 ])
