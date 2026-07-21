@@ -4,20 +4,65 @@
  * Variante "Group together" de Figma (FormaFit). No implementa la variante
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { textStyles } from '../../theme';
-import { useThemedStyles } from '../../useTheme';
+import { useThemedStyles, useTheme } from '../../useTheme';
+
+const PAD = 4;
+const GAP = 6;
 
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [translateX] = useState(() => new Animated.Value(0));
+  const hasMeasured   = useRef(false);
+
+  const n = options.length;
+  const segmentWidth = n > 0 ? (containerWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
+  const activeIndex  = Math.max(0, options.findIndex((o) => o.id === value));
+
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    const toValue = PAD + activeIndex * (segmentWidth + GAP);
+    if (!hasMeasured.current) {
+      // First measurement — snap into place instead of sliding in from x=0.
+      hasMeasured.current = true;
+      translateX.setValue(toValue);
+      return;
+    }
+    Animated.timing(translateX, {
+      toValue,
+      duration:        200,
+      easing:          Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [activeIndex, containerWidth, segmentWidth, translateX]);
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+    >
+      {containerWidth > 0 && (
+        <Animated.View
+          style={[
+            styles.highlight,
+            {
+              width:            segmentWidth,
+              backgroundColor:  th.colors.accent,
+              transform:        [{ translateX }],
+            },
+          ]}
+        />
+      )}
       {options.map(({ id, label }) => {
         const active = value === id;
         return (
           <TouchableOpacity
             key={id}
-            style={[styles.option, active && styles.optionActive]}
+            style={styles.option}
             onPress={() => onChange(id)}
             activeOpacity={0.75}
           >
@@ -36,8 +81,15 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:   'row',
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
-    padding:         4,
-    gap:             6,
+    padding:         PAD,
+    gap:             GAP,
+    position:        'relative',
+  },
+  highlight: {
+    position:     'absolute',
+    top:          PAD,
+    bottom:       PAD,
+    borderRadius: th.radius.sm,
   },
   option: {
     flex:            1,
@@ -45,13 +97,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: 8,
     alignItems:      'center',
   },
-  optionActive: {
-    backgroundColor: th.colors.accent,
-  },
   optionText: {
     ...textStyles.cardType,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
+    color: th.colors.mutedLight,
   },
   optionTextActive: {
     color: th.colors.onAccent,

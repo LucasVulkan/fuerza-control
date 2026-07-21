@@ -880,7 +880,7 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.sm * 1.6,
   },
   exSection: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 15,
     gap:               2,
   },
   exName: {
