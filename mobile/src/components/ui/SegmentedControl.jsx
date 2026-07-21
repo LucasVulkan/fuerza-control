@@ -28,9 +28,11 @@ export default function SegmentedControl({ options, value, onChange }) {
   // shared value after paint) — Reanimated only animates changes to the style,
   // so the very first render lands directly on the correct position with no
   // stale-frame flash, and every subsequent change springs naturally.
+  // damping:30 sits just under critical for stiffness:300 — snappy slide with
+  // no visible overshoot (18/220 read as too bouncy).
   const highlightStyle = useAnimatedStyle(() => ({
     transform: [{
-      translateX: withSpring(PAD + activeIndex * (segmentWidth + GAP), { damping: 18, stiffness: 220 }),
+      translateX: withSpring(PAD + activeIndex * (segmentWidth + GAP), { damping: 30, stiffness: 300 }),
     }],
   }));
 
