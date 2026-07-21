@@ -4,9 +4,9 @@
  * Variante "Group together" de Figma (FormaFit). No implementa la variante
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
@@ -14,6 +14,11 @@ import { useThemedStyles, useTheme } from '../../useTheme';
 // mobile/docs/figma-extraction/components/segmented-control.md.
 const PAD = spacing.xs2;
 const GAP = spacing.sm;
+
+function offsetFor(index, width, n) {
+  const segmentWidth = (width - PAD * 2 - GAP * (n - 1)) / n;
+  return PAD + index * (segmentWidth + GAP);
+}
 
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
@@ -24,16 +29,27 @@ export default function SegmentedControl({ options, value, onChange }) {
   const segmentWidth = n > 0 ? (containerWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
   const activeIndex  = Math.max(0, options.findIndex((o) => o.id === value));
 
-  // Target computed inline inside the worklet (not via a useEffect that sets a
-  // shared value after paint) — Reanimated only animates changes to the style,
-  // so the very first render lands directly on the correct position with no
-  // stale-frame flash, and every subsequent change springs naturally.
-  // damping:30 sits just under critical for stiffness:300 — snappy slide with
-  // no visible overshoot (18/220 read as too bouncy).
+  const translateX  = useSharedValue(0);
+  const opacity     = useSharedValue(0);      // hidden until first positioned (no stale-frame flash)
+  const positioned  = useRef(false);
+
+  // First measurement → snap into place (no animation, no first-open slide).
+  // Every later option change → ease-in-out slide to the new position.
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    const target = offsetFor(activeIndex, containerWidth, n);
+    if (!positioned.current) {
+      positioned.current = true;
+      translateX.value   = target;
+      opacity.value      = 1;
+    } else {
+      translateX.value = withTiming(target, { duration: 200, easing: Easing.inOut(Easing.ease) });
+    }
+  }, [activeIndex, containerWidth, n, translateX, opacity]);
+
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateX: withSpring(PAD + activeIndex * (segmentWidth + GAP), { damping: 30, stiffness: 300 }),
-    }],
+    opacity:   opacity.value,
+    transform: [{ translateX: translateX.value }],
   }));
 
   return (
