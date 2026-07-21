@@ -716,7 +716,7 @@ export default function HistoryScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={() => listHeader}
+        ListHeaderComponent={listHeader}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: spacing.xxl + insets.bottom },
