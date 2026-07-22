@@ -6,8 +6,20 @@ import './src/i18n';                   // Initialize i18n before rendering
 import * as WebBrowser from 'expo-web-browser';
 WebBrowser.maybeCompleteAuthSession();
 
+import * as SplashScreen from 'expo-splash-screen';
+// Keep the splash up until custom fonts are ready — RN renders text with a
+// fallback family before load, causing a visible font swap otherwise.
+SplashScreen.preventAutoHideAsync();
+
 import { useEffect, useCallback } from 'react';
 import { Platform, StyleSheet } from 'react-native';
+import { useFonts } from 'expo-font';
+import {
+  Inter_500Medium,
+  Inter_800ExtraBold,
+  Inter_900Black,
+} from '@expo-google-fonts/inter';
+import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed';
 import * as Linking     from 'expo-linking';
 import * as FileSystem  from 'expo-file-system/legacy';
 import {
@@ -33,6 +45,16 @@ export default function App() {
   const checkAndPullProgramUpdates  = useStore((s) => s.checkAndPullProgramUpdates);
   const showToast                   = useStore((s) => s.showToast);
   const setPendingExternalImport    = useStore((s) => s.setPendingExternalImport);
+
+  // Custom fonts — Inter (Figma text styles) + Barlow Condensed (logo).
+  // Each weight is its own named family: RN doesn't synthesize weights for
+  // custom fonts, so textStyles reference these by fontFamily, not fontWeight.
+  const [fontsLoaded] = useFonts({
+    Inter_500Medium,
+    Inter_800ExtraBold,
+    Inter_900Black,
+    BarlowCondensed_800ExtraBold_Italic,
+  });
 
   // ── Incoming .fitdata file handler ──────────────────────────────────────────
   // Called when the OS opens a .fitdata file and routes it to this app via
@@ -121,8 +143,14 @@ export default function App() {
     }
   }, []);
 
+  const onLayoutRoot = useCallback(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null; // splash stays up until fonts are ready
+
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={styles.root} onLayout={onLayoutRoot}>
       <SafeAreaProvider style={{ backgroundColor: colors.surface }}>
         <NavigationContainer
           ref={navigationRef}

@@ -101,13 +101,18 @@ export const typography = {
 // are exact Figma text styles (size + weight + letter-spacing bundled) used by
 // the FormaFit redesign. Do not fold into `typography`, which other screens
 // already consume as-is.
+//
+// The font is Inter (matching Figma). RN doesn't synthesize weights for custom
+// fonts, so each weight is a distinct family loaded in App.js — the family, not
+// `fontWeight`, is what actually selects the weight here. `fontWeight` is kept
+// as documentation and as a fallback hint before the font loads.
 export const textStyles = {
-  cardType:   { fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
-  cardTitle:  { fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
-  subtitle:   { fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
-  tag:        { fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
-  spacingTag: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
-  btnAction:  { fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
+  cardType:   { fontFamily: 'Inter_800ExtraBold', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
+  cardTitle:  { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
+  subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
+  tag:        { fontFamily: 'Inter_500Medium',    fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
+  spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
+  btnAction:  { fontFamily: 'Inter_900Black',     fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
 };
 
 // ─── Border widths ────────────────────────────────────────────────────────────

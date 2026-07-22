@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/barlow-condensed": "^0.4.1",
+    "@expo-google-fonts/inter": "^0.4.2",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.16.1",
@@ -30,6 +31,7 @@
     "expo-notifications": "~0.32.17",
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
+    "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-task-manager": "~14.0.9",
     "expo-web-browser": "~15.0.11",
