@@ -28,7 +28,7 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import ProgressTab from '../components/stats/ProgressTab';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
@@ -1250,7 +1250,11 @@ function ClientListCard({
           {lastStr}
         </Text>
         <TouchableOpacity onPress={onOpenActions} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
-          <Text style={styles.cMoreBtn}>···</Text>
+          <View style={styles.cMoreDots}>
+            <View style={styles.cMoreDot} />
+            <View style={styles.cMoreDot} />
+            <View style={styles.cMoreDot} />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -1294,7 +1298,7 @@ function ClientListCard({
           {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
           <View style={styles.cCounters}>
             <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
-            <Text style={styles.cWeekLabel}> Semana</Text>
+            <Text style={styles.cWeekLabel}> SEMANA</Text>
             <View style={styles.cDots}>
               {Array.from({ length: sessPerCycle }, (_, i) => (
                 <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
@@ -1324,12 +1328,12 @@ function ClientListCard({
                   </Text>
                 </View>
               ) : (
-                <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
-                  stroke={th.colors.text} strokeWidth={3} strokeLinecap="round">
+                <Svg viewBox="0 0 24 24" width={10} height={10} fill="none"
+                  stroke={th.colors.text} strokeWidth={4} strokeLinecap="round">
                   <Path d="M18 20V10M12 20V4M6 20v-6" />
                 </Svg>
               )}
-              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: th.colors.orange }]}>
+              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: th.colors.bg }]}>
                 {t('clients.btnViewProgress')}
               </Text>
             </TouchableOpacity>
@@ -3737,11 +3741,10 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Client list card ──────────────────────────────────────────────────────────
   cCard: {
     backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.md,
-    gap:             spacing.md,   // space between the three visual blocks
+    borderRadius:    th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:             spacing.sm,   // space between the three visual blocks
   },
   // Row 1: name · date · Info →
   cRow1: {
@@ -3750,9 +3753,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
   },
   cName: {
-    fontSize:   typography.lg,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
+    ...textStyles.cardTitle,
+    color:      th.colors.accent,
     flexShrink: 1,
   },
   cDate: {
@@ -3774,11 +3776,18 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
     fontWeight: typography.semibold,
   },
-  cMoreBtn: {
-    fontSize:      18,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    lineHeight:    18,
+  // Menú "···" — 3 puntos sólidos (fidelidad Figma: size-[3px], gap 3, #D9D9D9
+  // literal, no hay token del tema que coincida con este gris concreto)
+  cMoreDots: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           3,
+  },
+  cMoreDot: {
+    width:           3,
+    height:          3,
+    borderRadius:    1.5,
+    backgroundColor: '#D9D9D9',
   },
   // Global pending-uploads banner
   pendingBanner: {
@@ -3855,7 +3864,7 @@ const makeStyles = (th) => StyleSheet.create({
     width:           8,
     height:          8,
     borderRadius:    4,
-    backgroundColor: th.colors.green,
+    backgroundColor: th.colors.accent,
     flexShrink:      0,
   },
   cStatusBadge: {
@@ -3882,20 +3891,18 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 0,
   },
   cProgName: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      th.colors.accent,
-    flex:       1,
+    ...textStyles.cardType,
+    color: th.colors.text,
+    flex:  1,
   },
   cStageName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
+    ...textStyles.cardType,
+    color: th.colors.text,
   },
   // Row 3: meta
   cProgMeta: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
+    ...textStyles.subtitle,
+    color: th.colors.mutedLight,
   },
   // Row 4: counters + button
   cRow4: {
@@ -3911,15 +3918,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:  110,
   },
   cWeekNum: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      th.colors.muted,
-    lineHeight: typography.base * 1.1,
+    ...textStyles.spacingTag,
+    color: th.colors.accent,
   },
+  // "SEMANA" — 8px/tracking 1.12, sin token exacto en textStyles (literal Figma)
   cWeekLabel: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      th.colors.muted,
+    fontFamily:    'Inter_600SemiBold',
+    fontSize:      8,
+    fontWeight:    '600',
+    letterSpacing: 1.12,
+    color:         th.colors.mutedLight,
   },
   cDots: {
     flexDirection: 'row',
@@ -3940,82 +3948,73 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:     1.5,
     borderColor:     th.colors.muted2,
   },
-  // Contextual buttons — all share the same base dimensions
+  // Contextual buttons — misma geometría que "Buttons" en Figma (padding
+  // space/md uniforme, radius/md, gap space/sm, texto card-type)
   cBtnOutline: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.xs + 1,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical:   spacing.xs + 4,
-    borderRadius:      th.radius.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.muted2,
-    backgroundColor:   'transparent',
-    position:          'absolute',
-    bottom:            0,
-    right:             0,
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.sm,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.muted,
+    position:        'absolute',
+    bottom:          0,
+    right:           0,
   },
   cBtnOutlineText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
+    ...textStyles.cardType,
+    color: th.colors.text,
   },
   cBtnOutlineNew: {
-    borderColor: th.colors.orange,
+    backgroundColor: th.colors.orange,
   },
   sessionsBadge: {
     width:           17,
     height:          17,
     borderRadius:    9,
-    backgroundColor: th.colors.orange,
+    backgroundColor: th.colors.bg,
     alignItems:      'center',
     justifyContent:  'center',
   },
   sessionsBadgeText: {
     fontSize:   9,
     fontWeight: typography.bold,
-    color:      '#FFFFFF',
+    color:      th.colors.orange,
     lineHeight: 13,
   },
   cBtnOrange: {
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical:   spacing.xs + 4,
-    borderRadius:      th.radius.md,
-    backgroundColor:   th.colors.orange,
-    position:          'absolute',
-    bottom:            0,
-    right:             0,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.orange,
+    position:        'absolute',
+    bottom:          0,
+    right:           0,
   },
   cBtnOrangeText: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      th.colors.bg,
+    ...textStyles.cardType,
+    color: th.colors.bg,
   },
   cBtnOverride: {
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical:   spacing.xs + 4,
-    borderRadius:      th.radius.md,
-    backgroundColor:   th.colors.blue,
-    position:          'absolute',
-    bottom:            0,
-    right:             0,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.blue,
+    position:        'absolute',
+    bottom:          0,
+    right:           0,
   },
   cBtnOverrideText: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      th.colors.bg,
+    ...textStyles.cardType,
+    color: th.colors.bg,
   },
   cBtnAccent: {
-    paddingHorizontal: spacing.md + 4,
-    paddingVertical:   spacing.xs + 4,
-    borderRadius:      th.radius.md,
-    backgroundColor:   th.colors.accent,
-    flexShrink:        0,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.accent,
+    flexShrink:      0,
   },
   cBtnAccentText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
+    ...textStyles.cardType,
+    color: th.colors.onAccent,
   },
   // No program state
   cNoProgramRow: {
