@@ -35,6 +35,7 @@ import { spacing, textStyles, typography, borders, withOpacity } from '../../the
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
+import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -248,80 +249,6 @@ function buildSessionSummary(exercise, def, fmtWeight) {
   return parts.filter(Boolean).join(' / ') || null;
 }
 
-// ── SetPills — compact per-set chips ─────────────────────────────────────────
-
-function SetPills({ exercise, def, fmtWeight }) {
-  const styles = useThemedStyles(makeStyles);
-  const done = exercise?.sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? [];
-  if (!done.length) return <Text style={styles.modalSesSummary}>—</Text>;
-
-  const model = def?.progressionModel;
-
-  // Time-based: [30s] [45s]
-  if (model === 'time_progression') {
-    return (
-      <View style={styles.setPillsRow}>
-        {done.map((s, i) => (
-          <View key={i} style={styles.setPill}>
-            <Text style={styles.setPillText}>{s.time ?? '?'}s</Text>
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  const weights    = done.map((s) => parseFloat(s.weight) || 0);
-  const hasWeight  = weights.some((w) => w > 0);
-
-  // No weight — reps only: [5] [8] [6]
-  if (!hasWeight) {
-    const chips = done.map((s, i) => {
-      const r = parseInt(s.reps) || 0;
-      return r > 0 ? (
-        <View key={i} style={styles.setPill}>
-          <Text style={styles.setPillText}>{r}</Text>
-        </View>
-      ) : null;
-    }).filter(Boolean);
-    return <View style={styles.setPillsRow}>{chips}</View>;
-  }
-
-  const uniqueWeights = new Set(weights.filter((w) => w > 0));
-
-  // Uniform weight — label + reps chips: 20kg [3] [3] [2]
-  if (uniqueWeights.size === 1) {
-    const w = [...uniqueWeights][0];
-    const chips = done.map((s, i) => {
-      const r = parseInt(s.reps) || 0;
-      return r > 0 ? (
-        <View key={i} style={styles.setPill}>
-          <Text style={styles.setPillText}>{r}</Text>
-        </View>
-      ) : null;
-    }).filter(Boolean);
-    return (
-      <View style={styles.setPillsRow}>
-        <Text style={styles.setPillWeight}>{fmtWeight(w)}</Text>
-        {chips}
-      </View>
-    );
-  }
-
-  // Varying weight — full chips: [20×3] [25×3]
-  const chips = done.map((s, i) => {
-    const w = parseFloat(s.weight) || 0;
-    const r = parseInt(s.reps)    || 0;
-    if (!w && !r) return null;
-    const label = w > 0 && r > 0 ? `${fmtWeight(w)}×${r}` : w > 0 ? fmtWeight(w) : `${r}`;
-    return (
-      <View key={i} style={styles.setPill}>
-        <Text style={styles.setPillText}>{label}</Text>
-      </View>
-    );
-  }).filter(Boolean);
-  return <View style={styles.setPillsRow}>{chips}</View>;
-}
-
 function getSessionTotalVol(session) {
   return session.exercises.reduce((sum, ex) => {
     const done = ex.sets.filter((s) => s.done || s.weight || s.reps);
@@ -417,7 +344,7 @@ function computeExSessionDeltas(logs, def, metricOverride = null) {
   const primaryId = metricOverride
     ?? (model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg');
   let bestSoFar   = null;
-  return logs.map(({ timestamp, exercise }, i) => {
+  return logs.map(({ timestamp, exercise, sessionTemplateId }, i) => {
     const pv       = computeValue(exercise?.sets, primaryId);
     const fv       = pv === null ? computeValue(exercise?.sets, 'reps') : null;
     const val      = pv ?? fv;
@@ -429,7 +356,7 @@ function computeExSessionDeltas(logs, def, metricOverride = null) {
     const delta    = prev !== null && val !== null ? val - prev : null;
     const isPR = val !== null && bestSoFar !== null && val > bestSoFar;
     if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val);
-    return { timestamp, val, delta, isPR, metricId, exercise };
+    return { timestamp, val, delta, isPR, metricId, exercise, sessionTemplateId };
   });
 }
 
@@ -637,6 +564,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const workoutLog_      = useStore((s) => s.workoutLog);
   const exerciseLibrary_ = useStore((s) => s.exerciseLibrary);
   const customExercises_ = useStore((s) => s.customExercises);
+  // exConfig (rango minReps/minTime) por sesión — colorea las pills por rango,
+  // igual que HistoryScreen (getPillVariant).
+  const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const allEx = useMemo(
     () => ({ ...exerciseLibrary_, ...customExercises_ }),
     [exerciseLibrary_, customExercises_]
@@ -831,8 +761,10 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     return rawData;
   }, [filteredLogs, activeMetric, wDisplay, pctMode]);
 
-  const loadImpStr   = loadImprovePct !== null ? `${loadImprovePct > 0 ? '+' : ''}${loadImprovePct}%` : '—';
-  const loadImpColor = loadImprovePct !== null ? (loadImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
+  // Deltas: accent si >=0 o null, orange si <0 (mismo patrón que ProgressTab arriba).
+  const loadImpStr    = loadImprovePct !== null ? `${loadImprovePct > 0 ? '+' : ''}${loadImprovePct}%` : '—';
+  const loadImpColor  = (loadImprovePct === null || loadImprovePct >= 0) ? th.colors.accent : th.colors.orange;
+  const lastLoadSubColor = (lastSesLoadDelta === null || lastSesLoadDelta >= 0) ? th.tint.accent50 : th.colors.orange;
   const lastLoadSubStr = (() => {
     if (lastSesLoadDelta === null) return null;
     const sign = lastSesLoadDelta >= 0 ? '+' : '−';
@@ -844,8 +776,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     return hasWeight ? `${sign}${fmtWeight(abs)} últ.` : `${sign}${abs} reps últ.`;
   })();
 
-  const volImpStr   = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
-  const volImpColor = volImprovePct !== null ? (volImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
+  const volImpStr    = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
+  const volImpColor  = (volImprovePct === null || volImprovePct >= 0) ? th.colors.accent : th.colors.orange;
+  const lastVolSubColor = (lastSesVolDelta === null || lastSesVolDelta >= 0) ? th.tint.accent50 : th.colors.orange;
   const lastVolSubStr = (() => {
     if (lastSesVolDelta === null) return null;
     const sign = lastSesVolDelta >= 0 ? '+' : '−';
@@ -881,14 +814,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               <View style={styles.dragHandle} />
             </View>
             <View style={styles.modalHeader}>
-              {/* Dropdown trigger — styled as a select box */}
+              {/* Barra accent — trigger del picker de ejercicios (Figma: "Exercice" 123:951) */}
               <TouchableOpacity
-                style={[styles.modalTitleBtn, pickerMounted && styles.modalTitleBtnOpen]}
+                style={styles.exBar}
                 onPress={togglePicker}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
-                <Text style={styles.modalTitle} numberOfLines={1}>{name}</Text>
-                <Animated.Text style={[styles.modalTitleArrow, pickerMounted && styles.modalTitleArrowOpen, { transform: [{ rotate: arrowRotation }] }]}>
+                <Text style={styles.exBarTitle} numberOfLines={1}>{name}</Text>
+                <Animated.Text style={[styles.exBarChevron, { transform: [{ rotate: arrowRotation }] }]}>
                   ›
                 </Animated.Text>
               </TouchableOpacity>
@@ -935,122 +868,174 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
           {/* Content fades out/in when switching exercises */}
           <Animated.View style={[styles.flex, { opacity: contentOpacity }]}>
           <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
-            {/* Period + scope filters */}
-            <View style={styles.modalFiltersRow}>
-              {PERIOD_OPTIONS.map(({ id, label }) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.ctrlBtn, modalPeriod === id && styles.ctrlBtnActive]}
-                  onPress={() => setModalPeriod(id)}
-                >
-                  <Text style={[styles.ctrlBtnText, modalPeriod === id && styles.ctrlBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-              <View style={{ flex: 1 }} />
+            {/* Período + programa actual */}
+            <View style={styles.modalPeriodRow}>
+              <View style={styles.segmentedWrap}>
+                <SegmentedControl options={PERIOD_OPTIONS} value={modalPeriod} onChange={setModalPeriod} />
+              </View>
               {programTemplateIds?.size > 0 && (
                 <TouchableOpacity
-                  style={[styles.scopeToggle, modalScope === 'program' && styles.scopeToggleActive]}
+                  style={[styles.programToggle, modalScope === 'program' && styles.programToggleActive]}
                   onPress={() => setModalScope((s) => s === 'program' ? 'all' : 'program')}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.scopeToggleText, modalScope === 'program' && styles.scopeToggleTextActive]}>
+                  <Text style={[styles.programToggleText, modalScope === 'program' && styles.programToggleTextActive]}>
                     Programa actual
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* 3 stat tiles — order: 1RM est. (o PR) · Carga · Volumen */}
-            <View style={styles.modalStatRow}>
-              <View style={styles.modalStatTile}>
+            {/* 3 Progress cards — mismo look que las de ProgressTab (statTile) */}
+            <View style={styles.modalStatsRow}>
+              <View style={styles.statTile}>
                 {e1rmData ? (
                   <>
-                    <Text style={[styles.modalStatValue, { color: th.colors.accent }]}>
-                      {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
-                    </Text>
-                    <Text style={styles.modalStatLabel}>1RM EST.</Text>
-                    <Text style={styles.modalStatSub} numberOfLines={1}>
+                    <View style={styles.statValueBlock}>
+                      <Text style={[styles.statValue, { color: th.colors.accent }]}>
+                        {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
+                      </Text>
+                      <Text style={styles.statLabel}>1RM</Text>
+                    </View>
+                    <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>
                       {prDisplay ? `PR ${prDisplay} · ${prAgoStr ?? ''}` : '—'}
                     </Text>
                   </>
                 ) : (
                   <>
-                    <Text style={[styles.modalStatValue, { color: th.colors.accent }]}>{prDisplay ?? '—'}</Text>
-                    <Text style={styles.modalStatLabel}>PR</Text>
-                    <Text style={styles.modalStatSub} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
+                    <View style={styles.statValueBlock}>
+                      <Text style={[styles.statValue, { color: th.colors.accent }]}>{prDisplay ?? '—'}</Text>
+                      <Text style={styles.statLabel}>PR</Text>
+                    </View>
+                    <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
                 )}
               </View>
-              <View style={styles.modalStatTile}>
-                <Text style={[styles.modalStatValue, { color: loadImpColor }]}>{loadImpStr}</Text>
-                <Text style={styles.modalStatLabel}>Carga</Text>
-                <Text style={styles.modalStatSub} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
+              <View style={styles.statTile}>
+                <View style={styles.statValueBlock}>
+                  <Text style={[styles.statValue, { color: loadImpColor }]}>{loadImpStr}</Text>
+                  <Text style={styles.statLabel}>CARGA</Text>
+                </View>
+                <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </View>
-              <View style={styles.modalStatTile}>
-                <Text style={[styles.modalStatValue, { color: volImpColor }]}>{volImpStr}</Text>
-                <Text style={styles.modalStatLabel}>Volumen</Text>
-                <Text style={styles.modalStatSub} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
+              <View style={styles.statTile}>
+                <View style={styles.statValueBlock}>
+                  <Text style={[styles.statValue, { color: volImpColor }]}>{volImpStr}</Text>
+                  <Text style={styles.statLabel}>VOLUMEN</Text>
+                </View>
+                <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
               </View>
             </View>
 
-            {/* Chart controls + chart */}
+            {/* Segmented de métrica + chart (el selector controla el chart) */}
             <View style={styles.chartSection}>
-              <View style={styles.chartControls}>
-                <View style={styles.btnGroup}>
-                  {metrics.length > 1 && metrics.map(({ id, label }) => (
-                    <TouchableOpacity
-                      key={id}
-                      style={[styles.ctrlBtn, styles.ctrlBtnFull, activeMetric === id && styles.ctrlBtnActive]}
-                      onPress={() => { setChartMetric(id); setPctMode(false); }}
-                    >
-                      <Text style={[styles.ctrlBtnText, activeMetric === id && styles.ctrlBtnTextActive]}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              {metrics.length > 1 && (
+                <SegmentedControl
+                  options={metrics}
+                  value={activeMetric}
+                  onChange={(id) => { setChartMetric(id); setPctMode(false); }}
+                />
+              )}
               <MiniLineChart data={chartData} metricLabel={metricLabel} />
             </View>
 
-            {/* Session list */}
+            {/* Lista de sesiones — "listed items" agrupados, desglose por bloque de peso */}
             <View style={styles.modalSesSection}>
               <Text style={styles.modalSesSectionLabel}>SESIONES</Text>
-              {[...sessionDeltas].reverse().map(({ timestamp, val, delta, isPR, metricId, exercise }) => {
-                const deltaColor = delta !== null ? (delta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
-                const deltaStr  = delta !== null ? (() => {
-                  const sign = delta > 0 ? '+' : '';
-                  if (metricId === 'kg' || metricId === 'e1rm') {
-                    const abs = Math.abs(delta);
-                    const rounded = abs % 1 === 0 ? abs : Math.round(abs * 10) / 10;
-                    return `${sign}${delta < 0 ? '-' : ''}${fmtWeight(rounded)}`;
-                  }
-                  if (metricId === 'time') return `${sign}${Math.round(delta)}s`;
-                  if (metricId === 'vol') {
-                    return `${delta >= 0 ? '+' : '−'}${fmtVol(Math.abs(delta), wDisplay)} ${weightLabel}`;
-                  }
-                  return `${sign}${Math.round(delta)} reps`;
-                })() : null;
-                return (
-                  <View key={timestamp} style={styles.modalSesRow}>
-                    <View style={styles.modalSesLeft}>
-                      <Text style={styles.modalSesDate}>{formatDate(timestamp)}</Text>
-                      {deltaStr !== null && (
-                        <Text style={[styles.modalSesDelta, { color: deltaColor }]}>
-                          {deltaStr}
-                        </Text>
-                      )}
-                    </View>
-                    {isPR && (
-                      <View style={styles.prPill}>
-                        <Text style={styles.prPillText}>PR</Text>
-                      </View>
-                    )}
-                    <SetPills exercise={exercise} def={def} fmtWeight={fmtWeight} />
-                  </View>
-                );
-              })}
-              {sessionDeltas.length === 0 && (
+              {sessionDeltas.length === 0 ? (
                 <Text style={styles.modalSesEmpty}>Sin sesiones en este período.</Text>
+              ) : (
+                <Reanimated.View style={styles.modalSesList} layout={LinearTransition.duration(200)}>
+                  {[...sessionDeltas].reverse().map(({ timestamp, delta, isPR, metricId, exercise, sessionTemplateId }, idx, arr) => {
+                    const deltaStr = delta !== null ? (() => {
+                      const sign = delta > 0 ? '+' : '';
+                      if (metricId === 'kg' || metricId === 'e1rm') {
+                        const abs = Math.abs(delta);
+                        const rounded = abs % 1 === 0 ? abs : Math.round(abs * 10) / 10;
+                        return `${sign}${delta < 0 ? '-' : ''}${fmtWeight(rounded)}`;
+                      }
+                      if (metricId === 'time') return `${sign}${Math.round(delta)}s`;
+                      if (metricId === 'vol') {
+                        return `${delta >= 0 ? '+' : '−'}${fmtVol(Math.abs(delta), wDisplay)} ${weightLabel}`;
+                      }
+                      return `${sign}${Math.round(delta)} reps`;
+                    })() : null;
+                    // exConfig (rango minReps/minTime) — sale de la plantilla de esa
+                    // sesión concreta, igual que HistoryScreen (exConfigs por template).
+                    const tpl   = sessionTemplateId ? getEffectiveTemplate(sessionTemplateId) : null;
+                    const exCfg = tpl?.exercises?.find((ec) => ec.exerciseId === activeId);
+                    return (
+                      <View key={timestamp} style={[styles.sesItem, getCardRadii(th, idx === 0, idx === arr.length - 1)]}>
+                        <View style={styles.sesHeaderRow}>
+                          <Text style={styles.sesDate}>{formatDate(timestamp)}</Text>
+                          <View style={styles.sesHeaderRight}>
+                            {isPR && (
+                              <View style={styles.prPill}>
+                                <Text style={styles.prPillText}>PR</Text>
+                              </View>
+                            )}
+                            {deltaStr !== null && (
+                              <Text style={[styles.sesDelta, { color: delta >= 0 ? th.colors.green : th.colors.orange }]}>
+                                {deltaStr}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        {groupSetsByWeight(exercise?.sets ?? []).map((group, gi) => (
+                          <View key={gi} style={styles.sesWeightRow}>
+                            <View style={styles.sesWeightCol}>
+                              {group.weight ? (
+                                <Text style={styles.sesWeightText} numberOfLines={1}>
+                                  <Text style={styles.sesWeightNum}>{fmtAxisVal(wDisplay(group.weight))}</Text>
+                                  <Text style={styles.sesWeightUnit}>{` ${weightLabel}`}</Text>
+                                </Text>
+                              ) : null}
+                            </View>
+                            <View style={styles.sesPillsRow}>
+                              {group.sets.map((s, i) => {
+                                const variant = getPillVariant(s, exCfg);
+                                const { main, rpeNum } = buildSetLabel(s, i, fmtWeight, true);
+                                return (
+                                  <View
+                                    key={i}
+                                    style={[
+                                      styles.sesPill,
+                                      variant === 'done'    && styles.sesPillDone,
+                                      variant === 'partial' && styles.sesPillPartial,
+                                    ]}
+                                  >
+                                    <Text>
+                                      <Text
+                                        style={[
+                                          styles.sesPillMain,
+                                          variant === 'done'    && styles.sesPillMainDone,
+                                          variant === 'partial' && styles.sesPillMainPartial,
+                                        ]}
+                                      >
+                                        {main}
+                                      </Text>
+                                      {rpeNum ? (
+                                        <Text
+                                          style={[
+                                            styles.sesPillRpe,
+                                            variant === 'done'    && styles.sesPillRpeDone,
+                                            variant === 'partial' && styles.sesPillRpePartial,
+                                          ]}
+                                        >
+                                          {`@${rpeNum}`}
+                                        </Text>
+                                      ) : null}
+                                    </Text>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </Reanimated.View>
               )}
             </View>
           </ScrollView>
@@ -1744,6 +1729,71 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:      0,
   },
   modalCloseText: { fontSize: typography.sm, color: th.colors.muted },
+
+  // ── Modal FormaFit: barra accent, período, cards, sesiones desglosadas ───────
+  exBar: {
+    flex:              1,
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    backgroundColor:   th.colors.accent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.sm,
+  },
+  exBarTitle:   { ...textStyles.spacingTag, textTransform: 'uppercase', color: th.colors.onAccent, flex: 1 },
+  exBarChevron: { fontSize: 16, fontWeight: '900', color: th.colors.onAccent, marginLeft: spacing.sm },
+
+  modalPeriodRow: {
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.sm,
+  },
+
+  modalStatsRow: {
+    flexDirection:     'row',
+    gap:               spacing.md,
+    paddingHorizontal: spacing.xl,
+    height:            108,
+    alignItems:        'center',
+  },
+
+  // Lista agrupada de sesiones (listed items)
+  modalSesList: { gap: spacing.xs },
+  sesItem: {
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
+    overflow:          'hidden',
+  },
+  sesHeaderRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sesDate:        { ...textStyles.tag, color: th.colors.mutedLight },
+  sesHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sesDelta:       { ...textStyles.cardType },
+
+  // Fila peso → pills (desglosada)
+  sesWeightRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  sesWeightCol:  { width: 46 },
+  sesWeightText: { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', textAlign: 'right' },
+  sesWeightNum:  { color: th.colors.accent },
+  sesWeightUnit: { color: th.colors.text },
+  sesPillsRow:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.sm, flexShrink: 1 },
+
+  // Pills reps@RPE — color por rango (como History): done=accent, partial=orange, neutra=gris
+  sesPill:        { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, padding: spacing.sm },
+  sesPillDone:    { backgroundColor: th.tint.accent10 },
+  sesPillPartial: { backgroundColor: th.tint.orange30 },
+  sesPillMain:        { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  sesPillMainDone:    { color: th.colors.accent },
+  sesPillMainPartial: { color: th.colors.orange },
+  sesPillRpe:         { ...textStyles.tag, color: th.colors.mutedLight },
+  sesPillRpeDone:     { color: th.tint.accent50 },
+  sesPillRpePartial:  { color: th.tint.orange50 },
+
   modalFiltersRow: {
     flexDirection:     'row',
     gap:               spacing.xs,
