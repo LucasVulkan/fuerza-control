@@ -3933,11 +3933,15 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.12,
     color:         th.colors.mutedLight,
   },
+  // marginBottom compensa el hueco que deja el line-height del texto bajo
+  // su línea base — sin él, alinear al flex-end del row deja los puntos
+  // por debajo del final visual del texto, no a la altura de su base.
   cDots: {
     flexDirection: 'row',
     gap:           5,
     alignItems:    'center',
     marginLeft:    spacing.sm,
+    marginBottom:  2,
   },
   cDot: {
     width:        8,
