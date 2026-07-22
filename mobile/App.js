@@ -56,6 +56,13 @@ export default function App() {
     BarlowCondensed_800ExtraBold_Italic,
   });
 
+  // Hide the splash once fonts are ready. Driven by an effect (not the root
+  // view's onLayout — GestureHandlerRootView doesn't reliably forward onLayout,
+  // which left the splash stuck on top of an interactive app).
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded]);
+
   // ── Incoming .fitdata file handler ──────────────────────────────────────────
   // Called when the OS opens a .fitdata file and routes it to this app via
   // the VIEW intent filter (from file explorer, WhatsApp, Drive, etc.).
@@ -143,14 +150,10 @@ export default function App() {
     }
   }, []);
 
-  const onLayoutRoot = useCallback(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
-
   if (!fontsLoaded) return null; // splash stays up until fonts are ready
 
   return (
-    <GestureHandlerRootView style={styles.root} onLayout={onLayoutRoot}>
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider style={{ backgroundColor: colors.surface }}>
         <NavigationContainer
           ref={navigationRef}
