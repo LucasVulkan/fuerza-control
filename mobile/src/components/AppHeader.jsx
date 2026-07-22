@@ -87,9 +87,9 @@ function MenuIcon({ size = 24 }) {
   const th = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      <Path d="M10 4 H24.5 V8 H8 Z"        fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
-      <Path d="M6 10.6 H24.5 V14.6 H4 Z"   fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
-      <Path d="M2.4 17.2 H24.5 V21.2 H0.4 Z" fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M10 4.5 H24.5 V7.5 H8 Z"      fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M6 11.1 H24.5 V14.1 H4 Z"     fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M2.4 17.7 H24.5 V20.7 H0.4 Z" fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" />
     </Svg>
   );
 }
