@@ -1655,7 +1655,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'stretch',
     paddingHorizontal: spacing.lg,
-    paddingBottom:     spacing.md,
     gap:               spacing.sm,
   },
   modalTitleBtn: {
@@ -1760,10 +1759,11 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'space-between',
     alignItems:        'center',
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.md,
+    paddingTop:        spacing.lg, // exBar→período = período→cards (15)
   },
 
-  // Mismo aire alrededor de las cards que en Progress: 15 arriba, 15 lateral.
+  // Mismo aire alrededor de las cards que en Progress: 15 arriba, 20 abajo
+  // (cards→métrica = cards→buscar de Progress), 15 lateral.
   modalStatsRow: {
     flexDirection:     'row',
     gap:               spacing.md,
@@ -1771,7 +1771,7 @@ const makeStyles = (th) => StyleSheet.create({
     height:            108,
     alignItems:        'center',
     marginTop:         spacing.lg,
-    marginBottom:      spacing.md,
+    marginBottom:      spacing.xl,
   },
 
   // Lista agrupada de sesiones (listed items)
