@@ -21,6 +21,10 @@ import Reanimated, {
   LinearTransition,
   useSharedValue, useAnimatedStyle, withTiming, interpolate,
 } from 'react-native-reanimated';
+// ScrollView de gesture-handler para el menú del dropdown: reclama el gesto de
+// scroll correctamente aun anidado en la ScrollView de la página (el ScrollView
+// de core RN no lo hace dentro de una vista absoluta).
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -1360,7 +1364,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
         {dropOpen && (
           <View style={styles.dropList}>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }} nestedScrollEnabled>
+            <GestureScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }} nestedScrollEnabled>
               {exercisesWithLogs.map((id) => {
                 const def  = allExercises[id];
                 const name = def
@@ -1381,7 +1385,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </GestureScrollView>
             {selectedExIds.size > 0 && (
               <TouchableOpacity
                 style={styles.dropResetBtn}
