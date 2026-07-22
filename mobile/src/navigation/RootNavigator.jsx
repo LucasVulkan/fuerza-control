@@ -229,7 +229,7 @@ const makeStyles = (th) => StyleSheet.create({
     elevation:       0,             // quita la sombra de Android
   },
   tabBarBg: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg, // tan oscuro como el fondo de la app
   },
   tabLabel: {
     fontSize: 9,

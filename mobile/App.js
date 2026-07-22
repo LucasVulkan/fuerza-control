@@ -16,8 +16,10 @@ import { Platform, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Inter_500Medium,
+  Inter_700Bold,
   Inter_800ExtraBold,
   Inter_900Black,
+  Inter_900Black_Italic,
 } from '@expo-google-fonts/inter';
 import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed';
 import * as Linking     from 'expo-linking';
@@ -51,8 +53,10 @@ export default function App() {
   // custom fonts, so textStyles reference these by fontFamily, not fontWeight.
   const [fontsLoaded] = useFonts({
     Inter_500Medium,
+    Inter_700Bold,
     Inter_800ExtraBold,
     Inter_900Black,
+    Inter_900Black_Italic,
     BarlowCondensed_800ExtraBold_Italic,
   });
 

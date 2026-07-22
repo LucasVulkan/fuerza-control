@@ -619,7 +619,13 @@ export default function AppHeader() {
           hitSlop={12}
           style={styles.menuBtn}
         >
-          <Text style={styles.menuIcon}>≡</Text>
+          {/* Icono "Menu 2" de Figma: 3 barras redondeadas alineadas a la
+              derecha, anchos crecientes (16/20/24) — reconstruido con Views. */}
+          <View style={styles.menuIcon}>
+            <View style={[styles.menuBar, { width: 16 }]} />
+            <View style={[styles.menuBar, { width: 20 }]} />
+            <View style={[styles.menuBar, { width: 24 }]} />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -687,14 +693,12 @@ export default function AppHeader() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  // Header row
+  // Header row — sin línea divisoria (Figma: top y cuerpo sin separador)
   header: {
     flexDirection:     'row',
     alignItems:        'center',
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
   },
   appNameContainer: {
     flexDirection: 'row',
@@ -702,11 +706,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
     minWidth:      88,
   },
+  // "Forma" — Inter Black Italic 19px, tracking -1.14 (Figma logo)
   appNameForma: {
-    fontSize:      typography.xl,
-    fontWeight:    typography.heavy,
+    fontFamily:    'Inter_900Black_Italic',
+    fontSize:      19,
     color:         th.colors.text,
-    letterSpacing: 0.5,
+    letterSpacing: -1.14,
   },
   appNameFit: {
     fontSize:      typography.xl,
@@ -714,22 +719,29 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.accent,
     letterSpacing: 2,
   },
+  // Fecha — Inter Bold 10px, tracking 0.4, mutedLight (Figma)
   clockText: {
-    flex:       1,
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    textAlign:  'center',
-    letterSpacing: 0.3,
+    flex:          1,
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
+    color:         th.colors.mutedLight,
+    textAlign:     'center',
+    letterSpacing: 0.4,
   },
   menuBtn: {
     padding:  spacing.xs,
     minWidth: 36,
     alignItems: 'flex-end',
   },
+  // Icono "Menu 2": 3 barras redondeadas alineadas a la derecha, anchos 16/20/24
   menuIcon: {
-    fontSize:   26,
-    color:      th.colors.muted,
-    lineHeight: 28,
+    alignItems: 'flex-end',
+    gap:        2.6,
+  },
+  menuBar: {
+    height:       3.5,
+    borderRadius: 2,
+    backgroundColor: th.colors.text,
   },
 
   // Pending upload banner
