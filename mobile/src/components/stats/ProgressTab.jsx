@@ -1269,6 +1269,9 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      // Bloquea el scroll de la página mientras el dropdown está abierto para que
+      // el gesto lo capture el ScrollView interno del menú (no la página).
+      scrollEnabled={!dropOpen}
       refreshControl={onRefresh ? (
         <RefreshControl
           refreshing={refreshing}
