@@ -1171,8 +1171,10 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   }));
 
   function openDrop() {
+    // Nace pegado al borde inferior de la barra accent (sin gap) — el menú
+    // brota de la propia barra: mismo ancho y posición X exactos que ella.
     dropBtnRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-      setDropPos({ top: pageY + height + 4, left: pageX, width });
+      setDropPos({ top: pageY + height, left: pageX, width });
       setDropOpen(true);
     });
   }
@@ -1353,7 +1355,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       {/* ── Cabecera accent = selector multi-ejercicio (abre el desplegable) ── */}
       <TouchableOpacity
         ref={dropBtnRef}
-        style={styles.listToggle}
+        style={[styles.listToggle, dropOpen && styles.listToggleOpen]}
         onPress={dropOpen ? () => setDropOpen(false) : openDrop}
         activeOpacity={0.8}
       >
@@ -1381,14 +1383,14 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
               return (
                 <TouchableOpacity
                   key={id}
-                  style={styles.dropItem}
+                  style={[styles.dropItem, isSel && styles.dropItemSel]}
                   onPress={() => toggleEx(id)}
                   activeOpacity={0.75}
                 >
                   <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
                     {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
                   </View>
-                  <Text style={styles.dropItemText} numberOfLines={1}>{name}</Text>
+                  <Text style={[styles.dropItemText, isSel && styles.dropItemTextSel]} numberOfLines={1}>{name}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1464,7 +1466,7 @@ const makeStyles = (th) => StyleSheet.create({
   segmentedWrap: { width: 198 },
   programToggle: {
     backgroundColor:   th.colors.surface2,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
     borderRadius:      th.radius.sm,
   },
@@ -1562,41 +1564,53 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: '900',
     color:      th.colors.onAccent,
   },
+  // Barra con el dropdown abierto: esquinas inferiores rectas para fusionarse
+  // visualmente con el menú que brota debajo.
+  listToggleOpen: {
+    borderBottomLeftRadius:  0,
+    borderBottomRightRadius: 0,
+  },
 
-  // ── Exercise multiselect dropdown (se abre desde la barra accent) ───────────
+  // ── Exercise multiselect dropdown (brota de la barra accent) ────────────────
+  // Sin bordes (estilo FormaFit), fondo surface2, esquinas superiores rectas
+  // (continúan la barra) e inferiores redondeadas; sombra para separarlo del fondo.
   dropList: {
-    position:        'absolute',
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    overflow:        'hidden',
-    shadowColor:     '#000',
-    shadowOffset:    { width: 0, height: 4 },
-    shadowOpacity:   0.3,
-    shadowRadius:    8,
-    elevation:       10,
+    position:                'absolute',
+    backgroundColor:         th.colors.surface2,
+    borderBottomLeftRadius:  th.radius.sm,
+    borderBottomRightRadius: th.radius.sm,
+    overflow:                'hidden',
+    shadowColor:   '#000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius:  10,
+    elevation:     12,
   },
   dropItem: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingVertical:   spacing.sm + 2,
-    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
     gap:               spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
   },
+  dropItemSel: { backgroundColor: th.tint.accent10 },
   dropCheck: {
-    width: 16, height: 16, borderRadius: 3,
-    borderWidth: borders.thin, borderColor: th.colors.border,
-    backgroundColor: th.colors.surface2,
+    width: 18, height: 18, borderRadius: th.radius.xs,
+    borderWidth: borders.thin, borderColor: th.colors.muted,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  dropCheckMark:   { fontSize: 9, color: th.colors.bg, lineHeight: 11 },
-  dropItemText:    { flex: 1, fontSize: typography.base, color: th.colors.muted },
-  dropResetBtn:    { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, alignItems: 'center' },
-  dropResetText:   { fontSize: typography.sm, color: th.colors.muted },
+  dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
+  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropItemTextSel: { color: th.colors.text },
+  dropResetBtn: {
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems:        'center',
+    borderTopWidth:    borders.thin,
+    borderTopColor:    th.colors.surface,
+  },
+  dropResetText: { ...textStyles.spacingTag, textTransform: 'uppercase', color: th.colors.accent },
 
   // ── Exercise list ──────────────────────────────────────────────────────────
   exerciseList: { gap: spacing.xs, width: '100%' },
