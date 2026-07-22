@@ -662,25 +662,38 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
   });
-  const panResponder = useRef(
-    PanResponder.create({
+  // Dos responders que comparten el mismo arrastre: el del sheet (handle+header)
+  // y el del backdrop. Arrastrar en el backdrop mueve el sheet igual que el
+  // handle; un tap (sin desplazamiento) sobre el backdrop sí cierra. Así un
+  // swipe iniciado en el hueco superior no dispara el "tap = cerrar" al soltar.
+  const { sheetPan, backdropPan } = useRef((() => {
+    const onMove = (_, gs) => { if (gs.dy > 0) translateY.setValue(gs.dy); };
+    const settle = (gs) => {
+      if (gs.dy > 120 || gs.vy > 0.8) {
+        Animated.timing(translateY, {
+          toValue: 900, duration: 240, useNativeDriver: true,
+        }).start(() => { onClose(); });
+      } else {
+        Animated.spring(translateY, {
+          toValue: 0, useNativeDriver: true, tension: 80, friction: 10,
+        }).start();
+      }
+    };
+    const sheetPan = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gs) => {
-        if (gs.dy > 0) translateY.setValue(gs.dy);
-      },
+      onPanResponderMove: onMove,
+      onPanResponderRelease: (_, gs) => settle(gs),
+    });
+    const backdropPan = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: onMove,
       onPanResponderRelease: (_, gs) => {
-        if (gs.dy > 120 || gs.vy > 0.8) {
-          Animated.timing(translateY, {
-            toValue: 900, duration: 240, useNativeDriver: true,
-          }).start(() => { onClose(); });
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0, useNativeDriver: true, tension: 80, friction: 10,
-          }).start();
-        }
+        if (Math.abs(gs.dy) < 6 && Math.abs(gs.dx) < 6) { onClose(); return; }
+        settle(gs);
       },
-    })
-  ).current;
+    });
+    return { sheetPan, backdropPan };
+  })()).current;
 
   useEffect(() => {
     if (visible) {
@@ -809,7 +822,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
         style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.82)', opacity: backdropOpacity }]}
         pointerEvents="box-none"
       >
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <View style={StyleSheet.absoluteFillObject} {...backdropPan.panHandlers} />
       </Animated.View>
       {/* Layout shell — posiciona el sheet en la parte inferior */}
       <View style={styles.modalOverlay} pointerEvents="box-none">
@@ -818,7 +831,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
         >
           {/* Drag zone: handle indicator + header */}
           <View
-            {...panResponder.panHandlers}
+            {...sheetPan.panHandlers}
             onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
           >
             <View style={styles.dragHandleWrap}>
