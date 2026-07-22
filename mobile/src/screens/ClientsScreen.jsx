@@ -2731,7 +2731,7 @@ export default function ClientsScreen() {
         <FlatList
           data={clientList}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl + insets.bottom }}
+          contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl + insets.bottom }}
           refreshControl={
             <RefreshControl
               refreshing={refreshingList}
@@ -3911,7 +3911,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cCounters: {
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'flex-end',
     flexWrap:      'wrap',
     paddingRight:  110,
   },
