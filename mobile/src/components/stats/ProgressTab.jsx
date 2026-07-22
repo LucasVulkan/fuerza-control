@@ -18,7 +18,7 @@ import {
   StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl,
 } from 'react-native';
 import Reanimated, {
-  FadeIn, FadeOut, LinearTransition,
+  LinearTransition,
   useSharedValue, useAnimatedStyle, withTiming, interpolate,
 } from 'react-native-reanimated';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
@@ -1116,7 +1116,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
             {`${sessionsCount} ${sessionsCount === 1 ? 'sesión' : 'sesiones'}`}
             {improvePct !== null && (
               <Text>
-                {' - '}
+                {' · '}
                 <Text style={{ color: improvePct >= 0 ? th.colors.accent : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
@@ -1156,16 +1156,16 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const [selectedExIds, setSelectedExIds] = useState(new Set());
   const [dropOpen,      setDropOpen]      = useState(false);
   const [dropPos,       setDropPos]       = useState({ top: 0, left: 0, width: 300 });
-  const [listOpen,      setListOpen]      = useState(true);
   const dropBtnRef = useRef(null);
 
   useEffect(() => { setSelectedExIds(new Set()); setDropOpen(false); }, [scope, period]);
 
-  // Chevron de la barra "BUSCAR EJERCICIOS" — rota al colapsar/expandir.
+  // Chevron de la barra "BUSCAR EJERCICIOS" — rota cuando el desplegable de
+  // selección de ejercicios está abierto (la barra ES el selector multi-ejercicio).
   const chevronRot = useSharedValue(0);
   useEffect(() => {
-    chevronRot.value = withTiming(listOpen ? 1 : 0, { duration: 180 });
-  }, [listOpen, chevronRot]);
+    chevronRot.value = withTiming(dropOpen ? 1 : 0, { duration: 180 });
+  }, [dropOpen, chevronRot]);
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 90])}deg` }],
   }));
@@ -1287,6 +1287,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         />
       ) : undefined}
     >
+      {/* ── Grupo control + cards (Figma 122:899: gap 15, py 10) ──────────────── */}
+      <View style={styles.headerGroup}>
       {/* ── Fila de control: período + toggle programa ──────────────────────── */}
       <View style={styles.controlRow}>
         <View style={styles.segmentedWrap}>
@@ -1335,6 +1337,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           </Text>
         </View>
       </View>
+      </View>
 
       {/* ── Búsqueda ──────────────────────────────────────────────────────── */}
       <TextInput
@@ -1347,120 +1350,94 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         autoCapitalize="none"
       />
 
-      {/* ── Cabecera accent colapsable ────────────────────────────────────── */}
+      {/* ── Cabecera accent = selector multi-ejercicio (abre el desplegable) ── */}
       <TouchableOpacity
+        ref={dropBtnRef}
         style={styles.listToggle}
-        onPress={() => setListOpen((o) => !o)}
+        onPress={dropOpen ? () => setDropOpen(false) : openDrop}
         activeOpacity={0.8}
       >
         <Text style={styles.listToggleLabel}>BUSCAR EJERCICIOS</Text>
         <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
       </TouchableOpacity>
 
-      {listOpen && (
-        <Reanimated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(150)}
-          style={styles.collapsibleSection}
-        >
-          {/* Selector multi-ejercicio */}
-          {!search.trim() && exercisesWithLogs.length > 0 && (
-            <View style={styles.dropWrapper}>
-              <TouchableOpacity
-                ref={dropBtnRef}
-                style={styles.dropBtn}
-                onPress={dropOpen ? () => setDropOpen(false) : openDrop}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.dropBtnText}>
-                  {selectedExIds.size === 0
-                    ? 'Todos los ejercicios'
-                    : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
-                </Text>
-                <Text style={styles.dropArrow}>{dropOpen ? '▴' : '▾'}</Text>
-              </TouchableOpacity>
-
-              {/* Modal so the list floats over ALL content without stealing scroll from the parent */}
-              <Modal
-                visible={dropOpen}
-                transparent
-                animationType="none"
-                onRequestClose={() => setDropOpen(false)}
-              >
-                {/* Backdrop — closes on tap outside */}
-                <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
-                <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
-                  <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-                    {exercisesWithLogs.map((id) => {
-                      const def  = allExercises[id];
-                      const name = def
-                        ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
-                        : id;
-                      const isSel = selectedExIds.has(id);
-                      return (
-                        <TouchableOpacity
-                          key={id}
-                          style={styles.dropItem}
-                          onPress={() => toggleEx(id)}
-                          activeOpacity={0.75}
-                        >
-                          <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
-                            {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
-                          </View>
-                          <Text style={styles.dropItemText} numberOfLines={1}>{name}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                  {selectedExIds.size > 0 && (
-                    <TouchableOpacity
-                      style={styles.dropResetBtn}
-                      onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.dropResetText}>Restablecer selección</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </Modal>
-            </View>
+      {/* Desplegable multi-ejercicio — flota sobre el contenido (posicionado bajo la barra) */}
+      <Modal
+        visible={dropOpen}
+        transparent
+        animationType="none"
+        onRequestClose={() => setDropOpen(false)}
+      >
+        {/* Backdrop — closes on tap outside */}
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
+        <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+            {exercisesWithLogs.map((id) => {
+              const def  = allExercises[id];
+              const name = def
+                ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
+                : id;
+              const isSel = selectedExIds.has(id);
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={styles.dropItem}
+                  onPress={() => toggleEx(id)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
+                    {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.dropItemText} numberOfLines={1}>{name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          {selectedExIds.size > 0 && (
+            <TouchableOpacity
+              style={styles.dropResetBtn}
+              onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.dropResetText}>Restablecer selección</Text>
+            </TouchableOpacity>
           )}
+        </View>
+      </Modal>
 
-          {/* Lista de ejercicios */}
-          {displayedExercises.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📈</Text>
-              <Text style={styles.emptyText}>
-                {baseLog.length === 0
-                  ? 'Completa tu primera sesión para ver el progreso aquí.'
-                  : search.trim()
-                    ? 'Sin coincidencias para esa búsqueda.'
-                    : 'Sin datos para el filtro seleccionado.'}
-              </Text>
-            </View>
-          ) : (
-            <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
-              {displayedExercises.map((exerciseId, idx) => {
-                const def        = allExercises[exerciseId];
-                const periodLogs = getExerciseLogsFrom(exerciseId, filteredLog);
-                const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
-                const rawLogs    = getExerciseLogsFrom(exerciseId, baseLog);
-                return (
-                  <ExerciseStatCard
-                    key={exerciseId}
-                    exerciseId={exerciseId}
-                    def={def}
-                    allLogs={allLogs}
-                    periodLogs={periodLogs}
-                    rawLogs={rawLogs}
-                    programTemplateIds={programTemplateIds}
-                    isFirst={idx === 0}
-                    isLast={idx === displayedExercises.length - 1}
-                  />
-                );
-              })}
-            </Reanimated.View>
-          )}
+      {/* Lista de ejercicios (siempre visible) */}
+      {displayedExercises.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>📈</Text>
+          <Text style={styles.emptyText}>
+            {baseLog.length === 0
+              ? 'Completa tu primera sesión para ver el progreso aquí.'
+              : search.trim()
+                ? 'Sin coincidencias para esa búsqueda.'
+                : 'Sin datos para el filtro seleccionado.'}
+          </Text>
+        </View>
+      ) : (
+        <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
+          {displayedExercises.map((exerciseId, idx) => {
+            const def        = allExercises[exerciseId];
+            const periodLogs = getExerciseLogsFrom(exerciseId, filteredLog);
+            const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
+            const rawLogs    = getExerciseLogsFrom(exerciseId, baseLog);
+            return (
+              <ExerciseStatCard
+                key={exerciseId}
+                exerciseId={exerciseId}
+                def={def}
+                allLogs={allLogs}
+                periodLogs={periodLogs}
+                rawLogs={rawLogs}
+                programTemplateIds={programTemplateIds}
+                isFirst={idx === 0}
+                isLast={idx === displayedExercises.length - 1}
+              />
+            );
+          })}
         </Reanimated.View>
       )}
     </ScrollView>
@@ -1471,7 +1448,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.md },
+  // Página Figma (122:789): padding lateral space/lg (15), gap space/md (10).
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
+
+  // Grupo control+cards (Figma 122:899): gap space/lg (15) + padding vertical space/md (10).
+  headerGroup: { width: '100%', gap: spacing.lg, paddingVertical: spacing.md },
 
   // ── Control row: segmented período + toggle programa ─────────────────────────
   controlRow: {
@@ -1526,7 +1507,8 @@ const makeStyles = (th) => StyleSheet.create({
   scopeToggleTextActive: { color: th.colors.accent },
 
   // ── Progress cards (SESIONES · CARGA · VOLUMEN) ───────────────────────────────
-  statsGrid: { flexDirection: 'row', gap: spacing.md, width: '100%' },
+  // Figma 122:893: gap 10, altura fija 108, cards centradas (hug) en la fila.
+  statsGrid: { flexDirection: 'row', gap: spacing.md, width: '100%', height: 108, alignItems: 'center' },
   statTile: {
     flex:              1,
     backgroundColor:   th.colors.surface,
@@ -1580,23 +1562,8 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: '900',
     color:      th.colors.onAccent,
   },
-  collapsibleSection: { gap: spacing.md, width: '100%' },
 
-  // ── Exercise dropdown selector ─────────────────────────────────────────────
-  dropWrapper: { zIndex: 100, elevation: 10 },
-  dropBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface,
-  },
-  dropBtnText: { fontSize: typography.base, color: th.colors.muted, fontWeight: typography.regular, flex: 1 },
-  dropArrow:   { fontSize: 10, color: th.colors.muted, marginLeft: spacing.sm },
+  // ── Exercise multiselect dropdown (se abre desde la barra accent) ───────────
   dropList: {
     position:        'absolute',
     borderRadius:    th.radius.sm,
