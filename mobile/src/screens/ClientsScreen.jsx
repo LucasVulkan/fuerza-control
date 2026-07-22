@@ -1251,13 +1251,13 @@ function ClientListCard({
         </Text>
       </View>
 
-      {/* Menú "···" — anclado a la esquina superior derecha de la card
-          (Figma: top 10, right 15), independiente del flujo del nombre */}
+      {/* Menú "···" — anclado a la esquina superior derecha de la card,
+          independiente del flujo del nombre */}
       <TouchableOpacity onPress={onOpenActions} hitSlop={10} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
-        <Svg width={15} height={3} viewBox="0 0 15 3">
-          <Circle cx={1.5} cy={1.5} r={1.5} fill="#D9D9D9" />
-          <Circle cx={7.5} cy={1.5} r={1.5} fill="#D9D9D9" />
-          <Circle cx={13.5} cy={1.5} r={1.5} fill="#D9D9D9" />
+        <Svg width={20} height={4} viewBox="0 0 20 4">
+          <Circle cx={2}  cy={2} r={2} fill="#D9D9D9" />
+          <Circle cx={10} cy={2} r={2} fill="#D9D9D9" />
+          <Circle cx={18} cy={2} r={2} fill="#D9D9D9" />
         </Svg>
       </TouchableOpacity>
 
@@ -3772,13 +3772,14 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted2,
     flexShrink: 0,
   },
-  // Menú "···" — anclado a la esquina superior derecha de la card (Figma:
-  // top 10 / right 15), 3 puntos SVG sólidos (#D9D9D9 literal, sin token del
-  // tema que coincida con este gris concreto)
+  // Menú "···" — anclado a la esquina superior derecha de la card. 25/25
+  // literal (sin token exacto): la posición de Figma (top 10/right 15) es
+  // la de la CAJA del icono, no la de los puntos visibles, que quedan
+  // inset dentro de ella — mismo caso que el bullet verde de cStatusDot.
   cInfoBtnWrap: {
     position: 'absolute',
-    top:      spacing.md,
-    right:    spacing.lg,
+    top:      25,
+    right:    25,
   },
   cInfoBtn: {
     fontSize:   typography.sm,
