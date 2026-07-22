@@ -1237,7 +1237,7 @@ function ClientListCard({
   return (
     <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
 
-      {/* ── Row 1: Name · streak · date · Info → ── */}
+      {/* ── Row 1: Name · streak · date ── */}
       <View style={styles.cRow1}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         {adherence?.streak >= 2 && (
@@ -1249,14 +1249,17 @@ function ClientListCard({
         ]}>
           {lastStr}
         </Text>
-        <TouchableOpacity onPress={onOpenActions} hitSlop={8} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
-          <View style={styles.cMoreDots}>
-            <View style={styles.cMoreDot} />
-            <View style={styles.cMoreDot} />
-            <View style={styles.cMoreDot} />
-          </View>
-        </TouchableOpacity>
       </View>
+
+      {/* Menú "···" — anclado a la esquina superior derecha de la card
+          (Figma: top 10, right 15), independiente del flujo del nombre */}
+      <TouchableOpacity onPress={onOpenActions} hitSlop={10} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
+        <Svg width={15} height={3} viewBox="0 0 15 3">
+          <Circle cx={1.5} cy={1.5} r={1.5} fill="#D9D9D9" />
+          <Circle cx={7.5} cy={1.5} r={1.5} fill="#D9D9D9" />
+          <Circle cx={13.5} cy={1.5} r={1.5} fill="#D9D9D9" />
+        </Svg>
+      </TouchableOpacity>
 
       {activeProgram ? (
         /* ── Program block: column layout so name spans full card width ── */
@@ -3767,27 +3770,18 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted2,
     flexShrink: 0,
   },
+  // Menú "···" — anclado a la esquina superior derecha de la card (Figma:
+  // top 10 / right 15), 3 puntos SVG sólidos (#D9D9D9 literal, sin token del
+  // tema que coincida con este gris concreto)
   cInfoBtnWrap: {
-    marginLeft: 'auto',
-    flexShrink: 0,
+    position: 'absolute',
+    top:      spacing.md,
+    right:    spacing.lg,
   },
   cInfoBtn: {
     fontSize:   typography.sm,
     color:      th.colors.accent,
     fontWeight: typography.semibold,
-  },
-  // Menú "···" — 3 puntos sólidos (fidelidad Figma: size-[3px], gap 3, #D9D9D9
-  // literal, no hay token del tema que coincida con este gris concreto)
-  cMoreDots: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           3,
-  },
-  cMoreDot: {
-    width:           3,
-    height:          3,
-    borderRadius:    1.5,
-    backgroundColor: '#D9D9D9',
   },
   // Global pending-uploads banner
   pendingBanner: {
@@ -3849,16 +3843,15 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.bold,
     color:      th.colors.onAccent,
   },
-  // Program block — rows 2+3+4 grouped with tight gap
+  // Program block — rows 2+3+4 apiladas sin gap (Figma: flex-col sin gap-*)
   cProgramBlock: {
     flexDirection: 'column',
-    gap:           2,
   },
-  // Row 2: status dot · program · stage
+  // Row 2: status dot · program · stage (Figma: gap space/xs = 2)
   cRow2: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           6,
+    gap:           spacing.xs,
   },
   cStatusDot: {
     width:           8,
@@ -3914,7 +3907,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     flexWrap:      'wrap',
-    gap:           3,
     paddingRight:  110,
   },
   cWeekNum: {
