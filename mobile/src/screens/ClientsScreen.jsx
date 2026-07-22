@@ -3772,14 +3772,14 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted2,
     flexShrink: 0,
   },
-  // Menú "···" — anclado a la esquina superior derecha de la card. Literal
-  // (sin token exacto): la posición de Figma (top 10/right 15) es la de la
-  // CAJA del icono, no la de los puntos visibles, que quedan inset dentro
-  // de ella — mismo caso que el bullet verde de cStatusDot.
+  // Menú "···" — anclado a la esquina superior derecha de la card. La
+  // posición de Figma (top 10/right 15) es la de la CAJA del icono, no la
+  // de los puntos visibles, que quedan inset dentro de ella — mismo caso
+  // que el bullet verde de cStatusDot.
   cInfoBtnWrap: {
     position: 'absolute',
     top:      15,
-    right:    25,
+    right:    spacing.xl,
   },
   cInfoBtn: {
     fontSize:   typography.sm,
