@@ -834,10 +834,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap: 0,
   },
 
-  // "Sesión A" tag line — siempre en accent, sin color por-programa (Figma no
-  // distingue color de sesión por programa)
+  // "Sesión A" tag line — Figma text/spacing-tag (Inter ExtraBold 10px,
+  // tracking 2px), NO card-type; siempre en accent, sin color por-programa
+  // (Figma no distingue color de sesión por programa — el #b8ff00 suelto del
+  // mock es un bug conocido, en código va a color/accent).
   cardSesTag: {
-    ...textStyles.cardType,
+    ...textStyles.spacingTag,
     textTransform: 'uppercase',
     color:         th.colors.accent,
   },
