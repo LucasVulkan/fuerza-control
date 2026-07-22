@@ -3853,12 +3853,15 @@ const makeStyles = (th) => StyleSheet.create({
   cRow2: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
+    gap:           spacing.xs2,
   },
+  // Bullet — en Figma el círculo visible (~3.69px) vive centrado dentro de
+  // una caja invisible de 8px (icono con hit-box de sobra); replicamos solo
+  // el círculo real, no la caja.
   cStatusDot: {
-    width:           8,
-    height:          8,
-    borderRadius:    4,
+    width:           3.69,
+    height:          3.69,
+    borderRadius:    1.85,
     backgroundColor: th.colors.accent,
     flexShrink:      0,
   },
@@ -3933,7 +3936,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row',
     gap:           5,
     alignItems:    'center',
-    marginLeft:    spacing.xs,
+    marginLeft:    spacing.sm,
   },
   cDot: {
     width:        8,
