@@ -1447,7 +1447,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   // Página Figma (122:789): padding lateral space/lg (15), gap space/md (10).
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
+  // Sin paddingTop propio: el headerGroup ya aporta 10px bajo el top bar.
+  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
 
   // Grupo control+cards (Figma 122:899): gap space/lg (15) + padding vertical space/md (10).
   headerGroup: { width: '100%', gap: spacing.lg, paddingVertical: spacing.md },
