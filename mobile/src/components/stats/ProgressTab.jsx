@@ -1155,8 +1155,6 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const [search,        setSearch]        = useState('');
   const [selectedExIds, setSelectedExIds] = useState(new Set());
   const [dropOpen,      setDropOpen]      = useState(false);
-  const [dropPos,       setDropPos]       = useState({ top: 0, left: 0, width: 300 });
-  const dropBtnRef = useRef(null);
 
   useEffect(() => { setSelectedExIds(new Set()); setDropOpen(false); }, [scope, period]);
 
@@ -1169,15 +1167,6 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 90])}deg` }],
   }));
-
-  function openDrop() {
-    // Nace pegado al borde inferior de la barra accent (sin gap) — el menú
-    // brota de la propia barra: mismo ancho y posición X exactos que ella.
-    dropBtnRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-      setDropPos({ top: pageY + height, left: pageX, width });
-      setDropOpen(true);
-    });
-  }
 
   function toggleEx(id) {
     setSelectedExIds((prev) => {
@@ -1352,60 +1341,56 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         autoCapitalize="none"
       />
 
-      {/* ── Cabecera accent = selector multi-ejercicio (abre el desplegable) ── */}
-      <TouchableOpacity
-        ref={dropBtnRef}
-        style={[styles.listToggle, dropOpen && styles.listToggleOpen]}
-        onPress={dropOpen ? () => setDropOpen(false) : openDrop}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.listToggleLabel}>BUSCAR EJERCICIOS</Text>
-        <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
-      </TouchableOpacity>
+      {/* ── Cabecera accent = selector multi-ejercicio ─────────────────────────
+          El desplegable se ancla inline al borde inferior de la barra (top:'100%')
+          — nace pegado a ella y se mantiene pegado al hacer scroll, sin Modal ni
+          medición de coordenadas (que causaba el gap por el offset de status bar). */}
+      <View style={styles.dropAnchor}>
+        <TouchableOpacity
+          style={[styles.listToggle, dropOpen && styles.listToggleOpen]}
+          onPress={() => { if (exercisesWithLogs.length > 0) setDropOpen((o) => !o); }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.listToggleLabel}>BUSCAR EJERCICIOS</Text>
+          <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
+        </TouchableOpacity>
 
-      {/* Desplegable multi-ejercicio — flota sobre el contenido (posicionado bajo la barra) */}
-      <Modal
-        visible={dropOpen}
-        transparent
-        animationType="none"
-        onRequestClose={() => setDropOpen(false)}
-      >
-        {/* Backdrop — closes on tap outside */}
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
-        <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-            {exercisesWithLogs.map((id) => {
-              const def  = allExercises[id];
-              const name = def
-                ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
-                : id;
-              const isSel = selectedExIds.has(id);
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.dropItem, isSel && styles.dropItemSel]}
-                  onPress={() => toggleEx(id)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
-                    {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.dropItemText, isSel && styles.dropItemTextSel]} numberOfLines={1}>{name}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          {selectedExIds.size > 0 && (
-            <TouchableOpacity
-              style={styles.dropResetBtn}
-              onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.dropResetText}>Restablecer selección</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </Modal>
+        {dropOpen && (
+          <View style={styles.dropList}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }} nestedScrollEnabled>
+              {exercisesWithLogs.map((id) => {
+                const def  = allExercises[id];
+                const name = def
+                  ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
+                  : id;
+                const isSel = selectedExIds.has(id);
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.dropItem, isSel && styles.dropItemSel]}
+                    onPress={() => toggleEx(id)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
+                      {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
+                    </View>
+                    <Text style={[styles.dropItemText, isSel && styles.dropItemTextSel]} numberOfLines={1}>{name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            {selectedExIds.size > 0 && (
+              <TouchableOpacity
+                style={styles.dropResetBtn}
+                onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.dropResetText}>Restablecer selección</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* Lista de ejercicios (siempre visible) */}
       {displayedExercises.length === 0 ? (
@@ -1572,10 +1557,17 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Exercise multiselect dropdown (brota de la barra accent) ────────────────
+  // Anclado inline: el contenedor da el contexto de posición y se eleva sobre
+  // la lista de abajo; el menú cuelga de su borde inferior con top:'100%'.
+  dropAnchor: { width: '100%', zIndex: 100 },
   // Sin bordes (estilo FormaFit), fondo surface2, esquinas superiores rectas
   // (continúan la barra) e inferiores redondeadas; sombra para separarlo del fondo.
   dropList: {
     position:                'absolute',
+    top:                     '100%',
+    left:                    0,
+    right:                   0,
+    zIndex:                  100,
     backgroundColor:         th.colors.surface2,
     borderBottomLeftRadius:  th.radius.sm,
     borderBottomRightRadius: th.radius.sm,
