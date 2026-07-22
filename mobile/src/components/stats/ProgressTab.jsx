@@ -25,7 +25,7 @@ import Reanimated, {
 // scroll correctamente aun anidado en la ScrollView de la página (el ScrollView
 // de core RN no lo hace dentro de una vista absoluta).
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
-import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { G, Circle, Line, Rect, Path, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -42,6 +42,16 @@ import SegmentedControl  from '../ui/SegmentedControl';
 
 const AnimatedLine   = Animated.createAnimatedComponent(Line);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// Chevron fino hacia abajo (barras accent tipo "Bars" de Figma). Se rota 180º
+// vía el wrapper animado cuando el desplegable está abierto (apunta arriba).
+function ChevronDown({ size = 12, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <Path d="M2.5 4.5 L6 8 L9.5 4.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -580,7 +590,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const pickerAnim     = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
 
-  const arrowRotation    = pickerAnim.interpolate({ inputRange: [0, 1], outputRange: ['90deg', '-90deg'] });
+  const arrowRotation    = pickerAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
   const pickerTranslateY = pickerAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0], extrapolate: 'clamp' });
 
   function openPicker() {
@@ -821,9 +831,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 activeOpacity={0.85}
               >
                 <Text style={styles.exBarTitle} numberOfLines={1}>{name}</Text>
-                <Animated.Text style={[styles.exBarChevron, { transform: [{ rotate: arrowRotation }] }]}>
-                  ›
-                </Animated.Text>
+                <Animated.View style={{ transform: [{ rotate: arrowRotation }] }}>
+                  <ChevronDown size={12} color={th.colors.onAccent} />
+                </Animated.View>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.modalCloseBtn}>
                 <Text style={styles.modalCloseText}>✕</Text>
@@ -892,7 +902,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 {e1rmData ? (
                   <>
                     <View style={styles.statValueBlock}>
-                      <Text style={[styles.statValue, { color: th.colors.accent }]}>
+                      <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                         {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
                       </Text>
                       <Text style={styles.statLabel}>1RM</Text>
@@ -904,7 +914,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 ) : (
                   <>
                     <View style={styles.statValueBlock}>
-                      <Text style={[styles.statValue, { color: th.colors.accent }]}>{prDisplay ?? '—'}</Text>
+                      <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{prDisplay ?? '—'}</Text>
                       <Text style={styles.statLabel}>PR</Text>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
@@ -913,14 +923,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               </View>
               <View style={styles.statTile}>
                 <View style={styles.statValueBlock}>
-                  <Text style={[styles.statValue, { color: loadImpColor }]}>{loadImpStr}</Text>
+                  <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
                   <Text style={styles.statLabel}>CARGA</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </View>
               <View style={styles.statTile}>
                 <View style={styles.statValueBlock}>
-                  <Text style={[styles.statValue, { color: volImpColor }]}>{volImpStr}</Text>
+                  <Text style={[styles.statValue, { color: volImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volImpStr}</Text>
                   <Text style={styles.statLabel}>VOLUMEN</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
@@ -941,7 +951,6 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
             {/* Lista de sesiones — "listed items" agrupados, desglose por bloque de peso */}
             <View style={styles.modalSesSection}>
-              <Text style={styles.modalSesSectionLabel}>SESIONES</Text>
               {sessionDeltas.length === 0 ? (
                 <Text style={styles.modalSesEmpty}>Sin sesiones en este período.</Text>
               ) : (
@@ -981,6 +990,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                             )}
                           </View>
                         </View>
+                        <View style={styles.sesWeightGroup}>
                         {groupSetsByWeight(exercise?.sets ?? []).map((group, gi) => (
                           <View key={gi} style={styles.sesWeightRow}>
                             <View style={styles.sesWeightCol}>
@@ -1032,6 +1042,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                             </View>
                           </View>
                         ))}
+                        </View>
                       </View>
                     );
                   })}
@@ -1154,7 +1165,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
     chevronRot.value = withTiming(dropOpen ? 1 : 0, { duration: 180 });
   }, [dropOpen, chevronRot]);
   const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 90])}deg` }],
+    transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 180])}deg` }],
   }));
 
   function toggleEx(id) {
@@ -1294,7 +1305,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       <View style={styles.statsGrid}>
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
-            <Text style={[styles.statValue, { color: th.colors.accent }]}>{String(filteredLog.length)}</Text>
+            <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{String(filteredLog.length)}</Text>
             <Text style={styles.statLabel}>SESIONES</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
@@ -1303,7 +1314,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         </View>
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
-            <Text style={[styles.statValue, { color: improveColor }]}>{improveStr}</Text>
+            <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
             <Text style={styles.statLabel}>CARGA</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
@@ -1312,7 +1323,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         </View>
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
-            <Text style={[styles.statValue, { color: volColor }]}>{volStr}</Text>
+            <Text style={[styles.statValue, { color: volColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volStr}</Text>
             <Text style={styles.statLabel}>VOLUMEN</Text>
           </View>
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
@@ -1348,7 +1359,9 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
               ? 'Filtrar ejercicios'
               : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
           </Text>
-          <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
+          <Reanimated.View style={chevronStyle}>
+            <ChevronDown size={12} color={th.colors.onAccent} />
+          </Reanimated.View>
         </TouchableOpacity>
 
         {dropOpen && (
@@ -1641,11 +1654,9 @@ const makeStyles = (th) => StyleSheet.create({
   modalHeader: {
     flexDirection:     'row',
     alignItems:        'stretch',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingBottom:     spacing.md,
     gap:               spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
   },
   modalTitleBtn: {
     flex:              1,
@@ -1748,21 +1759,24 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     justifyContent:    'space-between',
     alignItems:        'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
-    paddingBottom:     spacing.sm,
   },
 
+  // Mismo aire alrededor de las cards que en Progress: 15 arriba, 15 lateral.
   modalStatsRow: {
     flexDirection:     'row',
     gap:               spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     height:            108,
     alignItems:        'center',
+    marginTop:         spacing.lg,
+    marginBottom:      spacing.md,
   },
 
   // Lista agrupada de sesiones (listed items)
   modalSesList: { gap: spacing.xs },
+  sesWeightGroup: { width: '100%', gap: spacing.xs },
   sesItem: {
     backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.lg,
@@ -1777,7 +1791,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Fila peso → pills (desglosada)
   sesWeightRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  sesWeightCol:  { width: 46 },
+  sesWeightCol:  { minWidth: 46 }, // minWidth (no width fija) para no cortar pesos largos ("45.5 kg")
   sesWeightText: { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', textAlign: 'right' },
   sesWeightNum:  { color: th.colors.accent },
   sesWeightUnit: { color: th.colors.text },
@@ -1828,14 +1842,11 @@ const makeStyles = (th) => StyleSheet.create({
   modalStatLabel: { fontSize: typography.xs, color: th.colors.muted2, letterSpacing: 0.4 },
   modalStatSub:   { fontSize: 9, color: th.colors.muted, marginTop: 2 },
 
-  // Chart
+  // Chart — sin línea divisoria arriba (Figma no la tiene)
   chartSection: {
-    borderTopWidth:    borders.thin,
-    borderTopColor:    th.colors.border,
-    padding:           spacing.xl,
-    paddingHorizontal: spacing.xl,
-    gap:               spacing.sm,
-    marginTop:         spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap:               spacing.md,
+    marginBottom:      spacing.md,
   },
   chartControls: {
     flexDirection:  'row',
@@ -1856,7 +1867,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Modal session list
   modalSesSection: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingBottom:     spacing.md,
   },
   modalSesSectionLabel: {
