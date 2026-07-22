@@ -563,7 +563,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { i18n } = useTranslation();
-  const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight } = useWeightUnit();
+  const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight, unit } = useWeightUnit();
+  const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
 
   const [modalPeriod, setModalPeriod] = useState('all');
   const [modalScope,  setModalScope]  = useState('all');
@@ -802,7 +803,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const prAgoStr  = timeAgo(prData?.timestamp);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       {/* Backdrop — opacidad sincronizada con el gesto de arrastre */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.82)', opacity: backdropOpacity }]}
@@ -990,56 +991,56 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                             )}
                           </View>
                         </View>
-                        <View style={styles.sesWeightGroup}>
+                        <View style={styles.sesPills}>
                         {groupSetsByWeight(exercise?.sets ?? []).map((group, gi) => (
-                          <View key={gi} style={styles.sesWeightRow}>
-                            <View style={styles.sesWeightCol}>
-                              {group.weight ? (
-                                <Text style={styles.sesWeightText} numberOfLines={1}>
+                          <View key={gi} style={styles.sesGroup}>
+                            {group.weight ? (
+                              <View style={styles.sesWeightPill}>
+                                <Text style={styles.sesWeightText}>
                                   <Text style={styles.sesWeightNum}>{fmtAxisVal(wDisplay(group.weight))}</Text>
-                                  <Text style={styles.sesWeightUnit}>{` ${weightLabel}`}</Text>
+                                  <Text style={styles.sesWeightUnit}>{unitLabel}</Text>
+                                  <Text style={styles.sesWeightX}>{' x'}</Text>
                                 </Text>
-                              ) : null}
-                            </View>
-                            <View style={styles.sesPillsRow}>
-                              {group.sets.map((s, i) => {
-                                const variant = getPillVariant(s, exCfg);
-                                const { main, rpeNum } = buildSetLabel(s, i, fmtWeight, true);
-                                return (
-                                  <View
-                                    key={i}
+                              </View>
+                            ) : null}
+                            {group.sets.map((s, i) => {
+                              const variant = getPillVariant(s, exCfg);
+                              const { main, rpeNum } = buildSetLabel(s, i, fmtWeight, true);
+                              return (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.sesPill,
+                                    variant === 'done'    && styles.sesPillDone,
+                                    variant === 'partial' && styles.sesPillPartial,
+                                  ]}
+                                >
+                                  <Text
                                     style={[
-                                      styles.sesPill,
-                                      variant === 'done'    && styles.sesPillDone,
-                                      variant === 'partial' && styles.sesPillPartial,
+                                      styles.sesPillText,
+                                      variant === 'done'    && styles.sesPillTextDone,
+                                      variant === 'partial' && styles.sesPillTextPartial,
                                     ]}
                                   >
-                                    <Text>
-                                      <Text
-                                        style={[
-                                          styles.sesPillMain,
-                                          variant === 'done'    && styles.sesPillMainDone,
-                                          variant === 'partial' && styles.sesPillMainPartial,
-                                        ]}
-                                      >
-                                        {main}
-                                      </Text>
-                                      {rpeNum ? (
+                                    {main}
+                                    {rpeNum ? (
+                                      <>
                                         <Text
                                           style={[
-                                            styles.sesPillRpe,
-                                            variant === 'done'    && styles.sesPillRpeDone,
-                                            variant === 'partial' && styles.sesPillRpePartial,
+                                            styles.sesPillRpeAt,
+                                            variant === 'done'    && styles.sesPillRpeAtDone,
+                                            variant === 'partial' && styles.sesPillRpeAtPartial,
                                           ]}
                                         >
-                                          {`@${rpeNum}`}
+                                          @
                                         </Text>
-                                      ) : null}
-                                    </Text>
-                                  </View>
-                                );
-                              })}
-                            </View>
+                                        {rpeNum}
+                                      </>
+                                    ) : null}
+                                  </Text>
+                                </View>
+                              );
+                            })}
                           </View>
                         ))}
                         </View>
@@ -1334,15 +1335,22 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       </View>
 
       {/* ── Búsqueda ──────────────────────────────────────────────────────── */}
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Buscar ejercicio..."
-        placeholderTextColor={th.colors.mutedLight}
-        value={search}
-        onChangeText={setSearch}
-        autoCorrect={false}
-        autoCapitalize="none"
-      />
+      <View style={styles.searchBar}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar ejercicio..."
+          placeholderTextColor={th.colors.mutedLight}
+          value={search}
+          onChangeText={setSearch}
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity style={styles.searchClear} onPress={() => setSearch('')} hitSlop={8}>
+            <Text style={styles.searchClearText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* ── Cabecera accent = selector multi-ejercicio ─────────────────────────
           El desplegable se ancla inline al borde inferior de la barra (top:'100%')
@@ -1528,15 +1536,26 @@ const makeStyles = (th) => StyleSheet.create({
   statSub: { ...textStyles.tag, textAlign: 'center' },
 
   // ── Search ─────────────────────────────────────────────────────────────────
+  searchBar: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
+    width:           '100%',
+  },
   searchInput: {
     ...textStyles.subtitle,
-    backgroundColor:   th.colors.surface2,
+    flex:              1,
     color:             th.colors.text,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    borderRadius:      th.radius.sm,
-    width:             '100%',
   },
+  searchClear: {
+    paddingHorizontal: spacing.lg,
+    alignSelf:         'stretch',
+    justifyContent:    'center',
+  },
+  searchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
 
   // ── Cabecera accent colapsable ─────────────────────────────────────────────
   listToggle: {
@@ -1776,7 +1795,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Lista agrupada de sesiones (listed items)
   modalSesList: { gap: spacing.xs },
-  sesWeightGroup: { width: '100%', gap: spacing.xs },
   sesItem: {
     backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.lg,
@@ -1789,24 +1807,28 @@ const makeStyles = (th) => StyleSheet.create({
   sesHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   sesDelta:       { ...textStyles.cardType },
 
-  // Fila peso → pills (desglosada)
-  sesWeightRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  sesWeightCol:  { minWidth: 46 }, // minWidth (no width fija) para no cortar pesos largos ("45.5 kg")
-  sesWeightText: { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', textAlign: 'right' },
+  // Series: mismo sistema que History — grupos (peso + pills) que fluyen y se
+  // envuelven como unidad, con más gap entre grupos que dentro de uno.
+  sesPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  sesGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+
+  // Peso — sin fondo, tres spans ("80" / "Kg" / " x"), pegado a sus pills.
+  sesWeightPill: { paddingLeft: spacing.sm, paddingVertical: spacing.sm },
+  sesWeightText: { ...textStyles.tag },
   sesWeightNum:  { color: th.colors.accent },
   sesWeightUnit: { color: th.colors.text },
-  sesPillsRow:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.sm, flexShrink: 1 },
+  sesWeightX:    { color: th.colors.mutedLight },
 
   // Pills reps@RPE — color por rango (como History): done=accent, partial=orange, neutra=gris
-  sesPill:        { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, padding: spacing.sm },
-  sesPillDone:    { backgroundColor: th.tint.accent10 },
-  sesPillPartial: { backgroundColor: th.tint.orange30 },
-  sesPillMain:        { ...textStyles.spacingTag, color: th.colors.mutedLight },
-  sesPillMainDone:    { color: th.colors.accent },
-  sesPillMainPartial: { color: th.colors.orange },
-  sesPillRpe:         { ...textStyles.tag, color: th.colors.mutedLight },
-  sesPillRpeDone:     { color: th.tint.accent50 },
-  sesPillRpePartial:  { color: th.tint.orange50 },
+  sesPill:            { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, padding: spacing.sm },
+  sesPillDone:        { backgroundColor: th.tint.accent10 },
+  sesPillPartial:     { backgroundColor: th.tint.orange30 },
+  sesPillText:        { ...textStyles.tag, color: th.colors.mutedLight },
+  sesPillTextDone:    { color: th.colors.accent },
+  sesPillTextPartial: { color: th.colors.orange },
+  sesPillRpeAt:        { color: th.colors.mutedLight },
+  sesPillRpeAtDone:    { color: th.tint.accent50 },
+  sesPillRpeAtPartial: { color: th.tint.orange50 },
 
   modalFiltersRow: {
     flexDirection:     'row',
