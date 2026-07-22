@@ -79,6 +79,21 @@ function FitLogo({ height = 22 }) {
   );
 }
 
+// ── Menu icon ────────────────────────────────────────────────────────────────
+// "Menu 2" de Figma: 3 barras accent alineadas a la derecha, anchos crecientes,
+// con el extremo IZQUIERDO cortado en diagonal (forman una línea inclinada) y
+// esquinas ligeramente redondeadas (strokeLinejoin/cap round, no pill completa).
+function MenuIcon({ size = 24 }) {
+  const th = useTheme();
+  return (
+    <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
+      <Path d="M10 4 H24.5 V8 H8 Z"        fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M6 10.6 H24.5 V14.6 H4 Z"   fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M2.4 17.2 H24.5 V21.2 H0.4 Z" fill={th.colors.accent} stroke={th.colors.accent} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // ── Icon ───────────────────────────────────────────────────────────────────────
 
 function Icon({ d, size = 18 }) {
@@ -619,13 +634,7 @@ export default function AppHeader() {
           hitSlop={12}
           style={styles.menuBtn}
         >
-          {/* Icono "Menu 2" de Figma: 3 barras redondeadas alineadas a la
-              derecha, anchos crecientes (16/20/24) — reconstruido con Views. */}
-          <View style={styles.menuIcon}>
-            <View style={[styles.menuBar, { width: 16 }]} />
-            <View style={[styles.menuBar, { width: 20 }]} />
-            <View style={[styles.menuBar, { width: 24 }]} />
-          </View>
+          <MenuIcon size={24} />
         </TouchableOpacity>
       </View>
 
@@ -732,16 +741,6 @@ const makeStyles = (th) => StyleSheet.create({
     padding:  spacing.xs,
     minWidth: 36,
     alignItems: 'flex-end',
-  },
-  // Icono "Menu 2": 3 barras redondeadas alineadas a la derecha, anchos 16/20/24
-  menuIcon: {
-    alignItems: 'flex-end',
-    gap:        2.6,
-  },
-  menuBar: {
-    height:       3.5,
-    borderRadius: 2,
-    backgroundColor: th.colors.text,
   },
 
   // Pending upload banner
