@@ -1300,8 +1300,10 @@ function ClientListCard({
 
           {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
           <View style={styles.cCounters}>
-            <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
-            <Text style={styles.cWeekLabel}> SEMANA</Text>
+            <View style={styles.cWeekTextRow}>
+              <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
+              <Text style={styles.cWeekLabel}> SEMANA</Text>
+            </View>
             <View style={styles.cDots}>
               {Array.from({ length: sessPerCycle }, (_, i) => (
                 <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
@@ -3909,15 +3911,21 @@ const makeStyles = (th) => StyleSheet.create({
     flexWrap:      'wrap',
     paddingRight:  110,
   },
+  // Número + label justificados abajo entre sí (Figma: misma línea de base)
+  cWeekTextRow: {
+    flexDirection: 'row',
+    alignItems:    'flex-end',
+  },
   cWeekNum: {
     ...textStyles.spacingTag,
     color: th.colors.accent,
   },
-  // "SEMANA" — 8px/tracking 1.12, sin token exacto en textStyles (literal Figma)
+  // "SEMANA" — variable Figma "small bold": 8px/tracking 1.12, Bold (no hay
+  // token compuesto exacto en textStyles todavía)
   cWeekLabel: {
-    fontFamily:    'Inter_600SemiBold',
+    fontFamily:    'Inter_700Bold',
     fontSize:      8,
-    fontWeight:    '600',
+    fontWeight:    '700',
     letterSpacing: 1.12,
     color:         th.colors.mutedLight,
   },

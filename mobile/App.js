@@ -16,7 +16,6 @@ import { Platform, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Inter_500Medium,
-  Inter_600SemiBold,
   Inter_700Bold,
   Inter_800ExtraBold,
   Inter_900Black,
@@ -54,7 +53,6 @@ export default function App() {
   // custom fonts, so textStyles reference these by fontFamily, not fontWeight.
   const [fontsLoaded] = useFonts({
     Inter_500Medium,
-    Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
     Inter_900Black,
