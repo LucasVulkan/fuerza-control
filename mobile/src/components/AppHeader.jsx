@@ -707,7 +707,8 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     paddingHorizontal: spacing.xl,
-    paddingVertical:   spacing.md,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.sm, // menos aire bajo el top bar (antes md)
   },
   appNameContainer: {
     flexDirection: 'row',
