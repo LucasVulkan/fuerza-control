@@ -107,6 +107,7 @@ export const typography = {
 // `fontWeight`, is what actually selects the weight here. `fontWeight` is kept
 // as documentation and as a fallback hint before the font loads.
 export const textStyles = {
+  hero:       { fontFamily: 'Inter_900Black',     fontSize: 20, fontWeight: '900', letterSpacing: 0 },    // text/hero — valor grande de las Progress cards
   cardType:   { fontFamily: 'Inter_800ExtraBold', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
   cardTitle:  { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
   subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración

@@ -17,16 +17,21 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl,
 } from 'react-native';
+import Reanimated, {
+  FadeIn, FadeOut, LinearTransition,
+  useSharedValue, useAnimatedStyle, withTiming, interpolate,
+} from 'react-native-reanimated';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }      from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, textStyles, typography, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
+import SegmentedControl  from '../ui/SegmentedControl';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
 
@@ -1054,7 +1059,35 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
 // ── ExerciseStatCard ───────────────────────────────────────────────────────────
 
-function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, programTemplateIds }) {
+// Radios asimétricos por posición dentro de la lista (fidelidad Figma):
+// primero/último redondeados, intermedios casi rectos.
+function getCardRadii(th, isFirst, isLast) {
+  const xxs = th.radius.xxs ?? 2;
+  if (isFirst && isLast) {
+    return {
+      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
+      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
+    };
+  }
+  if (isFirst) {
+    return {
+      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
+      borderBottomLeftRadius: th.radius.xs, borderBottomRightRadius: th.radius.xs,
+    };
+  }
+  if (isLast) {
+    return {
+      borderTopLeftRadius: xxs, borderTopRightRadius: th.radius.xs,
+      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
+    };
+  }
+  return {
+    borderTopLeftRadius: xxs, borderTopRightRadius: xxs,
+    borderBottomLeftRadius: xxs, borderBottomRightRadius: xxs,
+  };
+}
+
+function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, programTemplateIds, isFirst, isLast }) {
   const { i18n } = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
@@ -1071,20 +1104,20 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
   if (!effectiveLogs.length) return null;
 
   return (
-    <View style={styles.exCard}>
+    <>
       <TouchableOpacity
-        style={styles.exRow}
+        style={[styles.exRow, getCardRadii(th, isFirst, isLast)]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.72}
       >
-        <View style={{ flex: 1 }}>
+        <View style={styles.exLeft}>
           <Text style={styles.exName} numberOfLines={1}>{name}</Text>
-          <Text style={styles.exSub}>
+          <Text style={styles.exSub} numberOfLines={1}>
             {`${sessionsCount} ${sessionsCount === 1 ? 'sesión' : 'sesiones'}`}
             {improvePct !== null && (
               <Text>
-                {' · '}
-                <Text style={{ color: improvePct >= 0 ? th.colors.green : th.colors.orange }}>
+                {' - '}
+                <Text style={{ color: improvePct >= 0 ? th.colors.accent : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
                 {' progreso'}
@@ -1092,9 +1125,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
             )}
           </Text>
         </View>
-        <View style={styles.verBtn}>
-          <Text style={styles.verBtnText}>ver</Text>
-        </View>
+        <Text style={styles.exChevron}>›</Text>
       </TouchableOpacity>
 
       <ExerciseDetailModal
@@ -1105,7 +1136,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
         rawLogs={rawLogs ?? allLogs}
         programTemplateIds={programTemplateIds}
       />
-    </View>
+    </>
   );
 }
 
@@ -1125,9 +1156,19 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const [selectedExIds, setSelectedExIds] = useState(new Set());
   const [dropOpen,      setDropOpen]      = useState(false);
   const [dropPos,       setDropPos]       = useState({ top: 0, left: 0, width: 300 });
+  const [listOpen,      setListOpen]      = useState(true);
   const dropBtnRef = useRef(null);
 
   useEffect(() => { setSelectedExIds(new Set()); setDropOpen(false); }, [scope, period]);
+
+  // Chevron de la barra "BUSCAR EJERCICIOS" — rota al colapsar/expandir.
+  const chevronRot = useSharedValue(0);
+  useEffect(() => {
+    chevronRot.value = withTiming(listOpen ? 1 : 0, { duration: 180 });
+  }, [listOpen, chevronRot]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 90])}deg` }],
+  }));
 
   function openDrop() {
     dropBtnRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
@@ -1184,21 +1225,19 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const lastSesVol    = useMemo(() => computeLastSessionVolume(filteredLog), [filteredLog]);
   const lastSesDelta  = useMemo(() => computeLastSessionDelta(filteredLog), [filteredLog]);
 
-  // Display strings
+  // Display strings — deltas con signo: accent/accent50 si >=0 o null, orange si <0.
   const improveStr   = improvePct !== null ? `${improvePct > 0 ? '+' : ''}${improvePct}%` : '—';
-  const improveColor = improvePct !== null ? (improvePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
-  const loadSubArrow = lastLoadDelta === null ? '→' : lastLoadDelta >= 0 ? '↑' : '↓';
+  const improveColor = (improvePct === null || improvePct >= 0) ? th.colors.accent : th.colors.orange;
   const loadSubStr   = lastLoadDelta !== null
-    ? `${loadSubArrow} ${lastLoadDelta > 0 ? '+' : ''}${lastLoadDelta}% últ. ses.`
+    ? `${lastLoadDelta > 0 ? '+' : ''}${lastLoadDelta}% últ. ses.`
     : null;
-  const loadSubColor = lastLoadDelta !== null ? (lastLoadDelta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
+  const loadSubColor = (lastLoadDelta === null || lastLoadDelta >= 0) ? th.tint.accent50 : th.colors.orange;
 
   const volStr      = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
-  const volColor    = volImprovePct !== null ? (volImprovePct >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
-  const volSubArrow = lastSesDelta === null ? '→' : lastSesDelta >= 0 ? '↑' : '↓';
-  const volSubColor = lastSesDelta !== null ? (lastSesDelta >= 0 ? th.colors.green : th.colors.orange) : th.colors.muted;
+  const volColor    = (volImprovePct === null || volImprovePct >= 0) ? th.colors.accent : th.colors.orange;
+  const volSubColor = (lastSesDelta === null || lastSesDelta >= 0) ? th.tint.accent50 : th.colors.orange;
   const volSubStr   = lastSesVol
-    ? `${volSubArrow} ${fmtVol(lastSesVol, wDisplay)} ${weightLabel} últ. ses.`
+    ? `${fmtVol(lastSesVol, wDisplay)} ${weightLabel} últ. ses.`
     : null;
 
   // ── Exercise list ────────────────────────────────────────────────────────
@@ -1248,165 +1287,181 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         />
       ) : undefined}
     >
-      {/* ── Fila única: Período + toggle programa ────────────────────────── */}
-      <View style={styles.topRow}>
-        {PERIOD_OPTIONS.map(({ id, label }) => (
-          <TouchableOpacity
-            key={id}
-            style={[styles.ctrlBtn, period === id && styles.ctrlBtnActive]}
-            onPress={() => setPeriod(id)}
-          >
-            <Text style={[styles.ctrlBtnText, period === id && styles.ctrlBtnTextActive]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-        <View style={{ flex: 1 }} />
+      {/* ── Fila de control: período + toggle programa ──────────────────────── */}
+      <View style={styles.controlRow}>
+        <View style={styles.segmentedWrap}>
+          <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+        </View>
         {hasProgramScope && (
           <TouchableOpacity
-            style={[styles.scopeToggle, scope === 'program' && styles.scopeToggleActive]}
+            style={[styles.programToggle, scope === 'program' && styles.programToggleActive]}
             onPress={() => setScope((s) => s === 'program' ? 'all' : 'program')}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.scopeToggleText, scope === 'program' && styles.scopeToggleTextActive]}>
+            <Text style={[styles.programToggleText, scope === 'program' && styles.programToggleTextActive]}>
               Programa actual
             </Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* ── Tiles resumen ─────────────────────────────────────────────────── */}
+      {/* ── Progress cards ───────────────────────────────────────────────────── */}
       <View style={styles.statsGrid}>
         <View style={styles.statTile}>
-          <Text style={styles.statValue}>{filteredLog.length}</Text>
-          <Text style={styles.statLabel}>Sesiones</Text>
-          <Text style={styles.statSub}>{thisWeekCount} esta semana</Text>
+          <View style={styles.statValueBlock}>
+            <Text style={[styles.statValue, { color: th.colors.accent }]}>{String(filteredLog.length)}</Text>
+            <Text style={styles.statLabel}>SESIONES</Text>
+          </View>
+          <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
+            {`${thisWeekCount} esta semana`}
+          </Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={[styles.statValue, { color: improveColor }]}>{improveStr}</Text>
-          <Text style={styles.statLabel}>Carga</Text>
+          <View style={styles.statValueBlock}>
+            <Text style={[styles.statValue, { color: improveColor }]}>{improveStr}</Text>
+            <Text style={styles.statLabel}>CARGA</Text>
+          </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}
           </Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={[styles.statValue, { color: volColor }]}>{volStr}</Text>
-          <Text style={styles.statLabel}>Volumen</Text>
+          <View style={styles.statValueBlock}>
+            <Text style={[styles.statValue, { color: volColor }]}>{volStr}</Text>
+            <Text style={styles.statLabel}>VOLUMEN</Text>
+          </View>
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
             {volSubStr ?? '—'}
           </Text>
         </View>
       </View>
 
-      {/* ── Ejercicios ────────────────────────────────────────────────────── */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>EJERCICIOS</Text>
-        <Text style={styles.sectionCount}>{exercisesWithLogs.length}</Text>
-      </View>
-
       {/* ── Búsqueda ──────────────────────────────────────────────────────── */}
       <TextInput
         style={styles.searchInput}
         placeholder="Buscar ejercicio..."
-        placeholderTextColor={th.colors.muted}
+        placeholderTextColor={th.colors.mutedLight}
         value={search}
         onChangeText={setSearch}
         autoCorrect={false}
         autoCapitalize="none"
       />
 
-      {/* Selector multi-ejercicio */}
-      {!search.trim() && exercisesWithLogs.length > 0 && (
-        <View style={styles.dropWrapper}>
-          <TouchableOpacity
-            ref={dropBtnRef}
-            style={styles.dropBtn}
-            onPress={dropOpen ? () => setDropOpen(false) : openDrop}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.dropBtnText}>
-              {selectedExIds.size === 0
-                ? 'Todos los ejercicios'
-                : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
-            </Text>
-            <Text style={styles.dropArrow}>{dropOpen ? '▴' : '▾'}</Text>
-          </TouchableOpacity>
+      {/* ── Cabecera accent colapsable ────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.listToggle}
+        onPress={() => setListOpen((o) => !o)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.listToggleLabel}>BUSCAR EJERCICIOS</Text>
+        <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
+      </TouchableOpacity>
 
-          {/* Modal so the list floats over ALL content without stealing scroll from the parent */}
-          <Modal
-            visible={dropOpen}
-            transparent
-            animationType="none"
-            onRequestClose={() => setDropOpen(false)}
-          >
-            {/* Backdrop — closes on tap outside */}
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
-            <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
-              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-                {exercisesWithLogs.map((id) => {
-                  const def  = allExercises[id];
-                  const name = def
-                    ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
-                    : id;
-                  const isSel = selectedExIds.has(id);
-                  return (
+      {listOpen && (
+        <Reanimated.View
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(150)}
+          style={styles.collapsibleSection}
+        >
+          {/* Selector multi-ejercicio */}
+          {!search.trim() && exercisesWithLogs.length > 0 && (
+            <View style={styles.dropWrapper}>
+              <TouchableOpacity
+                ref={dropBtnRef}
+                style={styles.dropBtn}
+                onPress={dropOpen ? () => setDropOpen(false) : openDrop}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.dropBtnText}>
+                  {selectedExIds.size === 0
+                    ? 'Todos los ejercicios'
+                    : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
+                </Text>
+                <Text style={styles.dropArrow}>{dropOpen ? '▴' : '▾'}</Text>
+              </TouchableOpacity>
+
+              {/* Modal so the list floats over ALL content without stealing scroll from the parent */}
+              <Modal
+                visible={dropOpen}
+                transparent
+                animationType="none"
+                onRequestClose={() => setDropOpen(false)}
+              >
+                {/* Backdrop — closes on tap outside */}
+                <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDropOpen(false)} />
+                <View style={[styles.dropList, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
+                  <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+                    {exercisesWithLogs.map((id) => {
+                      const def  = allExercises[id];
+                      const name = def
+                        ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
+                        : id;
+                      const isSel = selectedExIds.has(id);
+                      return (
+                        <TouchableOpacity
+                          key={id}
+                          style={styles.dropItem}
+                          onPress={() => toggleEx(id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
+                            {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
+                          </View>
+                          <Text style={styles.dropItemText} numberOfLines={1}>{name}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                  {selectedExIds.size > 0 && (
                     <TouchableOpacity
-                      key={id}
-                      style={styles.dropItem}
-                      onPress={() => toggleEx(id)}
+                      style={styles.dropResetBtn}
+                      onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
                       activeOpacity={0.75}
                     >
-                      <View style={[styles.dropCheck, isSel && styles.dropCheckActive]}>
-                        {isSel && <Text style={styles.dropCheckMark}>✓</Text>}
-                      </View>
-                      <Text style={styles.dropItemText} numberOfLines={1}>{name}</Text>
+                      <Text style={styles.dropResetText}>Restablecer selección</Text>
                     </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-              {selectedExIds.size > 0 && (
-                <TouchableOpacity
-                  style={styles.dropResetBtn}
-                  onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.dropResetText}>Restablecer selección</Text>
-                </TouchableOpacity>
-              )}
+                  )}
+                </View>
+              </Modal>
             </View>
-          </Modal>
-        </View>
-      )}
+          )}
 
-      {/* Lista de ejercicios */}
-      {displayedExercises.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📈</Text>
-          <Text style={styles.emptyText}>
-            {baseLog.length === 0
-              ? 'Completa tu primera sesión para ver el progreso aquí.'
-              : search.trim()
-                ? 'Sin coincidencias para esa búsqueda.'
-                : 'Sin datos para el filtro seleccionado.'}
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.exerciseList}>
-          {displayedExercises.map((exerciseId) => {
-            const def        = allExercises[exerciseId];
-            const periodLogs = getExerciseLogsFrom(exerciseId, filteredLog);
-            const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
-            const rawLogs    = getExerciseLogsFrom(exerciseId, baseLog);
-            return (
-              <ExerciseStatCard
-                key={exerciseId}
-                exerciseId={exerciseId}
-                def={def}
-                allLogs={allLogs}
-                periodLogs={periodLogs}
-                rawLogs={rawLogs}
-                programTemplateIds={programTemplateIds}
-              />
-            );
-          })}
-        </View>
+          {/* Lista de ejercicios */}
+          {displayedExercises.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📈</Text>
+              <Text style={styles.emptyText}>
+                {baseLog.length === 0
+                  ? 'Completa tu primera sesión para ver el progreso aquí.'
+                  : search.trim()
+                    ? 'Sin coincidencias para esa búsqueda.'
+                    : 'Sin datos para el filtro seleccionado.'}
+              </Text>
+            </View>
+          ) : (
+            <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
+              {displayedExercises.map((exerciseId, idx) => {
+                const def        = allExercises[exerciseId];
+                const periodLogs = getExerciseLogsFrom(exerciseId, filteredLog);
+                const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
+                const rawLogs    = getExerciseLogsFrom(exerciseId, baseLog);
+                return (
+                  <ExerciseStatCard
+                    key={exerciseId}
+                    exerciseId={exerciseId}
+                    def={def}
+                    allLogs={allLogs}
+                    periodLogs={periodLogs}
+                    rawLogs={rawLogs}
+                    programTemplateIds={programTemplateIds}
+                    isFirst={idx === 0}
+                    isLast={idx === displayedExercises.length - 1}
+                  />
+                );
+              })}
+            </Reanimated.View>
+          )}
+        </Reanimated.View>
       )}
     </ScrollView>
   );
@@ -1418,10 +1473,25 @@ const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   content: { padding: spacing.xl, gap: spacing.md },
 
-  // ── Top row ────────────────────────────────────────────────────────────────
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  // ── Control row: segmented período + toggle programa ─────────────────────────
+  controlRow: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+    width:          '100%',
+  },
+  segmentedWrap: { width: 198 },
+  programToggle: {
+    backgroundColor:   th.colors.surface2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.sm,
+  },
+  programToggleActive: { backgroundColor: th.colors.accent },
+  programToggleText:       { ...textStyles.cardType, color: th.colors.mutedLight },
+  programToggleTextActive: { color: th.colors.onAccent },
 
-  // ── Shared control button ──────────────────────────────────────────────────
+  // ── Shared control button (used by the exercise-detail modal) ────────────────
   ctrlBtn: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -1439,7 +1509,7 @@ const makeStyles = (th) => StyleSheet.create({
   btnGroup:          { flexDirection: 'row', gap: spacing.xs, flex: 1 },
   ctrlBtnFull:       { flex: 1, alignItems: 'center', paddingVertical: spacing.xs + 1 },
 
-  // ── Scope toggle ────────────────────────────────────────────────────────────
+  // ── Scope toggle (used by the exercise-detail modal) ──────────────────────────
   scopeToggle: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -1455,66 +1525,62 @@ const makeStyles = (th) => StyleSheet.create({
   scopeToggleText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
   scopeToggleTextActive: { color: th.colors.accent },
 
-  // ── Summary tiles ──────────────────────────────────────────────────────────
-  statsGrid: { flexDirection: 'row', gap: spacing.sm },
+  // ── Progress cards (SESIONES · CARGA · VOLUMEN) ───────────────────────────────
+  statsGrid: { flexDirection: 'row', gap: spacing.md, width: '100%' },
   statTile: {
-    flex:            1,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    alignItems:      'center',
-    justifyContent:  'center',
+    flex:              1,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.lg,
+    borderRadius:      th.radius.lg,
+    alignItems:        'center',
+    justifyContent:    'center',
+    overflow:          'hidden',
+    gap:               spacing.lg,
   },
-  statValue: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
-    color:      th.colors.accent,
-    lineHeight: typography.xl * 1.15,
-    textAlign:  'center',
-  },
+  statValueBlock: { alignItems: 'center', gap: spacing.xs },
+  statValue: { ...textStyles.hero, textAlign: 'center' },
   statLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted2,
-    letterSpacing: 0.4,
-    marginTop:     1,
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.text,
     textAlign:     'center',
   },
-  statSub: {
-    fontSize:   9,
-    color:      th.colors.muted,
-    lineHeight: 13,
-    marginTop:  6,
-    textAlign:  'center',
-  },
+  statSub: { ...textStyles.tag, textAlign: 'center' },
 
   // ── Search ─────────────────────────────────────────────────────────────────
   searchInput: {
+    ...textStyles.subtitle,
     backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.md,
     color:             th.colors.text,
-    fontSize:          typography.base,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.sm,
+    width:             '100%',
   },
 
-  // ── Section header ─────────────────────────────────────────────────────────
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginBottom:  -spacing.xs,
+  // ── Cabecera accent colapsable ─────────────────────────────────────────────
+  listToggle: {
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    backgroundColor:   th.colors.accent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.sm,
+    width:             '100%',
   },
-  sectionLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted2,
-    fontWeight:    typography.bold,
-    letterSpacing: 1.2,
+  listToggleLabel: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.onAccent,
   },
-  sectionCount: { fontSize: typography.xs, color: th.colors.muted2 },
+  listToggleChevron: {
+    fontSize:   16,
+    fontWeight: '900',
+    color:      th.colors.onAccent,
+  },
+  collapsibleSection: { gap: spacing.md, width: '100%' },
 
   // ── Exercise dropdown selector ─────────────────────────────────────────────
   dropWrapper: { zIndex: 100, elevation: 10 },
@@ -1566,32 +1632,20 @@ const makeStyles = (th) => StyleSheet.create({
   dropResetText:   { fontSize: typography.sm, color: th.colors.muted },
 
   // ── Exercise list ──────────────────────────────────────────────────────────
-  exerciseList: { gap: spacing.xs },
-  exCard: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    overflow:        'hidden',
-  },
+  exerciseList: { gap: spacing.xs, width: '100%' },
   exRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    padding:       spacing.md,
-    gap:           spacing.sm,
+    backgroundColor:   th.colors.surface,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    overflow:          'hidden',
   },
-  exName: { fontSize: typography.sm, fontWeight: typography.medium, color: th.colors.text },
-  exSub:  { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
-  verBtn: {
-    paddingVertical:   4,
-    paddingHorizontal: spacing.sm,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-    flexShrink:        0,
-  },
-  verBtnText: { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
+  exLeft: { flex: 1, gap: spacing.xs },
+  exName: { ...textStyles.cardType, color: th.colors.text },
+  exSub:  { ...textStyles.tag, color: th.colors.mutedLight },
+  exChevron: { fontSize: 18, fontWeight: '900', color: th.colors.mutedLight, marginLeft: spacing.sm },
 
   // ── Modal ──────────────────────────────────────────────────────────────────
   modalOverlay: {
