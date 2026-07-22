@@ -1358,7 +1358,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           onPress={() => { if (exercisesWithLogs.length > 0) setDropOpen((o) => !o); }}
           activeOpacity={0.8}
         >
-          <Text style={styles.listToggleLabel}>BUSCAR EJERCICIOS</Text>
+          <Text style={styles.listToggleLabel}>
+            {selectedExIds.size === 0
+              ? 'Filtrar ejercicios'
+              : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
+          </Text>
           <Reanimated.Text style={[styles.listToggleChevron, chevronStyle]}>›</Reanimated.Text>
         </TouchableOpacity>
 
