@@ -204,7 +204,7 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
       <View style={[styles.bnRight, !hasStage && styles.bnRightNoStage]}>
         <View style={hasStage ? styles.bnCicloCol : styles.bnCicloRow}>
           <Text style={styles.bnCicloLabel}>{t('home.cycle').toUpperCase()}</Text>
-          <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
+          <Text style={[styles.bnCicloNum, hasStage && styles.bnCicloNumTight]}>{cicloLabel}</Text>
         </View>
         <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
       </View>
@@ -924,8 +924,11 @@ const makeStyles = (th) => StyleSheet.create({
   bnRightNoStage: { width: 110 },
   bnCicloCol: { alignItems: 'center' },
   bnCicloRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bnCicloLabel: { ...textStyles.btnAction, color: withOpacity(th.colors.onAccent, 0.76) },
-  bnCicloNum:   { ...textStyles.hero, color: th.colors.onAccent },
+  bnCicloLabel:    { ...textStyles.btnAction, color: withOpacity(th.colors.onAccent, 0.76) },
+  bnCicloNum:      { ...textStyles.hero, color: th.colors.onAccent },
+  // El line-height del texto deja aire por encima del número — lo subimos
+  // para que quede pegado a "CICLO" y a distancia real de los puntos.
+  bnCicloNumTight: { marginTop: -4 },
   // Puntos de ciclo (8px): hechos = negro relleno; pendientes = contorno negro.
   bnDots:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   bnDot:     { width: 8, height: 8, borderRadius: 4 },
