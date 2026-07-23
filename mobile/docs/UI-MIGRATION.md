@@ -32,17 +32,25 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` |
 
 ### HomeView — desglose en curso
-Dividido en 4 partes; solo la 1 está hecha:
+Dividido en 4 partes; 1 y 2 hechas:
 
 1. ✅ **Banner** — tarjeta accent con nombre de programa, "by entrenador", etapa
    (nombre + `ETAPA n/total`), barra de progreso segmentada por ciclo, `Ciclo X de Y` + %,
    y bloque derecho `CICLO` / nº / puntos de ciclo. Dos variantes (con y sin etapa).
    Pulsar el banner abre el selector de etapa.
-2. ⬜ **Selector semanal** (`L M X J V S D` + 7 puntos) — **funcionalidad nueva**: los
-   puntos reflejan días REALMENTE entrenados, derivado de `workoutLog`. Requiere un util
-   de agregación nuevo. Decidido: semana Lun→Dom; "entrenó" = hay alguna sesión ese día;
-   hoy se muestra en contorno verde y **se rellena si entrenas hoy**; día pasado sin
-   entrenar = gris relleno; futuro = contorno gris.
+2. ✅ **Selector semanal** (`L M X J V S D` + 7 puntos) — **funcionalidad nueva**: los
+   puntos reflejan días REALMENTE entrenados, vía `getWeekStatuses()` en
+   `src/utils/weekProgress.js` (semana Lun→Dom; "entrenó" = cualquier entrada de
+   `workoutLog`, incluidas sesiones libres, sin filtrar por programa). Colores exactos
+   extraídos del SVG de Figma (nodo `102:292`): entrenado = relleno lima `#b8ff00`
+   (literal, no token — igual caso que el `#81a71e` del banner); pasado sin entrenar =
+   relleno gris `muted`; futuro = anillo gris `mutedLight`. El día de hoy tiene un
+   matiz **no documentado en Figma, decidido en la conversación**: sin entrenar = anillo
+   lima hueco; entrenado = mismo anillo + punto central lima, más pequeño que un relleno
+   completo. Esa transición (anillo → anillo+punto) se anima con Reanimated
+   (`withTiming`, 200ms ease-in-out) al volver del recap tras guardar sesión — no anima
+   en el montaje inicial de la pantalla, solo en cambios posteriores (mismo patrón que
+   `SegmentedControl`).
 3. ⬜ **Lista de sesiones** — **cambio de comportamiento**: pasa a **orden fijo A→E**
    (hoy hay "hero + compactas" con orden rotatorio). Acción según estado: completada = ✓
    con tinte/borde accent; siguiente = botón `EMPEZAR →`; futura = chevron. Se conservan

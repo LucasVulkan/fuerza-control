@@ -78,6 +78,8 @@
     "edit": "Edit",
     "archive": "Archive",
     "week": "Week",
+    "weekDayLetters": ["M", "T", "W", "T", "F", "S", "S"],
+    "dayTrained": "trained",
     "sessions": "Sessions",
     "connections": "Connections",
     "restOfCycle": "Rest of the cycle",

@@ -78,6 +78,8 @@
     "edit": "Editar",
     "archive": "Archivar",
     "week": "Semana",
+    "weekDayLetters": ["L", "M", "X", "J", "V", "S", "D"],
+    "dayTrained": "entrenaste",
     "sessions": "Sesiones",
     "connections": "Conexiones",
     "restOfCycle": "Resto del ciclo",

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +16,11 @@ import { spacing, typography, textStyles, borders, withOpacity } from '../theme'
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
+import { getWeekStatuses } from '../utils/weekProgress';
+
+// Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
+// token propio (mismo caso que el #81a71e del banner, ver theme.js).
+const LIMA = '#b8ff00';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -209,6 +215,85 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
         <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
       </View>
     </TouchableOpacity>
+  );
+}
+
+// ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
+//
+// Los puntos reflejan días REALMENTE entrenados (workoutLog), no una plantilla.
+// Estados: entrenado = relleno lima; hoy sin entrenar = anillo lima; hoy
+// entrenado = anillo lima + punto central (animado al aparecer); pasado sin
+// entrenar = relleno gris; futuro = anillo gris.
+
+function WeekDot({ status, styles }) {
+  const isToday = status === 'today' || status === 'todayTrained';
+  const outerStyle = {
+    trained:      styles.weekDotTrained,
+    todayTrained: styles.weekDotToday,
+    today:        styles.weekDotToday,
+    past:         styles.weekDotPast,
+    future:       styles.weekDotFuture,
+  }[status];
+
+  // El punto central solo existe para "hoy" — no se anima al abrir la
+  // pantalla (mide primero, coloca sin animar), solo en transiciones
+  // posteriores (guardar sesión y volver del recap).
+  const centerScale = useSharedValue(status === 'todayTrained' ? 1 : 0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    centerScale.value = withTiming(status === 'todayTrained' ? 1 : 0, {
+      duration: 200,
+      easing:   Easing.inOut(Easing.ease),
+    });
+  }, [status, centerScale]);
+  const centerAnimStyle = useAnimatedStyle(() => ({
+    opacity:   centerScale.value,
+    transform: [{ scale: centerScale.value }],
+  }));
+
+  return (
+    <View style={[styles.weekDot, outerStyle]}>
+      {isToday && <Animated.View style={[styles.weekDotCenter, centerAnimStyle]} />}
+    </View>
+  );
+}
+
+function WeekSelector({ workoutLog }) {
+  const { t, i18n } = useTranslation();
+  const styles  = useThemedStyles(makeStyles);
+  const letters = t('home.weekDayLetters', { returnObjects: true });
+  const days    = getWeekStatuses(workoutLog);
+
+  const summary = days
+    .map(({ date, status }) => {
+      const name  = new Date(date).toLocaleDateString(i18n.language, { weekday: 'long' });
+      const extra = status === 'trained' || status === 'todayTrained'
+        ? t('home.dayTrained')
+        : (status === 'today' ? t('dayCard.today') : null);
+      return extra ? `${name}: ${extra}` : name;
+    })
+    .join(', ');
+
+  return (
+    <View style={styles.week} accessible accessibilityLabel={summary}>
+      <View style={styles.weekLetters}>
+        {letters.map((letter, i) => (
+          <Text
+            key={i}
+            style={[styles.weekLetter, (days[i].status === 'today' || days[i].status === 'todayTrained') && styles.weekLetterToday]}
+          >
+            {letter}
+          </Text>
+        ))}
+      </View>
+      <View style={styles.weekDots}>
+        {days.map(({ status }, i) => <WeekDot key={i} status={status} styles={styles} />)}
+      </View>
+    </View>
   );
 }
 
@@ -607,6 +692,8 @@ export default function HomeScreen() {
                 onPress={hasStages ? () => setStagePicker(true) : undefined}
               />
 
+              <WeekSelector workoutLog={workoutLog} />
+
               {/* Stage advance banner */}
               {activeProgram.stageAdvancePending && nextStage && (
                 <View style={styles.stageBanner}>
@@ -934,6 +1021,30 @@ const makeStyles = (th) => StyleSheet.create({
   bnDot:     { width: 8, height: 8, borderRadius: 4 },
   bnDotDone: { backgroundColor: th.colors.onAccent },
   bnDotIdle: { borderWidth: borders.thin, borderColor: th.colors.onAccent },
+
+  // ── Selector semanal (L M X J V S D + 7 puntos) ───────────────────────────────
+  week: {
+    gap:               spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   9, // exacto de Figma, no cae en ningún token de spacing
+    marginTop:         -spacing.sm, // acerca el selector al banner (ScrollView ya mete gap/lg)
+  },
+  weekLetters: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekLetter:  { ...textStyles.cardType, color: th.colors.mutedLight },
+  weekLetterToday: { color: LIMA },
+  weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDot: {
+    width:          12,
+    height:         12,
+    borderRadius:   6,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  weekDotTrained: { backgroundColor: LIMA },
+  weekDotPast:    { backgroundColor: th.colors.muted },
+  weekDotToday:   { borderWidth: 1.5, borderColor: LIMA },
+  weekDotFuture:  { borderWidth: 1.5, borderColor: th.colors.mutedLight },
+  weekDotCenter:  { width: 5, height: 5, borderRadius: 2.5, backgroundColor: LIMA },
 
   // ── Program label ────────────────────────────────────────────────────────────
   progHeader: {
