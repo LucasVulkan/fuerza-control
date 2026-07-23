@@ -896,7 +896,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
         <GlobalAddBillingModal clients={clients} onClose={() => setShowAdd(false)} />
       )}
 
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl }}>
         {/* Summary tiles */}
         <View style={styles.billingRow}>
           {[
@@ -2741,7 +2741,7 @@ export default function ClientsScreen() {
         <FlatList
           data={clientList}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl + insets.bottom }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl + insets.bottom }}
           refreshControl={
             <RefreshControl
               refreshing={refreshingList}
@@ -3080,7 +3080,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   // "CLIENTES" en color texto, el contador en accent (mismo tamaño hero)
   listTitle: {
@@ -3256,7 +3256,8 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    marginTop:         spacing.xs2, // ligero aire extra respecto a la fila de título (gap base = listHeader.gap)
   },
   // Estado activo del botón de filtro (funcionalidad app, no en Figma):
   // tinte accent sobre la caja surface2 base
@@ -3298,7 +3299,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:  'row',
     alignItems:     'center',
     gap:            spacing.sm,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingBottom:  spacing.xs,
   },
   // Attention pills (En riesgo / Sin revisar)
@@ -3625,7 +3626,7 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Key tab ───────────────────────────────────────────────────────────────────
   keyTabContent: {
     flexGrow:          1,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingTop:        spacing.xxl,
     alignItems:        'center',
     gap:               spacing.lg,
@@ -4277,8 +4278,9 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
   },
   tabContent: {
-    padding: spacing.xl,
-    gap:     spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.xl,
+    gap:               spacing.sm,
   },
 
   // ── Program card ──

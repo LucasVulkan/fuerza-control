@@ -170,7 +170,7 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
 
 const makeCal = (th) => StyleSheet.create({
   wrap: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
     borderBottomWidth: borders.thin,
