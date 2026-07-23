@@ -113,7 +113,7 @@ export const textStyles = {
   subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
   tag:        { fontFamily: 'Inter_500Medium',    fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
   spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
-  smallBold:  { fontFamily: 'Inter_700Bold',      fontSize: 8,  fontWeight: '700', letterSpacing: 1.12 }, // text/SmallBold — labels 8px (semana, etapa, contadores)
+  smallBold:  { fontFamily: 'Inter_600SemiBold',  fontSize: 8,  fontWeight: '600', letterSpacing: 1.12 }, // text/SmallBold — labels 8px (etapa, entrenador, contadores)
   btnAction:  { fontFamily: 'Inter_900Black',     fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
 };
 
