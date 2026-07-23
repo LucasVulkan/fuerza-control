@@ -93,6 +93,17 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
    muestra "CONECTAR" (Figma no modela warn, solo conectado/desconectado; el
    subtítulo sigue distinguiendo warn con su propio texto/color, sin cambios).
 
+   **Ajuste posterior en QA**: las 3 etiquetas de sección (SESIONES/PROGRAMA/
+   CONEXIONES) usaban dos estilos distintos sin base en Figma — SESIONES a 11px/
+   semibold/`muted`, PROGRAMA y CONEXIONES a 10px/regular/`muted2` (prop `muted`
+   en `SectionHeader`). Verificado contra Figma (nodo `109:390`, texto "sesiones"
+   dentro de `104:73`): las 3 comparten el mismo `text/spacing-tag` (ExtraBold
+   10/2, `mutedLight`) — no hay dos estilos. Unificadas a `textStyles.spacingTag`
+   + `mutedLight`, se eliminó la prop `muted` de `SectionHeader` (quedaba sin uso).
+   También se quitó el icono de barra (`BarbellIcon`) que iba delante de
+   "SESIONES": no está en el componente de Figma, era un añadido de la app previo
+   a esta migración.
+
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
 transición al estado "completada" (crossfade de fondo/borde + botón→check) — **no

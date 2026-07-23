@@ -89,7 +89,7 @@ const makeStyles = (th) => StyleSheet.create({
   container: {
     flexDirection:   'row',
     backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.full,
     padding:         PAD,
     gap:             GAP,
     position:        'relative',
@@ -98,7 +98,7 @@ const makeStyles = (th) => StyleSheet.create({
     position:     'absolute',
     top:          PAD,
     bottom:       PAD,
-    borderRadius: th.radius.sm,
+    borderRadius: th.radius.full,
   },
   option: {
     flex:            1,
