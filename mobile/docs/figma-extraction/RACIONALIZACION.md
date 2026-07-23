@@ -1,5 +1,15 @@
 # Racionalización del diseño Figma "FormaFit" — para migración a la app
 
+> ⚠️ **DOCUMENTO HISTÓRICO — es el plan PREVIO a implementar (jul 2026).**
+> No refleja lo que se ha construido ni las decisiones tomadas durante la
+> implementación. Para el estado actual, la arquitectura de tokens, las reglas de
+> fidelidad y el orden de trabajo, usa **`../UI-MIGRATION.md`**.
+>
+> Sigue siendo útil como: catálogo de decisiones de producto ya resueltas (§5 y §5-bis),
+> funcionalidad nueva confirmada (§5-ter) y resolución de nombres confusos de Figma (§4).
+> Ojo: el archivo de Figma se ha actualizado desde entonces, así que los IDs de nodo
+> pueden no coincidir — re-extrae si algo no cuadra.
+
 > Síntesis de los 36 documentos de extracción (`components/*.md`, `pages/*.md`) más los
 > 6 componentes ya documentados en memoria de proyecto (Buttons, Sesion Card, Series,
 > Input Field, Exercice Card, Pills). Objetivo: decidir qué es modular, qué se fusiona,

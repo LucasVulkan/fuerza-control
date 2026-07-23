@@ -1,3 +1,23 @@
+# UI migration "FormaFit" — READ THIS FIRST
+
+The app is being fully redesigned against a Figma file ("FormaFit"), screen by
+screen. **Before touching any screen, read `docs/UI-MIGRATION.md`** — it holds the
+migration status, the token system, the non-negotiable fidelity rules, how to
+extract from Figma, the verification workflow, and the RN traps already hit.
+
+Non-negotiable, stated repeatedly by the user:
+**respect Figma EXACTLY** — radius, spacing, text size/tracking, layout, colour.
+Never "the closest thing that already exists in the code".
+
+Quick pointers:
+- Tokens: `src/theme.js` (spacing/textStyles — spacing already holds Figma's exact
+  values) + `src/themes.js` (colours/radius per theme; only touch `formaFit`).
+- i18n lives at the REPO ROOT: `src/locales/{es,en}.json`. Every visible string
+  goes in both.
+- Verify with `npx eslint <file>` (compare the count against HEAD — there are
+  pre-existing errors, just don't add new ones) and `npx vitest run` from the repo
+  root.
+
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before writing any code.
