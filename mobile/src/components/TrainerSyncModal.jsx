@@ -25,7 +25,7 @@ import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer
 import { claimTrainerSlots, getTrainerSlots } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // Required so the in-app browser can redirect back after OAuth
@@ -100,7 +100,7 @@ function CodeStatusScreen({ code, loading, nameInput, setNameInput, setTrainerNa
         <TextInput
           style={s.nameInput}
           placeholder="Ej. Lucas García"
-          placeholderTextColor={th.colors.muted}
+          placeholderTextColor={th.colors.mutedLight}
           value={nameInput}
           onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
           returnKeyType="done"
@@ -127,7 +127,7 @@ function CodeStatusScreen({ code, loading, nameInput, setNameInput, setTrainerNa
       </View>
 
       <TouchableOpacity onPress={handleChangeMode} style={s.recoveryLink}>
-        <Text style={[s.recoveryLinkText, { color: th.colors.muted }]}>
+        <Text style={[s.recoveryLinkText, { color: th.colors.mutedLight }]}>
           Cambiar modo de sincronización →
         </Text>
       </TouchableOpacity>
@@ -217,7 +217,7 @@ function RecoveryScreen({ onSuccess, onBack }) {
       <TextInput
         style={s.codeInput}
         placeholder="XXXX-XXXX-XXXX"
-        placeholderTextColor={th.colors.muted}
+        placeholderTextColor={th.colors.mutedLight}
         value={code}
         onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
         autoCapitalize="characters"
@@ -581,7 +581,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                 <TextInput
                   style={s.nameInput}
                   placeholder="Ej. Lucas García"
-                  placeholderTextColor={th.colors.muted}
+                  placeholderTextColor={th.colors.mutedLight}
                   value={nameInput}
                   onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
                   returnKeyType="done"
@@ -660,7 +660,7 @@ const makeS = (th) => StyleSheet.create({
   },
   subtitle: {
     fontSize:  typography.sm,
-    color:     th.colors.muted,
+    color:     th.colors.mutedLight,
     marginTop: -spacing.xs,
   },
 
@@ -684,7 +684,7 @@ const makeS = (th) => StyleSheet.create({
   },
   optionUnavailable: {
     fontSize:  typography.xs,
-    color:     th.colors.muted,
+    color:     th.colors.mutedLight,
     fontStyle: 'italic',
     marginTop: 2,
   },
@@ -707,7 +707,7 @@ const makeS = (th) => StyleSheet.create({
   optionTitleActive: { color: th.colors.accent },
   optionDesc: {
     fontSize:   typography.xs,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     lineHeight: typography.xs * 1.5,
   },
   optionWarn: {
@@ -741,7 +741,7 @@ const makeS = (th) => StyleSheet.create({
   nameLabel: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         th.colors.muted,
+    color:         th.colors.mutedLight,
     letterSpacing: 0.8,
   },
   nameInput: {
@@ -790,7 +790,7 @@ const makeS = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  cancelBtnText: { fontSize: typography.base, color: th.colors.muted },
+  cancelBtnText: { fontSize: typography.base, color: th.colors.mutedLight },
 
   // Already-connected status screen
   codeStatus: { gap: spacing.md },
@@ -811,10 +811,9 @@ const makeS = (th) => StyleSheet.create({
     color:      th.colors.green,
   },
   codeStatusDesc: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.5,
-    marginTop:  -spacing.xs,
+    ...textStyles.subtitle,
+    color:     th.colors.mutedLight,
+    marginTop: -spacing.xs,
   },
 
   // Code reveal
@@ -826,7 +825,7 @@ const makeS = (th) => StyleSheet.create({
   },
   revealSub: {
     fontSize:   typography.sm,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     lineHeight: typography.sm * 1.5,
   },
   codeBox: {
@@ -856,7 +855,7 @@ const makeS = (th) => StyleSheet.create({
   },
   codeCopyHint: {
     fontSize: typography.xs,
-    color:    th.colors.muted,
+    color:    th.colors.mutedLight,
   },
   warnBox: {
     backgroundColor: withOpacity(th.colors.orange, 0.08),
@@ -904,6 +903,6 @@ const makeS = (th) => StyleSheet.create({
   backLink: { alignItems: 'center', paddingVertical: spacing.xs },
   backLinkText: {
     fontSize: typography.xs,
-    color:    th.colors.muted,
+    color:    th.colors.mutedLight,
   },
 });
