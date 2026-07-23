@@ -2569,7 +2569,7 @@ export default function ClientsScreen() {
         {/* Row 1: Title "CLIENTES N" · trainer tools (€ billing · cloud sync) · + Cliente */}
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
-            CLIENTES <Text style={styles.listTitleCount}>{clientCounts.total}</Text>
+            CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{clientCounts.total}</Text>
           </Text>
           <View style={styles.hdrRightCluster}>
             <View style={styles.hdrIconGroup}>
@@ -2603,6 +2603,10 @@ export default function ClientsScreen() {
         {/* Row 2: Search + Filters */}
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrap}>
+            <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
+              stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+            </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar cliente…"
@@ -2620,7 +2624,7 @@ export default function ClientsScreen() {
             activeOpacity={0.7}
           >
             <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-              stroke={activeFilterCount > 0 ? th.colors.accent : th.colors.mutedLight}
+              stroke={activeFilterCount > 0 ? th.colors.accent : th.colors.text}
               strokeWidth={2} strokeLinecap="round">
               <Path d="M3 6h18M6 12h12M9 18h6" />
             </Svg>
@@ -3077,6 +3081,9 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     flexShrink: 1,
   },
+  listTitleDot: {
+    color: th.colors.mutedLight,
+  },
   listTitleCount: {
     color: th.colors.accent,
   },
@@ -3091,10 +3098,12 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  // Caja de icono 35×35 (Figma): surface2, radius/sm, sin borde
+  // Caja de icono cuadrada: surface2, radius/sm, sin borde. 42×42 (a juego
+  // con la altura de la caja de búsqueda, por petición del usuario — Figma
+  // usaba 35, ampliado deliberadamente para uniformar todos los controles)
   hdrIconBox: {
-    width:           35,
-    height:          35,
+    width:           42,
+    height:          42,
     borderRadius:    th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
@@ -3109,8 +3118,8 @@ const makeStyles = (th) => StyleSheet.create({
   hdrNewBtn: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.md,
+    height:            42,
     alignItems:        'center',
     justifyContent:    'center',
   },
@@ -3230,16 +3239,18 @@ const makeStyles = (th) => StyleSheet.create({
   searchSideBtnActive: {
     backgroundColor: withOpacity(th.colors.accent, 0.10),
   },
-  // Search bar (Figma "Bars/Search"): surface2, radius/sm, px lg / py md, sin
-  // borde ni icono
+  // Search bar (Figma "Bars/Search"): surface2, radius/sm, px lg, sin borde.
+  // Altura fija 42 = misma que las cajas de icono, para que todos los
+  // controles del header queden a la misma altura.
   searchInputWrap: {
     flex:              1,
     flexDirection:     'row',
     alignItems:        'center',
+    gap:               spacing.sm,
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
+    height:            42,
   },
   searchInput: {
     flex:    1,
