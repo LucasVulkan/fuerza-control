@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, interpolateColor } from 'react-native-reanimated';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
@@ -14,7 +14,6 @@ import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
 import { getWeekStatuses } from '../utils/weekProgress';
 
@@ -44,9 +43,14 @@ function formatBackupTime(isoString) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-function relativeTime(ts, t) {
+function daysSince(ts) {
   if (!ts) return null;
-  const days = Math.floor((Date.now() - ts) / 86400000);
+  return Math.floor((Date.now() - ts) / 86400000);
+}
+
+function relativeTime(ts, t) {
+  const days = daysSince(ts);
+  if (days === null) return null;
   if (days === 0)  return t('dayCard.today');
   if (days === 1)  return t('dayCard.yesterday');
   if (days < 7)   return t('dayCard.daysAgo', { count: days });
@@ -303,104 +307,153 @@ function sessionA11yLabel(t, template, statusLabel) {
   return `${t('workout.sessionLabel', { label: template?.label ?? '' })}, ${template?.name ?? ''}, ${statusLabel}`;
 }
 
-function exercisePreview(template, allExercises, language, count) {
-  return (template?.exercises ?? [])
-    .slice(0, count)
-    .map(({ exerciseId }) => {
-      const ex = allExercises[exerciseId];
-      if (!ex) return null;
-      return language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
-    })
-    .filter(Boolean)
-    .join(' · ');
-}
+/**
+ * Sesion Card (Figma 104:74–78, coordenadas exactas verificadas vía get_metadata
+ * sobre las instancias reales dentro de HomeView, no sobre el componente aislado):
+ * card 363×81, texto a x=20/y=15 (space/xl · space/lg), zona de acción siempre con
+ * el borde derecho en el mismo punto (343 de 363 = padding-right space/xl) sea cual
+ * sea su contenido — check/chevron en caja 26×26, botón EMPEZAR/CONTINUAR 99×35.
+ *
+ * Orden fijo A→F, sin reorder. 3 tratamientos: 'done' (check + fondo/borde tinte
+ * accent), 'active'/'next' (botón, mismo look), 'pending' (chevron, futura). El
+ * cruce hacia/desde 'done' hace crossfade de fondo/borde/icono; el resto de
+ * cambios de estado no animan.
+ *
+ * La animación de completar sesión se dispara al VOLVER (no con el cambio de
+ * status en sí) porque este stack no usa enableFreeze — Home sigue re-renderizando
+ * detrás de Workout/Recap, así que el status ya llega en 'done' desde antes de que
+ * el usuario vuelva. Un efecto aparte hace la mutación real del shared value
+ * leyendo `isDone` desde un ref siempre actualizado.
+ *
+ * CLAVE (raíz del bug anterior): el crossfade NO debe arrancar en el foco en sí.
+ * El evento de foco se dispara al INICIO de la transición nativa del stack; un
+ * crossfade de 300ms lanzado ahí se consume entero mientras Home todavía entra
+ * deslizándose, y el usuario lo ve "ya completado". `InteractionManager.
+ * runAfterInteractions` NO espera a las transiciones de native-stack (son nativas,
+ * no crean handles JS), así que disparaba casi al instante — por eso fallaba.
+ * Aquí esperamos al `transitionEnd` real del stack padre (Home ya asentada y
+ * visible) para arrancar; un setTimeout es la red de seguridad por si ese evento
+ * no llegara en alguna versión de react-native-screens.
+ */
+function SessionCard({ template, lastSession, status, onPress, hasOverride }) {
+  const { t }      = useTranslation();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
+  const navigation = useNavigation();
 
-/** Featured card for the next (or in-progress) session — the main CTA of the home. */
-function HeroSessionCard({ template, lastSession, allExercises, status, onPress, language, hasOverride }) {
-  const { t }  = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const accent = resolveColor(th, template?.color ?? 'var(--day1)');
-  const exerciseNames = exercisePreview(template, allExercises, language, 3);
-  const isActive    = status === 'active';
-  const timeText    = isActive
-    ? t('home.sessionActiveNow')
-    : (relativeTime(lastSession?.timestamp, t) ?? t('home.firstTime'));
-  const statusLabel = isActive ? t('home.sessionActive') : t('home.sessionNext');
+  const isDone = status === 'done';
+  // Última variante no-"done" — se congela al llegar a 'done' para que el
+  // botón/chevron que se desvanece en el crossfade no cambie a mitad de camino.
+  const [variant, setVariant] = useState(isDone ? 'next' : status);
+  if (!isDone && variant !== status) setVariant(status);
+  const isCta = variant === 'active' || variant === 'next';
 
-  return (
-    <TouchableOpacity
-      style={styles.heroCard}
-      onPress={onPress}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-      accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
-    >
-      <View style={styles.heroTop}>
-        <View style={styles.heroTagRow}>
-          <Text style={[styles.heroTag, { color: accent }]}>
-            {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
-          </Text>
-          {hasOverride && (
-            <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
-          )}
-        </View>
-        <Text style={[styles.heroTime, isActive && { color: th.colors.accent }]}>{timeText}</Text>
-      </View>
-      <Text style={styles.heroName} numberOfLines={1}>{template?.name ?? ''}</Text>
-      {exerciseNames ? (
-        <Text style={styles.heroEx} numberOfLines={1}>{exerciseNames}</Text>
-      ) : null}
-      <View style={styles.heroCta}>
-        <Text style={styles.heroCtaText}>
-          {`${isActive ? t('home.btnContinue') : t('home.btnStart')}  →`}
-        </Text>
-      </View>
-    </TouchableOpacity>
+  const doneAnim  = useSharedValue(isDone ? 1 : 0);
+  const isDoneRef = useRef(isDone);
+  useEffect(() => { isDoneRef.current = isDone; });
+
+  const [settleTick, setSettleTick] = useState(0);
+  const focusedBefore               = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedBefore.current) { focusedBefore.current = true; return; }
+      // Arranca el crossfade solo cuando la transición del stack ha terminado y
+      // Home está asentada y visible — así el usuario ve la animación entera.
+      let fired = false;
+      const settle = () => { if (!fired) { fired = true; setSettleTick((n) => n + 1); } };
+      const unsub  = navigation.getParent()?.addListener('transitionEnd', settle);
+      // ponytail: red de seguridad — si transitionEnd no llega, anima igual.
+      // Sube el valor si algún device transiciona más lento que esto.
+      const timer  = setTimeout(settle, 500);
+      return () => { unsub?.(); clearTimeout(timer); };
+    }, [navigation]),
   );
-}
+  useEffect(() => {
+    if (settleTick === 0) return;
+    doneAnim.value = withTiming(isDoneRef.current ? 1 : 0, { duration: 300, easing: Easing.inOut(Easing.ease) });
+  }, [settleTick, doneAnim]);
 
-/** Compact row for the rest of the cycle: done sessions dimmed, pending neutral. */
-function CompactSessionCard({ template, lastSession, status, orderNum, onPress, hasOverride }) {
-  const { t }  = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const accent = resolveColor(th, template?.color ?? 'var(--day1)');
-  const done   = status === 'done';
-  const rel    = relativeTime(lastSession?.timestamp, t);
-  const meta   = done
-    ? `${t('home.sessionDone')}${rel ? ` · ${rel}` : ''}`
-    : (rel ?? t('home.firstTime'));
-  const statusLabel = done ? t('home.sessionDone') : t('home.sessionPending');
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(doneAnim.value, [0, 1], [th.colors.surface, th.tint.accent10]),
+    borderColor:     interpolateColor(doneAnim.value, [0, 1], ['transparent', th.tint.accent50]),
+  }));
+  // El elemento "actual" (según el status en vivo) se desvanece hacia dentro;
+  // el "saliente" (congelado en `variant`) se desvanece hacia fuera — comparten
+  // el mismo borde derecho porque sesRightOverlay se ancla con right:0.
+  const currentAnimStyle  = useAnimatedStyle(() => ({ opacity: isDone ? doneAnim.value : 1 - doneAnim.value }));
+  const outgoingAnimStyle = useAnimatedStyle(() => ({ opacity: isDone ? 1 - doneAnim.value : doneAnim.value }));
+
+  const rel = relativeTime(lastSession?.timestamp, t);
+  // El prefijo "Completada" solo aplica a hoy/ayer — a partir de "hace N días"
+  // el texto va solo (pedido explícito, aunque el fragmento de tiempo siga en accent).
+  const isRecent = [0, 1].includes(daysSince(lastSession?.timestamp));
+  const statusLabel = isDone ? t('home.sessionDone') : isCta
+    ? (variant === 'active' ? t('home.sessionActive') : t('home.sessionNext'))
+    : t('home.sessionPending');
+
+  const actionContent = (kind) => {
+    if (kind === 'done') {
+      return <View style={styles.sesActionBox}><CheckIcon size={24} color={LIMA} /></View>;
+    }
+    if (kind === 'cta') {
+      return (
+        <View style={styles.sesBtn}>
+          <Text style={styles.sesBtnText}>
+            {variant === 'active' ? t('home.btnContinue') : t('home.btnStart')}
+          </Text>
+          <FutureChevronIcon size={11} color={th.colors.onAccent} />
+        </View>
+      );
+    }
+    return <View style={styles.sesActionBox}><FutureChevronIcon size={18} /></View>;
+  };
+
+  const currentKind  = isDone ? 'done' : (isCta ? 'cta' : 'pending');
+  const outgoingKind = isDone ? (isCta ? 'cta' : 'pending') : 'done';
 
   return (
     <TouchableOpacity
-      style={[styles.cmpCard, { borderLeftColor: accent }, done && styles.cmpCardDone]}
       onPress={onPress}
-      activeOpacity={0.75}
+      disabled={isDone}
+      activeOpacity={0.8}
       accessibilityRole="button"
       accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
     >
-      <View style={styles.cmpLeft}>
-        {done
-          ? <CheckIcon size={15} color={th.colors.green} />
-          : <Text style={styles.cmpOrder}>{orderNum}</Text>}
-      </View>
-      <View style={styles.cmpInfo}>
-        <View style={styles.cmpTitleRow}>
-          <Text style={styles.cmpTitle} numberOfLines={1}>
-            <Text style={{ color: accent }}>{template?.label ?? ''}</Text>
-            {` · ${template?.name ?? ''}`}
-          </Text>
-          {hasOverride && (
-            <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
-          )}
+      <Animated.View style={[styles.sesCard, cardAnimStyle]}>
+        <View style={styles.sesInfo}>
+          <View style={styles.sesTagRow}>
+            <Text style={styles.sesTag}>
+              {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
+            </Text>
+            {hasOverride && (
+              <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
+            )}
+          </View>
+          {/* título + subtítulo van pegados, gap 0 en Figma — el gap.sm entre el
+              tag y este bloque vive en sesInfo, no aquí dentro */}
+          <View>
+            <Text style={styles.sesTitle} numberOfLines={1}>{template?.name ?? ''}</Text>
+            <Text style={styles.sesSubtitle} numberOfLines={1}>
+              {rel ? (
+                isRecent ? (
+                  <>
+                    {`${t('home.sessionDone')} `}
+                    <Text style={{ color: th.colors.accent }}>{rel.toLowerCase()}</Text>
+                  </>
+                ) : (
+                  <Text style={{ color: th.colors.accent }}>{rel}</Text>
+                )
+              ) : t('home.firstTime')}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.cmpMeta} numberOfLines={1}>{meta}</Text>
-      </View>
-      <View style={styles.cmpBtn}>
-        <Text style={styles.cmpBtnText}>{done ? t('home.btnRepeat') : t('home.btnDo')}</Text>
-      </View>
+        <View style={styles.sesRight}>
+          <Animated.View style={currentAnimStyle}>{actionContent(currentKind)}</Animated.View>
+          <Animated.View style={[styles.sesRightOverlay, outgoingAnimStyle]} pointerEvents="none">
+            {actionContent(outgoingKind)}
+          </Animated.View>
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -570,6 +623,16 @@ function BarbellIcon({ size = 14, color }) {
   );
 }
 
+// Flecha rellena de sesión futura (Figma, asset Rectangle57) — distinta de
+// ChevronRightIcon (trazo fino): forma sólida, gris literal #d9d9d9 sin token.
+function FutureChevronIcon({ size = 18, color = '#d9d9d9' }) {
+  return (
+    <Svg width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none">
+      <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={color} />
+    </Svg>
+  );
+}
+
 // ── Section header ──────────────────────────────────────────────────────────────
 // SESIONES carries an icon (the training core); PROGRAMA/CONEXIONES are text-only,
 // muted — the hierarchy comes from the icon, the colour and the divider above.
@@ -589,7 +652,7 @@ function SectionHeader({ label, icon, muted }) {
 export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { t, i18n } = useTranslation();
+  const { t }      = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -598,8 +661,6 @@ export default function HomeScreen() {
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
-  const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
-  const customExercises      = useStore((s) => s.customExercises);
   const workoutLog           = useStore((s) => s.workoutLog);
   // Subscribed only so template/program edits re-render this screen
   // eslint-disable-next-line no-unused-vars
@@ -617,8 +678,6 @@ export default function HomeScreen() {
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
   const setCurrentStage      = useStore((s) => s.setCurrentStage);
   const driveBackup          = useStore((s) => s.driveBackup);
-
-  const allExercises = { ...exerciseLibrary, ...customExercises };
 
   function handleArchiveConfirm(clearHistory) {
     if (activeProgram) archiveProgram(activeProgram.id, clearHistory);
@@ -725,7 +784,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* ── SESIONES ── (hero + pending sessions + free session) */}
+              {/* ── SESIONES ── orden fijo A→F, sin reorder (ver SessionCard) */}
               <View style={styles.section}>
                 <SectionHeader
                   icon={<BarbellIcon size={14} color={th.colors.accent} />}
@@ -738,16 +797,11 @@ export default function HomeScreen() {
                       template:    getEffectiveTemplate(sessionTemplateId),
                       lastSession: getLastSession(sessionTemplateId),
                       status:      getSessionStatus(dayIndex, doneInCycle, activeSession?.templateId, sessionTemplateId),
-                      orderNum:    dayIndex + 1,
                     }))
                     .filter((d) => d.template);
 
-                  const hero = days.find((d) => d.status === 'active')
-                            ?? days.find((d) => d.status === 'next');
-                  const rest = days.filter((d) => d !== hero);
-
                   // Starting a session out of rotation is easy to do by accident —
-                  // compact rows confirm before starting.
+                  // confirm before starting anything that isn't the "next" slot.
                   const confirmStart = (d) => {
                     Alert.alert(
                       t('home.startOutOfOrderTitle', {
@@ -763,30 +817,18 @@ export default function HomeScreen() {
 
                   return (
                     <View style={styles.sesList}>
-                      {hero && (
-                        <HeroSessionCard
-                          template={hero.template}
-                          lastSession={hero.lastSession}
-                          allExercises={allExercises}
-                          status={hero.status}
-                          language={i18n.language}
-                          hasOverride={!!clientSync.pendingOverrides?.[hero.templateId]}
-                          onPress={
-                            hero.status === 'active'
-                              ? () => navigation.navigate('Workout')
-                              : () => startSession(hero.templateId)
-                          }
-                        />
-                      )}
-                      {rest.map((d) => (
-                        <CompactSessionCard
+                      {days.map((d) => (
+                        <SessionCard
                           key={d.templateId}
                           template={d.template}
                           lastSession={d.lastSession}
-                          status={d.status === 'done' ? 'done' : 'pending'}
-                          orderNum={d.orderNum}
+                          status={d.status}
                           hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
-                          onPress={() => confirmStart(d)}
+                          onPress={
+                            d.status === 'active' ? () => navigation.navigate('Workout')
+                              : d.status === 'next' ? () => startSession(d.templateId)
+                                : () => confirmStart(d)
+                          }
                         />
                       ))}
                     </View>
@@ -945,7 +987,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg,
   },
   content: {
-    padding:       spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop:    spacing.xl,
     paddingBottom: spacing.xxl * 2,
     gap:           spacing.lg,
   },
@@ -1245,7 +1288,72 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Session cards ─────────────────────────────────────────────────────────────
   sesList: {
-    gap: 7,
+    gap: spacing.md,
+  },
+  sesCard: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    borderWidth:       borders.thin,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.sm2, // Figma pide space/lg(15); en el dispositivo se veía con demasiado aire
+  },
+  sesInfo: {
+    flex:     1,
+    minWidth: 0,
+    gap:      spacing.sm, // gap tag ⟷ bloque título+subtítulo (space/sm, Figma)
+  },
+  sesTagRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  sesTag: {
+    ...textStyles.spacingTag,
+    color: LIMA,
+  },
+  sesTitle: {
+    ...textStyles.cardTitle,
+    color: th.colors.text,
+  },
+  sesSubtitle: {
+    ...textStyles.subtitle,
+    color:     th.colors.mutedLight,
+    marginTop: -3, // el line-height de la fuente deja aire de más entre título y subtítulo
+  },
+  // Sin ancho fijo: se ajusta al contenido "actual" (check/botón/chevron). El que
+  // se desvanece va en sesRightOverlay, absolute + right:0, así el borde derecho
+  // de la zona de acción no se mueve durante el fade (los 3 estados comparten el
+  // mismo borde derecho en Figma: x+w=343 de 363).
+  sesRight: {
+    position: 'relative',
+  },
+  sesRightOverlay: {
+    position:       'absolute',
+    top: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+  },
+  // Caja del check / del chevron futuro — icon-box de Figma (26×26).
+  sesActionBox: {
+    width:          26,
+    height:         26,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  sesBtn: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'center',
+    gap:               spacing.sm,
+    backgroundColor:   LIMA,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.md, // Figma pide space/sm(6); en el dispositivo se veía apretado
+    paddingVertical:   spacing.md,
+  },
+  sesBtnText: {
+    ...textStyles.btnAction,
+    color: th.colors.onAccent,
   },
   secLabel: {
     fontSize:      11,
@@ -1256,32 +1364,6 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:  1,
   },
 
-  // Hero (next / in-progress session)
-  heroCard: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.35),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md + 2,
-    marginBottom:    spacing.xs + 2,
-  },
-  heroTop: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'center',
-    marginBottom:   2,
-  },
-  heroTagRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexShrink:    1,
-  },
-  cmpTitleRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
   adaptedChip: {
     backgroundColor:   withOpacity(th.colors.blue, 0.14),
     borderRadius:      th.radius.full,
@@ -1294,91 +1376,6 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight:    typography.bold,
     color:         th.colors.blue,
     letterSpacing: 0.5,
-  },
-  heroTag: {
-    fontSize:      12,
-    fontWeight:    typography.bold,
-    letterSpacing: 1,
-  },
-  heroTime: {
-    fontSize: 11,
-    color:    th.colors.mutedLight,
-  },
-  heroName: {
-    fontSize:     17,
-    fontWeight:   typography.semibold,
-    color:        th.colors.text,
-    marginBottom: 3,
-  },
-  heroEx: {
-    fontSize:     12,
-    color:        th.colors.mutedLight,
-    marginBottom: spacing.sm,
-  },
-  heroCta: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm + 2,
-    paddingVertical: 11,
-    alignItems:      'center',
-    marginTop:       spacing.md,
-  },
-  heroCtaText: {
-    fontSize:      14,
-    fontWeight:    typography.bold,
-    color:         th.colors.onAccent,
-    letterSpacing: 0.5,
-  },
-
-  // Compact rows (done / pending)
-  cmpCard: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm + 2,
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderLeftWidth:   3,
-    borderRadius:      th.radius.md,
-    paddingVertical:   spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-  },
-  cmpCardDone: {
-    opacity: 0.55,
-  },
-  cmpLeft: {
-    width:      18,
-    alignItems: 'center',
-  },
-  cmpOrder: {
-    fontSize:   12,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
-  cmpInfo: {
-    flex:     1,
-    minWidth: 0,
-    gap:      1,
-  },
-  cmpTitle: {
-    fontSize:   13,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  cmpMeta: {
-    fontSize: 11,
-    color:    th.colors.mutedLight,
-  },
-  cmpBtn: {
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical:   5,
-  },
-  cmpBtnText: {
-    fontSize:   11,
-    fontWeight: typography.medium,
-    color:      th.colors.mutedLight,
   },
 
   // ── Stage advance banner ──────────────────────────────────────────────────────
@@ -1473,19 +1470,17 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
   freeSessionBtn: {
-    paddingVertical: spacing.sm + 1,
-    borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderStyle:     'dashed',
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-    marginTop:       spacing.xs + 2,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius:      th.radius.md,
+    borderWidth:       0.5,
+    borderColor:       th.tint.accent50,
+    alignItems:        'center',
+    marginTop:         spacing.md,
   },
   freeSessionBtnText: {
-    fontSize:      typography.sm + 1,
-    fontWeight:    typography.medium,
-    color:         th.colors.mutedLight,
-    letterSpacing: 0.3,
+    ...textStyles.btnAction,
+    color: th.colors.accent,
   },
 
   // ── Empty state ───────────────────────────────────────────────────────────────

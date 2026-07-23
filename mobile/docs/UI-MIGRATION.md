@@ -51,12 +51,58 @@ Dividido en 4 partes; 1 y 2 hechas:
    (`withTiming`, 200ms ease-in-out) al volver del recap tras guardar sesión — no anima
    en el montaje inicial de la pantalla, solo en cambios posteriores (mismo patrón que
    `SegmentedControl`).
-3. ⬜ **Lista de sesiones** — **cambio de comportamiento**: pasa a **orden fijo A→E**
-   (hoy hay "hero + compactas" con orden rotatorio). Acción según estado: completada = ✓
-   con tinte/borde accent; siguiente = botón `EMPEZAR →`; futura = chevron. Se conservan
-   los avisos actuales de "empezar fuera de orden".
+3. ✅ **Lista de sesiones** (⚠️ animación de completado sin resolver, ver más abajo) —
+   **cambio de comportamiento**: orden fijo A→E, sin reorder (antes había "hero +
+   compactas" con orden rotatorio: la sesión siguiente saltaba al principio). Un único
+   componente `SessionCard` (sustituye a `HeroSessionCard`/`CompactSessionCard`) con 3
+   tratamientos: completada = check lima + fondo/borde `tint.accent10`/`accent50`;
+   siguiente/en curso = botón `EMPEZAR`/`CONTINUAR` (fondo lima literal, texto+chevron
+   `onAccent`); futura = chevron gris `#d9d9d9` (`FutureChevronIcon`, path exacto del
+   SVG de Figma). Coordenadas verificadas con `get_metadata` sobre las instancias reales
+   dentro de `HomeView` (`104:74`–`104:78`), no sobre el componente aislado — los tres
+   estados de la zona de acción comparten el mismo borde derecho (343 de 363px), solo
+   cambia el ancho de su contenido. Se conservan los avisos de "empezar fuera de orden".
+   Subtítulo: `Completada {tiempo}` solo cuando el tiempo es "hoy"/"ayer" (con el
+   fragmento de tiempo en accent); a partir de "hace N días" el texto va solo, sin
+   prefijo (pedido explícito en QA, aunque siga en accent). Tag "SESIÓN X" usa
+   `textStyles.spacingTag` (no `cardType`). Padding vertical de la tarjeta y del botón
+   EMPEZAR ajustados a ojo en QA por debajo del valor literal de Figma (`space/lg`→
+   `space/sm2` en la tarjeta, `space/sm`→`space/md` en el botón) — ya se vio dos veces
+   en esta migración que un valor exacto de Figma no siempre lee bien en dispositivo;
+   cuando eso pase, manda el ajuste de QA y déjalo anotado, no repliques el número de
+   Figma a ciegas. `Buttons` "Sesión libre" (mismo frame de Figma que la lista)
+   restyleado en el mismo cambio: borde `tint.accent50`, texto `accent` sólido (no el
+   tint, corregido en QA).
 4. ⬜ **Programa + Conexiones** — `EDITAR | VER | //` y filas de conexión con dot de
    estado + acción de texto accent (`CONECTADO`/`CONECTAR`).
+
+### ⚠️ Problema conocido sin resolver: animación de sesión completada
+Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
+transición al estado "completada" (crossfade de fondo/borde + botón→check) — **no
+reordena la lista** (eso ya no existe), solo cambia de aspecto la misma tarjeta, en el
+mismo sitio. En QA, tres intentos distintos no lo han conseguido mostrar en dispositivo;
+la tarjeta ya aparece completada al volver, sin animación visible:
+
+1. `useIsFocused()` + "ajustar estado durante el render" (comparar `status` contra un
+   `useState` y llamar `setState` en el cuerpo del render). Sospecha: React descarta el
+   render intermedio antes de pintar (ver react.dev, "adjusting state during render"),
+   así que nunca se pinta el frame "todavía no completado".
+2. `useFocusEffect` + `InteractionManager.runAfterInteractions` para esperar a que
+   termine la transición de navegación antes de animar. Diagnóstico de un subagente
+   (Opus): `InteractionManager` no espera transiciones de `@react-navigation/native-stack`
+   (son nativas, no crean handles JS) — el callback disparaba casi al inicio del slide,
+   no al final, y el crossfade se consumía entero mientras Home aún entraba.
+3. `useFocusEffect` + `transitionEnd` real del stack padre
+   (`navigation.getParent().addListener('transitionEnd', …)`) con `setTimeout(500)`
+   como red de seguridad. Razonamiento sólido (confirma que Home NO se remonta al volver
+   del recap, así que el estado local sobrevive), pero en dispositivo **sigue sin
+   verse**.
+
+El código actual en `SessionCard` (`src/screens/HomeScreen.jsx`) implementa el intento 3.
+Antes de intentar un cuarto enfoque: descartar causas de entorno (probar
+`expo start -c` / limpiar caché de Metro, no solo recargar Expo Go — el usuario no lo
+ha confirmado todavía) antes de seguir tocando la lógica de disparo, ya que el mismo
+síntoma con tres implementaciones distintas también encaja con "algo sirve JS viejo".
 
 ### Pendiente de decisión (preguntar al usuario al llegar)
 - Banner: la etiqueta a la izquierda de la barra usa el **nombre de la etapa**; el
