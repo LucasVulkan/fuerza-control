@@ -27,6 +27,7 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import ProgressTab from '../components/stats/ProgressTab';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -2640,7 +2641,6 @@ export default function ClientsScreen() {
             there's nothing to show, so the default state is two clean rows. */}
         {(atRiskCount > 0 || unreviewedCount > 0 || activeFilterCount > 0) && (
           <ScrollView
-            style={styles.filterRowScroll}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterRow}
@@ -2846,94 +2846,94 @@ export default function ClientsScreen() {
       >
         <View style={styles.filterSheetBody}>
 
-          {/* Estado */}
+          {/* Estado — segmented control (mismo componente que el resto de la app) */}
           <View>
             <Text style={styles.filterSecTitle}>{t('clients.filterSheet.status')}</Text>
-            <View style={styles.filterSegRow}>
-              {[
-                { id: 'all',      label: t('clients.filterSheet.statusAll'),      count: clientCounts.total },
-                { id: 'active',   label: t('clients.filterSheet.statusActive'),   count: clientCounts.active },
-                { id: 'inactive', label: t('clients.filterSheet.statusInactive'), count: clientCounts.inactive },
-              ].map(({ id, label, count }) => {
-                const active = statusFilter === id;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[styles.filterSegBtn, active && styles.filterSegBtnActive]}
-                    onPress={() => { setAdherenceFilter(null); setStatusFilter(id); }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.filterSegLabel, active && styles.filterSegLabelActive]}>
-                      {label} <Text style={styles.filterSegCount}>{count}</Text>
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <SegmentedControl
+              options={[
+                { id: 'all',      label: t('clients.filterSheet.statusAll') },
+                { id: 'active',   label: t('clients.filterSheet.statusActive') },
+                { id: 'inactive', label: t('clients.filterSheet.statusInactive') },
+              ]}
+              value={statusFilter}
+              onChange={(id) => { setAdherenceFilter(null); setStatusFilter(id); }}
+            />
           </View>
 
-          {/* Orden */}
+          {/* Orden — segmented control */}
           <View>
             <Text style={styles.filterSecTitle}>{t('clients.filterSheet.sort')}</Text>
-            <View style={styles.filterSegRow}>
-              {[
+            <SegmentedControl
+              options={[
                 { id: 'recent', label: t('clients.filterSheet.sortRecent') },
                 { id: 'idle',   label: t('clients.filterSheet.sortIdle') },
                 { id: 'name',   label: t('clients.filterSheet.sortName') },
-              ].map(({ id, label }) => {
-                const active = sortMode === id;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[styles.filterSegBtn, active && styles.filterSegBtnActive]}
-                    onPress={() => setSortMode(id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.filterSegLabel, active && styles.filterSegLabelActive]}>{label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              ]}
+              value={sortMode}
+              onChange={setSortMode}
+            />
           </View>
 
           {/* Etiquetas — selección + gestión inline (crear, renombrar, borrar) */}
           <View>
             <Text style={styles.filterSecTitle}>{t('clients.filterSheet.tags')}</Text>
 
+            {/* Buscador + botón "+" (mismo estilo que el buscador de la pantalla) */}
             <View style={styles.tagSearchRow}>
-              <View style={[styles.tagSheetSearch, { flex: 1 }]}>
+              <View style={styles.searchInputWrap}>
+                <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
+                  stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+                </Svg>
                 <TextInput
-                  style={styles.tagSheetSearchInput}
+                  style={styles.searchInput}
                   placeholder="Buscar etiqueta…"
-                  placeholderTextColor={th.colors.muted}
+                  placeholderTextColor={th.colors.mutedLight}
                   value={tagSearchText}
                   onChangeText={setTagSearchText}
                   returnKeyType="search"
                 />
               </View>
-              <AccentBtn
-                label="＋"
-                small
-                disabled={
+              {(() => {
+                const addDisabled =
                   !tagSearchText.trim() ||
-                  allTags.some((tg) => tg.name.toLowerCase() === tagSearchText.trim().toLowerCase())
-                }
-                onPress={() => {
-                  const name = tagSearchText.trim();
-                  if (!name) return;
-                  const newId = createTag(name);
-                  setTagFilter((prev) => [...prev, newId]);
-                  setTagSearchText('');
-                }}
-              />
+                  allTags.some((tg) => tg.name.toLowerCase() === tagSearchText.trim().toLowerCase());
+                return (
+                  <TouchableOpacity
+                    style={[styles.tagAddBtn, addDisabled && { opacity: 0.4 }]}
+                    disabled={addDisabled}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      const name = tagSearchText.trim();
+                      if (!name) return;
+                      const newId = createTag(name);
+                      setTagFilter((prev) => [...prev, newId]);
+                      setTagSearchText('');
+                    }}
+                  >
+                    <Text style={styles.tagAddBtnText}>+</Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
 
+            {/* Lista de etiquetas — mismo estilo de listed-items que el dropdown
+                de "filtrar ejercicios" de Progress (sin ser un dropdown) */}
             {(() => {
               const filtered = tagSearchText.trim()
                 ? allTags.filter((tg) => tg.name.toLowerCase().includes(tagSearchText.toLowerCase()))
                 : allTags;
+              if (filtered.length === 0) {
+                return (
+                  <Text style={styles.tagEmptyText}>
+                    {tagSearchText.trim()
+                      ? 'Sin resultados — crea la etiqueta con +'
+                      : 'Sin etiquetas. Escribe un nombre y pulsa +'}
+                  </Text>
+                );
+              }
               return (
-                <>
+                <View style={styles.tagListBox}>
                   {filtered.map(({ id, name }) => {
                     const selected   = tagFilter.includes(id);
                     const isRenaming = tagRenameId === id;
@@ -2946,7 +2946,7 @@ export default function ClientsScreen() {
                         setTagRenameId(null);
                       };
                       return (
-                        <View key={id} style={styles.tagSheetItem}>
+                        <View key={id} style={styles.dropItem}>
                           <TextInput
                             style={[styles.input, { flex: 1 }]}
                             value={tagRenameText}
@@ -2966,16 +2966,16 @@ export default function ClientsScreen() {
                     }
 
                     return (
-                      <View key={id} style={[styles.tagSheetItem, selected && styles.tagSheetItemActive]}>
+                      <View key={id} style={[styles.dropItem, selected && styles.dropItemSel]}>
                         <TouchableOpacity
                           style={styles.tagSelectArea}
                           onPress={() => toggleTagFilter(id)}
                           activeOpacity={0.7}
                         >
-                          <View style={[styles.tagSheetCheck, selected && styles.tagSheetCheckActive]}>
-                            {selected && <Text style={styles.tagSheetCheckMark}>✓</Text>}
+                          <View style={[styles.dropCheck, selected && styles.dropCheckActive]}>
+                            {selected && <Text style={styles.dropCheckMark}>✓</Text>}
                           </View>
-                          <Text style={[styles.tagSheetItemText, selected && { color: th.colors.accent }]}>{name}</Text>
+                          <Text style={[styles.dropItemText, selected && styles.dropItemTextSel]} numberOfLines={1}>{name}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.tagActionBtn}
@@ -3004,24 +3004,26 @@ export default function ClientsScreen() {
                       </View>
                     );
                   })}
-                  {filtered.length === 0 && (
-                    <Text style={[styles.emptyText, { paddingHorizontal: spacing.xl }]}>
-                      {tagSearchText.trim()
-                        ? 'Sin resultados — crea la etiqueta con ＋'
-                        : 'Sin etiquetas. Escribe un nombre y pulsa ＋'}
-                    </Text>
-                  )}
-                </>
+                </View>
               );
             })()}
           </View>
 
-          {/* Limpiar */}
-          {(activeFilterCount > 0 || sortMode !== 'recent') && (
-            <TouchableOpacity style={styles.filterClearBtn} onPress={clearFilters} activeOpacity={0.7}>
-              <Text style={styles.filterClearBtnText}>{t('clients.filterSheet.clear')}</Text>
-            </TouchableOpacity>
-          )}
+          {/* Limpiar — siempre presente (altura constante); deshabilitado cuando
+              no hay nada que limpiar, para que el modal no cambie de tamaño */}
+          {(() => {
+            const canClear = activeFilterCount > 0 || sortMode !== 'recent';
+            return (
+              <TouchableOpacity
+                style={[styles.filterClearBtn, !canClear && { opacity: 0.4 }]}
+                disabled={!canClear}
+                onPress={clearFilters}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.filterClearBtnText}>{t('clients.filterSheet.clear')}</Text>
+              </TouchableOpacity>
+            );
+          })()}
 
         </View>
       </DragSheet>
@@ -3169,39 +3171,56 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
-  filterSegRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  filterSegBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-  },
-  filterSegBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.10),
-    borderColor:     withOpacity(th.colors.accent, 0.40),
-  },
-  filterSegLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  filterSegLabelActive: {
-    color: th.colors.accent,
-  },
-  filterSegCount: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
-  },
   tagSearchRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
+  },
+  // Botón "+" cuadrado a juego con la barra de búsqueda (42×42, accent)
+  tagAddBtn: {
+    width:           42,
+    height:          42,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  tagAddBtnText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize:   24,
+    lineHeight: 26,
+    color:      th.colors.onAccent,
+  },
+  // Lista de etiquetas — mismo listed-item que el dropdown de Progress
+  tagListBox: {
+    marginTop:       spacing.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
+    overflow:        'hidden',
+  },
+  dropItem: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap:               spacing.sm,
+  },
+  dropItemSel: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
+  dropCheck: {
+    width: 18, height: 18, borderRadius: th.radius.xs,
+    borderWidth: borders.thin, borderColor: th.colors.muted,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
+  dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
+  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropItemTextSel: { color: th.colors.text },
+  tagEmptyText: {
+    ...textStyles.subtitle,
+    color:     th.colors.mutedLight,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   tagActionBtn: {
     padding: spacing.xs,
@@ -3259,16 +3278,14 @@ const makeStyles = (th) => StyleSheet.create({
     color:   th.colors.text,
   },
 
-  // Row 3: Filter pills row
-  filterRowScroll: {
-    marginTop: -spacing.sm,   // pull Row 3 up, reducing gap with search bar
-  },
+  // Row 3: Filter pills row. Sin marginTop negativo: el gap con el buscador
+  // lo da el `gap` del listHeader (space/sm=6), igual que el que hay entre el
+  // buscador y los botones de arriba.
   filterRow: {
     flexDirection:  'row',
     alignItems:     'center',
     gap:            spacing.sm,
     paddingHorizontal: spacing.xl,
-    paddingTop:     spacing.xs,
     paddingBottom:  spacing.xs,
   },
   // Attention pills (En riesgo / Sin revisar)
@@ -3413,83 +3430,6 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize: typography.sm,
     color:    th.colors.red,
   },
-  tagSheetSearch: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom:     spacing.sm,
-  },
-  tagSheetSearchInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    color:             th.colors.text,
-    fontSize:          typography.base,
-  },
-  tagSheetCreateRow: {
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  tagSheetCreateText: {
-    fontSize:   typography.base,
-    color:      th.colors.accent,
-    fontWeight: typography.medium,
-  },
-  tagSheetItem: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  tagSheetItemActive: {
-    backgroundColor: `${th.colors.accent}08`,
-  },
-  tagSheetCheck: {
-    width:           20,
-    height:          20,
-    borderRadius:    4,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
-  },
-  tagSheetCheckActive: {
-    backgroundColor: th.colors.accent,
-    borderColor:     th.colors.accent,
-  },
-  tagSheetCheckMark: {
-    fontSize:   11,
-    color:      th.colors.bg,
-    fontWeight: typography.bold,
-    lineHeight: 14,
-  },
-  tagSheetItemText: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
-  tagSheetApply: {
-    margin:          spacing.xl,
-    marginBottom:    spacing.sm,
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-  },
-  tagSheetApplyText: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
-
   // ── Tag manager ──
   tagMgrCreateRow: {
     flexDirection:     'row',
