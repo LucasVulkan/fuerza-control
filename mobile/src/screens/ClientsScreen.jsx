@@ -3171,7 +3171,7 @@ const makeStyles = (th) => StyleSheet.create({
   filterSecTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.bold,
-    color:         th.colors.muted,
+    color:         th.colors.mutedLight,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
@@ -3214,12 +3214,12 @@ const makeStyles = (th) => StyleSheet.create({
   dropItemSel: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
   dropCheck: {
     width: 18, height: 18, borderRadius: th.radius.xs,
-    borderWidth: borders.thin, borderColor: th.colors.muted,
+    borderWidth: borders.thin, borderColor: th.colors.text,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
   dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
-  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.text },
   dropItemTextSel: { color: th.colors.text },
   tagEmptyText: {
     ...textStyles.subtitle,
@@ -3232,7 +3232,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   tagActionText: {
     fontSize: 14,
-    color:    th.colors.muted,
+    color:    th.colors.mutedLight,
   },
   tagSelectArea: {
     flex:          1,

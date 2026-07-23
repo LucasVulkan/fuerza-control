@@ -1784,13 +1784,15 @@ const makeStyles = (th) => StyleSheet.create({
   exPickerItemTextActive: { color: th.colors.accent, fontWeight: typography.semibold },
   modalCloseBtn: {
     width:           28,
+    height:          28,
+    alignSelf:       'center', // el padre usa alignItems:'stretch' — sin esto sale rectangular
     borderRadius:    th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
     flexShrink:      0,
   },
-  modalCloseText: { fontSize: typography.sm, color: th.colors.muted },
+  modalCloseText: { fontSize: typography.sm, color: th.colors.mutedLight },
 
   // ── Modal FormaFit: barra accent, período, cards, sesiones desglosadas ───────
   exBar: {
