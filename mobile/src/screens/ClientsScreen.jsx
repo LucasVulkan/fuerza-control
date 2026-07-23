@@ -2566,46 +2566,47 @@ export default function ClientsScreen() {
       {/* ── List header ── */}
       <View style={styles.listHeader}>
 
-        {/* Row 1: Title + trainer tools (connectivity · billing) + New client */}
+        {/* Row 1: Title "CLIENTES N" · trainer tools (€ billing · cloud sync) · + Cliente */}
         <View style={styles.listTitleRow}>
-          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
-            <Text style={styles.listTitle}>CLIENTES</Text>
-            <Text style={styles.listTitleCount}>· {clientCounts.total}</Text>
+          <Text style={styles.listTitle} numberOfLines={1}>
+            CLIENTES <Text style={styles.listTitleCount}>{clientCounts.total}</Text>
+          </Text>
+          <View style={styles.hdrRightCluster}>
+            <View style={styles.hdrIconGroup}>
+              {/* Billing (€) */}
+              <TouchableOpacity style={styles.hdrIconBox} onPress={() => setView('billing')} activeOpacity={0.7}>
+                <Text style={styles.hdrEuro}>€</Text>
+              </TouchableOpacity>
+              {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
+              <TouchableOpacity style={styles.hdrIconBox} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
+                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                </Svg>
+                <View style={[
+                  styles.syncStatusDot,
+                  {
+                    backgroundColor:
+                      trainerSync.mode === 'google' || trainerSync.mode === 'code' ? th.colors.green
+                      : trainerSync.mode === 'offline' ? th.colors.muted2
+                      : th.colors.orange,
+                  },
+                ]} />
+              </TouchableOpacity>
+            </View>
+            {/* New client */}
+            <TouchableOpacity style={styles.hdrNewBtn} onPress={() => setShowNewClient(true)} activeOpacity={0.85}>
+              <Text style={styles.hdrNewBtnText}>{t('clients.newBtn')}</Text>
+            </TouchableOpacity>
           </View>
-          {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
-          <TouchableOpacity style={styles.billingBtn} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
-            <Svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke={th.colors.muted} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-            </Svg>
-            <View style={[
-              styles.syncStatusDot,
-              {
-                backgroundColor:
-                  trainerSync.mode === 'google' || trainerSync.mode === 'code' ? th.colors.green
-                  : trainerSync.mode === 'offline' ? th.colors.muted2
-                  : th.colors.orange,
-              },
-            ]} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.billingBtn} onPress={() => setView('billing')} activeOpacity={0.7}>
-            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={th.colors.muted} strokeWidth={1.8} strokeLinecap="round">
-              <Path d="M3 6h18M3 10h18M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
-            </Svg>
-          </TouchableOpacity>
-          <AccentBtn label={t('clients.newBtn')} onPress={() => setShowNewClient(true)} small />
         </View>
 
         {/* Row 2: Search + Filters */}
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrap}>
-            <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
-              stroke={withOpacity(th.colors.text, 0.55)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
-            </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar cliente…"
-              placeholderTextColor={withOpacity(th.colors.text, 0.45)}
+              placeholderTextColor={th.colors.mutedLight}
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
@@ -2614,14 +2615,14 @@ export default function ClientsScreen() {
 
           {/* Filter sheet button — badge shows how many filters are applied */}
           <TouchableOpacity
-            style={[styles.searchSideBtn, activeFilterCount > 0 && styles.searchSideBtnActive]}
+            style={[styles.hdrIconBox, activeFilterCount > 0 && styles.searchSideBtnActive]}
             onPress={() => setShowFilterSheet(true)}
             activeOpacity={0.7}
           >
             <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-              stroke={activeFilterCount > 0 ? th.colors.accent : withOpacity(th.colors.text, 0.55)}
+              stroke={activeFilterCount > 0 ? th.colors.accent : th.colors.mutedLight}
               strokeWidth={2} strokeLinecap="round">
-              <Path d="M4 6h16M7 12h10M10 18h4" />
+              <Path d="M3 6h18M6 12h12M9 18h6" />
             </Svg>
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
@@ -3057,42 +3058,76 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── List header ──
+  // Figma: sin divisoria, gap space/sm entre las dos filas
   listHeader: {
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.xs,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-    gap:               spacing.md,   // more breathing room between header rows
+    paddingTop: spacing.lg,
+    gap:        spacing.sm,
   },
 
-  // Row 1: Title + sync status + buttons
+  // Row 1: "CLIENTES N" + cluster de acciones (justify-between)
   listTitleRow: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               spacing.sm,
+    justifyContent:    'space-between',
     paddingHorizontal: spacing.xl,
   },
+  // "CLIENTES" en color texto, el contador en accent (mismo tamaño hero)
   listTitle: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
+    ...textStyles.hero,
+    color:      th.colors.text,
+    flexShrink: 1,
   },
   listTitleCount: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      th.colors.muted2,
+    color: th.colors.accent,
+  },
+  // Cluster derecho: [€ · cloud] (gap 6) --10-- [+ Cliente]
+  hdrRightCluster: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.md,
+  },
+  hdrIconGroup: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  // Caja de icono 35×35 (Figma): surface2, radius/sm, sin borde
+  hdrIconBox: {
+    width:           35,
+    height:          35,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  hdrEuro: {
+    fontFamily: 'Inter_500Medium',
+    fontSize:   20,
+    color:      th.colors.text,
+  },
+  hdrNewBtn: {
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.md,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  hdrNewBtnText: {
+    ...textStyles.cardType,
+    color: th.colors.onAccent,
   },
   // Connectivity status dot (on the cloud icon button)
   syncStatusDot: {
     position:     'absolute',
-    top:          4,
-    right:        4,
+    top:          5,
+    right:        5,
     width:        7,
     height:       7,
     borderRadius: 4,
     borderWidth:  1.5,
-    borderColor:  th.colors.bg,
+    borderColor:  th.colors.surface2,
   },
   // Filter button badge (nº of applied filters)
   filterBadge: {
@@ -3183,64 +3218,34 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize: typography.sm,
     color:    th.colors.muted,
   },
-  billingBtn: {
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    width:             32,
-    height:            32,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  billingBtnText: {
-    fontSize:   16,
-    lineHeight: 20,
-  },
-
-  // Row 2: Sort + Search + Filter
+  // Row 2: Search + Filter (gap space/sm)
   searchRow: {
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm,
     paddingHorizontal: spacing.xl,
   },
-  searchSideBtn: {
-    width:           42,
-    height:          42,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
-  },
+  // Estado activo del botón de filtro (funcionalidad app, no en Figma):
+  // tinte accent sobre la caja surface2 base
   searchSideBtnActive: {
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
+    backgroundColor: withOpacity(th.colors.accent, 0.10),
   },
-  searchSideBtnIcon: {
-    fontSize:   20,
-    color:      withOpacity(th.colors.text, 0.55),
-    lineHeight: 24,
-  },
+  // Search bar (Figma "Bars/Search"): surface2, radius/sm, px lg / py md, sin
+  // borde ni icono
   searchInputWrap: {
     flex:              1,
     flexDirection:     'row',
     alignItems:        'center',
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    gap:               spacing.sm,
-    height:            42,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
   },
   searchInput: {
-    flex:     1,
-    color:    th.colors.text,
-    fontSize: typography.base,
+    flex:    1,
+    padding: 0,
+    ...textStyles.subtitle,
+    color:   th.colors.text,
   },
 
   // Row 3: Filter pills row
