@@ -23,7 +23,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | AppHeader + tab bar | ✅ | `src/components/AppHeader.jsx`, `src/navigation/RootNavigator.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
-| **HomeView** | 🔄 **en curso** | `src/screens/HomeScreen.jsx` |
+| **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
 | Program Editor | ⬜ | `src/screens/ProgramEditorScreen.jsx` |
 | Sesion Editor (+ modal "···" nuevo) | ⬜ | `src/screens/SessionEditorScreen.jsx` |
@@ -31,8 +31,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Bloques AMRAP / EMOM | ⬜ | editores de bloque |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` |
 
-### HomeView — desglose en curso
-Dividido en 4 partes; 1 y 2 hechas:
+### HomeView — desglose (completo, 4/4 partes)
 
 1. ✅ **Banner** — tarjeta accent con nombre de programa, "by entrenador", etapa
    (nombre + `ETAPA n/total`), barra de progreso segmentada por ciclo, `Ciclo X de Y` + %,
@@ -73,8 +72,26 @@ Dividido en 4 partes; 1 y 2 hechas:
    Figma a ciegas. `Buttons` "Sesión libre" (mismo frame de Figma que la lista)
    restyleado en el mismo cambio: borde `tint.accent50`, texto `accent` sólido (no el
    tint, corregido en QA).
-4. ⬜ **Programa + Conexiones** — `EDITAR | VER | //` y filas de conexión con dot de
-   estado + acción de texto accent (`CONECTADO`/`CONECTAR`).
+4. ✅ **Programa + Conexiones** — `EDITAR | VER | //` con variante `Secondary` real
+   del componente Buttons de Figma (`102:2079`): fondo `color/muted` sólido, sin
+   borde, `radius/md`, texto `textStyles.cardType`. Orden corregido a EDITAR→VER
+   (el código tenía VER→EDITAR, invertido respecto a Figma). Conexiones (Drive +
+   Entrenador): pasan de fila `flex:1`+`flex:1` a columna con cada tarjeta a ancho
+   completo (`102:356` en Figma ya las modela así, apiladas); icono de estado deja
+   de ser un icono outline (nube/persona) y pasa a ser un círculo relleno de 12px
+   (la caja de Figma es 26px pero el punto visible dentro mide ~12px, mismo patrón
+   de "caja de icono ≠ icono visible" que en Clientes). Color del círculo reutiliza
+   la lógica de estado ya existente en el código (no la del mock estático de
+   Figma, que solo tiene verde/gris): verde = Drive conectado, azul = Entrenador
+   conectado (regla ya establecida: azul siempre es entrenador/externo), naranja =
+   warn, `muted` = desconectado. El chevron final (no existe en el componente de
+   Figma) se sustituye por un texto de estado `CONECTADO`/`CONECTAR`
+   (`textStyles.spacingTag`), **no** la variante Secondary (decisión explícita del
+   usuario) — usa la variante real de Figma para esa pieza (texto sin fondo,
+   `tint/accent-50` si conectado, `color/accent` si no). No es un `TouchableOpacity`
+   propio: la tarjeta entera sigue siendo el único área pulsable. En estado warn se
+   muestra "CONECTAR" (Figma no modela warn, solo conectado/desconectado; el
+   subtítulo sigue distinguiendo warn con su propio texto/color, sin cambios).
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su

@@ -4,7 +4,7 @@ import {
   Modal, StyleSheet, Alert,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, interpolateColor } from 'react-native-reanimated';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -570,35 +570,6 @@ function ProgramBtn({ label, onPress, icon }) {
 
 // ── Status card icons ─────────────────────────────────────────────────────────
 
-function CloudIcon({ size = 22, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function PersonIcon({ size = 22, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.5} />
-    </Svg>
-  );
-}
-
 function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -607,24 +578,8 @@ function CheckIcon({ size = 16, color }) {
   );
 }
 
-function ChevronRightIcon({ size = 14, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function BarbellIcon({ size = 14, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M4 9v6M20 9v6M7 6.5v11M17 6.5v11M7 12h10" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-// Flecha rellena de sesión futura (Figma, asset Rectangle57) — distinta de
-// ChevronRightIcon (trazo fino): forma sólida, gris literal #d9d9d9 sin token.
+// Flecha rellena de sesión futura (Figma, asset Rectangle57) — forma sólida,
+// gris literal #d9d9d9 sin token.
 function FutureChevronIcon({ size = 18, color = '#d9d9d9' }) {
   return (
     <Svg width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none">
@@ -634,15 +589,14 @@ function FutureChevronIcon({ size = 18, color = '#d9d9d9' }) {
 }
 
 // ── Section header ──────────────────────────────────────────────────────────────
-// SESIONES carries an icon (the training core); PROGRAMA/CONEXIONES are text-only,
-// muted — the hierarchy comes from the icon, the colour and the divider above.
+// Las 3 etiquetas (SESIONES/PROGRAMA/CONEXIONES) comparten el mismo estilo,
+// exacto a Figma (text/spacing-tag, mutedLight).
 
-function SectionHeader({ label, icon, muted }) {
+function SectionHeader({ label }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.secHeader}>
-      {icon}
-      <Text style={[styles.secHeaderLabel, muted && styles.secHeaderLabelMuted]}>{label}</Text>
+      <Text style={styles.secHeaderLabel}>{label}</Text>
     </View>
   );
 }
@@ -786,10 +740,7 @@ export default function HomeScreen() {
 
               {/* ── SESIONES ── orden fijo A→F, sin reorder (ver SessionCard) */}
               <View style={styles.section}>
-                <SectionHeader
-                  icon={<BarbellIcon size={14} color={th.colors.accent} />}
-                  label={t('home.sessions').toUpperCase()}
-                />
+                <SectionHeader label={t('home.sessions').toUpperCase()} />
                 {(() => {
                   const days = currentDays
                     .map(({ sessionTemplateId }, dayIndex) => ({
@@ -856,15 +807,15 @@ export default function HomeScreen() {
 
               {/* ── PROGRAMA ── */}
               <View style={styles.section}>
-                <SectionHeader label={t('home.program').toUpperCase()} muted />
+                <SectionHeader label={t('home.program').toUpperCase()} />
                 <View style={styles.programActions}>
-                  <ProgramBtn
-                    label={t('home.viewProgram')}
-                    onPress={() => navigate('programPrint')}
-                  />
                   <ProgramBtn
                     label={t('home.edit')}
                     onPress={() => navigate('programEditor')}
+                  />
+                  <ProgramBtn
+                    label={t('home.viewProgram')}
+                    onPress={() => navigate('programPrint')}
                   />
                   <TouchableOpacity
                     style={styles.programBtnMore}
@@ -911,7 +862,7 @@ export default function HomeScreen() {
 
         {/* ── CONEXIONES (Drive + Entrenador) — solo destacan si necesitan atención ── */}
         <View style={styles.section}>
-        <SectionHeader label={t('home.connections').toUpperCase()} muted />
+        <SectionHeader label={t('home.connections').toUpperCase()} />
         <View style={styles.statusCards}>
 
           {/* Drive */}
@@ -922,14 +873,16 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Drive, ${driveSub}`}
           >
-            <CloudIcon size={18} color={driveIconColor} />
+            <View style={[styles.statusDot, { backgroundColor: driveIconColor }]} />
             <View style={styles.statusInfo}>
               <Text style={styles.statusTitle} numberOfLines={1}>Drive</Text>
               <Text style={[styles.statusSub, driveWarn && { color: th.colors.orange }]} numberOfLines={1}>
                 {driveSub}
               </Text>
             </View>
-            <ChevronRightIcon size={13} color={th.colors.muted2} />
+            <Text style={[styles.statusConnectBtn, driveConnected && styles.statusConnectBtnOk]}>
+              {(driveConnected ? t('home.connected') : t('home.connect')).toUpperCase()}
+            </Text>
           </TouchableOpacity>
 
           {/* Entrenador */}
@@ -940,14 +893,16 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`${trainerTitle}, ${trainerSub}`}
           >
-            <PersonIcon size={18} color={trainerIconColor} />
+            <View style={[styles.statusDot, { backgroundColor: trainerIconColor }]} />
             <View style={styles.statusInfo}>
               <Text style={styles.statusTitle} numberOfLines={1}>{trainerTitle}</Text>
               <Text style={[styles.statusSub, trainerWarn && { color: th.colors.orange }]} numberOfLines={1}>
                 {trainerSub}
               </Text>
             </View>
-            <ChevronRightIcon size={13} color={th.colors.muted2} />
+            <Text style={[styles.statusConnectBtn, trainerOk && styles.statusConnectBtnOk]}>
+              {(trainerOk ? t('home.connected') : t('home.connect')).toUpperCase()}
+            </Text>
           </TouchableOpacity>
 
         </View>
@@ -1003,16 +958,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           6,
   },
   secHeaderLabel: {
-    fontSize:      11,
-    fontWeight:    typography.semibold,
-    letterSpacing: 1.5,
-    color:         th.colors.muted,
-    textTransform: 'uppercase',
-  },
-  secHeaderLabelMuted: {
-    color:      th.colors.muted2,
-    fontSize:   10,
-    fontWeight: typography.regular,
+    ...textStyles.spacingTag,
+    color: th.colors.mutedLight,
   },
 
   // ── Banner (FormaFit) — tarjeta accent, texto onAccent (negro) ────────────────
@@ -1431,41 +1378,35 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // ── Program action buttons ────────────────────────────────────────────────────
+  // ── Program action buttons — variante "Secondary" del componente Buttons ──────
   programActions: {
     flexDirection: 'row',
-    gap:           spacing.sm,
+    gap:           spacing.md,
   },
   programBtn: {
     flex:            1,
     flexDirection:   'row',
     justifyContent:  'center',
     alignItems:      'center',
-    gap:             6,
-    paddingVertical: spacing.sm + 1,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
+    gap:             spacing.sm,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.muted,
   },
   programBtnText: {
-    fontSize:   typography.sm + 1,
-    fontWeight: typography.regular,
-    color:      th.colors.mutedLight,
+    ...textStyles.cardType,
+    color: th.colors.text,
   },
   programBtnMore: {
-    width:           46,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
+    padding:         spacing.md,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.muted,
     alignItems:      'center',
     justifyContent:  'center',
   },
   programBtnMoreText: {
-    fontSize:      15,
-    color:         th.colors.mutedLight,
-    letterSpacing: 1,
+    ...textStyles.cardType,
+    color: th.colors.text,
   },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
@@ -1575,38 +1516,46 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Conexiones (Drive + Entrenador) ──────────────────────────────────────────
   statusCards: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
+    gap: spacing.sm,
   },
   statusCard: {
-    flex:              1,
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               spacing.sm,
+    gap:               spacing.lg,
     backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
     borderRadius:      th.radius.md,
-    paddingVertical:   spacing.sm + 2,
-    paddingHorizontal: spacing.md - 2,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.xxl,
   },
   statusCardWarn: {
     backgroundColor: withOpacity(th.colors.orange, 0.06),
-    borderColor:     withOpacity(th.colors.orange, 0.4),
+    borderWidth:      borders.thin,
+    borderColor:      withOpacity(th.colors.orange, 0.4),
+  },
+  statusDot: {
+    width:        12,
+    height:       12,
+    borderRadius: 6,
   },
   statusInfo: {
     flex:     1,
     minWidth: 0,
   },
   statusTitle: {
-    fontSize:   12,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
+    ...textStyles.btnAction,
+    color: th.colors.text,
   },
   statusSub: {
-    fontSize:  11,
+    ...textStyles.tag,
     color:     th.colors.mutedLight,
     marginTop: 1,
+  },
+  statusConnectBtn: {
+    ...textStyles.spacingTag,
+    color: th.colors.accent,
+  },
+  statusConnectBtnOk: {
+    color: th.tint.accent50,
   },
 
   // Stage picker

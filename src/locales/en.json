@@ -112,6 +112,7 @@
     "adapted": "ADAPTED",
     "moreOptions": "More options",
     "connected": "Connected",
+    "connect": "Connect",
     "notConnected": "Not connected",
     "reconnect": "Reconnect",
     "pendingSync": "Sync pending",
