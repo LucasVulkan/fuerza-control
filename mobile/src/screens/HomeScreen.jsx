@@ -163,15 +163,17 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
       disabled={!onPress}
     >
       {/* ── Bloque izquierdo ── */}
-      <View style={styles.bnLeft}>
+      <View style={[styles.bnLeft, !hasStage && styles.bnLeftCentered]}>
         <View style={styles.bnNameWrap}>
-          <Text style={styles.bnProgName} numberOfLines={1}>{programName}</Text>
+          <Text style={[styles.bnProgName, !hasStage && styles.bnTextCentered]} numberOfLines={1}>{programName}</Text>
           {trainerName ? (
-            <Text style={styles.bnTrainer} numberOfLines={1}>{t('home.bannerBy', { name: trainerName })}</Text>
+            <Text style={[styles.bnTrainer, !hasStage && styles.bnTextCentered]} numberOfLines={1}>
+              {t('home.bannerBy', { name: trainerName })}
+            </Text>
           ) : null}
         </View>
 
-        {hasStage ? (
+        {hasStage && (
           <View style={styles.bnProgBlock}>
             <View style={styles.bnStageRow}>
               <Text style={styles.bnStageName} numberOfLines={1}>{stageName}</Text>
@@ -191,27 +193,21 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
               <Text style={styles.bnBarPct}>{pct}%</Text>
             </View>
           </View>
-        ) : (
-          <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
         )}
       </View>
 
       {/* ── Separador ── */}
       <View style={styles.bnDivider} />
 
-      {/* ── Bloque derecho ── */}
-      {hasStage ? (
-        <View style={styles.bnRight}>
-          <Text style={styles.bnCicloLabel}>{t('home.cycle').toUpperCase()}</Text>
-          <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
-          <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
-        </View>
-      ) : (
-        <View style={styles.bnRightInline}>
+      {/* ── Bloque derecho — CICLO+nº agrupados (más cerca entre sí que de los
+          puntos), puntos siempre debajo ── */}
+      <View style={[styles.bnRight, !hasStage && styles.bnRightNoStage]}>
+        <View style={hasStage ? styles.bnCicloCol : styles.bnCicloRow}>
           <Text style={styles.bnCicloLabel}>{t('home.cycle').toUpperCase()}</Text>
           <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
         </View>
-      )}
+        <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -900,14 +896,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     overflow:          'hidden',
   },
-  bnLeft:      { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.sm },
-  bnNameWrap:  { gap: 1 },
-  bnProgName:  { ...textStyles.hero, color: th.colors.onAccent },
-  bnTrainer:   { ...textStyles.smallBold, color: th.colors.onAccent },
+  bnLeft:         { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.sm },
+  bnLeftCentered: { alignItems: 'center' },
+  bnNameWrap:     { gap: 1 },
+  bnProgName:     { ...textStyles.hero, color: th.colors.onAccent },
+  bnTrainer:      { ...textStyles.smallBold, color: th.colors.onAccent },
+  bnTextCentered: { textAlign: 'center' },
   // Bloque de etapa (nombre etapa · ETAPA n/total, barra, ciclo · %)
   bnProgBlock: { gap: spacing.xs },
   bnStageRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.sm },
-  bnStageName: { ...textStyles.cardType, color: th.colors.onAccent, flexShrink: 1 },
+  bnStageName: { ...textStyles.btnAction, color: th.colors.onAccent, flexShrink: 1 },
   bnStageBadge:{ ...textStyles.tag, color: th.colors.onAccent },
   // Barra: track verde oscuro (literal Figma #81a71e, sin token), fill negro,
   // marcas de ciclo en accent (visibles sobre el track oscuro).
@@ -920,11 +918,14 @@ const makeStyles = (th) => StyleSheet.create({
   bnBarPct:   { ...textStyles.tag, color: th.colors.onAccent },
   // Separador negro que sangra hasta los bordes (cancela el padding vertical).
   bnDivider:  { width: 2, alignSelf: 'stretch', marginVertical: -spacing.md, backgroundColor: th.colors.onAccent },
-  // Bloque derecho: con etapa = columna (CICLO / nº / puntos); sin etapa = fila.
-  bnRight:       { width: 100, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  bnRightInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, width: 110 },
-  bnCicloLabel:  { ...textStyles.spacingTag, color: withOpacity(th.colors.onAccent, 0.76) },
-  bnCicloNum:    { ...textStyles.hero, color: th.colors.onAccent },
+  // Bloque derecho: [CICLO+nº] muy juntos, luego más gap hasta los puntos
+  // (que siempre van debajo). Sin etapa: CICLO+nº en fila; con etapa: columna.
+  bnRight:        { width: 100, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  bnRightNoStage: { width: 110 },
+  bnCicloCol: { alignItems: 'center' },
+  bnCicloRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  bnCicloLabel: { ...textStyles.btnAction, color: withOpacity(th.colors.onAccent, 0.76) },
+  bnCicloNum:   { ...textStyles.hero, color: th.colors.onAccent },
   // Puntos de ciclo (8px): hechos = negro relleno; pendientes = contorno negro.
   bnDots:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   bnDot:     { width: 8, height: 8, borderRadius: 4 },
