@@ -83,6 +83,8 @@
     "restOfCycle": "Resto del ciclo",
     "weekProgress": "Semana {{current}} de {{total}}",
     "stageDefault": "Etapa {{n}}",
+    "stageBadge": "ETAPA {{current}}/{{total}}",
+    "bannerVolume": "Volumen",
     "currentStageDefault": "la etapa actual",
     "stageProgress": "{{completed}} / {{total}} sesiones",
     "stageCount": "{{current}} / {{total}} etapas",

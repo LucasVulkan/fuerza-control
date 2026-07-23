@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatDate } from '../../../src/utils/formatters';
@@ -126,92 +126,73 @@ function getSessionStatus(dayIndex, doneInCycle, activeTemplateId, templateId) {
   return 'pending';
 }
 
-// ── ProgressHeader ─────────────────────────────────────────────────────────────
+// ── Banner (FormaFit) ────────────────────────────────────────────────────────
+//
+// Tarjeta accent que integra: nombre de programa, etapa (N/total), barra de
+// progreso de la etapa segmentada por semanas (fill = sesiones de la etapa
+// hechas / sesiones totales de la etapa), semana global y sesiones totales.
+// Todo el texto va en onAccent (negro) sobre el fondo accent.
 
-function DotsRow({ doneInCycle, sessionsPerCycle }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.phDots}>
-      {Array.from({ length: sessionsPerCycle }, (_, i) => {
-        const state = i < doneInCycle ? 'done'
-                    : i === doneInCycle ? 'pending'
-                    : 'idle';
-        return (
-          <View
-            key={i}
-            style={[
-              styles.phDot,
-              state === 'done'    && styles.phDotDone,
-              state === 'pending' && styles.phDotPending,
-              state === 'idle'    && styles.phDotIdle,
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
-function ProgressHeader({ weekNum, doneInCycle, sessionsPerCycle, stageInfo, onChangeStage }) {
+function Banner({ programName, stageCurrent, stageTotal, stageInfo, weekNum, totalSessions, doneInCycle, sessionsPerCycle, onLongPress }) {
   const { t }     = useTranslation();
   const styles    = useThemedStyles(makeStyles);
   const weekLabel = String(weekNum).padStart(2, '0');
+  const hasStage  = !!stageInfo;
 
-  if (stageInfo) {
-    // ── With stages: unified card — week number (left) + stage progress (right) ──
-    return (
-      <View style={styles.cpCard}>
+  // Barra: fill = ratio de sesiones de la etapa; cortes = una división por
+  // semana de la etapa (N semanas → N segmentos → N-1 marcas).
+  const ratio    = hasStage
+    ? stageInfo.progressRatio
+    : (sessionsPerCycle > 0 ? doneInCycle / sessionsPerCycle : 0);
+  const pct      = Math.round(ratio * 100);
+  const segments = hasStage ? stageInfo.totalWeeks : sessionsPerCycle;
+  const weekText = hasStage
+    ? t('home.weekProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })
+    : t('home.sessions');
 
-        {/* Week number — the one stat that leads */}
-        <View style={styles.cpWeekCol}>
-          <Text style={styles.cpWeekNum}>{weekLabel}</Text>
-          <Text style={styles.cpWeekLabel}>{t('home.week')}</Text>
-        </View>
-
-        <View style={styles.cpDivider} />
-
-        {/* Stage name + menu, progress bar, week-in-stage + cycle dots */}
-        <View style={styles.cpRight}>
-          <View style={styles.cpRightTop}>
-            <Text style={styles.cpStageName} numberOfLines={1}>
-              {stageInfo.stageName}
-              <Text style={styles.cpStageLabel}>{`  ·  ${stageInfo.stageLabel}`}</Text>
-            </Text>
-            <TouchableOpacity
-              onPress={onChangeStage}
-              hitSlop={{ top: 8, bottom: 8, left: 12, right: 4 }}
-            >
-              <Text style={styles.cpMenu}>···</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.cpBar}>
-            <View style={[styles.cpBarFill, { width: `${Math.round(stageInfo.progressRatio * 100)}%` }]} />
-          </View>
-          <View style={styles.cpRightBottom}>
-            <Text style={styles.cpWeekInStage}>
-              {t('home.weekProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
-            </Text>
-            <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
-          </View>
-        </View>
-
-      </View>
-    );
-  }
-
-  // ── Without stages: horizontal pill ──
   return (
-    <View style={[styles.phCard, styles.phPill]}>
-      <View style={styles.phPillLeft}>
-        <Text style={styles.phPillLabel}>{t('home.week')}</Text>
-        <Text style={styles.phPillNum}>{weekLabel}</Text>
+    <TouchableOpacity
+      style={styles.banner}
+      activeOpacity={onLongPress ? 0.9 : 1}
+      onLongPress={onLongPress}
+      delayLongPress={300}
+    >
+      {/* ── Bloque izquierdo ── */}
+      <View style={styles.bnLeft}>
+        {hasStage && (
+          <Text style={styles.bnStage}>{t('home.stageBadge', { current: stageCurrent, total: stageTotal })}</Text>
+        )}
+        <Text style={styles.bnProgName} numberOfLines={1}>{programName}</Text>
+
+        <View style={styles.bnProgBlock}>
+          <Text style={styles.bnVolLabel}>{t('home.bannerVolume')}</Text>
+          <View style={styles.bnBar}>
+            <View style={styles.bnBarTrack} />
+            <View style={[styles.bnBarFill, { width: `${Math.min(100, pct)}%` }]} />
+            {Array.from({ length: Math.max(0, segments - 1) }, (_, i) => (
+              <View key={i} style={[styles.bnBarTick, { left: `${((i + 1) / segments) * 100}%` }]} />
+            ))}
+          </View>
+          <View style={styles.bnBarLabels}>
+            <Text style={styles.bnBarWeek} numberOfLines={1}>{weekText}</Text>
+            <Text style={styles.bnBarPct}>{pct}%</Text>
+          </View>
+        </View>
       </View>
-      <View style={styles.phPillDivider} />
-      <View style={styles.phPillRight}>
-        <Text style={styles.phWkSes}>{t('home.sessions')}</Text>
-        <DotsRow doneInCycle={doneInCycle} sessionsPerCycle={sessionsPerCycle} />
+
+      {/* ── Separador ── */}
+      <View style={styles.bnDivider} />
+
+      {/* ── Bloque derecho ── */}
+      <View style={styles.bnRight}>
+        <Text style={styles.bnWeekLabel}>{t('home.week').toUpperCase()}</Text>
+        <Text style={styles.bnWeekNum}>{weekLabel}</Text>
+        <View style={styles.bnPill}>
+          <Text style={styles.bnPillNum}>{totalSessions}</Text>
+          <Text style={styles.bnPillLabel}>{t('home.sessions')}</Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -583,35 +564,33 @@ export default function HomeScreen() {
           const weekNum                    = computeWeekNum(activeProgram, workoutLog);
           const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
 
+          // Sesiones totales del programa (todas las etapas) — pill del banner.
+          const programTplIds = new Set(
+            hasStages
+              ? activeProgram.stages.flatMap((st) => (st.days ?? []).map((d) => d.sessionTemplateId))
+              : (activeProgram.days ?? []).map((d) => d.sessionTemplateId)
+          );
+          const totalSessions = workoutLog.filter((e) => programTplIds.has(e.sessionTemplateId)).length;
+
           // Current session templates in cycle order (handles both flat and staged programs)
           const currentDays = hasStages
             ? (activeProgram.stages[stageIdx]?.days ?? [])
             : (activeProgram.days ?? []);
 
-          // Trainer name — from the first session template that has one
-          const programTrainerName = currentDays
-            .map((d) => getEffectiveTemplate(d.sessionTemplateId)?.trainerName)
-            .find(Boolean) ?? null;
-
           return (
             <>
-              {/* Program name + trainer credit */}
-              <View style={styles.progHeader}>
-                <Text style={styles.progLabel} numberOfLines={1}>
-                  {activeProgram.name}
-                  {programTrainerName
-                    ? <Text style={styles.progTrainerInline}>{`  ·  ${t('workout.trainerCredit', { name: programTrainerName })}`}</Text>
-                    : null}
-                </Text>
-              </View>
-
-              {/* Progress header (stage + week / pill) */}
-              <ProgressHeader
+              {/* Banner: programa · etapa · progreso · semana/sesiones.
+                  Mantener pulsado abre el selector de etapa (sustituye al ··· ). */}
+              <Banner
+                programName={activeProgram.name}
+                stageCurrent={stageIdx + 1}
+                stageTotal={activeProgram.stages?.length ?? 0}
+                stageInfo={stageInfo}
                 weekNum={weekNum}
+                totalSessions={totalSessions}
                 doneInCycle={doneInCycle}
                 sessionsPerCycle={sessionsPerCycle}
-                stageInfo={stageInfo}
-                onChangeStage={() => setStagePicker(true)}
+                onLongPress={hasStages ? () => setStagePicker(true) : undefined}
               />
 
               {/* Stage advance banner */}
@@ -892,91 +871,48 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.regular,
   },
 
-  // ── Stage/week header (C+) ────────────────────────────────────────────────────
-  cpCard: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.md,
-    backgroundColor: th.colors.bg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    paddingVertical: 13,
-    paddingHorizontal: spacing.md + 2,
+  // ── Banner (FormaFit) — tarjeta accent, texto onAccent (negro) ────────────────
+  banner: {
+    flexDirection:     'row',
+    alignItems:        'stretch',
+    gap:               spacing.lg,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    overflow:          'hidden',
   },
-  cpWeekCol: {
-    alignItems: 'center',
-    flexShrink: 0,
+  bnLeft:  { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.xs },
+  bnStage: { ...textStyles.smallBold, color: th.colors.onAccent, textTransform: 'uppercase' },
+  bnProgName: { ...textStyles.hero, color: th.colors.onAccent },
+  bnProgBlock: { gap: spacing.xs, marginTop: spacing.xs },
+  bnVolLabel:  { ...textStyles.cardType, color: th.colors.onAccent },
+  // Barra: track verde oscuro (literal Figma #81a71e, sin token), fill negro,
+  // marcas de semana en accent (visibles sobre el track oscuro).
+  bnBar:      { height: 5, position: 'relative' },
+  bnBarTrack: { position: 'absolute', left: 0, right: 0, top: 1, height: 3, borderRadius: 999, backgroundColor: '#81a71e' },
+  bnBarFill:  { position: 'absolute', left: 0, top: 1, height: 3, borderRadius: 999, backgroundColor: th.colors.onAccent },
+  bnBarTick:  { position: 'absolute', top: 0, width: 2, height: 5, backgroundColor: th.colors.accent },
+  bnBarLabels: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs },
+  bnBarWeek:  { ...textStyles.smallBold, color: th.colors.onAccent },
+  bnBarPct:   { fontFamily: 'Inter_800ExtraBold', fontSize: 7, fontWeight: '800', color: th.colors.onAccent },
+  // Separador negro que sangra hasta los bordes (cancela el padding vertical).
+  bnDivider:  { width: 2, alignSelf: 'stretch', marginVertical: -spacing.md, backgroundColor: th.colors.onAccent },
+  bnRight:    { width: 100, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
+  bnWeekLabel: { ...textStyles.spacingTag, color: withOpacity(th.colors.onAccent, 0.76) },
+  bnWeekNum:  { ...textStyles.hero, color: th.colors.onAccent },
+  bnPill: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    borderWidth:       borders.thin,
+    borderColor:       th.colors.onAccent,
+    borderRadius:      th.radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   3,
   },
-  cpWeekNum: {
-    fontSize:      26,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    lineHeight:    26,
-    letterSpacing: -1,
-  },
-  cpWeekLabel: {
-    fontSize:      9,
-    fontWeight:    typography.semibold,
-    letterSpacing: 1,
-    color:         th.colors.muted2,
-    marginTop:     3,
-    textTransform: 'uppercase',
-  },
-  cpDivider: {
-    width:           1,
-    alignSelf:       'stretch',
-    backgroundColor: th.colors.border,
-  },
-  cpRight: {
-    flex:     1,
-    minWidth: 0,
-  },
-  cpRightTop: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'baseline',
-    marginBottom:   8,
-  },
-  cpStageName: {
-    flexShrink: 1,
-    fontSize:   13,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  cpStageLabel: {
-    fontSize:   11,
-    fontWeight: typography.regular,
-    color:      th.colors.muted2,
-  },
-  cpMenu: {
-    fontSize:      16,
-    color:         th.colors.muted,
-    lineHeight:    16,
-    letterSpacing: 1,
-    paddingLeft:   spacing.sm,
-  },
-  cpBar: {
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-    overflow:        'hidden',
-    marginBottom:    6,
-  },
-  cpBarFill: {
-    height:          '100%',
-    backgroundColor: th.colors.accent,
-    borderRadius:    2,
-  },
-  cpRightBottom: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'center',
-  },
-  cpWeekInStage: {
-    fontSize: 11,
-    color:    th.colors.muted2,
-  },
+  bnPillNum:   { ...textStyles.smallBold, color: th.colors.onAccent },
+  bnPillLabel: { ...textStyles.smallBold, color: th.colors.onAccent },
 
   // ── Program label ────────────────────────────────────────────────────────────
   progHeader: {
