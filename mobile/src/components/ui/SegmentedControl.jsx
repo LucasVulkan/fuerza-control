@@ -108,7 +108,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   optionText: {
     ...textStyles.cardType,
-    color: th.colors.mutedLight,
+    color: th.colors.text,
   },
   optionTextActive: {
     color: th.colors.onAccent,

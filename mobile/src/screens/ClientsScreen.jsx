@@ -3733,7 +3733,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cDate: {
     fontSize:  typography.xs,
-    color:     th.colors.muted,
+    color:     th.colors.mutedLight,
     flexShrink: 0,
   },
   cStreak: {
@@ -4028,14 +4028,14 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cTagPill: {
     borderWidth:       borders.thin,
-    borderColor:       th.colors.muted2,
+    borderColor:       th.tint.accent50,
     borderRadius:      th.radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical:   1,
   },
   cTagPillText: {
     fontSize:   9,
-    color:      th.colors.muted,
+    color:      th.tint.accent50,
     fontWeight: typography.regular,
   },
 
