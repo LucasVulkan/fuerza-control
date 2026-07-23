@@ -857,16 +857,27 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
           {/* Exercise picker — floats OVER the content, does not push it down */}
           {pickerMounted && (
-            <Animated.View style={[styles.exPicker, { top: headerH, opacity: pickerAnim, transform: [{ translateY: pickerTranslateY }] }]}>
-              <TextInput
-                style={styles.exPickerSearch}
-                placeholder="Buscar ejercicio..."
-                placeholderTextColor={th.colors.muted}
-                value={exPickerSearch}
-                onChangeText={setExPickerSearch}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
+            <Animated.View style={[styles.exPicker, { top: headerH + spacing.sm, opacity: pickerAnim, transform: [{ translateY: pickerTranslateY }] }]}>
+              <View style={styles.exPickerSearchBar}>
+                <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
+                  stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+                </Svg>
+                <TextInput
+                  style={styles.exPickerSearchInput}
+                  placeholder="Buscar ejercicio…"
+                  placeholderTextColor={th.colors.mutedLight}
+                  value={exPickerSearch}
+                  onChangeText={setExPickerSearch}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {exPickerSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setExPickerSearch('')} hitSlop={8} style={styles.exPickerSearchClear}>
+                    <Text style={styles.exPickerSearchClearText}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <ScrollView style={styles.exPickerList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
                 {pickerFiltered.map((id) => {
                   const d = allEx[id];
@@ -1741,17 +1752,26 @@ const makeStyles = (th) => StyleSheet.create({
     shadowRadius:      12,
     elevation:         12,
   },
-  exPickerSearch: {
+  // Buscador del picker — idéntico al resto de barras: surface2, radius/sm,
+  // lupa a la izquierda, ✕ para limpiar a la derecha (al escribir)
+  exPickerSearchBar: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
     margin:            spacing.sm,
     backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
     borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    fontSize:          typography.base,
-    color:             th.colors.text,
+    paddingHorizontal: spacing.lg,
+    height:            42,
   },
+  exPickerSearchInput: {
+    flex:    1,
+    padding: 0,
+    ...textStyles.subtitle,
+    color:   th.colors.text,
+  },
+  exPickerSearchClear:     { paddingLeft: spacing.xs2 },
+  exPickerSearchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
   exPickerList:     { maxHeight: 380 },
   exPickerItem: {
     paddingHorizontal: spacing.lg,

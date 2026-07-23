@@ -2616,6 +2616,11 @@ export default function ClientsScreen() {
               onChangeText={setSearch}
               returnKeyType="search"
             />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
+                <Text style={styles.searchClearText}>✕</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Filter sheet button — badge shows how many filters are applied */}
@@ -3192,12 +3197,12 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: 26,
     color:      th.colors.onAccent,
   },
-  // Lista de etiquetas — mismo listed-item que el dropdown de Progress
+  // Lista de etiquetas — mismo listed-item que el dropdown de Progress, pero
+  // sin fondo (más legible sobre la superficie del sheet)
   tagListBox: {
-    marginTop:       spacing.sm,
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    overflow:        'hidden',
+    marginTop:    spacing.sm,
+    borderRadius: th.radius.sm,
+    overflow:     'hidden',
   },
   dropItem: {
     flexDirection:     'row',
@@ -3276,6 +3281,14 @@ const makeStyles = (th) => StyleSheet.create({
     padding: 0,
     ...textStyles.subtitle,
     color:   th.colors.text,
+  },
+  // Botón "✕" para limpiar el texto del buscador (aparece al escribir)
+  searchClearBtn: {
+    paddingLeft: spacing.xs2,
+  },
+  searchClearText: {
+    ...textStyles.subtitle,
+    color: th.colors.mutedLight,
   },
 
   // Row 3: Filter pills row. Sin marginTop negativo: el gap con el buscador
