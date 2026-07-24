@@ -414,7 +414,6 @@ function SessionCard({ template, lastSession, status, onPress, hasOverride }) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={isDone}
       activeOpacity={0.8}
       accessibilityRole="button"
       accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
@@ -732,7 +731,7 @@ export default function HomeScreen() {
                       onPress={() => dismissStageAdvance(activeProgram.id)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.stageBannerContinueBtnText}>{t('home.continueStage')}</Text>
+                      <Text style={styles.stageBannerContinueBtnText}>{t('home.close').toUpperCase()}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1341,41 +1340,43 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.5,
   },
   stageBannerText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
+    ...textStyles.subtitle,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.5,
+    lineHeight: textStyles.subtitle.fontSize * 1.5,
   },
   stageBannerBtns: {
     flexDirection: 'row',
     gap:           spacing.sm,
     marginTop:     spacing.xs,
   },
+  // Botones "Primary"/"Secondary" del componente Buttons de Figma (mismo par que
+  // GUARDAR SESIÓN/Descartar sesión del footer de Workout, nodos 109:517/109:518).
   stageBannerAdvanceBtn: {
-    flex:            2,
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.sm + 2,
-    alignItems:      'center',
+    flex:              2,
+    backgroundColor:   LIMA,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.md,
+    alignItems:        'center',
+    justifyContent:    'center',
   },
   stageBannerAdvanceBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.onAccent,
-    letterSpacing: 0.5,
+    ...textStyles.cardType,
+    color:     th.colors.onAccent,
+    textAlign: 'center',
   },
   stageBannerContinueBtn: {
-    flex:            1,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.sm + 2,
-    alignItems:      'center',
+    flex:              1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.md,
+    alignItems:        'center',
+    justifyContent:    'center',
   },
   stageBannerContinueBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
+    ...textStyles.spacingTag,
+    color:     th.tint.accent50,
+    textAlign: 'center',
   },
 
   // ── Program action buttons — variante "Secondary" del componente Buttons ──────

@@ -97,7 +97,7 @@
     "stageCompleted": "¡Etapa completada!",
     "stageAdvanceText": "Has terminado {{current}}. ¿Empezar {{next}}?",
     "advanceTo": "AVANZAR A {{name}}",
-    "continueStage": "Continuar",
+    "close": "Cerrar",
     "sessionActive": "En curso",
     "sessionNext": "Siguiente",
     "sessionDone": "Completada",
