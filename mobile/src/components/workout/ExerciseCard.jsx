@@ -122,6 +122,7 @@ export default function ExerciseCard({
   onToggleDropDone,
   onRemoveDrop,
   groupLabel,
+  orderNumber,             // "01"/"02"… posición del ejercicio en la sesión (WorkoutScreen)
   trainerName,
   clientNote,
   onClientNoteChange,
@@ -445,13 +446,16 @@ export default function ExerciseCard({
 
         /* ── Expanded view ── */
         <>
-          {/* Header — miembro de superset: menos aire encima del nombre */}
+          {/* Header — miembro de superset: menos aire encima del nombre. Fondo propio
+              (surface2 60%) que distingue la zona título/subtítulo/notas; NO engloba
+              los chips de progresión, que van fuera (361:2955). */}
           <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
             <View style={styles.headerLeft}>
 
-              {/* Name row — superset prefix (A1/A2) inline, misma tipografía en accent */}
+              {/* Name row — nº de sesión + prefijo de superset (A1/A2), misma tipografía en accent */}
               <View style={styles.nameRow}>
                 <Text style={styles.name} numberOfLines={2}>
+                  {orderNumber ? <Text style={styles.groupPrefix}>{orderNumber} </Text> : null}
                   {groupLabel ? <Text style={styles.groupPrefix}>{groupLabel} </Text> : null}
                   {name}
                 </Text>
@@ -526,10 +530,6 @@ export default function ExerciseCard({
               </Text>
             </View>
           ) : null}
-
-          {/* Divisor — separa la zona de identidad (nombre + propuesta + chips/notas)
-              de la zona de registro (calentamiento + series de trabajo). */}
-          <View style={styles.sectionDivider} />
 
           {/* Warmup — informational, not logged (spec §7). Sin fondo propio; cada
               paso (C1, C2…) es un chip que abraza su contenido. Va SIEMPRE encima
@@ -793,20 +793,33 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Miembro de superset: sin botón "+ Añadir serie" ni notas al fondo, así que
   // el paddingBottom grande sobra y separaba demasiado los ejercicios del grupo.
+  // Esquinas superiores cuadradas (el redondeo lo aporta SupersetBlock por fuera):
+  // sin esto, el fondo teñido del header (que se recorta con el radius/overflow
+  // de ESTA card) se veía como una caja redondeada flotando a media altura del
+  // grupo en vez de un rectángulo de lado a lado.
   cardSupersetMember: {
-    paddingBottom: spacing.xs2,
+    paddingBottom:       spacing.xs2,
+    borderTopLeftRadius:  0,
+    borderTopRightRadius: 0,
   },
   cardCollapsed: {
     paddingBottom: 0,
   },
 
-  // Header
+  // Header — fondo propio (surface2 60%, nodo 361:2955) que distingue la zona
+  // título/subtítulo/notas del resto de la card. `card` no tiene padding horizontal
+  // propio (cada sección lo gestiona), así que este fondo sale a sangre de lado a
+  // lado y el propio `overflow:hidden` de la card lo recorta en las esquinas de arriba.
   header: {
     flexDirection:     'row',
     alignItems:        'center',
+    backgroundColor:   withOpacity(th.colors.surface2, 0.6),
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.lg,
-    paddingBottom:     spacing.sm,
+    paddingBottom:     spacing.md,
+    // El margen (fuera del padding, así que fuera del área con fondo) separa el
+    // fondo teñido de los chips de progresión que van justo debajo.
+    marginBottom:      spacing.sm,
     gap:               spacing.sm,
   },
   // Miembro de superset: el bloque ya aporta su propio aire por encima —
@@ -853,7 +866,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   2,
     overflow:          'hidden',
   },
-  // Prefijo de superset (A1/A2…) inline delante del nombre — misma tipografía, accent.
+  // Prefijo inline delante del nombre — misma tipografía, accent. Compartido por el
+  // número de orden ("01"/"02"…) y el prefijo de superset (A1/A2…).
   groupPrefix: {
     ...textStyles.exercice,
     color: th.colors.accent,
@@ -958,17 +972,6 @@ const makeStyles = (th) => StyleSheet.create({
   setList: {
     paddingHorizontal: spacing.lg,
     gap:               spacing.xs2,
-  },
-
-  // Divisor entre la zona de identidad y la de registro — antes gris + etiqueta
-  // "SERIES DE TRABAJO" encima del grid; la etiqueta se quitó (chocaba visualmente
-  // con KG/REP) y este color hace de único marcador de la zona de trabajo.
-  sectionDivider: {
-    height:           1,
-    backgroundColor:  th.tint.accent50,
-    marginHorizontal: spacing.lg,
-    marginTop:        spacing.xs2,
-    marginBottom:     spacing.md,
   },
 
   // Warmup — sin fondo propio; se apoya en el fondo de la card (Opción B)

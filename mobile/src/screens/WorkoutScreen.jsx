@@ -444,8 +444,11 @@ export default function WorkoutScreen() {
             </View>
           )}
 
-          {exerciseGroups.map((group) => {
+          {exerciseGroups.map((group, groupIdx) => {
             const isSuperset = group.length > 1;
+            // Numeración de sesión (01, 02…) — un número por SLOT, no por card: los
+            // miembros de una misma superserie comparten número (se distinguen por A1/A2).
+            const orderNumber = String(groupIdx + 1).padStart(2, '0');
             const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
               <ExerciseCard
                 key={exConfig.exerciseId}
@@ -455,6 +458,7 @@ export default function WorkoutScreen() {
                 lastExercise={lastExercise}
                 overrideEx={overrideEx}
                 groupLabel={isSuperset ? `A${idx + 1}` : undefined}
+                orderNumber={orderNumber}
                 hideAddSetBtn={isSuperset}
                 activeSetIndex={activePointer?.exerciseId === exConfig.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
@@ -488,8 +492,8 @@ export default function WorkoutScreen() {
             );
           })}
 
-          {/* Ad-hoc exercises added during this session */}
-          {(activeSession.adHocExercises ?? []).map((adHoc) => {
+          {/* Ad-hoc exercises added during this session — continúan la numeración */}
+          {(activeSession.adHocExercises ?? []).map((adHoc, adHocIdx) => {
             const def = allExercises[adHoc.exerciseId];
             const adHocConfig = {
               exerciseId: adHoc.exerciseId,
@@ -506,6 +510,7 @@ export default function WorkoutScreen() {
                 def={def}
                 setsState={adHoc.setsState}
                 lastExercise={null}
+                orderNumber={String(exerciseGroups.length + adHocIdx + 1).padStart(2, '0')}
                 activeSetIndex={activePointer?.exerciseId === adHoc.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
                   handleAdHocFieldChange(adHoc.exerciseId, setIdx, field, value)

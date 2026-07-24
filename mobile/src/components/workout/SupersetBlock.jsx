@@ -37,13 +37,15 @@ export default function SupersetBlock({ rounds, restSec, children, onAddSet }) {
 const makeStyles = (th) => StyleSheet.create({
   // Mismo fondo que las Exercice Cards que envuelve — el grupo debe leerse como
   // un único componente, no como una tarjeta extra detrás de las tarjetas.
+  // Sin padding lateral propio: cada miembro (ExerciseCard) va a sangre de lado a
+  // lado del bloque, así el fondo teñido de su header también llega de lado a lado
+  // de la tarjeta de superserie (no solo de su propia card). El resto de contenido
+  // (label, footer, botón) gestiona su propio inset por separado.
   block: {
     borderLeftWidth: 3,
     borderLeftColor: th.colors.accent,
     borderRadius:    th.radius.md,
     backgroundColor: th.colors.surface,
-    paddingLeft:     spacing.sm,
-    paddingRight:    spacing.sm,
     paddingTop:      spacing.md,
     paddingBottom:   spacing.md,
     gap:             spacing.xs,
@@ -54,7 +56,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:             th.colors.accent,
     letterSpacing:     0.8,
     textTransform:     'uppercase',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   // Sin gap entre cards — cada ExerciseCard miembro ya recorta su propio
   // paddingBottom (cardSupersetMember), evitando el hueco excesivo que se
@@ -64,11 +66,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Separación propia respecto al botón de abajo — el `gap` del bloque ya lo
   // acerca al grid de arriba, pero quedaba pegado al botón sin este margen.
+  // paddingHorizontal propio: el bloque ya no lo aporta (ver `block`).
   footer: {
     ...textStyles.subtitle,
-    color:        th.colors.text,
-    textAlign:    'center',
-    marginBottom: spacing.sm,
+    color:             th.colors.text,
+    textAlign:         'center',
+    marginBottom:      spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   footerSec: {
     color: th.colors.accent,
