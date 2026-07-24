@@ -80,7 +80,8 @@ function computeWeekNum(program, workoutLog) {
 }
 
 /**
- * How many sessions have been completed in the CURRENT cycle (0-indexed),
+ * How many DISTINCT sessions have actually been completed in the current cycle
+ * (via `program.cycleCompletedIds` — which templates, not a position count),
  * and how many sessions are in one cycle.
  */
 function computeCycleProgress(program) {
@@ -90,7 +91,8 @@ function computeCycleProgress(program) {
     ? (program.stages[stageIdx]?.days ?? [])
     : (program.days ?? []);
   const sessionsPerCycle = Math.max(1, currentDays.length);
-  const doneInCycle      = (program.stageSessionsCompleted ?? 0) % sessionsPerCycle;
+  const doneIds          = new Set(program.cycleCompletedIds ?? []);
+  const doneInCycle      = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
   return { doneInCycle, sessionsPerCycle };
 }
 
@@ -121,19 +123,24 @@ function computeStageInfo(program, t) {
 }
 
 /**
- * Determines the display status of each session slot in the current cycle.
- * Sessions are assumed to be completed in template order (A→B→C→A…).
+ * Determines the display status of each session slot, in fixed A→F order
+ * (no reorder). Completion is tracked by WHICH templates were actually done
+ * this cycle (`isDoneThisCycle`, from `cycleCompletedIds`), not by position —
+ * completing sessions out of order used to mark the wrong card as done
+ * (a positional counter assumed strict A→B→C… order).
  *
- *   'active'  — session is currently in progress
- *   'next'    — next in rotation (not yet started this cycle)
- *   'done'    — already completed this cycle
- *   'pending' — not yet reached this cycle
+ *   'active'  — this is the session currently in progress (even if it was
+ *               already done this cycle — repeating it shows it in-progress
+ *               again until saved)
+ *   'done'    — its templateId is already in cycleCompletedIds
+ *   'next'    — the first NOT-done session in fixed order (the "hero"),
+ *               always, regardless of what else might be active out of order
+ *   'pending' — every other not-done session
  */
-function getSessionStatus(dayIndex, doneInCycle, activeTemplateId, templateId) {
+function getSessionStatus(templateId, isHero, isDoneThisCycle, activeTemplateId) {
   if (activeTemplateId && activeTemplateId === templateId) return 'active';
-  if (dayIndex < doneInCycle)  return 'done';
-  if (dayIndex === doneInCycle) return 'next';
-  return 'pending';
+  if (isDoneThisCycle) return 'done';
+  return isHero ? 'next' : 'pending';
 }
 
 // ── Banner (FormaFit) ────────────────────────────────────────────────────────
@@ -687,6 +694,19 @@ export default function HomeScreen() {
             .map((d) => getEffectiveTemplate(d.sessionTemplateId)?.trainerName)
             .find(Boolean) ?? null;
 
+          // Starting anything (a session card or the free session) while one is
+          // already in progress used to silently discard it — now it warns first.
+          const confirmDiscardActive = (onConfirm) => {
+            Alert.alert(
+              t('workout.discardConfirm'),
+              undefined,
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
+              ],
+            );
+          };
+
           return (
             <>
               {/* Banner: programa · etapa · progreso · semana/sesiones.
@@ -741,18 +761,26 @@ export default function HomeScreen() {
               <View style={styles.section}>
                 <SectionHeader label={t('home.sessions').toUpperCase()} />
                 {(() => {
-                  const days = currentDays
-                    .map(({ sessionTemplateId }, dayIndex) => ({
+                  const doneIds  = new Set(activeProgram.cycleCompletedIds ?? []);
+                  const rawDays  = currentDays
+                    .map(({ sessionTemplateId }) => ({
                       templateId:  sessionTemplateId,
                       template:    getEffectiveTemplate(sessionTemplateId),
                       lastSession: getLastSession(sessionTemplateId),
-                      status:      getSessionStatus(dayIndex, doneInCycle, activeSession?.templateId, sessionTemplateId),
+                      isDone:      doneIds.has(sessionTemplateId),
                     }))
                     .filter((d) => d.template);
+                  // La "hero" es siempre la primera sesión SIN completar en orden
+                  // fijo, sin importar qué otra esté activa fuera de orden.
+                  const heroIdx = rawDays.findIndex((d) => !d.isDone);
+                  const days = rawDays.map((d, i) => ({
+                    ...d,
+                    status: getSessionStatus(d.templateId, i === heroIdx, d.isDone, activeSession?.templateId),
+                  }));
 
                   // Starting a session out of rotation is easy to do by accident —
                   // confirm before starting anything that isn't the "next" slot.
-                  const confirmStart = (d) => {
+                  const confirmOutOfOrder = (d) => {
                     Alert.alert(
                       t('home.startOutOfOrderTitle', {
                         label: t('workout.sessionLabel', { label: d.template.label ?? '' }),
@@ -765,6 +793,16 @@ export default function HomeScreen() {
                     );
                   };
 
+                  const requestStart = (d) => {
+                    if (d.status === 'active') { navigation.navigate('Workout'); return; }
+                    if (activeSession.templateId && activeSession.templateId !== d.templateId) {
+                      confirmDiscardActive(() => startSession(d.templateId));
+                      return;
+                    }
+                    if (d.status !== 'next') { confirmOutOfOrder(d); return; }
+                    startSession(d.templateId);
+                  };
+
                   return (
                     <View style={styles.sesList}>
                       {days.map((d) => (
@@ -774,11 +812,7 @@ export default function HomeScreen() {
                           lastSession={d.lastSession}
                           status={d.status}
                           hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
-                          onPress={
-                            d.status === 'active' ? () => navigation.navigate('Workout')
-                              : d.status === 'next' ? () => startSession(d.templateId)
-                                : () => confirmStart(d)
-                          }
+                          onPress={() => requestStart(d)}
                         />
                       ))}
                     </View>
@@ -788,11 +822,11 @@ export default function HomeScreen() {
                 {/* Sesión libre */}
                 <TouchableOpacity
                   style={styles.freeSessionBtn}
-                  onPress={
-                    activeSession.templateId === '__free__'
-                      ? () => navigation.navigate('Workout')
-                      : startFreeSession
-                  }
+                  onPress={() => {
+                    if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
+                    if (activeSession.templateId) { confirmDiscardActive(startFreeSession); return; }
+                    startFreeSession();
+                  }}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                 >

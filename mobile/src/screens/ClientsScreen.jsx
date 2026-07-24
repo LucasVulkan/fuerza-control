@@ -34,6 +34,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
+import { computeCycleDoneIds } from '../../../src/utils/cycleProgress';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -420,7 +421,7 @@ function DownloadIcon({ size = 18, color }) {
 // real training pace, and the last/total session counts.
 
 function ActiveProgramHero({
-  program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount,
+  program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount, clientLog,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete,
 }) {
   const { t, i18n } = useTranslation();
@@ -438,10 +439,16 @@ function ActiveProgramHero({
   const sessPerCycle = Math.max(1, currentDays.length);
   const done         = program.stageSessionsCompleted ?? 0;
 
-  // ── Next session in the rotation ──
-  const nextDay   = currentDays[done % sessPerCycle];
-  const nextTpl   = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
-  const nextLabel = nextTpl?.label ?? String.fromCharCode(65 + (done % sessPerCycle));
+  // ── Next session in the rotation ── first one NOT done this cycle (by
+  // template, replaying the client's synced history — not by position: an
+  // index breaks as soon as the client trains out of rotation order).
+  const doneIds    = new Set(
+    computeCycleDoneIds(clientLog ?? [], currentDays.map((d) => d.sessionTemplateId)),
+  );
+  const nextDayIdx = currentDays.findIndex((d) => !doneIds.has(d.sessionTemplateId));
+  const nextDay    = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
+  const nextTpl    = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
+  const nextLabel  = nextTpl?.label ?? String.fromCharCode(65 + Math.max(0, nextDayIdx));
   const nextName  = nextTpl?.name ?? '';
 
   // ── Stage progress bar (multi-stage with a defined length) ──
@@ -1186,7 +1193,7 @@ function AttentionPill({ label, count, color, active, onPress }) {
 }
 
 function ClientListCard({
-  client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
+  client, tagNames, activeProgram, clientSessions, lastActivityTs, isConnected, weeksTraining,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
@@ -1214,9 +1221,13 @@ function ClientListCard({
     ? (currentStage?.days ?? [])
     : (activeProgram?.days ?? []);
   const sessPerCycle   = Math.max(1, currentDays.length);
-  const doneInCycle    = activeProgram
-    ? (activeProgram.stageSessionsCompleted ?? 0) % sessPerCycle
-    : 0;
+  // Un cliente sincronizado nunca trae `cycleCompletedIds` en vivo (solo su
+  // historial cruza el sync) — se recalcula igual que en Home, pero
+  // reproduciendo el historial en vez de leer el contador persistido.
+  const cycleDoneIds   = new Set(
+    computeCycleDoneIds(clientSessions ?? [], currentDays.map((d) => d.sessionTemplateId)),
+  );
+  const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   const weekNum        = weeksTraining ?? 1;
 
   // Real training pace (avg sessions/week) vs target — replaces the redundant
@@ -2058,6 +2069,7 @@ export default function ClientsScreen() {
                       dirty={selectedClient.programDirty ?? false}
                       lastActivity={getLastActivity(activeProgram)}
                       sessionCount={getSessionCount(activeProgram)}
+                      clientLog={clientBaseLog}
                       onView={() => setPrintingProgram(activeProgram.id)}
                       onEdit={() => setEditingProgram(activeProgram.id)}
                       onUpload={syncEnabled ? () => uploadProgram(activeProgram.id) : undefined}
@@ -2776,6 +2788,7 @@ export default function ClientsScreen() {
                   client={client}
                   tagNames={clientTagNames}
                   activeProgram={activeProgram}
+                  clientSessions={clientSessions}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   weeksTraining={weeksTraining}

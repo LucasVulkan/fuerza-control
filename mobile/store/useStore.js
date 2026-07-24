@@ -1246,6 +1246,7 @@ export const useStore = create(
               currentStageIndex: stageIndex,
               days: targetStage.days,
               stageSessionsCompleted: 0,
+              cycleCompletedIds: [],
               stageAdvancePending: false,
             },
           },
@@ -1268,6 +1269,7 @@ export const useStore = create(
               currentStageIndex: nextIdx,
               days: nextStage.days,
               stageSessionsCompleted: 0,
+              cycleCompletedIds: [],
               stageAdvancePending: false,
             },
           },
@@ -1875,26 +1877,33 @@ export const useStore = create(
             const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
             const threshold = stage.durationWeeks * stage.days.length;
             const isLast = stageIdx >= ownerProgram.stages.length - 1;
-            // Increment totalWeeksCompleted each time a full cycle is done
-            const cycleSize = stage.days.length;
-            const cycleCompleted = newCount % cycleSize === 0;
+            // A cycle is complete when every DISTINCT template in it has been
+            // done at least once — not every N-th save (a positional counter
+            // assumes strict A→B→C… order and breaks as soon as a session is
+            // completed out of rotation, marking the wrong slot as done).
+            const cycleIds = new Set(ownerProgram.cycleCompletedIds ?? []);
+            cycleIds.add(activeSession.templateId);
+            const cycleCompleted = cycleIds.size >= stageTplIds.size;
             stageUpdate = {
               programId: ownerProgramId,
               stageSessionsCompleted: newCount,
+              cycleCompletedIds: cycleCompleted ? [] : [...cycleIds],
               stageAdvancePending: (newCount >= threshold && !isLast) || (ownerProgram.stageAdvancePending ?? false),
               totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
             };
           }
         } else if (ownerProgram && ownerProgramId) {
-          // ── Non-staged program: track rotation counter the same way ────────
+          // ── Non-staged program: track rotation the same way ────────────────
           const tplIds = new Set((ownerProgram.days ?? []).map((d) => d.sessionTemplateId));
           if (tplIds.has(activeSession.templateId)) {
             const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
-            const sessionsPerCycle = Math.max(1, ownerProgram.days?.length ?? 1);
-            const cycleCompleted = newCount % sessionsPerCycle === 0;
+            const cycleIds = new Set(ownerProgram.cycleCompletedIds ?? []);
+            cycleIds.add(activeSession.templateId);
+            const cycleCompleted = cycleIds.size >= tplIds.size;
             stageUpdate = {
               programId: ownerProgramId,
               stageSessionsCompleted: newCount,
+              cycleCompletedIds: cycleCompleted ? [] : [...cycleIds],
               stageAdvancePending: ownerProgram.stageAdvancePending ?? false,
               totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
             };
@@ -1918,6 +1927,7 @@ export const useStore = create(
               [stageUpdate.programId]: {
                 ...s.programs[stageUpdate.programId],
                 stageSessionsCompleted: stageUpdate.stageSessionsCompleted,
+                cycleCompletedIds:      stageUpdate.cycleCompletedIds,
                 stageAdvancePending:    stageUpdate.stageAdvancePending,
                 totalWeeksCompleted:    stageUpdate.totalWeeksCompleted,
               },
