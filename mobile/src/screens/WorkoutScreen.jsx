@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView,
+  TextInput, KeyboardAvoidingView,
   Platform, StyleSheet, Animated, PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,8 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard from '../components/workout/ExerciseCard';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import NotesModal from '../components/workout/NotesModal';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
@@ -190,50 +191,6 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
   );
 }
 
-// ── Notes modal ───────────────────────────────────────────────────────────────
-
-function NotesModal({ visible, value, onChange, onClose }) {
-  const { t } = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      {/*
-        KAV wraps the whole screen (flex:1). The flex:1 backdrop acts as the
-        elastic spacer — when the keyboard appears KAV shrinks (behavior='padding'
-        adds paddingBottom equal to keyboard height) and the sheet rides up above it.
-        This works on both platforms; the old sibling-based structure meant the sheet
-        (which was the KAV itself) would squish instead of moving.
-      */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      >
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-        <View style={styles.modalSheet}>
-          <View style={styles.modalHandle} />
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('workout.sessionNotes')}</Text>
-            <TouchableOpacity style={styles.modalSaveBtn} onPress={onClose}>
-              <Text style={styles.modalSaveBtnText}>{t('common.save')}</Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.notesInput}
-            value={value}
-            onChangeText={onChange}
-            multiline
-            autoFocus
-            placeholder={t('workout.notesPlaceholder')}
-            placeholderTextColor={th.colors.muted2}
-            textAlignVertical="top"
-          />
-          <Text style={styles.notesHint}>{t('workout.notesSavedWith')}</Text>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
@@ -498,6 +455,7 @@ export default function WorkoutScreen() {
                 lastExercise={lastExercise}
                 overrideEx={overrideEx}
                 groupLabel={isSuperset ? `A${idx + 1}` : undefined}
+                hideAddSetBtn={isSuperset}
                 activeSetIndex={activePointer?.exerciseId === exConfig.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
                   handleFieldChange(exConfig.exerciseId, setIdx, field, value)
@@ -519,7 +477,12 @@ export default function WorkoutScreen() {
             const rounds  = Math.max(...group.map((g) => g.exConfig.sets ?? 0));
             const restSec = group[group.length - 1].exConfig.restSec ?? 90;
             return (
-              <SupersetBlock key={group[0].exConfig.exerciseId} rounds={rounds} restSec={restSec}>
+              <SupersetBlock
+                key={group[0].exConfig.exerciseId}
+                rounds={rounds}
+                restSec={restSec}
+                onAddSet={() => group.forEach((g) => addSetToSession(g.exConfig.exerciseId))}
+              >
                 {cards}
               </SupersetBlock>
             );
@@ -602,9 +565,12 @@ export default function WorkoutScreen() {
       {/* Notes modal */}
       <NotesModal
         visible={notesOpen}
+        title={t('workout.sessionNotes')}
         value={activeSession.notes ?? ''}
         onChange={updateSessionNotes}
         onClose={() => setNotesOpen(false)}
+        placeholder={t('workout.notesPlaceholder')}
+        hint={t('workout.notesSavedWith')}
       />
 
       {/* Floating rest timer — sits above everything, swipe right to dismiss */}
@@ -819,69 +785,10 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     paddingVertical: spacing.md,
   },
+  // Tertiary buttom (235:4760) — solo texto, spacingTag, uppercase, rojo (acción destructiva)
   discardText: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
-
-  // Notes modal
-  modalBackdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalSheet: {
-    backgroundColor: th.colors.surface,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    borderTopWidth:  borders.thin,
-    borderTopColor:  th.colors.border,
-    padding:         spacing.xl,
-    paddingBottom:   spacing.xxl,
-    gap:             spacing.md,
-  },
-  modalHandle: {
-    width:           40,
-    height:          4,
-    borderRadius:    th.radius.full,
-    backgroundColor: th.colors.border,
-    alignSelf:       'center',
-    marginBottom:    spacing.sm,
-  },
-  modalHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 1,
-  },
-  modalSaveBtn: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-  },
-  modalSaveBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-  },
-  notesInput: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    borderRadius:    th.radius.md,
-    color:           th.colors.text,
-    fontSize:        typography.base,
-    lineHeight:      typography.base * 1.7,
-    padding:         spacing.md,
-    minHeight:       140,
-  },
-  notesHint: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
+    ...textStyles.spacingTag,
+    color:         th.tint.red50,
+    textTransform: 'uppercase',
   },
 });

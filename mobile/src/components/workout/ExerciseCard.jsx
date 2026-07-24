@@ -6,26 +6,55 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
+import NotesModal from './NotesModal';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../../src/utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-// ── Progression chip colors ────────────────────────────────────────────────────
+// ── Progression chip colors — Chips (Figma 110:4247): Default=lima, Variant2=roja ──
+// No hay variante propia para "hold" (mantener) en Figma; reutiliza la lima ("up").
 
 const chipColors = (th) => ({
-  up:   { bg: withOpacity(th.colors.green,  0.1),  border: withOpacity(th.colors.green,  0.3), text: th.colors.green  },
-  down: { bg: withOpacity(th.colors.red,    0.1),  border: withOpacity(th.colors.red,    0.3), text: th.colors.red    },
-  hold: { bg: withOpacity(th.colors.accent, 0.08), border: withOpacity(th.colors.accent, 0.3), text: th.colors.accent },
-  info: { bg: th.colors.surface2,                  border: th.colors.border,                   text: th.colors.muted  },
+  up:   { bg: th.tint.accent10,   border: th.colors.accent, text: th.tint.accent50 },
+  down: { bg: th.tint.red30,      border: th.colors.red,    text: th.tint.red50    },
+  hold: { bg: th.tint.accent10,   border: th.colors.accent, text: th.tint.accent50 },
+  info: { bg: th.colors.surface2, border: th.colors.border, text: th.colors.muted  },
 });
+
+// ── NoteIcon — nota con líneas (estilo Tabler "notes"), estados vacío/relleno ──
+// Sustituye al redibujo literal de Figma (rect + barras) por un icono de trazo
+// limpio: hoja redondeada + 3 renglones. Relleno = hoja accent + renglones onAccent.
+
+function NoteIcon({ size = 26, filled, th }) {
+  const stroke = filled ? th.colors.accent   : th.tint.accent50;
+  const lines  = filled ? th.colors.onAccent : th.tint.accent50;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1z"
+        fill={filled ? th.colors.accent : 'none'}
+        stroke={stroke}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8.5 8h7 M8.5 12h7 M8.5 16h4.5"
+        stroke={lines}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
 
 // ── buildTarget ───────────────────────────────────────────────────────────────
 
@@ -98,6 +127,7 @@ export default function ExerciseCard({
   onClientNoteChange,
   overrideEx,
   activeSetIndex = -1,
+  hideAddSetBtn = false,   // superset: un único botón compartido debajo del grupo (WorkoutScreen)
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -327,7 +357,7 @@ export default function ExerciseCard({
 
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
   return (
-    <Animated.View style={[styles.card, { maxHeight: maxH }]} onLayout={onCardLayout}>
+    <Animated.View style={[styles.card, hideAddSetBtn && styles.cardSupersetMember, { maxHeight: maxH }]} onLayout={onCardLayout}>
 
       {/*
         Hidden off-flow measurement view.
@@ -415,14 +445,16 @@ export default function ExerciseCard({
 
         /* ── Expanded view ── */
         <>
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Header — miembro de superset: menos aire encima del nombre */}
+          <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
             <View style={styles.headerLeft}>
 
-              {/* Name row — badge inline to the right */}
+              {/* Name row — superset prefix (A1/A2) inline, misma tipografía en accent */}
               <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
+                <Text style={styles.name} numberOfLines={2}>
+                  {groupLabel ? <Text style={styles.groupPrefix}>{groupLabel} </Text> : null}
+                  {name}
+                </Text>
                 {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
               </View>
 
@@ -443,7 +475,7 @@ export default function ExerciseCard({
             <View style={styles.headerRight}>
               {onClientNoteChange && (
                 <TouchableOpacity onPress={() => setNoteInputOpen((v) => !v)} hitSlop={8}>
-                  <Text style={[styles.noteBtn, !hasClientNote && !noteInputOpen && styles.noteBtnDim]}>📝</Text>
+                  <NoteIcon th={th} filled={hasClientNote || noteInputOpen} />
                 </TouchableOpacity>
               )}
               {manualOpen && (
@@ -456,17 +488,17 @@ export default function ExerciseCard({
 
           {/* Progression chip — hidden when the trainer set an explicit target */}
           {!hasCoachTarget && progression?.msg ? (
-            <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderColor: chipStyle.border }]}>
+            <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderLeftColor: chipStyle.border }]}>
               <Text style={[styles.chipText, { color: chipStyle.text }]}>
                 {progression.icon}  {progression.msg}
               </Text>
             </View>
           ) : null}
 
-          {/* Coach target chip (next-session prescription) */}
+          {/* Coach target chip (next-session prescription) — Chips Variant3 (azul) */}
           {hasCoachTarget ? (
             <View style={[styles.chip, styles.coachChip]}>
-              <Text style={[styles.chipText, { color: th.colors.blue }]}>◎  {t('workout.coachTarget')}</Text>
+              <Text style={[styles.chipText, { color: th.tint.blue70 }]}>◎  {t('workout.coachTarget')}</Text>
             </View>
           ) : null}
 
@@ -495,6 +527,57 @@ export default function ExerciseCard({
             </View>
           ) : null}
 
+          {/* Divisor — separa la zona de identidad (nombre + propuesta + chips/notas)
+              de la zona de registro (calentamiento + series de trabajo). */}
+          <View style={styles.sectionDivider} />
+
+          {/* Warmup — informational, not logged (spec §7). Sin fondo propio; cada
+              paso (C1, C2…) es un chip que abraza su contenido. Va SIEMPRE encima
+              de la etiqueta de trabajo y del grid. */}
+          {hasWarmup ? (
+            <View style={styles.warmupSection}>
+              <View style={styles.warmupHeader}>
+                <Text style={styles.warmupLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+                <Text style={styles.warmupMeta}>
+                  {warmupRestSec > 0
+                    ? t('workout.warmup.restLabel', { sec: warmupRestSec })
+                    : t('workout.warmup.noTimer')}
+                </Text>
+              </View>
+              {warmupNoReference ? (
+                <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
+              ) : null}
+              <View style={styles.warmupRows}>
+                {warmupComputed.map((step, wi) => {
+                  const tapped = warmupTapped.has(wi);
+                  const hasWeight = step.weightKg != null;
+                  // toDisplay() ya convierte a la unidad activa — NO usar fmt() aquí,
+                  // que además añade el sufijo de unidad (duplicaría "Kg", ya pintado
+                  // aparte en warmupPillUnit).
+                  const numStr = hasWeight ? String(toDisplay(step.weightKg)) : `${warmupStepsArr[wi].pct}%`;
+                  return (
+                    <TouchableOpacity
+                      key={wi}
+                      style={styles.warmupRow}
+                      onPress={() => toggleWarmupPill(wi)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.warmupRowLabel}>{`C${wi + 1}`}</Text>
+                      <View style={[styles.warmupChip, tapped && styles.warmupChipTapped]}>
+                        <Text style={styles.warmupPillText}>
+                          <Text style={styles.warmupPillNum}>{numStr}</Text>
+                          {hasWeight ? <Text style={styles.warmupPillUnit}>{weightLabel}</Text> : null}
+                          <Text style={styles.warmupPillTimes}>{' × '}</Text>
+                          <Text style={styles.warmupPillReps}>{step.reps}</Text>
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           {/* Column headers */}
           <View style={styles.colHeader}>
             <View style={{ width: 20 }} />
@@ -514,54 +597,15 @@ export default function ExerciseCard({
                 <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
               </>
             )}
-            {/* Timer btn spacer */}
-            {hasTimer && <View style={{ width: 36 }} />}
+            {/* Timer btn spacer — igualado a timerBtn/doneBtn (32×32) */}
+            {hasTimer && <View style={{ width: 32 }} />}
             {/* RPE column */}
             {trackRpe && (
               <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>RPE</Text>
             )}
             {/* Done btn spacer */}
-            <View style={{ width: 36 }} />
+            <View style={{ width: 32 }} />
           </View>
-
-          {/* Warmup pills — informational row, not logged (spec §7) */}
-          {hasWarmup ? (
-            <View style={styles.warmupBlock}>
-              <View style={styles.warmupBlockHeader}>
-                <Text style={styles.warmupBlockLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
-                <Text style={styles.warmupBlockMeta}>
-                  {warmupRestSec > 0
-                    ? t('workout.warmup.restLabel', { sec: warmupRestSec })
-                    : t('workout.warmup.noTimer')}
-                </Text>
-              </View>
-              {warmupNoReference ? (
-                <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
-              ) : null}
-              <View style={styles.warmupPillsRow}>
-                {warmupComputed.map((step, wi) => {
-                  const tapped = warmupTapped.has(wi);
-                  const label = step.weightKg != null
-                    ? `${fmt(toDisplay(step.weightKg))}×${step.reps}`
-                    : `${warmupStepsArr[wi].pct}%×${step.reps}`;
-                  return (
-                    <View key={wi} style={styles.warmupPillWrap}>
-                      {wi > 0 ? <Text style={styles.warmupArrow}>→</Text> : null}
-                      <TouchableOpacity
-                        style={[styles.warmupPill, tapped && styles.warmupPillTapped]}
-                        onPress={() => toggleWarmupPill(wi)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.warmupPillText, tapped && styles.warmupPillTextTapped]}>
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
 
           {/* Sets */}
           <View style={styles.setList}>
@@ -707,30 +751,31 @@ export default function ExerciseCard({
             </View>
           ) : null}
 
-          {/* Client feedback note */}
-          {onClientNoteChange && (noteInputOpen || hasClientNote) ? (
-            <View style={styles.clientNoteWrap}>
-              <TextInput
-                style={styles.clientNoteInput}
-                value={clientNote ?? ''}
-                onChangeText={onClientNoteChange}
-                placeholder={t('workout.clientNotePlaceholder')}
-                placeholderTextColor={th.colors.muted2}
-                multiline
-                maxLength={280}
-              />
-            </View>
-          ) : null}
+          {/* Añadir serie — oculto en superset, el grupo comparte un único botón (SupersetBlock) */}
+          {!hideAddSetBtn && (
+            <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
+              <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
+            </TouchableOpacity>
+          )}
 
-          {/* Añadir serie */}
-          <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
-            <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
-          </TouchableOpacity>
         </>
 
       )}
 
       </Animated.View>
+
+      {/* Nota del ejercicio — mismo modal que las notas de sesión, título = nombre del ejercicio */}
+      {onClientNoteChange && (
+        <NotesModal
+          visible={noteInputOpen}
+          title={name}
+          value={clientNote ?? ''}
+          onChange={onClientNoteChange}
+          onClose={() => setNoteInputOpen(false)}
+          placeholder={t('workout.clientNotePlaceholder')}
+          hint={t('workout.notesSavedWith')}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -739,12 +784,17 @@ export default function ExerciseCard({
 
 const makeStyles = (th) => StyleSheet.create({
   card: {
+    // Exercice Card Default (105:2490): bg surface, radius/lg, sin borde
+    // (el borde acento solo aparece en el estado colapsado/completado, Parte 3).
     backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.lg,
     overflow:        'hidden',
-    paddingBottom:   spacing.xs,
+    paddingBottom:   spacing.lg,
+  },
+  // Miembro de superset: sin botón "+ Añadir serie" ni notas al fondo, así que
+  // el paddingBottom grande sobra y separaba demasiado los ejercicios del grupo.
+  cardSupersetMember: {
+    paddingBottom: spacing.xs2,
   },
   cardCollapsed: {
     paddingBottom: 0,
@@ -752,11 +802,17 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    padding:       spacing.md,
-    paddingBottom: spacing.sm,
-    gap:           spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.sm,
+    gap:               spacing.sm,
+  },
+  // Miembro de superset: el bloque ya aporta su propio aire por encima —
+  // reduce el padding superior del header para no acumular ambos.
+  headerCompact: {
+    paddingTop: spacing.sm,
   },
   headerLeft: { flex: 1, gap: 3 },
 
@@ -767,8 +823,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexWrap:      'wrap',
   },
   name: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
+    ...textStyles.exercice,
     color:      th.colors.text,
     flexShrink: 1,
   },
@@ -798,13 +853,19 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   2,
     overflow:          'hidden',
   },
+  // Prefijo de superset (A1/A2…) inline delante del nombre — misma tipografía, accent.
+  groupPrefix: {
+    ...textStyles.exercice,
+    color: th.colors.accent,
+  },
   target: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
+    ...textStyles.cardType,
+    color:           th.colors.mutedLight,
+    textTransform:   'uppercase',
   },
   tempoInline: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted2,
+    ...textStyles.cardType,
+    color:         th.colors.muted,
     letterSpacing: 2,
   },
   collapseBtn: {
@@ -816,12 +877,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
-  },
-  noteBtn: {
-    fontSize: typography.md,
-  },
-  noteBtnDim: {
-    opacity: 0.35,
   },
 
   // Trainer note strip
@@ -845,40 +900,20 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
   },
 
-  // Client feedback note
-  clientNoteWrap: {
-    marginHorizontal: spacing.md,
-    marginTop:        spacing.xs,
-  },
-  clientNoteInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.sm,
-    color:             th.colors.text,
-    fontSize:          typography.sm,
-    minHeight:         44,
-    textAlignVertical: 'top',
-  },
-
-  // Progression chip
+  // Progression chip — Chips (110:4247): borde izquierdo, fondo tint tenue, radius/xs
   chip: {
-    marginHorizontal:  spacing.md,
+    marginHorizontal:  spacing.lg,
     marginBottom:      spacing.sm,
-    borderWidth:       borders.thin,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   5,
+    borderLeftWidth:   borders.thin,
+    borderRadius:      th.radius.xs,
+    padding:           spacing.sm,
   },
   chipText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.regular,
+    ...textStyles.tag,
   },
   coachChip: {
-    backgroundColor: withOpacity(th.colors.blue, 0.1),
-    borderColor:     withOpacity(th.colors.blue, 0.3),
+    backgroundColor: th.tint.blue30,
+    borderLeftColor: th.colors.blue,
   },
 
   // Coach one-off note strip
@@ -905,106 +940,114 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.muted,
   },
 
-  // Column headers
+  // Column headers — texto/columnas exactas de Figma, pero el grid se queda
+  // flex:1/centrado (excepción de fidelidad §5.3-bis: el mock de Figma tiene
+  // un desalineado deliberadamente NO replicado).
   colHeader: {
     flexDirection:     'row',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     gap:               spacing.sm,
     marginBottom:      spacing.xs,
   },
   colLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted2,
-    letterSpacing: 0.8,
+    ...textStyles.cardType,
+    color: th.colors.mutedLight,
   },
 
-  // Sets
+  // Sets — gap explícito entre filas (antes solo el paddingVertical de cada fila, 4px)
   setList: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap:               spacing.xs2,
   },
 
-  // Warmup pills — informational row, not part of the log
-  warmupBlock: {
-    marginHorizontal:  spacing.md,
-    marginBottom:      spacing.sm,
-    backgroundColor:   th.colors.surface2,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
+  // Divisor entre la zona de identidad y la de registro — antes gris + etiqueta
+  // "SERIES DE TRABAJO" encima del grid; la etiqueta se quitó (chocaba visualmente
+  // con KG/REP) y este color hace de único marcador de la zona de trabajo.
+  sectionDivider: {
+    height:           1,
+    backgroundColor:  th.tint.accent50,
+    marginHorizontal: spacing.lg,
+    marginTop:        spacing.xs2,
+    marginBottom:     spacing.md,
   },
-  warmupBlockHeader: {
+
+  // Warmup — sin fondo propio; se apoya en el fondo de la card (Opción B)
+  warmupSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom:     spacing.md,
+    gap:              spacing.xs2,
+  },
+  warmupHeader: {
     flexDirection:  'row',
     justifyContent: 'space-between',
-    alignItems:     'center',
+    alignItems:     'baseline',
     marginBottom:   spacing.xs,
   },
-  warmupBlockLabel: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 0.8,
+  // Etiqueta de sección — paralela a "SERIES DE TRABAJO" (neutro mutedLight)
+  warmupLabel: {
+    ...textStyles.spacingTag,
+    color: th.colors.mutedLight,
   },
-  warmupBlockMeta: {
-    fontSize: typography.xs - 1,
-    color:    th.colors.muted2,
+  warmupMeta: {
+    ...textStyles.tag,
+    color: th.colors.mutedLight,
   },
   warmupBanner: {
-    fontSize:     typography.xs,
-    color:        th.colors.muted,
-    marginBottom: spacing.xs,
-    fontStyle:    'italic',
+    fontSize:  typography.xs,
+    color:     th.colors.muted,
+    fontStyle: 'italic',
   },
-  warmupPillsRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    alignItems:    'center',
-    gap:           4,
+  warmupRows: {
+    gap: spacing.xs2,
   },
-  warmupPillWrap: {
+  // Fila = etiqueta C1 (fuera) + chip que abraza el valor (no llega al final)
+  warmupRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           4,
+    gap:           spacing.sm,
   },
-  warmupArrow: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
+  // Etiqueta "C1/C2…" con la misma tipografía que "S1/S2" del grid
+  warmupRowLabel: {
+    width:      20,
+    fontFamily: 'Inter_900Black',
+    fontSize:   12,
+    fontWeight: '900',
+    color:      th.tint.accent50,
   },
-  warmupPill: {
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+  // Chip que abraza el contenido (alignSelf implícito por ser hijo de una fila).
+  // Borde transparente en reposo para que el estado "tocado" no desplace el layout.
+  warmupChip: {
+    backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
+    borderWidth:       0.5,
+    borderColor:       'transparent',
+    paddingVertical:   spacing.xs2,
+    paddingHorizontal: spacing.md,
   },
-  warmupPillTapped: {
-    backgroundColor: withOpacity(th.colors.green, 0.1),
-    borderColor:     withOpacity(th.colors.green, 0.3),
+  // Tap → resalta en accent (dispara el descanso)
+  warmupChipTapped: {
+    borderColor:     th.tint.accent50,
+    backgroundColor: th.tint.accent10,
   },
-  warmupPillText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
-  warmupPillTextTapped: {
-    color: th.colors.green,
-  },
+  // Texto 2 colores (§9 UI-MIGRATION): peso en accent, unidad en text, "×" mutedLight, reps en text
+  warmupPillText: { ...textStyles.cardType },
+  warmupPillNum:   { color: th.colors.accent },
+  warmupPillUnit:  { color: th.colors.text },
+  warmupPillTimes: { color: th.colors.mutedLight },
+  warmupPillReps:  { color: th.colors.text },
 
-  // Dropset sub-block
+  // Dropset sub-block — label/botón en rojo (adoptado, hoy naranja); sin borde
+  // izquierdo (no está en el componente real de Figma, solo en la guía previa).
   dropBlock: {
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
     marginTop:        spacing.sm,
     paddingLeft:      spacing.sm,
-    borderLeftWidth:  2,
-    borderLeftColor:  th.colors.orange ?? th.colors.accent,
+    paddingRight:     spacing.md,
   },
   dropBlockLabel: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.bold,
-    color:         th.colors.orange ?? th.colors.accent,
-    letterSpacing: 0.8,
-    marginBottom:  spacing.xs,
+    ...textStyles.spacingTag,
+    color:        th.colors.red,
+    marginBottom: spacing.xs,
   },
   dropRowWrap: {
     flexDirection: 'row',
@@ -1024,26 +1067,24 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
   },
   addDropText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
+    ...textStyles.spacingTag,
+    color:         th.tint.red50,
+    textTransform: 'uppercase',
   },
 
-  // Add set
+  // Add set — Buttons "Añadir serie/sesion" outline (106:3284)
   addSetBtn: {
-    marginTop:        spacing.sm,
-    marginHorizontal: spacing.md,
-    paddingVertical:  spacing.sm,
-    borderWidth:      borders.thin,
-    borderColor:      th.colors.border,
-    borderStyle:      'dashed',
-    borderRadius:     th.radius.sm,
-    alignItems:       'center',
+    marginTop:         spacing.sm,
+    marginHorizontal:  spacing.lg,
+    paddingVertical:   spacing.md,
+    borderWidth:       borders.thin,
+    borderColor:       th.tint.accent50,
+    borderRadius:      th.radius.md,
+    alignItems:        'center',
   },
   addSetText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
+    ...textStyles.cardType,
+    color: th.tint.accent50,
   },
 
   // Hidden measurement view (absolutely positioned, opacity 0)

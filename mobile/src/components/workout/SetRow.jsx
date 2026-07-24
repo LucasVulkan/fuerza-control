@@ -17,12 +17,32 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, PanResponder, Keyboard, Pressable, Animated,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 const STEP_PX  = 8;
 const H_THRESH = 12;
+
+// ── Chevron ───────────────────────────────────────────────────────────────────
+// Path exacto del asset "Subtract" de Figma (Input Field Current/Empty, ~4.3×7.1),
+// siempre en tint/accent-50 — no cambia de color entre estado idle/scroll-activo.
+const CHEVRON_W = 4.28102;
+const CHEVRON_H = 7.13504;
+
+function Chevron({ direction = 'right', size = 8, color }) {
+  return (
+    <Svg
+      width={size * (CHEVRON_W / CHEVRON_H)}
+      height={size}
+      viewBox={`0 0 ${CHEVRON_W} ${CHEVRON_H}`}
+      style={direction === 'left' ? { transform: [{ scaleX: -1 }] } : undefined}
+    >
+      <Path d="M3.5 3.56752L0.5 6.06752V5.2218L2.48499 3.56752L0.5 1.91259V1.06752L3.5 3.56752Z" fill={color} />
+    </Svg>
+  );
+}
 
 // ── TimerButton ───────────────────────────────────────────────────────────────
 
@@ -79,8 +99,8 @@ function InputCell({
   onChangeText,
   keyboardType,
   scrollStep = 1,
-  showHint   = false,
-  isDone     = false,
+  showHint   = false,   // fila activa → estado "Current" del Input Field (105:2416)
+  isDone     = false,   // serie marcada como hecha → texto en accent tint-50
 }) {
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
@@ -213,6 +233,9 @@ function InputCell({
   const ghostStyle = showPrev
     ? (prevSource === 'coach' ? styles.valueTextCoach : styles.valueTextPrev)
     : null;
+  // Input Field states (105:2415): fila activa = "Current" (borde + texto claro),
+  // valor sin ser la activa = "Done" (texto mutedLight), sin valor = "Empty".
+  const isCurrent = showHint;
 
   return (
     <View style={styles.inputCell} {...panResponder.panHandlers}>
@@ -220,7 +243,7 @@ function InputCell({
         onPress={openEditor}
         style={[
           styles.input,
-          isDone && !scrollActive && styles.inputDone,
+          isCurrent && styles.inputCurrent,
           showPrev && styles.inputPrev,
           showPrev && prevSource === 'coach' && styles.inputCoach,
         ]}
@@ -228,8 +251,8 @@ function InputCell({
         {renderStr ? (
           <View style={styles.numRow}>
             <View style={styles.decPart} />
-            <Text style={[styles.valueText, ghostStyle]}>{intStr}</Text>
-            <Text style={[styles.valueText, styles.decPart, ghostStyle]} numberOfLines={1}>{decStr}</Text>
+            <Text style={[styles.valueText, isDone && styles.valueTextDone, isCurrent && styles.valueTextCurrent, ghostStyle]}>{intStr}</Text>
+            <Text style={[styles.valueText, styles.decPart, isDone && styles.valueTextDone, isCurrent && styles.valueTextCurrent, ghostStyle]} numberOfLines={1}>{decStr}</Text>
           </View>
         ) : (
           <Text style={styles.placeholder}>—</Text>
@@ -244,8 +267,8 @@ function InputCell({
 
       {(scrollActive || showHint) && (
         <View style={styles.arrowOverlay} pointerEvents="none">
-          <Text style={[styles.arrow, scrollActive && styles.arrowActive]}>‹</Text>
-          <Text style={[styles.arrow, scrollActive && styles.arrowActive]}>›</Text>
+          <Chevron direction="left"  size={9} color={th.tint.accent50} />
+          <Chevron direction="right" size={9} color={th.tint.accent50} />
         </View>
       )}
     </View>
@@ -285,10 +308,10 @@ export default function SetRow({
     <View style={styles.row}>
       {onCopyPrev ? (
         <TouchableOpacity onPress={onCopyPrev} hitSlop={8}>
-          <Text style={[styles.setNum, isActive && styles.setNumActive]}>{numLabel}</Text>
+          <Text style={[styles.setNum, set.done && styles.setNumDone, isActive && styles.setNumActive]}>{numLabel}</Text>
         </TouchableOpacity>
       ) : (
-        <Text style={[styles.setNum, isActive && styles.setNumActive]}>{numLabel}</Text>
+        <Text style={[styles.setNum, set.done && styles.setNumDone, isActive && styles.setNumActive]}>{numLabel}</Text>
       )}
 
       {/* ── weight_reps ── */}
@@ -388,13 +411,20 @@ export default function SetRow({
         />
       )}
 
-      {/* ── Done ── */}
+      {/* ── Done — Icons Serie uncheck/Current Uncheck/done (105:2459/2479, 106:2701) ── */}
       <TouchableOpacity
-        style={[styles.doneBtn, set.done && styles.doneBtnActive]}
+        style={[
+          styles.doneBtn,
+          set.done && styles.doneBtnActive,
+        ]}
         onPress={() => { Keyboard.dismiss(); onToggleDone(); }}
         hitSlop={8}
       >
-        <Text style={[styles.doneMark, set.done && styles.doneMarkActive]}>✓</Text>
+        <Text style={[
+          styles.doneMark,
+          isActive && !set.done && styles.doneMarkCurrent,
+          set.done && styles.doneMarkActive,
+        ]}>✓</Text>
       </TouchableOpacity>
     </View>
   );
@@ -409,33 +439,39 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
     paddingVertical: spacing.xs,
   },
+  // "S1"/"S2"… — Black 12, sin tracking, sin relación con text/card-type.
   setNum: {
-    width:         20,
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 0.5,
-    textAlign:     'right',
+    width:      20,
+    fontFamily: 'Inter_900Black',
+    fontSize:   12,
+    fontWeight: '900',
+    color:      th.colors.mutedLight,
+    textAlign:  'right',
+  },
+  setNumDone: {
+    color: th.tint.accent50,
   },
   setNumActive: {
-    color:      th.colors.accent,
-    fontWeight: typography.semibold,
+    color: th.colors.accent,
   },
 
   inputCell: { flex: 1 },
 
+  // Input Field (105:2415) — Empty/Done: bg workout-card, sin borde. Current
+  // (105:2416): + borde tint/accent-50. El valor de "workout-card" (#141414)
+  // coincide con th.colors.bg en formaFit, no hace falta un token nuevo.
+  // Alto igualado al de los botones (done/timer, 36×36) — pedido de QA.
   input: {
-    width:             '100%',
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.sm,
-    paddingVertical:   spacing.xs + 2,
-    paddingHorizontal: spacing.xs,
+    width:            '100%',
+    height:           36,
+    backgroundColor:  th.colors.bg,
+    borderRadius:     th.radius.sm,
+    paddingHorizontal: spacing.sm,
     alignItems:        'center',
     justifyContent:    'center',
   },
   inputEditing: {
-    backgroundColor:   th.colors.surface2,
+    backgroundColor:   th.colors.bg,
     borderWidth:       borders.thin,
     borderColor:       th.colors.accent,
     borderRadius:      th.radius.sm,
@@ -446,9 +482,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs + 2,
     paddingHorizontal: spacing.xs,
   },
-  inputScrollActive: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
+  inputCurrent: {
+    borderWidth: 0.5,
+    borderColor: th.tint.accent50,
   },
   inputAccentOverlay: {
     position:        'absolute',
@@ -458,21 +494,28 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
-  inputDone: {
-    borderColor: withOpacity(th.colors.green, 0.3),
-  },
   inputPrev: {
+    borderWidth: 0.5,
     borderColor: th.colors.borderCard,
   },
   inputCoach: {
-    borderColor: withOpacity(th.colors.blue, 0.4),
+    borderWidth: 0.5,
+    borderColor: th.tint.blue30,
   },
 
+  // Done (mutedLight) / serie completada (accent tint-50) / Current (text, fila
+  // activa, gana sobre completada) — todos comparten la fuente de Input Field
+  // (ExtraBold 12/1.2, "text/card-type").
   valueText: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.text,
-    textAlign:  'center',
+    ...textStyles.cardType,
+    color:     th.colors.mutedLight,
+    textAlign: 'center',
+  },
+  valueTextDone: {
+    color: th.tint.accent50,
+  },
+  valueTextCurrent: {
+    color: th.colors.text,
   },
   valueTextPrev: {
     color:      th.colors.muted2,
@@ -483,10 +526,9 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.regular,
   },
   placeholder: {
-    fontSize:   typography.md,
-    fontWeight: typography.regular,
-    color:      th.colors.muted2,
-    textAlign:  'center',
+    ...textStyles.cardType,
+    color:     th.colors.muted,
+    textAlign: 'center',
   },
 
   numRow: {
@@ -507,41 +549,45 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: 5,
   },
-  arrow:       { fontSize: 11, color: th.colors.muted,  opacity: 0.55, lineHeight: 13 },
-  arrowActive: { color: th.colors.accent, opacity: 1 },
 
-  // Done button
+  // Done button — Icons Serie uncheck (105:2459) / Current Uncheck (105:2479) / done (106:2701)
+  // Ligeramente más pequeño que las celdas (32, no 36) — pedido de QA, sin tocar
+  // el ancho de los Input Field (flex:1, no dependen de este valor).
+  // marginLeft extra (además del gap de `row`) — más aire respecto a la celda de la izquierda.
   doneBtn: {
-    width:           36,
-    height:          36,
+    width:           32,
+    height:          32,
+    marginLeft:      spacing.xs,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
+  // Hecha: fondo/borde tint accent (antes era el look de "activa"; se intercambiaron).
   doneBtnActive: {
-    borderColor:     th.colors.green,
-    backgroundColor: withOpacity(th.colors.green, 0.1),
+    borderWidth:     0.5,
+    borderColor:     th.tint.accent50,
+    backgroundColor: th.tint.accent10,
   },
-  doneMark:       { fontSize: 16, color: th.colors.muted },
-  doneMarkActive: { color: th.colors.green },
+  doneMark: { fontSize: 16, color: th.colors.muted },
+  // Activa (aún sin marcar): solo cambia el color del icono frente a las pendientes,
+  // sin fondo/borde propio — el fondo/borde "tint" ahora es el de la serie hecha.
+  doneMarkCurrent: { color: th.tint.accent50 },
+  doneMarkActive:  { color: th.colors.accent },
 
-  // Timer button
+  // Timer button — sin glifo propio en Figma, restyle por analogía alineado al done (32×32)
   timerBtn: {
-    width:           36,
-    height:          36,
+    width:           32,
+    height:          32,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   timerBtnRunning: {
-    borderColor:     withOpacity(th.colors.accent, 0.5),
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
+    borderWidth:     0.5,
+    borderColor:     th.tint.accent50,
+    backgroundColor: th.tint.accent10,
   },
   timerBtnIcon: {
     fontSize:           13,

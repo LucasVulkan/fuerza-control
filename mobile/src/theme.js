@@ -110,6 +110,7 @@ export const textStyles = {
   hero:       { fontFamily: 'Inter_900Black',     fontSize: 20, fontWeight: '900', letterSpacing: 0 },    // text/hero — valor grande de las Progress cards
   cardType:   { fontFamily: 'Inter_800ExtraBold', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
   cardTitle:  { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
+  exercice:   { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0 },    // text/Exercice — nombre de ejercicio (sin tracking, distinto de cardTitle)
   subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
   tag:        { fontFamily: 'Inter_500Medium',    fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
   spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados

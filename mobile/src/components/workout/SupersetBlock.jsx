@@ -3,12 +3,12 @@
  * rest between members. Purely presentational: the rest-timer suppression and
  * A1/A2 labelling are computed by the caller (WorkoutScreen).
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, withOpacity } from '../../theme';
+import { spacing, typography, textStyles, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-export default function SupersetBlock({ rounds, restSec, children }) {
+export default function SupersetBlock({ rounds, restSec, children, onAddSet }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -19,20 +19,34 @@ export default function SupersetBlock({ rounds, restSec, children }) {
         {t('workout.supersetHeader', { count: rounds })}
       </Text>
       <View style={styles.members}>{children}</View>
-      <Text style={styles.footer}>{t('workout.supersetFooter', { sec: restSec })}</Text>
+      <Text style={styles.footer}>
+        {t('workout.supersetFooterPrefix')}
+        <Text style={styles.footerSec}>{restSec}s</Text>
+        {t('workout.supersetFooterSuffix')}
+      </Text>
+      {/* Un único botón para todo el grupo — añade una serie a cada miembro a la vez */}
+      {onAddSet && (
+        <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
+          <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const makeStyles = (th) => StyleSheet.create({
+  // Mismo fondo que las Exercice Cards que envuelve — el grupo debe leerse como
+  // un único componente, no como una tarjeta extra detrás de las tarjetas.
   block: {
     borderLeftWidth: 3,
     borderLeftColor: th.colors.accent,
     borderRadius:    th.radius.md,
-    backgroundColor: withOpacity(th.colors.accent, 0.03),
+    backgroundColor: th.colors.surface,
     paddingLeft:     spacing.sm,
-    paddingVertical: spacing.sm,
-    gap:             spacing.sm,
+    paddingRight:    spacing.sm,
+    paddingTop:      spacing.md,
+    paddingBottom:   spacing.md,
+    gap:             spacing.xs,
   },
   header: {
     fontSize:          typography.xs,
@@ -42,12 +56,33 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform:     'uppercase',
     paddingHorizontal: spacing.xs,
   },
+  // Sin gap entre cards — cada ExerciseCard miembro ya recorta su propio
+  // paddingBottom (cardSupersetMember), evitando el hueco excesivo que se
+  // acumulaba (paddingBottom de la card + gap del bloque).
   members: {
-    gap: spacing.sm,
+    gap: 0,
   },
+  // Separación propia respecto al botón de abajo — el `gap` del bloque ya lo
+  // acerca al grid de arriba, pero quedaba pegado al botón sin este margen.
   footer: {
-    fontSize:          typography.xs,
-    color:             th.colors.muted,
-    paddingHorizontal: spacing.xs,
+    ...textStyles.subtitle,
+    color:        th.colors.text,
+    textAlign:    'center',
+    marginBottom: spacing.sm,
+  },
+  footerSec: {
+    color: th.colors.accent,
+  },
+  addSetBtn: {
+    marginHorizontal: spacing.sm,
+    paddingVertical:  spacing.md,
+    borderWidth:      borders.thin,
+    borderColor:      th.tint.accent50,
+    borderRadius:     th.radius.md,
+    alignItems:       'center',
+  },
+  addSetText: {
+    ...textStyles.cardType,
+    color: th.tint.accent50,
   },
 });

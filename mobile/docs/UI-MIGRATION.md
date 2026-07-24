@@ -29,7 +29,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Sesion Editor (+ modal "···" nuevo) | ⬜ | `src/screens/SessionEditorScreen.jsx` |
 | Exercice Editor (+ botones eliminar/sustituir) | ⬜ | `src/components/editor/ExerciseEditorInline.jsx` |
 | Bloques AMRAP / EMOM | ⬜ | editores de bloque |
-| **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` |
+| **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)
 
