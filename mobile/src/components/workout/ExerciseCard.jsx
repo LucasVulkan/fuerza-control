@@ -17,6 +17,7 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { getProgression } from '../../../../src/utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../../src/utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
+import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
@@ -85,28 +86,6 @@ function buildTarget(def, exConfig, t) {
   return `${sets} × ${r} reps${unilateral}`;
 }
 
-// ── buildSetLabel (collapsed pills) ──────────────────────────────────────────
-
-function buildSetLabel(set, index, fmt) {
-  if (set.time && set.weight) return `${fmt(set.weight)}×${set.time}s`;
-  if (set.time)               return `${set.time}s`;
-  if (set.weight && set.reps) return `${fmt(set.weight)}×${set.reps}`;
-  if (set.reps)               return `${set.reps} reps`;
-  if (set.weight)             return fmt(set.weight);
-  return `S${index + 1}`;
-}
-
-// ── SetPill ───────────────────────────────────────────────────────────────────
-
-function SetPill({ set, index, fmt }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.setPill}>
-      <Text style={styles.setPillText}>{buildSetLabel(set, index, fmt)}</Text>
-    </View>
-  );
-}
-
 // ── ExerciseCard ──────────────────────────────────────────────────────────────
 
 export default function ExerciseCard({
@@ -134,6 +113,8 @@ export default function ExerciseCard({
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
+  // "Kg" capitalizado — misma técnica que HistoryScreen (label crudo viene en minúscula).
+  const unitLabel = weightLabel.charAt(0).toUpperCase() + weightLabel.slice(1);
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
@@ -215,6 +196,11 @@ export default function ExerciseCard({
   const UNCONSTRAINED = 3000;
   const maxH        = useRef(new Animated.Value(UNCONSTRAINED)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
+  // Progreso del check del header: 0 = expandido (sin check, título pegado a la
+  // izquierda), 1 = colapsado (check visible, título desplazado a la derecha).
+  // Anima en paralelo a maxH (misma duración) para el efecto "el título deja paso
+  // al check". El header es persistente (no hace crossfade), solo el cuerpo.
+  const checkProgress = useRef(new Animated.Value(0)).current;
   const expandedH   = useRef(0);
   const collapsedH  = useRef(80);
   const isCollapsedRef = useRef(false);
@@ -248,7 +234,11 @@ export default function ExerciseCard({
     // maxH may be UNCONSTRAINED (3000) — snap to actual content height first
     // so the animation starts from the real size with no visual jump.
     // collapsedH.current is always accurate thanks to the hidden measurement view.
-    const from = expandedH.current  > 0 ? expandedH.current  : 400;
+    // Mismo razonamiento que en startExpand: sin medida previa, arrancar desde
+    // UNCONSTRAINED en vez de un número fijo (400) — el View ya está pintado a su
+    // altura real (el maxHeight de 3000 no la afecta), así que animar "desde 3000"
+    // se ve igual que animar desde la altura real, sin arriesgar un salto visual.
+    const from = expandedH.current  > 0 ? expandedH.current  : UNCONSTRAINED;
     const to   = collapsedH.current > 40 ? collapsedH.current : 80;
     maxH.setValue(from);
     contentOpacity.setValue(1);
@@ -256,6 +246,8 @@ export default function ExerciseCard({
       if (finished) onDone(); // opacity sigue en 0 → useEffect se encarga del fade in
     });
     Animated.timing(contentOpacity, { ...OPACITY_CFG, toValue: 0 }).start();
+    // Check entra deslizando (título se desplaza a la derecha) en paralelo a la altura.
+    Animated.timing(checkProgress,  { ...HEIGHT_CFG,  toValue: 1 }).start();
   }, []);
 
   // Fade in del contenido activo después de cada cambio de estado colapsado/expandido.
@@ -291,19 +283,27 @@ export default function ExerciseCard({
     }).start();
   }, [isCollapsed]);
 
-  // Expand: resetea opacidad a 0 y anima la altura. El fade-in de opacidad lo
-  // dispara el useEffect una vez que React ha confirmado el cambio de estado,
-  // evitando que el contenido colapsado reaparezca durante la animación.
+  // Expand: solo anima la altura. El contenido expandido se muestra a opacidad
+  // plena de INMEDIATO (revelado según crece la altura), NO se oculta para hacer
+  // un fade-in. Fiar la visibilidad a un fade-in disparado por el useEffect de
+  // [isCollapsed] dejaba la card "gris" (contentOpacity clavado en 0, contenido
+  // montado e interactivo pero invisible) cuando ese efecto no llegaba a restaurar
+  // la opacidad. Poner 1 aquí es a prueba de fallos y además cancela cualquier
+  // fade-out de un colapso en curso.
   const startExpand = useCallback(() => {
     const from = collapsedH.current > 0 ? collapsedH.current : 80;
-    const to   = expandedH.current  > 0 ? expandedH.current  : 600;
+    // Sin medida previa (card ya completada al montar, expandedH.current nunca
+    // se midió) usar UNCONSTRAINED en vez de un número fijo: el View para de crecer
+    // en su tamaño natural, así que se ve igual sin arriesgar hueco/recorte.
+    const to = expandedH.current > 0 ? expandedH.current : UNCONSTRAINED;
     maxH.setValue(from);
-    contentOpacity.setValue(0); // contenido invisible; useEffect dispara el fade-in
+    contentOpacity.setValue(1);
     Animated.timing(maxH, { ...HEIGHT_CFG, toValue: to }).start(({ finished }) => {
       // Release the constraint so the card can grow freely if sets are added.
       if (finished) maxH.setValue(UNCONSTRAINED);
     });
-    // No opacity animation here — handled by useEffect after isCollapsed flips
+    // Check sale deslizando (título vuelve a la izquierda) en paralelo a la altura.
+    Animated.timing(checkProgress, { ...HEIGHT_CFG, toValue: 0 }).start();
   }, []);
 
   // Colapsar cuando todas las series están hechas
@@ -356,9 +356,151 @@ export default function ExerciseCard({
   const targetLabel = buildTarget(def, exConfig, t)
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
 
+  // ── Piezas compartidas del render ───────────────────────────────────────────
+  // El header (check + título/subtítulo + notas) es PERSISTENTE: se pinta una sola
+  // vez FUERA del crossfade, así al colapsar/expandir NO parpadea. Solo el cuerpo
+  // hace fade out/in y el check entra/sale deslizando (checkProgress), con el título
+  // desplazándose para dejarle sitio (nodo 364:3030 "Collapse").
+  const CHECK_SLOT_W = 26 + spacing.sm; // icono 26 + hueco a su derecha
+  const checkSlotWidth = checkProgress.interpolate({ inputRange: [0, 1], outputRange: [0, CHECK_SLOT_W] });
+
+  const checkIcon = (
+    <View style={styles.collapsedCheck}>
+      <Text style={styles.collapsedCheckMark}>✓</Text>
+    </View>
+  );
+
+  const titleZone = (
+    <>
+      <View style={styles.nameRow}>
+        <Text style={styles.name} numberOfLines={2}>
+          {orderNumber ? <Text style={styles.groupPrefix}>{orderNumber} </Text> : null}
+          {groupLabel ? <Text style={styles.groupPrefix}>{groupLabel} </Text> : null}
+          {name}
+        </Text>
+        {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
+      </View>
+      {(targetLabel || exConfig.tempo) ? (
+        <Text style={styles.target} numberOfLines={2}>
+          {targetLabel}
+          {targetLabel && exConfig.tempo
+            ? <Text style={styles.tempoInline}>{` · ${exConfig.tempo}`}</Text>
+            : exConfig.tempo
+              ? <Text style={styles.tempoInline}>{exConfig.tempo}</Text>
+              : null}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  const noteIconEl = onClientNoteChange ? (
+    <TouchableOpacity onPress={() => setNoteInputOpen((v) => !v)} hitSlop={8}>
+      <NoteIcon th={th} filled={hasClientNote || noteInputOpen} />
+    </TouchableOpacity>
+  ) : null;
+
+  // Header persistente. Tap sobre el título = expandir (si colapsado) o colapsar
+  // (si se reabrió a mano, manualOpen); en una card en curso no hace nada. El icono
+  // de notas queda fuera del área táctil del título (su propio onPress).
+  const header = (
+    <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
+      <View style={styles.headerMain}>
+        <Animated.View style={[styles.checkSlot, { width: checkSlotWidth, opacity: checkProgress }]}>
+          {checkIcon}
+        </Animated.View>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={isCollapsed ? handleOpen : (manualOpen ? handleCollapse : undefined)}
+          disabled={!isCollapsed && !manualOpen}
+          activeOpacity={0.7}
+        >
+          {titleZone}
+        </TouchableOpacity>
+      </View>
+      <View style={styles.headerRight}>{noteIconEl}</View>
+    </View>
+  );
+
+  // Resumen de series colapsado — EstructuraVisualizacionDatosEjercicios "Semi
+  // compacta" (364:3030). Reutiliza setDisplay.js (misma lógica que History/Progress);
+  // "fuera de rango" = ROJO aquí (decisión de usuario para esta card).
+  const pillsBlock = (
+    <View style={styles.collapsedPillsRow}>
+      {groupSetsByWeight(setsState).map((group, gi) => (
+        <View key={`grp-${gi}`} style={styles.setGroup}>
+          {group.weight ? (
+            <View style={styles.weightPill}>
+              <Text style={styles.weightPillText}>
+                <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
+                <Text style={styles.weightPillUnit}>{unitLabel}</Text>
+                <Text style={styles.weightPillX}>{' x'}</Text>
+              </Text>
+            </View>
+          ) : null}
+          {group.sets.map((s, i) => {
+            const variant = getPillVariant(s, exConfig);
+            const { main, rpeNum } = buildSetLabel(s, i, fmt, true);
+            return (
+              <View
+                key={`set-${gi}-${i}`}
+                style={[
+                  styles.setPill,
+                  variant === 'done'    && styles.setPillDone,
+                  variant === 'partial' && styles.setPillPartial,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.setPillText,
+                    variant === 'done'    && styles.setPillTextDone,
+                    variant === 'partial' && styles.setPillTextPartial,
+                  ]}
+                >
+                  {main}
+                  {rpeNum ? (
+                    <>
+                      <Text
+                        style={[
+                          styles.setPillRpeAt,
+                          variant === 'done'    && styles.setPillRpeAtDone,
+                          variant === 'partial' && styles.setPillRpeAtPartial,
+                        ]}
+                      >
+                        @
+                      </Text>
+                      {rpeNum}
+                    </>
+                  ) : null}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+
+  // Contenido del measurer (oculto): layout colapsado COMPLETO con el check estático
+  // a ancho fijo (así collapsedH ya cuenta con el check visible) + las pills.
+  const measurerContent = (
+    <>
+      <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
+        <View style={styles.headerMain}>
+          <View style={[styles.checkSlot, { width: CHECK_SLOT_W }]}>{checkIcon}</View>
+          <View style={styles.headerLeft}>{titleZone}</View>
+        </View>
+        <View style={styles.headerRight}>{noteIconEl}</View>
+      </View>
+      {pillsBlock}
+    </>
+  );
+
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
   return (
-    <Animated.View style={[styles.card, hideAddSetBtn && styles.cardSupersetMember, { maxHeight: maxH }]} onLayout={onCardLayout}>
+    <Animated.View
+      style={[styles.card, hideAddSetBtn && styles.cardSupersetMember, isCollapsed && styles.cardCollapsed, { maxHeight: maxH }]}
+      onLayout={onCardLayout}
+    >
 
       {/*
         Hidden off-flow measurement view.
@@ -383,113 +525,26 @@ export default function ExerciseCard({
           }
         }}
       >
-        <View style={styles.collapsedRow}>
-          <View style={styles.collapsedLeft}>
-            <View style={styles.doneIcon}>
-              <Text style={styles.doneIconText}>✓</Text>
-            </View>
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <View style={styles.collapsedNameRow}>
-                <Text style={styles.name}>{name}</Text>
-                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
-              </View>
-              <View style={styles.pillsRow}>
-                {setsState.map((set, i) => (
-                  <SetPill key={i} set={set} index={i} fmt={fmt} />
-                ))}
-              </View>
-            </View>
-          </View>
-          {/* Spacer matching the small add-set button so width/wrap is identical */}
-          <View style={styles.addSetBtnSmall} />
-        </View>
+        {measurerContent}
       </View>
+
+      {/* Header persistente compartido — fuera del crossfade, no parpadea al
+          colapsar/expandir; el check entra/sale deslizando (checkProgress). */}
+      {header}
 
       <Animated.View style={{ opacity: contentOpacity }}>
 
       {isCollapsed ? (
 
-        /* ── Collapsed view ── */
-        <TouchableOpacity onPress={handleOpen} activeOpacity={0.75}>
-        <View style={styles.collapsedRow}>
-          <View style={styles.collapsedLeft}>
-            <View style={styles.doneIcon}>
-              <Text style={styles.doneIconText}>✓</Text>
-            </View>
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <View style={styles.collapsedNameRow}>
-                <Text style={styles.name}>{name}</Text>
-                {groupLabel && <Text style={styles.groupBadge}>{groupLabel}</Text>}
-              </View>
-              <View style={styles.pillsRow}>
-                {setsState.map((set, i) => (
-                  <SetPill key={i} set={set} index={i} fmt={fmt} />
-                ))}
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.addSetBtnSmall}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              handleOpen();
-              onAddSet();
-            }}
-            hitSlop={8}
-          >
-            <Text style={styles.addSetSmallText}>+</Text>
-          </TouchableOpacity>
-        </View>
+        /* ── Collapsed view — solo las pills (el header ya está arriba) ── */
+        <TouchableOpacity onPress={handleOpen} activeOpacity={0.85}>
+          {pillsBlock}
         </TouchableOpacity>
 
       ) : (
 
-        /* ── Expanded view ── */
+        /* ── Expanded view — el header persistente ya está arriba, aquí solo el cuerpo ── */
         <>
-          {/* Header — miembro de superset: menos aire encima del nombre. Fondo propio
-              (surface2 60%) que distingue la zona título/subtítulo/notas; NO engloba
-              los chips de progresión, que van fuera (361:2955). */}
-          <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
-            <View style={styles.headerLeft}>
-
-              {/* Name row — nº de sesión + prefijo de superset (A1/A2), misma tipografía en accent */}
-              <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={2}>
-                  {orderNumber ? <Text style={styles.groupPrefix}>{orderNumber} </Text> : null}
-                  {groupLabel ? <Text style={styles.groupPrefix}>{groupLabel} </Text> : null}
-                  {name}
-                </Text>
-                {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
-              </View>
-
-              {/* Target + tempo inline: "3 × 8–12 reps · 3010" */}
-              {(targetLabel || exConfig.tempo) ? (
-                <Text style={styles.target}>
-                  {targetLabel}
-                  {targetLabel && exConfig.tempo
-                    ? <Text style={styles.tempoInline}>{` · ${exConfig.tempo}`}</Text>
-                    : exConfig.tempo
-                      ? <Text style={styles.tempoInline}>{exConfig.tempo}</Text>
-                      : null}
-                </Text>
-              ) : null}
-
-            </View>
-
-            <View style={styles.headerRight}>
-              {onClientNoteChange && (
-                <TouchableOpacity onPress={() => setNoteInputOpen((v) => !v)} hitSlop={8}>
-                  <NoteIcon th={th} filled={hasClientNote || noteInputOpen} />
-                </TouchableOpacity>
-              )}
-              {manualOpen && (
-                <TouchableOpacity onPress={handleCollapse} hitSlop={8}>
-                  <Text style={styles.collapseBtn}>{t('workout.collapse', 'Colapsar')}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
           {/* Progression chip — hidden when the trainer set an explicit target */}
           {!hasCoachTarget && progression?.msg ? (
             <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderLeftColor: chipStyle.border }]}>
@@ -784,12 +839,18 @@ export default function ExerciseCard({
 
 const makeStyles = (th) => StyleSheet.create({
   card: {
-    // Exercice Card Default (105:2490): bg surface, radius/lg, sin borde
-    // (el borde acento solo aparece en el estado colapsado/completado, Parte 3).
+    // Exercice Card Default (105:2490): bg surface, radius/lg.
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.lg,
     overflow:        'hidden',
     paddingBottom:   spacing.lg,
+    // Borde transparente OBLIGATORIO (no decorativo): en Android, un View con
+    // overflow:'hidden' + borderRadius NO recompone/pinta sus hijos de forma fiable
+    // salvo que tenga un borde que fuerce la capa de recorte — sin él la card queda
+    // "gris" (fondo visible, contenido montado pero sin pintar). Mismo ancho que
+    // cardCollapsed para que pasar a completada solo cambie el COLOR, sin salto.
+    borderWidth: borders.thin,
+    borderColor: 'transparent',
   },
   // Miembro de superset: sin botón "+ Añadir serie" ni notas al fondo, así que
   // el paddingBottom grande sobra y separaba demasiado los ejercicios del grupo.
@@ -802,8 +863,12 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopLeftRadius:  0,
     borderTopRightRadius: 0,
   },
+  // Completada (364:3030): mismo fondo `surface` que la card normal + borde
+  // acento — único "highlight" de completado (regla de bordes de fidelidad).
   cardCollapsed: {
     paddingBottom: 0,
+    // El ancho ya lo pone `card` (borde transparente); aquí solo se tiñe.
+    borderColor:   th.tint.accent50,
   },
 
   // Header — fondo propio (surface2 60%, nodo 361:2955) que distingue la zona
@@ -828,6 +893,19 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop: spacing.sm,
   },
   headerLeft: { flex: 1, gap: 3 },
+  // Sub-fila check + título (comparte el `gap` del header solo con headerRight).
+  headerMain: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+  },
+  // Ranura del check — ancho animado (0 ↔ 26+hueco); overflow oculto para que el
+  // icono se revele deslizando. Sin borderRadius (no dispara el bug de recorte Android).
+  checkSlot: {
+    overflow:      'hidden',
+    flexDirection: 'row',
+    alignItems:    'center',
+  },
 
   nameRow: {
     flexDirection: 'row',
@@ -851,21 +929,6 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:          'hidden',
     letterSpacing:     0.5,
   },
-  collapsedNameRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  groupBadge: {
-    fontSize:          typography.xs,
-    fontWeight:        typography.bold,
-    color:             th.colors.accent,
-    backgroundColor:   withOpacity(th.colors.accent, 0.12),
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical:   2,
-    overflow:          'hidden',
-  },
   // Prefijo inline delante del nombre — misma tipografía, accent. Compartido por el
   // número de orden ("01"/"02"…) y el prefijo de superset (A1/A2…).
   groupPrefix: {
@@ -881,11 +944,6 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.cardType,
     color:         th.colors.muted,
     letterSpacing: 2,
-  },
-  collapseBtn: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
   },
   headerRight: {
     flexDirection: 'row',
@@ -1100,64 +1158,76 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Collapsed
-  collapsedRow: {
+  // Icono check (364:3030, Icons "Check") — glifo plano sin círculo/fondo propio,
+  // mismo tamaño (26) que el icono de notas para alinear ambos extremos del header.
+  collapsedCheck: {
+    width:          26,
+    height:         26,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  collapsedCheckMark: {
+    fontSize:   18,
+    fontWeight: typography.bold,
+    color:      th.colors.accent,
+  },
+
+  // Resumen de series colapsado — EstructuraVisualizacionDatosEjercicios "Semi
+  // compacta" (176:1267), MISMA lógica/estilo que HistoryScreen (groupSetsByWeight
+  // + getPillVariant + buildSetLabel de setDisplay.js). Única diferencia real:
+  // aquí "fuera de rango" es ROJO, no naranja — verificado contra el nodo real
+  // 364:3030 (pills con bg tint/red-30 y texto color/red) y pedido explícito del
+  // usuario para esta card ("lima en rango / roja fuera de rango").
+  // paddingBottom = spacing.sm, IGUAL al marginBottom de `header` (gap de arriba)
+  // — antes usaba spacing.lg y quedaba más aire abajo que arriba de las pills.
+  collapsedPillsRow: {
+    flexDirection:     'row',
+    flexWrap:          'wrap',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.sm,
+  },
+  setGroup: {
     flexDirection: 'row',
     alignItems:    'center',
-    padding:       spacing.md,
-    gap:           spacing.sm,
-  },
-  collapsedLeft: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           spacing.sm,
-  },
-  doneIcon: {
-    width:           22,
-    height:          22,
-    borderRadius:    th.radius.full,
-    backgroundColor: withOpacity(th.colors.green, 0.15),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.green, 0.4),
-    alignItems:      'center',
-    justifyContent:  'center',
-    marginTop:       2,
-  },
-  doneIconText: {
-    fontSize:   11,
-    color:      th.colors.green,
-    fontWeight: typography.bold,
-  },
-  pillsRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
     gap:           spacing.xs,
   },
+  weightPill: {
+    paddingLeft:     spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  weightPillText: {
+    ...textStyles.tag,
+  },
+  weightPillNum:  { color: th.colors.accent },
+  weightPillUnit: { color: th.colors.text },
+  weightPillX:    { color: th.colors.mutedLight },
+
+  // Pill base (gris = sin datos/pendiente). Sin borde, radius/xs, padding/sm — misma
+  // anatomía que History/Progress (ver figma-style-fidelity-rules en memoria).
   setPill: {
-    backgroundColor:   withOpacity(th.colors.green, 0.08),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.green, 0.3),
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: 7,
-    paddingVertical:   2,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.xs,
+    padding:         spacing.sm,
+  },
+  setPillDone: {
+    backgroundColor: th.tint.accent10,
+  },
+  setPillPartial: {
+    backgroundColor: th.tint.red30,
   },
   setPillText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      th.colors.green,
+    ...textStyles.tag,
+    color: th.colors.mutedLight,
   },
-  addSetBtnSmall: {
-    flexShrink:        0,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderStyle:       'dashed',
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
+  setPillTextDone: {
+    color: th.colors.accent,
   },
-  addSetSmallText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
+  setPillTextPartial: {
+    color: th.colors.red,
   },
+  // El "@" de "12@8" — más apagado que el resto del número, mismo color base del pill.
+  setPillRpeAt:        { color: th.colors.mutedLight },
+  setPillRpeAtDone:    { color: th.tint.accent50 },
+  setPillRpeAtPartial: { color: th.tint.red50 },
 });
