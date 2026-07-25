@@ -18,6 +18,7 @@ import { getProgression } from '../../../../src/utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../../src/utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
+import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
@@ -108,6 +109,15 @@ export default function ExerciseCard({
   overrideEx,
   activeSetIndex = -1,
   hideAddSetBtn = false,   // superset: un único botón compartido debajo del grupo (WorkoutScreen)
+  // superset: el GRUPO entero está completo → el highlight de "completado" pasa
+  // al SupersetBlock que envuelve a todos los miembros; esta card individual no
+  // dibuja su propio borde acento aunque isCollapsed sea true (WorkoutScreen).
+  suppressCollapsedBorder = false,
+  // superset: reporta el estado visual colapsado/expandido de ESTA card a
+  // WorkoutScreen, que lo agrega por grupo para decidir el borde del
+  // SupersetBlock (solo TODAS colapsadas a la vez → verde; cualquiera reabierta
+  // → sin outline, igual que una card suelta).
+  onCollapsedChange,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -174,13 +184,17 @@ export default function ExerciseCard({
   // Dropset: checking the last work set is NOT the end of the exercise — the
   // drops come next. Hold the auto-collapse until at least one drop exists and
   // every drop is checked (adding a new undone drop re-opens the card).
-  const workDone  = setsState.length > 0 && setsState.every((s) => s.done);
-  const lastDrops = exConfig.dropset ? (setsState[setsState.length - 1]?.drops ?? []) : [];
-  const dropsDone = !exConfig.dropset || (lastDrops.length > 0 && lastDrops.every((d) => d.done));
-  const allDone   = workDone && dropsDone;
+  const allDone = isExerciseDone(exConfig, setsState);
   const [collapsed,  setCollapsed]  = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const isCollapsed          = collapsed && !manualOpen;
+
+  // Reporta el estado visual (no solo "completo") a WorkoutScreen — un miembro
+  // de superserie reabierto a mano (manualOpen) debe perder el highlight de
+  // grupo aunque sus datos sigan "hechos"; isCollapsed ya contempla ese caso.
+  useEffect(() => {
+    onCollapsedChange?.(isCollapsed);
+  }, [isCollapsed, onCollapsedChange]);
 
   // ── Animated.Value height + opacity (React Native built-in, Expo Go safe) ──
   //
@@ -498,7 +512,13 @@ export default function ExerciseCard({
   // ── Animated.View root — Reanimated maxHeight drives the height animation ──
   return (
     <Animated.View
-      style={[styles.card, hideAddSetBtn && styles.cardSupersetMember, isCollapsed && styles.cardCollapsed, { maxHeight: maxH }]}
+      style={[
+        styles.card,
+        hideAddSetBtn && styles.cardSupersetMember,
+        isCollapsed && styles.cardCollapsed,
+        isCollapsed && !suppressCollapsedBorder && styles.cardCollapsedBorder,
+        { maxHeight: maxH },
+      ]}
       onLayout={onCardLayout}
     >
 
@@ -863,12 +883,17 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopLeftRadius:  0,
     borderTopRightRadius: 0,
   },
-  // Completada (364:3030): mismo fondo `surface` que la card normal + borde
-  // acento — único "highlight" de completado (regla de bordes de fidelidad).
+  // Completada (364:3030): mismo fondo `surface` que la card normal. Padding
+  // siempre a 0 al colapsar (con o sin borde propio — ver cardCollapsedBorder).
   cardCollapsed: {
     paddingBottom: 0,
+  },
+  // Borde acento — único "highlight" de completado (regla de bordes de fidelidad).
+  // Separado de `cardCollapsed` porque un miembro de superset lo suprime cuando
+  // el GRUPO entero está completo (el highlight pasa al SupersetBlock, §suppressCollapsedBorder).
+  cardCollapsedBorder: {
     // El ancho ya lo pone `card` (borde transparente); aquí solo se tiñe.
-    borderColor:   th.tint.accent50,
+    borderColor: th.tint.accent50,
   },
 
   // Header — fondo propio (surface2 60%, nodo 361:2955) que distingue la zona

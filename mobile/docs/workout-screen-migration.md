@@ -210,7 +210,7 @@ Referencia: `SesionHeader` `110:3692` variantes `Default` (`110:3691`) y `collap
 
 ---
 
-## 5. Exercise Card (restyle) — `Default` (`105:2490`) y `Collapse` (`106:2957`)
+## 5. Exercise Card (restyle) — `Default` (`105:2490`) y `Collapse` (`364:3030`, ver corrección en §5.5)
 
 Toda la máquina de estado de `ExerciseCard.jsx` se conserva: `inputType`, warmup pills, dropset,
 puntero de serie activa (`activeSetIndex`), coach target/notes, auto-colapso animado
@@ -277,21 +277,68 @@ puntero de serie activa (`activeSetIndex`), coach target/notes, auto-colapso ani
   la card no auto-colapsa hasta que los drops estén hechos. Sólo restyle (hoy usa borde naranja;
   Figma usa rojo — adopta rojo).
 
-### 5.5 Card colapsada / completada — `Collapse` (`106:2957`)
-- **Fondo `tint/accent-10` + borde `tint/accent-50`** (resaltado "completado"). Icono notas a la
-  IZQUIERDA del título, título, **check grande** (`Icons/Check` `98:139` en círculo ~32px) a la
-  derecha.
-- **Resumen de series = adoptar `EstructuraVisualizacionDatosEjercicios` "Semi compacta" /
-  "Desglosada" (§0.7).** Una fila por serie: peso `12.5Kg ×` (número accent, "Kg"/"×" en
-  text/mutedLight) + pill `12@8` por serie, **lima en rango / roja fuera de rango**.
-  **Reutiliza la lógica de pills 2-colores ya extraída en `src/utils/setDisplay.js`**
-  (`groupSetsByWeight` / `getPillVariant` / `buildSetLabel`) — es la que ya usan History y el
-  modal de ejercicio (Progress) con el formato FormaFit "Desglosada". No reescribas el `SetPill`
-  verde simple actual ni la lógica de rango. (Nota: `pills coloreadas POR RANGO`, no por RPE —
-  decisión del usuario, misma que en History.)
-- Conserva la máquina de auto-colapso (`maxH`/`contentOpacity`/`collapsedMeasurer`/`startCollapse`/
-  `startExpand`) y el botón `+` pequeño que reabre/añade serie. Sólo cambia el contenido pintado
-  (pills 2-colores en vez de las verdes) y los colores del contenedor.
+### 5.5 Card colapsada / completada — HECHA, en testeo (commits `edf2086` + siguiente)
+
+> ⚠️ **Corrección sobre esta sección**: el nodo `106:2957` que apuntaba esta guía resultó ser
+> `Property 1=Collapsed old`, una variante vieja del componente. El nodo real y vigente es
+> **`364:3030` (`Property 1=Collapsed`)** — verificado con `get_metadata` sobre el frame padre
+> `106:2956` en la sesión que implementó esto. Si algo no cuadra al re-visitar, re-extrae sobre
+> `364:3030`, no sobre `106:2957`.
+
+**Diseño real (nodo `364:3030`), contra lo que decía esta guía:**
+- **Fondo = `color/surface` (igual que la card normal, NO `tint/accent-10`)**, con un rect
+  `surface2` al 60% de opacidad tiñendo SOLO la zona título/subtítulo (el mismo fondo que ya usa
+  la cabecera de la card expandida — reutilizado tal cual, no un tratamiento nuevo). Borde
+  `tint/accent-50` alrededor de toda la card (único highlight de "completado").
+- **Check a la IZQUIERDA** (glifo plano, sin círculo/fondo propio, 26px, color accent) — al
+  contrario de lo que decía esta guía. **Icono de notas a la DERECHA**, en el mismo sitio que
+  ocupa en la cabecera expandida (mismo `NoteIcon`, mismo `onPress`).
+- **Sin botón "+" para añadir serie** en el estado colapsado (se eliminó, no estaba en el nodo real).
+- **Resumen de series = `EstructuraVisualizacionDatosEjercicios` "Semi compacta"** (no
+  "Desglosada" — el nodo `364:3030` embebe la variante `176:1267`), reutilizando
+  `groupSetsByWeight`/`getPillVariant`/`buildSetLabel` de `src/utils/setDisplay.js`, MISMA lógica
+  que History/Progress. **Diferencia real confirmada contra los píxeles del nodo**: aquí "fuera de
+  rango" es **ROJO** (`tint/red-30` bg, `color/red` texto), no el naranja que usan History/Progress
+  — decisión de usuario específica para esta card, no una alineación con el resto de la app.
+- **"Cambio mínimo" respecto a la cabecera expandida** (pedido explícito): la cabecera colapsada
+  reutiliza el MISMO `header` (fondo/padding/nombre/subtítulo/icono de notas) que la expandida,
+  solo con el check añadido a la izquierda — no es un componente nuevo.
+
+**Colapso fluido (pedido explícito, no estaba en el spec original):** la cabecera es ahora
+**persistente** (se pinta una sola vez, fuera del crossfade) — nombre/subtítulo/fondo/icono de
+notas NO parpadean al colapsar/expandir. Solo dos cosas animan: (1) el check entra/sale
+**deslizando** (`checkProgress`, ancho 0↔32 + opacidad, en paralelo a la altura) con el título
+desplazándose para dejarle sitio; (2) el CUERPO (grid expandido ↔ resumen de pills) hace fade
+out/in. La máquina de `maxH`/`contentOpacity`/`collapsedMeasurer`/`startCollapse`/`startExpand` se
+conservó intacta — solo se le añadió `checkProgress` en paralelo.
+
+**Bug de Android (overflow + borderRadius) — solución no obvia, no la repitas mal:** un `View` con
+`overflow:'hidden'` + `borderRadius` en Android puede no repintar sus hijos tras cambiar de estado
+(la card se queda con el fondo visible pero el contenido montado e interactivo SIN PINTAR — se
+"pulsa" pero no se ve). El fix es un **borde permanente** (`borderWidth:1`, `borderColor:
+'transparent'` en reposo) en la card: el ancho nunca cambia, solo el color (a `tint.accent50` al
+completarse) — así tampoco hay salto de layout. Si se toca `card`/`cardCollapsed` en el futuro,
+**no quitar ese borde transparente** aunque parezca decorativo/inútil a simple vista.
+
+**Superseries — comportamiento del borde de completado (no estaba en el spec original, decisión
+tomada en esta sesión):**
+- Un `ExerciseCard` miembro de una superserie (`hideAddSetBtn=true`) **nunca** dibuja su propio
+  borde de completado, esté o no completo — prop `suppressCollapsedBorder` (siempre `true` cuando
+  `hideAddSetBtn`, calculado en `WorkoutScreen.jsx`).
+- El highlight de completado vive en el **`SupersetBlock`** (`completed` prop), y solo se activa
+  cuando **TODOS** los miembros están completos (`isExerciseDone`, extraída a
+  `src/utils/exerciseStatus.js` para no duplicar la lógica entre `ExerciseCard` y `WorkoutScreen`)
+  **Y** las N cards están visualmente colapsadas — no solo con los datos hechos. Reabrir CUALQUIER
+  miembro a mano quita el borde del bloque al instante (cada `ExerciseCard` reporta su
+  `isCollapsed` a `WorkoutScreen` vía `onCollapsedChange`, agregado por grupo en el estado
+  `memberCollapsed`), igual que una card suelta expandida pierde su propio borde.
+- `SupersetBlock` gana un `blockCompleted` (borde `tint.accent50` en los 3 lados que no ocupa la
+  barra izquierda estructural — esa barra sigue siempre sólida `color/accent`, es un marcador
+  distinto: "esto es una superserie", no de completado). No tiene `overflow:'hidden'`, así que NO
+  necesita el truco del borde transparente permanente del punto anterior.
+
+Conserva la máquina de auto-colapso (`maxH`/`contentOpacity`/`collapsedMeasurer`/`startCollapse`/
+`startExpand`).
 
 ---
 
@@ -385,19 +432,19 @@ Además de las globales de `UI-MIGRATION.md` §4:
 El usuario trabaja en iteraciones cortas (implementa → commit → QA). Propuesta (confirmar antes
 de arrancar, y **preguntar lo que no esté claro antes de implementar cada parte**):
 
-1. **Parte 1 — Cabecera colapsable + puntos de progreso** (lo nuevo, mayor riesgo de ingeniería).
-   Header sticky 2-estados con snap+crossfade y los dots (fuerza + ad-hoc + bloques). Sin tocar
-   las cards todavía.
-2. **Parte 2 — Exercise Card expandida:** header (+ prefijo superset A1/A2), chips, calentamiento,
-   grid de series (¡alineación!), dropset, notas. Conservar toda la máquina de estado.
-3. **Parte 3 — Exercise Card colapsada/completada:** resumen 2-colores reutilizando el componente
-   de History/Progress.
-4. **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`) contra las variantes
-   `Exercice Card`.
-5. **Parte 5 — Timer flotante, modal de notas (drag-from-body), footer, sesión libre, ad-hoc.**
+Orden real (se optó por la alternativa: calentar con la Parte 2 antes que la cabecera):
 
-Alternativa si se prefiere calentar con algo menos arriesgado: empezar por la Parte 2 (restyle
-puro de la card) antes que la cabecera. A decidir con el usuario.
+1. ⬜ **Parte 1 — Cabecera colapsable + puntos de progreso** (lo nuevo, mayor riesgo de
+   ingeniería). Header sticky 2-estados con snap+crossfade y los dots (fuerza + ad-hoc +
+   bloques). **SIGUIENTE al retomar.**
+2. ✅ **Parte 2 — Exercise Card expandida** (commits previos a esta guía) — header (+ prefijo
+   superset A1/A2), chips, calentamiento, grid de series (¡alineación!), dropset, notas.
+3. ✅ **Parte 3 — Exercise Card colapsada/completada** (commit `edf2086` + siguiente, EN
+   TESTEO) — resumen 2-colores (§5.5), colapso fluido, borde de completado en superseries. Detalle
+   completo en §5.5 (varios puntos corrigen esta guía, léela entera antes de tocar la card).
+4. ⬜ **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`) contra las variantes
+   `Exercice Card`.
+5. ⬜ **Parte 5 — Timer flotante, modal de notas (drag-from-body), footer, sesión libre, ad-hoc.**
 
 ---
 
@@ -429,3 +476,13 @@ npx vitest run                                              # lógica; un restyl
 - Estados del dot: ¿2 (hecho/pendiente) o 3 (hecho/actual/pendiente)? — leer el asset SVG.
 - `for_time`: confirmar restyle por analogía con AMRAP (no hay mock propio).
 - Badge `isKey` ("clave"): ¿se mantiene como pill accent o se elimina? No está claro en Figma.
+- **Idea aplazada (jul 2026, no implementada):** que todas las cards nazcan colapsadas al abrir
+  la sesión salvo la primera — "colapsado pendiente" (sin datos, sin check, sin borde, sin
+  resumen de pills), distinto del "colapsado completado" actual (§5.5). Requiere una SEGUNDA
+  razón de colapso independiente de `allDone` (p. ej. `pendingClosed`, sembrado por un prop
+  `startCollapsed` desde `WorkoutScreen`), con su propia altura medida (cabecera sola, sin
+  pills) y sin disparar el efecto que hoy reabre la card en cuanto `allDone` es falso (ese efecto
+  tendría que mirar `collapsed`, no `isCollapsed`, para no interferir). Decisiones de producto
+  pendientes antes de implementar: (1) en una superserie, ¿"el primero" es el primer GRUPO
+  (A1+A2 abiertas si el grupo 1 es superserie) o el primer ejercicio suelto?; (2) ¿ad-hoc y
+  bloques de acondicionamiento entran en esta regla o quedan siempre visibles como hoy?

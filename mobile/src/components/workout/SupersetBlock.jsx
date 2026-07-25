@@ -8,13 +8,13 @@ import { useTranslation } from 'react-i18next';
 import { spacing, typography, textStyles, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-export default function SupersetBlock({ rounds, restSec, children, onAddSet }) {
+export default function SupersetBlock({ rounds, restSec, children, onAddSet, completed = false }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
-    <View style={styles.block}>
+    <View style={[styles.block, completed && styles.blockCompleted]}>
       <Text style={styles.header}>
         {t('workout.supersetHeader', { count: rounds })}
       </Text>
@@ -42,6 +42,12 @@ const makeStyles = (th) => StyleSheet.create({
   // de la tarjeta de superserie (no solo de su propia card). El resto de contenido
   // (label, footer, botón) gestiona su propio inset por separado.
   block: {
+    // Barra izquierda (marcador estructural "esto es una superserie", siempre
+    // sólida) — semánticamente distinta del borde de completado de abajo. `block`
+    // NO tiene overflow:'hidden' (a diferencia de la card individual), así que no
+    // necesita un borde transparente permanente en el resto de lados para evitar
+    // el bug de recorte de Android — el `blockCompleted` de abajo puede añadir su
+    // propio borderWidth directamente sin arrastrar ese problema.
     borderLeftWidth: 3,
     borderLeftColor: th.colors.accent,
     borderRadius:    th.radius.md,
@@ -49,6 +55,19 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:      spacing.md,
     paddingBottom:   spacing.md,
     gap:             spacing.xs,
+  },
+  // Grupo entero completo (todos los miembros): highlight de "completado" en el
+  // BLOQUE en vez de en cada card individual (cada ExerciseCard miembro suprime
+  // su propio borde vía `suppressCollapsedBorder`, WorkoutScreen). Mismo tint
+  // acento-50 que usa la card colapsada suelta — misma anatomía de highlight,
+  // solo que aplicado al grupo como una única unidad.
+  blockCompleted: {
+    borderTopWidth:    borders.thin,
+    borderRightWidth:  borders.thin,
+    borderBottomWidth: borders.thin,
+    borderTopColor:    th.tint.accent50,
+    borderRightColor:  th.tint.accent50,
+    borderBottomColor: th.tint.accent50,
   },
   header: {
     fontSize:          typography.xs,

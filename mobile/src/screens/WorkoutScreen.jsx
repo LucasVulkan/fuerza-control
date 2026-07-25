@@ -19,6 +19,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
 import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
+import { isExerciseDone } from '../utils/exerciseStatus';
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -202,6 +203,12 @@ export default function WorkoutScreen() {
   const styles     = useThemedStyles(makeStyles);
 
   const [notesOpen, setNotesOpen] = useState(false);
+
+  // Estado visual (colapsada/expandida) de cada miembro de superserie, reportado
+  // por cada ExerciseCard vía onCollapsedChange — agregado por grupo más abajo
+  // para decidir el borde de completado del SupersetBlock (§groupAllDone).
+  // exerciseId -> boolean; solo se puebla para cards dentro de una superserie.
+  const [memberCollapsed, setMemberCollapsed] = useState({});
 
   // Store state
   const activeSession      = useStore((s) => s.activeSession);
@@ -449,6 +456,13 @@ export default function WorkoutScreen() {
             // Numeración de sesión (01, 02…) — un número por SLOT, no por card: los
             // miembros de una misma superserie comparten número (se distinguen por A1/A2).
             const orderNumber = String(groupIdx + 1).padStart(2, '0');
+            // Grupo entero completo Y las N cards visualmente colapsadas a la vez —
+            // dispara el borde de completado del SupersetBlock. Reabrir cualquier
+            // miembro a mano (manualOpen) lo quita al instante, aunque sus datos
+            // sigan "hechos": memberCollapsed refleja isCollapsed, no allDone.
+            const groupAllDone = isSuperset
+              && group.every(({ exConfig, setsState }) => isExerciseDone(exConfig, setsState))
+              && group.every(({ exConfig }) => memberCollapsed[exConfig.exerciseId] === true);
             const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
               <ExerciseCard
                 key={exConfig.exerciseId}
@@ -460,6 +474,13 @@ export default function WorkoutScreen() {
                 groupLabel={isSuperset ? `A${idx + 1}` : undefined}
                 orderNumber={orderNumber}
                 hideAddSetBtn={isSuperset}
+                // Miembro de superserie: nunca dibuja su propio borde de completado —
+                // el highlight es exclusivo del SupersetBlock (solo cuando el grupo
+                // entero termina, `completed` más abajo), no de cada card individual.
+                suppressCollapsedBorder={isSuperset}
+                onCollapsedChange={isSuperset ? (val) => {
+                  setMemberCollapsed((m) => (m[exConfig.exerciseId] === val ? m : { ...m, [exConfig.exerciseId]: val }));
+                } : undefined}
                 activeSetIndex={activePointer?.exerciseId === exConfig.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
                   handleFieldChange(exConfig.exerciseId, setIdx, field, value)
@@ -485,6 +506,7 @@ export default function WorkoutScreen() {
                 key={group[0].exConfig.exerciseId}
                 rounds={rounds}
                 restSec={restSec}
+                completed={groupAllDone}
                 onAddSet={() => group.forEach((g) => addSetToSession(g.exConfig.exerciseId))}
               >
                 {cards}
