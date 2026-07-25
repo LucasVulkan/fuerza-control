@@ -147,10 +147,14 @@ Extraídos de `get_variable_defs` sobre `104:690`. **Usa siempre el token, nunca
 
 ---
 
-## 4. La cabecera colapsable (lo único nuevo)
+## 4. La cabecera colapsable (lo único nuevo) — HECHA, en testeo (commit `52a6d62`)
 
 Referencia: `SesionHeader` `110:3692` variantes `Default` (`110:3691`) y `collapsado`
 (`110:3693`); en contexto `104:690` (grande) y `109:510` (colapsada).
+
+> §4.1-4.3 quedan como el spec original (sigue siendo la referencia de intención). **§4.4
+> documenta lo que se implementó de verdad y las correcciones que salieron de las rondas de
+> QA** — si algo de abajo contradice 4.1-4.3, manda 4.4.
 
 ### 4.1 Estructura visual
 - **Fondo lima (`color/accent`) sólido, esquinas `radius/md` (10), padding `space/sm` (6).**
@@ -207,6 +211,74 @@ Referencia: `SesionHeader` `110:3692` variantes `Default` (`110:3691`) y `collap
 - **Animación de relleno:** al volver del recap o al completar la última serie de un ejercicio,
   el punto correspondiente puede animar su transición pendiente→lleno (`withTiming` 200ms). No es
   obligatorio para la primera entrega, pero encaja con el patrón del proyecto.
+
+### 4.4 Implementación real y correcciones de QA (cierra la Parte 1)
+
+**Estructura:** cabecera sticky fuera del `ScrollView` (`headerWrap`, margen lateral
+`spacing.lg`=15, `marginTop: spacing.lg`, `marginBottom: spacing.md`=10 — los 3 valores
+confirmados con `get_design_context` sobre `109:489`/`109:511` en contexto, no sobre el
+componente aislado). Dentro, un `Reanimated.View` (`headerBar`) cuya `height` anima
+64↔36.71 vía `useAnimatedStyle`, con **2 capas absolutas superpuestas** (grande/compacta)
+que cruzan opacidad con el mismo `compactProgress` (`useSharedValue`, `withTiming` 200ms
+`Easing.inOut(Easing.ease)`) — mismo patrón que `SegmentedControl.jsx` (nada anima en el
+montaje: un `useRef` salta el primer efecto). `compact: boolean` con histéresis
+(`HEADER_COMPACT_ON=48`/`HEADER_COMPACT_OFF=24`) vía `onScroll` del `ScrollView`
+(`scrollEventThrottle={16}`).
+
+**Dots — 2 estados confirmados, no 3.** Se inspeccionó el SVG real de `110:3691`/`110:3693`:
+`Ellipse24` = relleno sólido (`fill=black`, o sea `onAccent`), `Ellipse28` = solo borde sin
+relleno (hueco real). `Ellipse25` (fill accent + borde negro fino) resultó ser una
+inconsistencia del propio mock de Figma: como el fondo del header YA es accent, un relleno
+accent es invisible ahí — visualmente indistinguible de `Ellipse28`, no es un 3er estado
+real (Figma no usa variables/componente para los dots, son círculos sueltos con algo de
+deriva). Implementado: completo = relleno `onAccent` sólido; pendiente = anillo `onAccent`
+al 40% de opacidad. Overflow >7 unidades → encoge el `gap` (`spacing.sm`→`xs2`→`xs`), no
+wrap ni scroll (no hizo falta preguntar, no llegó a probarse un caso real de >10 en QA).
+
+**Tamaño de los dots y del icono de notas — mismo tamaño en ambas cabeceras** (`DOT_SIZE=8`
+para los dots, `26` para `NoteIcon` en grande Y compacta). Esto es una corrección explícita
+del usuario sobre el spec original: la 1ª implementación escalaba ambos con el header
+(dots 6→4, notas 26→16, siguiendo literalmente el tamaño del asset de Figma en cada
+variante); el usuario pidió que NO escalaran — dots iguales y algo más grandes que el
+tamaño inicial (probado 10, revertido a 8 por "demasiado grande"), notas al tamaño que ya
+tenía la grande (26). La flecha de atrás SÍ sigue escalando (26 grande / 16 compacta, no se
+pidió cambiarlo).
+
+**Centrado vertical del bloque grande (eyebrow/título/dots):** el título usaba el
+`lineHeight` "normal" del font (Inter Black añade bastante aire de más a un tamaño de 20px)
+lo que lo alejaba visualmente de eyebrow/dots aunque el `gap` fuera pequeño. Fix:
+`lineHeight: 22` explícito en `grandeTitle`/`freeNameInputHeader`. El `gap` entre
+eyebrow/título/dots se quitó del todo (`gap:0`, pedido explícito — antes `2`, valor de
+Figma, pero el usuario lo prefirió a cero tras ver el resultado). Eyebrow y fila de dots
+comparten una altura fija (`HEADER_ROW_H=14`, vía `lineHeight` en el eyebrow y `height` en
+`dotsRow`) para que el título quede simétricamente centrado (el peso visual encima y
+debajo del título tiene que ser igual para que el centrado automático de flexbox lo deje
+exactamente en el medio).
+
+**Cabecera compacta — full-width con gap equidistante:** `justifyContent:'space-between'`
+(sin `gap` fijo) reparte el hueco sobrante en 3 partes iguales entre flecha/texto/dots/notas.
+El texto (`compactTextWrap`) pasa de `flex:1` a `flexShrink:1, minWidth:0` — dentro de
+`space-between` es el único elemento que debe ceder ancho y truncar (`numberOfLines={1}`) en
+vez de acaparar el hueco.
+
+**Fundido del scroll bajo la cabecera:** sin dependencia nueva — overlay con gradiente de
+`react-native-svg` (`Defs`/`LinearGradient`/`Stop`/`Rect`, ya es dependencia del proyecto),
+20px de alto, `th.colors.bg` opaco→transparente, `pointerEvents="none"`. La `opacity` del
+overlay está atada al MISMO `compactProgress` del crossfade del header (0 en grande, 1 en
+compacta) — pedido explícito de la 2ª ronda de QA: en la 1ª implementación el fundido
+estaba siempre visible, y el usuario pidió que solo aparezca al colapsar la cabecera.
+
+**`NoteIcon` (antes solo en `ExerciseCard.jsx`) se exportó y ganó un prop `tone`**
+(`'surface'` por defecto = paleta original sobre card oscura, `'onAccent'` = paleta
+invertida para usarlo sobre el fondo lima de la cabecera) — mismo componente, sin
+duplicar el SVG.
+
+**Corrección de scope necesaria (fuera de "solo cabecera"):** el `ScrollView` de contenido
+(`content`) usaba `paddingHorizontal: spacing.xl` (20) heredado de antes de esta migración;
+el margen real de página en Figma es `spacing.lg` (15, confirmado en el mismo
+`get_design_context` de arriba). Se corrigió para que las Exercise Cards queden alineadas
+con el margen de la cabecera nueva — si no, la cabecera habría quedado más ancha que las
+cards debajo. No se tocó nada más del contenido (gap entre cards, cards en sí).
 
 ---
 
@@ -434,16 +506,17 @@ de arrancar, y **preguntar lo que no esté claro antes de implementar cada parte
 
 Orden real (se optó por la alternativa: calentar con la Parte 2 antes que la cabecera):
 
-1. ⬜ **Parte 1 — Cabecera colapsable + puntos de progreso** (lo nuevo, mayor riesgo de
-   ingeniería). Header sticky 2-estados con snap+crossfade y los dots (fuerza + ad-hoc +
-   bloques). **SIGUIENTE al retomar.**
+1. ✅ **Parte 1 — Cabecera colapsable + puntos de progreso** (commit `52a6d62`, EN TESTEO) —
+   header sticky 2-estados con snap+crossfade + dots (fuerza + ad-hoc + bloques) + fundido del
+   scroll bajo la cabecera. Detalle completo y correcciones de QA en §4.4 (varios puntos
+   corrigen el spec original de §4.1-4.3, léela antes de retocar la cabecera).
 2. ✅ **Parte 2 — Exercise Card expandida** (commits previos a esta guía) — header (+ prefijo
    superset A1/A2), chips, calentamiento, grid de series (¡alineación!), dropset, notas.
 3. ✅ **Parte 3 — Exercise Card colapsada/completada** (commit `edf2086` + siguiente, EN
    TESTEO) — resumen 2-colores (§5.5), colapso fluido, borde de completado en superseries. Detalle
    completo en §5.5 (varios puntos corrigen esta guía, léela entera antes de tocar la card).
 4. ⬜ **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`) contra las variantes
-   `Exercice Card`.
+   `Exercice Card`. **SIGUIENTE al retomar.**
 5. ⬜ **Parte 5 — Timer flotante, modal de notas (drag-from-body), footer, sesión libre, ad-hoc.**
 
 ---
@@ -469,11 +542,13 @@ npx vitest run                                              # lógica; un restyl
 ---
 
 ## 13. Cosas a confirmar al llegar (no bloqueantes)
+- ~~Overflow de los dots con >8–10 unidades~~ **RESUELTO (Parte 1, §4.4):** encoge el gap,
+  no wrap/scroll.
+- ~~Estados del dot: ¿2 o 3?~~ **RESUELTO (Parte 1, §4.4):** 2 (hecho/pendiente) — el
+  aparente 3er estado del mock era una inconsistencia de color de Figma, no un estado real.
 - Fondo real de la Exercice Card: `color/workout-card` (#141414) vs `surface` — verificar por
   componente y decidir si se añade el token a `themes.js`.
 - `text/card-title` (tracking 4) vs `text/Exercice` (tracking 0) para el nombre de ejercicio.
-- Overflow de los dots con >8–10 unidades (encoger gap vs wrap vs scroll).
-- Estados del dot: ¿2 (hecho/pendiente) o 3 (hecho/actual/pendiente)? — leer el asset SVG.
 - `for_time`: confirmar restyle por analogía con AMRAP (no hay mock propio).
 - Badge `isKey` ("clave"): ¿se mantiene como pill accent o se elimina? No está claro en Figma.
 - **Idea aplazada (jul 2026, no implementada):** que todas las cards nazcan colapsadas al abrir
