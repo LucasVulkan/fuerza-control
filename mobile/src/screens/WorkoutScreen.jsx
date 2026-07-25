@@ -7,16 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import ExerciseCard from '../components/workout/ExerciseCard';
+import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
 import { formatSeconds } from '../../../src/utils/formatters';
 import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
@@ -65,24 +65,93 @@ function computeActiveSet(slots, afterExerciseId = null, afterSetIndex = -1) {
 
 // ── Elapsed session clock ─────────────────────────────────────────────────────
 // Derived from activeSession.startedAt (wall clock), so it survives app
-// minimize/kill without any background logic — the tick only repaints.
+// minimize/kill without any background logic — the tick only repaints whichever
+// small text component uses the hook, not the whole screen.
 
-function ElapsedClock({ startedAt }) {
-  const styles = useThemedStyles(makeStyles);
+function useElapsedText(startedAt) {
   const [, setTick] = useState(0);
   useEffect(() => {
+    if (!startedAt) return;
     const id = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [startedAt]);
   if (!startedAt) return null;
   const s  = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
   const hh = Math.floor(s / 3600);
   const mm = Math.floor((s % 3600) / 60);
   const ss = s % 60;
-  const txt = hh > 0
+  return hh > 0
     ? `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
     : `${mm}:${String(ss).padStart(2, '0')}`;
-  return <Text style={styles.elapsedClock}>{txt}</Text>;
+}
+
+// ── Session header (sticky, 2 states) ─────────────────────────────────────────
+// Grande: eyebrow "SESIÓN A · 07:36" + título + dots. Compacta: una fila
+// "07:36 · Nombre" + dots. El reloj vive DENTRO de estos 2 componentes (no en
+// WorkoutScreen) para que el tick de 1s sólo repinte el texto pequeño, no toda
+// la pantalla.
+
+function HeaderEyebrow({ startedAt, label, styles }) {
+  const elapsed = useElapsedText(startedAt);
+  return (
+    <Text style={styles.eyebrowText} numberOfLines={1}>
+      {elapsed ? `${label} · ${elapsed}` : label}
+    </Text>
+  );
+}
+
+function HeaderCompactSummary({ startedAt, title, styles }) {
+  const elapsed = useElapsedText(startedAt);
+  return (
+    <Text style={styles.compactSummary} numberOfLines={1}>
+      {elapsed ? `${elapsed} · ${title}` : title}
+    </Text>
+  );
+}
+
+// Icons/Arrow (98:137) — chevron path, redibujado con react-native-svg (mismo
+// enfoque que el Chevron de SetRow.jsx). Figma lo rota 180°; replicamos la
+// rotación porque el glifo es simétrico y el resultado final coincide.
+function HeaderArrow({ size, th }) {
+  const big = size >= 24;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg
+        width={big ? 12 : 7.385}
+        height={big ? 20 : 12.308}
+        viewBox="0 0 12 20"
+        fill="none"
+        style={{ transform: [{ rotate: '180deg' }] }}
+      >
+        <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={th.colors.onAccent} />
+      </Svg>
+    </View>
+  );
+}
+
+// Puntos de progreso (§4.3 de la guía) — relleno onAccent sólido = completo,
+// anillo onAccent translúcido = pendiente (valores exactos del <circle> real:
+// diámetro 6, Ellipse24=relleno sólido, Ellipse28=sólo borde). >7 unidades
+// encoge el gap en vez de hacer wrap/scroll (decisión de esta implementación).
+// `size` encoge en la cabecera compacta (igual que el icono de notas y la flecha).
+function ProgressDots({ units, th, styles, size = 6 }) {
+  if (units.length === 0) return null;
+  const gap = units.length <= 7 ? spacing.sm : units.length <= 12 ? spacing.xs2 : spacing.xs;
+  return (
+    <View style={[styles.dotsRow, { gap }]}>
+      {units.map((u) => (
+        <View
+          key={u.id}
+          style={[
+            { width: size, height: size, borderRadius: size / 2, borderWidth: 1 },
+            u.done
+              ? { backgroundColor: th.colors.onAccent, borderColor: th.colors.onAccent }
+              : { backgroundColor: 'transparent', borderColor: withOpacity(th.colors.onAccent, 0.4) },
+          ]}
+        />
+      ))}
+    </View>
+  );
 }
 
 // ── Floating rest timer ───────────────────────────────────────────────────────
@@ -91,6 +160,24 @@ const RING_SIZE      = 64;
 const RING_RADIUS    = 26;
 const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS; // ≈ 163.4
 const SWIPE_THRESHOLD = 80;
+
+// SesionHeader (110:3692) — grande 64px / colapsada 36.71px (valores exactos
+// de Figma, no tokenizados).
+const HEADER_GRANDE_H  = 64;
+const HEADER_COMPACT_H = 36.71;
+const HEADER_COMPACT_ON  = 48; // scrollY a partir del cual colapsa
+const HEADER_COMPACT_OFF = 24; // scrollY por debajo del cual vuelve a grande
+
+// Alto fijo de la fila del eyebrow y de la fila de dots en la cabecera grande —
+// iguales a propósito para que el título quede exactamente centrado (la mitad
+// superior del bloque eyebrow+título+dots debe pesar igual que la inferior).
+const HEADER_ROW_H = 14;
+
+// Puntos de progreso — mismo tamaño en las 2 cabeceras (pedido explícito).
+const DOT_SIZE = 8;
+
+// Fundido del contenido bajo la cabecera sticky (evita el corte seco al hacer scroll).
+const SCROLL_FADE_H = 20;
 
 function RestTimerFloat({ timer, onStop, bottomOffset }) {
   const { t }      = useTranslation();
@@ -204,6 +291,32 @@ export default function WorkoutScreen() {
 
   const [notesOpen, setNotesOpen] = useState(false);
 
+  // Cabecera sticky — 2 estados con histéresis (§4.2 de la guía): compacta a
+  // partir de HEADER_COMPACT_ON, vuelve a grande por debajo de HEADER_COMPACT_OFF.
+  // El crossfade usa Reanimated; se salta la animación en el montaje inicial
+  // (mismo patrón que SegmentedControl.jsx).
+  const [compact, setCompact] = useState(false);
+  const compactProgress   = useSharedValue(0);
+  const compactMountedRef = useRef(false);
+  useEffect(() => {
+    if (!compactMountedRef.current) { compactMountedRef.current = true; return; }
+    compactProgress.value = withTiming(compact ? 1 : 0, { duration: 200, easing: Easing.inOut(Easing.ease) });
+  }, [compact, compactProgress]);
+  const headerBarAnimStyle = useAnimatedStyle(() => ({
+    height: HEADER_GRANDE_H + (HEADER_COMPACT_H - HEADER_GRANDE_H) * compactProgress.value,
+  }));
+  const grandeLayerAnimStyle  = useAnimatedStyle(() => ({ opacity: 1 - compactProgress.value }));
+  const compactLayerAnimStyle = useAnimatedStyle(() => ({ opacity: compactProgress.value }));
+  const scrollFadeAnimStyle   = useAnimatedStyle(() => ({ opacity: compactProgress.value }));
+  function handleHeaderScroll(e) {
+    const y = e.nativeEvent.contentOffset.y;
+    setCompact((prev) => {
+      if (!prev && y > HEADER_COMPACT_ON) return true;
+      if (prev && y < HEADER_COMPACT_OFF) return false;
+      return prev;
+    });
+  }
+
   // Estado visual (colapsada/expandida) de cada miembro de superserie, reportado
   // por cada ExerciseCard vía onCollapsedChange — agregado por grupo más abajo
   // para decidir el borde de completado del SupersetBlock (§groupAllDone).
@@ -289,6 +402,25 @@ export default function WorkoutScreen() {
     else exerciseGroups.push([item]);
   }
 
+  // Puntos de progreso del header (§4.3): 1 unidad por ejercicio de fuerza
+  // (miembros de superserie incluidos, aplanados) + 1 por ad-hoc + 1 por bloque
+  // de acondicionamiento, en orden de pantalla. Mismo criterio de "completo"
+  // que el auto-colapso de ExerciseCard (isExerciseDone).
+  const dotUnits = [
+    ...exerciseGroups.flat().map(({ exConfig, setsState }) => ({
+      id:   exConfig.exerciseId,
+      done: isExerciseDone(exConfig, setsState),
+    })),
+    ...(activeSession.adHocExercises ?? []).map((a) => ({
+      id:   a.exerciseId,
+      done: a.setsState.length > 0 && a.setsState.every((s) => s.done),
+    })),
+    ...(template?.blocks ?? []).map((b) => ({
+      id:   b.id,
+      done: activeSession.blockState?.[b.id]?.finishedAt != null,
+    })),
+  ];
+
   // Global active-set pointer (highlight) — recalculated when the "shape" of
   // the session changes (sets/exercises added or removed), preserved otherwise.
   // Adjust-during-render idiom (React docs: "You Might Not Need an Effect")
@@ -346,8 +478,21 @@ export default function WorkoutScreen() {
   // Free session flag
   const isFree = activeSession.templateId === '__free__';
 
-  // Colors
-  const accentColor = resolveColor(th,template?.color ?? 'var(--accent)');
+  // Header content — sessionLabel/titleText cubren ambos modos (plantilla y
+  // sesión libre); el reloj se concatena dentro de HeaderEyebrow/HeaderCompactSummary.
+  const sessionLabel    = isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label: template?.label ?? '' });
+  const titleText       = isFree ? (activeSession.freeSessionName ?? '') : (template?.name ?? '');
+  const hasSessionNotes = (activeSession.notes?.trim().length ?? 0) > 0;
+
+  function handleGoBack() {
+    // When the app is killed mid-workout and relaunched, Workout is set as the
+    // initial route (no back stack). goBack() would fail silently in that case.
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Main', { screen: 'Home' });
+    }
+  }
 
   function handleSave() {
     const result = saveSession();
@@ -371,78 +516,76 @@ export default function WorkoutScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            // When the app is killed mid-workout and relaunched, Workout is set as the
-            // initial route (no back stack). goBack() would fail silently in that case.
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Main', { screen: 'Home' });
-            }
-          }}
-          hitSlop={12}
-          style={styles.backBtn}
-        >
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          {isFree ? (
-            <>
-              <Text style={[styles.sesTag, { color: th.colors.accent }]}>
-                {t('freeSession.badge').toUpperCase()}
-              </Text>
-              <View style={styles.sesNameRow}>
+      {/* Header — sticky, fuera del ScrollView, 2 estados con crossfade (§4) */}
+      <View style={styles.headerWrap}>
+        <Reanimated.View style={[styles.headerBar, headerBarAnimStyle]}>
+          {/* Grande */}
+          <Reanimated.View
+            pointerEvents={compact ? 'none' : 'auto'}
+            style={[styles.headerLayerGrande, grandeLayerAnimStyle]}
+          >
+            <TouchableOpacity onPress={handleGoBack} hitSlop={10}>
+              <HeaderArrow size={26} th={th} />
+            </TouchableOpacity>
+            <View style={styles.grandeCenter}>
+              <HeaderEyebrow startedAt={activeSession.startedAt} label={sessionLabel} styles={styles} />
+              {isFree ? (
                 <TextInput
-                  style={[styles.freeNameInput, { flex: 1 }]}
+                  style={styles.freeNameInputHeader}
                   value={activeSession.freeSessionName ?? ''}
                   onChangeText={updateFreeSessionName}
                   placeholder={t('freeSession.namePlaceholder')}
-                  placeholderTextColor={th.colors.muted}
+                  placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
                   returnKeyType="done"
                   maxLength={60}
+                  textAlign="center"
                 />
-                <ElapsedClock startedAt={activeSession.startedAt} />
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.sesTag, { color: accentColor }]} numberOfLines={1}>
-                {t('workout.sessionLabel', { label: template.label ?? '' })}
-              </Text>
-              <View style={styles.sesNameRow}>
-                <Text style={[styles.sesName, { flex: 1 }]} numberOfLines={1}>
-                  {template.name ?? ''}
-                </Text>
-                <ElapsedClock startedAt={activeSession.startedAt} />
-              </View>
-            </>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={() => setNotesOpen(true)}
-          hitSlop={12}
-          style={[
-            styles.notesBtn,
-            (activeSession.notes?.trim().length > 0) && styles.notesBtnActive,
-          ]}
-        >
-          <Text style={styles.notesIcon}>📝</Text>
-        </TouchableOpacity>
+              ) : (
+                <Text style={styles.grandeTitle} numberOfLines={1}>{titleText}</Text>
+              )}
+              <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
+            </View>
+            <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
+              <NoteIcon th={th} filled={hasSessionNotes} size={26} tone="onAccent" />
+            </TouchableOpacity>
+          </Reanimated.View>
+
+          {/* Compacta — todo el ancho, gap equidistante (space-between) */}
+          <Reanimated.View
+            pointerEvents={compact ? 'auto' : 'none'}
+            style={[styles.headerLayerCompact, compactLayerAnimStyle]}
+          >
+            <TouchableOpacity onPress={handleGoBack} hitSlop={10}>
+              <HeaderArrow size={16} th={th} />
+            </TouchableOpacity>
+            <View style={styles.compactTextWrap}>
+              <HeaderCompactSummary
+                startedAt={activeSession.startedAt}
+                title={titleText || (isFree ? t('freeSession.namePlaceholder') : '')}
+                styles={styles}
+              />
+            </View>
+            <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
+            <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
+              <NoteIcon th={th} filled={hasSessionNotes} size={26} tone="onAccent" />
+            </TouchableOpacity>
+          </Reanimated.View>
+        </Reanimated.View>
       </View>
 
       {/* Exercise list */}
+      <View style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 56}
+        keyboardVerticalOffset={insets.top + spacing.lg + HEADER_GRANDE_H + spacing.md}
       >
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={handleHeaderScroll}
+          scrollEventThrottle={16}
         >
           {/* Free session info banner */}
           {isFree && (
@@ -589,6 +732,22 @@ export default function WorkoutScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Fundido bajo la cabecera sticky — evita el corte seco del contenido al
+          hacer scroll, visible sólo cuando la cabecera está colapsada (mismo
+          progreso 0↔1 que el crossfade del header). */}
+      <Reanimated.View pointerEvents="none" style={[styles.scrollFade, scrollFadeAnimStyle]}>
+        <Svg width="100%" height={SCROLL_FADE_H}>
+          <Defs>
+            <SvgLinearGradient id="scrollFade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={th.colors.bg} stopOpacity={1} />
+              <Stop offset="1" stopColor={th.colors.bg} stopOpacity={0} />
+            </SvgLinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height={SCROLL_FADE_H} fill="url(#scrollFade)" />
+        </Svg>
+      </Reanimated.View>
+      </View>
+
       {/* Notes modal */}
       <NotesModal
         visible={notesOpen}
@@ -679,68 +838,82 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
   },
 
-  // Header
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+  // Header — SesionHeader (110:3692), 2 estados (§4)
+  headerWrap: {
+    marginHorizontal: spacing.lg,  // margen lateral de página (x=15 en el frame Figma)
+    marginTop:        spacing.lg,  // y=15 bajo el safe-area
+    marginBottom:     spacing.md,  // gap header→contenido, confirmado en ambos estados
   },
-  backBtn: { padding: spacing.xs },
-  backIcon: {
-    fontSize:   26,
-    color:      th.colors.muted,
-    lineHeight: 30,
+  headerBar: {
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
+    overflow:        'hidden',
   },
-  headerCenter: {
-    flex: 1,
-    gap:  2,
+  headerLayerGrande: {
+    position:          'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    flexDirection:      'row',
+    alignItems:         'center',
+    paddingHorizontal:  spacing.sm,
+    gap:                spacing.sm,
   },
-  sesTag: {
-    fontSize:      10,
-    fontWeight:    typography.bold,
-    letterSpacing: 1.5,
+  // Compacta: sin gap fijo — justifyContent:'space-between' reparte el espacio
+  // sobrante en partes iguales entre los 4 elementos (flecha/texto/dots/notas),
+  // ocupando todo el ancho de la cabecera.
+  headerLayerCompact: {
+    position:          'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    flexDirection:      'row',
+    alignItems:         'center',
+    justifyContent:     'space-between',
+    paddingHorizontal:  spacing.sm,
+  },
+  grandeCenter: {
+    flex:       1,
+    alignItems: 'center',
+  },
+  // Alto fijo (HEADER_ROW_H) igual al de dotsRow — el título queda exactamente
+  // centrado sólo si eyebrow y dots pesan lo mismo por encima/debajo suyo.
+  eyebrowText: {
+    ...textStyles.spacingTag,
+    color:         th.colors.onAccent,
+    textAlign:     'center',
     textTransform: 'uppercase',
+    lineHeight:    HEADER_ROW_H,
   },
-  sesNameRow: {
+  // lineHeight explícito y ajustado (no el "normal" del font, que en Inter Black
+  // añade bastante más aire del necesario) — acerca el título a eyebrow/dots.
+  grandeTitle: {
+    ...textStyles.hero,
+    color:      th.colors.onAccent,
+    textAlign:  'center',
+    lineHeight: 22,
+  },
+  freeNameInputHeader: {
+    ...textStyles.hero,
+    color:      th.colors.onAccent,
+    textAlign:  'center',
+    padding:    0,
+    alignSelf:  'stretch',
+    lineHeight: 22,
+  },
+  // flexShrink (no flex:1) + minWidth:0: en la compacta, el texto cede ancho a
+  // los demás elementos y trunca (numberOfLines=1) en vez de acaparar el hueco
+  // que deja justifyContent:'space-between'.
+  compactTextWrap: { flexShrink: 1, minWidth: 0 },
+  compactSummary: {
+    ...textStyles.btnAction,
+    color: th.colors.onAccent,
+  },
+  dotsRow: {
+    height:        HEADER_ROW_H,
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
   },
-  sesName: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    lineHeight: typography.xl * 1.2,
-  },
-  elapsedClock: {
-    fontSize:    typography.sm,
-    fontWeight:  typography.semibold,
-    color:       th.colors.muted,
-    fontVariant: ['tabular-nums'],
-    flexShrink:  0,
-  },
-  driveIcon: {
-    fontSize:   12,
-    color:      th.colors.green,
-    lineHeight: typography.xl * 1.2,
-    opacity:    0.75,
-  },
-  trainerCredit: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontStyle:  'italic',
-  },
-  freeNameInput: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    lineHeight: typography.xl * 1.2,
-    padding:    0,
-    minHeight:  typography.xl * 1.2,
+  scrollFade: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height:   SCROLL_FADE_H,
   },
   freeBanner: {
     backgroundColor: withOpacity(th.colors.accent, 0.06),
@@ -757,23 +930,12 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.xs * 1.6,
     textAlign:  'center',
   },
-  notesBtn: {
-    padding:         spacing.xs + 2,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-  },
-  notesBtnActive: {
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-  },
-  notesIcon: { fontSize: 16 },
-
-  // Content
+  // Content — margen lateral = página (spacing.lg, igual que headerWrap);
+  // el gap superior lo aporta headerWrap.marginBottom, no padding propio aquí.
   content: {
-    padding:       spacing.xl,
-    paddingBottom: spacing.xxl,
-    gap:           spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.md,
   },
 
   // Add exercise (ad-hoc)

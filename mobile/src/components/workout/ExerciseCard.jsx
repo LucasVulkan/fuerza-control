@@ -35,15 +35,26 @@ const chipColors = (th) => ({
 // ── NoteIcon — nota con líneas (estilo Tabler "notes"), estados vacío/relleno ──
 // Sustituye al redibujo literal de Figma (rect + barras) por un icono de trazo
 // limpio: hoja redondeada + 3 renglones. Relleno = hoja accent + renglones onAccent.
+// `tone="onAccent"` invierte la paleta para uso sobre fondo lima (cabecera de
+// sesión, WorkoutScreen): hoja onAccent (negro) + renglones accent, ya que
+// accent-sobre-accent sería invisible.
 
-function NoteIcon({ size = 26, filled, th }) {
-  const stroke = filled ? th.colors.accent   : th.tint.accent50;
-  const lines  = filled ? th.colors.onAccent : th.tint.accent50;
+export function NoteIcon({ size = 26, filled, th, tone = 'surface' }) {
+  const onLime = tone === 'onAccent';
+  const stroke = onLime
+    ? (filled ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5))
+    : (filled ? th.colors.accent   : th.tint.accent50);
+  const lines = onLime
+    ? (filled ? th.colors.accent   : withOpacity(th.colors.onAccent, 0.5))
+    : (filled ? th.colors.onAccent : th.tint.accent50);
+  const leafFill = onLime
+    ? (filled ? th.colors.onAccent : 'none')
+    : (filled ? th.colors.accent   : 'none');
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1z"
-        fill={filled ? th.colors.accent : 'none'}
+        fill={leafFill}
         stroke={stroke}
         strokeWidth={1.6}
         strokeLinejoin="round"
