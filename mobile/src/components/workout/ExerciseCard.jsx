@@ -51,51 +51,18 @@ const R_SMALL = 9;
 // (gap 2, SupersetBlock) y aplanan las esquinas que se tocan.
 const R_INNER = 4;
 
-// ── NoteIcon — nota con líneas (estilo Tabler "notes"), estados vacío/relleno ──
-// Se mantiene TAL CUAL para la cabecera de sesión (WorkoutScreen), que queda
-// fuera del alcance de este restyle. El botón de notas de la card usa el icono
-// file-text del spec (NoteFileIcon, más abajo).
+// ── NoteIcon — icono file-text del spec §3 (stroke 2.2, round) ────────────────
+// Icono de notas ÚNICO de la app: lo usan tanto el botón de notas de la card
+// como la cabecera de sesión (WorkoutScreen). Puramente presentacional — quien
+// llama decide tamaño y color, porque sobre la banda lima del header hace falta
+// la paleta onAccent en vez de accent.
 //
-// `tone="onAccent"` invierte la paleta para uso sobre fondo lima: hoja onAccent
-// (negro) + renglones accent, ya que accent-sobre-accent sería invisible.
-
-export function NoteIcon({ size = 26, filled, th, tone = 'surface' }) {
-  const onLime = tone === 'onAccent';
-  const stroke = onLime
-    ? (filled ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5))
-    : (filled ? th.colors.accent   : th.tint.accent50);
-  const lines = onLime
-    ? (filled ? th.colors.accent   : withOpacity(th.colors.onAccent, 0.5))
-    : (filled ? th.colors.onAccent : th.tint.accent50);
-  const leafFill = onLime
-    ? (filled ? th.colors.onAccent : 'none')
-    : (filled ? th.colors.accent   : 'none');
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1z"
-        fill={leafFill}
-        stroke={stroke}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8.5 8h7 M8.5 12h7 M8.5 16h4.5"
-        stroke={lines}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
-
-// ── NoteFileIcon — icono file-text del spec §3 (stroke 2.2, round) ────────────
 // El spec lo fija en 17×17; subido a 21 a petición del usuario (se quedaba
 // pequeño dentro del botón de 32).
 
-function NoteFileIcon({ color }) {
+export function NoteIcon({ size = 21, color }) {
   return (
-    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"
         stroke={color}
@@ -486,7 +453,7 @@ export default function ExerciseCard({
       hitSlop={8}
       activeOpacity={0.7}
     >
-      <NoteFileIcon color={hasClientNote || noteInputOpen ? th.colors.accent : th.colors.muted} />
+      <NoteIcon color={hasClientNote || noteInputOpen ? th.colors.accent : th.colors.muted} />
       {hasClientNote ? <View style={styles.noteDot} /> : null}
     </TouchableOpacity>
   ) : null;

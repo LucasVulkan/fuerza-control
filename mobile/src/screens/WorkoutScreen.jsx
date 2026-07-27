@@ -129,11 +129,11 @@ function HeaderArrow({ size, th }) {
   );
 }
 
-// Puntos de progreso (§4.3 de la guía) — relleno onAccent sólido = completo,
-// anillo onAccent translúcido = pendiente (valores exactos del <circle> real:
-// diámetro 6, Ellipse24=relleno sólido, Ellipse28=sólo borde). >7 unidades
-// encoge el gap en vez de hacer wrap/scroll (decisión de esta implementación).
-// `size` encoge en la cabecera compacta (igual que el icono de notas y la flecha).
+// Puntos de progreso — ambos estados son discos SÓLIDOS, sin outline:
+// completo = onAccent pleno; pendiente = onAccent al 25%, que sobre la banda
+// lima del header se lee como una lima más oscura y apagada (valor del
+// Exercise Card Spec §6). >7 unidades encoge el gap en vez de hacer wrap/scroll
+// (decisión de esta implementación). `size` es común a las dos cabeceras.
 function ProgressDots({ units, th, styles, size = 6 }) {
   if (units.length === 0) return null;
   const gap = units.length <= 7 ? spacing.sm : units.length <= 12 ? spacing.xs2 : spacing.xs;
@@ -142,12 +142,14 @@ function ProgressDots({ units, th, styles, size = 6 }) {
       {units.map((u) => (
         <View
           key={u.id}
-          style={[
-            { width: size, height: size, borderRadius: size / 2, borderWidth: 1 },
-            u.done
-              ? { backgroundColor: th.colors.onAccent, borderColor: th.colors.onAccent }
-              : { backgroundColor: 'transparent', borderColor: withOpacity(th.colors.onAccent, 0.4) },
-          ]}
+          style={{
+            width:  size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: u.done
+              ? th.colors.onAccent
+              : withOpacity(th.colors.onAccent, 0.25),
+          }}
         />
       ))}
     </View>
@@ -540,7 +542,10 @@ export default function WorkoutScreen() {
               <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
             </View>
             <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
-              <NoteIcon th={th} filled={hasSessionNotes} size={26} tone="onAccent" />
+              <NoteIcon
+                size={24}
+                color={hasSessionNotes ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5)}
+              />
             </TouchableOpacity>
           </Reanimated.View>
 
@@ -561,7 +566,10 @@ export default function WorkoutScreen() {
             </View>
             <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
             <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
-              <NoteIcon th={th} filled={hasSessionNotes} size={26} tone="onAccent" />
+              <NoteIcon
+                size={24}
+                color={hasSessionNotes ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5)}
+              />
             </TouchableOpacity>
           </Reanimated.View>
         </Reanimated.View>
@@ -840,7 +848,7 @@ const makeStyles = (th) => StyleSheet.create({
     top: 0, left: 0, right: 0, bottom: 0,
     flexDirection:      'row',
     alignItems:         'center',
-    paddingHorizontal:  spacing.sm,
+    paddingHorizontal:  spacing.md,
     gap:                spacing.sm,
   },
   // Compacta: sin gap fijo — justifyContent:'space-between' reparte el espacio
@@ -852,7 +860,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:      'row',
     alignItems:         'center',
     justifyContent:     'space-between',
-    paddingHorizontal:  spacing.sm,
+    paddingHorizontal:  spacing.md,
   },
   grandeCenter: {
     flex:       1,
