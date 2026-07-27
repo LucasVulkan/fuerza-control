@@ -342,28 +342,40 @@ function sessionA11yLabel(t, template, statusLabel) {
  * visible) para arrancar; un setTimeout es la red de seguridad por si ese evento
  * no llegara en alguna versión de react-native-screens.
  */
-function SessionCard({ template, lastSession, status, onPress, hasOverride }) {
+function SessionCard({ template, lastSession, status, onPress, hasOverride, doneThisCycle = false }) {
   const { t }      = useTranslation();
   const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
 
   const isDone = status === 'done';
+  // Repetir una sesión que ya contaba como hecha este ciclo la muestra como
+  // 'active', lo que TAPABA su estado real: al empezar otra sesión, esta volvía
+  // a "aparecer" completada de golpe y se leía como si la hubiéramos completado
+  // sola. Ahora el fondo de completada se mantiene durante la repetición (ya
+  // estaba hecha, y sigue estándolo) y solo cambia la acción: check ↔ Continuar.
+  const showDoneChrome = isDone || (status === 'active' && doneThisCycle);
   // Última variante no-"done" — se congela al llegar a 'done' para que el
   // botón/chevron que se desvanece en el crossfade no cambie a mitad de camino.
   const [variant, setVariant] = useState(isDone ? 'next' : status);
   if (!isDone && variant !== status) setVariant(status);
   const isCta = variant === 'active' || variant === 'next';
 
-  const doneAnim  = useSharedValue(isDone ? 1 : 0);
-  const isDoneRef = useRef(isDone);
-  useEffect(() => { isDoneRef.current = isDone; });
+  // Dos drivers, porque ya no van siempre juntos: `chromeAnim` es el fondo/borde
+  // de completada y `actionAnim` el crossfade check ↔ botón.
+  const chromeAnim = useSharedValue(showDoneChrome ? 1 : 0);
+  const actionAnim = useSharedValue(isDone ? 1 : 0);
 
   const [settleTick, setSettleTick] = useState(0);
   const focusedBefore               = useRef(false);
+  const isFocusedRef                = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (!focusedBefore.current) { focusedBefore.current = true; return; }
+      isFocusedRef.current = true;
+      if (!focusedBefore.current) {
+        focusedBefore.current = true;
+        return () => { isFocusedRef.current = false; };
+      }
       // Arranca el crossfade solo cuando la transición del stack ha terminado y
       // Home está asentada y visible — así el usuario ve la animación entera.
       let fired = false;
@@ -372,23 +384,38 @@ function SessionCard({ template, lastSession, status, onPress, hasOverride }) {
       // ponytail: red de seguridad — si transitionEnd no llega, anima igual.
       // Sube el valor si algún device transiciona más lento que esto.
       const timer  = setTimeout(settle, 500);
-      return () => { unsub?.(); clearTimeout(timer); };
+      return () => { isFocusedRef.current = false; unsub?.(); clearTimeout(timer); };
     }, [navigation]),
   );
+  // Dispara con DOS entradas: el settle al volver a Home y cualquier cambio de
+  // `isDone` con Home ya a la vista (empezar otra sesión desde aquí desenmascara
+  // el 'done' de la que estaba en curso, sin que medie navegación alguna).
+  //
+  // Sin la segunda, ese caso no tenía focus al que engancharse y la tarjeta se
+  // quedaba a medias — fondo y botón del estado viejo, contenido del nuevo —
+  // hasta la siguiente vuelta a Home.
+  //
+  // El guard de foco es lo que preserva la intención original: un cambio que
+  // ocurre con Home en segundo plano (guardar la sesión) NO se anima ahí, se
+  // deja para el settle, y así el crossfade se ve entero al volver.
+  const mountedRef = useRef(false);
   useEffect(() => {
-    if (settleTick === 0) return;
-    doneAnim.value = withTiming(isDoneRef.current ? 1 : 0, { duration: 300, easing: Easing.inOut(Easing.ease) });
-  }, [settleTick, doneAnim]);
+    if (!mountedRef.current) { mountedRef.current = true; return; } // ya arrancaron en su valor
+    if (!isFocusedRef.current) return;
+    const cfg = { duration: 300, easing: Easing.inOut(Easing.ease) };
+    chromeAnim.value = withTiming(showDoneChrome ? 1 : 0, cfg);
+    actionAnim.value = withTiming(isDone ? 1 : 0, cfg);
+  }, [settleTick, isDone, showDoneChrome, chromeAnim, actionAnim]);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(doneAnim.value, [0, 1], [th.colors.surface, th.tint.accent10]),
-    borderColor:     interpolateColor(doneAnim.value, [0, 1], ['transparent', th.tint.accent50]),
+    backgroundColor: interpolateColor(chromeAnim.value, [0, 1], [th.colors.surface, th.tint.accent10]),
+    borderColor:     interpolateColor(chromeAnim.value, [0, 1], ['transparent', th.tint.accent50]),
   }));
   // El elemento "actual" (según el status en vivo) se desvanece hacia dentro;
   // el "saliente" (congelado en `variant`) se desvanece hacia fuera — comparten
   // el mismo borde derecho porque sesRightOverlay se ancla con right:0.
-  const currentAnimStyle  = useAnimatedStyle(() => ({ opacity: isDone ? doneAnim.value : 1 - doneAnim.value }));
-  const outgoingAnimStyle = useAnimatedStyle(() => ({ opacity: isDone ? 1 - doneAnim.value : doneAnim.value }));
+  const currentAnimStyle  = useAnimatedStyle(() => ({ opacity: isDone ? actionAnim.value : 1 - actionAnim.value }));
+  const outgoingAnimStyle = useAnimatedStyle(() => ({ opacity: isDone ? 1 - actionAnim.value : actionAnim.value }));
 
   const rel = relativeTime(lastSession?.timestamp, t);
   // El prefijo "Completada" solo aplica a hoy/ayer — a partir de "hace N días"
@@ -811,6 +838,7 @@ export default function HomeScreen() {
                           template={d.template}
                           lastSession={d.lastSession}
                           status={d.status}
+                          doneThisCycle={d.isDone}
                           hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
                           onPress={() => requestStart(d)}
                         />
