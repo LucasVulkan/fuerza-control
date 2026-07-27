@@ -1,20 +1,24 @@
 /**
- * SupersetBlock — wraps 2+ chained ExerciseCards (A1/A2…) alternating with no
+ * SupersetBlock — wraps 2+ chained ExerciseCards (03A/03B…) alternating with no
  * rest between members. Purely presentational: the rest-timer suppression and
- * A1/A2 labelling are computed by the caller (WorkoutScreen).
+ * the 03A/03B labelling are computed by the caller (WorkoutScreen).
+ *
+ * El bloque en sí es INVISIBLE: sin fondo ni borde propio, solo la línea de
+ * acento a la izquierda que marca "esto es una superserie". La cohesión del par
+ * la aporta la costura entre cards (gap 2 + esquinas interiores a radio 4, ver
+ * `groupPos` en ExerciseCard), no una tarjeta contenedora.
  */
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, textStyles, borders } from '../../theme';
+import { spacing, typography, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-export default function SupersetBlock({ rounds, restSec, children, onAddSet, completed = false }) {
+export default function SupersetBlock({ rounds, restSec, children, onAddSet }) {
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
-    <View style={[styles.block, completed && styles.blockCompleted]}>
+    <View style={styles.block}>
       <Text style={styles.header}>
         {t('workout.supersetHeader', { count: rounds })}
       </Text>
@@ -24,10 +28,11 @@ export default function SupersetBlock({ rounds, restSec, children, onAddSet, com
         <Text style={styles.footerSec}>{restSec}s</Text>
         {t('workout.supersetFooterSuffix')}
       </Text>
-      {/* Un único botón para todo el grupo — añade una serie a cada miembro a la vez */}
+      {/* Un único enlace para todo el grupo — añade una serie a cada miembro a la vez */}
       {onAddSet && (
-        <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
-          <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
+        <TouchableOpacity style={styles.addSetLink} onPress={onAddSet} activeOpacity={0.7}>
+          <Text style={[styles.addSetText, styles.addSetPlus]}>+</Text>
+          <Text style={styles.addSetText}>{t('workout.addSetBtn')}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -35,77 +40,50 @@ export default function SupersetBlock({ rounds, restSec, children, onAddSet, com
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  // Mismo fondo que las Exercice Cards que envuelve — el grupo debe leerse como
-  // un único componente, no como una tarjeta extra detrás de las tarjetas.
-  // Sin padding lateral propio: cada miembro (ExerciseCard) va a sangre de lado a
-  // lado del bloque, así el fondo teñido de su header también llega de lado a lado
-  // de la tarjeta de superserie (no solo de su propia card). El resto de contenido
-  // (label, footer, botón) gestiona su propio inset por separado.
+  // Bloque invisible: sin fondo ni tarjeta. Lo único que queda es la barra
+  // izquierda de acento (marcador estructural "esto es una superserie"). El
+  // paddingLeft separa esa línea de las esquinas redondeadas de las cards.
   block: {
-    // Barra izquierda (marcador estructural "esto es una superserie", siempre
-    // sólida) — semánticamente distinta del borde de completado de abajo. `block`
-    // NO tiene overflow:'hidden' (a diferencia de la card individual), así que no
-    // necesita un borde transparente permanente en el resto de lados para evitar
-    // el bug de recorte de Android — el `blockCompleted` de abajo puede añadir su
-    // propio borderWidth directamente sin arrastrar ese problema.
     borderLeftWidth: 3,
     borderLeftColor: th.colors.accent,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface,
-    paddingTop:      spacing.md,
-    paddingBottom:   spacing.md,
-    gap:             spacing.xs,
-  },
-  // Grupo entero completo (todos los miembros): highlight de "completado" en el
-  // BLOQUE en vez de en cada card individual (cada ExerciseCard miembro suprime
-  // su propio borde vía `suppressCollapsedBorder`, WorkoutScreen). Mismo tint
-  // acento-50 que usa la card colapsada suelta — misma anatomía de highlight,
-  // solo que aplicado al grupo como una única unidad.
-  blockCompleted: {
-    borderTopWidth:    borders.thin,
-    borderRightWidth:  borders.thin,
-    borderBottomWidth: borders.thin,
-    borderTopColor:    th.tint.accent50,
-    borderRightColor:  th.tint.accent50,
-    borderBottomColor: th.tint.accent50,
+    paddingLeft:     spacing.md,
+    gap:             spacing.sm,
   },
   header: {
-    fontSize:          typography.xs,
-    fontWeight:        typography.bold,
-    color:             th.colors.accent,
-    letterSpacing:     0.8,
-    textTransform:     'uppercase',
-    paddingHorizontal: spacing.sm,
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    color:         th.colors.accent,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  // Sin gap entre cards — cada ExerciseCard miembro ya recorta su propio
-  // paddingBottom (cardSupersetMember), evitando el hueco excesivo que se
-  // acumulaba (paddingBottom de la card + gap del bloque).
+  // La costura del par: 2px entre cards (frente a los 14 normales). Las esquinas
+  // interiores las aplana cada ExerciseCard vía `groupPos`.
   members: {
-    gap: 0,
+    gap: 2,
   },
-  // Separación propia respecto al botón de abajo — el `gap` del bloque ya lo
-  // acerca al grid de arriba, pero quedaba pegado al botón sin este margen.
-  // paddingHorizontal propio: el bloque ya no lo aporta (ver `block`).
   footer: {
     ...textStyles.subtitle,
-    color:             th.colors.text,
-    textAlign:         'center',
-    marginBottom:      spacing.sm,
-    paddingHorizontal: spacing.sm,
+    color:     th.colors.text,
+    textAlign: 'center',
   },
   footerSec: {
     color: th.colors.accent,
   },
-  addSetBtn: {
-    marginHorizontal: spacing.sm,
-    paddingVertical:  spacing.md,
-    borderWidth:      borders.thin,
-    borderColor:      th.tint.accent50,
-    borderRadius:     th.radius.md,
-    alignItems:       'center',
+  // Mismo AddSetLink que la card suelta (spec §4.6): texto centrado, sin caja.
+  addSetLink: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            6,
+    paddingTop:     6,
+    paddingBottom:  2,
   },
   addSetText: {
-    ...textStyles.cardType,
-    color: th.tint.accent50,
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      13,
+    fontWeight:    '800',
+    letterSpacing: 0.26,
+    color:         th.colors.mutedLight,
   },
+  addSetPlus: { color: th.colors.accent },
 });

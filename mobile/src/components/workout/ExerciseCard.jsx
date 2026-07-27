@@ -1,5 +1,24 @@
 /**
- * ExerciseCard — port fiel del original web.
+ * ExerciseCard — Exercise Card Spec v6 (formfit-exercise-card-spec.md).
+ *
+ * Geometría (paddings, gaps, alturas, radios, tamaños/tracking de fuente) tomada
+ * LITERAL del spec; solo el color se mapea a los tokens que ya existen en la app:
+ *
+ *   spec              → token
+ *   bg / cellFill     → colors.bg
+ *   card              → colors.surface
+ *   cardHead/btnFill  → colors.surface2
+ *   text              → colors.text
+ *   muted             → colors.mutedLight
+ *   muted2            → colors.muted
+ *   lime              → colors.accent
+ *   limeGhost         → colors.muted2 (el usuario prefiere el gris original al
+ *                       lima del spec para los valores sugeridos)
+ *   limeDim           → tint.accent10
+ *
+ * Regla de identidad del spec: ningún elemento lleva borde. Las dos excepciones
+ * conservadas a petición del usuario son la celda ACTIVA (borde accent-50 +
+ * chevrones, SetRow) y la línea izquierda del bloque de superserie.
  *
  * inputType: 'weight_reps' | 'reps' | 'time' | 'weight_time'
  *   Se lee de exConfig.inputType (nuevo campo flexible).
@@ -11,6 +30,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
+import { GRID } from './grid';
 import NotesModal from './NotesModal';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -19,25 +39,25 @@ import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../../.
 import { resolveExerciseReference, resolveRef } from '../../../../src/utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { isExerciseDone } from '../../utils/exerciseStatus';
-import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
+import { spacing, typography, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-// ── Progression chip colors — Chips (Figma 110:4247): Default=lima, Variant2=roja ──
-// No hay variante propia para "hold" (mantener) en Figma; reutiliza la lima ("up").
-
-const chipColors = (th) => ({
-  up:   { bg: th.tint.accent10,   border: th.colors.accent, text: th.tint.accent50 },
-  down: { bg: th.tint.red30,      border: th.colors.red,    text: th.tint.red50    },
-  hold: { bg: th.tint.accent10,   border: th.colors.accent, text: th.tint.accent50 },
-  info: { bg: th.colors.surface2, border: th.colors.border, text: th.colors.muted  },
-});
+// ── Geometría del spec ────────────────────────────────────────────────────────
+// Radios: card 16 · celdas y botones grandes 11 · botones pequeños 9.
+const R_CARD  = 16;
+const R_SMALL = 9;
+// El radio de celdas y botones grandes (11) vive en GRID.RADIUS (./grid.js).
+// Esquina interior de un miembro de superserie — las dos cards del par se pegan
+// (gap 2, SupersetBlock) y aplanan las esquinas que se tocan.
+const R_INNER = 4;
 
 // ── NoteIcon — nota con líneas (estilo Tabler "notes"), estados vacío/relleno ──
-// Sustituye al redibujo literal de Figma (rect + barras) por un icono de trazo
-// limpio: hoja redondeada + 3 renglones. Relleno = hoja accent + renglones onAccent.
-// `tone="onAccent"` invierte la paleta para uso sobre fondo lima (cabecera de
-// sesión, WorkoutScreen): hoja onAccent (negro) + renglones accent, ya que
-// accent-sobre-accent sería invisible.
+// Se mantiene TAL CUAL para la cabecera de sesión (WorkoutScreen), que queda
+// fuera del alcance de este restyle. El botón de notas de la card usa el icono
+// file-text del spec (NoteFileIcon, más abajo).
+//
+// `tone="onAccent"` invierte la paleta para uso sobre fondo lima: hoja onAccent
+// (negro) + renglones accent, ya que accent-sobre-accent sería invisible.
 
 export function NoteIcon({ size = 26, filled, th, tone = 'surface' }) {
   const onLime = tone === 'onAccent';
@@ -64,6 +84,31 @@ export function NoteIcon({ size = 26, filled, th, tone = 'surface' }) {
         stroke={lines}
         strokeWidth={1.6}
         strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+// ── NoteFileIcon — icono file-text del spec §3 (stroke 2.2, round) ────────────
+// El spec lo fija en 17×17; subido a 21 a petición del usuario (se quedaba
+// pequeño dentro del botón de 32).
+
+function NoteFileIcon({ color }) {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14 3v6h6"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -112,23 +157,15 @@ export default function ExerciseCard({
   onDropFieldChange,
   onToggleDropDone,
   onRemoveDrop,
-  groupLabel,
+  groupLetter,             // superserie: "A"/"B"… — se concatena al número ("03A")
   orderNumber,             // "01"/"02"… posición del ejercicio en la sesión (WorkoutScreen)
+  groupPos,                // superserie: 'first' | 'mid' | 'last' — aplana esquinas interiores
   trainerName,
   clientNote,
   onClientNoteChange,
   overrideEx,
   activeSetIndex = -1,
   hideAddSetBtn = false,   // superset: un único botón compartido debajo del grupo (WorkoutScreen)
-  // superset: el GRUPO entero está completo → el highlight de "completado" pasa
-  // al SupersetBlock que envuelve a todos los miembros; esta card individual no
-  // dibuja su propio borde acento aunque isCollapsed sea true (WorkoutScreen).
-  suppressCollapsedBorder = false,
-  // superset: reporta el estado visual colapsado/expandido de ESTA card a
-  // WorkoutScreen, que lo agrega por grupo para decidir el borde del
-  // SupersetBlock (solo TODAS colapsadas a la vez → verde; cualquiera reabierta
-  // → sin outline, igual que una card suelta).
-  onCollapsedChange,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -139,7 +176,7 @@ export default function ExerciseCard({
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
-  // Coach next-session prescription (one-off): blue target ghosts + chip + note.
+  // Coach next-session prescription (one-off): blue target ghosts + line + note.
   const hasCoachTarget = !!(overrideEx && (overrideEx.weight != null || overrideEx.reps != null
                             || overrideEx.time != null || overrideEx.rpe != null));
   const coachNote = overrideEx?.note?.trim() || null;
@@ -156,14 +193,16 @@ export default function ExerciseCard({
 
   const hasTimer = inputType === 'time' || inputType === 'weight_time';
 
-  // ── Warmup pills (spec warmup-sets.md §7) ─────────────────────────────────
+  // ── Warmup (spec §4.3/§4.4) ───────────────────────────────────────────────
   // Informational only — NOT part of setsState, nothing is persisted. Purely
-  // recalculated on every render from the current work weight; a tap only
-  // flips local "tapped" styling and optionally fires the rest timer.
+  // recalculated on every render from the current work weight; marking a row
+  // only flips local "done" styling and optionally fires the rest timer.
   const startRestTimer = useStore((s) => s.startRestTimer);
   const warmupStepsArr = exConfig.warmup ? warmupSteps(exConfig.warmup) : [];
   const hasWarmup = warmupStepsArr.length > 0;
-  const [warmupTapped, setWarmupTapped] = useState(() => new Set());
+  const [warmupDone, setWarmupDone] = useState(() => new Set());
+  // Reabrir a mano la sección colapsada (§4.4: el chevron reexpande).
+  const [warmupReopened, setWarmupReopened] = useState(false);
 
   const firstWorkWeight = setsState[0]?.weight;
   const typedFirstWorkWeight = firstWorkWeight !== '' && firstWorkWeight != null
@@ -174,9 +213,11 @@ export default function ExerciseCard({
   const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg);
   const warmupNoReference = hasWarmup && workWeightKg == null;
   const warmupRestSec = exConfig.warmup?.restSec ?? 60;
+  const warmupAllDone = hasWarmup && warmupDone.size >= warmupStepsArr.length;
+  const warmupCollapsed = warmupAllDone && !warmupReopened;
 
-  function toggleWarmupPill(i) {
-    setWarmupTapped((prev) => {
+  function toggleWarmupRow(i) {
+    setWarmupDone((prev) => {
       const next = new Set(prev);
       if (next.has(i)) {
         next.delete(i);
@@ -186,6 +227,7 @@ export default function ExerciseCard({
       }
       return next;
     });
+    setWarmupReopened(false);
   }
 
   const name = def
@@ -199,13 +241,6 @@ export default function ExerciseCard({
   const [collapsed,  setCollapsed]  = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const isCollapsed          = collapsed && !manualOpen;
-
-  // Reporta el estado visual (no solo "completo") a WorkoutScreen — un miembro
-  // de superserie reabierto a mano (manualOpen) debe perder el highlight de
-  // grupo aunque sus datos sigan "hechos"; isCollapsed ya contempla ese caso.
-  useEffect(() => {
-    onCollapsedChange?.(isCollapsed);
-  }, [isCollapsed, onCollapsedChange]);
 
   // ── Animated.Value height + opacity (React Native built-in, Expo Go safe) ──
   //
@@ -221,11 +256,11 @@ export default function ExerciseCard({
   const UNCONSTRAINED = 3000;
   const maxH        = useRef(new Animated.Value(UNCONSTRAINED)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
-  // Progreso del check del header: 0 = expandido (sin check, título pegado a la
-  // izquierda), 1 = colapsado (check visible, título desplazado a la derecha).
-  // Anima en paralelo a maxH (misma duración) para el efecto "el título deja paso
-  // al check". El header es persistente (no hace crossfade), solo el cuerpo.
+  // Progreso del check del header: 0 = expandido (se ve el número "03A"),
+  // 1 = colapsado (se ve el ✓). Crossfade en el MISMO hueco, sin desplazar el
+  // título (§3: el header es Num | NameBlock | NoteButton en las dos vistas).
   const checkProgress = useRef(new Animated.Value(0)).current;
+  const numOpacity = checkProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const expandedH   = useRef(0);
   const collapsedH  = useRef(80);
   const isCollapsedRef = useRef(false);
@@ -271,7 +306,7 @@ export default function ExerciseCard({
       if (finished) onDone(); // opacity sigue en 0 → useEffect se encarga del fade in
     });
     Animated.timing(contentOpacity, { ...OPACITY_CFG, toValue: 0 }).start();
-    // Check entra deslizando (título se desplaza a la derecha) en paralelo a la altura.
+    // Crossfade número → check, en paralelo a la altura.
     Animated.timing(checkProgress,  { ...HEIGHT_CFG,  toValue: 1 }).start();
   }, []);
 
@@ -327,7 +362,7 @@ export default function ExerciseCard({
       // Release the constraint so the card can grow freely if sets are added.
       if (finished) maxH.setValue(UNCONSTRAINED);
     });
-    // Check sale deslizando (título vuelve a la izquierda) en paralelo a la altura.
+    // Crossfade check → número, en paralelo a la altura.
     Animated.timing(checkProgress, { ...HEIGHT_CFG, toValue: 0 }).start();
   }, []);
 
@@ -376,33 +411,57 @@ export default function ExerciseCard({
     try { return getProgression(exConfig, def, lastExercise.sets, t); }
     catch { return null; }
   })();
-  const CHIP = chipColors(th);
-  const chipStyle  = progression ? (CHIP[progression.type] ?? CHIP.info) : null;
+
+  // ── ProgressionLine (spec §4.1) — solo tipografía: dir + detail ─────────────
+  // `dir` sale de progression.type; `detail` es el salto numérico ("60 → 62.5 kg"),
+  // calculado con el valor tope de la última sesión y la sugerencia del motor de
+  // progresión. Sin sugerencia numérica (progresión por reps) cae al mensaje largo.
+  const progDetail = (() => {
+    if (!progression) return null;
+    const sets = lastExercise?.sets ?? [];
+    if (progression.suggestedWeight != null) {
+      const curKg   = Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
+      const cur     = curKg > 0 ? toDisplay(curKg) : null;
+      const next    = toDisplay(progression.suggestedWeight);
+      return cur != null && cur !== next
+        ? `${cur} → ${next} ${weightLabel}`
+        : `${next} ${weightLabel}`;
+    }
+    if (progression.suggestedTime != null) {
+      const cur  = Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
+      const next = progression.suggestedTime;
+      return cur > 0 && cur !== next ? `${cur} → ${next} s` : `${next} s`;
+    }
+    return progression.msg;
+  })();
+  const PROG_ARROW = { up: '↑', hold: '→', down: '↓' };
+
   const targetLabel = buildTarget(def, exConfig, t)
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
 
   // ── Piezas compartidas del render ───────────────────────────────────────────
-  // El header (check + título/subtítulo + notas) es PERSISTENTE: se pinta una sola
-  // vez FUERA del crossfade, así al colapsar/expandir NO parpadea. Solo el cuerpo
-  // hace fade out/in y el check entra/sale deslizando (checkProgress), con el título
-  // desplazándose para dejarle sitio (nodo 364:3030 "Collapse").
-  const CHECK_SLOT_W = 26 + spacing.sm; // icono 26 + hueco a su derecha
-  const checkSlotWidth = checkProgress.interpolate({ inputRange: [0, 1], outputRange: [0, CHECK_SLOT_W] });
+  // El header (num/check + nombre/target + notas) es PERSISTENTE: se pinta una
+  // sola vez FUERA del crossfade, así al colapsar/expandir NO parpadea. Solo el
+  // cuerpo hace fade out/in; el número hace crossfade con el ✓ en su mismo hueco.
+  const numLabel = `${orderNumber ?? ''}${groupLetter ?? ''}`;
 
-  const checkIcon = (
-    <View style={styles.collapsedCheck}>
-      <Text style={styles.collapsedCheckMark}>✓</Text>
+  const numSlot = (animated) => (
+    <View style={styles.numSlot}>
+      {animated ? (
+        <>
+          <Animated.Text style={[styles.num, { opacity: numOpacity }]}>{numLabel}</Animated.Text>
+          <Animated.Text style={[styles.num, styles.numOverlay, { opacity: checkProgress }]}>✓</Animated.Text>
+        </>
+      ) : (
+        <Text style={styles.num}>{numLabel}</Text>
+      )}
     </View>
   );
 
-  const titleZone = (
+  const nameBlock = (
     <>
       <View style={styles.nameRow}>
-        <Text style={styles.name} numberOfLines={2}>
-          {orderNumber ? <Text style={styles.groupPrefix}>{orderNumber} </Text> : null}
-          {groupLabel ? <Text style={styles.groupPrefix}>{groupLabel} </Text> : null}
-          {name}
-        </Text>
+        <Text style={styles.name} numberOfLines={2}>{name}</Text>
         {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
       </View>
       {(targetLabel || exConfig.tempo) ? (
@@ -418,37 +477,40 @@ export default function ExerciseCard({
     </>
   );
 
-  const noteIconEl = onClientNoteChange ? (
-    <TouchableOpacity onPress={() => setNoteInputOpen((v) => !v)} hitSlop={8}>
-      <NoteIcon th={th} filled={hasClientNote || noteInputOpen} />
+  // NoteButton (§3): 32×32, radius 9, sin fondo, marginTop −5. Punto de 6px
+  // cuando hay notas.
+  const noteBtn = onClientNoteChange ? (
+    <TouchableOpacity
+      style={styles.noteBtn}
+      onPress={() => setNoteInputOpen((v) => !v)}
+      hitSlop={8}
+      activeOpacity={0.7}
+    >
+      <NoteFileIcon color={hasClientNote || noteInputOpen ? th.colors.accent : th.colors.muted} />
+      {hasClientNote ? <View style={styles.noteDot} /> : null}
     </TouchableOpacity>
   ) : null;
 
   // Header persistente. Tap sobre el título = expandir (si colapsado) o colapsar
   // (si se reabrió a mano, manualOpen); en una card en curso no hace nada. El icono
   // de notas queda fuera del área táctil del título (su propio onPress).
-  const header = (
-    <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
-      <View style={styles.headerMain}>
-        <Animated.View style={[styles.checkSlot, { width: checkSlotWidth, opacity: checkProgress }]}>
-          {checkIcon}
-        </Animated.View>
-        <TouchableOpacity
-          style={styles.headerLeft}
-          onPress={isCollapsed ? handleOpen : (manualOpen ? handleCollapse : undefined)}
-          disabled={!isCollapsed && !manualOpen}
-          activeOpacity={0.7}
-        >
-          {titleZone}
-        </TouchableOpacity>
-      </View>
-      <View style={styles.headerRight}>{noteIconEl}</View>
+  const renderHeader = (animated) => (
+    <View style={styles.header}>
+      {numSlot(animated)}
+      <TouchableOpacity
+        style={styles.headerNameTap}
+        onPress={isCollapsed ? handleOpen : (manualOpen ? handleCollapse : undefined)}
+        disabled={!isCollapsed && !manualOpen}
+        activeOpacity={0.7}
+      >
+        {nameBlock}
+      </TouchableOpacity>
+      {noteBtn}
     </View>
   );
 
-  // Resumen de series colapsado — EstructuraVisualizacionDatosEjercicios "Semi
-  // compacta" (364:3030). Reutiliza setDisplay.js (misma lógica que History/Progress);
-  // "fuera de rango" = ROJO aquí (decisión de usuario para esta card).
+  // Resumen de series colapsado — reutiliza setDisplay.js (misma lógica que
+  // History/Progress); "fuera de rango" = ROJO aquí (decisión de usuario).
   const pillsBlock = (
     <View style={styles.collapsedPillsRow}>
       {groupSetsByWeight(setsState).map((group, gi) => (
@@ -505,31 +567,24 @@ export default function ExerciseCard({
     </View>
   );
 
-  // Contenido del measurer (oculto): layout colapsado COMPLETO con el check estático
-  // a ancho fijo (así collapsedH ya cuenta con el check visible) + las pills.
+  // Contenido del measurer (oculto): layout colapsado COMPLETO (header estático
+  // + pills), así collapsedH ya cuenta con el header definitivo.
   const measurerContent = (
     <>
-      <View style={[styles.header, hideAddSetBtn && styles.headerCompact]}>
-        <View style={styles.headerMain}>
-          <View style={[styles.checkSlot, { width: CHECK_SLOT_W }]}>{checkIcon}</View>
-          <View style={styles.headerLeft}>{titleZone}</View>
-        </View>
-        <View style={styles.headerRight}>{noteIconEl}</View>
-      </View>
+      {renderHeader(false)}
       {pillsBlock}
     </>
   );
 
-  // ── Animated.View root — Reanimated maxHeight drives the height animation ──
+  const cornerStyle = groupPos === 'first' ? styles.cardGroupFirst
+    : groupPos === 'mid'  ? styles.cardGroupMid
+    : groupPos === 'last' ? styles.cardGroupLast
+    : null;
+
+  // ── Animated.View root — maxHeight drives the height animation ──
   return (
     <Animated.View
-      style={[
-        styles.card,
-        hideAddSetBtn && styles.cardSupersetMember,
-        isCollapsed && styles.cardCollapsed,
-        isCollapsed && !suppressCollapsedBorder && styles.cardCollapsedBorder,
-        { maxHeight: maxH },
-      ]}
+      style={[styles.card, cornerStyle, { maxHeight: maxH }]}
       onLayout={onCardLayout}
     >
 
@@ -560,8 +615,8 @@ export default function ExerciseCard({
       </View>
 
       {/* Header persistente compartido — fuera del crossfade, no parpadea al
-          colapsar/expandir; el check entra/sale deslizando (checkProgress). */}
-      {header}
+          colapsar/expandir; el ✓ hace crossfade con el número. */}
+      {renderHeader(true)}
 
       <Animated.View style={{ opacity: contentOpacity }}>
 
@@ -574,21 +629,23 @@ export default function ExerciseCard({
 
       ) : (
 
-        /* ── Expanded view — el header persistente ya está arriba, aquí solo el cuerpo ── */
-        <>
-          {/* Progression chip — hidden when the trainer set an explicit target */}
-          {!hasCoachTarget && progression?.msg ? (
-            <View style={[styles.chip, { backgroundColor: chipStyle.bg, borderLeftColor: chipStyle.border }]}>
-              <Text style={[styles.chipText, { color: chipStyle.text }]}>
-                {progression.icon}  {progression.msg}
+        /* ── Expanded view — Body (spec §4), padding 12 16 14 ── */
+        <View style={styles.body}>
+
+          {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
+          {!hasCoachTarget && progression ? (
+            <View style={styles.progLine}>
+              <Text style={[styles.progDir, progression.type === 'hold' && styles.progDirHold]}>
+                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.type}`, '')}`}
               </Text>
+              {progDetail ? <Text style={styles.progDetail}>{progDetail}</Text> : null}
             </View>
           ) : null}
 
-          {/* Coach target chip (next-session prescription) — Chips Variant3 (azul) */}
+          {/* Coach target (next-session prescription) — misma anatomía, en azul */}
           {hasCoachTarget ? (
-            <View style={[styles.chip, styles.coachChip]}>
-              <Text style={[styles.chipText, { color: th.tint.blue70 }]}>◎  {t('workout.coachTarget')}</Text>
+            <View style={styles.progLine}>
+              <Text style={styles.progDirCoach}>{`◎ ${t('workout.coachTarget')}`}</Text>
             </View>
           ) : null}
 
@@ -617,14 +674,31 @@ export default function ExerciseCard({
             </View>
           ) : null}
 
-          {/* Warmup — informational, not logged (spec §7). Sin fondo propio; cada
-              paso (C1, C2…) es un chip que abraza su contenido. Va SIEMPRE encima
-              de la etiqueta de trabajo y del grid. */}
-          {hasWarmup ? (
+          {/* ── WarmupSection colapsada (§4.4) ── */}
+          {hasWarmup && warmupCollapsed ? (
+            <TouchableOpacity
+              style={styles.warmupCollapsed}
+              onPress={() => setWarmupReopened(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.warmupCollapsedTick}>✓</Text>
+              <Text style={styles.warmupCollapsedText} numberOfLines={1}>
+                {t('workout.warmup.collapsedSummary', {
+                  label: t('workout.warmup.blockLabel'),
+                  count: warmupStepsArr.length,
+                  weight: workWeightKg != null ? `${toDisplay(workWeightKg)} ${weightLabel}` : '—',
+                })}
+              </Text>
+              <Text style={styles.warmupCollapsedChevron}>⌄</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* ── WarmupSection expandida (§4.3) ── */}
+          {hasWarmup && !warmupCollapsed ? (
             <View style={styles.warmupSection}>
-              <View style={styles.warmupHeader}>
-                <Text style={styles.warmupLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
-                <Text style={styles.warmupMeta}>
+              <View style={styles.sectionLabelRow}>
+                <Text style={styles.sectionLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+                <Text style={styles.sectionLabelMeta}>
                   {warmupRestSec > 0
                     ? t('workout.warmup.restLabel', { sec: warmupRestSec })
                     : t('workout.warmup.noTimer')}
@@ -635,62 +709,63 @@ export default function ExerciseCard({
               ) : null}
               <View style={styles.warmupRows}>
                 {warmupComputed.map((step, wi) => {
-                  const tapped = warmupTapped.has(wi);
+                  const done = warmupDone.has(wi);
                   const hasWeight = step.weightKg != null;
                   // toDisplay() ya convierte a la unidad activa — NO usar fmt() aquí,
-                  // que además añade el sufijo de unidad (duplicaría "Kg", ya pintado
-                  // aparte en warmupPillUnit).
+                  // que además añade el sufijo de unidad (duplicaría "Kg").
                   const numStr = hasWeight ? String(toDisplay(step.weightKg)) : `${warmupStepsArr[wi].pct}%`;
                   return (
-                    <TouchableOpacity
-                      key={wi}
-                      style={styles.warmupRow}
-                      onPress={() => toggleWarmupPill(wi)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.warmupRowLabel}>{`C${wi + 1}`}</Text>
-                      <View style={[styles.warmupChip, tapped && styles.warmupChipTapped]}>
-                        <Text style={styles.warmupPillText}>
-                          <Text style={styles.warmupPillNum}>{numStr}</Text>
-                          {hasWeight ? <Text style={styles.warmupPillUnit}>{weightLabel}</Text> : null}
-                          <Text style={styles.warmupPillTimes}>{' × '}</Text>
-                          <Text style={styles.warmupPillReps}>{step.reps}</Text>
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                    <View key={wi} style={styles.warmupRow}>
+                      <Text style={[styles.warmupRowLabel, done && styles.warmupTextOff]}>{`C${wi + 1}`}</Text>
+                      <Text style={styles.warmupDetail} numberOfLines={1}>
+                        <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{numStr}</Text>
+                        {hasWeight ? <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{` ${weightLabel}`}</Text> : null}
+                        <Text style={[styles.warmupTimes, done && styles.warmupTextOff]}>{' × '}</Text>
+                        <Text style={[styles.warmupReps, done && styles.warmupTextOff]}>{step.reps}</Text>
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.warmupCheck, done && styles.warmupCheckDone]}
+                        onPress={() => toggleWarmupRow(wi)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.warmupCheckMark, done && styles.warmupCheckMarkDone]}>✓</Text>
+                      </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>
             </View>
           ) : null}
 
-          {/* Column headers */}
+          {/* SectionLabel "SERIES" — solo si hay sección de aproximación (§2) */}
+          {hasWarmup ? (
+            <Text style={styles.sectionLabel}>{t('workout.setsSectionLabel').toUpperCase()}</Text>
+          ) : null}
+
+          {/* SetsGrid — fila 0: headers de columna (§4.5) */}
           <View style={styles.colHeader}>
-            <View style={{ width: 20 }} />
+            <View style={{ width: GRID.LABEL_W }} />
             {inputType === 'reps' ? (
-              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
+              <Text style={styles.colLabel}>{t('workout.reps').toUpperCase()}</Text>
             ) : inputType === 'time' ? (
-              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.timeSec').toUpperCase()}</Text>
+              <Text style={styles.colLabel}>{t('workout.timeSec').toUpperCase()}</Text>
             ) : inputType === 'weight_time' ? (
               <>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.timeSec').toUpperCase()}</Text>
+                <Text style={styles.colLabel}>{weightLabel.toUpperCase()}</Text>
+                <Text style={styles.colLabel}>{t('workout.timeSec').toUpperCase()}</Text>
               </>
             ) : (
               // weight_reps (default)
               <>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{weightLabel.toUpperCase()}</Text>
-                <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>{t('workout.reps').toUpperCase()}</Text>
+                <Text style={styles.colLabel}>{weightLabel.toUpperCase()}</Text>
+                <Text style={styles.colLabel}>{t('workout.reps').toUpperCase()}</Text>
               </>
             )}
-            {/* Timer btn spacer — igualado a timerBtn/doneBtn (32×32) */}
-            {hasTimer && <View style={{ width: 32 }} />}
-            {/* RPE column */}
-            {trackRpe && (
-              <Text style={[styles.colLabel, { flex: 1, textAlign: 'center' }]}>RPE</Text>
-            )}
-            {/* Done btn spacer */}
-            <View style={{ width: 32 }} />
+            {/* Play btn — header vacío */}
+            {hasTimer && <View style={{ width: GRID.BTN_W }} />}
+            {trackRpe && <Text style={styles.colLabel}>RPE</Text>}
+            {/* Check btn — header vacío */}
+            <View style={{ width: GRID.BTN_W }} />
           </View>
 
           {/* Sets */}
@@ -706,7 +781,7 @@ export default function ExerciseCard({
                 ? String(lastSet.time) : '';
 
               // Trainer target (if any) wins over the last-session reference and
-              // renders blue; otherwise the grey last-session ghost stays.
+              // renders blue; otherwise the grey ghost stays.
               const coachWeightDisp = overrideEx?.weight != null && overrideEx?.weight !== ''
                 ? String(toDisplay(overrideEx.weight)) : undefined;
               const ref = resolveExerciseReference(
@@ -831,20 +906,22 @@ export default function ExerciseCard({
                   </View>
                 );
               })}
-              <TouchableOpacity style={styles.addDropBtn} onPress={onAddDrop} activeOpacity={0.7}>
-                <Text style={styles.addDropText}>+ {t('workout.addDropBtn')}</Text>
+              <TouchableOpacity style={styles.addLink} onPress={onAddDrop} activeOpacity={0.7}>
+                <Text style={[styles.addLinkText, styles.addDropPlus]}>+</Text>
+                <Text style={styles.addLinkText}>{t('workout.addDropBtn')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
 
-          {/* Añadir serie — oculto en superset, el grupo comparte un único botón (SupersetBlock) */}
+          {/* AddSetLink (§4.6) — oculto en superset, el grupo comparte un único enlace */}
           {!hideAddSetBtn && (
-            <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet} activeOpacity={0.7}>
-              <Text style={styles.addSetText}>+ {t('workout.addSetBtn')}</Text>
+            <TouchableOpacity style={[styles.addLink, styles.addSetLink]} onPress={onAddSet} activeOpacity={0.7}>
+              <Text style={[styles.addLinkText, styles.addSetPlus]}>+</Text>
+              <Text style={styles.addLinkText}>{t('workout.addSetBtn')}</Text>
             </TouchableOpacity>
           )}
 
-        </>
+        </View>
 
       )}
 
@@ -869,282 +946,300 @@ export default function ExerciseCard({
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
+  // §2 — ExerciseCard (bg card, radius 16, overflow hidden). El marginBottom 14
+  // del spec lo aporta el `gap` del ScrollView (WorkoutScreen).
   card: {
-    // Exercice Card Default (105:2490): bg surface, radius/lg.
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
+    borderRadius:    R_CARD,
     overflow:        'hidden',
-    paddingBottom:   spacing.lg,
     // Borde transparente OBLIGATORIO (no decorativo): en Android, un View con
     // overflow:'hidden' + borderRadius NO recompone/pinta sus hijos de forma fiable
     // salvo que tenga un borde que fuerce la capa de recorte — sin él la card queda
-    // "gris" (fondo visible, contenido montado pero sin pintar). Mismo ancho que
-    // cardCollapsed para que pasar a completada solo cambie el COLOR, sin salto.
-    borderWidth: borders.thin,
+    // "gris" (fondo visible, contenido montado pero sin pintar).
+    borderWidth: 1,
     borderColor: 'transparent',
   },
-  // Miembro de superset: sin botón "+ Añadir serie" ni notas al fondo, así que
-  // el paddingBottom grande sobra y separaba demasiado los ejercicios del grupo.
-  // Esquinas superiores cuadradas (el redondeo lo aporta SupersetBlock por fuera):
-  // sin esto, el fondo teñido del header (que se recorta con el radius/overflow
-  // de ESTA card) se veía como una caja redondeada flotando a media altura del
-  // grupo en vez de un rectángulo de lado a lado.
-  cardSupersetMember: {
-    paddingBottom:       spacing.xs2,
-    borderTopLeftRadius:  0,
-    borderTopRightRadius: 0,
-  },
-  // Completada (364:3030): mismo fondo `surface` que la card normal. Padding
-  // siempre a 0 al colapsar (con o sin borde propio — ver cardCollapsedBorder).
-  cardCollapsed: {
-    paddingBottom: 0,
-  },
-  // Borde acento — único "highlight" de completado (regla de bordes de fidelidad).
-  // Separado de `cardCollapsed` porque un miembro de superset lo suprime cuando
-  // el GRUPO entero está completo (el highlight pasa al SupersetBlock, §suppressCollapsedBorder).
-  cardCollapsedBorder: {
-    // El ancho ya lo pone `card` (borde transparente); aquí solo se tiñe.
-    borderColor: th.tint.accent50,
-  },
+  // Superserie: el par se lee como un bloque partido en dos — esquinas
+  // interiores a radio 4, exteriores a 16 (la separación de 2px la pone
+  // SupersetBlock).
+  cardGroupFirst: { borderBottomLeftRadius: R_INNER, borderBottomRightRadius: R_INNER },
+  cardGroupMid:   { borderRadius: R_INNER },
+  cardGroupLast:  { borderTopLeftRadius: R_INNER, borderTopRightRadius: R_INNER },
 
-  // Header — fondo propio (surface2 60%, nodo 361:2955) que distingue la zona
-  // título/subtítulo/notas del resto de la card. `card` no tiene padding horizontal
-  // propio (cada sección lo gestiona), así que este fondo sale a sangre de lado a
-  // lado y el propio `overflow:hidden` de la card lo recorta en las esquinas de arriba.
+  // §3 Header — bg cardHead, padding 14 12 14 16, gap 10, alignItems flex-start.
   header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    backgroundColor:   withOpacity(th.colors.surface2, 0.6),
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.md,
-    // El margen (fuera del padding, así que fuera del área con fondo) separa el
-    // fondo teñido de los chips de progresión que van justo debajo.
-    marginBottom:      spacing.sm,
-    gap:               spacing.sm,
+    flexDirection:   'row',
+    alignItems:      'flex-start',
+    gap:             10,
+    backgroundColor: th.colors.surface2,
+    paddingTop:      14,
+    paddingRight:    12,
+    paddingBottom:   14,
+    paddingLeft:     16,
   },
-  // Miembro de superset: el bloque ya aporta su propio aire por encima —
-  // reduce el padding superior del header para no acumular ambos.
-  headerCompact: {
-    paddingTop: spacing.sm,
+  // Hueco del número — el ✓ del estado colapsado hace crossfade encima, sin
+  // desplazar el nombre.
+  numSlot: {
+    minWidth: 22,
   },
-  headerLeft: { flex: 1, gap: 3 },
-  // Sub-fila check + título (comparte el `gap` del header solo con headerRight).
-  headerMain: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
+  num: {
+    fontFamily:  'Inter_900Black',
+    fontSize:    17,
+    fontWeight:  '900',
+    lineHeight:  22,
+    color:       th.colors.accent,
+    fontVariant: ['tabular-nums'],
   },
-  // Ranura del check — ancho animado (0 ↔ 26+hueco); overflow oculto para que el
-  // icono se revele deslizando. Sin borderRadius (no dispara el bug de recorte Android).
-  checkSlot: {
-    overflow:      'hidden',
-    flexDirection: 'row',
-    alignItems:    'center',
+  numOverlay: {
+    position:  'absolute',
+    left: 0, right: 0, top: 0,
+    textAlign: 'center',
   },
-
+  // NameBlock (§3) — `flex: 1` reparte el ancho sobrante de la fila. OJO: no
+  // anidar aquí otro View con `flex: 1`; en un contenedor en columna eso implica
+  // `flexBasis: 0` en vertical y colapsa la altura del bloque, dejando el target
+  // ("3 × 12") fuera de la banda del header.
+  headerNameTap: { flex: 1, minWidth: 0 },
   nameRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
+    gap:           spacing.sm,
     flexWrap:      'wrap',
   },
   name: {
-    ...textStyles.exercice,
-    color:      th.colors.text,
-    flexShrink: 1,
+    fontFamily:    'Inter_900Black',
+    fontSize:      17,
+    fontWeight:    '900',
+    lineHeight:    22,
+    letterSpacing: -0.17,
+    color:         th.colors.text,
+    flexShrink:    1,
   },
   keyBadge: {
     fontSize:          typography.xs,
     fontWeight:        typography.bold,
     color:             th.colors.accent,
-    backgroundColor:   withOpacity(th.colors.accent, 0.1),
-    borderRadius:      th.radius.sm,
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      R_SMALL,
     paddingHorizontal: spacing.xs,
     paddingVertical:   2,
     overflow:          'hidden',
     letterSpacing:     0.5,
   },
-  // Prefijo inline delante del nombre — misma tipografía, accent. Compartido por el
-  // número de orden ("01"/"02"…) y el prefijo de superset (A1/A2…).
-  groupPrefix: {
-    ...textStyles.exercice,
-    color: th.colors.accent,
-  },
   target: {
-    ...textStyles.cardType,
-    color:           th.colors.mutedLight,
-    textTransform:   'uppercase',
+    fontFamily:  'Inter_600SemiBold',
+    fontSize:    12,
+    fontWeight:  '600',
+    color:       th.colors.mutedLight,
+    marginTop:   3,
+    fontVariant: ['tabular-nums'],
   },
   tempoInline: {
-    ...textStyles.cardType,
     color:         th.colors.muted,
-    letterSpacing: 2,
+    letterSpacing: 1.2,
   },
-  headerRight: {
+  // NoteButton — 32×32, radius 9, sin fondo, marginTop −5 (alinea ópticamente
+  // con la 1ª línea del nombre).
+  noteBtn: {
+    width:          32,
+    height:         32,
+    marginTop:      -5,
+    borderRadius:   R_SMALL,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  noteDot: {
+    position:        'absolute',
+    top: 3, right: 3,
+    width: 6, height: 6,
+    borderRadius:    3,
+    backgroundColor: th.colors.accent,
+  },
+
+  // §4 Body — padding 12 16 14.
+  body: {
+    paddingTop:    12,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+  },
+
+  // §4.1 ProgressionLine — solo tipografía, sin fondo ni chip.
+  progLine: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
+    alignItems:    'baseline',
+    gap:           8,
+    paddingTop:    2,
+    paddingBottom: 12,
   },
-
-  // Trainer note strip
-  trainerNote: {
-    marginHorizontal:  spacing.md,
-    marginBottom:      spacing.sm,
-    backgroundColor:   withOpacity(th.colors.accent, 0.07),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.accent, 0.25),
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   5,
+  progDir: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      11,
+    fontWeight:    '900',
+    letterSpacing: 1.1,
+    color:         th.colors.accent,
+    textTransform: 'uppercase',
   },
-  trainerNoteText: {
-    fontSize:   typography.xs,
-    color:      th.colors.text,
-    lineHeight: 17,
-  },
-  trainerNoteName: {
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
-
-  // Progression chip — Chips (110:4247): borde izquierdo, fondo tint tenue, radius/xs
-  chip: {
-    marginHorizontal:  spacing.lg,
-    marginBottom:      spacing.sm,
-    borderLeftWidth:   borders.thin,
-    borderRadius:      th.radius.xs,
-    padding:           spacing.sm,
-  },
-  chipText: {
-    ...textStyles.tag,
-  },
-  coachChip: {
-    backgroundColor: th.tint.blue30,
-    borderLeftColor: th.colors.blue,
-  },
-
-  // Coach one-off note strip
-  coachNote: {
-    marginHorizontal:  spacing.md,
-    marginBottom:      spacing.sm,
-    backgroundColor:   withOpacity(th.colors.blue, 0.07),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.blue, 0.25),
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   5,
-  },
-  coachNoteText: {
-    fontSize:   typography.xs,
-    color:      th.colors.text,
-    lineHeight: 17,
-  },
-  coachNoteName: {
-    fontWeight: typography.bold,
-    color:      th.colors.blue,
-  },
-  coachNoteTag: {
-    color: th.colors.muted,
-  },
-
-  // Column headers — texto/columnas exactas de Figma, pero el grid se queda
-  // flex:1/centrado (excepción de fidelidad §5.3-bis: el mock de Figma tiene
-  // un desalineado deliberadamente NO replicado).
-  colHeader: {
-    flexDirection:     'row',
-    paddingHorizontal: spacing.lg,
-    gap:               spacing.sm,
-    marginBottom:      spacing.xs,
-  },
-  colLabel: {
-    ...textStyles.cardType,
+  progDirHold: {
     color: th.colors.mutedLight,
   },
-
-  // Sets — gap explícito entre filas (antes solo el paddingVertical de cada fila, 4px)
-  setList: {
-    paddingHorizontal: spacing.lg,
-    gap:               spacing.xs2,
+  progDirCoach: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      11,
+    fontWeight:    '900',
+    letterSpacing: 1.1,
+    color:         th.colors.blue,
+    textTransform: 'uppercase',
+  },
+  progDetail: {
+    flex:        1,
+    fontFamily:  'Inter_700Bold',
+    fontSize:    12,
+    fontWeight:  '700',
+    color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
   },
 
-  // Warmup — sin fondo propio; se apoya en el fondo de la card (Opción B)
-  warmupSection: {
-    marginHorizontal: spacing.lg,
-    marginBottom:     spacing.md,
-    gap:              spacing.xs2,
+  // §4.2 SectionLabel — 10/700 uppercase, tracking 0.14em, muted2, mb 8.
+  sectionLabel: {
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
+    fontWeight:    '700',
+    letterSpacing: 1.4,
+    color:         th.colors.muted,
+    marginBottom:  8,
   },
-  warmupHeader: {
+  sectionLabelRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'baseline',
-    marginBottom:   spacing.xs,
   },
-  // Etiqueta de sección — paralela a "SERIES DE TRABAJO" (neutro mutedLight)
-  warmupLabel: {
-    ...textStyles.spacingTag,
-    color: th.colors.mutedLight,
+  // Meta de descanso — no está en el spec, se conserva de la implementación
+  // previa alineada a la derecha del SectionLabel.
+  sectionLabelMeta: {
+    fontFamily:   'Inter_500Medium',
+    fontSize:     10,
+    fontWeight:   '500',
+    color:        th.colors.muted,
+    marginBottom: 8,
   },
-  warmupMeta: {
-    ...textStyles.tag,
-    color: th.colors.mutedLight,
+
+  // §4.3 WarmupSection expandida — grid 26 | 1fr | 42, gap 6/10, mb 14.
+  warmupSection: {
+    marginBottom: 14,
   },
   warmupBanner: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    fontStyle: 'italic',
+    fontSize:     typography.xs,
+    color:        th.colors.mutedLight,
+    fontStyle:    'italic',
+    marginBottom: 6,
   },
   warmupRows: {
-    gap: spacing.xs2,
+    gap: 6,
   },
-  // Fila = etiqueta C1 (fuera) + chip que abraza el valor (no llega al final)
   warmupRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.sm,
+    gap:           10,
   },
-  // Etiqueta "C1/C2…" con la misma tipografía que "S1/S2" del grid
   warmupRowLabel: {
-    width:      20,
+    width:       GRID.LABEL_W,
+    fontFamily:  'Inter_800ExtraBold',
+    fontSize:    12,
+    fontWeight:  '800',
+    color:       th.colors.muted,
+    fontVariant: ['tabular-nums'],
+  },
+  warmupDetail: {
+    flex:        1,
+    fontSize:    14,
+    fontVariant: ['tabular-nums'],
+  },
+  warmupWeight: { fontFamily: 'Inter_800ExtraBold', fontWeight: '800', color: th.colors.text },
+  warmupTimes:  { fontFamily: 'Inter_600SemiBold',  fontWeight: '600', color: th.colors.muted },
+  warmupReps:   { fontFamily: 'Inter_700Bold',      fontWeight: '700', color: th.colors.mutedLight },
+  // Fila completada: todo el texto se apaga a muted2.
+  warmupTextOff: { color: th.colors.muted },
+  warmupCheck: {
+    width:           GRID.BTN_W,
+    height:          34,
+    borderRadius:    R_SMALL,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  warmupCheckDone: {
+    backgroundColor: th.colors.accent,
+  },
+  warmupCheckMark: {
+    fontSize: 13,
+    color:    th.colors.mutedLight,
+  },
+  warmupCheckMarkDone: {
     fontFamily: 'Inter_900Black',
-    fontSize:   12,
     fontWeight: '900',
-    color:      th.tint.accent50,
+    color:      th.colors.onAccent,
   },
-  // Chip que abraza el contenido (alignSelf implícito por ser hijo de una fila).
-  // Borde transparente en reposo para que el estado "tocado" no desplace el layout.
-  warmupChip: {
-    backgroundColor:   th.colors.bg,
-    borderRadius:      th.radius.sm,
-    borderWidth:       0.5,
-    borderColor:       'transparent',
-    paddingVertical:   spacing.xs2,
-    paddingHorizontal: spacing.md,
-  },
-  // Tap → resalta en accent (dispara el descanso)
-  warmupChipTapped: {
-    borderColor:     th.tint.accent50,
-    backgroundColor: th.tint.accent10,
-  },
-  // Texto 2 colores (§9 UI-MIGRATION): peso en accent, unidad en text, "×" mutedLight, reps en text
-  warmupPillText: { ...textStyles.cardType },
-  warmupPillNum:   { color: th.colors.accent },
-  warmupPillUnit:  { color: th.colors.text },
-  warmupPillTimes: { color: th.colors.mutedLight },
-  warmupPillReps:  { color: th.colors.text },
 
-  // Dropset sub-block — label/botón en rojo (adoptado, hoy naranja); sin borde
-  // izquierdo (no está en el componente real de Figma, solo en la guía previa).
+  // §4.4 WarmupSection colapsada — row, gap 8, padding 2 0 14.
+  warmupCollapsed: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           8,
+    paddingTop:    2,
+    paddingBottom: 14,
+  },
+  warmupCollapsedTick: {
+    fontFamily: 'Inter_900Black',
+    fontWeight: '900',
+    fontSize:   12,
+    color:      th.colors.accent,
+  },
+  warmupCollapsedText: {
+    flexShrink:  1,
+    fontFamily:  'Inter_700Bold',
+    fontSize:    12,
+    fontWeight:  '700',
+    color:       th.colors.muted,
+    fontVariant: ['tabular-nums'],
+  },
+  warmupCollapsedChevron: {
+    marginLeft: 'auto',
+    fontSize:   14,
+    color:      th.colors.muted,
+  },
+
+  // §4.5 SetsGrid — headers de columna (mismo estilo que SectionLabel, centrado).
+  colHeader: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           10,
+    marginBottom:  8,
+  },
+  colLabel: {
+    flex:          1,
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
+    fontWeight:    '700',
+    letterSpacing: 1.4,
+    color:         th.colors.muted,
+    textAlign:     'center',
+  },
+  setList: {
+    gap: 8,
+  },
+
+  // Dropset sub-block — label/enlace en rojo.
   dropBlock: {
-    marginHorizontal: spacing.lg,
-    marginTop:        spacing.sm,
-    paddingLeft:      spacing.sm,
-    paddingRight:     spacing.md,
+    marginTop: 12,
   },
   dropBlockLabel: {
-    ...textStyles.spacingTag,
-    color:        th.colors.red,
-    marginBottom: spacing.xs,
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
+    fontWeight:    '700',
+    letterSpacing: 1.4,
+    color:         th.colors.red,
+    marginBottom:  8,
   },
   dropRowWrap: {
     flexDirection: 'row',
@@ -1156,32 +1251,66 @@ const makeStyles = (th) => StyleSheet.create({
   },
   dropRemoveText: {
     fontSize: typography.sm,
-    color:    th.colors.muted2,
+    color:    th.colors.muted,
   },
-  addDropBtn: {
-    marginTop:       spacing.xs,
-    paddingVertical: spacing.xs + 2,
-    alignItems:      'center',
+  // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
+  // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
+  addLink: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            6,
+    paddingTop:     6,
+    paddingBottom:  2,
   },
-  addDropText: {
-    ...textStyles.spacingTag,
-    color:         th.tint.red50,
-    textTransform: 'uppercase',
+  addLinkText: {
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      13,
+    fontWeight:    '800',
+    letterSpacing: 0.26,
+    color:         th.colors.mutedLight,
+  },
+  addSetLink:  { marginTop: 12 },
+  addSetPlus:  { color: th.colors.accent },
+  addDropPlus: { color: th.colors.red },
+
+  // Trainer note strip — sin borde (regla de identidad del spec), solo relleno.
+  trainerNote: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      R_SMALL,
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+    marginBottom:      12,
+  },
+  trainerNoteText: {
+    fontSize:   typography.xs,
+    color:      th.colors.text,
+    lineHeight: 17,
+  },
+  trainerNoteName: {
+    fontWeight: typography.bold,
+    color:      th.colors.accent,
   },
 
-  // Add set — Buttons "Añadir serie/sesion" outline (106:3284)
-  addSetBtn: {
-    marginTop:         spacing.sm,
-    marginHorizontal:  spacing.lg,
-    paddingVertical:   spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.tint.accent50,
-    borderRadius:      th.radius.md,
-    alignItems:        'center',
+  // Coach one-off note strip
+  coachNote: {
+    backgroundColor:   withOpacity(th.colors.blue, 0.1),
+    borderRadius:      R_SMALL,
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+    marginBottom:      12,
   },
-  addSetText: {
-    ...textStyles.cardType,
-    color: th.tint.accent50,
+  coachNoteText: {
+    fontSize:   typography.xs,
+    color:      th.colors.text,
+    lineHeight: 17,
+  },
+  coachNoteName: {
+    fontWeight: typography.bold,
+    color:      th.colors.blue,
+  },
+  coachNoteTag: {
+    color: th.colors.mutedLight,
   },
 
   // Hidden measurement view (absolutely positioned, opacity 0)
@@ -1193,35 +1322,16 @@ const makeStyles = (th) => StyleSheet.create({
     top:      0,
   },
 
-  // Collapsed
-  // Icono check (364:3030, Icons "Check") — glifo plano sin círculo/fondo propio,
-  // mismo tamaño (26) que el icono de notas para alinear ambos extremos del header.
-  collapsedCheck: {
-    width:          26,
-    height:         26,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  collapsedCheckMark: {
-    fontSize:   18,
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
-
-  // Resumen de series colapsado — EstructuraVisualizacionDatosEjercicios "Semi
-  // compacta" (176:1267), MISMA lógica/estilo que HistoryScreen (groupSetsByWeight
-  // + getPillVariant + buildSetLabel de setDisplay.js). Única diferencia real:
-  // aquí "fuera de rango" es ROJO, no naranja — verificado contra el nodo real
-  // 364:3030 (pills con bg tint/red-30 y texto color/red) y pedido explícito del
-  // usuario para esta card ("lima en rango / roja fuera de rango").
-  // paddingBottom = spacing.sm, IGUAL al marginBottom de `header` (gap de arriba)
-  // — antes usaba spacing.lg y quedaba más aire abajo que arriba de las pills.
+  // Resumen de series colapsado — MISMA lógica/estilo que HistoryScreen
+  // (groupSetsByWeight + getPillVariant + buildSetLabel de setDisplay.js).
+  // Única diferencia real: aquí "fuera de rango" es ROJO (pedido del usuario).
   collapsedPillsRow: {
     flexDirection:     'row',
     flexWrap:          'wrap',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom:     spacing.sm,
+    gap:               8,
+    paddingHorizontal: 16,
+    paddingTop:        12,
+    paddingBottom:     14,
   },
   setGroup: {
     flexDirection: 'row',
@@ -1229,7 +1339,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
   },
   weightPill: {
-    paddingLeft:     spacing.sm,
     paddingVertical: spacing.sm,
   },
   weightPillText: {
@@ -1239,12 +1348,11 @@ const makeStyles = (th) => StyleSheet.create({
   weightPillUnit: { color: th.colors.text },
   weightPillX:    { color: th.colors.mutedLight },
 
-  // Pill base (gris = sin datos/pendiente). Sin borde, radius/xs, padding/sm — misma
-  // anatomía que History/Progress (ver figma-style-fidelity-rules en memoria).
   setPill: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.xs,
-    padding:         spacing.sm,
+    backgroundColor: th.colors.bg,
+    borderRadius:    R_SMALL,
+    paddingHorizontal: 8,
+    paddingVertical:   6,
   },
   setPillDone: {
     backgroundColor: th.tint.accent10,
@@ -1263,7 +1371,7 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.red,
   },
   // El "@" de "12@8" — más apagado que el resto del número, mismo color base del pill.
-  setPillRpeAt:        { color: th.colors.mutedLight },
+  setPillRpeAt:        { color: th.colors.muted },
   setPillRpeAtDone:    { color: th.tint.accent50 },
   setPillRpeAtPartial: { color: th.tint.red50 },
 });

@@ -161,12 +161,15 @@
     "keyBadge": "KEY",
     "coachTarget": "Your trainer's target",
     "thisSession": "this session",
+    "setsSectionLabel": "Sets",
+    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce" },
     "warmup": {
       "blockLabel": "Warmup",
       "metaSuffix": " · C×{{count}}",
       "restLabel": "Rest {{sec}}s",
       "noTimer": "No timer",
-      "noReference": "Weights are calculated once you enter your first work weight"
+      "noReference": "Weights are calculated once you enter your first work weight",
+      "collapsedSummary": "{{label}} · {{count}} sets up to {{weight}}"
     }
   },
   "freeSession": {

@@ -1,9 +1,9 @@
 /**
- * SetRow — fila de una serie individual.
+ * SetRow — fila de una serie individual (SetsGrid, spec §4.5).
  *
  * inputType: 'weight_reps' | 'reps' | 'time' | 'weight_time'
  *
- * Layouts:
+ * Layouts (columnas del spec: 26 | 1fr… | 42 [| 42], gap 10):
  *   weight_reps  →  [S1] [peso] [reps] [✓]
  *   reps         →  [S1] [reps]        [✓]
  *   time         →  [S1] [seg]  [▶]    [✓]
@@ -19,8 +19,9 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { spacing, typography, textStyles, borders, withOpacity } from '../../theme';
+import { spacing, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import { GRID } from './grid';
 
 const STEP_PX  = 8;
 const H_THRESH = 12;
@@ -229,12 +230,14 @@ function InputCell({
   const dotIdx = renderStr.indexOf('.');
   const intStr = renderStr ? (dotIdx >= 0 ? renderStr.slice(0, dotIdx) : renderStr) : '';
   const decStr = dotIdx >= 0 ? renderStr.slice(dotIdx) : '';
-  // Ghost styling: grey for last-session reference, blue for a trainer target.
+  // Ghost: valor sugerido aún no confirmado. El spec lo quiere en limeGhost pero
+  // el usuario prefiere el gris original (muted2) — la lima competía demasiado con
+  // las series ya completadas. El objetivo del entrenador conserva su azul.
   const ghostStyle = showPrev
-    ? (prevSource === 'coach' ? styles.valueTextCoach : styles.valueTextPrev)
+    ? (prevSource === 'coach' ? styles.valueTextCoach : styles.valueTextGhost)
     : null;
-  // Input Field states (105:2415): fila activa = "Current" (borde + texto claro),
-  // valor sin ser la activa = "Done" (texto mutedLight), sin valor = "Empty".
+  // La celda ACTIVA mantiene la lógica y el look previos (borde accent-50 +
+  // chevrones) — excepción explícita a la regla "sin bordes" del spec.
   const isCurrent = showHint;
 
   return (
@@ -243,19 +246,18 @@ function InputCell({
         onPress={openEditor}
         style={[
           styles.input,
+          isDone && styles.inputDone,
           isCurrent && styles.inputCurrent,
-          showPrev && styles.inputPrev,
-          showPrev && prevSource === 'coach' && styles.inputCoach,
         ]}
       >
         {renderStr ? (
           <View style={styles.numRow}>
             <View style={styles.decPart} />
-            <Text style={[styles.valueText, isDone && styles.valueTextDone, isCurrent && styles.valueTextCurrent, ghostStyle]}>{intStr}</Text>
-            <Text style={[styles.valueText, styles.decPart, isDone && styles.valueTextDone, isCurrent && styles.valueTextCurrent, ghostStyle]} numberOfLines={1}>{decStr}</Text>
+            <Text style={[styles.valueText, isDone && styles.valueTextDone, ghostStyle]}>{intStr}</Text>
+            <Text style={[styles.valueText, styles.decPart, isDone && styles.valueTextDone, ghostStyle]} numberOfLines={1}>{decStr}</Text>
           </View>
         ) : (
-          <Text style={styles.placeholder}>—</Text>
+          <Text style={styles.placeholder}>–</Text>
         )}
       </Pressable>
 
@@ -434,22 +436,21 @@ export default function SetRow({
 
 const makeStyles = (th) => StyleSheet.create({
   row: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           GRID.GAP,
   },
-  // "S1"/"S2"… — Black 12, sin tracking, sin relación con text/card-type.
+  // Label "S1" (§4.5) — 12/800, muted, tabular. Fila completada → lime.
   setNum: {
-    width:      20,
-    fontFamily: 'Inter_900Black',
-    fontSize:   12,
-    fontWeight: '900',
-    color:      th.colors.mutedLight,
-    textAlign:  'right',
+    width:       GRID.LABEL_W,
+    fontFamily:  'Inter_800ExtraBold',
+    fontSize:    12,
+    fontWeight:  '800',
+    color:       th.colors.mutedLight,
+    fontVariant: ['tabular-nums'],
   },
   setNumDone: {
-    color: th.tint.accent50,
+    color: th.colors.accent,
   },
   setNumActive: {
     color: th.colors.accent,
@@ -457,31 +458,33 @@ const makeStyles = (th) => StyleSheet.create({
 
   inputCell: { flex: 1 },
 
-  // Input Field (105:2415) — Empty/Done: bg workout-card, sin borde. Current
-  // (105:2416): + borde tint/accent-50. El valor de "workout-card" (#141414)
-  // coincide con th.colors.bg en formaFit, no hace falta un token nuevo.
-  // Alto igualado al de los botones (done/timer, 36×36) — pedido de QA.
+  // Celda input (§4.5) — alto 44, radius 11, bg cellFill, contenido centrado 15px.
   input: {
-    width:            '100%',
-    height:           36,
-    backgroundColor:  th.colors.bg,
-    borderRadius:     th.radius.sm,
+    width:             '100%',
+    height:            GRID.CELL_H,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      GRID.RADIUS,
     paddingHorizontal: spacing.sm,
     alignItems:        'center',
     justifyContent:    'center',
+  },
+  // Completada: bg limeDim, texto lime.
+  inputDone: {
+    backgroundColor: th.tint.accent10,
   },
   inputEditing: {
     backgroundColor:   th.colors.bg,
     borderWidth:       borders.thin,
     borderColor:       th.colors.accent,
-    borderRadius:      th.radius.sm,
+    borderRadius:      GRID.RADIUS,
     color:             th.colors.text,
-    fontSize:          typography.md,
-    fontWeight:        typography.semibold,
+    fontFamily:        'Inter_800ExtraBold',
+    fontSize:          15,
+    fontWeight:        '800',
     textAlign:         'center',
-    paddingVertical:   spacing.xs + 2,
     paddingHorizontal: spacing.xs,
   },
+  // Celda ACTIVA — se conserva tal cual (excepción a la regla "sin bordes").
   inputCurrent: {
     borderWidth: 0.5,
     borderColor: th.tint.accent50,
@@ -491,44 +494,39 @@ const makeStyles = (th) => StyleSheet.create({
     top: 0, left: 0, right: 0, bottom: 0,
     borderWidth:     borders.thin,
     borderColor:     th.colors.accent,
-    borderRadius:    th.radius.sm,
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  inputPrev: {
-    borderWidth: 0.5,
-    borderColor: th.colors.borderCard,
-  },
-  inputCoach: {
-    borderWidth: 0.5,
-    borderColor: th.tint.blue30,
+    borderRadius:    GRID.RADIUS,
+    backgroundColor: th.tint.accent10,
   },
 
-  // Done (mutedLight) / serie completada (accent tint-50) / Current (text, fila
-  // activa, gana sobre completada) — todos comparten la fuente de Input Field
-  // (ExtraBold 12/1.2, "text/card-type").
+  // Estados de celda (§4.5): valor del usuario 800/text · ghost 700/limeGhost
+  // (o azul si es objetivo del coach) · completada lime · vacía 600/muted2.
   valueText: {
-    ...textStyles.cardType,
-    color:     th.colors.mutedLight,
-    textAlign: 'center',
+    fontFamily:  'Inter_800ExtraBold',
+    fontSize:    15,
+    fontWeight:  '800',
+    color:       th.colors.text,
+    textAlign:   'center',
+    fontVariant: ['tabular-nums'],
   },
   valueTextDone: {
-    color: th.tint.accent50,
+    color: th.colors.accent,
   },
-  valueTextCurrent: {
-    color: th.colors.text,
-  },
-  valueTextPrev: {
+  valueTextGhost: {
+    fontFamily: 'Inter_700Bold',
+    fontWeight: '700',
     color:      th.colors.muted2,
-    fontWeight: typography.regular,
   },
   valueTextCoach: {
+    fontFamily: 'Inter_700Bold',
+    fontWeight: '700',
     color:      th.colors.blue,
-    fontWeight: typography.regular,
   },
   placeholder: {
-    ...textStyles.cardType,
-    color:     th.colors.muted,
-    textAlign: 'center',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize:   15,
+    fontWeight: '600',
+    color:      th.colors.muted,
+    textAlign:  'center',
   },
 
   numRow: {
@@ -550,49 +548,39 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
   },
 
-  // Done button — Icons Serie uncheck (105:2459) / Current Uncheck (105:2479) / done (106:2701)
-  // Ligeramente más pequeño que las celdas (32, no 36) — pedido de QA, sin tocar
-  // el ancho de los Input Field (flex:1, no dependen de este valor).
-  // marginLeft extra (además del gap de `row`) — más aire respecto a la celda de la izquierda.
+  // Botón check (§4.5) — 42 × 44, radius 11, bg btnFill, ✓ 15px muted.
   doneBtn: {
-    width:           32,
-    height:          32,
-    marginLeft:      spacing.xs,
-    borderRadius:    th.radius.sm,
+    width:           GRID.BTN_W,
+    height:          GRID.CELL_H,
+    borderRadius:    GRID.RADIUS,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  // Hecha: fondo/borde tint accent (antes era el look de "activa"; se intercambiaron).
   doneBtnActive: {
-    borderWidth:     0.5,
-    borderColor:     th.tint.accent50,
-    backgroundColor: th.tint.accent10,
+    backgroundColor: th.colors.accent,
   },
-  doneMark: { fontSize: 16, color: th.colors.muted },
-  // Activa (aún sin marcar): solo cambia el color del icono frente a las pendientes,
-  // sin fondo/borde propio — el fondo/borde "tint" ahora es el de la serie hecha.
+  doneMark: { fontSize: 15, color: th.colors.mutedLight },
+  // Activa (aún sin marcar): solo cambia el color del icono frente a las pendientes.
   doneMarkCurrent: { color: th.tint.accent50 },
-  doneMarkActive:  { color: th.colors.accent },
+  doneMarkActive:  { fontFamily: 'Inter_900Black', fontWeight: '900', color: th.colors.onAccent },
 
-  // Timer button — sin glifo propio en Figma, restyle por analogía alineado al done (32×32)
+  // Botón play (§4.5) — misma caja que el check.
   timerBtn: {
-    width:           32,
-    height:          32,
-    borderRadius:    th.radius.sm,
+    width:           GRID.BTN_W,
+    height:          GRID.CELL_H,
+    borderRadius:    GRID.RADIUS,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   timerBtnRunning: {
-    borderWidth:     0.5,
-    borderColor:     th.tint.accent50,
     backgroundColor: th.tint.accent10,
   },
   timerBtnIcon: {
-    fontSize:           13,
-    color:              th.colors.muted,
-    lineHeight:         13,
+    fontSize:           15,
+    color:              th.colors.mutedLight,
+    lineHeight:         16,
     includeFontPadding: false,
     textAlign:          'center',
   },

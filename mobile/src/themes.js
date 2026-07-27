@@ -117,10 +117,15 @@ const spaceColors = {
 };
 
 // FormaFit — first theme of the Figma redesign: near-black bg, lime accent.
+//
+// surface / surface2 siguen la escala del Exercise Card Spec v6, que construye
+// toda la jerarquía con rellenos (sin bordes): body de tarjeta = bg + 9, banda
+// del header y botones = bg + 18. Con bg #141414 eso da #1d1d1d y #262626.
+// `border`/`borderCard` NO acompañan el cambio: son líneas, no superficies.
 const formaFitColors = {
   bg:         '#141414',
-  surface:    '#252525',
-  surface2:   '#3a3a3a',
+  surface:    '#1d1d1d',
+  surface2:   '#262626',
   text:       '#e6e6e6',
   mutedLight: '#818181',
   muted:      '#4d4d4d',

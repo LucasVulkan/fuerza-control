@@ -161,12 +161,15 @@
     "keyBadge": "CLAVE",
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
+    "setsSectionLabel": "Series",
+    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar" },
     "warmup": {
       "blockLabel": "Calentamiento",
       "metaSuffix": " · C×{{count}}",
       "restLabel": "Descanso {{sec}}s",
       "noTimer": "Sin temporizador",
-      "noReference": "Los pesos se calculan al escribir tu primer peso de trabajo"
+      "noReference": "Los pesos se calculan al escribir tu primer peso de trabajo",
+      "collapsedSummary": "{{label}} · {{count}} series hasta {{weight}}"
     }
   },
   "freeSession": {
