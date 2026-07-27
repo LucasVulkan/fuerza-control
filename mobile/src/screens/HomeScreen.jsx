@@ -111,14 +111,12 @@ function computeStageInfo(program, t) {
     Math.floor(sessionsCompleted / sessionsPerCycle) + 1,
     totalWeeks,
   );
-  const progressRatio    = Math.min(1, sessionsCompleted / (totalWeeks * sessionsPerCycle));
   const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:    defaultLabel,
     stageName:     stage.name ?? defaultLabel,
     weekInStage,
     totalWeeks,
-    progressRatio,
   };
 }
 
@@ -145,12 +143,51 @@ function getSessionStatus(templateId, isHero, isDoneThisCycle, activeTemplateId)
 
 // ── Banner (FormaFit) ────────────────────────────────────────────────────────
 //
-// Tarjeta accent que integra: nombre de programa, etapa (N/total), barra de
-// progreso de la etapa segmentada por semanas (fill = sesiones de la etapa
-// hechas / sesiones totales de la etapa), semana global y sesiones totales.
-// Todo el texto va en onAccent (negro) sobre el fondo accent.
+// Bloque accent sólido — el único hero en color invertido. Dos variantes que
+// comparten la fila superior (nombre de programa · nº de ciclo + puntos de
+// sesión) y se distinguen por lo que va debajo:
+//   · con etapas → barra segmentada de la etapa ACTUAL (1 segmento = 1 ciclo)
+//   · abierta    → nada; el banner termina en la fila superior, y esa altura
+//                  menor es lo que comunica que el programa no tiene techo.
+// Nunca se contradicen: el relleno del segmento en curso es la misma fracción
+// que marcan los puntos (ambos salen de doneInCycle/sessionsPerCycle).
 
-// Puntos de ciclo: se rellenan (negro) por cada sesión hecha en el ciclo.
+// Barra de etapa: un segmento por ciclo, todos del mismo ancho, con el skew
+// -18deg que es la firma diagonal del sistema.
+//
+// Va en SVG y no con `transform: skewX` porque en Android RN aplica los
+// transforms descomponiendo la matriz en propiedades de View (rotation, scale,
+// translation) y el skew, que ninguna de ellas puede representar, se pierde por
+// el camino — se veía recto. En iOS sí funcionaba: distinto render, mismo
+// código. Aquí los paralelogramos son geometría explícita, igual en ambos.
+const SEG_H    = spacing.sm2;
+const SEG_GAP  = spacing.xs2;
+const SEG_SKEW = 0.3249; // tan(18°)
+
+function StageSegBar({ ratios, trackColor, fillColor }) {
+  const [width, setWidth] = useState(0);
+  const segW = (width - SEG_GAP * (ratios.length - 1)) / ratios.length;
+  const d    = (SEG_SKEW * SEG_H) / 2; // desplazamiento del borde superior/inferior
+  const para = (x, w) => `M${x + d},0 L${x + w + d},0 L${x + w - d},${SEG_H} L${x - d},${SEG_H} Z`;
+  const segX = (i) => i * (segW + SEG_GAP);
+
+  return (
+    <View style={{ height: SEG_H }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {segW > 0 && (
+        <Svg width={width} height={SEG_H}>
+          {ratios.map((_, i) => (
+            <Path key={`t${i}`} d={para(segX(i), segW)} fill={trackColor} />
+          ))}
+          {ratios.map((r, i) => (r > 0
+            ? <Path key={`f${i}`} d={para(segX(i), segW * Math.min(1, r))} fill={fillColor} />
+            : null))}
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+// Puntos de ciclo: se rellenan (onAccent) por cada sesión hecha en el ciclo.
 function CycleDots({ done, total, styles }) {
   return (
     <View style={styles.bnDots}>
@@ -161,16 +198,15 @@ function CycleDots({ done, total, styles }) {
   );
 }
 
-function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName, stageInfo, cicloNum, doneInCycle, sessionsPerCycle, onPress }) {
+function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, sessionsPerCycle, onPress }) {
   const { t }      = useTranslation();
+  const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const cicloLabel = String(cicloNum).padStart(2, '0');
-  const hasStage   = !!stageInfo;
-
-  // Barra: fill = ratio de sesiones de la etapa; cortes = una marca por ciclo
-  // de la etapa (N ciclos → N segmentos → N-1 marcas).
-  const pct      = Math.round((stageInfo?.progressRatio ?? 0) * 100);
-  const segments = stageInfo?.totalWeeks ?? 1;
+  // "ETAPA 2 · VOLUMEN"; sin nombre propio la etapa se queda en "ETAPA 2".
+  const stageTitle = stageInfo && (stageInfo.stageName !== stageInfo.stageLabel
+    ? `${stageInfo.stageLabel} · ${stageInfo.stageName}`
+    : stageInfo.stageLabel);
 
   return (
     <TouchableOpacity
@@ -179,52 +215,45 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
       onPress={onPress}
       disabled={!onPress}
     >
-      {/* ── Bloque izquierdo ── */}
-      <View style={[styles.bnLeft, !hasStage && styles.bnLeftCentered]}>
-        <View style={styles.bnNameWrap}>
-          <Text style={[styles.bnProgName, !hasStage && styles.bnTextCentered]} numberOfLines={1}>{programName}</Text>
+      <View style={styles.bnTop}>
+        <View style={styles.bnNameBlock}>
+          <Text style={styles.bnEyebrow}>{t('home.program')}</Text>
+          <Text style={styles.bnProgName} numberOfLines={1}>{programName}</Text>
           {trainerName ? (
-            <Text style={[styles.bnTrainer, !hasStage && styles.bnTextCentered]} numberOfLines={1}>
-              {t('home.bannerBy', { name: trainerName })}
+            <Text style={styles.bnTrainer} numberOfLines={1}>
+              {t('home.bannerBy')} <Text style={styles.bnTrainerName}>{trainerName}</Text>
             </Text>
           ) : null}
         </View>
 
-        {hasStage && (
-          <View style={styles.bnProgBlock}>
-            <View style={styles.bnStageRow}>
-              <Text style={styles.bnStageName} numberOfLines={1}>{stageName}</Text>
-              <Text style={styles.bnStageBadge}>{t('home.stageBadge', { current: stageCurrent, total: stageTotal })}</Text>
-            </View>
-            <View style={styles.bnBar}>
-              <View style={styles.bnBarTrack} />
-              <View style={[styles.bnBarFill, { width: `${Math.min(100, pct)}%` }]} />
-              {Array.from({ length: Math.max(0, segments - 1) }, (_, i) => (
-                <View key={i} style={[styles.bnBarTick, { left: `${((i + 1) / segments) * 100}%` }]} />
-              ))}
-            </View>
-            <View style={styles.bnBarLabels}>
-              <Text style={styles.bnBarCycle} numberOfLines={1}>
-                {t('home.cycleProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
-              </Text>
-              <Text style={styles.bnBarPct}>{pct}%</Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* ── Separador ── */}
-      <View style={styles.bnDivider} />
-
-      {/* ── Bloque derecho — CICLO+nº agrupados (más cerca entre sí que de los
-          puntos), puntos siempre debajo ── */}
-      <View style={[styles.bnRight, !hasStage && styles.bnRightNoStage]}>
-        <View style={hasStage ? styles.bnCicloCol : styles.bnCicloRow}>
-          <Text style={styles.bnCicloLabel}>{t('home.cycle').toUpperCase()}</Text>
-          <Text style={[styles.bnCicloNum, hasStage && styles.bnCicloNumTight]}>{cicloLabel}</Text>
+        <View style={styles.bnCycle}>
+          <Text style={styles.bnEyebrow}>{t('home.cycle')}</Text>
+          <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
+          <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
         </View>
-        <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
       </View>
+
+      {stageInfo && (
+        <View style={styles.bnStage}>
+          <View style={styles.bnStageLabels}>
+            <Text style={styles.bnStageName} numberOfLines={1}>{stageTitle}</Text>
+            <Text style={styles.bnStagePos}>
+              {t('home.cycleProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
+            </Text>
+          </View>
+          {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a la
+              fracción de sesiones hechas, los futuros vacíos. */}
+          <StageSegBar
+            ratios={Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
+              i < stageInfo.weekInStage - 1 ? 1
+                : i === stageInfo.weekInStage - 1 ? doneInCycle / sessionsPerCycle
+                : 0
+            ))}
+            trackColor={withOpacity(th.colors.onAccent, 0.16)}
+            fillColor={th.colors.onAccent}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -232,45 +261,12 @@ function Banner({ programName, trainerName, stageCurrent, stageTotal, stageName,
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
 //
 // Los puntos reflejan días REALMENTE entrenados (workoutLog), no una plantilla.
-// Estados: entrenado = relleno lima; hoy sin entrenar = anillo lima; hoy
-// entrenado = anillo lima + punto central (animado al aparecer); pasado sin
-// entrenar = relleno gris; futuro = anillo gris.
+// Solo dos estados: entrenado = lima, cualquier otro = gris apagado. El día de
+// hoy NO se marca en el punto — lo identifica su letra en lima, y basta.
 
 function WeekDot({ status, styles }) {
-  const isToday = status === 'today' || status === 'todayTrained';
-  const outerStyle = {
-    trained:      styles.weekDotTrained,
-    todayTrained: styles.weekDotToday,
-    today:        styles.weekDotToday,
-    past:         styles.weekDotPast,
-    future:       styles.weekDotFuture,
-  }[status];
-
-  // El punto central solo existe para "hoy" — no se anima al abrir la
-  // pantalla (mide primero, coloca sin animar), solo en transiciones
-  // posteriores (guardar sesión y volver del recap).
-  const centerScale = useSharedValue(status === 'todayTrained' ? 1 : 0);
-  const mounted = useRef(false);
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    centerScale.value = withTiming(status === 'todayTrained' ? 1 : 0, {
-      duration: 200,
-      easing:   Easing.inOut(Easing.ease),
-    });
-  }, [status, centerScale]);
-  const centerAnimStyle = useAnimatedStyle(() => ({
-    opacity:   centerScale.value,
-    transform: [{ scale: centerScale.value }],
-  }));
-
-  return (
-    <View style={[styles.weekDot, outerStyle]}>
-      {isToday && <Animated.View style={[styles.weekDotCenter, centerAnimStyle]} />}
-    </View>
-  );
+  const trained = status === 'trained' || status === 'todayTrained';
+  return <View style={[styles.weekDot, trained ? styles.weekDotTrained : styles.weekDotIdle]} />;
 }
 
 function WeekSelector({ workoutLog }) {
@@ -741,9 +737,6 @@ export default function HomeScreen() {
               <Banner
                 programName={activeProgram.name}
                 trainerName={programTrainerName}
-                stageCurrent={stageIdx + 1}
-                stageTotal={activeProgram.stages?.length ?? 0}
-                stageName={stageInfo?.stageName}
                 stageInfo={stageInfo}
                 cicloNum={weekNum}
                 doneInCycle={doneInCycle}
@@ -1023,55 +1016,36 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.mutedLight,
   },
 
-  // ── Banner (FormaFit) — tarjeta accent, texto onAccent (negro) ────────────────
+  // ── Banner (FormaFit) — bloque accent, tinta onAccent ─────────────────────────
+  // Sobre el accent el texto usa su propia escala de tinta: sólido para lo
+  // principal, 0.55 para eyebrows/secundario, 0.16 para los tracks.
   banner: {
-    flexDirection:     'row',
-    alignItems:        'stretch',
-    gap:               spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    overflow:          'hidden',
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.lg,
+    padding:         spacing.lg,
   },
-  bnLeft:         { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.sm },
-  bnLeftCentered: { alignItems: 'center' },
-  bnNameWrap:     { gap: 1 },
-  bnProgName:     { ...textStyles.hero, color: th.colors.onAccent },
-  bnTrainer:      { ...textStyles.smallBold, color: th.colors.onAccent },
-  bnTextCentered: { textAlign: 'center' },
-  // Bloque de etapa (nombre etapa · ETAPA n/total, barra, ciclo · %)
-  bnProgBlock: { gap: spacing.xs },
-  bnStageRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.sm },
-  bnStageName: { ...textStyles.btnAction, color: th.colors.onAccent, flexShrink: 1 },
-  bnStageBadge:{ ...textStyles.tag, color: th.colors.onAccent },
-  // Barra: track verde oscuro (literal Figma #81a71e, sin token), fill negro,
-  // marcas de ciclo en accent (visibles sobre el track oscuro).
-  bnBar:      { height: 5, position: 'relative' },
-  bnBarTrack: { position: 'absolute', left: 0, right: 0, top: 1, height: 3, borderRadius: 999, backgroundColor: '#81a71e' },
-  bnBarFill:  { position: 'absolute', left: 0, top: 1, height: 3, borderRadius: 999, backgroundColor: th.colors.onAccent },
-  bnBarTick:  { position: 'absolute', top: 0, width: 2, height: 5, backgroundColor: th.colors.accent },
-  bnBarLabels:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  bnBarCycle: { ...textStyles.tag, color: th.colors.onAccent },
-  bnBarPct:   { ...textStyles.tag, color: th.colors.onAccent },
-  // Separador negro que sangra hasta los bordes (cancela el padding vertical).
-  bnDivider:  { width: 2, alignSelf: 'stretch', marginVertical: -spacing.md, backgroundColor: th.colors.onAccent },
-  // Bloque derecho: [CICLO+nº] muy juntos, luego más gap hasta los puntos
-  // (que siempre van debajo). Sin etapa: CICLO+nº en fila; con etapa: columna.
-  bnRight:        { width: 100, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  bnRightNoStage: { width: 110 },
-  bnCicloCol: { alignItems: 'center' },
-  bnCicloRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bnCicloLabel:    { ...textStyles.btnAction, color: withOpacity(th.colors.onAccent, 0.76) },
-  bnCicloNum:      { ...textStyles.hero, color: th.colors.onAccent },
-  // El line-height del texto deja aire por encima del número — lo subimos
-  // para que quede pegado a "CICLO" y a distancia real de los puntos.
-  bnCicloNumTight: { marginTop: -4 },
-  // Puntos de ciclo (8px): hechos = negro relleno; pendientes = contorno negro.
-  bnDots:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bnDot:     { width: 8, height: 8, borderRadius: 4 },
+  bnTop:       { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  bnEyebrow:   { ...textStyles.spacingTag, color: withOpacity(th.colors.onAccent, 0.55), textTransform: 'uppercase' },
+  // Nombre de programa a 1 línea; el completo vive en el detalle del programa.
+  // El line-height de Inter deja aire de sobra bajo el eyebrow: los márgenes
+  // negativos pegan nombre y número a su etiqueta.
+  bnNameBlock:   { flex: 1, minWidth: 0 },
+  bnProgName:    { ...textStyles.hero, color: th.colors.onAccent, marginTop: -spacing.xs },
+  bnTrainer:     { ...textStyles.subtitle, color: withOpacity(th.colors.onAccent, 0.55), marginTop: spacing.xs },
+  bnTrainerName: { ...textStyles.btnAction, color: th.colors.onAccent },
+  bnCycle:       { flexShrink: 0, alignItems: 'flex-end' },
+  bnCicloNum:    { ...textStyles.hero, color: th.colors.onAccent, marginTop: -spacing.xs, fontVariant: ['tabular-nums'] },
+  // Puntos de sesión del ciclo: hechos = tinta sólida; pendientes = track.
+  bnDots:    { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.sm2 },
+  bnDot:     { width: 7, height: 7, borderRadius: 3.5 },
   bnDotDone: { backgroundColor: th.colors.onAccent },
-  bnDotIdle: { borderWidth: borders.thin, borderColor: th.colors.onAccent },
+  bnDotIdle: { backgroundColor: withOpacity(th.colors.onAccent, 0.16) },
+  // Barra de la etapa actual (solo variante con etapas).
+  bnStage:       { marginTop: spacing.lg },
+  bnStageLabels: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm2, marginBottom: spacing.sm },
+  bnStageName:   { ...textStyles.spacingTag, color: th.colors.onAccent, textTransform: 'uppercase', flexShrink: 1 },
+  bnStagePos:    { ...textStyles.smallBold, color: withOpacity(th.colors.onAccent, 0.55), marginLeft: 'auto' },
+  // (la barra segmentada se dibuja en SVG — ver StageSegBar)
 
   // ── Selector semanal (L M X J V S D + 7 puntos) ───────────────────────────────
   week: {
@@ -1085,17 +1059,12 @@ const makeStyles = (th) => StyleSheet.create({
   weekLetterToday: { color: LIMA },
   weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDot: {
-    width:          12,
-    height:         12,
-    borderRadius:   6,
-    alignItems:     'center',
-    justifyContent: 'center',
+    width:        12,
+    height:       12,
+    borderRadius: 6,
   },
   weekDotTrained: { backgroundColor: LIMA },
-  weekDotPast:    { backgroundColor: th.colors.muted },
-  weekDotToday:   { borderWidth: 1.5, borderColor: LIMA },
-  weekDotFuture:  { borderWidth: 1.5, borderColor: th.colors.mutedLight },
-  weekDotCenter:  { width: 5, height: 5, borderRadius: 2.5, backgroundColor: LIMA },
+  weekDotIdle:    { backgroundColor: th.colors.muted },
 
   // ── Program label ────────────────────────────────────────────────────────────
   progHeader: {
