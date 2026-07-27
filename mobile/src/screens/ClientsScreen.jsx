@@ -3947,7 +3947,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
     padding:         spacing.md,
     borderRadius:    th.radius.md,
-    backgroundColor: th.colors.muted,
+    backgroundColor: th.colors.surface2,
     position:        'absolute',
     bottom:          0,
     right:           0,

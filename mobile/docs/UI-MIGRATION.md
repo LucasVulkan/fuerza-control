@@ -73,7 +73,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
    restyleado en el mismo cambio: borde `tint.accent50`, texto `accent` sólido (no el
    tint, corregido en QA).
 4. ✅ **Programa + Conexiones** — `EDITAR | VER | //` con variante `Secondary` real
-   del componente Buttons de Figma (`102:2079`): fondo `color/muted` sólido, sin
+   del componente Buttons de Figma (`102:2079`): fondo `color/surface-2` sólido, sin
    borde, `radius/md`, texto `textStyles.cardType`. Orden corregido a EDITAR→VER
    (el código tenía VER→EDITAR, invertido respecto a Figma). Conexiones (Drive +
    Entrenador): pasan de fila `flex:1`+`flex:1` a columna con cada tarjeta a ancho
@@ -192,7 +192,8 @@ function Pantalla() {
   `xs:2, xs2:4, sm:6, sm2:8, md:10, lg:15, xl:20, xxl:28`.
   Si Figma pide uno de esos números, usa SIEMPRE el token, nunca el literal.
 - **`th.radius`** viene del tema. En formaFit: `xxs:2, xs:4, sm:6, md:10, lg:18, xl:18, full:9999`.
-- **`th.colors`** — formaFit: `bg #141414`, `surface #252525`, `surface2 #3a3a3a`,
+- **`th.colors`** — formaFit: `bg #151515`, `surface #1f1f1f` (tarjetas),
+  `surface2 #272727` (barras de búsqueda, fondo de segmented, **botones secundarios**),
   `text #e6e6e6`, `mutedLight #818181`, `muted/muted2 #4d4d4d`, `accent #aae216`,
   `onAccent #000`, `green #66fa39`, `orange #fb923c`, `red #ff0900`, `blue #4c85ff`.
 - **`th.tint`** — tints de Figma: `accent10`, `accent50`, `red30`, `red50`, `orange30`,
