@@ -1,16 +1,160 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Keyboard,
+  StyleSheet, Alert, Keyboard, PanResponder,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing,
+} from 'react-native-reanimated';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
+import StageSelector from '../components/ui/StageSelector';
+
+// SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
+const HEADER_H = 64;
+// Gap entre tarjetas de sesión (space/sm) — se suma al alto de fila medido para
+// obtener el paso del drag.
+const CARD_GAP = spacing.sm;
+// Fracción de fila que hay que recorrer para saltar de hueco al reordenar. Por
+// encima de 0.5 deja una banda muerta de 2·(SWAP_AT−0.5) que evita el rebote.
+const SWAP_AT = 0.65;
+
+// ─── Iconos ───────────────────────────────────────────────────────────────────
+// Misma flecha sólida que en HomeView (asset `119:783` de Figma): apunta a la
+// derecha; la de "volver" es la misma rotada 180°.
+
+function ArrowIcon({ size = 18, color, back = false }) {
+  return (
+    <Svg
+      width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none"
+      style={back ? { transform: [{ rotate: '180deg' }] } : undefined}
+    >
+      <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={color} />
+    </Svg>
+  );
+}
+
+function MenuIcon({ size = 26, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
+      <Circle cx={6.5} cy={13} r={1.5} fill={color} />
+      <Circle cx={12.5} cy={13} r={1.5} fill={color} />
+      <Circle cx={18.5} cy={13} r={1.5} fill={color} />
+    </Svg>
+  );
+}
+
+// Icons / "Arrastre" (184:2371) — 2×3 puntos de 3px dentro de una caja de 26.
+function DragIcon({ size = 26, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
+      {[10.5, 15.5].flatMap((cx) => [6.5, 12.5, 18.5].map((cy) => (
+        <Circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.5} fill={color} />
+      )))}
+    </Svg>
+  );
+}
+
+function PencilIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 20h9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
+            stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ size = 16, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// ─── Tarjeta de sesión ────────────────────────────────────────────────────────
+// Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
+// pedidos: el eyebrow "SESIÓN A" se sustituye por la letra delante del nombre, y
+// se antepone un asa de arrastre. El asa reclama el gesto en `onStart` (igual
+// que las filas del editor de sesión) — si esperase al movimiento, el ScrollView
+// se lo llevaría antes.
+
+function SessionCard({
+  label, name, meta, isDragging, dragY, shift, animateShift, onPress,
+  onDragStart, onDragMove, onDragEnd, onMeasure,
+}) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
+  const cbs = useRef({ onDragStart, onDragMove, onDragEnd });
+  useEffect(() => { cbs.current = { onDragStart, onDragMove, onDragEnd }; });
+
+  // Las tarjetas que ceden el hueco se apartan una fila con `withTiming`;
+  // cuando el gesto termina (`animateShift` false) el desplazamiento vuelve a 0
+  // de golpe, en el mismo commit en que el store ya trae el orden nuevo — así no
+  // se ve deshacer la animación.
+  const shiftSv = useSharedValue(0);
+  useEffect(() => {
+    shiftSv.value = animateShift
+      ? withTiming(shift, { duration: 160, easing: Easing.inOut(Easing.ease) })
+      : shift;
+  }, [shift, animateShift, shiftSv]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: isDragging ? dragY.value : shiftSv.value }],
+  }), [isDragging]);
+
+  // El PanResponder tiene que ser UNA sola instancia por tarjeta: su
+  // `gestureState` (el dy acumulado) vive dentro y se reinicia en cada `create`,
+  // así que recrearlo a media pulsación perdería el arrastre. Inicializador
+  // perezoso de useState en vez de useRef: misma estabilidad sin leer `.current`
+  // durante el render.
+  // Los `cbs.current` de dentro solo se evalúan al recibir el gesto, nunca en
+  // render; la regla de purezas no puede verlo desde el inicializador.
+  /* eslint-disable-next-line react-hooks/refs */
+  const [pan] = useState(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant:   ()        => cbs.current.onDragStart(),
+    onPanResponderMove:    (_, gs)   => cbs.current.onDragMove(gs.dy),
+    onPanResponderRelease: ()        => cbs.current.onDragEnd(),
+    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
+  }));
+
+  return (
+    <Reanimated.View
+      onLayout={onMeasure}
+      style={[
+        styles.sesCard,
+        isDragging && styles.sesCardDragging,
+        // `elevation` además de `zIndex`: en Android sin ella la tarjeta
+        // levantada pasa por debajo de sus hermanas.
+        isDragging && { zIndex: 2, elevation: 4 },
+        animStyle,
+      ]}
+    >
+      <View {...pan.panHandlers} style={styles.dragHandle}>
+        <DragIcon color={th.colors.mutedLight} />
+      </View>
+      <TouchableOpacity style={styles.sesBody} onPress={onPress} activeOpacity={0.7} disabled={isDragging}>
+        {/* La letra acompaña al bloque entero (nombre + meta), centrada contra
+            él — no es un prefijo del nombre. */}
+        <Text style={styles.sesLetter}>{label}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
+          <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
+        </View>
+        <ArrowIcon size={18} color={th.colors.accent} />
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+}
 
 export default function ProgramEditorScreen({ navigation }) {
   const { t } = useTranslation();
@@ -34,6 +178,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
+  const reorderSessionsInStage = useStore((s) => s.reorderSessionsInStage);
   const showToast             = useStore((s) => s.showToast);
 
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
@@ -47,11 +192,39 @@ export default function ProgramEditorScreen({ navigation }) {
   );
 
   const [nameValue, setNameValue]               = useState(activeProgram?.name ?? '');
+  const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
+  const [menuOpen, setMenuOpen]                 = useState(false);
 
   const selectedStage = hasStages ? (activeProgram?.stages?.[selectedStageIdx] ?? null) : null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
+
+  // ── Reordenar sesiones con drag ───────────────────────────────────────────
+  // Reanimated no trae un primitivo de reordenar y las librerías que lo hacen
+  // (draggable-flatlist y compañía) son una dependencia más y van por detrás de
+  // Reanimated 4, así que va a mano — pero SIN tocar el orden pintado.
+  //
+  // Durante el gesto la lista se renderiza siempre en el orden del store: la
+  // arrastrada sigue al dedo y las demás se apartan una fila con un transform.
+  // Cero cambios de layout mientras se arrastra, que es lo que provocaba que las
+  // tarjetas se solaparan, desaparecieran o dejaran huecos: las layout
+  // animations competían con el reflow de la lista. El orden real solo se
+  // escribe una vez, al soltar.
+  const [drag, setDrag] = useState(null); // { id, from, to } o null
+  const [rowH, setRowH] = useState(0);
+  const dragRef = useRef(null);
+  const dragY   = useSharedValue(0);
+
+  const pitch = rowH + CARD_GAP;
+
+  // Cuánto tiene que apartarse la tarjeta que ocupa `idx` en el orden del store.
+  function shiftFor(idx) {
+    if (!drag || pitch <= 0 || idx === drag.from) return 0;
+    if (drag.to > drag.from && idx > drag.from && idx <= drag.to) return -pitch;
+    if (drag.to < drag.from && idx >= drag.to   && idx <  drag.from) return  pitch;
+    return 0;
+  }
 
   useEffect(() => {
     beginEditSession();
@@ -94,7 +267,10 @@ export default function ProgramEditorScreen({ navigation }) {
     // overrides). Base sessionTemplates don't change while editing, so skip them.
     if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
     if (JSON.stringify(st.userPrograms) !== JSON.stringify(snap.userPrograms)) return true;
-    if (nameValue.trim() !== (activeProgram?.name ?? '')) return true;
+    // `nameValue` solo es fuente de verdad mientras el título está en edición;
+    // fuera de ahí el nombre se pinta del store y compararlo daría falsos
+    // positivos (p. ej. si la pantalla montó antes de resolver el programa).
+    if (editingName && nameValue.trim() !== (activeProgram?.name ?? '')) return true;
     if (selectedStage && stageName.trim() !== (selectedStage.name ?? '')) return true;
     return false;
   }
@@ -124,14 +300,7 @@ export default function ProgramEditorScreen({ navigation }) {
     });
     return sub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, editingId, nameValue, stageName, selectedStage, activeProgram]);
-
-  // Reactive dirty flag for the header Save button.
-  const dirty = useMemo(
-    () => hasUnsavedChanges(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [programs, userPrograms, nameValue, stageName, selectedStageIdx],
-  );
+  }, [navigation, editingId, nameValue, editingName, stageName, selectedStage, activeProgram]);
 
   if (!activeProgram) return null;
 
@@ -154,7 +323,53 @@ export default function ProgramEditorScreen({ navigation }) {
         }, 0),
       });
 
+  // ── Drag de sesiones ──────────────────────────────────────────────────────
+
+  function handleDragStart(templateId) {
+    const from = editorDays.findIndex((d) => d.sessionTemplateId === templateId);
+    if (from < 0) return;
+    dragY.value     = 0;
+    dragRef.current = { id: templateId, from, to: from };
+    setDrag(dragRef.current);
+  }
+
+  function handleDragMove(templateId, dy) {
+    const state = dragRef.current;
+    if (state?.id !== templateId) return;
+    dragY.value = dy;
+    if (pitch <= 0) return;
+
+    // Banda muerta: hay que pasar de SWAP_AT para ceder el hueco, y volver a
+    // pasarlo en sentido contrario para deshacerlo. Con el 0.5 implícito de un
+    // `round`, el temblor del dedo justo en la frontera hacía ir y venir el
+    // orden — ése era el flickering al arrastrar despacio.
+    let to     = state.to;
+    let offset = dy - (to - state.from) * pitch;
+    while (offset >  pitch * SWAP_AT && to < editorDays.length - 1) { to += 1; offset -= pitch; }
+    while (offset < -pitch * SWAP_AT && to > 0)                     { to -= 1; offset += pitch; }
+    if (to === state.to) return;
+
+    dragRef.current = { ...state, to };
+    setDrag(dragRef.current);
+  }
+
+  function handleDragEnd(templateId) {
+    const state = dragRef.current;
+    if (state?.id !== templateId) return;
+    // `dragY` NO se resetea aquí: `isDragging` sigue true hasta que React haga
+    // commit, y ponerlo a 0 en el hilo de UI devolvería la tarjeta a su hueco
+    // original durante ese frame. Se reinicia al empezar el siguiente arrastre.
+    dragRef.current = null;
+    setDrag(null);
+    if (state.to === state.from) return;
+    const order = editorDays.map((d) => d.sessionTemplateId);
+    order.splice(state.from, 1);
+    order.splice(state.to, 0, templateId);
+    reorderSessionsInStage(editingId, hasStages ? selectedStageIdx : null, order);
+  }
+
   function commitName() {
+    setEditingName(false);
     const trimmed = nameValue.trim();
     if (trimmed && trimmed !== activeProgram.name) renameProgram(editingId, trimmed);
     else setNameValue(activeProgram.name ?? '');
@@ -210,38 +425,62 @@ export default function ProgramEditorScreen({ navigation }) {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerWrap}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={1}>
+      {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
+          <ArrowIcon size={20} color={th.colors.onAccent} back />
+        </TouchableOpacity>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerEyebrow} numberOfLines={1}>
             {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
           </Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={!dirty}
-            style={[styles.saveBtnHeader, !dirty && styles.saveBtnHeaderClean]}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.saveBtnHeaderText, !dirty && styles.saveBtnHeaderTextClean]}>
-              {dirty ? t('editor.save') : t('editor.saved')}
-            </Text>
+          <View style={styles.headerTitleRow}>
+            {editingName ? (
+              <TextInput
+                autoFocus
+                style={styles.headerTitleInput}
+                value={nameValue}
+                onChangeText={setNameValue}
+                onBlur={commitName}
+                onSubmitEditing={commitName}
+                placeholder={t('editor.programNamePlaceholder')}
+                placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
+                returnKeyType="done"
+              />
+            ) : (
+              <Text
+                style={styles.headerTitle}
+                numberOfLines={1}
+                onPress={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
+                suppressHighlighting
+              >
+                {activeProgram.name ?? ''}
+              </Text>
+            )}
+            <TouchableOpacity
+              hitSlop={10}
+              onPress={() => {
+                if (editingName) commitName();
+                else { setNameValue(activeProgram.name ?? ''); setEditingName(true); }
+              }}
+            >
+              {editingName
+                ? <CheckIcon  size={16} color={th.colors.onAccent} />
+                : <PencilIcon size={15} color={th.colors.onAccent} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* El ⋮ solo tiene sentido sin etapas (única acción: convertir a etapas);
+            con etapas se deja el hueco para que el título siga centrado. */}
+        {hasStages ? (
+          <View style={styles.headerSide} />
+        ) : (
+          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
+            <MenuIcon size={26} color={th.colors.onAccent} />
           </TouchableOpacity>
-        </View>
-        <View style={styles.programNameWrap}>
-          <TextInput
-            style={styles.programNameInput}
-            value={nameValue}
-            onChangeText={setNameValue}
-            onBlur={commitName}
-            onSubmitEditing={commitName}
-            placeholder="Nombre del programa"
-            placeholderTextColor={th.colors.muted2}
-            returnKeyType="done"
-          />
-        </View>
+        )}
       </View>
 
       {/* Scrollable content */}
@@ -249,118 +488,84 @@ export default function ProgramEditorScreen({ navigation }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!drag}
       >
-        {/* ── Summary ── */}
+        {/* ── Resumen (Exercice editor elements / Resumen) ── */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
           <Text style={styles.summaryMain}>{summaryLine}</Text>
         </View>
 
-        {/* ── Stages: timeline + selected stage row ── */}
+        {/* ── Etapas ── */}
         {hasStages && (
-          <View>
-            <Text style={styles.secTitle}>{t('editor.sectionStages')}</Text>
-
-            <View style={styles.timeline}>
-              {activeProgram.stages.map((stage, idx) => {
-                const isSelected = idx === selectedStageIdx;
-                const isActive   = idx === (activeProgram.currentStageIndex ?? 0);
-                return (
-                  <TouchableOpacity
-                    key={stage.id ?? idx}
-                    style={[
-                      styles.timelineSeg,
-                      { flex: Math.max(1, stage.durationWeeks ?? 1) },
-                      isSelected && styles.timelineSegSelected,
-                    ]}
-                    onPress={() => setSelectedStageIdx(idx)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[styles.timelineName, isSelected && styles.timelineNameSelected]}
-                      numberOfLines={1}
-                    >
-                      {stage.name}{isActive ? ' ●' : ''}
-                    </Text>
-                    <Text style={styles.timelineWeeks}>
-                      {t('editor.weeksShort', { weeks: stage.durationWeeks ?? 0 })}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity style={styles.timelineAdd} onPress={handleAddStage}>
-                <Text style={styles.timelineAddText}>＋</Text>
-              </TouchableOpacity>
-            </View>
-
-            {selectedStage && (
-              <TouchableOpacity
-                style={styles.stageRow}
-                onPress={() => setStageSheetOpen(true)}
-                activeOpacity={0.7}
-              >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={styles.stageRowTitleRow}>
-                    <Text style={styles.stageRowTitle} numberOfLines={1}>{selectedStage.name}</Text>
-                    {isStageActive && (
-                      <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>
-                    )}
-                  </View>
-                  <Text style={styles.stageRowSub}>
-                    {t('editor.stageCardMeta', {
-                      weeks:    selectedStage.durationWeeks ?? 0,
-                      sessions: selectedStage.days?.length ?? 0,
-                    })}
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </TouchableOpacity>
-            )}
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>{t('editor.sectionStages').toUpperCase()}</Text>
+            <StageSelector
+              stages={activeProgram.stages.map((stage, idx) => ({
+                id:   stage.id ?? String(idx),
+                name: stage.name,
+                meta: t('editor.cyclesShort', { count: stage.durationWeeks ?? 0 }),
+              }))}
+              value={activeProgram.stages[selectedStageIdx]?.id ?? String(selectedStageIdx)}
+              onChange={(id) => {
+                const idx = activeProgram.stages.findIndex((s, i) => (s.id ?? String(i)) === id);
+                if (idx < 0) return;
+                // Segunda pulsación sobre la etapa ya activa → abre el modal.
+                if (idx === selectedStageIdx) setStageSheetOpen(true);
+                else setSelectedStageIdx(idx);
+              }}
+              onAdd={handleAddStage}
+            />
+            <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
           </View>
         )}
 
         {!hasStages && (
-          <Text style={styles.changesHint}>{t('editor.changesHint')}</Text>
+          <Text style={styles.stageHint}>{t('editor.changesHint')}</Text>
         )}
 
-        {/* ── Sessions of the selected stage ── */}
-        <View>
+        {/* ── Sesiones de la etapa seleccionada ── */}
+        <View style={styles.section}>
           <Text style={styles.secTitle}>
-            {hasStages && selectedStage
+            {(hasStages && selectedStage
               ? t('editor.sessionsOf', { stage: selectedStage.name })
-              : t('editor.sectionSessions')}
+              : t('editor.sectionSessions')).toUpperCase()}
           </Text>
 
-          <View style={{ gap: spacing.sm }}>
-            {editorDays.map(({ sessionTemplateId }) => {
+          {/* La lista se pinta SIEMPRE en el orden del store; durante el gesto
+              solo se mueven transforms. */}
+          <View style={{ gap: CARD_GAP }}>
+            {editorDays.map(({ sessionTemplateId }, idx) => {
               const template = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
               if (!template) return null;
-              const color = resolveColor(th, template.color ?? 'var(--accent)');
               const stats = sessionStats(template, allExercises);
               return (
-                <TouchableOpacity
+                <SessionCard
                   key={sessionTemplateId}
-                  style={[styles.sessionCard, { borderLeftColor: color }]}
+                  label={template.label ?? ''}
+                  name={template.name ?? ''}
+                  meta={stats.minutes > 0
+                    ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
+                    : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
+                  isDragging={drag?.id === sessionTemplateId}
+                  dragY={dragY}
+                  shift={shiftFor(idx)}
+                  animateShift={!!drag}
+                  onMeasure={idx === 0
+                    ? (e) => {
+                        const h = Math.round(e.nativeEvent.layout.height);
+                        if (h !== rowH) setRowH(h);
+                      }
+                    : undefined}
                   onPress={() => navigation.navigate('SessionEditor', {
                     templateId: sessionTemplateId,
                     programId:  editingId,
                     stageIdx:   hasStages ? selectedStageIdx : null,
                   })}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.sesTag}>{`Sesión ${template.label ?? ''}`}</Text>
-                    <Text style={[styles.sesName, { color }]} numberOfLines={1}>
-                      {template.name ?? ''}
-                    </Text>
-                    <Text style={styles.sesMeta}>
-                      {stats.minutes > 0
-                        ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
-                        : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-                    </Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </TouchableOpacity>
+                  onDragStart={() => handleDragStart(sessionTemplateId)}
+                  onDragMove={(dy) => handleDragMove(sessionTemplateId, dy)}
+                  onDragEnd={()  => handleDragEnd(sessionTemplateId)}
+                />
               );
             })}
           </View>
@@ -368,22 +573,37 @@ export default function ProgramEditorScreen({ navigation }) {
           <TouchableOpacity
             style={styles.addSessionBtn}
             onPress={() => addSessionToProgram(editingId, hasStages ? selectedStageIdx : null)}
+            activeOpacity={0.7}
           >
             <Text style={styles.addSessionBtnText}>
               {hasStages && selectedStage
-                ? t('editor.addSessionNamed', { stage: selectedStage.name })
+                ? <>
+                    {t('editor.addSessionPrefix')}
+                    <Text style={styles.addSessionBtnStage}>{selectedStage.name}</Text>
+                  </>
                 : t('editor.addSession')}
             </Text>
           </TouchableOpacity>
-
-          {!hasStages && (
-            <TouchableOpacity style={styles.convertToStagesBtn} onPress={handleAddStage}>
-              <Text style={styles.convertToStagesBtnText}>{t('editor.convertToStages')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
+        {/* ── Guardar y cerrar (Buttons 388:2676) ── */}
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
+          <Text style={styles.saveBtnText}>{t('editor.saveProgram')}</Text>
+        </TouchableOpacity>
+
       </ScrollView>
+
+      {/* ── Menú "···" del header ── */}
+      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.menuTitle')}>
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => { setMenuOpen(false); handleAddStage(); }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.menuRowText}>{t('editor.convertToStages')}</Text>
+          <ArrowIcon size={14} color={th.colors.mutedLight} />
+        </TouchableOpacity>
+      </DragSheet>
 
       {/* ── Stage settings sheet ── */}
       <DragSheet
@@ -489,205 +709,138 @@ export default function ProgramEditorScreen({ navigation }) {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  // Header
-  headerWrap: {
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
+  // ── SesionHeader / "Editar Programa" (210:2819) ──
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    height:            HEADER_H,
+    marginHorizontal:  spacing.lg,   // margen de página del frame (x=15)
+    marginTop:         spacing.lg,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.md,
+    // Figma pide `space/sm`; sube a `space/lg` porque en dispositivo la flecha
+    // y el ⋮ quedaban pegados al borde de la barra.
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    overflow:          'hidden',
   },
-  backBtn: { padding: spacing.xs },
-  backIcon: { fontSize: 26, color: th.colors.muted, lineHeight: 30 },
-  headerTitle: {
-    fontSize: typography.base, fontWeight: typography.bold,
-    letterSpacing: 0.5, color: th.colors.text,
-  },
-  saveBtnHeader: {
-    backgroundColor: th.colors.accent,
-    borderRadius: th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 3,
-    flexShrink: 0,
-  },
-  saveBtnHeaderText: {
-    fontSize: typography.sm, fontWeight: typography.heavy,
-    color: th.colors.onAccent, letterSpacing: 0.5,
-  },
-  saveBtnHeaderClean: {
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin, borderColor: th.colors.border,
-  },
-  saveBtnHeaderTextClean: { color: th.colors.muted },
-  programNameWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  programNameInput: {
-    fontSize: typography.base,
-    fontWeight: typography.bold,
-    color: th.colors.text,
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-
-  // Content
-  scrollContent: {
-    paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    paddingBottom: spacing.xxl, gap: spacing.lg,
-  },
-  changesHint: { fontSize: typography.xs, color: th.colors.muted, lineHeight: 18 },
-
-  secTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+  headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
+  // Figma pinta el eyebrow en `color/muted` sobre el lima, no en onAccent.
+  headerEyebrow: {
+    ...textStyles.spacingTag,
     color:         th.colors.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
-  },
-
-  // Summary
-  summaryCard: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-  },
-  summaryTag: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.heavy,
-    color:         withOpacity(th.colors.accent, 0.7),
-    letterSpacing: 1.2,
-    marginBottom:  2,
-  },
-  summaryMain: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.accent,
-  },
-
-  // Stage timeline
-  timeline: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  timelineSeg: {
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.sm,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    gap: 1,
-    minWidth: 0,
-  },
-  timelineSegSelected: {
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
-    borderColor: withOpacity(th.colors.accent, 0.5),
-  },
-  timelineName: {
-    fontSize: typography.xs - 1,
-    fontWeight: typography.bold,
-    letterSpacing: 0.3,
-    color: th.colors.muted,
+    textAlign:     'center',
     textTransform: 'uppercase',
   },
-  timelineNameSelected: { color: th.colors.accent },
-  timelineWeeks: { fontSize: typography.xs - 1, color: th.colors.muted2 },
-  timelineAdd: {
-    width: 34,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.border,
-    borderRadius: th.radius.sm,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  timelineAddText: { fontSize: typography.lg, color: th.colors.muted },
-
-  // Selected stage row
-  stageRow: {
+  headerTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    gap: spacing.sm,
+    alignItems:    'center',
+    gap:           spacing.sm,
+    maxWidth:      '100%',
   },
-  stageRowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  stageRowTitle: {
-    fontSize: typography.base,
-    fontWeight: typography.semibold,
-    color: th.colors.text,
+  headerTitle: {
+    ...textStyles.hero,
+    color:      th.colors.onAccent,
+    textAlign:  'center',
+    lineHeight: 22,
     flexShrink: 1,
   },
-  stageRowSub: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
-  activeBadge: {
-    fontSize: 9,
-    fontWeight: typography.heavy,
-    letterSpacing: 0.6,
-    color: th.colors.onAccent,
-    backgroundColor: th.colors.accent,
-    borderRadius: th.radius.xs,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    overflow: 'hidden',
+  headerTitleInput: {
+    ...textStyles.hero,
+    color:      th.colors.onAccent,
+    textAlign:  'center',
+    lineHeight: 22,
+    padding:    0,
+    flexShrink: 1,
+    minWidth:   80,
   },
-  chevron: { fontSize: typography.xl, color: th.colors.muted2 },
 
-  // Session cards
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderLeftWidth: 3,
-    borderRadius: th.radius.md,
+  // ── Contenido ──
+  // Padding de página `space/lg` y gap `space/md`, ambos del frame 210:2864.
+  scrollContent: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+    paddingTop:        spacing.md,
+    gap:               spacing.md,
   },
-  sesTag: {
-    fontSize: 9, fontWeight: typography.bold,
-    color: th.colors.muted2, letterSpacing: 1,
-    textTransform: 'uppercase', marginBottom: 1,
+  section:  { gap: spacing.xs2 },
+  secTitle: {
+    ...textStyles.spacingTag,
+    color:      th.colors.mutedLight,
+    paddingTop: spacing.md,
   },
-  sesName: {
-    fontSize: typography.base, fontWeight: typography.bold,
-    lineHeight: typography.base * 1.2,
-  },
-  sesMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
+  stageHint: { ...textStyles.subtitle, color: th.colors.muted },
 
-  addSessionBtn: {
-    paddingVertical: spacing.md + 2,
-    borderRadius: th.radius.md,
-    borderWidth: 1, borderStyle: 'dashed',
-    borderColor: withOpacity(th.colors.accent, 0.4),
-    alignItems: 'center',
-    backgroundColor: withOpacity(th.colors.accent, 0.04),
-    marginTop: spacing.sm,
+  // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
+  summaryCard: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
   },
-  addSessionBtnText: { fontSize: typography.base, color: th.colors.accent },
-  convertToStagesBtn: {
-    paddingVertical: spacing.md, borderRadius: th.radius.md,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.border,
-    alignItems: 'center', marginTop: spacing.sm,
+  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
+  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+
+  // ── Tarjeta de sesión ──
+  // paddingLeft `space/sm`: los puntos del asa empiezan a 9px dentro de su caja
+  // de 26, así que 6+9 deja el contenido en los 15px (`space/lg`) de Figma.
+  sesCard: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    backgroundColor:  th.colors.surface,
+    borderRadius:     th.radius.md,
+    paddingLeft:      spacing.sm,
+    paddingRight:     spacing.lg,
+    paddingVertical:  spacing.md,
   },
-  convertToStagesBtnText: { fontSize: typography.sm, color: th.colors.muted },
+  sesCardDragging: { backgroundColor: th.colors.surface2 },
+  dragHandle: {
+    width:          26,
+    alignSelf:      'stretch',
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  sesBody: {
+    flex:          1,
+    minWidth:      0,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.md,
+  },
+  // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
+  sesLetter: { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  sesName:   { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', color: th.colors.text },
+  sesMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+
+  // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
+  // botón outline de Figma).
+  addSessionBtn:      { alignItems: 'center', paddingVertical: spacing.md },
+  addSessionBtnText:  { ...textStyles.cardType, color: th.tint.accent50 },
+  addSessionBtnStage: { color: th.colors.accent },
+
+  // ── Guardar programa (Buttons 388:2676) ──
+  saveBtn: {
+    height:          44,
+    borderRadius:    th.radius.md,
+    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  saveBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+
+  // ── Menú "···" ──
+  menuRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.xl,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    padding:           spacing.md,
+    marginBottom:      spacing.md,
+  },
+  menuRowText: { ...textStyles.cardType, color: th.colors.text },
 
   // Stage sheet
   sheetBody: {
@@ -744,6 +897,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     gap: spacing.sm,
+  },
+  activeBadge: {
+    fontSize: 9,
+    fontWeight: typography.heavy,
+    letterSpacing: 0.6,
+    color: th.colors.onAccent,
+    backgroundColor: th.colors.accent,
+    borderRadius: th.radius.xs,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    overflow: 'hidden',
   },
   stateTitle: { fontSize: typography.sm, fontWeight: typography.semibold, color: th.colors.text },
   stateHint:  { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },

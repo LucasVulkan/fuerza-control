@@ -1108,6 +1108,45 @@ export const useStore = create(
         }
       },
 
+      // Reorders the sessions of a stage (or of a stage-less program) to match
+      // `orderedTemplateIds`. The A/B/C… label means "position in the cycle",
+      // not an identity — same convention as addSessionToProgram — so labels are
+      // reassigned by position. The session NAME is left alone: a session called
+      // "Sesión A" that moves to slot B keeps its name until the user renames it.
+      reorderSessionsInStage: (programId, stageIndex, orderedTemplateIds) => {
+        const { programs } = get();
+        const program = programs[programId];
+        if (!program) return;
+        const hasStages = program.stages?.length > 0;
+        const days = hasStages ? (program.stages[stageIndex]?.days ?? []) : (program.days ?? []);
+        if (orderedTemplateIds.length !== days.length) return;
+
+        const labels  = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const newDays = orderedTemplateIds.map((id, i) => ({
+          ...days.find((d) => d.sessionTemplateId === id),
+          sessionTemplateId: id,
+          label: labels[i] ?? String(i + 1),
+        }));
+
+        set((s) => {
+          const relabel = (bag) => {
+            const next = { ...bag };
+            newDays.forEach(({ sessionTemplateId, label }) => {
+              if (next[sessionTemplateId]) next[sessionTemplateId] = { ...next[sessionTemplateId], label };
+            });
+            return next;
+          };
+          const nextProgram = hasStages
+            ? { ...program, stages: program.stages.map((st, i) => (i === stageIndex ? { ...st, days: newDays } : st)) }
+            : { ...program, days: newDays };
+          return {
+            programs:         { ...s.programs, [programId]: nextProgram },
+            sessionTemplates: relabel(s.sessionTemplates),
+            userPrograms:     relabel(s.userPrograms),
+          };
+        });
+      },
+
       addStageToProgram: (programId) => {
         const { programs, sessionTemplates, userPrograms } = get();
         const program = programs[programId];

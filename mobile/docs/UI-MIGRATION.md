@@ -25,7 +25,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
-| Program Editor | ⬜ | `src/screens/ProgramEditorScreen.jsx` |
+| **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | Sesion Editor (+ modal "···" nuevo) | ⬜ | `src/screens/SessionEditorScreen.jsx` |
 | Exercice Editor (+ botones eliminar/sustituir) | ⬜ | `src/components/editor/ExerciseEditorInline.jsx` |
 | Bloques AMRAP / EMOM | ⬜ | editores de bloque |
@@ -103,6 +103,52 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
    También se quitó el icono de barra (`BarbellIcon`) que iba delante de
    "SESIONES": no está en el componente de Figma, era un añadido de la app previo
    a esta migración.
+
+### Program Editor — desglose
+
+Nodo de Figma: `210:2864`. Cambios de **comportamiento** pedidos por el usuario que
+no están dibujados en Figma (mandan sobre el mock, §10):
+
+- **Guardar y cerrar**: desaparece el botón `Guardar`/`Guardado` del header. El botón
+  grande del final (`388:2676`, h44, `#b8ff00` literal) guarda y hace `goBack()`. Salir
+  por la flecha sigue disparando el aviso de cambios sin guardar (`beforeRemove`, ya
+  existía).
+- **Nombre del programa**: se edita pulsando el título dentro de la cabecera accent
+  (o el lápiz de al lado), no en un input aparte. `nameValue` solo es fuente de verdad
+  mientras `editingName` está activo — fuera de ahí manda el store.
+- **Etapas**: el `+` va dentro del propio control segmentado (a partir de 4 etapas los
+  segmentos dejan de repartirse el ancho y la fila scrollea en horizontal, con el `+`
+  siempre fijo fuera del scroll). Se eliminan la fila-tarjeta "Etapa N" y el botón
+  "+ Añadir etapa": el modal de etapa se abre **volviendo a pulsar la etapa ya
+  seleccionada**, y en su sitio queda el texto `editor.stageTapHint`.
+- **Sesiones reordenables**: asa de arrastre (`Icons/Arrastre` `184:2371` — 2×3 puntos
+  de 3px `mutedLight`) + la letra delante del nombre, en lugar del eyebrow "SESIÓN A".
+  El orden vive en `dragOrder` solo mientras dura el gesto y se vuelca al soltar con
+  `reorderSessionsInStage`. La letra significa **posición en el ciclo**, no identidad:
+  al reordenar se reasignan A/B/C… por posición (misma convención que
+  `addSessionToProgram`); el `name` de la sesión no se toca.
+
+Decisiones de extracción que conviene no volver a re-litigar:
+
+- La cabecera pinta el eyebrow en `color/muted` (#4d4d4d) **sobre el lima**, no en
+  `onAccent` — es lo que dice Figma y lee bien.
+- El `Resumen` de esta pantalla **no lleva borde**: solo relleno `tint/accent-10`.
+  El código anterior le había puesto uno.
+- El segmented de etapas es la variante `Etapas` (`210:3344`): contenedor `radius/md`
+  (no `full`, como el de 1 línea), y en el segmento activo la 2ª línea va en
+  `color/surface2`, no en `onAccent`. Por eso vive en `StageSelector.jsx` y no como
+  una prop más de `SegmentedControl` (que usan otras 4 pantallas).
+- `durationWeeks` se muestra como **ciclos**, no semanas: el campo tiene nombre
+  legado pero `threshold = durationWeeks * days.length` confirma que cuenta vueltas
+  al ciclo, y así lo llaman Figma y el banner de Home.
+
+Divergencias resueltas contra la imagen que mandó el usuario (Figma perdió en 2 de 3):
+
+| Pieza | Decisión |
+|---|---|
+| Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44 |
+| `+ Añadir sesión a X` | Imagen: texto plano centrado, **sin** la caja outline de Figma |
+| `+` de etapas | Imagen: glifo accent sobre `surface2`, **no** el cuadrado relleno `#b8ff00` de 37×37 del nodo oculto `210:3274` |
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
