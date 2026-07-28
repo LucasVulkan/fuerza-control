@@ -27,7 +27,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
-| Exercice Editor (+ botones eliminar/sustituir) | ⬜ | `src/components/editor/ExerciseEditorInline.jsx` |
+| **Exercice Editor** (+ botones eliminar/sustituir) | ✅ | `src/components/editor/ExerciseEditorInline.jsx` |
 | Bloques AMRAP / EMOM | ⬜ | editores de bloque |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
@@ -217,6 +217,62 @@ trampa de §8. El reordenado sí es Reanimated, con el mismo enfoque que el edit
 programa (no se toca el orden pintado durante el gesto) — pero aquí los huecos tienen
 alturas distintas, así que se miden todos y el umbral de salto se calcula contra el alto
 del vecino, no contra un paso fijo.
+
+### Exercice Editor — desglose
+
+Nodo de Figma: `123:1511` (+ componentes `Exercice editor elements` `160:1197` y
+`Option blocks` `176:1902` / `176:1952`). Vive dentro del modal de ejercicio del
+Sesion Editor, así que la **cabecera** (barra accent con el nombre + chevron y
+botón `Aceptar` gris `color/muted`) se pintó en `SessionEditorScreen.jsx`, fuera
+del `ScrollView`, para que no se vaya con el scroll. El chevron de la barra
+**sustituye** el ejercicio, igual que el botón del pie.
+
+Orden del mock: Resumen → VOLUMEN → PROGRESIÓN → OPCIONES (lista agrupada) +
+Vinculación. Piezas concretas:
+
+- **Resumen** (`166:1245`): igual que en los otros dos editores — solo relleno
+  `tint/accent-10`, **sin borde**, con la 3ª línea (`text/tag`, `tint/accent-50`)
+  ocupada por la frase de progresión.
+- **Cajas ±** (`142:1119`): `surface`, `radius/sm`, padding `space/md`, alto fijo
+  68, botones 30×30 `surface2` / `radius/xs` con el símbolo en `tint/accent-50`
+  a 24px. Figma dibuja el mismo componente de dos formas (dos cajas a alto 68 con
+  los botones centrados y separados 26, otras dos hug con los botones a los
+  bordes) — es una inconsistencia del mock y se unificó en **alto 68 + botones a
+  los bordes**. El valor va en `text/card-title` sobre `color/text` (en Figma es
+  `#fff` suelto, sin vincular).
+- **Lista agrupada de opciones** (`176:1902`): contenedor `radius/md` +
+  `overflow:hidden` y cada fila a `radius/xxs` con gap `space/xs` — el recorte
+  del contenedor es lo que redondea las esquinas exteriores, así que no hace
+  falta calcular radios por posición como en Progress.
+- **Switch** (`176:1907`): carril 26×14.18 `radius/full`, pulgar 11.82. Figma
+  solo dibuja el ON (carril `accent`, pulgar negro); el **OFF es decisión
+  nuestra**: carril `surface2` + pulgar `mutedLight`. Animado con Reanimated
+  (`interpolateColor` + `translateX`, 180 ms ease-in-out).
+- **Textarea de la nota**: en Figma va sobre `color/workout-card` (#141414), que
+  no es token del tema — se usa `th.colors.bg` (#151515), 1 unidad de diferencia.
+- **Vinculación** (`176:1952`): tarjeta aparte (`surface`, `radius/md`), pills
+  apiladas a ancho completo con `padding-x` 9 (literal, no hay token). Ninguna /
+  grupo → `text/btn-action`; seleccionada → fondo `accent` + `onAccent`;
+  `+ Nuevo grupo` → `text/subtitle` `mutedLight` centrado. Sigue apareciendo solo
+  cuando el ejercicio existe en más de una sesión.
+- **Icono de la fila de progresión** (`163:1223`): 3 barras ascendentes con el
+  remate en diagonal, resueltas a coordenadas finales en `ProgressionIcon`
+  (`ui/EditorIcons.jsx`) en vez de replicar las 3 rotaciones del asset.
+
+Tres piezas de la app **no existen en el mock** y se resolvieron con el patrón
+"fila + hoja" que Figma ya usa para Progresión y Tempo (decisiones del usuario):
+
+| Pieza | Solución |
+|---|---|
+| Calentamiento | Sección propia `CALENTAMIENTO` con una `NavRow` (título = modo, subtítulo = `3 series · 60s de descanso`) que abre un `DragSheet` con toda la configuración |
+| Modo de progresión (Auto/Fija/Submáx) | Pasa a ser el **paso 1** de la hoja de progresión; la pantalla queda con una sola fila, como Figma |
+| Tempo | La fila muestra el valor (o `—`) y abre una hoja con el input |
+
+Los botones **Sustituir / Eliminar** del pie tampoco están en Figma: son
+funcionalidad pedida aparte y usan el lenguaje de los botones que descubre el
+swipe en la lista del Sesion Editor (`surface2`/`text` y `tint/red-30`/
+`tint/red-50`). El botón **Restaurar** que tenía la app se eliminó (no está en
+Figma y el editor autoguarda).
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

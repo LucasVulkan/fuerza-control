@@ -54,6 +54,21 @@ export function PencilIcon({ size = 15, color }) {
   );
 }
 
+// Icono de la fila "Progresión" del editor de ejercicio (`163:1223`): 3 barras
+// ascendentes con el remate superior en diagonal. En Figma son 3 rectángulos
+// rotados -90° con un corte oblicuo; aquí van ya resueltos a sus coordenadas
+// finales dentro de la caja de 15 (la diferencia con el asset original es de
+// ~0.1px, por debajo de lo perceptible).
+export function ProgressionIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 15 15" fill="none">
+      <Path d="M3.6 5.3L3.6 12.85L1.62 12.85L1.62 6.82Z"      fill={color} />
+      <Path d="M8.05 2.82L8.05 12.84L6.07 12.84L6.07 4.37Z"    fill={color} />
+      <Path d="M12.51 0.84L12.51 12.84L10.53 12.84L10.53 2.37Z" fill={color} />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

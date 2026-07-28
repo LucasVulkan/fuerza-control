@@ -16,7 +16,8 @@
     "exercises_other": "{{count}} ejercicios",
     "clients_one": "{{count}} cliente",
     "clients_other": "{{count}} clientes",
-    "day": "DÍA"
+    "day": "DÍA",
+    "accept": "Aceptar"
   },
   "header": {
     "newProgram": "＋ Nuevo programa",
@@ -777,7 +778,12 @@
     "fieldMinReps": "Reps mín",
     "fieldMaxReps": "Reps máx",
     "submaxHint": "Sin progresión automática — el atleta decide cuándo avanzar.",
-    "substituteBtn": "⇄ Sustituir",
+    "substituteBtn": "Sustituir",
+    "unilateralLabel": "Unilateral",
+    "metricReps": "Reps",
+    "metricTime": "Tiempo",
+    "tempoLabel": "Tempo",
+    "tempoHint": "Excéntrica · Pausa · Concéntrica · Pausa (ej. 3010; X = explosivo)",
     "saveBtn": "Guardar",
     "toastUpdated": "Ejercicio actualizado",
     "toastSubstituted": "Ejercicio sustituido",
@@ -848,6 +854,7 @@
       "submax": "Sin objetivo de reps — el atleta decide, solo registro"
     },
     "configDone": "Hecho",
+    "stepMode": "Modo de progresión",
     "stepType": "Qué progresa",
     "stepEval": "Cuándo se cumple",
     "stepIncr": "Cuánto sube",
@@ -875,11 +882,15 @@
       "none": "Ninguno",
       "auto": "Auto",
       "custom": "Personalizado",
-      "setsLabel": "Series de calentamiento",
-      "restLabel": "Descanso entre calentamientos",
+      "setsLabel": "Series",
+      "restLabel": "Descanso (s)",
       "noTimer": "sin temporizador",
       "addStep": "＋ Añadir paso",
-      "rampStep": "{{pct}}% × {{reps}}"
+      "rampStep": "{{pct}}% × {{reps}}",
+      "restShort": "{{s}}s de descanso",
+      "rowNoneSub": "Sin series de aproximación",
+      "rowAutoSub": "{{sets}} series · {{rest}}",
+      "rowCustomSub": "{{n}} pasos · {{rest}}"
     }
   },
   "clients": {

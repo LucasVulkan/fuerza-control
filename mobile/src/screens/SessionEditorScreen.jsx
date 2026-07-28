@@ -429,6 +429,17 @@ export default function SessionEditorScreen({ navigation, route }) {
     showToast(t('editor.toastExDeleted'), 2200, 'neutral');
   }
 
+  // Sustituir el ejercicio que se está editando: lo dispara tanto el chevron de
+  // la cabecera accent como el botón del pie del editor.
+  function handleSubstituteEx() {
+    navigation.navigate('ExerciseSelector', {
+      templateId,
+      currentExerciseId: editingExId,
+      existingPatterns: [],
+    });
+    setEditingExId(null);
+  }
+
   function handleAddExercise() {
     const existingPatterns = template.exercises
       .map((ex) => allExercises[ex.exerciseId]?.pattern)
@@ -686,19 +697,27 @@ export default function SessionEditorScreen({ navigation, route }) {
           onRequestClose={() => setEditingExId(null)}
         >
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            <View style={styles.modalTopbar}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.modalExTag}>EJERCICIO</Text>
-                <Text style={styles.modalExName} numberOfLines={1}>
+            {/* Cabecera del Exercice Editor (123:1633): barra accent con el
+                nombre + chevron (sustituir) y botón "Aceptar" gris. */}
+            <View style={styles.exHeader}>
+              <TouchableOpacity
+                style={styles.exHeaderBar}
+                onPress={handleSubstituteEx}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.exHeaderTitle} numberOfLines={1}>
                   {editingDef?.name ?? editingExId}
                 </Text>
-              </View>
+                <View style={styles.exHeaderChevron}>
+                  <ArrowIcon size={7.69} color={th.colors.onAccent} />
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalAcceptBtn}
+                style={styles.exHeaderAccept}
                 onPress={() => setEditingExId(null)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.modalAcceptTxt}>Aceptar</Text>
+                <Text style={styles.exHeaderAcceptTxt}>{t('common.accept')}</Text>
               </TouchableOpacity>
             </View>
             <KeyboardAvoidingView
@@ -710,9 +729,9 @@ export default function SessionEditorScreen({ navigation, route }) {
                   templateId={templateId}
                   exConfig={editingExConfig}
                   def={editingDef}
-                  onClose={() => setEditingExId(null)}
-                  navigation={navigation}
                   hasNextExercise={editingExHasNext}
+                  onSubstitute={handleSubstituteEx}
+                  onDelete={() => handleRemoveExercise(editingExId)}
                 />
               </ScrollView>
             </KeyboardAvoidingView>
@@ -1077,6 +1096,38 @@ const makeStyles = (th) => StyleSheet.create({
   presetName:   { ...textStyles.cardType, color: th.colors.text },
   presetMeta:   { ...textStyles.tag, color: th.colors.mutedLight, marginTop: spacing.xs },
   presetRemove: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
+
+  // ── Cabecera del editor de ejercicio (123:1633) ──
+  exHeader: {
+    flexDirection:     'row',
+    alignItems:        'stretch',
+    gap:               spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.md,
+  },
+  exHeaderBar: {
+    flex:              1,
+    minWidth:          0,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.md,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+  },
+  exHeaderTitle:   { ...textStyles.spacingTag, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
+  exHeaderChevron: { transform: [{ rotate: '90deg' }] },
+  exHeaderAccept: {
+    backgroundColor: th.colors.muted,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  exHeaderAcceptTxt: { ...textStyles.cardType, color: th.colors.text },
 
   // ── Modales de ejercicio / bloque (sin migrar todavía) ──
   modalSafe: { flex: 1, backgroundColor: th.colors.bg },

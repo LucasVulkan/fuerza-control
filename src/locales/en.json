@@ -16,7 +16,8 @@
     "exercises_other": "{{count}} exercises",
     "clients_one": "{{count}} client",
     "clients_other": "{{count}} clients",
-    "day": "DAY"
+    "day": "DAY",
+    "accept": "Done"
   },
   "header": {
     "newProgram": "＋ New program",
@@ -777,7 +778,12 @@
     "fieldMinReps": "Min reps",
     "fieldMaxReps": "Max reps",
     "submaxHint": "No automatic progression — athlete decides when to advance.",
-    "substituteBtn": "⇄ Substitute",
+    "substituteBtn": "Replace",
+    "unilateralLabel": "Unilateral",
+    "metricReps": "Reps",
+    "metricTime": "Time",
+    "tempoLabel": "Tempo",
+    "tempoHint": "Eccentric · Pause · Concentric · Pause (e.g. 3010; X = explosive)",
     "saveBtn": "Save",
     "toastUpdated": "Exercise updated",
     "toastSubstituted": "Exercise substituted",
@@ -848,6 +854,7 @@
       "submax": "No rep target — the athlete decides, log only"
     },
     "configDone": "Done",
+    "stepMode": "Progression mode",
     "stepType": "What progresses",
     "stepEval": "When it counts",
     "stepIncr": "How much it adds",
@@ -875,11 +882,15 @@
       "none": "None",
       "auto": "Auto",
       "custom": "Custom",
-      "setsLabel": "Warm-up sets",
-      "restLabel": "Rest between warm-ups",
+      "setsLabel": "Sets",
+      "restLabel": "Rest (s)",
       "noTimer": "no timer",
       "addStep": "＋ Add step",
-      "rampStep": "{{pct}}% × {{reps}}"
+      "rampStep": "{{pct}}% × {{reps}}",
+      "restShort": "{{s}}s rest",
+      "rowNoneSub": "No warm-up sets",
+      "rowAutoSub": "{{sets}} sets · {{rest}}",
+      "rowCustomSub": "{{n}} steps · {{rest}}"
     }
   },
   "clients": {

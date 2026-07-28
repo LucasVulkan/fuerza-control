@@ -1,16 +1,55 @@
+/**
+ * ExerciseEditorInline — editor de un ejercicio, rediseño FormaFit (Figma
+ * `123:1511` "Exercice Editor" + componentes `Exercice editor elements`
+ * `160:1197` y `Option blocks` `176:1902`/`176:1952`).
+ *
+ * Estructura del mock, de arriba abajo: RESUMEN (tint/accent-10, sin borde) →
+ * VOLUMEN (segmented REPS/TIME + grid 2×2 de cajas ±) → CALENTAMIENTO →
+ * PROGRESIÓN → OPCIONES (lista agrupada) + Vinculación (tarjeta aparte).
+ *
+ * Tres piezas de la app no existen en el mock y se resolvieron con el patrón
+ * "fila + hoja" que Figma sí usa para Progresión y Tempo (decisión del usuario):
+ *   · Calentamiento — sección propia con una fila que abre su DragSheet.
+ *   · Modo de progresión (Auto/Fija/Submáx) — pasa a ser el paso 1 de la hoja
+ *     de progresión, así la pantalla queda con una sola fila como en Figma.
+ *   · Tempo — la fila muestra el valor y abre una hoja con el input.
+ * Los botones Sustituir / Eliminar del final tampoco están en Figma: son
+ * funcionalidad pedida aparte, con el lenguaje de los botones que descubre el
+ * swipe en el editor de sesión (surface2 / tint-red-30).
+ *
+ * Toda la lógica (autosave con debounce, vinculación, progresión, calentamiento)
+ * se conserva tal cual; esto es un restyle + reorganización de la UI.
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, interpolate, interpolateColor, Easing,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../../../src/utils/progression';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../../../src/utils/exerciseLinks';
 import { warmupSteps } from '../../../../src/utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import SegmentedControl from '../ui/SegmentedControl';
+import { ArrowIcon, ProgressionIcon } from '../ui/EditorIcons';
 import DragSheet from '../DragSheet';
 
-// ─── StepField ────────────────────────────────────────────────────────────────
+// Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
+// 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
+const ROW_CHEVRON = 10.77;
+// Gris suelto del chevron de "Tempo" en Figma — el mismo literal que ya usa el
+// chevron de sesión futura en HomeView.
+const CHEVRON_GREY = '#d9d9d9';
+
+// ─── StepField (Exercice editor elements / Caja, `142:1119`) ──────────────────
+//
+// Figma dibuja dos versiones del mismo componente en el grid (una de alto fijo
+// 68 con los botones centrados y separados 26, otra hug con los botones a los
+// bordes). Es una inconsistencia del mock: aquí se unifica en alto 68 con los
+// botones a los bordes, que es lo que llena la tarjeta.
 
 function StepField({ label, value, onChange, min, max }) {
   const sf = useThemedStyles(makeSf);
@@ -27,9 +66,9 @@ function StepField({ label, value, onChange, min, max }) {
 
   return (
     <View style={sf.card}>
-      <Text style={sf.label}>{label}</Text>
+      <Text style={sf.label} numberOfLines={1}>{label}</Text>
       <View style={sf.row}>
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.max(min, numVal - 1))}>
+        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.max(min, numVal - 1))} activeOpacity={0.6}>
           <Text style={sf.stepText}>−</Text>
         </TouchableOpacity>
         <TextInput
@@ -40,7 +79,7 @@ function StepField({ label, value, onChange, min, max }) {
           onBlur={handleBlur}
           selectTextOnFocus
         />
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))}>
+        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))} activeOpacity={0.6}>
           <Text style={sf.stepText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -51,86 +90,136 @@ function StepField({ label, value, onChange, min, max }) {
 const makeSf = (th) => StyleSheet.create({
   card: {
     flex:            1,
+    height:          68,
     backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.sm + 2,
-    gap:             6,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+    justifyContent:  'space-between',
+    overflow:        'hidden',
   },
-  label: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 0.5,
-    fontWeight:    typography.medium,
-    textAlign:     'center',
-  },
+  label: { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
   row: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
   },
   stepBtn: {
-    width:           36,
-    height:          36,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
+    width:           30,
+    height:          30,
+    borderRadius:    th.radius.xs,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
   stepText: {
-    fontSize:   18,
-    color:      th.colors.muted,
-    lineHeight: 22,
+    fontFamily:         'Inter_500Medium',
+    fontSize:           24,
+    lineHeight:         26,
+    letterSpacing:      0.96,
+    color:              th.tint.accent50,
+    includeFontPadding: false,
   },
   valueInput: {
     flex:               1,
+    ...textStyles.cardTitle,
+    color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
-    fontSize:           typography.lg,
-    fontWeight:         typography.bold,
-    color:              th.colors.text,
     backgroundColor:    'transparent',
-    height:             40,
+    height:             30,
     paddingVertical:    0,
   },
 });
 
-// ─── ToggleRow ────────────────────────────────────────────────────────────────
+// ─── Switch (Icons / Switch, `176:1907`) ──────────────────────────────────────
+// Carril 26×14.18 con pulgar de 11.82. Figma solo dibuja el estado ON (carril
+// accent, pulgar negro); el OFF es decisión nuestra: surface2 + pulgar
+// mutedLight, para que se lea apagado sin introducir un color nuevo.
 
-function ToggleRow({ label, value, onChange }) {
-  const styles = useThemedStyles(makeStyles);
+const TRACK_W = 26;
+const TRACK_H = 14.182;
+const THUMB   = 11.818;
+const THUMB_X = [1.18, TRACK_W - THUMB - 1.18];
+
+function Switch({ value }) {
+  const th = useTheme();
+  const p  = useSharedValue(value ? 1 : 0);
+
+  // Los worklets solo pueden capturar valores serializables — `th` lleva
+  // funciones dentro, así que se extraen los colores a strings sueltos.
+  const trackColors = [th.colors.surface2,   th.colors.accent];
+  const thumbColors = [th.colors.mutedLight, th.colors.onAccent];
+
+  useEffect(() => {
+    p.value = withTiming(value ? 1 : 0, { duration: 180, easing: Easing.inOut(Easing.ease) });
+  }, [value, p]);
+
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(p.value, [0, 1], trackColors),
+  }));
+  const thumbStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(p.value, [0, 1], thumbColors),
+    transform:       [{ translateX: interpolate(p.value, [0, 1], THUMB_X) }],
+  }));
+
   return (
-    <TouchableOpacity style={styles.toggleRow} onPress={() => onChange(!value)} activeOpacity={0.7}>
-      <Text style={styles.toggleLabel}>{label}</Text>
-      <View style={[styles.track, value && styles.trackOn]}>
-        <View style={[styles.thumb, value && styles.thumbOn]} />
-      </View>
-    </TouchableOpacity>
+    <View style={swStyles.box}>
+      <Animated.View style={[swStyles.track, trackStyle]}>
+        <Animated.View style={[swStyles.thumb, thumbStyle]} />
+      </Animated.View>
+    </View>
   );
 }
 
-// ─── SegPicker ────────────────────────────────────────────────────────────────
+const swStyles = StyleSheet.create({
+  box:   { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  track: { width: TRACK_W, height: TRACK_H, borderRadius: TRACK_H / 2, justifyContent: 'center' },
+  thumb: { width: THUMB, height: THUMB, borderRadius: THUMB / 2, position: 'absolute' },
+});
 
-function SegPicker({ options, value, onChange }) {
+// ─── Filas de la lista agrupada (Option blocks / Opciones basicas) ────────────
+
+function OptionRow({ label, hint, onPress, right }) {
   const styles = useThemedStyles(makeStyles);
+  const Wrap   = onPress ? TouchableOpacity : View;
+  const press  = onPress ? { onPress, activeOpacity: 0.7 } : null;
   return (
-    <View style={styles.segRow}>
-      {options.map((opt) => (
-        <TouchableOpacity
-          key={opt.id}
-          style={[styles.segBtn, value === opt.id && styles.segBtnActive]}
-          onPress={() => onChange(opt.id)}
-        >
-          <Text style={[styles.segLabel, value === opt.id && styles.segLabelActive]}>
-            {opt.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+    <Wrap style={styles.optRow} {...press}>
+      <View style={styles.optRowMeta}>
+        <Text style={styles.optRowLabel}>{label}</Text>
+        {!!hint && <Text style={styles.optRowHint}>{hint}</Text>}
+      </View>
+      {right}
+    </Wrap>
+  );
+}
+
+function ToggleRow({ label, hint, value, onChange }) {
+  return (
+    <OptionRow
+      label={label}
+      hint={value ? hint : undefined}
+      onPress={() => onChange(!value)}
+      right={<Switch value={value} />}
+    />
+  );
+}
+
+// Fila navegable "Progresion" (`163:1212`): icono opcional, título, subtítulo y
+// chevron. Se reutiliza para Progresión y Calentamiento.
+function NavRow({ icon, title, subtitle, onPress }) {
+  const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
+  return (
+    <TouchableOpacity style={styles.navRow} onPress={onPress} activeOpacity={0.7}>
+      {icon}
+      <View style={styles.navRowMeta}>
+        <Text style={styles.navRowTitle}>{title}</Text>
+        <Text style={styles.navRowSub}>{subtitle}</Text>
+      </View>
+      <ArrowIcon size={ROW_CHEVRON} color={th.colors.accent} />
+    </TouchableOpacity>
   );
 }
 
@@ -165,7 +254,6 @@ function IncrementInput({ value, onChange, unit }) {
 
 function WarmupStepRow({ index, step, onChange, onRemove }) {
   const styles = useThemedStyles(makeStyles);
-  const th = useTheme();
   const [pctDraft, setPctDraft] = useState(String(step.pct));
   const [repsDraft, setRepsDraft] = useState(String(step.reps));
   useEffect(() => { setPctDraft(String(step.pct)); }, [step.pct]);
@@ -206,18 +294,13 @@ function WarmupStepRow({ index, step, onChange, onRemove }) {
         selectTextOnFocus
       />
       <TouchableOpacity style={styles.warmupStepRemove} onPress={onRemove} hitSlop={8}>
-        <Text style={[styles.warmupStepUnit, { color: th.colors.muted }]}>✕</Text>
+        <Text style={styles.warmupStepRemoveTxt}>✕</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 // ─── ExerciseEditorInline ─────────────────────────────────────────────────────
-//
-// Layout: live summary card → VOLUMEN (always visible) → PROGRESIÓN as a
-// 3-mode picker (auto | fixed | submax); the automatic mode's detail config
-// (type / evaluation / increment) lives in a bottom sheet so casual users
-// never see it.
 
 // Editor state derived from an exConfig — used at mount and to re-sync after
 // joining a link group (which may adopt the group's config).
@@ -270,7 +353,9 @@ function computeInitial(exConfig, def) {
   };
 }
 
-export default function ExerciseEditorInline({ templateId, exConfig, def, onClose, navigation, hasNextExercise }) {
+export default function ExerciseEditorInline({
+  templateId, exConfig, def, hasNextExercise, onSubstitute, onDelete,
+}) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }                  = useTranslation();
@@ -311,7 +396,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
   const [warmupSets,        setWarmupSets]        = useState(i.warmupSets);
   const [warmupCustomSteps, setWarmupCustomSteps] = useState(i.warmupCustomSteps);
   const [warmupRestSec,     setWarmupRestSec]     = useState(i.warmupRestSec);
-  const [sheetOpen,      setSheetOpen]      = useState(false);
+  const [sheetOpen,       setSheetOpen]       = useState(false);
+  const [warmupSheetOpen, setWarmupSheetOpen] = useState(false);
+  const [tempoSheetOpen,  setTempoSheetOpen]  = useState(false);
 
   const stateRef  = useRef(null);
   const dirtyRef  = useRef(false);
@@ -401,49 +488,6 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const isChanged =
-    sets !== i.sets || restSec !== i.restSec ||
-    minReps !== i.minReps || maxReps !== i.maxReps ||
-    minTime !== i.minTime || maxTime !== i.maxTime ||
-    metric !== i.metric || isUnilateral !== i.isUnilateral || tempo !== i.tempo ||
-    trainerNote !== i.trainerNote || trackRpe !== i.trackRpe || evalMaxRpe !== i.evalMaxRpe ||
-    progMode !== i.progMode ||
-    progType !== i.progType || evalMode !== i.evalMode || evalPct !== i.evalPct ||
-    incrType !== i.incrType || incrFixedValue !== i.incrFixedValue ||
-    incrPctValue !== i.incrPctValue || incrMin !== i.incrMin ||
-    dropset !== i.dropset || supersetWithNext !== i.supersetWithNext ||
-    warmupMode !== i.warmupMode || warmupSets !== i.warmupSets || warmupRestSec !== i.warmupRestSec ||
-    JSON.stringify(warmupCustomSteps) !== JSON.stringify(i.warmupCustomSteps);
-
-  function handleRestore() {
-    clearTimeout(timerRef.current);
-    setSets(i.sets);           setRestSec(i.restSec);
-    setMinReps(i.minReps);     setMaxReps(i.maxReps);
-    setMinTime(i.minTime);     setMaxTime(i.maxTime);
-    setMetric(i.metric);       setIsUnilateral(i.isUnilateral); setTempo(i.tempo);
-    setTrainerNote(i.trainerNote);
-    setTrackRpe(i.trackRpe);   setEvalMaxRpe(i.evalMaxRpe);
-    setProgMode(i.progMode);   setProgType(i.progType);
-    setEvalMode(i.evalMode);   setEvalPct(i.evalPct);
-    setIncrType(i.incrType);   setIncrFixedValue(i.incrFixedValue);
-    setIncrPctValue(i.incrPctValue); setIncrMin(i.incrMin);
-    setDropset(i.dropset);
-    setSupersetWithNext(i.supersetWithNext);
-    setWarmupMode(i.warmupMode);   setWarmupSets(i.warmupSets);
-    setWarmupCustomSteps(i.warmupCustomSteps); setWarmupRestSec(i.warmupRestSec);
-    commitValues(i);
-    dirtyRef.current = false;
-  }
-
-  function handleSubstitute() {
-    navigation.navigate('ExerciseSelector', {
-      templateId,
-      currentExerciseId: exConfig.exerciseId,
-      existingPatterns: [],
-    });
-    onClose();
-  }
 
   // ── Cross-session linking ───────────────────────────────────────────────────
   const getTpl       = (tid) => userProgramsAll[tid] ?? sessionTemplatesAll[tid];
@@ -541,10 +585,29 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       })
     : t(`exerciseEditor.summaryProg.${progMode}`);
 
+  // Subtítulo de la fila de progresión — el mismo formato que dibuja Figma
+  // ("Doble · todas las series · +2.5 kg").
+  const progRowSub = progMode === 'auto'
+    ? [
+        t(`exerciseEditor.progTypes.${progType}`),
+        t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
+        `+${incTxt}`,
+      ].join(' · ')
+    : t(`exerciseEditor.progModeDesc.${progMode}`);
+
+  const warmupRestTxt = warmupRestSec > 0
+    ? t('exerciseEditor.warmup.restShort', { s: warmupRestSec })
+    : t('exerciseEditor.warmup.noTimer');
+  const warmupRowSub = warmupMode === 'none'
+    ? t('exerciseEditor.warmup.rowNoneSub')
+    : warmupMode === 'auto'
+      ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
+      : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
+
   return (
     <View style={styles.container}>
 
-      {/* ══ RESUMEN ══════════════════════════════════════════════════════════ */}
+      {/* ══ RESUMEN (Exercice editor elements / Resumen, 166:1245) ═══════════ */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
         <Text style={styles.summaryMain}>{volumeLine}</Text>
@@ -552,51 +615,184 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
       </View>
 
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
-      <View>
-        <Text style={styles.secTitle}>{t('exerciseEditor.sectionVolume')}</Text>
-        <SegPicker
+      <View style={styles.block}>
+        <Text style={styles.secLabel}>{t('exerciseEditor.sectionVolume').toUpperCase()}</Text>
+        <SegmentedControl
           options={[
-            { id: 'reps', label: 'Reps' },
-            { id: 'time', label: 'Tiempo' },
+            { id: 'reps', label: t('exerciseEditor.metricReps').toUpperCase() },
+            { id: 'time', label: t('exerciseEditor.metricTime').toUpperCase() },
           ]}
           value={metric}
           onChange={setMetric}
         />
 
-        <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-          <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
-          <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} />
+        <View style={styles.grid}>
+          <View style={styles.gridRow}>
+            <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
+            <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} />
+          </View>
+
+          {showTimeRange ? (
+            <View style={styles.gridRow}>
+              <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} />
+              <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} />
+            </View>
+          ) : showRepsRange ? (
+            <View style={styles.gridRow}>
+              <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
+              <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
+            </View>
+          ) : (
+            <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
+          )}
         </View>
+      </View>
 
-        {showTimeRange ? (
-          <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-            <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5}  max={300} />
-            <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5}  max={300} />
-          </View>
-        ) : showRepsRange ? (
-          <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-            <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
-            <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
-          </View>
-        ) : (
-          <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
+      {/* ══ CALENTAMIENTO (no está en Figma — fila + hoja) ═══════════════════ */}
+      <View style={styles.block}>
+        <Text style={styles.secLabel}>{t('exerciseEditor.warmup.title').toUpperCase()}</Text>
+        <NavRow
+          title={t(`exerciseEditor.warmup.${warmupMode}`)}
+          subtitle={warmupRowSub}
+          onPress={() => setWarmupSheetOpen(true)}
+        />
+      </View>
+
+      {/* ══ PROGRESIÓN (142:1157) ════════════════════════════════════════════ */}
+      <View style={styles.block}>
+        <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgression').toUpperCase()}</Text>
+        <NavRow
+          icon={<ProgressionIcon size={15} color={th.colors.accent} />}
+          title={t(`exerciseEditor.progModes.${progMode}`)}
+          subtitle={progRowSub}
+          onPress={() => setSheetOpen(true)}
+        />
+      </View>
+
+      {/* ══ OPCIONES (Option blocks, 176:1902 + 176:1952) ════════════════════ */}
+      <Text style={styles.secLabel}>{t('exerciseEditor.sectionOptions').toUpperCase()}</Text>
+
+      <View style={styles.optGroup}>
+        <ToggleRow
+          label={t('exerciseEditor.unilateralLabel')}
+          value={isUnilateral}
+          onChange={setIsUnilateral}
+        />
+        <ToggleRow
+          label={t('exerciseEditor.trackRpeLabel')}
+          value={trackRpe}
+          onChange={(v) => {
+            setTrackRpe(v);
+            if (!v && evalMode === 'rpe') setEvalMode('all_complete');
+          }}
+        />
+        {!isTime && (
+          <ToggleRow
+            label={t('exerciseEditor.dropsetLabel')}
+            hint={t('exerciseEditor.dropsetHint')}
+            value={dropset}
+            onChange={setDropset}
+          />
         )}
+        {hasNextExercise && (
+          <ToggleRow
+            label={t('exerciseEditor.supersetLabel')}
+            hint={t('exerciseEditor.supersetHint')}
+            value={supersetWithNext}
+            onChange={setSupersetWithNext}
+          />
+        )}
+        <OptionRow
+          label={t('exerciseEditor.tempoLabel')}
+          onPress={() => setTempoSheetOpen(true)}
+          right={(
+            <View style={styles.tempoValueRow}>
+              <Text style={styles.tempoValue}>{tempo || '—'}</Text>
+              <ArrowIcon size={9.23} color={CHEVRON_GREY} />
+            </View>
+          )}
+        />
+        <View style={styles.noteRow}>
+          <Text style={styles.optRowLabel}>{t('exerciseEditor.trainerNoteLabel')}</Text>
+          <TextInput
+            style={styles.noteInput}
+            value={trainerNote}
+            onChangeText={setTrainerNote}
+            placeholder={t('exerciseEditor.trainerNotePlaceholder')}
+            placeholderTextColor={th.colors.mutedLight}
+            multiline
+            maxLength={280}
+          />
+          <Text style={styles.optRowHint}>{t('exerciseEditor.trainerNoteHint')}</Text>
+        </View>
+      </View>
 
-        <View style={{ marginTop: spacing.md }}>
-          <Text style={styles.warmupLabel}>{t('exerciseEditor.warmup.title')}</Text>
-          <SegPicker
-            options={[
-              { id: 'none',   label: t('exerciseEditor.warmup.none') },
-              { id: 'auto',   label: t('exerciseEditor.warmup.auto') },
-              { id: 'custom', label: t('exerciseEditor.warmup.custom') },
-            ]}
+      {/* Vinculación entre sesiones — solo si el ejercicio existe en más sesiones */}
+      {showLinking && (
+        <View style={styles.linkCard}>
+          <Text style={styles.optRowLabel}>{t('exerciseEditor.linkLabel')}</Text>
+          <View style={styles.linkList}>
+            <TouchableOpacity
+              style={[styles.linkPill, !currentGroup && styles.linkPillActive]}
+              onPress={() => handleLinkSelect(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.linkPillText, !currentGroup && styles.linkPillTextActive]}>
+                {t('exerciseEditor.linkNone')}
+              </Text>
+            </TouchableOpacity>
+            {linkGroups.map((g, idx) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.linkPill, currentGroup === g.id && styles.linkPillActive]}
+                onPress={() => handleLinkSelect(g.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.linkPillText, currentGroup === g.id && styles.linkPillTextActive]}>
+                  {t('exerciseEditor.linkGroupN', { n: idx + 1 })} · {g.sessions.join(', ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.linkPill, styles.linkPillNew]}
+              onPress={() => handleLinkSelect('__new__')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.linkPillNewText}>{t('exerciseEditor.linkNew')}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.optRowHint}>{t('exerciseEditor.linkHint')}</Text>
+        </View>
+      )}
+
+      {/* ══ ACCIONES (no están en Figma) ═════════════════════════════════════ */}
+      <View style={styles.btnRow}>
+        <TouchableOpacity style={styles.substituteBtn} onPress={onSubstitute} activeOpacity={0.8}>
+          <Text style={styles.substituteBtnText}>{t('exerciseEditor.substituteBtn')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.8}>
+          <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ══ HOJA: calentamiento ══════════════════════════════════════════════ */}
+      <DragSheet
+        visible={warmupSheetOpen}
+        onClose={() => setWarmupSheetOpen(false)}
+        title={t('exerciseEditor.warmup.title')}
+      >
+        <View style={styles.sheetBody}>
+          <SegmentedControl
+            options={['none', 'auto', 'custom'].map((id) => ({
+              id, label: t(`exerciseEditor.warmup.${id}`),
+            }))}
             value={warmupMode}
             onChange={setWarmupMode}
           />
 
           {warmupMode === 'auto' && (
-            <>
-              <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+            <View style={styles.block}>
+              <View style={styles.gridRow}>
                 <StepField
                   label={t('exerciseEditor.warmup.setsLabel')}
                   value={warmupSets}
@@ -607,11 +803,11 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                 <View style={{ flex: 1 }} />
               </View>
               <Text style={styles.hint}>{warmupRampHint}</Text>
-            </>
+            </View>
           )}
 
           {warmupMode === 'custom' && (
-            <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
+            <View style={{ gap: spacing.sm }}>
               {warmupCustomSteps.map((step, idx) => (
                 <WarmupStepRow
                   key={idx}
@@ -632,7 +828,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
           )}
 
           {warmupMode !== 'none' && (
-            <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+            <View style={styles.gridRow}>
               <StepField
                 label={t('exerciseEditor.warmup.restLabel')}
                 value={warmupRestSec}
@@ -647,185 +843,66 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
             <Text style={styles.hint}>{t('exerciseEditor.warmup.noTimer')}</Text>
           )}
         </View>
-      </View>
+      </DragSheet>
 
-      <View style={styles.divider} />
-
-      {/* ══ PROGRESIÓN ═══════════════════════════════════════════════════════ */}
-      <View>
-        <Text style={styles.secTitle}>{t('exerciseEditor.sectionProgression')}</Text>
-        <SegPicker options={PROG_MODES} value={progMode} onChange={setProgMode} />
-        <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
-
-        {progMode === 'auto' && (
-          <TouchableOpacity style={styles.progRow} onPress={() => setSheetOpen(true)} activeOpacity={0.7}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.progRowTitle}>{t(`exerciseEditor.progTypes.${progType}`)}</Text>
-              <Text style={styles.progRowSub}>
-                {t(`exerciseEditor.evalModes.${effEvalMode}`)} · +{incTxt}
-              </Text>
-            </View>
-            <Text style={styles.progRowChevron}>›</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.divider} />
-
-      {/* ══ OPCIONES ═════════════════════════════════════════════════════════ */}
-      <View>
-        <Text style={styles.secTitle}>{t('exerciseEditor.sectionOptions')}</Text>
-        <View style={styles.optionsCard}>
-          <ToggleRow label="Unilateral" value={isUnilateral} onChange={setIsUnilateral} />
-          <View style={styles.optionsDivider} />
-          <ToggleRow
-            label={t('exerciseEditor.trackRpeLabel')}
-            value={trackRpe}
-            onChange={(v) => {
-              setTrackRpe(v);
-              if (!v && evalMode === 'rpe') setEvalMode('all_complete');
-            }}
+      {/* ══ HOJA: tempo ══════════════════════════════════════════════════════ */}
+      <DragSheet
+        visible={tempoSheetOpen}
+        onClose={() => setTempoSheetOpen(false)}
+        title={t('exerciseEditor.tempoLabel')}
+      >
+        <View style={styles.sheetBody}>
+          <TextInput
+            style={styles.tempoInput}
+            value={tempo}
+            onChangeText={(v) => setTempo(v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
+            maxLength={4}
+            placeholder="—"
+            placeholderTextColor={th.colors.mutedLight}
+            autoCapitalize="characters"
+            returnKeyType="done"
           />
-          {!isTime && (
-            <>
-              <View style={styles.optionsDivider} />
-              <ToggleRow
-                label={t('exerciseEditor.dropsetLabel')}
-                value={dropset}
-                onChange={setDropset}
-              />
-              {dropset && <Text style={styles.dropsetHint}>{t('exerciseEditor.dropsetHint')}</Text>}
-            </>
-          )}
-          {hasNextExercise && (
-            <>
-              <View style={styles.optionsDivider} />
-              <ToggleRow
-                label={t('exerciseEditor.supersetLabel')}
-                value={supersetWithNext}
-                onChange={setSupersetWithNext}
-              />
-              {supersetWithNext && <Text style={styles.dropsetHint}>{t('exerciseEditor.supersetHint')}</Text>}
-            </>
-          )}
-          <View style={styles.optionsDivider} />
-          <View style={styles.tempoRow}>
-            <View style={styles.tempoMeta}>
-              <Text style={styles.toggleLabel}>Tempo</Text>
-              <Text style={styles.tempoHint}>Exc · Pausa · Con · Pausa</Text>
-            </View>
-            <TextInput
-              style={styles.tempoInput}
-              value={tempo}
-              onChangeText={(v) => setTempo(v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
-              maxLength={4}
-              placeholder="—"
-              placeholderTextColor={th.colors.muted2}
-              keyboardType="default"
-              autoCapitalize="characters"
-              returnKeyType="done"
-            />
-          </View>
-          <View style={styles.optionsDivider} />
-          <View style={styles.noteBlock}>
-            <Text style={styles.toggleLabel}>{t('exerciseEditor.trainerNoteLabel')}</Text>
-            <Text style={styles.tempoHint}>{t('exerciseEditor.trainerNoteHint')}</Text>
-            <TextInput
-              style={styles.noteInput}
-              value={trainerNote}
-              onChangeText={setTrainerNote}
-              placeholder={t('exerciseEditor.trainerNotePlaceholder')}
-              placeholderTextColor={th.colors.muted2}
-              multiline
-              maxLength={280}
-            />
-          </View>
-
-          {/* Vinculación entre sesiones — solo si el ejercicio existe en más sesiones */}
-          {showLinking && (
-            <>
-              <View style={styles.optionsDivider} />
-              <View style={styles.noteBlock}>
-                <Text style={styles.toggleLabel}>{t('exerciseEditor.linkLabel')}</Text>
-                <Text style={styles.tempoHint}>{t('exerciseEditor.linkHint')}</Text>
-                <View style={styles.linkList}>
-                  <TouchableOpacity
-                    style={[styles.linkRow, !currentGroup && styles.linkRowActive]}
-                    onPress={() => handleLinkSelect(null)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.linkRowText, !currentGroup && styles.linkRowTextActive]}>
-                      {t('exerciseEditor.linkNone')}
-                    </Text>
-                  </TouchableOpacity>
-                  {linkGroups.map((g, idx) => (
-                    <TouchableOpacity
-                      key={g.id}
-                      style={[styles.linkRow, currentGroup === g.id && styles.linkRowActive]}
-                      onPress={() => handleLinkSelect(g.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.linkRowText, currentGroup === g.id && styles.linkRowTextActive]}>
-                        {t('exerciseEditor.linkGroupN', { n: idx + 1 })} · {g.sessions.join(', ')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity
-                    style={[styles.linkRow, styles.linkRowDashed]}
-                    onPress={() => handleLinkSelect('__new__')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.linkRowText}>{t('exerciseEditor.linkNew')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </>
-          )}
+          <Text style={styles.hint}>{t('exerciseEditor.tempoHint')}</Text>
         </View>
-      </View>
+      </DragSheet>
 
-      {/* ══ ACCIONES ═════════════════════════════════════════════════════════ */}
-      <View style={styles.btnRow}>
-        <TouchableOpacity style={styles.substituteBtn} onPress={handleSubstitute}>
-          <Text style={styles.substituteBtnText}>{t('exerciseEditor.substituteBtn')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.restoreBtn, !isChanged && styles.restoreBtnDisabled]}
-          onPress={isChanged ? handleRestore : undefined}
-          disabled={!isChanged}
-        >
-          <Text style={[styles.restoreBtnText, !isChanged && styles.restoreBtnTextDisabled]}>
-            Restaurar
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ══ SHEET: configuración de la progresión automática ═════════════════ */}
+      {/* ══ HOJA: configuración de la progresión ═════════════════════════════ */}
       <DragSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
       >
-            <View style={styles.sheetBody}>
+        <View style={styles.sheetBody}>
 
-              {/* 1 · Qué progresa */}
+          {/* 1 · Modo */}
+          <View>
+            <Text style={styles.stepTitle}>
+              <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
+            </Text>
+            <SegmentedControl options={PROG_MODES} value={progMode} onChange={setProgMode} />
+            <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
+          </View>
+
+          {progMode === 'auto' && (
+            <>
+              {/* 2 · Qué progresa */}
               <View>
                 <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepType')}
+                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepType')}
                 </Text>
-                <SegPicker options={PROG_TYPES} value={progType} onChange={setProgType} />
+                <SegmentedControl options={PROG_TYPES} value={progType} onChange={setProgType} />
                 <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
               </View>
 
-              {/* 2 · Cuándo se cumple */}
+              {/* 3 · Cuándo se cumple */}
               <View>
                 <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepEval')}
+                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepEval')}
                 </Text>
-                <SegPicker options={EVAL_MODES} value={effEvalMode} onChange={setEvalMode} />
+                <SegmentedControl options={EVAL_MODES} value={effEvalMode} onChange={setEvalMode} />
                 <Text style={styles.hint}>{t(`exerciseEditor.evalModeDesc.${effEvalMode}`)}</Text>
                 {evalMode === 'pct' && (
-                  <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                  <View style={[styles.gridRow, { marginTop: spacing.md }]}>
                     <StepField
                       label={`${t('exerciseEditor.evalPctLabel')} (%)`}
                       value={evalPct}
@@ -837,7 +914,7 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                   </View>
                 )}
                 {evalMode === 'rpe' && trackRpe && (
-                  <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
+                  <View style={[styles.gridRow, { marginTop: spacing.md }]}>
                     <StepField
                       label={t('exerciseEditor.maxRpeLabel')}
                       value={evalMaxRpe}
@@ -850,13 +927,13 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                 )}
               </View>
 
-              {/* 3 · Cuánto sube */}
+              {/* 4 · Cuánto sube */}
               <View>
                 <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepIncr')}
+                  <Text style={styles.stepNum}>4 · </Text>{t('exerciseEditor.stepIncr')}
                 </Text>
                 {showRepsIncr ? (
-                  <View style={styles.fieldRow}>
+                  <View style={styles.gridRow}>
                     <StepField
                       label={t('exerciseEditor.incrFixedRepsLabel')}
                       value={incrFixedValue}
@@ -868,9 +945,9 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                   </View>
                 ) : (
                   <>
-                    <SegPicker options={INCR_TYPES} value={incrType} onChange={setIncrType} />
+                    <SegmentedControl options={INCR_TYPES} value={incrType} onChange={setIncrType} />
                     <Text style={styles.hint}>{t(`exerciseEditor.incrTypeDesc.${incrType}`)}</Text>
-                    <View style={{ marginTop: spacing.sm }}>
+                    <View style={{ marginTop: spacing.md }}>
                       <IncrementInput
                         value={incrType === 'pct' ? incrPctValue : incrFixedValue}
                         onChange={incrType === 'pct' ? setIncrPctValue : setIncrFixedValue}
@@ -880,8 +957,8 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                     {incrType === 'pct' && (
                       <View style={styles.incrMinRow}>
                         <View style={styles.incrMinMeta}>
-                          <Text style={styles.incrMinLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
-                          <Text style={styles.hint}>{t('exerciseEditor.incrMinHint')}</Text>
+                          <Text style={styles.optRowLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
+                          <Text style={styles.optRowHint}>{t('exerciseEditor.incrMinHint')}</Text>
                         </View>
                         <IncrementInput
                           value={incrMin}
@@ -893,13 +970,15 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
                   </>
                 )}
               </View>
+            </>
+          )}
 
-              {/* Resultado en lenguaje natural */}
-              <View style={styles.summaryCard}>
-                <Text style={styles.summarySub}>{progLine}</Text>
-              </View>
+          {/* Resultado en lenguaje natural */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summarySub}>{progLine}</Text>
+          </View>
 
-            </View>
+        </View>
       </DragSheet>
 
     </View>
@@ -910,402 +989,214 @@ export default function ExerciseEditorInline({ templateId, exConfig, def, onClos
 
 const makeStyles = (th) => StyleSheet.create({
 
+  // Frame raíz (123:1511): padding `space/lg`, gap `space/md`. El padding
+  // superior lo pone la cabecera del modal, que vive en SessionEditorScreen.
   container: {
-    padding:       spacing.lg,
-    paddingBottom: spacing.xxl + spacing.lg,
-    gap:           spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.xxl + spacing.lg,
+    gap:               spacing.md,
   },
 
-  // ── Summary card ───────────────────────────────────────────────────────────
+  // Cada "Bloque" del mock: etiqueta de sección + su contenido, gap `space/md`.
+  block: { gap: spacing.md },
+
+  // ── Resumen (166:1245) — solo relleno tint/accent-10, sin borde ────────────
   summaryCard: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             2,
-  },
-  summaryTag: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.heavy,
-    color:         withOpacity(th.colors.accent, 0.7),
-    letterSpacing: 1.2,
-    marginBottom:  2,
-  },
-  summaryMain: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.accent,
-  },
-  summarySub: {
-    fontSize:   typography.sm,
-    color:      th.colors.mutedLight,
-    lineHeight: typography.sm * 1.5,
-  },
-
-  // ── Section headers ────────────────────────────────────────────────────────
-  secTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
-  },
-
-  // ── Dividers ───────────────────────────────────────────────────────────────
-  divider: {
-    height:          StyleSheet.hairlineWidth,
-    backgroundColor: th.colors.border,
-  },
-
-  // ── Hints ─────────────────────────────────────────────────────────────────
-  hint: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted2,
-    lineHeight: typography.xs * 1.5,
-    marginTop:  spacing.xs,
-  },
-
-  // ── Progression config row (auto mode) ─────────────────────────────────────
-  progRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    marginTop:         spacing.sm,
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+    backgroundColor:   th.tint.accent10,
     borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  progRowTitle: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      th.colors.text,
-  },
-  progRowSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
-  progRowChevron: {
-    fontSize:   typography.xl,
-    color:      th.colors.muted,
-    lineHeight: typography.xl + 2,
+  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
+  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
+
+  // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
+  secLabel: {
+    ...textStyles.spacingTag,
+    color:      th.colors.mutedLight,
+    paddingTop: spacing.md,
   },
 
-  // ── Field grid ─────────────────────────────────────────────────────────────
-  fieldRow: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
+  // ── Grid 2×2 de cajas ─────────────────────────────────────────────────────
+  grid:    { gap: spacing.md },
+  gridRow: { flexDirection: 'row', gap: spacing.md },
+
+  hint: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+
+  // ── Fila navegable (Progresion, 163:1212) ─────────────────────────────────
+  navRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.md,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+  },
+  navRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
+  navRowTitle: { ...textStyles.cardType, color: th.colors.text },
+  navRowSub:   { ...textStyles.tag,      color: th.colors.mutedLight },
+
+  // ── Lista agrupada de opciones (176:1902) ─────────────────────────────────
+  // El contenedor recorta: por eso las filas solo llevan `radius/xxs` y las
+  // esquinas exteriores salen del clip, igual que en Figma.
+  optGroup: {
+    borderRadius: th.radius.md,
+    overflow:     'hidden',
+    gap:          spacing.xs,
+  },
+  optRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.md,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.xxs ?? 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm,
+  },
+  optRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
+  optRowLabel: { ...textStyles.cardType, color: th.colors.text },
+  optRowHint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+
+  tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  tempoValue:    { ...textStyles.cardType, color: th.colors.mutedLight, letterSpacing: 2 },
+
+  // Última fila del grupo: la nota, con su textarea sobre `color/workout-card`.
+  noteRow: {
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.xxs ?? 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm,
+    gap:               spacing.xs,
+  },
+  noteInput: {
+    height:            42,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.sm,
+    ...textStyles.tag,
+    color:             th.colors.text,
+    textAlignVertical: 'top',
   },
 
-  // ── Warmup ─────────────────────────────────────────────────────────────────
-  warmupLabel: {
-    fontSize:     typography.sm,
-    fontWeight:   typography.medium,
-    color:        th.colors.text,
-    marginBottom: spacing.xs,
+  // ── Vinculación (Option blocks / Vinculacion, 176:1952) ───────────────────
+  linkCard: {
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
   },
-  warmupStepRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
+  linkList: { gap: spacing.sm },
+  // 9 es literal de Figma (no hay token de espaciado con ese valor).
+  linkPill: {
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: 9,
+    paddingVertical:   spacing.sm,
   },
-  warmupStepIdx: {
-    width:      24,
-    fontSize:   typography.xs,
-    fontWeight: typography.bold,
-    color:      th.colors.muted,
+  linkPillActive:     { backgroundColor: th.colors.accent },
+  linkPillText:       { ...textStyles.btnAction, color: th.colors.text },
+  linkPillTextActive: { color: th.colors.onAccent },
+  linkPillNew:        { alignItems: 'center' },
+  linkPillNewText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
+
+  // ── Acciones ──────────────────────────────────────────────────────────────
+  btnRow: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md },
+  substituteBtn: {
+    flex:            1,
+    alignItems:      'center',
+    paddingVertical: spacing.md,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
   },
+  substituteBtnText: { ...textStyles.cardType, color: th.colors.text },
+  deleteBtn: {
+    flex:            1,
+    alignItems:      'center',
+    paddingVertical: spacing.md,
+    backgroundColor: th.tint.red30,
+    borderRadius:    th.radius.sm,
+  },
+  deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
+
+  // ── Calentamiento (hoja) ──────────────────────────────────────────────────
+  warmupStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: 24 },
   warmupStepInput: {
     flex:               1,
+    height:             30,
     backgroundColor:    th.colors.surface,
-    borderWidth:        borders.thin,
-    borderColor:        th.colors.border,
     borderRadius:       th.radius.sm,
-    height:             38,
-    fontSize:           typography.md,
-    fontWeight:         typography.medium,
+    ...textStyles.cardTitle,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
+    paddingVertical:    0,
   },
-  warmupStepUnit: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  warmupStepRemove: {
-    width:          28,
-    height:         28,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
+  warmupStepUnit:      { ...textStyles.subtitle, color: th.colors.mutedLight },
+  warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  warmupStepRemoveTxt: { ...textStyles.subtitle, color: th.colors.muted },
   addStepBtn: {
     alignItems:      'center',
     paddingVertical: spacing.sm,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderStyle:     'dashed',
+    backgroundColor: th.colors.surface2,
   },
   addStepBtnDisabled: { opacity: 0.35 },
-  addStepText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  addStepText:        { ...textStyles.cardType, color: th.tint.accent50 },
 
-  // ── Segmented picker ───────────────────────────────────────────────────────
-  segRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  segBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-  },
-  segBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.10),
-    borderColor:     withOpacity(th.colors.accent, 0.40),
-  },
-  segLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  segLabelActive: {
-    color: th.colors.accent,
-  },
-
-  // ── Increment input ────────────────────────────────────────────────────────
-  incrInputRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
+  // ── Incremento (hoja) ─────────────────────────────────────────────────────
+  incrInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   incrInput: {
+    minWidth:           80,
+    height:             30,
     backgroundColor:    th.colors.surface,
-    borderWidth:        borders.thin,
-    borderColor:        th.colors.border,
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.md,
-    height:             38,
-    fontSize:           typography.md,
-    fontWeight:         typography.medium,
+    ...textStyles.cardTitle,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
-    minWidth:           80,
+    paddingVertical:    0,
   },
-  incrUnit: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-
-  // ── Min increment ──────────────────────────────────────────────────────────
+  incrUnit: { ...textStyles.subtitle, color: th.colors.mutedLight },
   incrMinRow: {
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
-    gap:            spacing.sm,
-    marginTop:      spacing.sm,
+    gap:            spacing.md,
+    marginTop:      spacing.md,
   },
-  incrMinMeta: { flex: 1 },
-  incrMinLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
+  incrMinMeta: { flex: 1, minWidth: 0, gap: spacing.xs },
 
-  // ── Options card ───────────────────────────────────────────────────────────
-  optionsCard: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-  },
-  optionsDivider: {
-    height:          borders.thin,
-    backgroundColor: th.colors.border,
-  },
-
-  // ── Toggle ─────────────────────────────────────────────────────────────────
-  toggleRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  toggleLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  track: {
-    width:           40,
-    height:          22,
-    borderRadius:    11,
-    backgroundColor: th.colors.border,
-    padding:         2,
-    justifyContent:  'center',
-  },
-  trackOn: {
-    backgroundColor: withOpacity(th.colors.accent, 0.25),
-    borderWidth:     1,
-    borderColor:     withOpacity(th.colors.accent, 0.6),
-  },
-  thumb: {
-    width:           18,
-    height:          18,
-    borderRadius:    9,
-    backgroundColor: th.colors.muted,
-  },
-  thumbOn: {
-    backgroundColor: th.colors.accent,
-    transform:       [{ translateX: 18 }],
-  },
-
-  // ── Tempo ──────────────────────────────────────────────────────────────────
-  tempoRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap:               spacing.sm,
-  },
-  dropsetHint: {
-    fontSize:          typography.xs,
-    color:             th.colors.muted2,
-    lineHeight:        typography.xs * 1.5,
-    paddingHorizontal: spacing.md,
-    paddingBottom:     spacing.sm,
-    marginTop:         -spacing.xs,
-  },
-  tempoMeta: { flex: 1, gap: 2 },
-  tempoHint: { fontSize: 9, color: th.colors.muted2, lineHeight: 13, marginTop: 2 },
-  noteBlock: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    gap: 2,
-  },
-  noteInput: {
-    marginTop:        spacing.xs,
-    backgroundColor:  th.colors.surface2,
-    borderWidth:      borders.thin,
-    borderColor:      th.colors.border,
-    borderRadius:     th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:  spacing.sm,
-    color:            th.colors.text,
-    fontSize:         typography.sm,
-    minHeight:        60,
-    textAlignVertical: 'top',
-  },
-  // ── Cross-session linking ──────────────────────────────────────────────────
-  linkList: {
-    gap:       spacing.xs,
-    marginTop: spacing.sm,
-  },
-  linkRow: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-  },
-  linkRowActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.10),
-    borderColor:     withOpacity(th.colors.accent, 0.40),
-  },
-  linkRowDashed: {
-    borderStyle:     'dashed',
-    backgroundColor: 'transparent',
-  },
-  linkRowText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  linkRowTextActive: {
-    color: th.colors.accent,
-  },
+  // ── Tempo (hoja) ──────────────────────────────────────────────────────────
   tempoInput: {
-    backgroundColor:    th.colors.surface2,
-    borderWidth:        borders.thin,
-    borderColor:        th.colors.border,
+    alignSelf:          'center',
+    minWidth:           140,
+    height:             48,
+    backgroundColor:    th.colors.surface,
     borderRadius:       th.radius.sm,
-    paddingHorizontal:  spacing.sm,
-    paddingVertical:    7,
-    fontSize:           typography.md,
-    fontWeight:         typography.semibold,
+    ...textStyles.hero,
+    letterSpacing:      6,
     color:              th.colors.text,
-    width:              72,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
-    letterSpacing:      4,
+    paddingVertical:    0,
   },
 
-  // ── Action buttons ─────────────────────────────────────────────────────────
-  btnRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  substituteBtn: {
-    flex:            1,
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-  },
-  substituteBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  restoreBtn: {
-    alignItems:        'center',
-    justifyContent:    'center',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-  },
-  restoreBtnDisabled:     { opacity: 0.35 },
-  restoreBtnText:         { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
-  restoreBtnTextDisabled: {},
-
-  // ── Bottom sheet body ──────────────────────────────────────────────────────
-  sheetBody: {
-    gap:           spacing.lg,
-    paddingBottom: spacing.sm,
-  },
+  // ── Cuerpo de las hojas ───────────────────────────────────────────────────
+  sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   stepTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
+    ...textStyles.spacingTag,
+    color:        th.colors.mutedLight,
+    marginBottom: spacing.sm,
   },
-  stepNum: {
-    color: th.colors.accent,
-  },
+  stepNum: { color: th.colors.accent },
 });
