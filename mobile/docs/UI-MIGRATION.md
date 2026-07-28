@@ -26,7 +26,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
-| Sesion Editor (+ modal "···" nuevo) | ⬜ | `src/screens/SessionEditorScreen.jsx` |
+| **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
 | Exercice Editor (+ botones eliminar/sustituir) | ⬜ | `src/components/editor/ExerciseEditorInline.jsx` |
 | Bloques AMRAP / EMOM | ⬜ | editores de bloque |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
@@ -149,6 +149,94 @@ Divergencias resueltas contra la imagen que mandó el usuario (Figma perdió en 
 | Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44 |
 | `+ Añadir sesión a X` | Imagen: texto plano centrado, **sin** la caja outline de Figma |
 | `+` de etapas | Imagen: glifo accent sobre `surface2`, **no** el cuadrado relleno `#b8ff00` de 37×37 del nodo oculto `210:3274` |
+
+### Sesion Editor — desglose
+
+Nodo de Figma: `208:1932` (**re-extraído**: el usuario lo rehízo después de la primera
+lectura, y los ids de nodo y el layout cambiaron respecto a
+`figma-extraction/pages/sesion-editor.md`, que ya no vale). Comparte cabecera, tarjeta
+Resumen y botón de añadir con el editor de programa — los iconos comunes viven ahora en
+`src/components/ui/EditorIcons.jsx`.
+
+- **Una sola lista** para ejercicios y bloques, con la misma fila (`surface`,
+  `radius/sm`, px `space/md`, py `space/sm2`, gap 12 literal entre número y contenido).
+  Numeración corrida `01`, `02`… Una **superserie es UN número con letras** (`03A`,
+  `03B`): sus filas van a 2px con los radios interiores a `radius/xxs` y el grupo
+  envuelto en una barra `accent` de 2px a la izquierda (`209:2479`).
+- **Bloques mezclados con los ejercicios**, como en el mock. Esto **supera** la regla de
+  `docs/specs/conditioning-blocks.md` que los mandaba siempre al final (la spec queda
+  anotada). Cualquier hueco puede ir a cualquier posición y ese orden es también el que
+  se entrena: `WorkoutScreen` pinta la lista con el mismo helper
+  (`src/utils/sessionSlots.js`), bloques incluidos, y sus puntos de progreso siguen ese
+  orden. La numeración va por hueco en las dos pantallas, así que un bloque **consume su
+  número** aunque su tarjeta de entreno todavía no lo pinte (WorkoutScreen sigue sin
+  migrar).
+  El campo nuevo es `block.order` = índice **entre huecos**, no entre ejercicios: así un
+  bloque no puede colarse en mitad de una superserie y partirla. Sin `order` (datos
+  viejos) el bloque va al final, o sea que no hay migración. Cubierto por
+  `src/utils/sessionSlots.test.js`, ida y vuelta incluida.
+- **Se arrastra el hueco entero**, así que una superserie se mueve como una pieza y no
+  se puede romper por accidente. Entrar/salir de una superserie sigue siendo cosa del
+  editor de ejercicio.
+- **Solo queda una pill**, la del formato de bloque (EMOM / AMRAP / On-Time). Todo lo
+  que antes eran badges (progresión, vinculación, UNI, RPE) pasa al subtítulo separado
+  por puntos medios: `3 × 12-14 · 60s · prog. auto. · Vinculado A, B`. Unilateral y RPE
+  dejan de verse en la lista (decisión explícita) y solo existen dentro del editor de
+  ejercicio. La progresión solo se nombra cuando es automática.
+- **Etiqueta de sección** sobre la lista (`Ejercicios · 7`), mismo tratamiento que las
+  del editor de programa: `text/spacing-tag` en `mutedLight` con `paddingTop: space/md`.
+  El número cuenta **huecos**, no ejercicios, así que coincide con el último número de la
+  lista y cuenta los bloques (el "3 ejercicios" del Resumen sí cuenta solo ejercicios).
+- **Resumen** gana una 3ª línea (`text/tag`, `tint/accent-50`) con el volumen en
+  lenguaje natural en vez de las pills por patrón: `Volumen: 10 series de tracción,
+  3 de pierna, 1 bloque`.
+- **Asa de arrastre a la derecha**; el swipe a la derecha para sustituir/eliminar se
+  conserva (Figma no dibuja esas acciones en ningún sitio). El asa reclama el gesto en
+  `onStart`, así que se lleva los toques que caen sobre ella antes que el swipe.
+  Los dos botones que descubre el swipe son botones de verdad, no bloques de color a
+  sangre: `radius/sm`, `text/card-type`, `space/lg` de padding lateral, separados por
+  `space/sm`, y con `space/sm` de aire arriba y abajo (no llegan al alto de la fila) más
+  `space/md` entre el último botón y la tarjeta ya deslizada. **Sustituir** = fondo
+  `color/surface-2` (el mismo relleno que los botones Secondary de Figma) + texto
+  `color/text`; **eliminar** = fondo `tint/red-30` + texto `tint/red-50`. Con la fila
+  abierta, el número se cambia por una flecha hacia atrás: es la pista de que se devuelve
+  a su sitio tocándola.
+- **Un solo botón de añadir** que abre un `DragSheet` con Ejercicio / Bloque / Desde
+  preset (esta última solo si hay presets). Nada de `Alert` nativo: no se puede estilar.
+- **`···`** abre otro `DragSheet` con duplicar / restaurar (solo si la sesión está
+  editada) / eliminar (solo si queda más de una).
+- El segmented A–E es la variante *Group together* tal cual: se reutiliza
+  `SegmentedControl` sin tocarlo.
+- **Sin botón de guardar**: el snapshot y el guardado viven en el editor de programa.
+
+El swipe sigue con `Animated` de RN core en vez de Reanimated: es lógica previa que se
+conserva tal cual, anima solo `translateX` y no mezcla drivers, así que no cae en la
+trampa de §8. El reordenado sí es Reanimated, con el mismo enfoque que el editor de
+programa (no se toca el orden pintado durante el gesto) — pero aquí los huecos tienen
+alturas distintas, así que se miden todos y el umbral de salto se calcula contra el alto
+del vecino, no contra un paso fijo.
+
+### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
+
+Costó tres intentos. El patrón definitivo, en los dos editores:
+
+1. Durante el gesto **no se toca el orden pintado**. La lista se renderiza siempre como
+   está en el store; la arrastrada sigue al dedo (`dragY`) y las demás se apartan un
+   hueco con un transform. Reordenar la lista en caliente hacía que las layout animations
+   compitieran con el reflow y las tarjetas se solaparan o desaparecieran.
+2. El salto de hueco lleva **banda muerta** (`SWAP_AT = 0.65`): con el 0.5 implícito de
+   un `round`, el temblor del dedo en la frontera hacía ir y venir el orden.
+3. Al soltar, la tarjeta **se asienta con `withTiming` hasta la posición exacta de su
+   hueco destino** y solo entonces, en el callback, se escribe el orden y se ponen los
+   transforms a cero. En ese instante el transform vale justo lo que la separa de su
+   sitio nuevo y los vecinos ya están en el suyo, así que el cambio es de CERO píxeles:
+   da igual que React y Reanimated no confirmen en el mismo frame. Escribiendo el orden
+   en el momento de soltar (aunque el transform se leyera del prop y no de un efecto) se
+   veía un frame con la lista ya recolocada pero los transforms viejos encima, y las
+   tarjetas aparecían en sitios raros.
+
+Mientras dura el asentamiento, `drag` sigue puesto pero `dragRef` ya es null — eso es lo
+que distingue "arrastrando" de "asentándose" y bloquea empezar otro gesto encima.
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
@@ -411,6 +499,36 @@ listas ni controles nuevos.
   la de 2 líneas ("Etapas") es exclusiva de selección de etapa.
 - **Modales "···"**: Figma unifica TODOS los menús contextuales de la app en un mismo
   patrón. Conforme se restylea cada pantalla, sus menús propios deben converger ahí.
+
+### Modales — SIEMPRE `DragSheet`, nunca uno nuevo
+
+`src/components/DragSheet.jsx` es el único bottom-sheet de la app. Cualquier modal nuevo
+(menú "···", hoja de opciones, picker, confirmación con más de dos salidas) se monta con
+él. **No** montes otro Modal a mano y **no** uses `Alert` nativo: en Android no se puede
+estilar y desentona con todo lo demás.
+
+```jsx
+<DragSheet visible={open} onClose={() => setOpen(false)} title={t('...')}>
+  <View style={styles.sheetBody}>
+    …filas…
+  </View>
+</DragSheet>
+```
+
+- Props: `{ visible, onClose, title, children }`. El handle, el backdrop, el título y el
+  botón de cerrar los pone él; tú solo pintas el contenido.
+- **Se cierra arrastrando hacia abajo desde el handle Y desde el fondo** (>120 px o gesto
+  rápido), o tocando el fondo. El *mismo* `PanResponder` se reparte entre las dos zonas:
+  si cada una tuviera el suyo, el `gestureState` (el dy acumulado) sería distinto en cada
+  una y el arrastre saltaría al cruzar de una a otra. El backdrop reclama el gesto solo
+  al moverse (`onMoveShouldSetPanResponder`), para que un toque suelto siga siendo
+  "cerrar".
+- Patrón de fila ya usado en los dos editores: fondo `surface2`, `radius/sm`,
+  `padding: space/md`, texto `text/card-type` y la flecha `ArrowIcon` a la derecha
+  (`SheetRow` en `SessionEditorScreen.jsx`). Las acciones destructivas van en
+  `color/red`, texto y flecha.
+- El `SettingsSheet` de `AppHeader.jsx` es el mismo patrón anterior a extraer el
+  componente; si lo tocas, hazlo converger en `DragSheet` en vez de duplicar.
 
 ---
 

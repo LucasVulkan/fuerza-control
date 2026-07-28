@@ -5,9 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
 } from 'react-native-reanimated';
-import Svg, { Path, Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
@@ -15,6 +14,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
+import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
 const HEADER_H = 64;
@@ -24,60 +24,9 @@ const CARD_GAP = spacing.sm;
 // Fracción de fila que hay que recorrer para saltar de hueco al reordenar. Por
 // encima de 0.5 deja una banda muerta de 2·(SWAP_AT−0.5) que evita el rebote.
 const SWAP_AT = 0.65;
-
-// ─── Iconos ───────────────────────────────────────────────────────────────────
-// Misma flecha sólida que en HomeView (asset `119:783` de Figma): apunta a la
-// derecha; la de "volver" es la misma rotada 180°.
-
-function ArrowIcon({ size = 18, color, back = false }) {
-  return (
-    <Svg
-      width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none"
-      style={back ? { transform: [{ rotate: '180deg' }] } : undefined}
-    >
-      <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={color} />
-    </Svg>
-  );
-}
-
-function MenuIcon({ size = 26, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      <Circle cx={6.5} cy={13} r={1.5} fill={color} />
-      <Circle cx={12.5} cy={13} r={1.5} fill={color} />
-      <Circle cx={18.5} cy={13} r={1.5} fill={color} />
-    </Svg>
-  );
-}
-
-// Icons / "Arrastre" (184:2371) — 2×3 puntos de 3px dentro de una caja de 26.
-function DragIcon({ size = 26, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      {[10.5, 15.5].flatMap((cx) => [6.5, 12.5, 18.5].map((cy) => (
-        <Circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.5} fill={color} />
-      )))}
-    </Svg>
-  );
-}
-
-function PencilIcon({ size = 15, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 20h9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
-            stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function CheckIcon({ size = 16, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
+// Asentamiento al soltar y animación con la que los vecinos ceden el hueco.
+// Iguales a propósito: ver `handleDragEnd`.
+const SETTLE = { duration: 160, easing: Easing.inOut(Easing.ease) };
 
 // ─── Tarjeta de sesión ────────────────────────────────────────────────────────
 // Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
@@ -100,16 +49,22 @@ function SessionCard({
   // cuando el gesto termina (`animateShift` false) el desplazamiento vuelve a 0
   // de golpe, en el mismo commit en que el store ya trae el orden nuevo — así no
   // se ve deshacer la animación.
+  // Fuera del gesto, el desplazamiento se lee del prop DIRECTAMENTE, no del
+  // shared value: al soltar, el store trae ya el orden nuevo y `shift` vale 0 en
+  // ese mismo commit. Pasando por el efecto, el 0 llegaba un frame tarde y
+  // durante ese frame las tarjetas se pintaban ya recolocadas pero todavía con
+  // el transform viejo encima — el parpadeo de "sitios raros" al terminar.
   const shiftSv = useSharedValue(0);
   useEffect(() => {
-    shiftSv.value = animateShift
-      ? withTiming(shift, { duration: 160, easing: Easing.inOut(Easing.ease) })
-      : shift;
+    if (!animateShift) return;
+    shiftSv.value = withTiming(shift, SETTLE);
   }, [shift, animateShift, shiftSv]);
 
   const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: isDragging ? dragY.value : shiftSv.value }],
-  }), [isDragging]);
+    transform: [{
+      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
+    }],
+  }), [isDragging, animateShift, shift]);
 
   // El PanResponder tiene que ser UNA sola instancia por tarjeta: su
   // `gestureState` (el dy acumulado) vive dentro y se reinicia en cada `create`,
@@ -326,6 +281,9 @@ export default function ProgramEditorScreen({ navigation }) {
   // ── Drag de sesiones ──────────────────────────────────────────────────────
 
   function handleDragStart(templateId) {
+    // `drag` sin `dragRef` = soltada y asentándose; no admitir otro gesto hasta
+    // que termine, o se escribiría el orden dos veces.
+    if (drag && !dragRef.current) return;
     const from = editorDays.findIndex((d) => d.sessionTemplateId === templateId);
     if (from < 0) return;
     dragY.value     = 0;
@@ -353,18 +311,30 @@ export default function ProgramEditorScreen({ navigation }) {
     setDrag(dragRef.current);
   }
 
+  // Al soltar NO se escribe el orden todavía: primero la tarjeta se asienta con
+  // una animación hasta la posición exacta de su hueco destino. Cuando termina,
+  // el transform vale justo lo que la separa de su sitio nuevo y los vecinos ya
+  // están en el suyo, así que cambiar el orden y poner los transforms a cero es
+  // un cambio de CERO píxeles — da igual que React y Reanimated no confirmen en
+  // el mismo frame. Escribiendo el orden al soltar sí se notaba: durante un
+  // frame la lista estaba ya recolocada pero con los transforms viejos encima.
   function handleDragEnd(templateId) {
     const state = dragRef.current;
     if (state?.id !== templateId) return;
-    // `dragY` NO se resetea aquí: `isDragging` sigue true hasta que React haga
-    // commit, y ponerlo a 0 en el hilo de UI devolvería la tarjeta a su hueco
-    // original durante ese frame. Se reinicia al empezar el siguiente arrastre.
     dragRef.current = null;
+    dragY.value = withTiming((state.to - state.from) * pitch, SETTLE, (done) => {
+      'worklet';
+      if (done) runOnJS(commitDrag)(state);
+    });
+  }
+
+  function commitDrag(state) {
     setDrag(null);
+    dragY.value = 0;
     if (state.to === state.from) return;
     const order = editorDays.map((d) => d.sessionTemplateId);
     order.splice(state.from, 1);
-    order.splice(state.to, 0, templateId);
+    order.splice(state.to, 0, state.id);
     reorderSessionsInStage(editingId, hasStages ? selectedStageIdx : null, order);
   }
 

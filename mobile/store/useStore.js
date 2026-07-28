@@ -856,6 +856,17 @@ export const useStore = create(
         }));
       },
 
+      // Reordena los bloques de una sesión. Los bloques no llevan campo `order`:
+      // el orden ES el del array (spec de acondicionamiento), así que basta con
+      // sustituirlo por el nuevo.
+      reorderBlocks: (templateId, blocks) => {
+        const template = get().getEffectiveTemplate(templateId);
+        if (!template || blocks.length !== (template.blocks ?? []).length) return;
+        set((s) => ({
+          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+        }));
+      },
+
       removeBlockFromSession: (templateId, blockId) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;

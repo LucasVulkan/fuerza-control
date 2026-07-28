@@ -1,50 +1,71 @@
 /**
- * SessionEditorScreen — full-screen editor for one session template.
+ * SessionEditorScreen — editor de una sesión, rediseño FormaFit (Figma 208:1932).
  *
- * Replaces the old accordion body of DayEditorCard: the exercise list gets
- * the whole screen, a live summary shows volume (sets per movement pattern)
- * and estimated duration, and tapping a row opens the exercise editor.
- * Drag (grip) to reorder and right-swipe to delete are unchanged.
+ * Estructura igual que el editor de programa: cabecera accent con el nombre
+ * editable, segmented de sesiones hermanas, tarjeta Resumen y una única lista.
+ *
+ * La lista mezcla ejercicios y bloques de acondicionamiento en el mismo tipo de
+ * fila (Figma no dibuja una fila distinta para bloques), numerados 01, 02… Una
+ * superserie es UN número con letras (03A, 03B): sus filas van a 2px y con los
+ * radios interiores a 2px, envueltas en una barra accent a la izquierda.
+ *
+ * Ojo con el orden: el mock coloca el bloque a media lista, pero la spec de
+ * acondicionamiento manda (`docs/specs/conditioning-blocks.md` §"Los bloques se
+ * renderizan después de los ejercicios de fuerza") y WorkoutScreen ya lo hace
+ * así, de modo que los bloques van siempre al final. La numeración sigue
+ * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Animated, PanResponder, LayoutAnimation, Platform, UIManager,
+  Animated, PanResponder, Platform,
   Modal, KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { resolveProgressionConfig } from '../../../src/utils/progression';
 import { exerciseLinkGroups } from '../../../src/utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
 import { generateId } from '../../../src/utils/formatters';
 
-// LayoutAnimation must be enabled explicitly on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Los dos botones de acción, su separación y el aire que queda entre el último
+// y la tarjeta ya deslizada. La tarjeta se esconde exactamente esa distancia.
+const ACTION_BTN_WIDTH = 104;
+const ACTION_GAP       = spacing.sm;
+const ACTION_INSET     = spacing.md;
+const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 
-const ACTION_BTN_WIDTH = 75;
-const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2;
-const ITEM_HEIGHT      = 58;
+const HEADER_H = 64;
+// Separación entre huecos de la lista (space/sm) y entre miembros de una misma
+// superserie (radius/xxs = 2, el valor que Figma usa también como gap).
+const CARD_GAP = spacing.sm;
+const SS_GAP   = 2;
+// Fracción de hueco que hay que recorrer para saltar. Por encima de 0.5 deja una
+// banda muerta que evita que el orden vaya y venga con el temblor del dedo.
+const SWAP_AT = 0.65;
+// Duración del asentamiento al soltar y de la animación con la que los vecinos
+// ceden el hueco. Iguales a propósito: ver `handleDragEnd`.
+const SETTLE = { duration: 160, easing: Easing.inOut(Easing.ease) };
 
-const SWAP_ANIM = {
-  duration: 180,
-  update: { type: LayoutAnimation.Types.easeInEaseOut },
-};
+// ─── Texto de las filas ───────────────────────────────────────────────────────
 
-// ─── Row meta + badges ────────────────────────────────────────────────────────
-
+// Todo lo que antes eran badges (progresión, vinculación) pasa a metadato del
+// subtítulo separado por puntos medios; la única pill que queda es la del
+// formato de bloque.
 function rowMeta(exConfig, t) {
   const timed = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
   const range = timed
@@ -52,7 +73,8 @@ function rowMeta(exConfig, t) {
     : exConfig.minReps && exConfig.maxReps
       ? `${exConfig.minReps}–${exConfig.maxReps}`
       : t('workout.submax', 'submáx');
-  return `${exConfig.sets} × ${range} · ${exConfig.restSec} s`;
+  const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
+  return parts.join(' · ');
 }
 
 function progMode(exConfig, def) {
@@ -60,14 +82,6 @@ function progMode(exConfig, def) {
   if (prog.type !== 'none') return 'auto';
   return (exConfig.progressionModel ?? def?.progressionModel) === 'submax' ? 'submax' : 'fixed';
 }
-
-// ─── Block row meta + badges ───────────────────────────────────────────────────
-
-const BLOCK_BADGE_STYLE = {
-  amrap:    'badgeBlockAmrap',
-  emom:     'badgeBlockEmom',
-  for_time: 'badgeBlockForTime',
-};
 
 function blockMeta(block, t) {
   const count = block.movements?.length ?? 0;
@@ -80,6 +94,21 @@ function blockMeta(block, t) {
     return t('blocks.meta.emom', { count, n: block.rounds ?? 10, interval: `${mm}:${String(ss).padStart(2, '0')}` });
   }
   return t('blocks.meta.forTime', { count, rounds: block.rounds ?? 3 });
+}
+
+// "Volumen: 10 series de tracción, 3 de pierna, 1 bloque" — sustituye a las
+// pills por patrón muscular que había antes.
+function volumeLine(patternSets, blockCount, t) {
+  const entries = Object.entries(patternSets).sort((a, b) => b[1] - a[1]);
+  const parts = entries.map(([pattern, sets], i) => {
+    const name = t(`exerciseSelector.patterns.${pattern}`, pattern).toLowerCase();
+    return i === 0
+      ? t('editor.volumeFirst', { count: sets, pattern: name })
+      : t('editor.volumeRest',  { count: sets, pattern: name });
+  });
+  if (blockCount > 0) parts.push(t('editor.volumeBlocks', { count: blockCount }));
+  if (parts.length === 0) return null;
+  return t('editor.volumeLine', { parts: parts.join(', ') });
 }
 
 function defaultBlock() {
@@ -96,41 +125,30 @@ function defaultBlock() {
   };
 }
 
-// ─── ExerciseRow ──────────────────────────────────────────────────────────────
-// Grip (left 50 px) drags to reorder; right-swipe reveals a 2-button action
-// panel (sustituir / eliminar) underneath — tap a button to act, tap the row
-// again to close it. Tapping the body while closed opens the exercise editor.
+// ─── Fila ─────────────────────────────────────────────────────────────────────
+// Deslizar a la derecha descubre sustituir/eliminar (se conserva del diseño
+// anterior: Figma no dibuja esas acciones en ningún sitio). El asa de arrastre
+// va a la derecha y reclama el gesto en `onStart`, así que se lleva los toques
+// que caen sobre ella antes de que el swipe o el ScrollView los vean.
 
-function ExerciseRow({
-  exConfig, def, onPress, linkBadge,
-  isSSMember, ssConnectDown,
-  onDragStart, onDragMove, onDragEnd,
-  isOpen, onOpenChange,
-  onSwipeDelete, onSubstitute,
+function EditorRow({
+  number, name, meta, pill, radii, onPress,
+  isOpen, onOpenChange, onSwipeDelete, onSubstitute,
+  dragHandlers,
 }) {
-  const { t } = useTranslation();
-  const rs    = useThemedStyles(makeRs);
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
-  const dragX    = useRef(new Animated.Value(0)).current;
-  const modeRef  = useRef(null); // 'h' | 'v' | null
-  const vStarted = useRef(false);
-  const openRef  = useRef(false);
+  // Inicializador perezoso en vez de useRef: el valor es igual de estable y
+  // no se lee ningún `.current` durante el render.
+  const [dragX] = useState(() => new Animated.Value(0));
+  const openRef = useRef(false);
 
-  // Callback refs prevent stale closures inside the once-created PanResponder
-  const onDragStartRef  = useRef(onDragStart);
-  const onDragMoveRef   = useRef(onDragMove);
-  const onDragEndRef    = useRef(onDragEnd);
-  const onOpenChangeRef = useRef(onOpenChange);
-  const onPressRef      = useRef(onPress);
-  useEffect(() => {
-    onDragStartRef.current  = onDragStart;
-    onDragMoveRef.current   = onDragMove;
-    onDragEndRef.current    = onDragEnd;
-    onOpenChangeRef.current = onOpenChange;
-    onPressRef.current      = onPress;
-  });
+  const cbs = useRef({ onOpenChange, onPress });
+  useEffect(() => { cbs.current = { onOpenChange, onPress }; });
 
-  // Another row opened (or a parent action closed this one) — snap shut.
+  // Otra fila se abrió (o una acción cerró ésta) — ciérrala.
   useEffect(() => {
     if (!isOpen && openRef.current) {
       openRef.current = false;
@@ -138,237 +156,95 @@ function ExerciseRow({
     }
   }, [isOpen, dragX]);
 
-  const panResponder = useRef(PanResponder.create({
-    // Grip (leftmost 50 px): claim immediately → reliable vertical reorder.
-    // Disabled while open (a touch there should close the row, not drag it).
-    onStartShouldSetPanResponder: (e) => !openRef.current && e.nativeEvent.locationX < 50,
-    // Horizontal right-swipe anywhere: claim on movement → reveal actions.
-    // Disabled while already open — closing happens via tap, not drag.
+  /* eslint-disable-next-line react-hooks/refs */
+  const [pan] = useState(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => !openRef.current && gs.dx > 8 && gs.dx > Math.abs(gs.dy) * 1.3,
-    onPanResponderGrant: (e) => {
-      modeRef.current = e.nativeEvent.locationX < 50 ? 'v' : null;
-      vStarted.current = false;
-      dragX.setValue(0);
-    },
     onPanResponderMove: (_, gs) => {
-      if (!modeRef.current) {
-        // Only reachable via onMoveShouldSetPanResponder — must be a horizontal swipe.
-        if (gs.dx > 0) modeRef.current = 'h';
-        else return;
-      }
-      if (modeRef.current === 'h' && gs.dx > 0) {
-        dragX.setValue(Math.min(gs.dx, SWIPE_OPEN));
-      } else if (modeRef.current === 'v') {
-        if (!vStarted.current) {
-          vStarted.current = true;
-          onDragStartRef.current();
-        }
-        onDragMoveRef.current(gs.dy);
-      }
+      if (gs.dx > 0) dragX.setValue(Math.min(gs.dx, SWIPE_OPEN));
     },
     onPanResponderRelease: (_, gs) => {
-      if (modeRef.current === 'h') {
-        const opening = gs.dx >= SWIPE_OPEN / 2;
-        openRef.current = opening;
-        Animated.spring(dragX, { toValue: opening ? SWIPE_OPEN : 0, useNativeDriver: false, tension: 80 }).start();
-        onOpenChangeRef.current(opening);
-      } else if (modeRef.current === 'v' && vStarted.current) {
-        onDragEndRef.current();
-      }
-      modeRef.current = null;
-      vStarted.current = false;
+      const opening = gs.dx >= SWIPE_OPEN / 2;
+      openRef.current = opening;
+      Animated.spring(dragX, { toValue: opening ? SWIPE_OPEN : 0, useNativeDriver: false, tension: 80 }).start();
+      cbs.current.onOpenChange(opening);
     },
     onPanResponderTerminate: () => {
-      if (modeRef.current === 'v' && vStarted.current) onDragEndRef.current();
-      modeRef.current = null;
-      vStarted.current = false;
       if (!openRef.current) Animated.spring(dragX, { toValue: 0, useNativeDriver: false }).start();
     },
-  })).current;
+  }));
 
   function closeRow() {
     openRef.current = false;
     Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
-    onOpenChangeRef.current(false);
+    cbs.current.onOpenChange(false);
   }
-
-  function handleBodyPress() {
-    if (openRef.current) { closeRow(); return; }
-    onPressRef.current();
-  }
-
-  const mode = progMode(exConfig, def);
 
   return (
     <View style={{ position: 'relative' }}>
-      <View style={rs.actionPanel} pointerEvents="box-none">
+      <View style={styles.actionPanel} pointerEvents="box-none">
+        {onSubstitute && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnSubstitute]}
+            onPress={() => { closeRow(); onSubstitute(); }}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.actionBtnSubstituteText}>{t('editor.rowSubstitute')}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
-          style={[rs.actionBtn, rs.actionBtnSubstitute]}
-          onPress={() => { closeRow(); onSubstitute(exConfig.exerciseId); }}
+          style={[styles.actionBtn, styles.actionBtnDelete]}
+          onPress={() => { closeRow(); onSwipeDelete(); }}
           activeOpacity={0.75}
         >
-          <Text style={rs.actionBtnText}>{t('editor.rowSubstitute')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[rs.actionBtn, rs.actionBtnDelete]}
-          onPress={() => { closeRow(); onSwipeDelete(exConfig.exerciseId); }}
-          activeOpacity={0.75}
-        >
-          <Text style={rs.actionBtnText}>{t('editor.rowDelete')}</Text>
+          <Text style={styles.actionBtnDeleteText}>{t('editor.rowDelete')}</Text>
         </TouchableOpacity>
       </View>
 
       <Animated.View
-        style={[
-          rs.row,
-          isSSMember && rs.rowSS,
-          ssConnectDown && rs.rowSSConnected,
-          { transform: [{ translateX: dragX }] },
-        ]}
-        {...panResponder.panHandlers}
+        style={[styles.row, radii, { transform: [{ translateX: dragX }] }]}
+        {...pan.panHandlers}
       >
-        <Text style={rs.grip}>⠿</Text>
-
+        {isOpen ? (
+          // Abierta, el número se cambia por una flecha hacia atrás: es la pista
+          // de que la tarjeta se devuelve a su sitio tocándola.
+          <View style={styles.rowNumberSlot}>
+            <ArrowIcon size={16} color={th.colors.mutedLight} back />
+          </View>
+        ) : (
+          <Text style={styles.rowNumber}>{number}</Text>
+        )}
         <TouchableOpacity
-          style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
-          onPress={handleBodyPress}
+          style={styles.rowBody}
+          onPress={() => { if (openRef.current) closeRow(); else cbs.current.onPress(); }}
           activeOpacity={0.7}
         >
-          <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-            <Text style={rs.exName} numberOfLines={1}>{def?.name ?? exConfig.exerciseId}</Text>
-            <View style={rs.metaRow}>
-              <Text style={rs.exMeta}>{rowMeta(exConfig, t)}</Text>
-              <Text style={[rs.badge, mode === 'auto' ? rs.badgeAuto : rs.badgeNeutral]}>
-                {t(`editor.badges.${mode}`)}
-              </Text>
-              {linkBadge ? <Text style={[rs.badge, rs.badgeLink]}>{linkBadge}</Text> : null}
-              {isSSMember ? <Text style={[rs.badge, rs.badgeSS]}>SS</Text> : null}
-              {exConfig.isUnilateral ? <Text style={[rs.badge, rs.badgeUni]}>UNI</Text> : null}
-              {exConfig.trackRpe ? <Text style={[rs.badge, rs.badgeRpe]}>RPE</Text> : null}
-            </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
+            <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
           </View>
-          <Text style={rs.chevron}>›</Text>
+          {pill ? (
+            <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
+          ) : null}
         </TouchableOpacity>
+        <View {...dragHandlers} style={styles.dragHandle}>
+          <DragIcon color={th.colors.mutedLight} />
+        </View>
       </Animated.View>
     </View>
   );
 }
 
-const makeRs = (th) => StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
-    gap: spacing.sm, minHeight: ITEM_HEIGHT,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
-    backgroundColor: th.colors.surface,
-  },
-  grip: { fontSize: 18, lineHeight: 22, flexShrink: 0, color: th.colors.muted2 },
-  exName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2, flexWrap: 'wrap' },
-  exMeta: { fontSize: typography.xs, color: th.colors.muted },
-  badge: {
-    fontSize: 8, fontWeight: typography.bold, letterSpacing: 0.4,
-    paddingHorizontal: 4, paddingVertical: 1,
-    borderRadius: th.radius.xs, overflow: 'hidden',
-  },
-  badgeAuto:    { backgroundColor: withOpacity(th.colors.accent, 0.12), color: th.colors.accent },
-  badgeNeutral: { backgroundColor: th.colors.surface2, color: th.colors.muted },
-  badgeLink:    { backgroundColor: withOpacity(th.colors.green, 0.12), color: th.colors.green },
-  badgeUni:     { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
-  badgeRpe:     { backgroundColor: withOpacity(th.colors.blue, 0.12), color: th.colors.blue },
-  badgeSS:      { backgroundColor: withOpacity(th.colors.accent, 0.14), color: th.colors.accent },
-  // Superset chain — continuous accent strip on the left; the connecting
-  // member's bottom border is dropped so it visually merges into the next row.
-  rowSS:          { borderLeftWidth: 3, borderLeftColor: th.colors.accent },
-  rowSSConnected: { borderBottomWidth: 0 },
-  chevron: { fontSize: typography.lg, color: th.colors.muted2, flexShrink: 0 },
-  // Action panel sits behind the row (position:absolute, left:0) and is
-  // progressively revealed as the row slides right on swipe.
-  actionPanel: {
-    position: 'absolute', left: 0, top: 0, bottom: 0,
-    flexDirection: 'row', width: SWIPE_OPEN,
-  },
-  actionBtn: {
-    width: ACTION_BTN_WIDTH, alignItems: 'center', justifyContent: 'center',
-  },
-  actionBtnSubstitute: { backgroundColor: th.colors.blue },
-  actionBtnDelete:     { backgroundColor: th.colors.red },
-  actionBtnText: {
-    fontSize: typography.xs, fontWeight: typography.bold, color: th.colors.onAccent,
-    textAlign: 'center', paddingHorizontal: 4,
-  },
-  badgeBlockAmrap:   { backgroundColor: withOpacity(th.colors.accent, 0.12), color: th.colors.accent },
-  badgeBlockEmom:    { backgroundColor: withOpacity(th.colors.blue, 0.12),   color: th.colors.blue },
-  badgeBlockForTime: { backgroundColor: withOpacity(th.colors.orange, 0.12), color: th.colors.orange },
-  removeBtn: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
-});
-
-// ─── BlockRow ─────────────────────────────────────────────────────────────────
-// No drag, no swipe (v1 — few blocks per session, order = creation order).
-
-function BlockRow({ block, onPress, onRemove }) {
-  const { t } = useTranslation();
-  const rs = useThemedStyles(makeRs);
-
-  return (
-    <View style={rs.row}>
-      <TouchableOpacity
-        style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-          <Text style={rs.exName} numberOfLines={1}>
-            {block.name ?? t(`blocks.formats.${block.format}`)}
-          </Text>
-          <View style={rs.metaRow}>
-            <Text style={[rs.badge, rs[BLOCK_BADGE_STYLE[block.format]]]}>
-              {t(`blocks.formats.${block.format}`).toUpperCase()}
-            </Text>
-            <Text style={rs.exMeta}>{blockMeta(block, t)}</Text>
-          </View>
-        </View>
-        <Text style={rs.chevron}>›</Text>
-      </TouchableOpacity>
-      <TouchableOpacity hitSlop={8} onPress={onRemove}>
-        <Text style={rs.removeBtn}>✕</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
-
-function PencilIcon({ size = 15, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 20h9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
-            stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function CheckIcon({ size = 16, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-// ─── SessionEditorScreen ──────────────────────────────────────────────────────
+// ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function SessionEditorScreen({ navigation, route }) {
   const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
   const { t } = useTranslation();
   const th     = useTheme();
-  const rs     = useThemedStyles(makeRs);
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
-  // The open session is local state (not a route param) so the chips bar can
-  // switch sessions in place without stacking screens.
+  // La sesión abierta es estado local (no un parámetro de ruta) para que el
+  // segmented pueda cambiar de sesión sin apilar pantallas.
   const [templateId, setTemplateId] = useState(initialTemplateId);
 
   const programs         = useStore((s) => s.programs);
@@ -386,13 +262,13 @@ export default function SessionEditorScreen({ navigation, route }) {
   const blockPresets          = useStore((s) => s.blockPresets);
   const addBlockToSession     = useStore((s) => s.addBlockToSession);
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
+  const reorderBlocks         = useStore((s) => s.reorderBlocks);
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = userPrograms[templateId] ?? sessionTemplates[templateId];
   const isEdited = !!userPrograms[templateId];
 
-  // Sibling sessions (live from the store, so deletes/additions stay fresh)
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
   const days       = stage?.days ?? program?.days ?? [];
@@ -400,112 +276,152 @@ export default function SessionEditorScreen({ navigation, route }) {
   const stageLabel = stage?.name;
   const canDelete  = sessionIds.length > 1;
 
+  const [editingExId, setEditingExId]       = useState(null);
+  const [editingBlockId, setEditingBlockId] = useState(null);
+  const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
+  const [presetSheetOpen, setPresetSheetOpen] = useState(false);
+  const [addSheetOpen, setAddSheetOpen]     = useState(false);
+  const [menuOpen, setMenuOpen]             = useState(false);
+  const [editingName, setEditingName]       = useState(false);
+  const [nameValue, setNameValue]           = useState('');
+
+  // ── Estado del arrastre ───────────────────────────────────────────────────
+  // Mismo enfoque que en el editor de programa: durante el gesto la lista se
+  // pinta SIEMPRE en el orden del store y solo se mueven transforms, así que no
+  // hay reflow con el que competir. Aquí, además, los huecos tienen alturas
+  // distintas (una superserie ocupa el doble), así que se miden todos.
+  const [drag, setDrag]       = useState(null); // { id, kind, from, to } o null
+  const [heights, setHeights] = useState({});   // slotId → alto medido
+  const dragRef = useRef(null);
+  const dragY   = useSharedValue(0);
+
   function switchSession(id) {
     if (id === templateId) return;
     setEditingName(false);
     setEditingExId(null);
     setEditingBlockId(null);
-    setOpenExId(null);
+    setOpenRowId(null);
     setTemplateId(id);
   }
 
-  const [editingExId, setEditingExId] = useState(null);
-  const [editingBlockId, setEditingBlockId] = useState(null);
-  const [openExId, setOpenExId] = useState(null); // row with its swipe action panel revealed
-  const [presetSheetOpen, setPresetSheetOpen] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue]     = useState('');
-  const nameToggleGuard               = useRef(0); // debounces blur→re-press on the edit toggle
-
-  // Drag state
-  const [localOrder, setLocalOrder] = useState([]);
-  const localOrderRef               = useRef([]);
-  const [draggingId, setDraggingId] = useState(null);
-  const draggingIdRef               = useRef(null);
-  const startIdxRef                 = useRef(0);
-  // Y offset for the floating overlay (raw dy from drag start)
-  const overlayDY = useRef(new Animated.Value(0)).current;
-  // Pixel offset from top of the list where drag started
-  const draggingStartTopRef = useRef(0);
-
-  useEffect(() => {
-    if (!draggingIdRef.current) {
-      const ids = (template?.exercises ?? []).map((ex) => ex.exerciseId);
-      setLocalOrder(ids);
-      localOrderRef.current = ids;
-    }
-  }, [template?.exercises]);
-
   if (!template) return null;
 
-  const color = resolveColor(th, template.color ?? 'var(--accent)');
   const stats = sessionStats(template, allExercises);
-  const patternEntries = Object.entries(stats.patternSets).sort((a, b) => b[1] - a[1]);
+  const volume = volumeLine(stats.patternSets, template.blocks?.length ?? 0, t);
 
-  // "G1"/"G2" badge for linked exercises (group number = order of appearance
-  // of that exercise's groups within the program).
+  // ── Huecos: una superserie es UN hueco con varias filas, y los bloques se
+  // mezclan con los ejercicios en el mismo orden que verá la pantalla de
+  // entreno (ver `utils/sessionSlots.js`).
+  const slots = sessionSlots(template);
+
   const getTpl = (tid) => userPrograms[tid] ?? sessionTemplates[tid];
-  function linkBadgeFor(exConfig) {
+
+  // Sesiones del programa con las que este ejercicio comparte configuración.
+  function linkedSessions(exConfig) {
     if (!exConfig.linkGroup) return null;
-    const groups = exerciseLinkGroups(program, exConfig.exerciseId, getTpl);
-    const idx = groups.findIndex((g) => g.id === exConfig.linkGroup);
-    return idx >= 0 ? `G${idx + 1}` : 'G1';
+    const group = exerciseLinkGroups(program, exConfig.exerciseId, getTpl)
+      .find((g) => g.id === exConfig.linkGroup);
+    const others = (group?.sessions ?? []).filter((s) => s !== template.label);
+    return others.length > 0 ? others.join(', ') : null;
   }
 
-  // ── Drag handlers ─────────────────────────────────────────────────────────
-
-  function handleDragStart(exerciseId) {
-    const idx = localOrderRef.current.indexOf(exerciseId);
-    startIdxRef.current      = idx;
-    draggingIdRef.current    = exerciseId;
-    draggingStartTopRef.current = idx * ITEM_HEIGHT;
-    overlayDY.setValue(0);
-    setEditingExId(null);
-    setDraggingId(exerciseId);
+  // Subtítulo completo: prescripción + progresión automática + vinculación.
+  function metaFor(exConfig) {
+    const def   = allExercises[exConfig.exerciseId];
+    const parts = [rowMeta(exConfig, t)];
+    if (progMode(exConfig, def) === 'auto') parts.push(t('editor.metaProgAuto'));
+    const linked = linkedSessions(exConfig);
+    if (linked) parts.push(t('editor.metaLinked', { sessions: linked }));
+    return parts.join(' · ');
   }
 
-  function handleDragMove(exerciseId, dy) {
-    if (draggingIdRef.current !== exerciseId) return;
+  // ── Arrastre ──────────────────────────────────────────────────────────────
+  // Cualquier hueco puede ir a cualquier posición: ejercicios y bloques se
+  // mezclan libremente y ese orden es el que se entrena.
+  const slotH = (i) => (heights[slots[i]?.id] ?? 0) + CARD_GAP;
 
-    // Overlay follows the finger exactly from its starting position
-    overlayDY.setValue(dy);
-
-    const startIdx  = startIdxRef.current;
-    const steps     = Math.round(dy / ITEM_HEIGHT);
-    const n         = localOrderRef.current.length;
-    const targetIdx = Math.max(0, Math.min(n - 1, startIdx + steps));
-    const currentPos = localOrderRef.current.indexOf(exerciseId);
-
-    if (targetIdx !== currentPos) {
-      const newOrder = [...localOrderRef.current];
-      newOrder.splice(currentPos, 1);
-      newOrder.splice(targetIdx, 0, exerciseId);
-      // LayoutAnimation animates the non-dragged items sliding into place.
-      // The dragged item itself is hidden (opacity:0) so its animation is invisible.
-      LayoutAnimation.configureNext(SWAP_ANIM);
-      localOrderRef.current = newOrder;
-      setLocalOrder([...newOrder]);
-    }
+  // Distancia que hay que recorrer para que el hueco `from` acabe en el `k`.
+  function offsetFor(from, k) {
+    let s = 0;
+    if (k > from) for (let i = from + 1; i <= k; i += 1) s += slotH(i);
+    else          for (let i = k; i <= from - 1; i += 1) s -= slotH(i);
+    return s;
   }
 
-  function handleDragEnd(exerciseId) {
-    if (draggingIdRef.current !== exerciseId) return;
-    draggingIdRef.current = null;
-
-    const finalOrder = localOrderRef.current;
-    const reordered  = finalOrder
-      .map((id, i) => {
-        const ex = template.exercises.find((e) => e.exerciseId === id);
-        return ex ? { ...ex, order: i + 1 } : null;
-      })
-      .filter(Boolean);
-
-    if (reordered.length === template.exercises.length) {
-      reorderExercise(templateId, exerciseId, 'custom', reordered);
-    }
-
-    setDraggingId(null);
+  // Cuánto se aparta el hueco `idx` para dejar sitio al que se arrastra.
+  function shiftFor(idx) {
+    if (!drag || idx === drag.from) return 0;
+    const h = slotH(drag.from);
+    if (drag.to > drag.from && idx > drag.from && idx <= drag.to) return -h;
+    if (drag.to < drag.from && idx >= drag.to   && idx <  drag.from) return  h;
+    return 0;
   }
+
+  function handleDragStart(slot) {
+    // `drag` sin `dragRef` = soltada y asentándose; no admitir otro gesto hasta
+    // que termine, o se escribiría el orden dos veces.
+    if (drag && !dragRef.current) return;
+    const from = slots.findIndex((s) => s.id === slot.id);
+    if (from < 0) return;
+    dragY.value     = 0;
+    dragRef.current = { id: slot.id, kind: slot.kind, from, to: from };
+    setDrag(dragRef.current);
+    setOpenRowId(null);
+  }
+
+  function handleDragMove(slot, dy) {
+    const state = dragRef.current;
+    if (state?.id !== slot.id) return;
+    dragY.value = dy;
+
+    const hi = slots.length - 1;
+    let to = state.to;
+    // Avanza de hueco en hueco: cada salto cuesta el alto del vecino, y se
+    // confirma al SWAP_AT de ese tramo (banda muerta contra el rebote).
+    while (to < hi && dy > offsetFor(state.from, to) + slotH(to + 1) * SWAP_AT) to += 1;
+    while (to > 0  && dy < offsetFor(state.from, to) - slotH(to - 1) * SWAP_AT) to -= 1;
+    if (to === state.to) return;
+
+    dragRef.current = { ...state, to };
+    setDrag(dragRef.current);
+  }
+
+  // Al soltar NO se escribe el orden todavía: primero la tarjeta se asienta con
+  // una animación hasta la posición exacta de su hueco destino. Cuando termina,
+  // el transform vale justo lo que la separa de su sitio nuevo y los vecinos ya
+  // están en el suyo, así que cambiar el orden y poner los transforms a cero es
+  // un cambio de CERO píxeles — da igual que React y Reanimated no confirmen en
+  // el mismo frame. Escribiendo el orden en el momento de soltar sí se notaba:
+  // durante un frame la lista estaba ya recolocada pero con los transforms
+  // viejos encima, y las tarjetas aparecían en sitios raros.
+  function handleDragEnd(slot) {
+    const state = dragRef.current;
+    if (state?.id !== slot.id) return;
+    dragRef.current = null;
+    const target = offsetFor(state.from, state.to);
+    dragY.value = withTiming(target, SETTLE, (done) => {
+      'worklet';
+      if (done) runOnJS(commitDrag)(state);
+    });
+  }
+
+  function commitDrag(state) {
+    setDrag(null);
+    dragY.value = 0;
+    if (state.to === state.from) return;
+
+    const next = [...slots];
+    next.splice(state.from, 1);
+    next.splice(state.to, 0, slots[state.from]);
+
+    // Mover un hueco puede cambiar a la vez el orden de los ejercicios y la
+    // posición de los bloques, así que se escriben los dos arrays.
+    const { exercises, blocks } = slotsToArrays(next);
+    if (exercises.length > 0) reorderExercise(templateId, state.id, 'custom', exercises);
+    if (blocks.length > 0)    reorderBlocks(templateId, blocks);
+  }
+
+  // ── Acciones ──────────────────────────────────────────────────────────────
 
   function handleRemoveExercise(exerciseId) {
     if (editingExId === exerciseId) setEditingExId(null);
@@ -513,35 +429,11 @@ export default function SessionEditorScreen({ navigation, route }) {
     showToast(t('editor.toastExDeleted'), 2200, 'neutral');
   }
 
-  function handleSubstituteExercise(exerciseId) {
-    navigation.navigate('ExerciseSelector', {
-      templateId,
-      currentExerciseId: exerciseId,
-      existingPatterns: [],
-    });
-  }
-
   function handleAddExercise() {
     const existingPatterns = template.exercises
       .map((ex) => allExercises[ex.exerciseId]?.pattern)
       .filter(Boolean);
     navigation.navigate('ExerciseSelector', { templateId, existingPatterns });
-  }
-
-  function handleAddBlock() {
-    if (blockPresets.length > 0) {
-      Alert.alert(
-        t('blocks.addBlock'),
-        '',
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('blocks.newBlock'), onPress: createNewBlock },
-          { text: t('blocks.fromPreset'), onPress: () => setPresetSheetOpen(true) },
-        ]
-      );
-    } else {
-      createNewBlock();
-    }
   }
 
   function createNewBlock() {
@@ -593,121 +485,88 @@ export default function SessionEditorScreen({ navigation, route }) {
   }
 
   function commitName() {
+    setEditingName(false);
     const trimmed = nameValue.trim();
     if (trimmed && trimmed !== template.name) renameSession(templateId, trimmed);
-    setEditingName(false);
-    nameToggleGuard.current = Date.now();
   }
 
-  function toggleEditName() {
-    // A blur from tapping this same button may have just committed and closed —
-    // ignore the immediate re-press so it doesn't bounce back into edit mode.
-    if (Date.now() - nameToggleGuard.current < 250) return;
-    if (editingName) {
-      commitName();
-    } else {
-      setNameValue(template.name ?? '');
-      setEditingName(true);
-    }
+  function startEditName() {
+    setNameValue(template.name ?? '');
+    setEditingName(true);
   }
 
-  const orderedExercises = localOrder
-    .map((id) => template.exercises.find((ex) => ex.exerciseId === id))
-    .filter(Boolean);
-
-  // Editing exercise — resolved for modal
+  // ── Datos derivados para los modales ──────────────────────────────────────
   const editingExConfig = editingExId
     ? template.exercises.find((ex) => ex.exerciseId === editingExId) ?? null
     : null;
   const editingDef = editingExId ? allExercises[editingExId] : null;
   const editingExHasNext = editingExId
-    ? orderedExercises.findIndex((ex) => ex.exerciseId === editingExId) < orderedExercises.length - 1
+    ? template.exercises.findIndex((ex) => ex.exerciseId === editingExId) < template.exercises.length - 1
     : false;
-
-  // Editing block — resolved for modal
   const editingBlock = editingBlockId
     ? (template.blocks ?? []).find((b) => b.id === editingBlockId) ?? null
     : null;
 
-  // The dragged item's content for the floating overlay
-  const draggingExConfig = draggingId
-    ? template.exercises.find((ex) => ex.exerciseId === draggingId)
-    : null;
-  const draggingDef = draggingId ? allExercises[draggingId] : null;
-
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
 
-      {/* ── Header ── */}
+      {/* ── SesionHeader (208:2072) ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
+          <ArrowIcon size={20} color={th.colors.onAccent} back />
         </TouchableOpacity>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.sesTag}>
-            {`Sesión ${template.label ?? ''}`}{stageLabel ? ` · ${stageLabel}` : ''}
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerEyebrow} numberOfLines={1}>
+            {`${t('editor.sessionEyebrow', { label: template.label ?? '' })}`}
+            {stageLabel ? ` · ${stageLabel}` : ''}
           </Text>
-          <View style={styles.nameRow}>
+          <View style={styles.headerTitleRow}>
             {editingName ? (
               <TextInput
                 autoFocus
+                style={styles.headerTitleInput}
                 value={nameValue}
                 onChangeText={setNameValue}
                 onBlur={commitName}
                 onSubmitEditing={commitName}
-                style={[styles.sesName, { color, flex: 1, borderBottomWidth: 1, borderBottomColor: th.colors.accent }]}
+                placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
+                returnKeyType="done"
               />
             ) : (
-              <Text style={[styles.sesName, { color }]} numberOfLines={1}>
+              <Text style={styles.headerTitle} numberOfLines={1} onPress={startEditName} suppressHighlighting>
                 {template.name ?? ''}
               </Text>
             )}
-            <TouchableOpacity hitSlop={8} onPress={toggleEditName} style={styles.iconBtn}>
+            <TouchableOpacity hitSlop={10} onPress={() => (editingName ? commitName() : startEditName())}>
               {editingName
-                ? <CheckIcon size={16} color={th.colors.accent} />
-                : <PencilIcon size={15} color={th.colors.muted} />}
+                ? <CheckIcon  size={16} color={th.colors.onAccent} />
+                : <PencilIcon size={15} color={th.colors.onAccent} />}
             </TouchableOpacity>
           </View>
         </View>
-        <View style={[styles.colorDot, { backgroundColor: color }]} />
-      </View>
 
-      {/* ── Session chips — switch sessions in place ── */}
-      {sessionIds.length > 1 && (
-        <View style={styles.chipsBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContent}>
-            {sessionIds.map((id) => {
-              const tmpl = userPrograms[id] ?? sessionTemplates[id];
-              if (!tmpl) return null;
-              const c = resolveColor(th, tmpl.color ?? 'var(--accent)');
-              const isCurrent = id === templateId;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[
-                    styles.sessionChip,
-                    isCurrent && { backgroundColor: withOpacity(c, 0.14), borderColor: c },
-                  ]}
-                  onPress={() => switchSession(id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.sessionChipText, isCurrent && { color: c }]}>
-                    {tmpl.label ?? '·'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+        <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
+          <MenuIcon size={26} color={th.colors.onAccent} />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!drag}
       >
+        {/* ── Segmented de sesiones hermanas (210:2624) ── */}
+        {sessionIds.length > 1 && (
+          <SegmentedControl
+            options={sessionIds.map((id) => ({ id, label: getTpl(id)?.label ?? '·' }))}
+            value={templateId}
+            onChange={switchSession}
+          />
+        )}
 
-        {/* ── Summary ── */}
+        {/* ── Resumen (208:1936) ── */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
           <Text style={styles.summaryMain}>
@@ -715,130 +574,110 @@ export default function SessionEditorScreen({ navigation, route }) {
               ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
               : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
           </Text>
-          {patternEntries.length > 0 && (
-            <View style={styles.chipRow}>
-              {patternEntries.map(([pattern, sets]) => (
-                <Text key={pattern} style={styles.patternChip}>
-                  {t(`exerciseSelector.patterns.${pattern}`, pattern)} ×{sets}
-                </Text>
-              ))}
-            </View>
-          )}
+          {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
         </View>
 
-        {/* ── Exercise list ── */}
-        <View style={styles.listCard}>
-          {orderedExercises.length === 0 && (
-            <Text style={styles.emptyHint}>{t('editor.addExercise')}</Text>
-          )}
-
-          {orderedExercises.map((exConfig, idx) => {
-            const isDragging = draggingId === exConfig.exerciseId;
-            const prevEx = orderedExercises[idx - 1];
-            const isSSMember = !!exConfig.supersetWithNext || !!prevEx?.supersetWithNext;
-            return (
-              <View key={exConfig.exerciseId} style={[{ overflow: 'visible' }, isDragging && { opacity: 0 }]}>
-                <ExerciseRow
-                  exConfig={exConfig}
-                  def={allExercises[exConfig.exerciseId]}
-                  linkBadge={linkBadgeFor(exConfig)}
-                  isSSMember={isSSMember}
-                  ssConnectDown={!!exConfig.supersetWithNext}
-                  onPress={() => setEditingExId(exConfig.exerciseId)}
-                  onDragStart={() => handleDragStart(exConfig.exerciseId)}
-                  onDragMove={(dy) => handleDragMove(exConfig.exerciseId, dy)}
-                  onDragEnd={() => handleDragEnd(exConfig.exerciseId)}
-                  isOpen={openExId === exConfig.exerciseId}
-                  onOpenChange={(open) => setOpenExId(open ? exConfig.exerciseId : null)}
-                  onSwipeDelete={handleRemoveExercise}
-                  onSubstitute={handleSubstituteExercise}
-                />
-              </View>
-            );
-          })}
-
-          {/* Floating overlay — absolutely positioned, follows finger */}
-          {draggingId && draggingExConfig && (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                rs.row, styles.overlayRow,
-                { top: draggingStartTopRef.current },
-                { transform: [{ translateY: overlayDY }] },
-              ]}
-            >
-              <Text style={[rs.grip, { color: th.colors.muted2 }]}>⠿</Text>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={rs.exName} numberOfLines={1}>
-                  {draggingDef?.name ?? draggingExConfig.exerciseId}
-                </Text>
-                <Text style={rs.exMeta}>{rowMeta(draggingExConfig, t)}</Text>
-              </View>
-            </Animated.View>
-          )}
-        </View>
-
-        {/* ── Blocks (AMRAP/EMOM/for time) — after exercises, no drag/swipe v1 ── */}
-        {template.blocks?.length > 0 && (
-          <View>
-            <Text style={styles.secTitle}>{t('blocks.sectionTitle')}</Text>
-            <View style={styles.listCard}>
-              {template.blocks.map((block) => (
-                <BlockRow
-                  key={block.id}
-                  block={block}
-                  onPress={() => setEditingBlockId(block.id)}
-                  onRemove={() => handleRemoveBlock(block)}
-                />
-              ))}
-            </View>
+        {/* ── Lista ── */}
+        <View style={styles.section}>
+          <Text style={styles.secTitle}>
+            {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
+          </Text>
+          <View style={{ gap: CARD_GAP }}>
+            {slots.map((slot, idx) => (
+              <Slot
+                key={slot.id}
+                slot={slot}
+                number={idx + 1}
+                isDragging={drag?.id === slot.id}
+                dragY={dragY}
+                shift={shiftFor(idx)}
+                animateShift={!!drag}
+                onMeasure={(h) => {
+                  if (heights[slot.id] !== h) setHeights((prev) => ({ ...prev, [slot.id]: h }));
+                }}
+                onDragStart={() => handleDragStart(slot)}
+                onDragMove={(dy) => handleDragMove(slot, dy)}
+                onDragEnd={()  => handleDragEnd(slot)}
+                openRowId={openRowId}
+                setOpenRowId={setOpenRowId}
+                metaFor={metaFor}
+                allExercises={allExercises}
+                t={t}
+                onOpenExercise={setEditingExId}
+                onOpenBlock={setEditingBlockId}
+                onRemoveExercise={handleRemoveExercise}
+                onRemoveBlock={handleRemoveBlock}
+                onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
+                  templateId, currentExerciseId: exerciseId, existingPatterns: [],
+                })}
+              />
+            ))}
           </View>
-        )}
+        </View>
 
-        {/* ── Actions ── */}
-        <TouchableOpacity style={styles.addExBtn} onPress={handleAddExercise}>
-          <Text style={styles.addExBtnText}>{t('editor.addExercise')}</Text>
+        {/* ── Añadir (210:2784) ── */}
+        <TouchableOpacity style={styles.addBtn} onPress={() => setAddSheetOpen(true)} activeOpacity={0.7}>
+          <Text style={styles.addBtnText}>
+            <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
+          </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.addBlockBtn} onPress={handleAddBlock}>
-          <Text style={styles.addBlockBtnText}>{t('blocks.addBlock')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.dupBtn}
-          onPress={() => {
-            const newId = duplicateSessionInProgram(programId, templateId);
-            if (newId) {
-              switchSession(newId);
-              showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.dupBtnText}>{t('editor.sessionDuplicateBtn')}</Text>
-        </TouchableOpacity>
-
-        {isEdited && (
-          <TouchableOpacity
-            style={styles.footerBtn}
-            onPress={() => {
-              restoreSession(templateId);
-              showToast(t('editor.toastReset'), 2200, 'success');
-            }}
-          >
-            <Text style={styles.footerBtnText}>{t('editor.sessionRestoreBtn')}</Text>
-          </TouchableOpacity>
-        )}
-
-        {canDelete && programId && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteSession}>
-            <Text style={styles.deleteBtnText}>{t('editor.sessionDeleteBtn')}</Text>
-          </TouchableOpacity>
-        )}
-
       </ScrollView>
 
-      {/* ── Exercise editor modal ── */}
+      {/* ── Hoja de "añadir" — el Alert nativo de Android no se puede estilar ── */}
+      <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
+        <View style={styles.sheetBody}>
+          <SheetRow
+            label={t('editor.addExerciseOption')}
+            onPress={() => { setAddSheetOpen(false); handleAddExercise(); }}
+          />
+          <SheetRow
+            label={t('editor.addBlockOption')}
+            onPress={() => { setAddSheetOpen(false); createNewBlock(); }}
+          />
+          {blockPresets.length > 0 && (
+            <SheetRow
+              label={t('editor.addPresetOption')}
+              onPress={() => { setAddSheetOpen(false); setPresetSheetOpen(true); }}
+            />
+          )}
+        </View>
+      </DragSheet>
+
+      {/* ── Menú "···" ── */}
+      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
+        <View style={styles.sheetBody}>
+          <SheetRow
+            label={t('editor.sessionDuplicateBtn')}
+            onPress={() => {
+              setMenuOpen(false);
+              const newId = duplicateSessionInProgram(programId, templateId);
+              if (newId) {
+                switchSession(newId);
+                showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
+              }
+            }}
+          />
+          {isEdited && (
+            <SheetRow
+              label={t('editor.sessionRestoreBtn')}
+              onPress={() => {
+                setMenuOpen(false);
+                restoreSession(templateId);
+                showToast(t('editor.toastReset'), 2200, 'success');
+              }}
+            />
+          )}
+          {canDelete && programId && (
+            <SheetRow
+              label={t('editor.sessionDeleteBtn')}
+              danger
+              onPress={() => { setMenuOpen(false); handleDeleteSession(); }}
+            />
+          )}
+        </View>
+      </DragSheet>
+
+      {/* ── Modal de ejercicio ── */}
       {editingExConfig && (
         <Modal
           visible
@@ -847,7 +686,6 @@ export default function SessionEditorScreen({ navigation, route }) {
           onRequestClose={() => setEditingExId(null)}
         >
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            {/* Header */}
             <View style={styles.modalTopbar}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.modalExTag}>EJERCICIO</Text>
@@ -863,15 +701,11 @@ export default function SessionEditorScreen({ navigation, route }) {
                 <Text style={styles.modalAcceptTxt}>Aceptar</Text>
               </TouchableOpacity>
             </View>
-            {/* Content */}
             <KeyboardAvoidingView
               style={{ flex: 1 }}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <ExerciseEditorInline
                   templateId={templateId}
                   exConfig={editingExConfig}
@@ -886,7 +720,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         </Modal>
       )}
 
-      {/* ── Block editor modal ── */}
+      {/* ── Modal de bloque ── */}
       {editingBlock && (
         <Modal
           visible
@@ -895,7 +729,6 @@ export default function SessionEditorScreen({ navigation, route }) {
           onRequestClose={() => setEditingBlockId(null)}
         >
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            {/* Header */}
             <View style={styles.modalTopbar}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.modalExTag}>{t('blocks.sectionTitle').toUpperCase()}</Text>
@@ -911,15 +744,11 @@ export default function SessionEditorScreen({ navigation, route }) {
                 <Text style={styles.modalAcceptTxt}>Aceptar</Text>
               </TouchableOpacity>
             </View>
-            {/* Content */}
             <KeyboardAvoidingView
               style={{ flex: 1 }}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <BlockEditorInline
                   templateId={templateId}
                   block={editingBlock}
@@ -933,13 +762,13 @@ export default function SessionEditorScreen({ navigation, route }) {
         </Modal>
       )}
 
-      {/* ── Preset picker sheet ── */}
+      {/* ── Selector de preset ── */}
       <DragSheet
         visible={presetSheetOpen}
         onClose={() => setPresetSheetOpen(false)}
         title={t('blocks.fromPreset')}
       >
-        <View style={{ paddingBottom: spacing.sm }}>
+        <View style={styles.sheetBody}>
           {blockPresets.map((preset) => (
             <View key={preset.presetId} style={styles.presetRow}>
               <TouchableOpacity
@@ -965,7 +794,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                   );
                 }}
               >
-                <Text style={rs.removeBtn}>✕</Text>
+                <Text style={styles.presetRemove}>✕</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -976,189 +805,281 @@ export default function SessionEditorScreen({ navigation, route }) {
   );
 }
 
+// ─── Hueco de la lista ────────────────────────────────────────────────────────
+// Un ejercicio suelto, un bloque, o una superserie (varias filas a 2px con los
+// radios interiores a 2px y barra accent a la izquierda). El asa arrastra el
+// hueco ENTERO: una superserie se mueve como una pieza.
+
+function Slot({
+  slot, number, isDragging, dragY, shift, animateShift, onMeasure,
+  onDragStart, onDragMove, onDragEnd,
+  openRowId, setOpenRowId, metaFor, allExercises, t,
+  onOpenExercise, onOpenBlock, onRemoveExercise, onRemoveBlock, onSubstitute,
+}) {
+  const styles = useThemedStyles(makeStyles);
+
+  const cbs = useRef({ onDragStart, onDragMove, onDragEnd });
+  useEffect(() => { cbs.current = { onDragStart, onDragMove, onDragEnd }; });
+
+  /* eslint-disable-next-line react-hooks/refs */
+  const [pan] = useState(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant:     ()      => cbs.current.onDragStart(),
+    onPanResponderMove:      (_, gs) => cbs.current.onDragMove(gs.dy),
+    onPanResponderRelease:   ()      => cbs.current.onDragEnd(),
+    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
+  }));
+
+  // Fuera del gesto, el desplazamiento se lee del prop DIRECTAMENTE, no del
+  // shared value: al soltar, el store trae ya el orden nuevo y `shift` vale 0 en
+  // ese mismo commit. Pasando por el efecto, el 0 llegaba un frame tarde y
+  // durante ese frame las tarjetas se pintaban ya recolocadas pero todavía con
+  // el transform viejo encima — el parpadeo de "sitios raros" al terminar.
+  const shiftSv = useSharedValue(0);
+  useEffect(() => {
+    if (!animateShift) return;
+    shiftSv.value = withTiming(shift, SETTLE);
+  }, [shift, animateShift, shiftSv]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{
+      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
+    }],
+  }), [isDragging, animateShift, shift]);
+
+  const pad = String(number).padStart(2, '0');
+
+  const rows = slot.kind === 'block'
+    ? [{
+        key:    slot.block.id,
+        number: pad,
+        name:   slot.block.name ?? t(`blocks.formats.${slot.block.format}`),
+        meta:   blockMeta(slot.block, t),
+        pill:   t(`blocks.formats.${slot.block.format}`).toUpperCase(),
+        onPress:    () => onOpenBlock(slot.block.id),
+        onDelete:   () => onRemoveBlock(slot.block),
+        onSubstitute: null,
+      }]
+    : slot.members.map((ex, i) => ({
+        key:    ex.exerciseId,
+        // Una superserie comparte número y se distingue por letra (03A / 03B),
+        // igual que la numeración de WorkoutScreen.
+        number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
+        name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
+        meta:   metaFor(ex),
+        pill:   null,
+        onPress:      () => onOpenExercise(ex.exerciseId),
+        onDelete:     () => onRemoveExercise(ex.exerciseId),
+        onSubstitute: () => onSubstitute(ex.exerciseId),
+      }));
+
+  const isGroup = rows.length > 1;
+
+  return (
+    <Reanimated.View
+      onLayout={(e) => onMeasure(Math.round(e.nativeEvent.layout.height))}
+      style={[
+        isGroup && styles.ssGroup,
+        isDragging && { zIndex: 2, elevation: 4 },
+        animStyle,
+      ]}
+    >
+      {rows.map((row, i) => (
+        <EditorRow
+          key={row.key}
+          number={row.number}
+          name={row.name}
+          meta={row.meta}
+          pill={row.pill}
+          radii={isGroup ? groupRadii(i, rows.length) : null}
+          onPress={row.onPress}
+          isOpen={openRowId === row.key}
+          onOpenChange={(open) => setOpenRowId(open ? row.key : null)}
+          onSwipeDelete={row.onDelete}
+          onSubstitute={row.onSubstitute}
+          dragHandlers={pan.panHandlers}
+        />
+      ))}
+    </Reanimated.View>
+  );
+}
+
+// Radios de una fila dentro de una superserie: `sm` hacia fuera del grupo,
+// `xxs` (2) hacia dentro — el mismo mecanismo que la "lista agrupada" pero con
+// los extremos a `sm` en vez de `md`.
+function groupRadii(i, n) {
+  const OUT = 6;  // radius/sm
+  const IN  = 2;  // radius/xxs
+  return {
+    borderTopLeftRadius:     i === 0 ? OUT : IN,
+    borderTopRightRadius:    i === 0 ? OUT : IN,
+    borderBottomLeftRadius:  i === n - 1 ? OUT : IN,
+    borderBottomRightRadius: i === n - 1 ? OUT : IN,
+  };
+}
+
+function SheetRow({ label, onPress, danger = false }) {
+  const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
+  return (
+    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
+      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
+    </TouchableOpacity>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  // Header
+  // ── SesionHeader ──
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    height:            HEADER_H,
+    marginHorizontal:  spacing.lg,
+    marginTop:         spacing.lg,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+    overflow:          'hidden',
   },
-  backBtn: { padding: spacing.xs },
-  backIcon: { fontSize: 26, color: th.colors.muted, lineHeight: 30 },
-  sesTag: {
-    fontSize: 9, fontWeight: typography.bold,
-    color: th.colors.muted2, letterSpacing: 1,
-    textTransform: 'uppercase', marginBottom: 1,
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sesName: {
-    fontSize: typography.lg, fontWeight: typography.bold,
-    lineHeight: typography.lg * 1.2,
-    flexShrink: 1,
-  },
-  iconBtn: { padding: spacing.xs },
-  colorDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-
-  // Session chips
-  chipsBar: {
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  chipsContent: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  sessionChip: {
-    minWidth: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: th.radius.sm,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems: 'center',
-  },
-  sessionChipText: {
-    fontSize: typography.sm,
-    fontWeight: typography.bold,
-    color: th.colors.muted,
-  },
-
-  scrollContent: {
-    paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    gap: spacing.md,
-  },
-
-  // Summary
-  summaryCard: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             2,
-  },
-  summaryTag: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.heavy,
-    color:         withOpacity(th.colors.accent, 0.7),
-    letterSpacing: 1.2,
-    marginBottom:  2,
-  },
-  summaryMain: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.accent,
-  },
-  chipRow: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    gap: spacing.xs, marginTop: spacing.sm,
-  },
-  patternChip: {
-    fontSize: typography.xs,
-    fontWeight: typography.medium,
-    color: th.colors.mutedLight,
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
-
-  // Section title (blocks)
-  secTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+  headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
+  headerEyebrow: {
+    ...textStyles.spacingTag,
     color:         th.colors.muted,
-    letterSpacing: 1,
+    textAlign:     'center',
     textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
+  },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
+  headerTitle: {
+    ...textStyles.hero,
+    color: th.colors.onAccent, textAlign: 'center', lineHeight: 22, flexShrink: 1,
+  },
+  headerTitleInput: {
+    ...textStyles.hero,
+    color: th.colors.onAccent, textAlign: 'center', lineHeight: 22,
+    padding: 0, flexShrink: 1, minWidth: 80,
   },
 
-  // List
-  listCard: {
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
-    overflow: 'visible',
-  },
-  emptyHint: {
-    fontSize: typography.xs, color: th.colors.muted,
-    padding: spacing.md, textAlign: 'center',
-  },
-  overlayRow: {
-    position: 'absolute', left: 0, right: 0,
-    elevation: 12, zIndex: 100,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8,
-    backgroundColor: th.colors.surface2,
+  // ── Contenido ──
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    gap:               spacing.md,
   },
 
-  // Actions
-  addExBtn: {
-    paddingVertical: spacing.md,
-    borderRadius: th.radius.md,
-    borderWidth: 1, borderStyle: 'dashed',
-    borderColor: withOpacity(th.colors.accent, 0.4),
-    alignItems: 'center',
-    backgroundColor: withOpacity(th.colors.accent, 0.04),
+  // Etiqueta de sección, igual que en el editor de programa.
+  section:  { gap: spacing.xs2 },
+  secTitle: {
+    ...textStyles.spacingTag,
+    color:      th.colors.mutedLight,
+    paddingTop: spacing.md,
   },
-  addExBtnText: { fontSize: typography.base, color: th.colors.accent },
-  addBlockBtn: {
-    paddingVertical: spacing.md,
-    borderRadius: th.radius.md,
-    borderWidth: 1, borderStyle: 'dashed',
-    borderColor: th.colors.border,
-    alignItems: 'center',
+
+  // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
+  summaryCard: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
   },
-  addBlockBtnText: { fontSize: typography.base, color: th.colors.mutedLight },
-  presetRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
-    gap: spacing.sm,
+  summaryTag:    { ...textStyles.spacingTag, color: th.colors.accent },
+  summaryMain:   { ...textStyles.cardType,   color: th.colors.text },
+  summaryVolume: { ...textStyles.tag,        color: th.tint.accent50 },
+
+  // ── Fila ──
+  row: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
   },
-  presetName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  presetMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
-  footerBtn: {
+  // 12 es literal de Figma (no hay token); el asa va a `space/sm` del contenido.
+  rowNumber: { ...textStyles.cardType, color: th.colors.accent, marginRight: 12 },
+  rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
+  rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  rowName:   { ...textStyles.cardType, color: th.colors.text },
+  rowMeta:   { ...textStyles.tag, color: th.colors.mutedLight, marginTop: spacing.xs },
+  dragHandle: {
+    alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
+
+  // Superserie: barra accent a la izquierda envolviendo el grupo (209:2479).
+  ssGroup: {
+    borderLeftWidth: 2,
+    borderLeftColor: th.colors.accent,
+    gap:             SS_GAP,
+  },
+
+  // Pill de formato de bloque (209:2508) — la única que queda en la lista.
+  pill: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.xs,
+    padding:         spacing.sm,
+  },
+  pillText: { ...textStyles.tag, color: th.colors.accent },
+
+  // Panel de acciones bajo la fila, descubierto al deslizar. Son botones con el
+  // lenguaje de la app (radius/sm + text/card-type), no bloques de color a sangre.
+  actionPanel: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    flexDirection: 'row', width: SWIPE_OPEN,
+    gap: ACTION_GAP,
+    // Aire por dentro: los botones no llegan al alto de la fila ni se pegan a
+    // la tarjeta cuando ésta termina de deslizarse.
     paddingVertical: spacing.sm,
-    alignItems: 'center',
+    paddingRight:    ACTION_INSET,
   },
-  footerBtnText: { fontSize: typography.sm, color: th.colors.muted },
-  dupBtn: {
-    paddingVertical: spacing.sm + 2,
-    borderRadius: th.radius.md,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    alignItems: 'center',
+  actionBtn: {
+    width: ACTION_BTN_WIDTH,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: th.radius.sm,
+    paddingHorizontal: spacing.lg,
   },
-  dupBtnText: { fontSize: typography.sm, color: th.colors.mutedLight, fontWeight: typography.medium },
-  deleteBtn: {
-    paddingVertical: spacing.sm + 2,
-    borderRadius: th.radius.md,
-    borderWidth: borders.thin,
-    borderColor: withOpacity(th.colors.red, 0.3),
-    alignItems: 'center',
-  },
-  deleteBtnText: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
+  // `surface2`: el mismo relleno que los botones Secondary de Figma.
+  actionBtnSubstitute:     { backgroundColor: th.colors.surface2 },
+  actionBtnSubstituteText: { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
+  actionBtnDelete:         { backgroundColor: th.tint.red30 },
+  actionBtnDeleteText:     { ...textStyles.cardType, color: th.tint.red50, textAlign: 'center' },
 
-  // Exercise editor modal
-  modalSafe: {
-    flex:            1,
-    backgroundColor: th.colors.bg,
+  // ── Añadir ── (texto plano, sin caja — así está ya en Figma)
+  addBtn:      { alignItems: 'center', paddingVertical: spacing.md },
+  addBtnText:  { ...textStyles.cardType, color: th.tint.accent50 },
+  addBtnPlus:  { color: th.colors.accent },
+
+  // ── Hojas ──
+  sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
+  sheetRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    gap:             spacing.xl,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
   },
+  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  presetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius: th.radius.sm,
+    padding: spacing.md,
+  },
+  presetName:   { ...textStyles.cardType, color: th.colors.text },
+  presetMeta:   { ...textStyles.tag, color: th.colors.mutedLight, marginTop: spacing.xs },
+  presetRemove: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
+
+  // ── Modales de ejercicio / bloque (sin migrar todavía) ──
+  modalSafe: { flex: 1, backgroundColor: th.colors.bg },
   modalTopbar: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -1168,16 +1089,12 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
   },
   modalExTag: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1,
+    fontSize: typography.xs, fontWeight: typography.bold,
+    color: th.colors.muted, letterSpacing: 1,
   },
   modalExName: {
-    fontSize:   typography.lg,
-    fontWeight: typography.bold,
-    color:      th.colors.text,
-    marginTop:  2,
+    fontSize: typography.lg, fontWeight: typography.bold,
+    color: th.colors.text, marginTop: 2,
   },
   modalAcceptBtn: {
     backgroundColor:   th.colors.accent,
@@ -1189,9 +1106,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'center',
   },
   modalAcceptTxt: {
-    fontSize:   typography.sm,
-    fontWeight: typography.heavy,
-    color:      th.colors.onAccent,
-    letterSpacing: 0.5,
+    fontSize: typography.sm, fontWeight: typography.heavy,
+    color: th.colors.onAccent, letterSpacing: 0.5,
   },
 });

@@ -32,7 +32,6 @@ su resultado es un **score de bloque**, no un log de series.
 - Progresión automática de bloques ("supera tus 7 rondas") — solo registro + comparación en recap.
 - Bloques en sesiones libres.
 - Gráficas de evolución de scores en Progreso.
-- Drag-reorder de bloques (pocos por sesión; orden = orden de creación).
 - Pausa del reloj (el reloj es wall-clock, ver §4).
 
 ---
@@ -73,7 +72,15 @@ ConditioningBlock = {
 ```
 
 Reglas:
-- Los bloques se renderizan **después** de los ejercicios de fuerza, en su orden de array.
+- ~~Los bloques se renderizan **después** de los ejercicios de fuerza, en su orden de array.~~
+  **Superado** (rediseño FormaFit del editor de sesión): los bloques se mezclan con los
+  ejercicios en el orden que decida el usuario. Cada bloque lleva un campo `order`
+  **opcional** con su posición entre *huecos* (un hueco = un ejercicio suelto, una
+  superserie entera o un bloque) — se indexa contra huecos y no contra ejercicios para
+  que un bloque no pueda partir una superserie por la mitad. Los bloques **sin** `order`
+  siguen yendo al final, así que los datos antiguos no necesitan migración. El orden lo
+  resuelve `mobile/src/utils/sessionSlots.js`, que usan tanto el editor de sesión como
+  `WorkoutScreen`.
 - Al **duplicar sesión/etapa** (`duplicateSessionInProgram`/`duplicateStageInProgram`):
   copiar `blocks` con `id` nuevos (`generateId('blk')`) — mismo patrón que los templates.
 - `removeSessionFromProgram` no necesita cambios (blocks viajan dentro del template).

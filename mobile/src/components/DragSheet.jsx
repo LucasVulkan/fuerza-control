@@ -1,10 +1,17 @@
 /**
- * DragSheet — bottom sheet with drag-to-close.
+ * DragSheet — bottom sheet with drag-to-close. Úsalo para CUALQUIER modal nuevo
+ * (menús "···", hojas de opciones, pickers): es el patrón único de la app, no
+ * montes otro por tu cuenta ni uses `Alert` nativo, que no se puede estilar.
  *
- * Same interaction as AppHeader's SettingsSheet: drag the handle down to
- * dismiss (>120 px or fast flick), backdrop fades with the drag, spring-in
- * on open. animationType="none" so the Modal's native animation doesn't
- * fight the Animated transform.
+ * Interacción (la misma que el SettingsSheet de AppHeader): se arrastra hacia
+ * abajo para cerrar (>120 px o gesto rápido) desde el handle **o desde el
+ * fondo**, el backdrop se difumina con el arrastre y la hoja entra con spring.
+ * `animationType="none"` para que la animación nativa del Modal no pelee con el
+ * transform.
+ *
+ * El MISMO PanResponder se reparte entre el handle y el backdrop: si cada uno
+ * tuviera el suyo, el `gestureState` (el dy acumulado) sería distinto en cada
+ * zona y el arrastre saltaría al cruzar de una a otra.
  */
 import { useRef, useEffect } from 'react';
 import {
@@ -40,7 +47,10 @@ export default function DragSheet({ visible, onClose, title, children }) {
 
   const panResponder = useRef(
     PanResponder.create({
+      // El handle reclama al tocar; el backdrop solo si el gesto se mueve, para
+      // que un toque suelto sobre el fondo siga siendo "cerrar".
       onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  (_, gs) => Math.abs(gs.dy) > 4,
       onPanResponderMove: (_, gs) => {
         if (gs.dy > 0) translateY.setValue(gs.dy);
       },
@@ -70,7 +80,9 @@ export default function DragSheet({ visible, onClose, title, children }) {
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={close} />
+        <View style={StyleSheet.absoluteFillObject} {...panResponder.panHandlers}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={close} />
+        </View>
       </Animated.View>
       <Animated.View
         style={[styles.card, { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] }]}

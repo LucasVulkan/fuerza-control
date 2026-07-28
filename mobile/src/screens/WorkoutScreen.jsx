@@ -20,6 +20,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../../../src/utils/formatters';
 import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
+import { sessionSlots } from '../utils/sessionSlots';
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -389,31 +390,34 @@ export default function WorkoutScreen() {
     overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
   }));
 
-  // Group consecutive exercises chained via exConfig.supersetWithNext into
-  // superset blocks; everything else stays a standalone 1-item "group".
-  const exerciseGroups = [];
-  for (const item of exercises) {
-    const prevGroup = exerciseGroups[exerciseGroups.length - 1];
-    if (prevGroup?.[prevGroup.length - 1].exConfig.supersetWithNext) prevGroup.push(item);
-    else exerciseGroups.push([item]);
-  }
+  // Orden de pantalla: el MISMO que pinta el editor de sesión, bloques de
+  // acondicionamiento mezclados incluidos (ver `utils/sessionSlots.js`). Antes
+  // los bloques iban siempre al final; ahora su sitio lo decide el usuario al
+  // reordenar, y aquí solo se respeta.
+  const byId = new Map(exercises.map((it) => [it.exConfig.exerciseId, it]));
+  const workSlots = sessionSlots(template).map((slot) => (
+    slot.kind === 'block'
+      ? slot
+      : { ...slot, items: slot.members.map((ex) => byId.get(ex.exerciseId)).filter(Boolean) }
+  )).filter((slot) => slot.kind === 'block' || slot.items.length > 0);
+  const exerciseGroups = workSlots.filter((s) => s.kind === 'ex').map((s) => s.items);
 
   // Puntos de progreso del header (§4.3): 1 unidad por ejercicio de fuerza
   // (miembros de superserie incluidos, aplanados) + 1 por ad-hoc + 1 por bloque
   // de acondicionamiento, en orden de pantalla. Mismo criterio de "completo"
   // que el auto-colapso de ExerciseCard (isExerciseDone).
   const dotUnits = [
-    ...exerciseGroups.flat().map(({ exConfig, setsState }) => ({
-      id:   exConfig.exerciseId,
-      done: isExerciseDone(exConfig, setsState),
-    })),
+    ...workSlots.flatMap((slot) => (
+      slot.kind === 'block'
+        ? [{ id: slot.block.id, done: activeSession.blockState?.[slot.block.id]?.finishedAt != null }]
+        : slot.items.map(({ exConfig, setsState }) => ({
+            id:   exConfig.exerciseId,
+            done: isExerciseDone(exConfig, setsState),
+          }))
+    )),
     ...(activeSession.adHocExercises ?? []).map((a) => ({
       id:   a.exerciseId,
       done: a.setsState.length > 0 && a.setsState.every((s) => s.done),
-    })),
-    ...(template?.blocks ?? []).map((b) => ({
-      id:   b.id,
-      done: activeSession.blockState?.[b.id]?.finishedAt != null,
     })),
   ];
 
@@ -596,11 +600,27 @@ export default function WorkoutScreen() {
             </View>
           )}
 
-          {exerciseGroups.map((group, groupIdx) => {
+          {workSlots.map((slot, slotIdx) => {
+            // Numeración por hueco, igual que en el editor de sesión: un bloque
+            // de acondicionamiento ocupa su número aunque su tarjeta no lo pinte,
+            // así los números coinciden entre las dos pantallas.
+            const orderNumber = String(slotIdx + 1).padStart(2, '0');
+            if (slot.kind === 'block') {
+              return (
+                <ConditioningBlockCard
+                  key={slot.block.id}
+                  block={slot.block}
+                  state={activeSession.blockState?.[slot.block.id] ?? null}
+                  allExercises={allExercises}
+                  onStart={() => startBlock(slot.block.id)}
+                  onUpdate={(patch) => updateBlockState(slot.block.id, patch)}
+                  onFinish={() => finishBlock(slot.block.id)}
+                  onReset={() => resetBlock(slot.block.id)}
+                />
+              );
+            }
+            const group = slot.items;
             const isSuperset = group.length > 1;
-            // Numeración de sesión (01, 02…) — un número por SLOT, no por card: los
-            // miembros de una misma superserie comparten número (se distinguen por A1/A2).
-            const orderNumber = String(groupIdx + 1).padStart(2, '0');
             const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
               <ExerciseCard
                 key={exConfig.exerciseId}
@@ -669,7 +689,7 @@ export default function WorkoutScreen() {
                 def={def}
                 setsState={adHoc.setsState}
                 lastExercise={null}
-                orderNumber={String(exerciseGroups.length + adHocIdx + 1).padStart(2, '0')}
+                orderNumber={String(workSlots.length + adHocIdx + 1).padStart(2, '0')}
                 activeSetIndex={activePointer?.exerciseId === adHoc.exerciseId ? activePointer.setIndex : -1}
                 onFieldChange={(setIdx, field, value) =>
                   handleAdHocFieldChange(adHoc.exerciseId, setIdx, field, value)
@@ -681,20 +701,6 @@ export default function WorkoutScreen() {
               />
             );
           })}
-
-          {/* Conditioning blocks — after all strength work (spec §2.1) */}
-          {(template?.blocks ?? []).map((block) => (
-            <ConditioningBlockCard
-              key={block.id}
-              block={block}
-              state={activeSession.blockState?.[block.id] ?? null}
-              allExercises={allExercises}
-              onStart={() => startBlock(block.id)}
-              onUpdate={(patch) => updateBlockState(block.id, patch)}
-              onFinish={() => finishBlock(block.id)}
-              onReset={() => resetBlock(block.id)}
-            />
-          ))}
 
           {/* Add exercise to session (ad-hoc) */}
           <TouchableOpacity
