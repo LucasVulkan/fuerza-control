@@ -772,9 +772,9 @@
   "exerciseEditor": {
     "progressionType": "Tipo de progresión",
     "fieldSets": "Series",
-    "fieldRest": "Descanso (s)",
-    "fieldMinTime": "Tiempo mín (s)",
-    "fieldMaxTime": "Tiempo máx (s)",
+    "fieldRest": "Descanso",
+    "fieldMinTime": "Tiempo mín",
+    "fieldMaxTime": "Tiempo máx",
     "fieldMinReps": "Reps mín",
     "fieldMaxReps": "Reps máx",
     "submaxHint": "Sin progresión automática — el atleta decide cuándo avanzar.",
@@ -830,7 +830,8 @@
       "fixed": "Añade una cantidad fija en cada subida de carga",
       "pct": "Sube el peso un porcentaje del valor actual"
     },
-    "incrFixedRepsLabel": "+ reps",
+    "incrFixedRepsLabel": "Reps por subida",
+    "incrValueLabel": "Incremento",
     "incrMinLabel": "Mín. disponible",
     "incrMinHint": "Placa más pequeña disponible (ej. 2.5 kg)",
     "progModes": {
@@ -883,7 +884,7 @@
       "auto": "Auto",
       "custom": "Personalizado",
       "setsLabel": "Series",
-      "restLabel": "Descanso (s)",
+      "restLabel": "Descanso",
       "noTimer": "sin temporizador",
       "addStep": "＋ Añadir paso",
       "rampStep": "{{pct}}% × {{reps}}",

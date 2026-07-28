@@ -1120,8 +1120,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exHeaderTitle:   { ...textStyles.spacingTag, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
   exHeaderChevron: { transform: [{ rotate: '90deg' }] },
+  // Figma pinta este botón en `color/muted`; en QA se cambió al relleno
+  // Secondary (`color/surface-2`), el mismo de los demás botones secundarios.
   exHeaderAccept: {
-    backgroundColor: th.colors.muted,
+    backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
     padding:         spacing.md,
     alignItems:      'center',

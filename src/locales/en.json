@@ -772,9 +772,9 @@
   "exerciseEditor": {
     "progressionType": "Progression type",
     "fieldSets": "Sets",
-    "fieldRest": "Rest (s)",
-    "fieldMinTime": "Min time (s)",
-    "fieldMaxTime": "Max time (s)",
+    "fieldRest": "Rest",
+    "fieldMinTime": "Min time",
+    "fieldMaxTime": "Max time",
     "fieldMinReps": "Min reps",
     "fieldMaxReps": "Max reps",
     "submaxHint": "No automatic progression — athlete decides when to advance.",
@@ -830,7 +830,8 @@
       "fixed": "Adds a fixed amount each time load increases",
       "pct": "Increases weight by a percentage of the current value"
     },
-    "incrFixedRepsLabel": "+ reps",
+    "incrFixedRepsLabel": "Reps per bump",
+    "incrValueLabel": "Increment",
     "incrMinLabel": "Min. available",
     "incrMinHint": "Smallest plate available (e.g. 2.5 kg)",
     "progModes": {
@@ -883,7 +884,7 @@
       "auto": "Auto",
       "custom": "Custom",
       "setsLabel": "Sets",
-      "restLabel": "Rest (s)",
+      "restLabel": "Rest",
       "noTimer": "no timer",
       "addStep": "＋ Add step",
       "rampStep": "{{pct}}% × {{reps}}",

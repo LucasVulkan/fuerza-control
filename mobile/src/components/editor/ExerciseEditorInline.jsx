@@ -35,6 +35,7 @@ import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import { ArrowIcon, ProgressionIcon } from '../ui/EditorIcons';
+import { GRID } from '../workout/grid';
 import DragSheet from '../DragSheet';
 
 // Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
@@ -44,45 +45,69 @@ const ROW_CHEVRON = 10.77;
 // chevron de sesión futura en HomeView.
 const CHEVRON_GREY = '#d9d9d9';
 
-// ─── StepField (Exercice editor elements / Caja, `142:1119`) ──────────────────
+// ─── StepField (Exercice editor elements / Caja `142:1119` + Horizontal `160:1198`)
 //
-// Figma dibuja dos versiones del mismo componente en el grid (una de alto fijo
-// 68 con los botones centrados y separados 26, otra hug con los botones a los
-// bordes). Es una inconsistencia del mock: aquí se unifica en alto 68 con los
-// botones a los bordes, que es lo que llena la tarjeta.
+// Dos disposiciones del mismo componente, las dos de Figma:
+//   · `Caja` (por defecto) — label centrado arriba y la fila ±/valor/± abajo.
+//     Se usa en el grid 2×2 de VOLUMEN. Figma dibuja dos versiones dentro del
+//     propio grid (alto 68 con los botones centrados / hug con los botones a
+//     los bordes): es una inconsistencia del mock, aquí van todas iguales.
+//   · `Horizontal` — label a la izquierda y los controles a la derecha. Es la
+//     que usan las hojas, donde el alto vertical es caro.
+// `dark` pinta la caja sobre `color/app` en vez de `surface`: dentro de una hoja
+// el fondo YA es `surface` y las cajas se perdían contra él.
+const STEP_BTN  = 34;   // caja del botón ± (Figma 30; subido en QA)
+const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
+const GLYPH_W   = 13;   // largo de la barra del − / +
+const GLYPH_T   = 2;    // grosor
 
-function StepField({ label, value, onChange, min, max }) {
+function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
   const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
-  const numVal = Number(value);
+  const numVal   = Number(value);
+  const decimals = step < 1;
 
-  function handleChangeText(v) { setDraft(v.replace(/[^0-9]/g, '')); }
+  // Redondeo a 2 decimales: sumar 0.25 repetidamente arrastra error binario.
+  const round  = (n) => Math.round(n * 100) / 100;
+  const commit = (n) => onChange(round(Math.min(max, Math.max(min, n))));
+
+  function handleChangeText(v) {
+    setDraft(decimals ? v.replace(/[^0-9.]/g, '') : v.replace(/[^0-9]/g, ''));
+  }
   function handleBlur() {
-    const n = parseInt(draft, 10);
-    if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); setDraft(String(c)); onChange(c); }
+    const n = decimals ? parseFloat(draft) : parseInt(draft, 10);
+    if (!isNaN(n)) { const c = round(Math.min(max, Math.max(min, n))); setDraft(String(c)); onChange(c); }
     else setDraft(String(value));
   }
 
-  return (
-    <View style={sf.card}>
-      <Text style={sf.label} numberOfLines={1}>{label}</Text>
-      <View style={sf.row}>
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.max(min, numVal - 1))} activeOpacity={0.6}>
-          <Text style={sf.stepText}>−</Text>
-        </TouchableOpacity>
+  const controls = (
+    <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
+      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
+        <View style={sf.glyphBar} />
+      </TouchableOpacity>
+      <View style={sf.valueWrap}>
         <TextInput
           style={sf.valueInput}
-          keyboardType="numeric"
+          keyboardType={decimals ? 'decimal-pad' : 'numeric'}
           value={draft}
           onChangeText={handleChangeText}
           onBlur={handleBlur}
           selectTextOnFocus
         />
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))} activeOpacity={0.6}>
-          <Text style={sf.stepText}>+</Text>
-        </TouchableOpacity>
+        {!!unit && <Text style={sf.unit}>{unit}</Text>}
       </View>
+      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
+        <View style={sf.glyphBar} />
+        <View style={[sf.glyphBar, sf.glyphBarV]} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={[horizontal ? sf.cardHorizontal : sf.card, dark && sf.cardDark]}>
+      <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
+      {controls}
     </View>
   );
 }
@@ -90,46 +115,73 @@ function StepField({ label, value, onChange, min, max }) {
 const makeSf = (th) => StyleSheet.create({
   card: {
     flex:            1,
-    height:          68,
+    height:          82,
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
     justifyContent:  'space-between',
     overflow:        'hidden',
   },
-  label: { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
-  row: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
+  // Horizontal (160:1198): px `space/md`, py `space/sm`.
+  cardHorizontal: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.md,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
   },
+  cardDark: { backgroundColor: th.colors.bg },
+
+  label:           { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
+  labelHorizontal: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+
+  controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
+
   stepBtn: {
-    width:           30,
-    height:          30,
+    width:           STEP_BTN,
+    height:          STEP_BTN,
     borderRadius:    th.radius.xs,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  stepText: {
-    fontFamily:         'Inter_500Medium',
-    fontSize:           24,
-    lineHeight:         26,
-    letterSpacing:      0.96,
-    color:              th.tint.accent50,
-    includeFontPadding: false,
+  // El − y el + van dibujados con Views y con las coordenadas puestas a mano
+  // (no con glifos ni con centrado automático): así quedan clavados en el
+  // centro de la caja sin depender de las métricas de la fuente. El + son dos
+  // barras iguales, una girada 90° sobre su propio centro.
+  glyphBar: {
+    position:        'absolute',
+    width:           GLYPH_W,
+    height:          GLYPH_T,
+    left:            (STEP_BTN - GLYPH_W) / 2,
+    top:             (STEP_BTN - GLYPH_T) / 2,
+    borderRadius:    GLYPH_T / 2,
+    backgroundColor: th.tint.accent50,
+  },
+  glyphBarV: { transform: [{ rotate: '90deg' }] },
+
+  valueWrap: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            spacing.xs2,
   },
   valueInput: {
-    flex:               1,
+    width:              44,
     ...textStyles.cardTitle,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
     backgroundColor:    'transparent',
-    height:             30,
+    height:             STEP_BTN,
     paddingVertical:    0,
   },
+  unit: { ...textStyles.subtitle, color: th.colors.mutedLight },
 });
 
 // ─── Switch (Icons / Switch, `176:1907`) ──────────────────────────────────────
@@ -137,10 +189,17 @@ const makeSf = (th) => StyleSheet.create({
 // accent, pulgar negro); el OFF es decisión nuestra: surface2 + pulgar
 // mutedLight, para que se lea apagado sin introducir un color nuevo.
 
-const TRACK_W = 26;
-const TRACK_H = 14.182;
-const THUMB   = 11.818;
-const THUMB_X = [1.18, TRACK_W - THUMB - 1.18];
+// Figma da 26×14.18 / pulgar 11.82; en QA se pidió más grande, así que se
+// escala el conjunto ×1.3 manteniendo las proporciones del mock.
+const SW_SCALE = 1.3;
+const TRACK_W  = 26 * SW_SCALE;
+const TRACK_H  = 14.182 * SW_SCALE;
+const THUMB    = 11.818 * SW_SCALE;
+const SW_INSET = 1.18 * SW_SCALE;
+const THUMB_X  = [SW_INSET, TRACK_W - THUMB - SW_INSET];
+// Alto mínimo de las filas de opciones: el mismo para todas, lo marca la caja
+// del switch (QA: la fila de Tempo se veía más fina que las demás).
+const OPT_ROW_H = TRACK_W + spacing.sm * 2;
 
 function Switch({ value }) {
   const th = useTheme();
@@ -173,7 +232,7 @@ function Switch({ value }) {
 }
 
 const swStyles = StyleSheet.create({
-  box:   { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  box:   { width: TRACK_W, height: TRACK_W, alignItems: 'center', justifyContent: 'center' },
   track: { width: TRACK_W, height: TRACK_H, borderRadius: TRACK_H / 2, justifyContent: 'center' },
   thumb: { width: THUMB, height: THUMB, borderRadius: THUMB / 2, position: 'absolute' },
 });
@@ -629,13 +688,13 @@ export default function ExerciseEditorInline({
         <View style={styles.grid}>
           <View style={styles.gridRow}>
             <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
-            <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} />
+            <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} unit="s" />
           </View>
 
           {showTimeRange ? (
             <View style={styles.gridRow}>
-              <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} />
-              <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} />
+              <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
+              <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
             </View>
           ) : showRepsRange ? (
             <View style={styles.gridRow}>
@@ -791,17 +850,15 @@ export default function ExerciseEditorInline({
           />
 
           {warmupMode === 'auto' && (
-            <View style={styles.block}>
-              <View style={styles.gridRow}>
-                <StepField
-                  label={t('exerciseEditor.warmup.setsLabel')}
-                  value={warmupSets}
-                  onChange={setWarmupSets}
-                  min={1}
-                  max={4}
-                />
-                <View style={{ flex: 1 }} />
-              </View>
+            <View style={{ gap: spacing.sm }}>
+              <StepField
+                horizontal dark
+                label={t('exerciseEditor.warmup.setsLabel')}
+                value={warmupSets}
+                onChange={setWarmupSets}
+                min={1}
+                max={4}
+              />
               <Text style={styles.hint}>{warmupRampHint}</Text>
             </View>
           )}
@@ -828,19 +885,19 @@ export default function ExerciseEditorInline({
           )}
 
           {warmupMode !== 'none' && (
-            <View style={styles.gridRow}>
+            <View style={{ gap: spacing.sm }}>
               <StepField
+                horizontal dark unit="s"
                 label={t('exerciseEditor.warmup.restLabel')}
                 value={warmupRestSec}
                 onChange={setWarmupRestSec}
                 min={0}
                 max={180}
               />
-              <View style={{ flex: 1 }} />
+              {warmupRestSec === 0 && (
+                <Text style={styles.hint}>{t('exerciseEditor.warmup.noTimer')}</Text>
+              )}
             </View>
-          )}
-          {warmupMode !== 'none' && warmupRestSec === 0 && (
-            <Text style={styles.hint}>{t('exerciseEditor.warmup.noTimer')}</Text>
           )}
         </View>
       </DragSheet>
@@ -902,27 +959,27 @@ export default function ExerciseEditorInline({
                 <SegmentedControl options={EVAL_MODES} value={effEvalMode} onChange={setEvalMode} />
                 <Text style={styles.hint}>{t(`exerciseEditor.evalModeDesc.${effEvalMode}`)}</Text>
                 {evalMode === 'pct' && (
-                  <View style={[styles.gridRow, { marginTop: spacing.md }]}>
+                  <View style={{ marginTop: spacing.md }}>
                     <StepField
-                      label={`${t('exerciseEditor.evalPctLabel')} (%)`}
+                      horizontal dark unit="%"
+                      label={t('exerciseEditor.evalPctLabel')}
                       value={evalPct}
                       onChange={setEvalPct}
                       min={50}
                       max={100}
                     />
-                    <View style={{ flex: 1 }} />
                   </View>
                 )}
                 {evalMode === 'rpe' && trackRpe && (
-                  <View style={[styles.gridRow, { marginTop: spacing.md }]}>
+                  <View style={{ marginTop: spacing.md }}>
                     <StepField
+                      horizontal dark
                       label={t('exerciseEditor.maxRpeLabel')}
                       value={evalMaxRpe}
                       onChange={setEvalMaxRpe}
                       min={6}
                       max={10}
                     />
-                    <View style={{ flex: 1 }} />
                   </View>
                 )}
               </View>
@@ -933,26 +990,43 @@ export default function ExerciseEditorInline({
                   <Text style={styles.stepNum}>4 · </Text>{t('exerciseEditor.stepIncr')}
                 </Text>
                 {showRepsIncr ? (
-                  <View style={styles.gridRow}>
-                    <StepField
-                      label={t('exerciseEditor.incrFixedRepsLabel')}
-                      value={incrFixedValue}
-                      onChange={setIncrFixedValue}
-                      min={1}
-                      max={10}
-                    />
-                    <View style={{ flex: 1 }} />
-                  </View>
+                  <StepField
+                    horizontal dark
+                    label={t('exerciseEditor.incrFixedRepsLabel')}
+                    value={incrFixedValue}
+                    onChange={setIncrFixedValue}
+                    min={1}
+                    max={10}
+                  />
                 ) : (
                   <>
                     <SegmentedControl options={INCR_TYPES} value={incrType} onChange={setIncrType} />
                     <Text style={styles.hint}>{t(`exerciseEditor.incrTypeDesc.${incrType}`)}</Text>
                     <View style={{ marginTop: spacing.md }}>
-                      <IncrementInput
-                        value={incrType === 'pct' ? incrPctValue : incrFixedValue}
-                        onChange={incrType === 'pct' ? setIncrPctValue : setIncrFixedValue}
-                        unit={incrType === 'pct' ? '%' : (showTimeIncr ? 's' : weightLabel)}
-                      />
+                      {incrType === 'pct' ? (
+                        <StepField
+                          horizontal dark unit="%"
+                          label={t('exerciseEditor.incrValueLabel')}
+                          value={incrPctValue}
+                          onChange={setIncrPctValue}
+                          min={1}
+                          max={50}
+                        />
+                      ) : (
+                        // Paso 0.25: la placa más pequeña habitual es de 1.25 kg
+                        // por lado, así que las subidas útiles son múltiplos de
+                        // 0.25 y no de 1.
+                        <StepField
+                          horizontal dark
+                          label={t('exerciseEditor.incrValueLabel')}
+                          unit={showTimeIncr ? 's' : weightLabel}
+                          value={incrFixedValue}
+                          onChange={setIncrFixedValue}
+                          min={0}
+                          max={50}
+                          step={0.25}
+                        />
+                      )}
                     </View>
                     {incrType === 'pct' && (
                       <View style={styles.incrMinRow}>
@@ -1051,6 +1125,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'space-between',
     gap:               spacing.md,
+    minHeight:         OPT_ROW_H,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.xxs ?? 2,
     paddingHorizontal: spacing.lg,
@@ -1124,38 +1199,47 @@ const makeStyles = (th) => StyleSheet.create({
   deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
 
   // ── Calentamiento (hoja) ──────────────────────────────────────────────────
+  // Los campos son los MISMOS Input Field del grid de series del workout
+  // (`workout/grid.js` + `SetRow`): misma geometría, mismo fondo y misma
+  // tipografía, para que un paso de calentamiento se escriba igual en los dos
+  // sitios.
   warmupStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: 24 },
+  warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: GRID.LABEL_W },
   warmupStepInput: {
     flex:               1,
-    height:             30,
-    backgroundColor:    th.colors.surface,
-    borderRadius:       th.radius.sm,
-    ...textStyles.cardTitle,
+    height:             GRID.CELL_H,
+    backgroundColor:    th.colors.bg,
+    borderRadius:       GRID.RADIUS,
+    fontFamily:         'Inter_800ExtraBold',
+    fontSize:           15,
+    fontWeight:         '800',
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
     paddingVertical:    0,
+    fontVariant:        ['tabular-nums'],
   },
   warmupStepUnit:      { ...textStyles.subtitle, color: th.colors.mutedLight },
   warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   warmupStepRemoveTxt: { ...textStyles.subtitle, color: th.colors.muted },
   addStepBtn: {
     alignItems:      'center',
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
+    paddingVertical: spacing.md,
+    borderRadius:    GRID.RADIUS,
+    backgroundColor: th.colors.bg,
   },
   addStepBtnDisabled: { opacity: 0.35 },
   addStepText:        { ...textStyles.cardType, color: th.tint.accent50 },
 
   // ── Incremento (hoja) ─────────────────────────────────────────────────────
   incrInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  // Sin ± (QA): es un dato que se teclea, no que se ajusta. Va sobre
+  // `color/app` para no competir con el fondo `surface` de la hoja.
   incrInput: {
     minWidth:           80,
-    height:             30,
-    backgroundColor:    th.colors.surface,
+    height:             STEP_BTN,
+    backgroundColor:    th.colors.bg,
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.md,
     ...textStyles.cardTitle,
@@ -1193,10 +1277,13 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Cuerpo de las hojas ───────────────────────────────────────────────────
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  // Misma tipografía Y mismo tratamiento que las etiquetas de sección del
+  // editor (`secLabel`): `text/spacing-tag` en mayúsculas.
   stepTitle: {
     ...textStyles.spacingTag,
-    color:        th.colors.mutedLight,
-    marginBottom: spacing.sm,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
   },
   stepNum: { color: th.colors.accent },
 });
