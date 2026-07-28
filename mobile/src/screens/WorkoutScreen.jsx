@@ -602,8 +602,8 @@ export default function WorkoutScreen() {
 
           {workSlots.map((slot, slotIdx) => {
             // Numeración por hueco, igual que en el editor de sesión: un bloque
-            // de acondicionamiento ocupa su número aunque su tarjeta no lo pinte,
-            // así los números coinciden entre las dos pantallas.
+            // de acondicionamiento ocupa su número y lo pinta, así los números
+            // coinciden entre las dos pantallas.
             const orderNumber = String(slotIdx + 1).padStart(2, '0');
             if (slot.kind === 'block') {
               return (
@@ -612,6 +612,7 @@ export default function WorkoutScreen() {
                   block={slot.block}
                   state={activeSession.blockState?.[slot.block.id] ?? null}
                   allExercises={allExercises}
+                  orderNumber={orderNumber}
                   onStart={() => startBlock(slot.block.id)}
                   onUpdate={(patch) => updateBlockState(slot.block.id, patch)}
                   onFinish={() => finishBlock(slot.block.id)}

@@ -53,7 +53,7 @@ function Stepper({ value, onChange, min = 0, big = false }) {
 // ── ConditioningBlockCard ─────────────────────────────────────────────────────
 
 export default function ConditioningBlockCard({
-  block, state, allExercises, onStart, onUpdate, onFinish, onReset,
+  block, state, allExercises, orderNumber, onStart, onUpdate, onFinish, onReset,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -160,6 +160,12 @@ export default function ConditioningBlockCard({
     </Text>
   );
 
+  // Los bloques cuentan como un hueco más de la sesión, así que llevan su número
+  // igual que los ejercicios (mismo estilo que el `num` de ExerciseCard). En el
+  // estado terminado no se pinta: ahí manda el ✓, como en la tarjeta colapsada
+  // de ejercicio.
+  const num = orderNumber ? <Text style={styles.num}>{orderNumber}</Text> : null;
+
   // ── Finished ────────────────────────────────────────────────────────────────
   if (status === 'finished') {
     const result = buildBlockResult(block, state, now);
@@ -194,6 +200,7 @@ export default function ConditioningBlockCard({
     return (
       <View style={[styles.card, { borderLeftColor: color }]}>
         <View style={styles.headerRow}>
+          {num}
           {badge}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -229,6 +236,7 @@ export default function ConditioningBlockCard({
   return (
     <View style={[styles.card, { borderLeftColor: color }]}>
       <View style={styles.headerRow}>
+        {num}
         {badge}
         <Text style={[styles.title, { flex: 1 }]} numberOfLines={1}>{title}</Text>
       </View>
@@ -371,6 +379,17 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
 
+  // Mismo tratamiento que el número de ExerciseCard, para que las dos tarjetas
+  // numeren igual dentro de la sesión.
+  num: {
+    fontFamily:  'Inter_900Black',
+    fontSize:    17,
+    fontWeight:  '900',
+    lineHeight:  22,
+    color:       th.colors.accent,
+    fontVariant: ['tabular-nums'],
+    minWidth:    22,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems:    'center',

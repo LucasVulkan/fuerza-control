@@ -169,8 +169,10 @@ Resumen y botón de añadir con el editor de programa — los iconos comunes viv
   se entrena: `WorkoutScreen` pinta la lista con el mismo helper
   (`src/utils/sessionSlots.js`), bloques incluidos, y sus puntos de progreso siguen ese
   orden. La numeración va por hueco en las dos pantallas, así que un bloque **consume su
-  número** aunque su tarjeta de entreno todavía no lo pinte (WorkoutScreen sigue sin
-  migrar).
+  número** y lo pinta: `ConditioningBlockCard` recibe `orderNumber` y lo dibuja con el
+  mismo tratamiento que el `num` de `ExerciseCard` (Inter Black 17, accent,
+  tabular-nums). En el estado terminado no se pinta, porque ahí manda el ✓ — igual que
+  en la tarjeta de ejercicio colapsada.
   El campo nuevo es `block.order` = índice **entre huecos**, no entre ejercicios: así un
   bloque no puede colarse en mitad de una superserie y partirla. Sin `order` (datos
   viejos) el bloque va al final, o sea que no hay migración. Cubierto por
