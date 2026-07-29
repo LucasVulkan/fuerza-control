@@ -738,6 +738,13 @@
     "done": "HECHO"
   },
   "exerciseSelector": {
+    "titleAdd": "Añadir ejercicios",
+    "titleReplace": "Sustituir ejercicio",
+    "searchPlaceholder2": "Buscar ejercicio",
+    "patternGroups": { "push": "Empuje", "pull": "Tracción", "squat": "Sentadilla", "hinge": "Bisagra", "core": "Core", "grip": "Agarre", "calf": "Gemelos" },
+    "groups": { "chest": "Pecho", "back": "Espalda", "shoulders": "Hombro", "arms": "Brazos", "quads": "Cuádriceps", "glutes_hamstrings": "Glúteo e isquios", "legs_lower": "Gemelos", "core": "Core", "grip": "Agarre" },
+    "equipment": { "bodyweight": "Corporal", "barbell": "Barra", "dumbbells": "Mancuernas", "cables": "Polea", "machines": "Máquina", "kettlebell": "Kettlebell", "resistance_band": "Bandas", "pullup_bar": "Barra dominadas", "dip_bar": "Paralelas", "parallettes": "Paraletas", "rings": "Anillas", "ab_wheel": "Rueda abdominal", "rope": "Cuerda", "weight_belt": "Lastre" },
+    "filters": { "title": "Filtros", "clear": "Limpiar", "muscleGroup": "GRUPO MUSCULAR", "equipment": "EQUIPO", "type": "TIPO", "compound": "Compuesto", "isolation": "Aislamiento", "see_one": "Ver {{count}} ejercicio", "see_other": "Ver {{count}} ejercicios", "seeNone": "Sin resultados" },
     "title": "SELECCIONAR EJERCICIO",
     "searchPlaceholder": "Buscar ejercicio...",
     "tabSimilar": "Similar",

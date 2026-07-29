@@ -1,27 +1,64 @@
+/**
+ * Buscador de ejercicios — rediseño FormaFit.
+ *
+ * Dos modos, mismo layout:
+ *   - AÑADIR (por defecto): multiselección con checkbox y CTA lima abajo.
+ *   - SUSTITUIR / picker de bloque: selección única, chevron a la derecha, se
+ *     elige y se cierra. Arranca con la pill del patrón del ejercicio actual
+ *     ya activa (sustituye al viejo modo "Similar", que además filtraba por
+ *     nivel sin que se viera en ningún sitio).
+ *
+ * Filtros: fila de pills de patrón (single-select, siempre visible) + hoja de
+ * filtros (`DragSheet`) con grupo muscular / equipo / tipo en multiselección.
+ * El badge del botón de filtro cuenta solo los de la hoja, no la pill.
+ *
+ * El modo "Complementario" (ordenar por patrones que faltan en la sesión) se
+ * elimina: `existingPatterns` sigue llegando por params pero ya no se usa.
+ */
 import { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   ScrollView, StyleSheet,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+import DragSheet from '../components/DragSheet';
+import { ArrowIcon, CheckIcon } from '../components/ui/EditorIcons';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Taxonomías ───────────────────────────────────────────────────────────────
 
-const PATTERNS = [
-  { value: 'vertical_pull',   label: 'Tracción vertical' },
-  { value: 'horizontal_pull', label: 'Tracción horizontal' },
-  { value: 'vertical_push',   label: 'Empuje vertical' },
-  { value: 'horizontal_push', label: 'Empuje horizontal' },
-  { value: 'squat',           label: 'Pierna rodilla' },
-  { value: 'hip_hinge',       label: 'Pierna cadera' },
-  { value: 'core',            label: 'Core' },
-  { value: 'carry_grip',      label: 'Agarre / Carga' },
-  { value: 'calf_raise',      label: 'Gemelos' },
+// Los 9 `pattern` de la librería colapsados a los 7 de la referencia: vertical y
+// horizontal se funden en un solo Empuje / Tracción. Filtrar por vertical vs.
+// horizontal deja de ser posible desde la UI (el dato sigue en la librería).
+const PATTERN_GROUPS = [
+  { id: 'push',  patterns: ['vertical_push', 'horizontal_push'] },
+  { id: 'pull',  patterns: ['vertical_pull', 'horizontal_pull'] },
+  { id: 'squat', patterns: ['squat'] },
+  { id: 'hinge', patterns: ['hip_hinge'] },
+  { id: 'core',  patterns: ['core'] },
+  { id: 'grip',  patterns: ['carry_grip'] },
+  { id: 'calf',  patterns: ['calf_raise'] },
 ];
+const GROUP_OF_PATTERN = Object.fromEntries(
+  PATTERN_GROUPS.flatMap((g) => g.patterns.map((p) => [p, g.id]))
+);
+
+const MUSCLE_GROUPS = [
+  'chest', 'back', 'shoulders', 'arms',
+  'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip',
+];
+
+// 'bodyweight' no existe en la librería: es el `equipment: []` de 43 ejercicios.
+const EQUIPMENT = [
+  'bodyweight', 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell',
+  'resistance_band', 'pullup_bar', 'dip_bar', 'parallettes', 'rings',
+  'ab_wheel', 'rope', 'weight_belt',
+];
+const equipmentOf = (ex) => (ex.equipment?.length ? ex.equipment : ['bodyweight']);
 
 // ─── ExerciseSelectorScreen ───────────────────────────────────────────────────
 
@@ -32,7 +69,6 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const {
     templateId,
     currentExerciseId = null,
-    existingPatterns = [],
     sessionMode = false,   // true → add to active session (adHoc), not to the template
     blockPicker = false,   // true → picking a movement for a conditioning block (see BlockEditorInline)
   } = route.params ?? {};
@@ -49,19 +85,29 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const allLibrary = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const currentDef = currentExerciseId ? allLibrary[currentExerciseId] : null;
 
-  const defaultMode = !currentExerciseId && existingPatterns.length > 0 ? 'complementary' : 'similar';
-  const [search, setSearch] = useState('');
-  const [filterMode, setFilterMode] = useState(defaultMode);
-  const [selectedPattern, setSelectedPattern] = useState(currentDef?.pattern ?? '');
-
   // Multi-select only when ADDING (replace/block-picker modes stay a single pick).
   const multiSelect = !currentExerciseId && !blockPicker;
+
+  const [search, setSearch] = useState('');
+  const [patternGroup, setPatternGroup] = useState(
+    currentDef ? (GROUP_OF_PATTERN[currentDef.pattern] ?? '') : ''
+  );
+  const [groupFilter, setGroupFilter] = useState([]);
+  const [equipFilter, setEquipFilter] = useState([]);
+  const [typeFilter,  setTypeFilter]  = useState([]);   // 'compound' | 'isolation'
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  function toggleSelect(exerciseId) {
-    setSelectedIds((prev) =>
-      prev.includes(exerciseId) ? prev.filter((id) => id !== exerciseId) : [...prev, exerciseId]
-    );
+
+  const activeFilterCount = groupFilter.length + equipFilter.length + typeFilter.length;
+  const toggleIn = (setter) => (value) =>
+    setter((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+
+  function clearFilters() {
+    setGroupFilter([]);
+    setEquipFilter([]);
+    setTypeFilter([]);
   }
+
   function handleAddSelected() {
     if (!selectedIds.length) return;
     selectedIds.forEach((id) => (sessionMode ? addAdHocExercise(id) : addExercise(templateId, id)));
@@ -69,49 +115,12 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     navigation.goBack();
   }
 
-  const allExercises = useMemo(() => Object.values(allLibrary), [allLibrary]);
-
-  function getExName(ex) {
-    return language === 'en' ? (ex.nameEn ?? ex.name) : ex.name;
-  }
-
-  const filtered = useMemo(() => {
-    let results = currentExerciseId
-      ? allExercises.filter((ex) => ex.id !== currentExerciseId)
-      : allExercises;
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return results
-        .filter((ex) => {
-          const haystack = [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase();
-          return haystack.includes(q);
-        })
-        .sort((a, b) => getExName(a).localeCompare(getExName(b)));
-    }
-
-    if (filterMode === 'similar' && currentDef) {
-      results = results.filter((ex) => ex.pattern === currentDef.pattern && ex.level === currentDef.level);
-    } else if (filterMode === 'complementary') {
-      return [...results].sort((a, b) => {
-        const aMissing = !existingPatterns.includes(a.pattern);
-        const bMissing = !existingPatterns.includes(b.pattern);
-        if (aMissing !== bMissing) return aMissing ? -1 : 1;
-        return getExName(a).localeCompare(getExName(b));
-      });
-    } else if (filterMode === 'pattern' && selectedPattern) {
-      results = results.filter((ex) => ex.pattern === selectedPattern);
-    }
-
-    return results.sort((a, b) => getExName(a).localeCompare(getExName(b)));
-  }, [search, filterMode, selectedPattern, allExercises, currentExerciseId, existingPatterns, language]);
-
   function handleSelect(exerciseId) {
     if (blockPicker) {
       setBlockPickerResult(exerciseId);
     } else if (sessionMode) {
       addAdHocExercise(exerciseId);
-      showToast('Ejercicio añadido', 2200, 'success');
+      showToast(t('editor.toastExAdded'), 2200, 'success');
     } else if (currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, exerciseId);
       showToast(t('exerciseEditor.toastSubstituted'), 2200, 'success');
@@ -122,124 +131,153 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     navigation.goBack();
   }
 
-  const tabs = [
-    ...(currentDef ? [{ id: 'similar', label: t('exerciseSelector.tabSimilar') }] : []),
-    ...(existingPatterns.length > 0 ? [{ id: 'complementary', label: t('exerciseSelector.tabComplementary') }] : []),
-    { id: 'pattern', label: t('exerciseSelector.tabPattern') },
-  ];
+  const getExName = (ex) => (language === 'en' ? (ex.nameEn ?? ex.name) : ex.name);
+
+  const allExercises = useMemo(() => Object.values(allLibrary), [allLibrary]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allExercises
+      .filter((ex) => ex.id !== currentExerciseId)
+      .filter((ex) => !q || [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase().includes(q))
+      .filter((ex) => !patternGroup || GROUP_OF_PATTERN[ex.pattern] === patternGroup)
+      .filter((ex) => !groupFilter.length || groupFilter.includes(ex.primaryGroup))
+      .filter((ex) => !equipFilter.length || equipmentOf(ex).some((e) => equipFilter.includes(e)))
+      .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'))
+      .sort((a, b) => getExName(a).localeCompare(getExName(b)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, language]);
 
   const renderItem = ({ item: ex }) => {
     const isSel = multiSelect && selectedIds.includes(ex.id);
+    const meta = [
+      t(`exerciseSelector.groups.${ex.primaryGroup}`, ex.primaryGroup),
+      equipmentOf(ex).map((e) => t(`exerciseSelector.equipment.${e}`, e)).join(', '),
+    ].join(' · ');
+
     return (
       <TouchableOpacity
-        style={styles.exerciseRow}
-        onPress={() => (multiSelect ? toggleSelect(ex.id) : handleSelect(ex.id))}
-        activeOpacity={0.6}
+        style={[styles.exRow, isSel && styles.exRowSel]}
+        onPress={() =>
+          multiSelect
+            ? setSelectedIds((prev) =>
+                prev.includes(ex.id) ? prev.filter((id) => id !== ex.id) : [...prev, ex.id])
+            : handleSelect(ex.id)
+        }
+        activeOpacity={0.7}
       >
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.exerciseName}>{getExName(ex)}</Text>
-            {ex.isCustom && <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={styles.exNameRow}>
+            <Text style={[styles.exName, isSel && styles.exNameSel]} numberOfLines={1}>
+              {getExName(ex)}
+            </Text>
+            {ex.isCustom && (
+              <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>
+            )}
           </View>
-          <Text style={styles.exerciseMeta}>
-            {t(`exerciseSelector.patterns.${ex.pattern}`, ex.pattern)}
-            {ex.level === 'beginner' ? ` · ${t('exerciseSelector.levelBeginner')}` : ''}
-          </Text>
+          <Text style={styles.exMeta} numberOfLines={1}>{meta}</Text>
         </View>
-        {multiSelect
-          ? <View style={[styles.checkbox, isSel && styles.checkboxOn]}>
-              {isSel && <Text style={styles.checkboxTick}>✓</Text>}
-            </View>
-          : <Text style={styles.chevron}>›</Text>}
+
+        {multiSelect ? (
+          <View style={[styles.check, isSel && styles.checkOn]}>
+            <CheckIcon size={20} color={isSel ? th.colors.onAccent : th.colors.muted} />
+          </View>
+        ) : (
+          <ArrowIcon size={16} color={th.colors.mutedLight} />
+        )}
       </TouchableOpacity>
     );
   };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      {/* Header */}
+      {/* Cabecera: título + cerrar (caja 42 surface2, como los iconos de Clientes) */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('exerciseSelector.title')}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={styles.closeBtn}>✕</Text>
+        <Text style={styles.headerTitle}>
+          {currentExerciseId || blockPicker
+            ? t('exerciseSelector.titleReplace')
+            : t('exerciseSelector.titleAdd')}
+        </Text>
+        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.closeGlyph}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t('exerciseSelector.searchPlaceholder')}
-          placeholderTextColor={th.colors.muted}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
+      {/* Buscador + filtros (barra estándar: surface2, radius/sm, h42) */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchInputWrap}>
+          <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
+            stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+          </Svg>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('exerciseSelector.searchPlaceholder2')}
+            placeholderTextColor={th.colors.mutedLight}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
+              <Text style={styles.searchClearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.iconBox, activeFilterCount > 0 && styles.iconBoxActive]}
+          onPress={() => setShowFilters(true)}
+          activeOpacity={0.7}
+        >
+          <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
+            stroke={activeFilterCount > 0 ? th.colors.accent : th.colors.text}
+            strokeWidth={2} strokeLinecap="round">
+            <Path d="M3 6h18M6 12h12M9 18h6" />
+          </Svg>
+          {activeFilterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      {!search.trim() && (
-        <View style={styles.tabsRow}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.tab, filterMode === tab.id && styles.tabActive]}
-              onPress={() => setFilterMode(tab.id)}
-            >
-              <Text style={[styles.tabText, filterMode === tab.id && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Pattern picker — wrapper View evita clipping vertical en Android */}
-      {!search.trim() && filterMode === 'pattern' && (
-        <View style={styles.patternPickerWrap}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.patternPicker}
-          >
-            <TouchableOpacity
-              style={[styles.patternChip, !selectedPattern && styles.patternChipActive]}
-              onPress={() => setSelectedPattern('')}
-            >
-              <Text style={[styles.patternChipText, !selectedPattern && styles.patternChipTextActive]}>
-                {t('exerciseSelector.allPatterns')}
-              </Text>
-            </TouchableOpacity>
-            {PATTERNS.map((p) => (
+      {/* Pills de patrón — single-select, se desactiva volviendo a pulsarla */}
+      <View style={styles.patternRowWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.patternRow}>
+          {PATTERN_GROUPS.map(({ id }) => {
+            const on = patternGroup === id;
+            return (
               <TouchableOpacity
-                key={p.value}
-                style={[styles.patternChip, selectedPattern === p.value && styles.patternChipActive]}
-                onPress={() => setSelectedPattern(p.value)}
+                key={id}
+                style={[styles.pill, on && styles.pillOn]}
+                onPress={() => setPatternGroup(on ? '' : id)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.patternChipText, selectedPattern === p.value && styles.patternChipTextActive]}>
-                  {p.label}
+                <Text style={[styles.pillText, on && styles.pillTextOn]}>
+                  {t(`exerciseSelector.patternGroups.${id}`)}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Recuento + botón crear (debajo de filtros, encima de la lista) */}
-      <View style={styles.countRow}>
-        <Text style={styles.countText}>
-          {t('exerciseSelector.exerciseCount', { count: filtered.length })}
-        </Text>
+            );
+          })}
+        </ScrollView>
       </View>
+
+      <Text style={styles.sectionLabel}>
+        {t('exerciseSelector.exerciseCount', { count: filtered.length })}
+      </Text>
+
+      {/* "+ Crear ejercicio" — texto plano, mismo tratamiento que "+ Añadir sesión" */}
       <TouchableOpacity
         style={styles.createBtn}
         onPress={() => navigation.navigate('CustomExercise', { templateId, currentExerciseId, sessionMode })}
+        activeOpacity={0.7}
       >
         <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
       </TouchableOpacity>
 
-      {/* List */}
       <FlatList
         style={{ flex: 1 }}
         data={filtered}
@@ -248,24 +286,86 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         extraData={selectedIds}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>{t('exerciseSelector.noResults')}</Text>
-          </View>
-        }
+        ListEmptyComponent={<Text style={styles.emptyText}>{t('exerciseSelector.noResults')}</Text>}
       />
 
-      {/* Add-selected bar — only in multi-select mode with a selection */}
+      {/* CTA — solo en multiselección y con algo elegido */}
       {multiSelect && selectedIds.length > 0 && (
-        <View style={styles.addBar}>
-          <TouchableOpacity style={styles.addBarBtn} onPress={handleAddSelected} activeOpacity={0.85}>
-            <Text style={styles.addBarText}>
+        <View style={styles.ctaWrap}>
+          <TouchableOpacity style={styles.cta} onPress={handleAddSelected} activeOpacity={0.85}>
+            <Text style={styles.ctaText}>
               {t('exerciseSelector.addedN', { count: selectedIds.length })}
             </Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Hoja de filtros — se aplican en vivo, el CTA solo cierra */}
+      <DragSheet
+        visible={showFilters}
+        onClose={() => setShowFilters(false)}
+        title={t('exerciseSelector.filters.title')}
+        action={{ label: t('exerciseSelector.filters.clear'), onPress: clearFilters }}
+      >
+        <View style={styles.sheetBody}>
+          <FilterSection
+            styles={styles}
+            title={t('exerciseSelector.filters.muscleGroup')}
+            options={MUSCLE_GROUPS.map((id) => ({ id, label: t(`exerciseSelector.groups.${id}`) }))}
+            selected={groupFilter}
+            onToggle={toggleIn(setGroupFilter)}
+          />
+          <FilterSection
+            styles={styles}
+            title={t('exerciseSelector.filters.equipment')}
+            options={EQUIPMENT.map((id) => ({ id, label: t(`exerciseSelector.equipment.${id}`) }))}
+            selected={equipFilter}
+            onToggle={toggleIn(setEquipFilter)}
+          />
+          <FilterSection
+            styles={styles}
+            title={t('exerciseSelector.filters.type')}
+            options={[
+              { id: 'compound',  label: t('exerciseSelector.filters.compound') },
+              { id: 'isolation', label: t('exerciseSelector.filters.isolation') },
+            ]}
+            selected={typeFilter}
+            onToggle={toggleIn(setTypeFilter)}
+          />
+
+          <TouchableOpacity style={styles.cta} onPress={() => setShowFilters(false)} activeOpacity={0.85}>
+            <Text style={styles.ctaText}>
+              {filtered.length === 0
+                ? t('exerciseSelector.filters.seeNone')
+                : t('exerciseSelector.filters.see', { count: filtered.length })}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </DragSheet>
     </SafeAreaView>
+  );
+}
+
+function FilterSection({ styles, title, options, selected, onToggle }) {
+  return (
+    <View>
+      <Text style={styles.sheetSecTitle}>{title}</Text>
+      <View style={styles.pillWrap}>
+        {options.map(({ id, label }) => {
+          const on = selected.includes(id);
+          return (
+            <TouchableOpacity
+              key={id}
+              style={[styles.pill, on && styles.pillOn]}
+              onPress={() => onToggle(id)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -274,104 +374,102 @@ const makeStyles = (th) => StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
+    gap: spacing.md,
   },
-  headerTitle: {
-    fontSize: typography.md, fontWeight: typography.bold,
-    color: th.colors.text, letterSpacing: 0.3,
-  },
-  closeBtn: { fontSize: 18, color: th.colors.muted, padding: spacing.xs },
+  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
 
-  searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  searchInput: {
-    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
-    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.base,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  // Caja de icono cuadrada, igual que en Clientes: 42×42 para casar con el buscador.
+  iconBox: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
+  iconBoxActive: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
+  closeGlyph: { fontSize: 17, color: th.colors.text },
+  filterBadge: {
+    position: 'absolute', top: 3, right: 3,
+    minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
+    backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  filterBadgeText: { fontFamily: 'Inter_900Black', fontSize: 9, color: th.colors.onAccent },
 
-  tabsRow: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
-  },
-  tab: {
-    paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
-    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
-    borderWidth: borders.thin, borderColor: th.colors.border,
-  },
-  tabActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  tabText: { fontSize: typography.base, color: th.colors.muted, fontWeight: typography.medium },
-  tabTextActive: { color: th.colors.onAccent },
-
-  // Wrapper View con padding — evita el clipping vertical de Android en horizontal ScrollView
-  patternPickerWrap: {
-    paddingVertical: spacing.xs,
-  },
-  patternPicker: {
-    flexDirection: 'row', gap: spacing.xs,
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    alignItems: 'center',
   },
-  patternChip: {
-    paddingHorizontal: spacing.sm, paddingVertical: 4,
+  searchInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
-    borderWidth: borders.thin, borderColor: th.colors.border,
+    paddingHorizontal: spacing.lg, height: 42,
   },
-  patternChipActive: { backgroundColor: withOpacity(th.colors.accent, 0.12), borderColor: withOpacity(th.colors.accent, 0.4) },
-  patternChipText: { fontSize: typography.xs, color: th.colors.muted },
-  patternChipTextActive: { color: th.colors.accent },
+  searchInput: { flex: 1, padding: 0, ...textStyles.subtitle, color: th.colors.text },
+  searchClearBtn:  { paddingLeft: spacing.xs2 },
+  searchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
 
-  countRow: {
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs,
-  },
-  countText: { fontSize: typography.xs, color: th.colors.muted2, letterSpacing: 0.5 },
+  // Wrapper con padding vertical — evita el clipping de Android en ScrollView horizontal
+  patternRowWrap: { paddingTop: spacing.md },
+  patternRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
 
-  // Botón crear — fila dashed accent
-  createBtn: {
-    marginHorizontal: spacing.lg, marginBottom: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderWidth: borders.thin, borderColor: withOpacity(th.colors.accent, 0.45),
-    borderStyle: 'dashed', borderRadius: th.radius.sm,
-    alignItems: 'center',
+  // Pill grande: surface2 / accent al seleccionar (mismo lenguaje que las de
+  // vinculación del editor de ejercicio).
+  pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  pill: {
+    paddingHorizontal: spacing.lg, height: 36, justifyContent: 'center',
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
   },
-  createBtnText: { fontSize: typography.xs, color: th.colors.accent, fontWeight: typography.medium },
+  pillOn:      { backgroundColor: th.colors.accent },
+  pillText:    { ...textStyles.btnAction, color: th.colors.mutedLight },
+  pillTextOn:  { color: th.colors.onAccent },
 
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  exerciseRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
+  sectionLabel: {
+    ...textStyles.spacingTag, color: th.colors.mutedLight,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg,
   },
-  exerciseName: { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  exerciseMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
+
+  createBtn:     { alignItems: 'center', paddingVertical: spacing.md },
+  createBtnText: { ...textStyles.cardType, color: th.tint.accent50 },
+
+  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
+  exRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm2,
+  },
+  exRowSel:   { backgroundColor: th.tint.accent10 },
+  exNameRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  exName:     { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  exNameSel:  { color: th.colors.accent },
+  exMeta:     { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: 2 },
   customBadge: {
-    backgroundColor: withOpacity(th.colors.accent, 0.1), borderWidth: borders.thin,
-    borderColor: withOpacity(th.colors.accent, 0.3), borderRadius: th.radius.xs,
+    backgroundColor: th.tint.accent10, borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
-  customBadgeText: { fontSize: 9, color: th.colors.accent, letterSpacing: 0.8 },
-  chevron: { fontSize: 16, color: th.colors.muted, marginLeft: spacing.xs },
-  checkbox: {
-    width: 22, height: 22, borderRadius: th.radius.xs,
-    borderWidth: 1.5, borderColor: th.colors.border,
+  customBadgeText: { ...textStyles.smallBold, color: th.colors.accent },
+
+  check: {
+    width: 36, height: 36, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  checkOn: { backgroundColor: th.colors.accent },
+
+  emptyText: {
+    ...textStyles.subtitle, color: th.colors.mutedLight,
+    textAlign: 'center', paddingTop: 40,
+  },
+
+  // CTA lima h44 — el mismo botón que cierra el editor de programa
+  ctaWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: th.colors.bg },
+  cta: {
+    height: 44, borderRadius: th.radius.md, backgroundColor: '#b8ff00',
     alignItems: 'center', justifyContent: 'center',
-    marginLeft: spacing.sm,
   },
-  checkboxOn: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  checkboxTick: { fontSize: 13, fontWeight: typography.heavy, color: th.colors.onAccent, lineHeight: 16 },
-  addBar: {
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
-    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
-    backgroundColor: th.colors.bg,
+  ctaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+
+  sheetBody:    { gap: spacing.lg, paddingBottom: spacing.sm },
+  sheetSecTitle: {
+    ...textStyles.spacingTag, color: th.colors.mutedLight, paddingBottom: spacing.sm,
   },
-  addBarBtn: {
-    backgroundColor: th.colors.accent, borderRadius: th.radius.md,
-    paddingVertical: spacing.md, alignItems: 'center',
-  },
-  addBarText: {
-    fontSize: typography.base, fontWeight: typography.heavy,
-    color: th.colors.onAccent, letterSpacing: 0.5,
-  },
-  emptyState: { alignItems: 'center', paddingTop: 40 },
-  emptyText: { fontSize: typography.base, color: th.colors.muted },
 });

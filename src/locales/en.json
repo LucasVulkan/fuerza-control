@@ -738,6 +738,13 @@
     "done": "DONE"
   },
   "exerciseSelector": {
+    "titleAdd": "Add exercises",
+    "titleReplace": "Replace exercise",
+    "searchPlaceholder2": "Search exercise",
+    "patternGroups": { "push": "Push", "pull": "Pull", "squat": "Squat", "hinge": "Hinge", "core": "Core", "grip": "Grip", "calf": "Calves" },
+    "groups": { "chest": "Chest", "back": "Back", "shoulders": "Shoulders", "arms": "Arms", "quads": "Quads", "glutes_hamstrings": "Glutes & hams", "legs_lower": "Calves", "core": "Core", "grip": "Grip" },
+    "equipment": { "bodyweight": "Bodyweight", "barbell": "Barbell", "dumbbells": "Dumbbells", "cables": "Cable", "machines": "Machine", "kettlebell": "Kettlebell", "resistance_band": "Bands", "pullup_bar": "Pull-up bar", "dip_bar": "Dip bar", "parallettes": "Parallettes", "rings": "Rings", "ab_wheel": "Ab wheel", "rope": "Rope", "weight_belt": "Weight belt" },
+    "filters": { "title": "Filters", "clear": "Clear", "muscleGroup": "MUSCLE GROUP", "equipment": "EQUIPMENT", "type": "TYPE", "compound": "Compound", "isolation": "Isolation", "see_one": "See {{count}} exercise", "see_other": "See {{count}} exercises", "seeNone": "No results" },
     "title": "SELECT EXERCISE",
     "searchPlaceholder": "Search exercise...",
     "tabSimilar": "Similar",

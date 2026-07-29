@@ -29,6 +29,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
 | **Exercice Editor** (+ botones eliminar/sustituir) | ✅ | `src/components/editor/ExerciseEditorInline.jsx` |
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
+| **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)
@@ -305,6 +306,46 @@ time"** — se compone por analogía. Comparte cabecera con el editor de ejercic
 - Los campos (`Input Field`, nombre, nota) van sobre `color/workout-card`, que en
   este tema es `th.colors.bg`; "Añadir ejercicio" es outline `tint/accent-50`;
   "Guardar preset" es `surface2`; "Eliminar bloque" texto rojo sin fondo.
+
+### Buscador de ejercicios — desglose
+
+**No hay frame de Figma**: se compone a partir de dos imágenes de referencia que
+mandó el usuario, traducidas a las convenciones ya cerradas (§9) — la referencia
+usa su propio lenguaje de barra de búsqueda y botones, que **no** se copia.
+
+- **Cabecera**: título `text/hero` (`Añadir ejercicios` / `Sustituir ejercicio`,
+  según modo) + caja de cerrar 42×42 `surface2`.
+- **Buscador + filtro**: la barra estándar (`surface2`, `radius/sm`, h42, lupa +
+  ✕) y la caja de icono 42×42 con el **mismo icono de filtro que Clientes**
+  (`M3 6h18M6 12h12M9 18h6`) y su badge accent con el nº de filtros aplicados.
+- **Pills de patrón** (fila horizontal, single-select, se apaga volviendo a
+  pulsarla). Los 9 `pattern` de la librería se colapsan a los **7 gruesos** de la
+  referencia (Empuje/Tracción funden vertical+horizontal): decisión explícita del
+  usuario, se pierde poder filtrar vertical vs. horizontal desde la UI.
+- **Hoja de filtros** = `DragSheet` con GRUPO MUSCULAR / EQUIPO / TIPO en pills
+  grandes multi-select (`surface2` → `accent`+`onAccent`). Se aplican **en vivo**;
+  el CTA de abajo (`Ver N ejercicios`) solo cierra y `Limpiar` resetea. Para poner
+  "Limpiar" donde `DragSheet` pinta "Aceptar" se le añadió una prop opcional
+  `action={{ label, onPress }}` — el resto de hojas no cambia.
+  `equipment: []` (43 ejercicios) se presenta como **Corporal**, que no es un
+  valor real de la librería sino la ausencia de equipo.
+- **Fila**: `surface`/`radius/sm`, nombre `text/card-title` + subtítulo
+  `primaryGroup · equipo`. Seleccionada = fondo `tint/accent-10` y nombre en
+  `accent`. Checkbox 36×36 (`surface2` → `accent`) solo en modo añadir; en modo
+  sustituir/picker de bloque va la `ArrowIcon` y elegir cierra la pantalla.
+- **Sustituir** arranca con la pill del patrón del ejercicio actual ya activa.
+  Sustituye al viejo modo "Similar", que además filtraba por `level` sin que eso
+  se viera en ningún control.
+- **Se elimina el modo "Complementario"** (ordenar por patrones que faltan en la
+  sesión). `existingPatterns` sigue llegando por params desde
+  `SessionEditorScreen` pero ya no se lee.
+- `+ Crear ejercicio` se queda donde estaba (encima de la lista) pero pasa al
+  tratamiento de `+ Añadir sesión`: texto plano `text/card-type` en
+  `tint/accent-50`, sin la caja dashed.
+
+Las claves i18n viejas (`tabSimilar`, `tabPattern`, `allMuscles`, `levelBeginner`…)
+**no se borran**: las sigue usando el selector de la app web
+(`src/components/editor/ExerciseSelector.jsx`, fuera de `mobile/`).
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

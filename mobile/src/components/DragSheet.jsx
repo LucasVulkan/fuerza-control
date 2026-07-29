@@ -23,7 +23,12 @@ import { useTranslation } from 'react-i18next';
 import { spacing, typography, borders } from '../theme';
 import { useThemedStyles } from '../useTheme';
 
-export default function DragSheet({ visible, onClose, title, children }) {
+/**
+ * `action` sustituye el botón "Aceptar" de la derecha por otra acción
+ * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
+ * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
+ */
+export default function DragSheet({ visible, onClose, title, action, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
@@ -92,8 +97,8 @@ export default function DragSheet({ visible, onClose, title, children }) {
         </View>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity onPress={close} hitSlop={8}>
-            <Text style={styles.done}>{t('exerciseEditor.configDone')}</Text>
+          <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
+            <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
