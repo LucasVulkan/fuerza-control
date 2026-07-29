@@ -60,6 +60,9 @@ const STEP_BTN  = 34;   // caja del botón ± (Figma 30; subido en QA)
 const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
 const GLYPH_W   = 13;   // largo de la barra del − / +
 const GLYPH_T   = 2;    // grosor
+// Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
+// o los botones ± bailan de una fila a otra (QA).
+const VALUE_W   = 68;
 
 function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
   const sf = useThemedStyles(makeSf);
@@ -165,6 +168,7 @@ const makeSf = (th) => StyleSheet.create({
   glyphBarV: { transform: [{ rotate: '90deg' }] },
 
   valueWrap: {
+    width:          VALUE_W,
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'center',
@@ -334,24 +338,28 @@ function WarmupStepRow({ index, step, onChange, onRemove }) {
   return (
     <View style={styles.warmupStepRow}>
       <Text style={styles.warmupStepIdx}>{`C${index + 1}`}</Text>
-      <TextInput
-        style={styles.warmupStepInput}
-        keyboardType="numeric"
-        value={pctDraft}
-        onChangeText={(v) => setPctDraft(v.replace(/[^0-9]/g, ''))}
-        onBlur={commitPct}
-        selectTextOnFocus
-      />
-      <Text style={styles.warmupStepUnit}>%</Text>
+      <View style={styles.warmupField}>
+        <TextInput
+          style={styles.warmupFieldInput}
+          keyboardType="numeric"
+          value={pctDraft}
+          onChangeText={(v) => setPctDraft(v.replace(/[^0-9]/g, ''))}
+          onBlur={commitPct}
+          selectTextOnFocus
+        />
+        <Text style={styles.warmupFieldUnit}>%</Text>
+      </View>
       <Text style={styles.warmupStepUnit}>×</Text>
-      <TextInput
-        style={styles.warmupStepInput}
-        keyboardType="numeric"
-        value={repsDraft}
-        onChangeText={(v) => setRepsDraft(v.replace(/[^0-9]/g, ''))}
-        onBlur={commitReps}
-        selectTextOnFocus
-      />
+      <View style={styles.warmupField}>
+        <TextInput
+          style={styles.warmupFieldInput}
+          keyboardType="numeric"
+          value={repsDraft}
+          onChangeText={(v) => setRepsDraft(v.replace(/[^0-9]/g, ''))}
+          onBlur={commitReps}
+          selectTextOnFocus
+        />
+      </View>
       <TouchableOpacity style={styles.warmupStepRemove} onPress={onRemove} hitSlop={8}>
         <Text style={styles.warmupStepRemoveTxt}>✕</Text>
       </TouchableOpacity>
@@ -628,8 +636,16 @@ export default function ExerciseEditorInline({
     : progMode === 'submax'
       ? t('workout.submax', 'submáx')
       : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
-  const volumeLine = `${sets} × ${rangeTxt} · ${restSec} s`
-    + (dropset ? ` · ${t('exerciseEditor.dropsetSummary')}` : '');
+  // El calentamiento abre la prescripción, así que va delante: "C×2 · 3 × 8–12…".
+  const warmupCount = warmupMode === 'auto'
+    ? warmupSets
+    : warmupMode === 'custom' ? warmupCustomSteps.length : 0;
+  const volumeLine = [
+    warmupCount > 0 ? t('exerciseEditor.warmup.summaryCount', { n: warmupCount }) : null,
+    `${sets} × ${rangeTxt}`,
+    `${restSec} s`,
+    dropset ? t('exerciseEditor.dropsetSummary') : null,
+  ].filter(Boolean).join(' · ');
 
   const incTxt = progType === 'reps'
     ? String(incrFixedValue)
@@ -813,11 +829,13 @@ export default function ExerciseEditorInline({
               </TouchableOpacity>
             ))}
             <TouchableOpacity
-              style={[styles.linkPill, styles.linkPillNew]}
+              style={styles.addStepBtn}
               onPress={() => handleLinkSelect('__new__')}
               activeOpacity={0.7}
             >
-              <Text style={styles.linkPillNewText}>{t('exerciseEditor.linkNew')}</Text>
+              <Text style={styles.addStepText}>
+                <Text style={styles.addPlus}>+</Text>{` ${t('exerciseEditor.linkNew')}`}
+              </Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.optRowHint}>{t('exerciseEditor.linkHint')}</Text>
@@ -879,7 +897,9 @@ export default function ExerciseEditorInline({
                 onPress={addWarmupStep}
                 disabled={warmupCustomSteps.length >= 6}
               >
-                <Text style={styles.addStepText}>{t('exerciseEditor.warmup.addStep')}</Text>
+                <Text style={styles.addStepText}>
+                  <Text style={styles.addPlus}>+</Text>{` ${t('exerciseEditor.warmup.addStep')}`}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1176,8 +1196,6 @@ const makeStyles = (th) => StyleSheet.create({
   linkPillActive:     { backgroundColor: th.colors.accent },
   linkPillText:       { ...textStyles.btnAction, color: th.colors.text },
   linkPillTextActive: { color: th.colors.onAccent },
-  linkPillNew:        { alignItems: 'center' },
-  linkPillNewText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
 
   // ── Acciones ──────────────────────────────────────────────────────────────
   btnRow: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md },
@@ -1205,11 +1223,20 @@ const makeStyles = (th) => StyleSheet.create({
   // sitios.
   warmupStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: GRID.LABEL_W },
-  warmupStepInput: {
-    flex:               1,
+  // El "%" va DENTRO de la celda, no suelto al lado (QA).
+  warmupField: {
+    flex:            1,
+    height:          GRID.CELL_H,
+    backgroundColor: th.colors.bg,
+    borderRadius:    GRID.RADIUS,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             spacing.xs,
+  },
+  warmupFieldInput: {
+    width:              40,
     height:             GRID.CELL_H,
-    backgroundColor:    th.colors.bg,
-    borderRadius:       GRID.RADIUS,
     fontFamily:         'Inter_800ExtraBold',
     fontSize:           15,
     fontWeight:         '800',
@@ -1220,17 +1247,15 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:    0,
     fontVariant:        ['tabular-nums'],
   },
+  warmupFieldUnit:     { ...textStyles.subtitle, color: th.colors.mutedLight },
   warmupStepUnit:      { ...textStyles.subtitle, color: th.colors.mutedLight },
   warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  warmupStepRemoveTxt: { ...textStyles.subtitle, color: th.colors.muted },
-  addStepBtn: {
-    alignItems:      'center',
-    paddingVertical: spacing.md,
-    borderRadius:    GRID.RADIUS,
-    backgroundColor: th.colors.bg,
-  },
+  warmupStepRemoveTxt: { ...textStyles.subtitle, color: th.tint.red50 },
+  // Mismo botón de añadir que el resto de la app: texto plano, sin caja.
+  addStepBtn:         { alignItems: 'center', paddingVertical: spacing.md },
   addStepBtnDisabled: { opacity: 0.35 },
   addStepText:        { ...textStyles.cardType, color: th.tint.accent50 },
+  addPlus:            { color: th.colors.accent },
 
   // ── Incremento (hoja) ─────────────────────────────────────────────────────
   incrInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

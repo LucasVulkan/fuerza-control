@@ -847,7 +847,7 @@
     "linkLabel": "Vinculación entre sesiones",
     "linkHint": "Comparte configuración e historial con el mismo ejercicio en otras sesiones. Editar uno edita todos.",
     "linkNone": "Ninguna",
-    "linkNew": "＋ Nuevo grupo",
+    "linkNew": "Nuevo grupo",
     "linkGroupN": "Grupo {{n}}",
     "progModeDesc": {
       "auto": "La app sugiere subidas según tu rendimiento",
@@ -886,7 +886,8 @@
       "setsLabel": "Series",
       "restLabel": "Descanso",
       "noTimer": "sin temporizador",
-      "addStep": "＋ Añadir paso",
+      "addStep": "Añadir paso",
+      "summaryCount": "C×{{n}}",
       "rampStep": "{{pct}}% × {{reps}}",
       "restShort": "{{s}}s de descanso",
       "rowNoneSub": "Sin series de aproximación",

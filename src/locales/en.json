@@ -847,7 +847,7 @@
     "linkLabel": "Cross-session link",
     "linkHint": "Shares configuration and history with the same exercise in other sessions. Editing one edits all.",
     "linkNone": "None",
-    "linkNew": "＋ New group",
+    "linkNew": "New group",
     "linkGroupN": "Group {{n}}",
     "progModeDesc": {
       "auto": "The app suggests increases based on your performance",
@@ -886,7 +886,8 @@
       "setsLabel": "Sets",
       "restLabel": "Rest",
       "noTimer": "no timer",
-      "addStep": "＋ Add step",
+      "addStep": "Add step",
+      "summaryCount": "W×{{n}}",
       "rampStep": "{{pct}}% × {{reps}}",
       "restShort": "{{s}}s rest",
       "rowNoneSub": "No warm-up sets",
