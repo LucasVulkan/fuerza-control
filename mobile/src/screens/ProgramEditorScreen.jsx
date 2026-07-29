@@ -698,6 +698,9 @@ const makeStyles = (th) => StyleSheet.create({
   headerEyebrow: {
     ...textStyles.btnAction,
     fontSize:      10,
+    // Un punto de tracking, a medio camino entre el 0 de `btn-action` y el 2 de
+    // `spacing-tag`: sin nada de aire se leía apretado (QA).
+    letterSpacing: 1,
     color:         th.colors.muted,
     textAlign:     'center',
     textTransform: 'uppercase',
