@@ -408,7 +408,11 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   const moveCount = movements.length;
   let summaryMain, summarySub;
   if (format === 'amrap') {
-    summaryMain = t('blocks.summary.amrapMain', { min: Math.round(capSec / 60) });
+    // El número de ejercicios va también arriba, detrás de los minutos (QA),
+    // aunque el subtítulo lo repita en lenguaje natural.
+    summaryMain = moveCount > 0
+      ? t('blocks.summary.amrapMainCount', { min: Math.round(capSec / 60), count: moveCount })
+      : t('blocks.summary.amrapMain',      { min: Math.round(capSec / 60) });
     summarySub = moveCount > 0
       ? t('blocks.summary.amrapSub', { count: moveCount })
       : t('blocks.summary.empty');
@@ -510,7 +514,13 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
             options={INTERVAL_OPTIONS}
             value={intervalCustom ? 'custom' : String(intervalSec)}
             onChange={(v) => {
-              if (v === 'custom') { setIntervalCustom(true); return; }
+              if (v === 'custom') {
+                setIntervalCustom(true);
+                // Arranca en 120s: es el preset que Custom vino a sustituir, y
+                // dejar el 30/45/60/90 de antes hacía que no pasara nada visible.
+                if (INTERVAL_PRESETS.includes(intervalSec)) setIntervalSec(120);
+                return;
+              }
               setIntervalCustom(false);
               setIntervalSec(Number(v));
             }}
@@ -583,7 +593,9 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
         )}
 
         <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.75}>
-          <Text style={styles.addMovementText}>{t('blocks.addMovement')}</Text>
+          <Text style={styles.addMovementText}>
+            <Text style={styles.addPlus}>+</Text>{` ${t('blocks.addMovement')}`}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -690,7 +702,10 @@ const makeStyles = (th) => StyleSheet.create({
   // así que va en accent para que se lea como control, no como etiqueta.
   movUnit:       { ...textStyles.tag, color: th.colors.accent },
   movWeightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
-  movHandle:     { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  // Ancho de sobra alrededor del icono: el asa es un blanco de 26px y costaba
+  // acertar (QA). El PanResponder no respeta `hitSlop`, así que el área tiene
+  // que ser la de la propia View.
+  movHandle: { width: 44, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
 
   // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
   movActions: {
@@ -708,15 +723,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   movDeleteText: { ...textStyles.cardType, color: th.tint.red50 },
 
-  // "Añadir ejercicio" (192:1817): outline accent, sin relleno.
-  addMovementBtn: {
-    alignItems:      'center',
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     1,
-    borderColor:     th.tint.accent50,
-  },
-  addMovementText: { ...textStyles.cardType, color: th.colors.accent },
+  // Figma lo dibuja con borde accent (192:1817), pero manda la consistencia
+  // (QA): es el mismo botón de añadir que el resto de la app — texto plano con
+  // el "+" en accent, sin caja.
+  addMovementBtn:  { alignItems: 'center', paddingVertical: spacing.md },
+  addMovementText: { ...textStyles.cardType, color: th.tint.accent50 },
+  addPlus:         { color: th.colors.accent },
 
   // ── Opciones ──────────────────────────────────────────────────────────────
   optionsCard: {

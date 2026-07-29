@@ -250,6 +250,8 @@
     },
     "summary": {
       "amrapMain": "{{min}} min",
+      "amrapMainCount_one": "{{min}} min · {{count}} exercise",
+      "amrapMainCount_other": "{{min}} min · {{count}} exercises",
       "amrapSub_one": "Go through the movement as many times as you can",
       "amrapSub_other": "Go through the {{count}} movements as many times as you can",
       "emomMain": "{{rounds}} rounds · {{interval}} per interval · {{total}} total",
