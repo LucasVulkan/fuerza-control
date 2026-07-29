@@ -804,8 +804,10 @@ export default function ExerciseEditorInline({
 
       {/* Vinculación entre sesiones — solo si el ejercicio existe en más sesiones */}
       {showLinking && (
+        <Text style={styles.secLabel}>{t('exerciseEditor.linkLabel').toUpperCase()}</Text>
+      )}
+      {showLinking && (
         <View style={styles.linkCard}>
-          <Text style={styles.optRowLabel}>{t('exerciseEditor.linkLabel')}</Text>
           <View style={styles.linkList}>
             <TouchableOpacity
               style={[styles.linkPill, !currentGroup && styles.linkPillActive]}
