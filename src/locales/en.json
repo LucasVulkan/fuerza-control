@@ -857,7 +857,7 @@
     },
     "dropsetLabel": "Dropset on the last set",
     "dropsetHint": "After the last set you'll be able to add sub-sets at decreasing weight, no rest.",
-    "dropsetSummary": "last with dropset",
+    "dropsetSummary": "final dropset",
     "supersetLabel": "In superset with the next exercise",
     "supersetHint": "Alternates with the next exercise, no rest in between. This exercise's own rest won't be used.",
     "linkLabel": "Cross-session link",

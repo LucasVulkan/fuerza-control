@@ -857,7 +857,7 @@
     },
     "dropsetLabel": "Dropset en la última serie",
     "dropsetHint": "Al terminar la última serie podrás añadir sub-series a peso decreciente, sin descanso.",
-    "dropsetSummary": "última con dropset",
+    "dropsetSummary": "dropset final",
     "supersetLabel": "En superserie con el siguiente",
     "supersetHint": "Se alternará con el siguiente ejercicio, sin descanso entre ambos. El descanso de este ejercicio no se usará.",
     "linkLabel": "Vinculación entre sesiones",
