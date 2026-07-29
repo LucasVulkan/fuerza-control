@@ -280,9 +280,11 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   const [editingExId, setEditingExId]       = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
-  // Desplegable de la cabecera del editor de ejercicio. Se cierra en el mismo
-  // `openExercise` que lo abre, así no hace falta un efecto que lo resetee.
-  const [exPickerOpen, setExPickerOpen]     = useState(false);
+  // Desplegables de las cabeceras de los editores. Se cierran en el mismo
+  // `openExercise`/`openBlock` que los abre, así no hace falta un efecto que
+  // los resetee al cerrar el modal.
+  const [exPickerOpen, setExPickerOpen]       = useState(false);
+  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
   const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen]     = useState(false);
@@ -439,6 +441,11 @@ export default function SessionEditorScreen({ navigation, route }) {
     setEditingExId(exerciseId);
   }
 
+  function openBlock(blockId) {
+    setBlockPickerOpen(false);
+    setEditingBlockId(blockId);
+  }
+
   // Sustituir el ejercicio que se está editando: lo dispara el botón del pie
   // del editor (el chevron de la cabecera abre el desplegable de la sesión).
   function handleSubstituteEx() {
@@ -524,8 +531,9 @@ export default function SessionEditorScreen({ navigation, route }) {
   const editingExHasNext = editingExId
     ? template.exercises.findIndex((ex) => ex.exerciseId === editingExId) < template.exercises.length - 1
     : false;
+  const blocks = template.blocks ?? [];
   const editingBlock = editingBlockId
-    ? (template.blocks ?? []).find((b) => b.id === editingBlockId) ?? null
+    ? blocks.find((b) => b.id === editingBlockId) ?? null
     : null;
 
   return (
@@ -630,7 +638,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 allExercises={allExercises}
                 t={t}
                 onOpenExercise={openExercise}
-                onOpenBlock={setEditingBlockId}
+                onOpenBlock={openBlock}
                 onRemoveExercise={handleRemoveExercise}
                 onRemoveBlock={handleRemoveBlock}
                 onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
@@ -790,19 +798,55 @@ export default function SessionEditorScreen({ navigation, route }) {
           onRequestClose={() => setEditingBlockId(null)}
         >
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            <View style={styles.modalTopbar}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.modalExTag}>{t('blocks.sectionTitle').toUpperCase()}</Text>
-                <Text style={styles.modalExName} numberOfLines={1}>
-                  {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
-                </Text>
+            {/* Misma cabecera que el editor de ejercicio (190:1662): barra accent
+                con el nombre del bloque y desplegable de los bloques de la
+                sesión, más el botón "Aceptar". */}
+            <View style={styles.exHeader}>
+              <View style={styles.exHeaderAnchor}>
+                <TouchableOpacity
+                  style={[styles.exHeaderBar, blockPickerOpen && styles.exHeaderBarOpen]}
+                  onPress={() => { if (blocks.length > 1) setBlockPickerOpen((o) => !o); }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.exHeaderTitle} numberOfLines={1}>
+                    {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
+                  </Text>
+                  {blocks.length > 1 && (
+                    <View style={[styles.exHeaderChevron, blockPickerOpen && styles.exHeaderChevronOpen]}>
+                      <ArrowIcon size={7.69} color={th.colors.onAccent} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {blockPickerOpen && (
+                  <View style={styles.exPickerList}>
+                    {blocks.map((b) => {
+                      const isCurrent = b.id === editingBlockId;
+                      return (
+                        <TouchableOpacity
+                          key={b.id}
+                          style={[styles.exPickerItem, isCurrent && styles.exPickerItemSel]}
+                          onPress={() => openBlock(b.id)}
+                          activeOpacity={0.75}
+                        >
+                          <Text
+                            style={[styles.exPickerText, isCurrent && styles.exPickerTextSel]}
+                            numberOfLines={1}
+                          >
+                            {b.name ?? t(`blocks.formats.${b.format}`)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
               <TouchableOpacity
-                style={styles.modalAcceptBtn}
+                style={styles.exHeaderAccept}
                 onPress={() => setEditingBlockId(null)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.modalAcceptTxt}>Aceptar</Text>
+                <Text style={styles.exHeaderAcceptTxt}>{t('common.accept')}</Text>
               </TouchableOpacity>
             </View>
             <KeyboardAvoidingView

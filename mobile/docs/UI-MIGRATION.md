@@ -28,7 +28,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
 | **Exercice Editor** (+ botones eliminar/sustituir) | ✅ | `src/components/editor/ExerciseEditorInline.jsx` |
-| Bloques AMRAP / EMOM | ⬜ | editores de bloque |
+| **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)
@@ -273,6 +273,38 @@ funcionalidad pedida aparte y usan el lenguaje de los botones que descubre el
 swipe en la lista del Sesion Editor (`surface2`/`text` y `tint/red-30`/
 `tint/red-50`). El botón **Restaurar** que tenía la app se eliminó (no está en
 Figma y el editor autoguarda).
+
+### Editor de bloques — desglose
+
+Nodos de Figma: `190:1661` (AMRAP) y `192:1897` (EMOM). **No hay frame de "For
+time"** — se compone por analogía. Comparte cabecera con el editor de ejercicio
+(barra accent con el nombre + desplegable de los bloques de la sesión, botón
+`Aceptar`), Resumen y etiquetas de sección.
+
+- **Secciones numeradas** (`1. FORMATO`, `2. INTERVALO`, `3. MOVIMIENTOS`) como
+  en el mock; `OPCIONES` va sin número. El número de MOVIMIENTOS depende del
+  formato, porque solo EMOM mete INTERVALO en medio.
+- **"Rotar ejercicios" deja de ser un switch** y pasa a segmentado
+  `Repetir bloque / Rotar ejercicios` (sigue mapeando a `emomMode`).
+- **Intervalo**: el `120s` de la app se cambia por `Custom`, que abre una fila ±
+  de 10-300s en pasos de 5. Un `intervalSec` que no esté entre los presets
+  arranca ya en modo Custom.
+- **For time**: rondas en fila ± y el tope como segmentado `Sin tope / Con tope`
+  (no un switch), coherente con que en Figma los modos son segmentados.
+- **Fila de movimiento**: nombre + campo + **selector de unidad** + campo de peso
+  + `Kg` + asa de arrastre. El "reps" del mock ES el selector que ya existía: se
+  mantiene pulsable (cicla reps/cal/m/seg), en `color/accent` para que se lea
+  como control y con nombres de 3 letras (`s` → `seg`/`sec`). Eliminar pasa al
+  swipe para dejarle el sitio al asa, con el mismo botón `tint/red-30` de la
+  lista del editor de sesión. Reordenar movimientos es **funcionalidad nueva**,
+  con el mismo patrón de arrastre de los otros editores (aquí las filas miden
+  todas 42, así que el paso es una constante y no hay que medir nada).
+- **Unidad por defecto de un movimiento nuevo**: sale del ejercicio — los que
+  tienen `progressionModel: 'time_progression'` entran en segundos, el resto en
+  reps. Antes siempre entraban en reps.
+- Los campos (`Input Field`, nombre, nota) van sobre `color/workout-card`, que en
+  este tema es `th.colors.bg`; "Añadir ejercicio" es outline `tint/accent-50`;
+  "Guardar preset" es `surface2`; "Eliminar bloque" texto rojo sin fondo.
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

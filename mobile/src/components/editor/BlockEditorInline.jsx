@@ -1,11 +1,60 @@
+/**
+ * BlockEditorInline — editor de un bloque de acondicionamiento, rediseño
+ * FormaFit (Figma `190:1661` "Bloques: AMRAP" y `192:1897` "Bloques: EMOM").
+ *
+ * Estructura del mock: RESUMEN → `1. FORMATO` (segmentado + descripción y, en
+ * EMOM, el segmentado "Tipo de EMOM") → los parámetros del formato →
+ * `N. MOVIMIENTOS` (lista agrupada) → `OPCIONES` (nombre + nota) → Guardar
+ * preset / Eliminar bloque.
+ *
+ * Decisiones tomadas con el usuario en esta ronda:
+ *   · "Rotar ejercicios" deja de ser un switch y pasa a segmentado, como dibuja
+ *     Figma. Sigue mapeando a `emomMode` ('rotate' | 'all').
+ *   · El intervalo de EMOM cambia el 120s por `Custom`, que abre una fila ±.
+ *   · "For time" no está en Figma: se compone por analogía — rondas en fila ± y
+ *     el tope como segmentado (Sin tope / Con tope), no como switch.
+ *   · La fila de movimiento conserva TODA la funcionalidad: la etiqueta "reps"
+ *     del mock es el selector de unidad que ya existía (ahora en accent, sin
+ *     fondo y con nombres de 3 letras), y eliminar pasa al swipe para dejar
+ *     sitio al asa de arrastre.
+ *   · La unidad por defecto de un movimiento nuevo sale del ejercicio: los que
+ *     progresan por tiempo (`time_progression`) entran en segundos.
+ *
+ * La lógica (autosave con debounce, presets, picker de movimientos) se conserva.
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, PanResponder,
+} from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { emomTotalIntervals } from '../../../../src/utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import SegmentedControl from '../ui/SegmentedControl';
+import StepField from '../ui/StepField';
+import { DragIcon } from '../ui/EditorIcons';
+
+const UNIT_CYCLE = ['reps', 'cal', 'm', 'sec'];
+
+// Geometría de la lista de movimientos. Todas las filas miden lo mismo
+// (padding 6+6 sobre un Input Field de 30), así que el paso del arrastre es un
+// número fijo y no hay que medir nada.
+const MOV_ROW_H = 42;
+const MOV_GAP   = spacing.xs;
+const MOV_STEP  = MOV_ROW_H + MOV_GAP;
+// Botón que descubre el swipe, con el mismo lenguaje que el del editor de sesión.
+const SWIPE_BTN_W = 104;
+const SWIPE_INSET = spacing.md;
+const SWIPE_OPEN  = SWIPE_BTN_W + SWIPE_INSET;
+// Banda muerta del salto de hueco y asentamiento al soltar — mismos valores que
+// los otros dos editores (ver UI-MIGRATION §"Reordenar").
+const SWAP_AT = 0.65;
+const SETTLE  = { duration: 160, easing: Easing.inOut(Easing.ease) };
 
 // Compact "M:SS" / "M min" for a duration in seconds — matches how the
 // workout clock reads, but collapses to whole minutes when there's no
@@ -16,133 +65,125 @@ function fmtDuration(totalSec) {
   return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// ─── Local pieces (copied from ExerciseEditorInline — same visual language) ───
+// Unidad de arranque de un movimiento nuevo: los ejercicios que progresan por
+// tiempo se registran en segundos, el resto en repeticiones.
+function defaultUnitFor(def) {
+  return def?.progressionModel === 'time_progression' ? 'sec' : 'reps';
+}
 
-function StepField({ label, value, onChange, min, max }) {
-  const sf = useThemedStyles(makeSf);
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => { setDraft(String(value)); }, [value]);
-  const numVal = Number(value);
+// Radios de la lista agrupada: solo el primero y el último redondean por fuera.
+function movRadii(th, isFirst, isLast) {
+  const r = th.radius.sm;
+  const x = th.radius.xxs ?? 2;
+  return {
+    borderTopLeftRadius:     isFirst ? r : x,
+    borderTopRightRadius:    isFirst ? r : x,
+    borderBottomLeftRadius:  isLast  ? r : x,
+    borderBottomRightRadius: isLast  ? r : x,
+  };
+}
 
-  function handleChangeText(v) { setDraft(v.replace(/[^0-9]/g, '')); }
-  function handleBlur() {
-    const n = parseInt(draft, 10);
-    if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); setDraft(String(c)); onChange(c); }
-    else setDraft(String(value));
-  }
+// ─── Fila de movimiento (Exercice editor elements / Ejercicio blqoues) ────────
+
+function MovementRow({
+  name, amount, unitLabel, weightValue, weightLabel, radii,
+  onAmountChange, onUnitPress, onWeightChange, onRemove,
+  isOpen, onOpenChange,
+  isDragging, dragY, shift, animateShift, onDragStart, onDragMove, onDragEnd,
+}) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+
+  // ── Swipe para eliminar ──
+  const [dragX] = useState(() => new Animated.Value(0));
+  const openRef = useRef(false);
+  const cbs     = useRef({ onOpenChange, onDragStart, onDragMove, onDragEnd });
+  useEffect(() => { cbs.current = { onOpenChange, onDragStart, onDragMove, onDragEnd }; });
+
+  useEffect(() => {
+    if (!isOpen && openRef.current) {
+      openRef.current = false;
+      Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
+    }
+  }, [isOpen, dragX]);
+
+  /* eslint-disable-next-line react-hooks/refs */
+  const [pan] = useState(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gs) => !openRef.current && gs.dx > 8 && gs.dx > Math.abs(gs.dy) * 1.3,
+    onPanResponderMove: (_, gs) => { if (gs.dx > 0) dragX.setValue(Math.min(gs.dx, SWIPE_OPEN)); },
+    onPanResponderRelease: (_, gs) => {
+      const opening = gs.dx >= SWIPE_OPEN / 2;
+      openRef.current = opening;
+      cbs.current.onOpenChange(opening);
+      Animated.spring(dragX, { toValue: opening ? SWIPE_OPEN : 0, useNativeDriver: false, tension: 80 }).start();
+    },
+  }));
+
+  // ── Arrastre para reordenar (el asa reclama el gesto en `onStart`) ──
+  /* eslint-disable-next-line react-hooks/refs */
+  const [dragPan] = useState(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant:     ()      => cbs.current.onDragStart(),
+    onPanResponderMove:      (_, gs) => cbs.current.onDragMove(gs.dy),
+    onPanResponderRelease:   ()      => cbs.current.onDragEnd(),
+    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
+  }));
+
+  // Los vecinos ceden el hueco con `withTiming`; fuera del gesto el
+  // desplazamiento se lee del prop DIRECTAMENTE, no del shared value — al
+  // soltar, el orden nuevo y `shift = 0` llegan en el mismo commit y pasando
+  // por el efecto el 0 llegaría un frame tarde (ver UI-MIGRATION §"Reordenar").
+  const shiftSv = useSharedValue(0);
+  useEffect(() => {
+    if (!animateShift) return;
+    shiftSv.value = withTiming(shift, SETTLE);
+  }, [shift, animateShift, shiftSv]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{
+      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
+    }],
+  }), [isDragging, animateShift, shift]);
 
   return (
-    <View style={sf.card}>
-      <Text style={sf.label}>{label}</Text>
-      <View style={sf.row}>
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.max(min, numVal - 1))}>
-          <Text style={sf.stepText}>−</Text>
+    <Reanimated.View style={[styles.movWrap, isDragging && { zIndex: 2, elevation: 4 }, animStyle]}>
+      <View style={styles.movActions}>
+        <TouchableOpacity style={styles.movDeleteBtn} onPress={onRemove} activeOpacity={0.8}>
+          <Text style={styles.movDeleteText}>{t('common.delete')}</Text>
         </TouchableOpacity>
+      </View>
+
+      <Animated.View style={[styles.movRow, radii, { transform: [{ translateX: dragX }] }]} {...pan.panHandlers}>
+        <Text style={styles.movName} numberOfLines={1}>{name}</Text>
         <TextInput
-          style={sf.valueInput}
+          style={styles.movField}
           keyboardType="numeric"
-          value={draft}
-          onChangeText={handleChangeText}
-          onBlur={handleBlur}
+          value={String(amount)}
+          onChangeText={onAmountChange}
           selectTextOnFocus
         />
-        <TouchableOpacity style={sf.stepBtn} onPress={() => onChange(Math.min(max, numVal + 1))}>
-          <Text style={sf.stepText}>+</Text>
+        <TouchableOpacity onPress={onUnitPress} hitSlop={8} activeOpacity={0.6}>
+          <Text style={styles.movUnit}>{unitLabel}</Text>
         </TouchableOpacity>
-      </View>
-    </View>
+        <TextInput
+          style={styles.movField}
+          keyboardType="decimal-pad"
+          placeholder="—"
+          placeholderTextColor={th.colors.mutedLight}
+          value={weightValue}
+          onChangeText={onWeightChange}
+        />
+        <Text style={styles.movWeightUnit}>{weightLabel}</Text>
+        <View {...dragPan.panHandlers} style={styles.movHandle}>
+          <DragIcon color={th.colors.mutedLight} />
+        </View>
+      </Animated.View>
+    </Reanimated.View>
   );
 }
-
-const makeSf = (th) => StyleSheet.create({
-  card: {
-    flex:            1,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.sm + 2,
-    gap:             6,
-  },
-  label: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 0.5,
-    fontWeight:    typography.medium,
-    textAlign:     'center',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  stepBtn: {
-    width:           36,
-    height:          36,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  stepText: {
-    fontSize:   18,
-    color:      th.colors.muted,
-    lineHeight: 22,
-  },
-  valueInput: {
-    flex:               1,
-    textAlign:          'center',
-    textAlignVertical:  'center',
-    includeFontPadding: false,
-    fontSize:           typography.lg,
-    fontWeight:         typography.bold,
-    color:              th.colors.text,
-    backgroundColor:    'transparent',
-    height:             40,
-    paddingVertical:    0,
-  },
-});
-
-function ToggleRow({ label, value, onChange }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.toggleRow} onPress={() => onChange(!value)} activeOpacity={0.7}>
-      <Text style={styles.toggleLabel}>{label}</Text>
-      <View style={[styles.track, value && styles.trackOn]}>
-        <View style={[styles.thumb, value && styles.thumbOn]} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function SegPicker({ options, value, onChange }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.segRow}>
-      {options.map((opt) => (
-        <TouchableOpacity
-          key={opt.id}
-          style={[styles.segBtn, value === opt.id && styles.segBtnActive]}
-          onPress={() => onChange(opt.id)}
-        >
-          <Text style={[styles.segLabel, value === opt.id && styles.segLabelActive]}>
-            {opt.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-const UNIT_CYCLE = ['reps', 'cal', 'm', 'sec'];
 
 // ─── BlockEditorInline ────────────────────────────────────────────────────────
-//
-// Config editor for one ConditioningBlock. Mirrors ExerciseEditorInline's
-// autosave pattern: local state commits to the store 400ms after the last
-// change, flushed on unmount too.
 
 function computeInitial(block) {
   return {
@@ -158,31 +199,36 @@ function computeInitial(block) {
   };
 }
 
+const INTERVAL_PRESETS = [30, 45, 60, 90];
+
 export default function BlockEditorInline({ templateId, block, allExercises, onClose, navigation }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
   const { label: weightLabel, toDisplay, toKg } = useWeightUnit();
 
-  const updateBlock          = useStore((s) => s.updateBlock);
+  const updateBlock            = useStore((s) => s.updateBlock);
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
-  const saveBlockPreset      = useStore((s) => s.saveBlockPreset);
-  const showToast            = useStore((s) => s.showToast);
-  const blockPickerResult    = useStore((s) => s.ui._blockPickerResult);
-  const setBlockPickerResult = useStore((s) => s.setBlockPickerResult);
+  const saveBlockPreset        = useStore((s) => s.saveBlockPreset);
+  const showToast              = useStore((s) => s.showToast);
+  const blockPickerResult      = useStore((s) => s.ui._blockPickerResult);
+  const setBlockPickerResult   = useStore((s) => s.setBlockPickerResult);
 
   const initialRef = useRef(computeInitial(block));
   const i = initialRef.current;
 
   const [format,      setFormat]      = useState(i.format);
-  const [capSec,       setCapSec]       = useState(i.capSec);
-  const [intervalSec,  setIntervalSec]  = useState(i.intervalSec);
-  const [rounds,       setRounds]       = useState(i.rounds);
-  const [emomMode,     setEmomMode]     = useState(i.emomMode);
-  const [movements,    setMovements]    = useState(i.movements);
-  const [name,         setName]        = useState(i.name);
-  const [notes,        setNotes]       = useState(i.notes);
-  const [hasCap,       setHasCap]      = useState(i.hasCap);
+  const [capSec,      setCapSec]      = useState(i.capSec);
+  const [intervalSec, setIntervalSec] = useState(i.intervalSec);
+  const [rounds,      setRounds]      = useState(i.rounds);
+  const [emomMode,    setEmomMode]    = useState(i.emomMode);
+  const [movements,   setMovements]   = useState(i.movements);
+  const [name,        setName]        = useState(i.name);
+  const [notes,       setNotes]       = useState(i.notes);
+  const [hasCap,      setHasCap]      = useState(i.hasCap);
+  const [openRowIdx,  setOpenRowIdx]  = useState(null);
+  // Un intervalo que no esté entre los presets arranca ya en modo Custom.
+  const [intervalCustom, setIntervalCustom] = useState(!INTERVAL_PRESETS.includes(i.intervalSec));
 
   const stateRef  = useRef(null);
   const dirtyRef  = useRef(false);
@@ -224,9 +270,15 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   }, []);
 
   // ── Movement picker handoff (ExerciseSelectorScreen → ui._blockPickerResult) ──
+  const allExercisesRef = useRef(allExercises);
+  useEffect(() => { allExercisesRef.current = allExercises; }, [allExercises]);
   useEffect(() => {
     if (!blockPickerResult) return;
-    setMovements((prev) => [...prev, { exerciseId: blockPickerResult, amount: 10, unit: 'reps', weight: null }]);
+    const def = allExercisesRef.current?.[blockPickerResult];
+    setMovements((prev) => [
+      ...prev,
+      { exerciseId: blockPickerResult, amount: 10, unit: defaultUnitFor(def), weight: null },
+    ]);
     setBlockPickerResult(null);
   }, [blockPickerResult, setBlockPickerResult]);
 
@@ -235,6 +287,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   }
 
   function handleRemoveMovement(idx) {
+    setOpenRowIdx(null);
     setMovements((prev) => prev.filter((_, i2) => i2 !== idx));
   }
 
@@ -246,6 +299,65 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
     const cur = movements[idx].unit ?? 'reps';
     const next = UNIT_CYCLE[(UNIT_CYCLE.indexOf(cur) + 1) % UNIT_CYCLE.length];
     updateMovement(idx, { unit: next });
+  }
+
+  // ── Reordenado de movimientos ─────────────────────────────────────────────
+  // Mismo patrón que los otros dos editores: durante el gesto no se toca el
+  // orden pintado, y al soltar la fila se asienta ANTES de escribir el orden.
+  const [drag, setDrag] = useState(null);   // { idx, to }
+  const dragRef = useRef(null);
+  const dragY   = useSharedValue(0);
+
+  function handleDragStart(idx) {
+    setOpenRowIdx(null);
+    dragRef.current = { idx, to: idx };
+    setDrag(dragRef.current);
+    dragY.value = 0;
+  }
+
+  function handleDragMove(idx, dy) {
+    const state = dragRef.current;
+    if (state?.idx !== idx) return;
+    dragY.value = dy;
+    // Banda muerta: con el 0.5 implícito de un `round`, el temblor del dedo en
+    // la frontera hacía ir y venir el orden.
+    const raw  = dy / MOV_STEP;
+    const step = raw > 0 ? Math.floor(raw + (1 - SWAP_AT)) : Math.ceil(raw - (1 - SWAP_AT));
+    const to   = Math.min(movements.length - 1, Math.max(0, idx + step));
+    if (to === state.to) return;
+    dragRef.current = { ...state, to };
+    setDrag(dragRef.current);
+  }
+
+  function handleDragEnd(idx) {
+    const state = dragRef.current;
+    if (state?.idx !== idx) return;
+    dragRef.current = null;
+    dragY.value = withTiming((state.to - state.idx) * MOV_STEP, SETTLE, (done) => {
+      'worklet';
+      if (done) runOnJS(commitDrag)(state);
+    });
+  }
+
+  function commitDrag(state) {
+    setDrag(null);
+    dragY.value = 0;
+    if (state.to === state.idx) return;
+    setMovements((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(state.idx, 1);
+      next.splice(state.to, 0, moved);
+      return next;
+    });
+  }
+
+  // Desplazamiento de los vecinos mientras dura el gesto.
+  function shiftFor(idx) {
+    if (!drag || idx === drag.idx) return 0;
+    const { idx: from, to } = drag;
+    if (from < to && idx > from && idx <= to) return -MOV_STEP;
+    if (from > to && idx < from && idx >= to) return  MOV_STEP;
+    return 0;
   }
 
   function handleSavePreset() {
@@ -279,7 +391,16 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   }
 
   const FORMAT_OPTIONS = ['amrap', 'emom', 'for_time'].map((id) => ({ id, label: t(`blocks.formats.${id}`) }));
-  const INTERVAL_OPTIONS = [30, 45, 60, 90, 120].map((s) => ({ id: s, label: `${s}s` }));
+  const EMOM_MODES     = ['all', 'rotate'].map((id) => ({ id, label: t(`blocks.emomModes.${id}`) }));
+  const CAP_MODES      = [
+    { id: 'none', label: t('blocks.capModes.none') },
+    { id: 'cap',  label: t('blocks.capModes.cap')  },
+  ];
+  // El 120s de la app se cambia por `Custom`, que abre una fila ± (Figma).
+  const INTERVAL_OPTIONS = [
+    ...INTERVAL_PRESETS.map((s) => ({ id: String(s), label: `${s}s` })),
+    { id: 'custom', label: t('blocks.intervalCustom') },
+  ];
 
   // ── Live summary — the single most important thing this editor answers:
   // what happens each interval/round, how long it lasts, and whether the
@@ -312,6 +433,10 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
       : t('blocks.summary.empty');
   }
 
+  // Las secciones van numeradas como en Figma; EMOM mete "INTERVALO" en medio,
+  // así que el número de MOVIMIENTOS depende del formato.
+  const movementsStep = format === 'emom' ? 3 : 2;
+
   return (
     <View style={styles.container}>
 
@@ -322,22 +447,24 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
         <Text style={styles.summarySub}>{summarySub}</Text>
       </View>
 
-      {/* ══ FORMATO ══════════════════════════════════════════════════════════ */}
-      <View>
-        <Text style={styles.secTitle}>{t('blocks.formatLabel')}</Text>
-        <SegPicker
-          options={FORMAT_OPTIONS}
-          value={format}
-          onChange={setFormat}
-        />
-      </View>
+      {/* ══ 1. FORMATO ═══════════════════════════════════════════════════════ */}
+      <View style={styles.block}>
+        <Text style={styles.secLabel}>{`1. ${t('blocks.formatLabel').toUpperCase()}`}</Text>
+        <SegmentedControl options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
 
-      <View style={styles.divider} />
+        {format === 'emom' ? (
+          <>
+            <Text style={styles.subLabel}>{t('blocks.emomTypeLabel').toUpperCase()}</Text>
+            <SegmentedControl options={EMOM_MODES} value={emomMode} onChange={setEmomMode} />
+            <Text style={styles.hint}>{t(`blocks.emomModeDesc.${emomMode}`)}</Text>
+          </>
+        ) : (
+          <Text style={styles.hint}>{t(`blocks.formatDesc.${format}`)}</Text>
+        )}
 
-      {/* ══ PARÁMETROS ═══════════════════════════════════════════════════════ */}
-      <View>
         {format === 'amrap' && (
           <StepField
+            horizontal unit="min"
             label={t('blocks.capLabel')}
             value={Math.round(capSec / 60)}
             onChange={(min) => setCapSec(min * 60)}
@@ -346,141 +473,147 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
           />
         )}
 
-        {format === 'emom' && (
-          <View style={{ gap: spacing.md }}>
-            <View>
-              <Text style={styles.fieldLabel}>{t('blocks.intervalLabel')}</Text>
-              <SegPicker
-                options={INTERVAL_OPTIONS}
-                value={intervalSec}
-                onChange={setIntervalSec}
-              />
-            </View>
-            <View style={styles.fieldRow}>
-              <StepField label={t('blocks.roundsLabel')} value={rounds} onChange={setRounds} min={1} max={40} />
-              <View style={{ flex: 1 }} />
-            </View>
-            {movements.length >= 2 && (
-              <ToggleRow
-                label={t('blocks.rotateLabel')}
-                value={emomMode === 'rotate'}
-                onChange={(v) => setEmomMode(v ? 'rotate' : 'all')}
+        {format === 'for_time' && (
+          <>
+            <StepField
+              horizontal
+              label={t('blocks.roundsLabel')}
+              value={rounds}
+              onChange={setRounds}
+              min={1}
+              max={20}
+            />
+            <SegmentedControl
+              options={CAP_MODES}
+              value={hasCap ? 'cap' : 'none'}
+              onChange={(v) => setHasCap(v === 'cap')}
+            />
+            {hasCap && (
+              <StepField
+                horizontal unit="min"
+                label={t('blocks.capLabel')}
+                value={Math.round(capSec / 60)}
+                onChange={(min) => setCapSec(min * 60)}
+                min={1}
+                max={60}
               />
             )}
-          </View>
-        )}
-
-        {format === 'for_time' && (
-          <View style={{ gap: spacing.md }}>
-            <View style={styles.fieldRow}>
-              <StepField label={t('blocks.roundsLabel')} value={rounds} onChange={setRounds} min={1} max={20} />
-              <View style={{ flex: 1 }} />
-            </View>
-            <View>
-              <ToggleRow
-                label={t('blocks.noCap')}
-                value={!hasCap}
-                onChange={(v) => setHasCap(!v)}
-              />
-              {hasCap && (
-                <View style={[styles.fieldRow, { marginTop: spacing.sm }]}>
-                  <StepField
-                    label={t('blocks.capLabel')}
-                    value={Math.round(capSec / 60)}
-                    onChange={(min) => setCapSec(min * 60)}
-                    min={1}
-                    max={60}
-                  />
-                  <View style={{ flex: 1 }} />
-                </View>
-              )}
-            </View>
-          </View>
+          </>
         )}
       </View>
 
-      <View style={styles.divider} />
+      {/* ══ 2. INTERVALO (solo EMOM) ═════════════════════════════════════════ */}
+      {format === 'emom' && (
+        <View style={styles.block}>
+          <Text style={styles.secLabel}>{`2. ${t('blocks.intervalLabel').toUpperCase()}`}</Text>
+          <SegmentedControl
+            options={INTERVAL_OPTIONS}
+            value={intervalCustom ? 'custom' : String(intervalSec)}
+            onChange={(v) => {
+              if (v === 'custom') { setIntervalCustom(true); return; }
+              setIntervalCustom(false);
+              setIntervalSec(Number(v));
+            }}
+          />
+          {intervalCustom && (
+            <StepField
+              horizontal unit="s"
+              label={t('blocks.intervalLabel')}
+              value={intervalSec}
+              onChange={setIntervalSec}
+              min={10}
+              max={300}
+              step={5}
+            />
+          )}
+          <StepField
+            horizontal
+            label={t('blocks.roundsLabel')}
+            value={rounds}
+            onChange={setRounds}
+            min={1}
+            max={40}
+          />
+        </View>
+      )}
 
       {/* ══ MOVIMIENTOS ══════════════════════════════════════════════════════ */}
-      <View>
-        <Text style={styles.secTitle}>{t('blocks.movements')}</Text>
-        <View style={styles.movementsCard}>
-          {movements.map((m, idx) => {
-            const def = allExercises?.[m.exerciseId];
-            return (
-              <View key={idx} style={styles.movementRow}>
-                <Text style={styles.movementName} numberOfLines={1}>{def?.name ?? m.exerciseId}</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  keyboardType="numeric"
-                  value={String(m.amount)}
-                  onChangeText={(v) => {
+      <View style={styles.block}>
+        <View style={styles.movHeader}>
+          <Text style={styles.secLabel}>{`${movementsStep}. ${t('blocks.movements').toUpperCase()}`}</Text>
+          <Text style={styles.movHeaderNote}>{t('blocks.weightOptional')}</Text>
+        </View>
+
+        {movements.length > 0 && (
+          <View style={styles.movList}>
+            {movements.map((m, idx) => {
+              const def = allExercises?.[m.exerciseId];
+              return (
+                <MovementRow
+                  key={`${m.exerciseId}-${idx}`}
+                  name={def?.name ?? m.exerciseId}
+                  amount={m.amount}
+                  unitLabel={t(`blocks.units.${m.unit ?? 'reps'}`)}
+                  weightValue={m.weight == null ? '' : String(toDisplay(m.weight))}
+                  weightLabel={weightLabel}
+                  radii={movRadii(th, idx === 0, idx === movements.length - 1)}
+                  onAmountChange={(v) => {
                     const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
                     updateMovement(idx, { amount: isNaN(n) ? 0 : n });
                   }}
-                  selectTextOnFocus
-                />
-                <TouchableOpacity style={styles.unitBtn} onPress={() => cycleUnit(idx)}>
-                  <Text style={styles.unitBtnText}>{t(`blocks.units.${m.unit ?? 'reps'}`)}</Text>
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.weightInput}
-                  keyboardType="decimal-pad"
-                  placeholder={weightLabel}
-                  placeholderTextColor={th.colors.muted2}
-                  value={m.weight == null ? '' : String(toDisplay(m.weight))}
-                  onChangeText={(v) => {
+                  onUnitPress={() => cycleUnit(idx)}
+                  onWeightChange={(v) => {
                     if (v === '') { updateMovement(idx, { weight: null }); return; }
                     if (/^\d*\.?\d*$/.test(v)) updateMovement(idx, { weight: toKg(v) });
                   }}
+                  onRemove={() => handleRemoveMovement(idx)}
+                  isOpen={openRowIdx === idx}
+                  onOpenChange={(open) => setOpenRowIdx(open ? idx : null)}
+                  isDragging={drag?.idx === idx}
+                  dragY={dragY}
+                  shift={shiftFor(idx)}
+                  animateShift={!!drag}
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragMove={(dy) => handleDragMove(idx, dy)}
+                  onDragEnd={()   => handleDragEnd(idx)}
                 />
-                <TouchableOpacity hitSlop={8} onPress={() => handleRemoveMovement(idx)}>
-                  <Text style={styles.removeBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
+        )}
 
-          <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.7}>
-            <Text style={styles.addMovementText}>{t('blocks.addMovement')}</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.75}>
+          <Text style={styles.addMovementText}>{t('blocks.addMovement')}</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.divider} />
-
-      {/* ══ NOMBRE Y NOTA ════════════════════════════════════════════════════ */}
-      <View style={{ gap: spacing.md }}>
-        <View>
-          <Text style={styles.fieldLabel}>{t('blocks.nameLabel')}</Text>
-          <TextInput
-            style={styles.nameInput}
-            value={name}
-            onChangeText={setName}
-            placeholder={t(`blocks.formats.${format}`)}
-            placeholderTextColor={th.colors.muted2}
-          />
-        </View>
-        <View>
-          <TextInput
-            style={styles.noteInput}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={t('blocks.notePlaceholder')}
-            placeholderTextColor={th.colors.muted2}
-            multiline
-            maxLength={280}
-          />
-        </View>
+      {/* ══ OPCIONES ═════════════════════════════════════════════════════════ */}
+      <Text style={styles.secLabel}>{t('blocks.sectionOptions').toUpperCase()}</Text>
+      <View style={styles.optionsCard}>
+        <Text style={styles.optionsLabel}>{t('blocks.nameLabel')}</Text>
+        <TextInput
+          style={styles.nameInput}
+          value={name}
+          onChangeText={setName}
+          placeholder={t(`blocks.formats.${format}`)}
+          placeholderTextColor={th.colors.mutedLight}
+        />
+        <TextInput
+          style={styles.noteInput}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t('blocks.notePlaceholder')}
+          placeholderTextColor={th.colors.mutedLight}
+          multiline
+          maxLength={280}
+        />
       </View>
 
       {/* ══ ACCIONES ═════════════════════════════════════════════════════════ */}
-      <View style={styles.btnRow}>
-        <TouchableOpacity style={styles.substituteBtn} onPress={handleSavePreset}>
-          <Text style={styles.substituteBtnText}>{t('blocks.savePreset')}</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteBlock}>
+      <TouchableOpacity style={styles.presetBtn} onPress={handleSavePreset} activeOpacity={0.8}>
+        <Text style={styles.presetBtnText}>{t('blocks.savePreset')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteBlock} activeOpacity={0.8}>
         <Text style={styles.deleteBtnText}>{t('blocks.deleteBlock')}</Text>
       </TouchableOpacity>
 
@@ -493,261 +626,136 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
 const makeStyles = (th) => StyleSheet.create({
 
   container: {
-    padding:       spacing.lg,
-    paddingBottom: spacing.xxl + spacing.lg,
-    gap:           spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.xxl + spacing.lg,
+    gap:               spacing.md,
   },
+  block: { gap: spacing.md },
 
-  // ── Summary card ───────────────────────────────────────────────────────────
+  // ── Resumen (misma anatomía que el editor de ejercicio) ───────────────────
   summaryCard: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             2,
-  },
-  summaryTag: {
-    fontSize:      typography.xs - 1,
-    fontWeight:    typography.heavy,
-    color:         withOpacity(th.colors.accent, 0.7),
-    letterSpacing: 1.2,
-    marginBottom:  2,
-  },
-  summaryMain: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.accent,
-  },
-  summarySub: {
-    fontSize:   typography.sm,
-    color:      th.colors.mutedLight,
-    lineHeight: typography.sm * 1.5,
-  },
-
-  secTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
-  },
-
-  fieldLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.medium,
-    color:         th.colors.muted,
-    marginBottom:  spacing.xs,
-  },
-
-  divider: {
-    height:          StyleSheet.hairlineWidth,
-    backgroundColor: th.colors.border,
-  },
-
-  fieldRow: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
-
-  // ── Segmented picker ───────────────────────────────────────────────────────
-  segRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  segBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-  },
-  segBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.10),
-    borderColor:     withOpacity(th.colors.accent, 0.40),
-  },
-  segLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  segLabelActive: {
-    color: th.colors.accent,
-  },
-
-  // ── Toggle ─────────────────────────────────────────────────────────────────
-  toggleRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+    backgroundColor:   th.tint.accent10,
     borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
   },
-  toggleLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  track: {
-    width:           40,
-    height:          22,
-    borderRadius:    11,
-    backgroundColor: th.colors.border,
-    padding:         2,
-    justifyContent:  'center',
-  },
-  trackOn: {
-    backgroundColor: withOpacity(th.colors.accent, 0.25),
-    borderWidth:     1,
-    borderColor:     withOpacity(th.colors.accent, 0.6),
-  },
-  thumb: {
-    width:           18,
-    height:          18,
-    borderRadius:    9,
-    backgroundColor: th.colors.muted,
-  },
-  thumbOn: {
-    backgroundColor: th.colors.accent,
-    transform:       [{ translateX: 18 }],
-  },
+  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
+  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
 
-  // ── Movements ──────────────────────────────────────────────────────────────
-  movementsCard: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.sm,
+  // ── Etiquetas ─────────────────────────────────────────────────────────────
+  secLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
+  // Sub-etiqueta dentro de una sección ("TIPO DE EMOM"): sin el paddingTop, que
+  // ya lo pone la etiqueta numerada de arriba.
+  subLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  hint:     { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+
+  // ── Movimientos ───────────────────────────────────────────────────────────
+  movHeader: {
+    flexDirection:  'row',
+    alignItems:     'flex-end',
+    justifyContent: 'space-between',
+    gap:            spacing.md,
+  },
+  movHeaderNote: { ...textStyles.tag, color: th.colors.mutedLight },
+  movList:       { gap: MOV_GAP },
+  movWrap:       { position: 'relative' },
+  movRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
     gap:             spacing.sm,
+    height:          MOV_ROW_H,
+    backgroundColor: th.colors.surface,
+    overflow:        'hidden',
   },
-  movementRow: {
+  // El nombre lleva su propio padding izquierdo: la fila no tiene padding
+  // horizontal para que el asa llegue al borde, como en Figma.
+  movName: { ...textStyles.cardType, color: th.colors.text, flex: 1, minWidth: 0, paddingLeft: spacing.md },
+  // Input Field del mock: `color/workout-card`, que en este tema es `bg`.
+  movField: {
+    width:              51,
+    height:             30,
+    backgroundColor:    th.colors.bg,
+    borderRadius:       th.radius.sm,
+    paddingHorizontal:  spacing.sm,
+    paddingVertical:    0,
+    ...textStyles.cardType,
+    color:              th.colors.text,
+    textAlign:          'center',
+    textAlignVertical:  'center',
+    includeFontPadding: false,
+  },
+  // Selector de unidad: el "reps" del mock es pulsable y cicla reps/cal/m/seg,
+  // así que va en accent para que se lea como control, no como etiqueta.
+  movUnit:       { ...textStyles.tag, color: th.colors.accent },
+  movWeightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+  movHandle:     { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+
+  // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
+  movActions: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
+    width:         SWIPE_OPEN,
+    paddingRight:  SWIPE_INSET,
   },
-  movementName: {
-    flex:       1,
-    minWidth:   0,
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
+  movDeleteBtn: {
+    width:           SWIPE_BTN_W,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.tint.red30,
   },
-  amountInput: {
-    width:              44,
-    height:             34,
-    textAlign:          'center',
-    textAlignVertical:  'center',
-    includeFontPadding: false,
-    backgroundColor:    th.colors.surface2,
-    borderWidth:         borders.thin,
-    borderColor:         th.colors.border,
-    borderRadius:        th.radius.sm,
-    fontSize:            typography.sm,
-    color:               th.colors.text,
-  },
-  unitBtn: {
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical:   6,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   withOpacity(th.colors.accent, 0.10),
-  },
-  unitBtnText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
-  weightInput: {
-    width:              56,
-    height:             34,
-    textAlign:          'center',
-    textAlignVertical:  'center',
-    includeFontPadding: false,
-    backgroundColor:    th.colors.surface2,
-    borderWidth:         borders.thin,
-    borderColor:         th.colors.border,
-    borderRadius:        th.radius.sm,
-    fontSize:            typography.xs,
-    color:               th.colors.text,
-  },
-  removeBtn: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-    padding:  spacing.xs,
-  },
+  movDeleteText: { ...textStyles.cardType, color: th.tint.red50 },
+
+  // "Añadir ejercicio" (192:1817): outline accent, sin relleno.
   addMovementBtn: {
-    paddingVertical: spacing.sm,
+    alignItems:      'center',
+    paddingVertical: spacing.md,
     borderRadius:    th.radius.sm,
     borderWidth:     1,
-    borderStyle:     'dashed',
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    alignItems:      'center',
+    borderColor:     th.tint.accent50,
   },
-  addMovementText: {
-    fontSize: typography.sm,
-    color:    th.colors.accent,
-  },
+  addMovementText: { ...textStyles.cardType, color: th.colors.accent },
 
-  // ── Name / note ────────────────────────────────────────────────────────────
-  nameInput: {
+  // ── Opciones ──────────────────────────────────────────────────────────────
+  optionsCard: {
     backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
     borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    fontSize:          typography.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
+  },
+  optionsLabel: { ...textStyles.cardType, color: th.colors.text },
+  nameInput: {
+    height:            30,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   0,
+    ...textStyles.tag,
     color:             th.colors.text,
   },
   noteInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+    height:            54,
+    backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.sm,
+    ...textStyles.tag,
     color:             th.colors.text,
-    fontSize:          typography.sm,
-    minHeight:         60,
     textAlignVertical: 'top',
   },
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  btnRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  substituteBtn: {
-    flex:            1,
+  // ── Acciones ──────────────────────────────────────────────────────────────
+  presetBtn: {
     alignItems:      'center',
-    paddingVertical: spacing.sm,
-    backgroundColor: th.colors.surface,
+    paddingVertical: spacing.md,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
+    marginTop:       spacing.md,
   },
-  substituteBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  deleteBtn: {
-    paddingVertical: spacing.sm + 2,
-    borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.red, 0.3),
-    alignItems:      'center',
-  },
-  deleteBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.red,
-    fontWeight: typography.medium,
-  },
+  presetBtnText: { ...textStyles.cardType, color: th.colors.text },
+  deleteBtn:     { alignItems: 'center', paddingVertical: spacing.md },
+  deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
 });
