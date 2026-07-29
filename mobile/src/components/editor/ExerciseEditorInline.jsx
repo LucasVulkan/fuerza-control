@@ -1067,12 +1067,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
   },
   substituteBtnText: { ...textStyles.cardType, color: th.colors.text },
+  // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteBtn: {
     flex:            1,
     alignItems:      'center',
     paddingVertical: spacing.md,
-    backgroundColor: th.tint.red30,
-    borderRadius:    th.radius.sm,
   },
   deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
 

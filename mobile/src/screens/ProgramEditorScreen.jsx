@@ -875,11 +875,10 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
   },
   dupStageBtnText: { ...textStyles.cardType, color: th.colors.text },
+  // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteStageBtn: {
     flex:            1,
     paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.tint.red30,
     alignItems:      'center',
   },
   deleteStageBtnText: { ...textStyles.cardType, color: th.tint.red50 },
