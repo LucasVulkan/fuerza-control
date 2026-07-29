@@ -50,6 +50,8 @@ const ACTION_INSET     = spacing.md;
 const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 
 const HEADER_H = 64;
+// Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
+const HEADER_EDIT_W = 16;
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
 const CARD_GAP = spacing.sm;
@@ -533,6 +535,7 @@ export default function SessionEditorScreen({ navigation, route }) {
             {stageLabel ? ` · ${stageLabel}` : ''}
           </Text>
           <View style={styles.headerTitleRow}>
+            <View style={styles.headerTitleSpacer} />
             {editingName ? (
               <TextInput
                 autoFocus
@@ -549,7 +552,11 @@ export default function SessionEditorScreen({ navigation, route }) {
                 {template.name ?? ''}
               </Text>
             )}
-            <TouchableOpacity hitSlop={10} onPress={() => (editingName ? commitName() : startEditName())}>
+            <TouchableOpacity
+              hitSlop={10}
+              style={styles.headerEditBtn}
+              onPress={() => (editingName ? commitName() : startEditName())}
+            >
               {editingName
                 ? <CheckIcon  size={16} color={th.colors.onAccent} />
                 : <PencilIcon size={15} color={th.colors.onAccent} />}
@@ -968,14 +975,19 @@ const makeStyles = (th) => StyleSheet.create({
   },
   headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  // `text/btn-action` (Black 12) en vez de `text/spacing-tag` (ExtraBold 10):
-  // sobre el lima el eyebrow pedía más peso (QA).
+  // `text/btn-action` (Black) al tamaño de `spacing-tag` (10) y sin tracking:
+  // sobre el lima el eyebrow pedía más peso, no más aire (QA).
   headerEyebrow: {
     ...textStyles.btnAction,
+    fontSize:      10,
     color:         th.colors.muted,
     textAlign:     'center',
     textTransform: 'uppercase',
   },
+  // El lápiz descentraba el nombre: la fila centra el grupo entero, así que
+  // lleva un contrapeso invisible del mismo ancho al otro lado.
+  headerTitleSpacer: { width: HEADER_EDIT_W },
+  headerEditBtn:     { width: HEADER_EDIT_W, alignItems: 'center' },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   headerTitle: {
     ...textStyles.hero,

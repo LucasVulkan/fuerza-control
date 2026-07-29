@@ -9,15 +9,18 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
+import StepField from '../components/ui/StepField';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
 const HEADER_H = 64;
+// Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
+const HEADER_EDIT_W = 16;
 // Gap entre tarjetas de sesión (space/sm) — se suma al alto de fila medido para
 // obtener el paso del drag.
 const CARD_GAP = spacing.sm;
@@ -406,6 +409,7 @@ export default function ProgramEditorScreen({ navigation }) {
             {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
           </Text>
           <View style={styles.headerTitleRow}>
+            <View style={styles.headerTitleSpacer} />
             {editingName ? (
               <TextInput
                 autoFocus
@@ -430,6 +434,7 @@ export default function ProgramEditorScreen({ navigation }) {
             )}
             <TouchableOpacity
               hitSlop={10}
+              style={styles.headerEditBtn}
               onPress={() => {
                 if (editingName) commitName();
                 else { setNameValue(activeProgram.name ?? ''); setEditingName(true); }
@@ -585,7 +590,7 @@ export default function ProgramEditorScreen({ navigation }) {
           <View style={styles.sheetBody}>
 
             <View>
-              <Text style={styles.secTitle}>{t('editor.stageNameLabel')}</Text>
+              <Text style={styles.sheetLabel}>{t('editor.stageNameLabel')}</Text>
               <TextInput
                 style={styles.sheetInput}
                 value={stageName}
@@ -593,42 +598,28 @@ export default function ProgramEditorScreen({ navigation }) {
                 onBlur={commitStageName}
                 onSubmitEditing={commitStageName}
                 placeholder={t('editor.stageName')}
-                placeholderTextColor={th.colors.muted2}
+                placeholderTextColor={th.colors.mutedLight}
                 returnKeyType="done"
               />
             </View>
 
             <View>
-              <Text style={styles.secTitle}>{t('editor.stageDurationLabel')}</Text>
-              <View style={styles.weeksRow}>
-                <Text style={styles.weeksLabel}>{t('editor.stageWeeksUnit')}</Text>
-                <View style={styles.weeksControls}>
-                  <TouchableOpacity
-                    style={styles.weeksBtn}
-                    onPress={() => updateStage(editingId, selectedStageIdx, {
-                      durationWeeks: Math.max(1, (selectedStage.durationWeeks ?? 4) - 1),
-                    })}
-                  >
-                    <Text style={styles.weeksBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.weeksValue}>{selectedStage.durationWeeks ?? 4}</Text>
-                  <TouchableOpacity
-                    style={styles.weeksBtn}
-                    onPress={() => updateStage(editingId, selectedStageIdx, {
-                      durationWeeks: Math.min(52, (selectedStage.durationWeeks ?? 4) + 1),
-                    })}
-                  >
-                    <Text style={[styles.weeksBtnText, { color: th.colors.accent }]}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <Text style={styles.sheetLabel}>{t('editor.stageDurationLabel')}</Text>
+              <StepField
+                horizontal dark
+                label={t('editor.stageWeeksUnit')}
+                value={selectedStage.durationWeeks ?? 4}
+                onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
+                min={1}
+                max={52}
+              />
             </View>
 
             <View>
-              <Text style={styles.secTitle}>{t('editor.stageStateLabel')}</Text>
+              <Text style={styles.sheetLabel}>{t('editor.stageStateLabel')}</Text>
               {isStageActive ? (
                 <View style={styles.stateRow}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
                     <Text style={styles.stateTitle}>{t('editor.stageIsActive')}</Text>
                     <Text style={styles.stateHint}>{t('editor.stageActiveHint')}</Text>
                   </View>
@@ -637,6 +628,7 @@ export default function ProgramEditorScreen({ navigation }) {
               ) : (
                 <TouchableOpacity
                   style={styles.activateBtn}
+                  activeOpacity={0.8}
                   onPress={() => {
                     setCurrentStage(editingId, selectedStageIdx);
                     showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
@@ -647,26 +639,30 @@ export default function ProgramEditorScreen({ navigation }) {
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.dupStageBtn}
-              onPress={() => {
-                commitStageName(); // flush a pending rename so the copy inherits it
-                const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
-                if (newIdx != null) {
-                  setSelectedStageIdx(newIdx);
-                  showToast(t('editor.toastStageDuplicated'), 2200, 'success');
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dupStageBtnText}>{t('editor.stageDuplicateBtn')}</Text>
-            </TouchableOpacity>
-
-            {activeProgram.stages.length > 1 && (
-              <TouchableOpacity style={styles.deleteStageBtn} onPress={handleDeleteStage}>
-                <Text style={styles.deleteStageBtnText}>{t('editor.stageDeleteBtn')}</Text>
+            {/* Mismo par de botones que cierra el editor de ejercicio:
+                secundario `surface2` + destructivo `tint/red-30`. */}
+            <View style={styles.sheetBtnRow}>
+              <TouchableOpacity
+                style={styles.dupStageBtn}
+                onPress={() => {
+                  commitStageName(); // flush a pending rename so the copy inherits it
+                  const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
+                  if (newIdx != null) {
+                    setSelectedStageIdx(newIdx);
+                    showToast(t('editor.toastStageDuplicated'), 2200, 'success');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dupStageBtnText}>{t('editor.stageDuplicateBtn')}</Text>
               </TouchableOpacity>
-            )}
+
+              {activeProgram.stages.length > 1 && (
+                <TouchableOpacity style={styles.deleteStageBtn} onPress={handleDeleteStage} activeOpacity={0.8}>
+                  <Text style={styles.deleteStageBtnText}>{t('editor.stageDeleteBtn')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
           </View>
         )}
@@ -697,14 +693,19 @@ const makeStyles = (th) => StyleSheet.create({
   headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
   // Figma pinta el eyebrow en `color/muted` sobre el lima, no en onAccent.
-  // Tipografía `text/btn-action` (Black 12) en vez de `text/spacing-tag`
-  // (ExtraBold 10): sobre el lima pedía más peso (QA).
+  // Tipografía `text/btn-action` (Black) al tamaño de `spacing-tag` (10) y sin
+  // tracking: sobre el lima pedía más peso, no más aire (QA).
   headerEyebrow: {
     ...textStyles.btnAction,
+    fontSize:      10,
     color:         th.colors.muted,
     textAlign:     'center',
     textTransform: 'uppercase',
   },
+  // El lápiz descentraba el nombre: la fila centra el grupo entero, así que
+  // lleva un contrapeso invisible del mismo ancho al otro lado.
+  headerTitleSpacer: { width: HEADER_EDIT_W },
+  headerEditBtn:     { width: HEADER_EDIT_W, alignItems: 'center' },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -819,93 +820,67 @@ const makeStyles = (th) => StyleSheet.create({
     gap: spacing.lg,
     paddingBottom: spacing.sm,
   },
+  // Etiqueta de paso dentro de una hoja: igual que las de sección del editor de
+  // ejercicio (`text/spacing-tag` mutedLight en mayúsculas).
+  sheetLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+  // Dentro de una hoja el fondo YA es `surface`, así que los campos van sobre
+  // `color/app` para que se lean — mismo criterio que las hojas del editor de
+  // ejercicio.
   sheetInput: {
-    fontSize: typography.md,
-    fontWeight: typography.semibold,
-    color: th.colors.text,
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
+    ...textStyles.cardType,
+    color:             th.colors.text,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  weeksRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  weeksLabel: { fontSize: typography.sm, color: th.colors.mutedLight },
-  weeksControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  weeksBtn: {
-    width: 36, height: 36,
-    borderRadius: th.radius.sm,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  weeksBtnText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
-  weeksValue: {
-    fontSize: typography.xl,
-    fontWeight: typography.bold,
-    color: th.colors.text,
-    minWidth: 28,
-    textAlign: 'center',
+    paddingVertical:   spacing.md,
   },
   stateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    borderRadius: th.radius.md,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    gap: spacing.sm,
+    paddingVertical:   spacing.sm,
   },
   activeBadge: {
-    fontSize: 9,
-    fontWeight: typography.heavy,
-    letterSpacing: 0.6,
-    color: th.colors.onAccent,
-    backgroundColor: th.colors.accent,
-    borderRadius: th.radius.xs,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    overflow: 'hidden',
+    ...textStyles.spacingTag,
+    color:             th.colors.onAccent,
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs2,
+    overflow:          'hidden',
   },
-  stateTitle: { fontSize: typography.sm, fontWeight: typography.semibold, color: th.colors.text },
-  stateHint:  { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
+  stateTitle: { ...textStyles.cardType, color: th.colors.text },
+  stateHint:  { ...textStyles.tag,      color: th.colors.mutedLight, lineHeight: 14 },
   activateBtn: {
-    paddingVertical: spacing.sm + 2,
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
-    borderWidth: borders.thin,
-    borderColor: withOpacity(th.colors.accent, 0.3),
-    borderRadius: th.radius.md,
-    alignItems: 'center',
+    paddingVertical: spacing.md,
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.sm,
+    alignItems:      'center',
   },
-  activateBtnText: { fontSize: typography.sm, color: th.colors.accent, fontWeight: typography.medium },
+  activateBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  sheetBtnRow: { flexDirection: 'row', gap: spacing.sm },
   dupStageBtn: {
-    paddingVertical: spacing.sm + 2,
-    borderRadius: th.radius.md,
-    borderWidth: borders.thin,
-    borderColor: th.colors.border,
-    alignItems: 'center',
+    flex:            1,
+    paddingVertical: spacing.md,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
   },
-  dupStageBtnText: { fontSize: typography.sm, color: th.colors.mutedLight, fontWeight: typography.medium },
+  dupStageBtnText: { ...textStyles.cardType, color: th.colors.text },
   deleteStageBtn: {
-    paddingVertical: spacing.sm + 2,
-    borderRadius: th.radius.md,
-    borderWidth: borders.thin,
-    borderColor: withOpacity(th.colors.red, 0.3),
-    alignItems: 'center',
+    flex:            1,
+    paddingVertical: spacing.md,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.tint.red30,
+    alignItems:      'center',
   },
-  deleteStageBtnText: { fontSize: typography.sm, color: th.colors.red, fontWeight: typography.medium },
+  deleteStageBtnText: { ...textStyles.cardType, color: th.tint.red50 },
 });
