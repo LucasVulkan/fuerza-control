@@ -280,6 +280,9 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   const [editingExId, setEditingExId]       = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
+  // Desplegable de la cabecera del editor de ejercicio. Se cierra en el mismo
+  // `openExercise` que lo abre, así no hace falta un efecto que lo resetee.
+  const [exPickerOpen, setExPickerOpen]     = useState(false);
   const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen]     = useState(false);
@@ -431,8 +434,13 @@ export default function SessionEditorScreen({ navigation, route }) {
     showToast(t('editor.toastExDeleted'), 2200, 'neutral');
   }
 
-  // Sustituir el ejercicio que se está editando: lo dispara tanto el chevron de
-  // la cabecera accent como el botón del pie del editor.
+  function openExercise(exerciseId) {
+    setExPickerOpen(false);
+    setEditingExId(exerciseId);
+  }
+
+  // Sustituir el ejercicio que se está editando: lo dispara el botón del pie
+  // del editor (el chevron de la cabecera abre el desplegable de la sesión).
   function handleSubstituteEx() {
     navigation.navigate('ExerciseSelector', {
       templateId,
@@ -621,7 +629,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 metaFor={metaFor}
                 allExercises={allExercises}
                 t={t}
-                onOpenExercise={setEditingExId}
+                onOpenExercise={openExercise}
                 onOpenBlock={setEditingBlockId}
                 onRemoveExercise={handleRemoveExercise}
                 onRemoveBlock={handleRemoveBlock}
@@ -705,20 +713,47 @@ export default function SessionEditorScreen({ navigation, route }) {
         >
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
             {/* Cabecera del Exercice Editor (123:1633): barra accent con el
-                nombre + chevron (sustituir) y botón "Aceptar" gris. */}
+                nombre y un desplegable para saltar a otro ejercicio de la misma
+                sesión, más el botón "Aceptar". El desplegable se ancla inline al
+                borde inferior de la barra, igual que el de Progreso. */}
             <View style={styles.exHeader}>
-              <TouchableOpacity
-                style={styles.exHeaderBar}
-                onPress={handleSubstituteEx}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.exHeaderTitle} numberOfLines={1}>
-                  {editingDef?.name ?? editingExId}
-                </Text>
-                <View style={styles.exHeaderChevron}>
-                  <ArrowIcon size={7.69} color={th.colors.onAccent} />
-                </View>
-              </TouchableOpacity>
+              <View style={styles.exHeaderAnchor}>
+                <TouchableOpacity
+                  style={[styles.exHeaderBar, exPickerOpen && styles.exHeaderBarOpen]}
+                  onPress={() => setExPickerOpen((o) => !o)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.exHeaderTitle} numberOfLines={1}>
+                    {editingDef?.name ?? editingExId}
+                  </Text>
+                  <View style={[styles.exHeaderChevron, exPickerOpen && styles.exHeaderChevronOpen]}>
+                    <ArrowIcon size={7.69} color={th.colors.onAccent} />
+                  </View>
+                </TouchableOpacity>
+
+                {exPickerOpen && (
+                  <View style={styles.exPickerList}>
+                    {template.exercises.map((ex) => {
+                      const isCurrent = ex.exerciseId === editingExId;
+                      return (
+                        <TouchableOpacity
+                          key={ex.exerciseId}
+                          style={[styles.exPickerItem, isCurrent && styles.exPickerItemSel]}
+                          onPress={() => openExercise(ex.exerciseId)}
+                          activeOpacity={0.75}
+                        >
+                          <Text
+                            style={[styles.exPickerText, isCurrent && styles.exPickerTextSel]}
+                            numberOfLines={1}
+                          >
+                            {allExercises[ex.exerciseId]?.name ?? ex.exerciseId}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
               <TouchableOpacity
                 style={styles.exHeaderAccept}
                 onPress={() => setEditingExId(null)}
@@ -1115,6 +1150,8 @@ const makeStyles = (th) => StyleSheet.create({
   presetRemove: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
 
   // ── Cabecera del editor de ejercicio (123:1633) ──
+  // `zIndex` para que el desplegable pinte por encima del ScrollView de abajo,
+  // que es su hermano posterior.
   exHeader: {
     flexDirection:     'row',
     alignItems:        'stretch',
@@ -1122,7 +1159,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.lg,
     paddingBottom:     spacing.md,
+    zIndex:            100,
   },
+  exHeaderAnchor: { flex: 1, minWidth: 0, zIndex: 100 },
   exHeaderBar: {
     flex:              1,
     minWidth:          0,
@@ -1135,8 +1174,37 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
   },
+  // Con el menú abierto la barra pierde las esquinas de abajo para fusionarse
+  // con él (mismo tratamiento que el desplegable de Progreso).
+  exHeaderBarOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   exHeaderTitle:   { ...textStyles.spacingTag, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
-  exHeaderChevron: { transform: [{ rotate: '90deg' }] },
+  exHeaderChevron:     { transform: [{ rotate: '90deg'  }] },
+  exHeaderChevronOpen: { transform: [{ rotate: '270deg' }] },
+
+  // ── Desplegable de ejercicios de la sesión ──
+  exPickerList: {
+    position:                'absolute',
+    top:                     '100%',
+    left:                    0,
+    right:                   0,
+    zIndex:                  100,
+    backgroundColor:         th.colors.surface2,
+    borderBottomLeftRadius:  th.radius.sm,
+    borderBottomRightRadius: th.radius.sm,
+    overflow:                'hidden',
+    shadowColor:   '#000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius:  10,
+    elevation:     12,
+  },
+  exPickerItem: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+  },
+  exPickerItemSel: { backgroundColor: th.tint.accent10 },
+  exPickerText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
+  exPickerTextSel: { color: th.colors.text },
   // Figma pinta este botón en `color/muted`; en QA se cambió al relleno
   // Secondary (`color/surface-2`), el mismo de los demás botones secundarios.
   exHeaderAccept: {
