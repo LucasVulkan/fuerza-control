@@ -22,7 +22,7 @@ import { useThemedStyles } from '../../useTheme';
 //     que usan las hojas, donde el alto vertical es caro.
 // `dark` pinta la caja sobre `color/app` en vez de `surface`: dentro de una hoja
 // el fondo YA es `surface` y las cajas se perdían contra él.
-const STEP_BTN  = 34;   // caja del botón ± (Figma 30; subido en QA)
+export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
 const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
 const GLYPH_W   = 13;   // largo de la barra del − / +
 const GLYPH_T   = 2;    // grosor

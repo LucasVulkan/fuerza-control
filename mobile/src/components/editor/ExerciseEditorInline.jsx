@@ -35,7 +35,7 @@ import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import { ArrowIcon, ProgressionIcon } from '../ui/EditorIcons';
-import StepField from '../ui/StepField';
+import StepField, { STEP_BTN } from '../ui/StepField';
 import { GRID } from '../workout/grid';
 import DragSheet from '../DragSheet';
 
