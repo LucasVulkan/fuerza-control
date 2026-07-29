@@ -876,6 +876,7 @@
     "stepEval": "When it counts",
     "stepIncr": "How much it adds",
     "summaryTitle": "SUMMARY",
+    "restSummary": "{{s}}s rest",
     "summaryProg": {
       "double": "Adds {{inc}} once you complete {{eval}} at {{max}} reps",
       "weight": "Adds {{inc}} once you complete {{eval}}",

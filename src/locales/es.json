@@ -876,6 +876,7 @@
     "stepEval": "Cuándo se cumple",
     "stepIncr": "Cuánto sube",
     "summaryTitle": "RESUMEN",
+    "restSummary": "{{s}}s descanso",
     "summaryProg": {
       "double": "Sube {{inc}} al completar {{eval}} a {{max}} reps",
       "weight": "Sube {{inc}} al completar {{eval}}",

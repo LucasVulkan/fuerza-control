@@ -501,7 +501,7 @@ export default function ExerciseEditorInline({
   const volumeLine = [
     warmupCount > 0 ? t('exerciseEditor.warmup.summaryCount', { n: warmupCount }) : null,
     `${sets} × ${rangeTxt}`,
-    `${restSec} s`,
+    t('exerciseEditor.restSummary', { s: restSec }),
     dropset ? t('exerciseEditor.dropsetSummary') : null,
   ].filter(Boolean).join(' · ');
 
