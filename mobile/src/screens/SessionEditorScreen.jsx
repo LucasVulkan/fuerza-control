@@ -775,7 +775,13 @@ export default function SessionEditorScreen({ navigation, route }) {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {/* `key`: el editor carga toda su configuración en el montaje
+                    (`computeInitial`), así que saltar a otro ejercicio desde el
+                    desplegable tiene que REMONTARLO — si no, cambia el título
+                    pero se queda con las series/descanso del anterior. Al
+                    desmontar se vuelca lo que hubiera pendiente del viejo. */}
                 <ExerciseEditorInline
+                  key={editingExId}
                   templateId={templateId}
                   exConfig={editingExConfig}
                   def={editingDef}
@@ -854,7 +860,10 @@ export default function SessionEditorScreen({ navigation, route }) {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {/* Mismo motivo que en el editor de ejercicio: saltar a otro
+                    bloque desde el desplegable lo remonta. */}
                 <BlockEditorInline
+                  key={editingBlockId}
                   templateId={templateId}
                   block={editingBlock}
                   allExercises={allExercises}
