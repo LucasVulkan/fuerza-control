@@ -697,8 +697,10 @@ const makeStyles = (th) => StyleSheet.create({
   headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
   // Figma pinta el eyebrow en `color/muted` sobre el lima, no en onAccent.
+  // Tipografía `text/btn-action` (Black 12) en vez de `text/spacing-tag`
+  // (ExtraBold 10): sobre el lima pedía más peso (QA).
   headerEyebrow: {
-    ...textStyles.spacingTag,
+    ...textStyles.btnAction,
     color:         th.colors.muted,
     textAlign:     'center',
     textTransform: 'uppercase',
