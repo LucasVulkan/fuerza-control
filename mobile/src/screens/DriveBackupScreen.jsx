@@ -20,6 +20,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Path, G } from 'react-native-svg';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, interpolate,
+} from 'react-native-reanimated';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
@@ -29,7 +32,7 @@ import { useStore }                                                         from
 import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID }                                         from '../config/google';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { CheckIcon }    from '../components/ui/EditorIcons';
+import { CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { Section, SectionLabel, MenuRow, RowIcon } from '../components/ui/MenuList';
 import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles } from '../theme';
@@ -79,8 +82,18 @@ export default function DriveBackupScreen() {
   const [loadingMsg,  setMsg]         = useState('');
   const [files,       setFiles]       = useState(null);  // null = not loaded yet
   const [refreshing,  setRefreshing]  = useState(false);
+  const [freqOpen,    setFreqOpen]    = useState(false);
 
   const when = (v) => formatWhen(v, lang, t('dayCard.today'), t('dayCard.yesterday'));
+
+  // Chevron de la barra del desplegable: apunta arriba mientras está abierto.
+  const chevronRot = useSharedValue(0);
+  useEffect(() => {
+    chevronRot.value = withTiming(freqOpen ? 1 : 0, { duration: 180 });
+  }, [freqOpen, chevronRot]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(chevronRot.value, [0, 1], [0, 180])}deg` }],
+  }));
 
   // ── OAuth setup ──────────────────────────────────────────────────────────────
   const isExpoGo        = Constants.executionEnvironment === 'storeClient';
@@ -315,24 +328,75 @@ export default function DriveBackupScreen() {
             </Text>
           </View>
 
+          {/* Con el permiso caducado la única salida era desconectar y volver a
+              conectar; el flujo de OAuth ya está montado aquí, así que el botón
+              es el mismo `promptAsync` y `connectDrive` limpia `needsReconnect`. */}
+          {needsFix && !isExpoGo && (
+            <TouchableOpacity
+              style={[styles.primaryBtn, styles.reconnectBtn, (!request || loading) && { opacity: 0.5 }]}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color={th.colors.onAccent} />
+                : <Text style={styles.primaryBtnText}>{t('drive.reconnectCta')}</Text>}
+            </TouchableOpacity>
+          )}
+          {needsFix && isExpoGo && <Text style={styles.hint}>{t('drive.expoGoNote')}</Text>}
+
           {isConnected ? (
             <>
-              <Section title={t('drive.sectionFrequency')}>
-                {FREQ_OPTIONS.map((key) => (
-                  <MenuRow
-                    key={key}
-                    label={t(`drive.freq${FREQ_KEY[key]}`)}
-                    sub={t(`drive.freq${FREQ_KEY[key]}Sub`)}
-                    subLines={0}
-                    minHeight={62}
+              {/* Las 4 frecuencias como desplegable (mismo patrón que el filtro de
+                  ejercicios de Progreso): son excluyentes y la explicación de
+                  cada una solo hace falta al elegir. La barra va en `surface`, no
+                  en lima — aquí no es la cabecera de la pantalla. */}
+              <View style={styles.freqBlock}>
+                <SectionLabel>{t('drive.sectionFrequency')}</SectionLabel>
+                <View style={styles.dropAnchor}>
+                  <TouchableOpacity
+                    style={[styles.freqBar, freqOpen && styles.freqBarOpen]}
+                    onPress={() => !loading && setFreqOpen((o) => !o)}
                     disabled={loading}
-                    onPress={() => !loading && setDriveFrequency(key)}
-                    control={driveBackup.frequency === key
-                      ? <CheckIcon size={16} color={th.colors.accent} />
-                      : <View style={styles.checkSpacer} />}
-                  />
-                ))}
-              </Section>
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.freqBarLabel} numberOfLines={1}>
+                      {t(`drive.freq${FREQ_KEY[driveBackup.frequency]}`)}
+                    </Text>
+                    <Reanimated.View style={chevronStyle}>
+                      <ChevronDown size={12} color={th.colors.mutedLight} />
+                    </Reanimated.View>
+                  </TouchableOpacity>
+
+                  {freqOpen && (
+                    <View style={styles.dropList}>
+                      {FREQ_OPTIONS.map((key) => {
+                        const isSel = driveBackup.frequency === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            style={[styles.dropItem, isSel && styles.dropItemSel]}
+                            onPress={() => { setDriveFrequency(key); setFreqOpen(false); }}
+                            activeOpacity={0.75}
+                          >
+                            <View style={styles.dropItemMeta}>
+                              <Text style={[styles.dropItemText, isSel && styles.dropItemTextSel]}>
+                                {t(`drive.freq${FREQ_KEY[key]}`)}
+                              </Text>
+                              <Text style={styles.dropItemSub}>
+                                {t(`drive.freq${FREQ_KEY[key]}Sub`)}
+                              </Text>
+                            </View>
+                            {isSel
+                              ? <CheckIcon size={16} color={th.colors.accent} />
+                              : <View style={styles.checkSpacer} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              </View>
 
               <View style={styles.nameBlock}>
                 <SectionLabel>{t('drive.sectionName')}</SectionLabel>
@@ -528,6 +592,69 @@ const makeStyles = (th) => StyleSheet.create({
   // Hueco del mismo tamaño que el check, para que las 4 frecuencias tengan la
   // etiqueta a la misma anchura aunque solo una lleve marca.
   checkSpacer: { width: 16, height: 16 },
+
+  // El botón de reconectar es el primario de la pantalla; solo separa del bloque
+  // siguiente, la forma la pone `primaryBtn`.
+  reconnectBtn: { marginBottom: spacing.xl },
+
+  // ── Desplegable de frecuencia ──────────────────────────────────────────────
+  // Mismo patrón que el filtro de ejercicios de Progreso: el menú se ancla
+  // inline al borde inferior de la barra (`top:'100%'`), así nace pegado a ella
+  // y sigue pegado al hacer scroll, sin Modal ni medir coordenadas.
+  freqBlock:  { marginBottom: spacing.xl },
+  dropAnchor: { width: '100%', zIndex: 100 },
+  freqBar: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.md,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.sm,
+    minHeight:         52,
+  },
+  // Abierta: esquinas inferiores rectas para fusionarse con el menú de abajo.
+  freqBarOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  freqBarLabel: {
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize:   14,
+    color:      th.colors.text,
+    flexShrink: 1,
+  },
+  dropList: {
+    position:                'absolute',
+    top:                     '100%',
+    left:                    0,
+    right:                   0,
+    zIndex:                  100,
+    backgroundColor:         th.colors.surface2,
+    borderBottomLeftRadius:  th.radius.sm,
+    borderBottomRightRadius: th.radius.sm,
+    overflow:                'hidden',
+    shadowColor:   '#000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius:  10,
+    elevation:     12,
+  },
+  dropItem: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  dropItemSel:     { backgroundColor: th.tint.accent10 },
+  dropItemMeta:    { flex: 1, minWidth: 0 },
+  dropItemText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropItemTextSel: { color: th.colors.text },
+  dropItemSub: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    lineHeight: 15,
+    marginTop:  spacing.xs,
+  },
 
   nameBlock: { marginBottom: spacing.xl },
   nameInput: {

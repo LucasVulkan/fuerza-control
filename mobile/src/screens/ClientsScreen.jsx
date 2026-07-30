@@ -34,7 +34,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
-import { computeCycleDoneIds } from '../../../src/utils/cycleProgress';
+import { progressFromBlob } from '../../../src/utils/stageProgress';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -421,7 +421,7 @@ function DownloadIcon({ size = 18, color }) {
 // real training pace, and the last/total session counts.
 
 function ActiveProgramHero({
-  program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount, clientLog,
+  program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount, progress,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete,
 }) {
   const { t, i18n } = useTranslation();
@@ -431,23 +431,23 @@ function ActiveProgramHero({
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ── Mesocycle position ──
+  // Mirrored from the client's last upload, never recomputed here: the trainer's
+  // own copy of the program has counters that only its owner's device moves, and
+  // re-deriving from the log would drift the moment the client deletes an entry
+  // (spec §3.1). Falls back to the local copy for clients who never sync.
+  const mine         = progressFromBlob(progress, program.id);
   const stages       = program.stages ?? [];
   const hasStages    = stages.length > 0;
-  const stageIdx     = program.currentStageIndex ?? 0;
+  const stageIdx     = mine?.currentStageIndex ?? program.currentStageIndex ?? 0;
   const currentStage = hasStages ? stages[stageIdx] : null;
   const currentDays  = hasStages ? (currentStage?.days ?? []) : (program.days ?? []);
   const sessPerCycle = Math.max(1, currentDays.length);
-  // Weeks = closed rotations (see `docs/specs/stage-locks.md` §3). NOTE: this is
-  // still the trainer's LOCAL copy of the program, which a synced client never
-  // updates — it reads 0 until phase 2 ships the client's progress blob.
-  const weeksDone    = program.stageWeeksCompleted ?? 0;
+  const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
-  // ── Next session in the rotation ── first one NOT done this cycle (by
-  // template, replaying the client's synced history — not by position: an
-  // index breaks as soon as the client trains out of rotation order).
-  const doneIds    = new Set(
-    computeCycleDoneIds(clientLog ?? [], currentDays.map((d) => d.sessionTemplateId)),
-  );
+  // ── Next session in the rotation ── first one NOT done this cycle. By
+  // template, not by position: an index breaks as soon as the client trains out
+  // of rotation order.
+  const doneIds    = new Set(mine?.cycleCompletedIds ?? program.cycleCompletedIds ?? []);
   const nextDayIdx = currentDays.findIndex((d) => !doneIds.has(d.sessionTemplateId));
   const nextDay    = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
   const nextTpl    = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
@@ -1195,7 +1195,7 @@ function AttentionPill({ label, count, color, active, onPress }) {
 }
 
 function ClientListCard({
-  client, tagNames, activeProgram, clientSessions, lastActivityTs, isConnected, weeksTraining,
+  client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
@@ -1215,20 +1215,18 @@ function ClientListCard({
     else                     lastStr = `Hace ${diffDays} días`;
   }
 
-  // Program info
+  // Program info — posición espejada del último envío del cliente (§3.1 de
+  // `docs/specs/stage-locks.md`); la copia local sirve de respaldo para clientes
+  // que nunca sincronizan.
+  const mine           = progressFromBlob(client.progress, activeProgram?.id);
   const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
-  const stageIdx       = activeProgram?.currentStageIndex ?? 0;
+  const stageIdx       = mine?.currentStageIndex ?? activeProgram?.currentStageIndex ?? 0;
   const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
   const currentDays    = hasStages
     ? (currentStage?.days ?? [])
     : (activeProgram?.days ?? []);
   const sessPerCycle   = Math.max(1, currentDays.length);
-  // Un cliente sincronizado nunca trae `cycleCompletedIds` en vivo (solo su
-  // historial cruza el sync) — se recalcula igual que en Home, pero
-  // reproduciendo el historial en vez de leer el contador persistido.
-  const cycleDoneIds   = new Set(
-    computeCycleDoneIds(clientSessions ?? [], currentDays.map((d) => d.sessionTemplateId)),
-  );
+  const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
   const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   const weekNum        = weeksTraining ?? 1;
 
@@ -2071,7 +2069,7 @@ export default function ClientsScreen() {
                       dirty={selectedClient.programDirty ?? false}
                       lastActivity={getLastActivity(activeProgram)}
                       sessionCount={getSessionCount(activeProgram)}
-                      clientLog={clientBaseLog}
+                      progress={selectedClient.progress}
                       onView={() => setPrintingProgram(activeProgram.id)}
                       onEdit={() => setEditingProgram(activeProgram.id)}
                       onUpload={syncEnabled ? () => uploadProgram(activeProgram.id) : undefined}
@@ -2790,7 +2788,6 @@ export default function ClientsScreen() {
                   client={client}
                   tagNames={clientTagNames}
                   activeProgram={activeProgram}
-                  clientSessions={clientSessions}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   weeksTraining={weeksTraining}

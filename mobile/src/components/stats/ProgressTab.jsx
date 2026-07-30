@@ -37,21 +37,12 @@ import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
+import { ChevronDown }   from '../ui/EditorIcons';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
 
 const AnimatedLine   = Animated.createAnimatedComponent(Line);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
-// Chevron fino hacia abajo (barras accent tipo "Bars" de Figma). Se rota 180º
-// vía el wrapper animado cuando el desplegable está abierto (apunta arriba).
-function ChevronDown({ size = 12, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <Path d="M2.5 4.5 L6 8 L9.5 4.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 

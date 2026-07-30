@@ -16,7 +16,7 @@
 import { useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView,
-  Animated, PanResponder,
+  Animated, PanResponder, KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -89,32 +89,40 @@ export default function DragSheet({ visible, onClose, title, action, background,
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={close} />
         </View>
       </Animated.View>
-      <Animated.View
-        style={[
-          styles.card,
-          // `background` solo lo usa el menú principal: sobre `bg` se ve la
-          // tarjeta de cada sección, que en `surface` se fundiría con la hoja.
-          background ? { backgroundColor: background } : null,
-          { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
-        ]}
-      >
-        <View {...panResponder.panHandlers} style={styles.handleWrap}>
-          <View style={styles.handle} />
-        </View>
-        {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
-            propio bloque de identidad ahí arriba y se cierra arrastrando. */}
-        {title != null && (
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
-              <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
-            </TouchableOpacity>
+      {/* KAV como carcasa inferior (misma solución que `workout/NotesModal`): el
+          teclado empuja la hoja en vez de taparla — lo nota cualquier hoja con
+          campo de texto (el código de entrenador, el nombre de la copia…).
+          `box-none` deja que los toques del hueco de arriba lleguen al backdrop,
+          y el `translateY` del arrastre sigue siendo del sheet, independiente
+          del empuje de layout. */}
+      <KeyboardAvoidingView style={styles.kavShell} behavior="padding" pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.card,
+            // `background` solo lo usa el menú principal: sobre `bg` se ve la
+            // tarjeta de cada sección, que en `surface` se fundiría con la hoja.
+            background ? { backgroundColor: background } : null,
+            { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
+          ]}
+        >
+          <View {...panResponder.panHandlers} style={styles.handleWrap}>
+            <View style={styles.handle} />
           </View>
-        )}
-        <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </Animated.View>
+          {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
+              propio bloque de identidad ahí arriba y se cierra arrastrando. */}
+          {title != null && (
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
+                <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -124,11 +132,10 @@ const makeStyles = (th) => StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
+  // La carcasa empuja la hoja contra el borde inferior; el `maxHeight` se mide
+  // contra ella, así que al abrirse el teclado la hoja también se encoge.
+  kavShell: { flex: 1, justifyContent: 'flex-end' },
   card: {
-    position:             'absolute',
-    left:                 0,
-    right:                0,
-    bottom:               0,
     maxHeight:            '85%',
     backgroundColor:      th.colors.surface,
     borderTopLeftRadius:  th.radius.lg,

@@ -258,6 +258,7 @@
     "activeSubNever": "No backup has been saved yet.",
     "activeSub": "Last backup: {{when}}",
     "reconnectSub": "Google expired the permission. Reconnect the account to keep saving backups.",
+    "reconnectCta": "RECONNECT",
     "sectionHow": "WHAT IT DOES",
     "how1Title": "Saves everything to your Drive",
     "how1Sub": "Programs, history, your own exercises and settings, in a \"Forma Backups\" folder on your Google Drive.",

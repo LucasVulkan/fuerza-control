@@ -23,6 +23,44 @@
  */
 
 /**
+ * The client's progress, as it travels to the trainer alongside their history
+ * and comes back on a reinstall. `programId` lets the receiver reject a blob
+ * that belongs to a program the client is no longer on.
+ *
+ * `stageAdvancePending` is deliberately absent: it is a dismissable UI state,
+ * and the trainer can tell a finished stage from `stageWeeksCompleted` against
+ * the stage's own `durationWeeks`.
+ *
+ * @returns {object|null} null when the program has no id (nothing to sync)
+ */
+export function progressBlob(program) {
+  if (!program?.id) return null;
+  return {
+    programId:           program.id,
+    currentStageIndex:   program.currentStageIndex   ?? 0,
+    cycleCompletedIds:   program.cycleCompletedIds   ?? [],
+    stageWeeksCompleted: program.stageWeeksCompleted ?? 0,
+    totalWeeksCompleted: program.totalWeeksCompleted ?? 0,
+    updatedAt:           new Date().toISOString(),
+  };
+}
+
+/**
+ * The counters from a blob, ready to spread onto a program — but only if the
+ * blob describes that same program. Anything else returns null so the caller
+ * keeps what it has instead of adopting a stale stage index.
+ */
+export function progressFromBlob(blob, programId) {
+  if (!blob || blob.programId !== programId) return null;
+  return {
+    currentStageIndex:   blob.currentStageIndex   ?? 0,
+    cycleCompletedIds:   blob.cycleCompletedIds   ?? [],
+    stageWeeksCompleted: blob.stageWeeksCompleted ?? 0,
+    totalWeeksCompleted: blob.totalWeeksCompleted ?? 0,
+  };
+}
+
+/**
  * Applies one saved session to a program's cycle counters.
  *
  * @param {object}   program        the program that owns the session's template

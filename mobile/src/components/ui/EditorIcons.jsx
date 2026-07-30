@@ -20,6 +20,16 @@ export function ArrowIcon({ size = 18, color, back = false }) {
   );
 }
 
+// Chevron fino hacia abajo (barras de los desplegables). Se rota 180º vía un
+// wrapper animado cuando el menú está abierto, para que apunte arriba.
+export function ChevronDown({ size = 12, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <Path d="M2.5 4.5 L6 8 L9.5 4.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // Icons / "More..." (`151:1467`): 3 puntos de 3px. El componente los dibuja en
 // horizontal, pero las instancias de la cabecera van rotadas -90° — o sea que en
 // pantalla se ven VERTICALES. Se dibuja ya rotado.

@@ -25,6 +25,7 @@ import {
   splitClientLogEntries,
 } from './clientLogs';
 import { assignActiveProgram, archivedProgramIds } from './clientPrograms';
+import { advanceCycle, progressBlob, progressFromBlob } from './stageProgress';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -84,9 +85,9 @@ class FakeTrainerClients {
     return r.id;
   }
 
-  uploadHistory(slotId, entries, customExercises = {}) {
+  uploadHistory(slotId, entries, customExercises = {}, progress = null) {
     const r = this._byId(slotId);
-    r.history_json = { entries, customExercises };
+    r.history_json = { entries, customExercises, progress };
     r.history_updated_at = new Date().toISOString();
     r.sessions_count = entries.length;
   }
@@ -94,11 +95,12 @@ class FakeTrainerClients {
   downloadHistory(slotId) {
     const r = this._byId(slotId);
     const raw = r.history_json;
-    // Soporta formato nuevo { entries, customExercises } y legacy (array plano).
+    // Soporta formato nuevo { entries, customExercises, progress } y legacy (array plano).
     const isNew = raw && !Array.isArray(raw) && raw.entries !== undefined;
     return {
       history:         isNew ? (raw.entries ?? []) : (raw ?? []),
       customExercises: isNew ? (raw.customExercises ?? {}) : {},
+      progress:        isNew ? (raw.progress ?? null) : null,
       updatedAt:       r.history_updated_at,
     };
   }
@@ -173,7 +175,10 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     // Descarga el historial del cliente y lo fusiona en SU log separado —
     // nunca en el workoutLog personal del entrenador. Append-only por id.
     pull(clientId) {
-      const { history, customExercises } = db.downloadHistory(state.clients[clientId].slotId);
+      const { history, customExercises, progress } = db.downloadHistory(state.clients[clientId].slotId);
+      // La posición en el ciclo se ESPEJA, nunca se recalcula del historial
+      // (spec stage-locks §3.1) — por eso borrar sesiones no la mueve.
+      state.clients[clientId] = { ...state.clients[clientId], progress };
       if (Object.keys(customExercises).length) Object.assign(state.customExercises, customExercises);
       const existing = state.clientLogs[clientId] ?? [];
       const merged   = mergeClientLog(existing, history);
@@ -187,21 +192,41 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
   const state = { uid, programs: {}, sessionTemplates: {}, workoutLog: [], customExercises: {}, clientSync: {} };
   return {
     state,
-    connect(code, { at }) {
+    connect(code, { at, mergeHistory = false }) {
       const slot = db.getSlotByClientCode(code);
       if (!slot) throw new Error('código no encontrado');
       db.linkClientToSlot(code, uid);
       const { programJson } = db.downloadProgram(slot.id);
       const data = programJson;
       state.programs[data.program.id] = data.program;
+      state.activeProgramId = data.program.id;
       Object.assign(state.sessionTemplates, data.sessionTemplates ?? {});
       state.clientSync = {
         slotId:            slot.id,
         trainerProgramIds: [data.program.id],
         linkedAt:          new Date(at).toISOString(),
       };
+      // Restaurar lo propio desde el slot: contadores SIEMPRE, historial solo si
+      // se acepta la fusión (spec stage-locks §6.4). Tras reinstalar, esto es lo
+      // que devuelve al cliente donde lo dejó.
+      const { history, progress } = db.downloadHistory(slot.id);
+      const restored = progressFromBlob(progress, data.program.id);
+      if (restored) Object.assign(state.programs[data.program.id], restored);
+      if (mergeHistory) {
+        const localIds = new Set(state.workoutLog.map((e) => e.id));
+        state.workoutLog.push(...history.filter((e) => !localIds.has(e.id)));
+      }
     },
-    logSession(entry)   { state.workoutLog.push(entry); },
+    // Guardar sesión: registra la entrada Y mueve los contadores del programa,
+    // igual que saveSession en el store.
+    logSession(entry) {
+      state.workoutLog.push(entry);
+      const program = state.programs[state.activeProgramId];
+      const cycle   = (program?.days ?? []).map((d) => d.sessionTemplateId);
+      if (cycle.includes(entry.sessionTemplateId)) {
+        Object.assign(program, advanceCycle(program, entry.sessionTemplateId, cycle));
+      }
+    },
     deleteSession(id)   { state.workoutLog = state.workoutLog.filter((e) => e.id !== id); },
     // El entrenador cambió el programa: el cliente lo descarga y lo adopta.
     // trainerProgramIds ACUMULA (mirror del store) — las sesiones del programa
@@ -224,7 +249,10 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
         trainerProgramIds: state.clientSync.trainerProgramIds,
         linkedAt:          state.clientSync.linkedAt,
       });
-      db.uploadHistory(state.clientSync.slotId, entries, customExercises);
+      db.uploadHistory(
+        state.clientSync.slotId, entries, customExercises,
+        progressBlob(state.programs[state.activeProgramId]),
+      );
       return entries;
     },
   };
@@ -324,6 +352,89 @@ describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
     client.upload();
     expect(trainer.pull('ana')).toBe(1);
     expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['s1', 's2']);
+  });
+});
+
+// El requisito duro de la spec de bloqueo de etapas: la posición del cliente en
+// el ciclo y la que ve el entrenador NO pueden divergir, pase lo que pase.
+describe('progresión espejada — cliente y entrenador nunca divergen', () => {
+  // Las dos caras de lo mismo: lo que el cliente tiene en su programa y lo que
+  // el entrenador guardó del último envío, normalizados a la misma forma.
+  const enCliente   = (client, programId)  => progressFromBlob(progressBlob(client.state.programs[programId]), programId);
+  const enEntrenador = (trainer, programId) => progressFromBlob(trainer.state.clients.ana.progress, programId);
+
+  test('el entrenador ve la misma posición de ciclo que el cliente', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    expect(enEntrenador(trainer, 'prog_trainer')).toEqual(enCliente(client, 'prog_trainer'));
+    expect(enEntrenador(trainer, 'prog_trainer').cycleCompletedIds).toEqual(['tplA']);
+  });
+
+  test('repetir una sesión no avanza el ciclo en ninguno de los dos lados', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplA', LINK_TS + 2 * DAY));
+    client.logSession(session('s3', 'tplA', LINK_TS + 3 * DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    expect(enEntrenador(trainer, 'prog_trainer')).toEqual(enCliente(client, 'prog_trainer'));
+    expect(enEntrenador(trainer, 'prog_trainer').totalWeeksCompleted).toBe(0);
+
+    // Al hacer la que falta, el ciclo cierra en ambos.
+    client.logSession(session('s4', 'tplB', LINK_TS + 4 * DAY));
+    client.upload();
+    trainer.pull('ana');
+    expect(enEntrenador(trainer, 'prog_trainer').totalWeeksCompleted).toBe(1);
+    expect(enEntrenador(trainer, 'prog_trainer').cycleCompletedIds).toEqual([]);
+  });
+
+  test('borrar sesiones del historial no hace retroceder el programa', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));  // cierra ciclo
+    client.upload();
+    trainer.pull('ana');
+    const antes = enEntrenador(trainer, 'prog_trainer');
+
+    client.deleteSession('s1');
+    client.deleteSession('s2');
+    client.upload();
+    trainer.pull('ana');
+
+    expect(enCliente(client, 'prog_trainer')).toEqual(antes);
+    expect(enEntrenador(trainer, 'prog_trainer')).toEqual(antes);
+    expect(antes.totalWeeksCompleted).toBe(1);
+  });
+
+  test('reinstalar y reconectar devuelve al cliente donde lo dejó', () => {
+    const { db, trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
+    client.logSession(session('s3', 'tplA', LINK_TS + 3 * DAY));
+    client.upload();
+    const antes = enCliente(client, 'prog_trainer');
+
+    // Móvil nuevo, sin nada local, mismo código.
+    const nuevo = makeClient(db, { uid: 'client-uid-1' });
+    nuevo.connect('CODE-1', { at: LINK_TS + 4 * DAY });
+
+    expect(enCliente(nuevo, 'prog_trainer')).toEqual(antes);
+    expect(nuevo.state.workoutLog).toEqual([]);          // rechazó fusionar historial…
+    expect(antes.cycleCompletedIds).toEqual(['tplA']);   // …y aun así conserva el ciclo abierto
+  });
+
+  test('un blob de otro programa no se adopta', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    // El entrenador cambia de programa: el blob pendiente es del anterior.
+    expect(progressFromBlob(trainer.state.clients.ana.progress, 'prog_otro')).toBeNull();
   });
 });
 

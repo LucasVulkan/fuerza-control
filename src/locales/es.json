@@ -258,6 +258,7 @@
     "activeSubNever": "Todavía no se ha guardado ninguna copia.",
     "activeSub": "Última copia: {{when}}",
     "reconnectSub": "Google ha caducado el permiso. Vuelve a conectar la cuenta para seguir guardando copias.",
+    "reconnectCta": "VOLVER A CONECTAR",
     "sectionHow": "QUÉ HACE",
     "how1Title": "Guarda todo en tu Drive",
     "how1Sub": "Programas, historial, ejercicios propios y ajustes, en la carpeta «Forma Backups» de tu Google Drive.",

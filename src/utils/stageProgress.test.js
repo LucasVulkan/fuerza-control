@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceCycle } from './stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob } from './stageProgress';
 
 const CYCLE = ['tpl_a', 'tpl_b', 'tpl_c'];
 const STAGE = { durationWeeks: 2, isLastStage: false };
@@ -59,5 +59,36 @@ describe('advanceCycle', () => {
     const p = replay(CYCLE, {});
     expect(p.totalWeeksCompleted).toBe(1);
     expect(p.stageAdvancePending).toBe(false);
+  });
+});
+
+describe('progressBlob / progressFromBlob', () => {
+  const program = {
+    id: 'prog_1', currentStageIndex: 2, cycleCompletedIds: ['tpl_a'],
+    stageWeeksCompleted: 3, totalWeeksCompleted: 11,
+  };
+
+  it('survives a round trip', () => {
+    expect(progressFromBlob(progressBlob(program), 'prog_1')).toEqual({
+      currentStageIndex: 2, cycleCompletedIds: ['tpl_a'],
+      stageWeeksCompleted: 3, totalWeeksCompleted: 11,
+    });
+  });
+
+  it('rejects a blob from another program instead of adopting its stage', () => {
+    expect(progressFromBlob(progressBlob(program), 'prog_2')).toBeNull();
+    expect(progressFromBlob(null, 'prog_1')).toBeNull();
+  });
+
+  it('fills defaults for a program that has never been trained', () => {
+    expect(progressFromBlob(progressBlob({ id: 'prog_1' }), 'prog_1')).toEqual({
+      currentStageIndex: 0, cycleCompletedIds: [],
+      stageWeeksCompleted: 0, totalWeeksCompleted: 0,
+    });
+  });
+
+  it('has nothing to send for a program without an id', () => {
+    expect(progressBlob(undefined)).toBeNull();
+    expect(progressBlob({})).toBeNull();
   });
 });

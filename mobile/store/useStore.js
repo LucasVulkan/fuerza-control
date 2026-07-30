@@ -39,7 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
-import { advanceCycle } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob } from '../../src/utils/stageProgress';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -2806,8 +2806,15 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, customExercises: clientCustom, updatedAt } =
+          const { history, customExercises: clientCustom, progress, updatedAt } =
             await downloadHistory(client.syncSlotId);
+          // Mirror the client's counters verbatim — never recompute them here
+          // (spec §3.1). Kept even when there is no new history to merge.
+          if (progress) {
+            set((s) => ({
+              clients: { ...s.clients, [clientId]: { ...s.clients[clientId], progress } },
+            }));
+          }
           if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }
@@ -2953,6 +2960,54 @@ export const useStore = create(
       },
 
       /**
+       * Pulls the client's own slice back out of their slot after a (re)connect:
+       * their cycle/stage counters ALWAYS, their workout log only if they
+       * accepted the merge — progress is state, not a reading of the log, so a
+       * client who declines the history still lands where they left off
+       * (spec §6.4).
+       *
+       * Must run AFTER the program has been imported: the counters are written
+       * onto that program, overriding whatever the trainer's copy carried.
+       * Never throws — a failed restore still leaves the client with a program.
+       */
+      _restoreFromSlot: async (slotId, programId, mergeHistory) => {
+        try {
+          const { history: remoteEntries, customExercises: remoteCustom, progress } =
+            await downloadHistory(slotId);
+
+          const restored = progressFromBlob(progress, programId);
+          if (restored) {
+            const prog = get().programs[programId];
+            // `days` mirrors the active stage — keep them in step, as setCurrentStage does.
+            const stageDays = prog?.stages?.[restored.currentStageIndex]?.days;
+            set((s) => ({
+              programs: {
+                ...s.programs,
+                [programId]: { ...prog, ...restored, ...(stageDays ? { days: stageDays } : {}) },
+              },
+            }));
+          }
+
+          if (!mergeHistory) return;
+
+          const localIds   = new Set((get().workoutLog ?? []).map((e) => e.id));
+          const newEntries = (remoteEntries ?? []).filter((e) => e.id && !localIds.has(e.id));
+          if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
+            set((s) => ({
+              workoutLog: [...s.workoutLog, ...newEntries].sort(
+                (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+              ),
+              // Remote custom exercises fill gaps; local definitions take priority
+              customExercises: { ...remoteCustom, ...s.customExercises },
+            }));
+          }
+        } catch (err) {
+          // Non-fatal — program still imported; history can be fetched manually later
+          console.warn('[_restoreFromSlot]', err.message);
+        }
+      },
+
+      /**
        * Links the client to a trainer slot and imports the program.
        * Flow: anonymous sign-in → link slot → import program → save state.
        *
@@ -2981,29 +3036,10 @@ export const useStore = create(
         // 5. Import the program using existing logic (same format as file export)
         get().importData(slot.program_json, { program: true, log: false }, { silent: true });
 
-        // 6. Optionally merge remote workout history into local log
-        if (mergeHistory) {
-          try {
-            const { history: remoteEntries, customExercises: remoteCustom } =
-              await downloadHistory(slot.id);
-
-            const localIds = new Set((get().workoutLog ?? []).map((e) => e.id));
-            const newEntries = remoteEntries.filter((e) => e.id && !localIds.has(e.id));
-
-            if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
-              set((s) => ({
-                workoutLog: [...s.workoutLog, ...newEntries].sort(
-                  (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
-                ),
-                // Remote custom exercises fill gaps; local definitions take priority
-                customExercises: { ...remoteCustom, ...s.customExercises },
-              }));
-            }
-          } catch (err) {
-            // Non-fatal — program still imported; history can be fetched manually later
-            console.warn('[linkToTrainer] history merge failed:', err.message);
-          }
-        }
+        // 6. Restore progress, and optionally the workout log, from the slot.
+        // The counters come back even when the user declines the history merge:
+        // progress is state, not a reading of the log (spec §6.4).
+        await get()._restoreFromSlot(slot.id, slot.program_json?.program?.id, mergeHistory);
 
         // 7. Save client sync state
         set(() => ({
@@ -3155,8 +3191,13 @@ export const useStore = create(
           lastProgramImportedAt: clientSync.lastProgramImportedAt,
         });
 
+        // The trainer mirrors these counters instead of recomputing them from
+        // `entries` — that is what keeps both sides from ever drifting, and what
+        // survives the client deleting log entries (spec §3.1).
+        const progress = progressBlob(programs[profile.activeProgramId]);
+
         try {
-          await uploadHistory(clientSync.slotId, entries, relevantCustom);
+          await uploadHistory(clientSync.slotId, entries, relevantCustom, progress);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -3247,25 +3288,8 @@ export const useStore = create(
         // 3. Import program
         get().importData(programJson, { program: true, log: false }, { silent: true });
 
-        // 4. Optionally merge remote history (same logic as linkToTrainer)
-        if (mergeHistory) {
-          try {
-            const { history: remoteEntries, customExercises: remoteCustom } =
-              await downloadHistory(slotId);
-            const localIds = new Set((get().workoutLog ?? []).map((e) => e.id));
-            const newEntries = remoteEntries.filter((e) => e.id && !localIds.has(e.id));
-            if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
-              set((s) => ({
-                workoutLog: [...s.workoutLog, ...newEntries].sort(
-                  (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
-                ),
-                customExercises: { ...remoteCustom, ...s.customExercises },
-              }));
-            }
-          } catch (err) {
-            console.warn('[confirmGoogleReconnect] history merge failed:', err.message);
-          }
-        }
+        // 4. Restore progress (always) and history (if the user accepted)
+        await get()._restoreFromSlot(slotId, programJson?.program?.id, mergeHistory);
 
         // 5. Save client sync state
         set(() => ({
