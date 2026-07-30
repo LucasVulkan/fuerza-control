@@ -742,8 +742,8 @@
     "titleReplace": "Sustituir ejercicio",
     "searchPlaceholder2": "Buscar ejercicio",
     "patternGroups": { "push": "Empuje", "pull": "Tracción", "squat": "Sentadilla", "hinge": "Bisagra", "core": "Core", "grip": "Agarre", "calf": "Gemelos" },
-    "groups": { "chest": "Pecho", "back": "Espalda", "shoulders": "Hombro", "arms": "Brazos", "quads": "Cuádriceps", "glutes_hamstrings": "Glúteo e isquios", "legs_lower": "Gemelos", "core": "Core", "grip": "Agarre" },
-    "equipment": { "bodyweight": "Corporal", "barbell": "Barra", "dumbbells": "Mancuernas", "cables": "Polea", "machines": "Máquina", "kettlebell": "Kettlebell", "resistance_band": "Bandas", "pullup_bar": "Barra dominadas", "dip_bar": "Paralelas", "parallettes": "Paraletas", "rings": "Anillas", "ab_wheel": "Rueda abdominal", "rope": "Cuerda", "weight_belt": "Lastre" },
+    "groups": { "chest": "Pecho", "back": "Espalda", "shoulders": "Hombro", "arms": "Brazos", "biceps": "Bíceps", "triceps": "Tríceps", "quads": "Cuádriceps", "glutes_hamstrings": "Glúteo e isquios", "legs_lower": "Gemelos", "core": "Core", "grip": "Agarre" },
+    "equipment": { "bodyweight": "Corporal", "barbell": "Barra", "dumbbells": "Mancuernas", "cables": "Polea", "machines": "Máquina", "kettlebell": "Kettlebell", "resistance_band": "Bandas", "pullup_bar": "Barra dominadas", "parallettes": "Paralelas", "rings": "Anillas", "ab_wheel": "Rueda abdominal", "rope": "Cuerda", "weight_belt": "Lastre" },
     "filters": { "title": "Filtros", "clear": "Limpiar", "muscleGroup": "GRUPO MUSCULAR", "equipment": "EQUIPO", "type": "TIPO", "compound": "Compuesto", "isolation": "Aislamiento", "see_one": "Ver {{count}} ejercicio", "see_other": "Ver {{count}} ejercicios", "seeNone": "Sin resultados" },
     "title": "SELECCIONAR EJERCICIO",
     "searchPlaceholder": "Buscar ejercicio...",
@@ -918,6 +918,23 @@
       "rowAutoSub": "{{sets}} series · {{rest}}",
       "rowCustomSub": "{{n}} pasos · {{rest}}"
     }
+  },
+  "customExercise": {
+    "title": "Nuevo ejercicio",
+    "nameLabel": "NOMBRE",
+    "namePlaceholder": "Ej: Press Pallof con cable",
+    "nameError": "El nombre es obligatorio",
+    "notesLabel": "NOTAS DE EJECUCIÓN",
+    "notesPlaceholder": "Ej: Mantener la columna neutra...",
+    "tagsRowTitle": "Clasificación",
+    "tagsRowEmpty": "Toca para configurar",
+    "tagsRowHint": "Patrón · grupo muscular · equipo · tipo · nivel",
+    "tagsSheetTitle": "Clasificación y avanzado",
+    "patternSectionLabel": "PATRÓN DE MOVIMIENTO",
+    "levelSectionLabel": "NIVEL TÉCNICO",
+    "levelAdvanced": "Avanzado",
+    "createBtn": "Crear ejercicio",
+    "toastCreated": "Ejercicio creado"
   },
   "clients": {
     "title": "Clientes",

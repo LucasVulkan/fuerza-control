@@ -1,124 +1,54 @@
-import { useState, useEffect } from 'react';
+/**
+ * CustomExerciseScreen — alta de un ejercicio nuevo en la librería.
+ *
+ * Misma estructura y mismos elementos de UI que `ExerciseEditorInline`
+ * (RESUMEN → VOLUMEN → PROGRESIÓN → OPCIONES), reutilizando sus componentes
+ * compartidos (`NavRow`/`OptionRow`/`ToggleRow`/`NoteRow` de `ui/EditorRows`,
+ * `StepField`, `SegmentedControl`, `DragSheet`). Dos piezas no existen en ese
+ * editor porque son propias del ALTA, no de la configuración por sesión:
+ *
+ *   · Nombre — campo propio, arriba del todo (el editor no lo necesita: el
+ *     ejercicio ya existe).
+ *   · Clasificación (patrón / grupo muscular / equipo / tipo / nivel) — con el
+ *     mismo patrón "fila + hoja" que Calentamiento o Progresión en el editor
+ *     real (piezas que tampoco están en Figma, ver UI-MIGRATION §"Exercice
+ *     Editor"). Es lo que antes eran los chips de "Patrón"/"Material" + las
+ *     opciones avanzadas de nivel — ahora como tags de un único NavRow.
+ *
+ * La Progresión reutiliza el mismo sistema (Modo → Tipo → Incremento) que el
+ * editor, aunque solo persiste lo que la ficha de librería puede guardar
+ * (`progressionModel`/`weightStep`) — el modo de evaluación es una config por
+ * SESIÓN, no de la ficha, así que ese paso no aplica aquí.
+ */
+import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Switch, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { LEGACY_TYPE_MAP } from '../../../src/utils/progression';
+import { useWeightUnit } from '../hooks/useWeightUnit';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-
-const PATTERNS = [
-  { value: 'vertical_pull',   label: 'Tracción vertical' },
-  { value: 'horizontal_pull', label: 'Tracción horizontal' },
-  { value: 'vertical_push',   label: 'Empuje vertical' },
-  { value: 'horizontal_push', label: 'Empuje horizontal' },
-  { value: 'squat',           label: 'Pierna rodilla' },
-  { value: 'hip_hinge',       label: 'Pierna cadera' },
-  { value: 'core',            label: 'Core' },
-  { value: 'carry_grip',      label: 'Agarre / Carga' },
-  { value: 'calf_raise',      label: 'Gemelos' },
-];
-
-const EQUIPMENT_OPTIONS = [
-  { value: 'barbell',         label: 'Barra' },
-  { value: 'dumbbell',        label: 'Mancuernas' },
-  { value: 'cables',          label: 'Poleas / cables' },
-  { value: 'machines',        label: 'Máquinas' },
-  { value: 'pullup_bar',      label: 'Barra de dominadas' },
-  { value: 'resistance_band', label: 'Banda elástica' },
-  { value: 'bodyweight',      label: 'Peso corporal' },
-  { value: 'kettlebell',      label: 'Kettlebell' },
-  { value: 'rings',           label: 'Anillas' },
-  { value: 'parallettes',     label: 'Paralelas' },
-];
+import SegmentedControl from '../components/ui/SegmentedControl';
+import StepField from '../components/ui/StepField';
+import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../components/ui/EditorRows';
+import { ArrowIcon, ProgressionIcon } from '../components/ui/EditorIcons';
+import DragSheet from '../components/DragSheet';
+import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
 
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
 
-// ─── StepField — igual que en ExerciseEditorInline ────────────────────────────
-function StepField({ label, value, onChange, min, max }) {
-  const sf = useThemedStyles(makeSf);
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => { setDraft(String(value)); }, [value]);
-  const numVal = Number(value);
-
-  return (
-    <View style={sf.card}>
-      <Text style={sf.label}>{label}</Text>
-      <View style={sf.row}>
-        <TouchableOpacity style={sf.btn} onPress={() => onChange(Math.max(min, numVal - 1))}>
-          <Text style={sf.btnText}>−</Text>
-        </TouchableOpacity>
-        <TextInput
-          style={sf.valueInput}
-          keyboardType="numeric"
-          value={draft}
-          onChangeText={(v) => setDraft(v.replace(/[^0-9]/g, ''))}
-          onBlur={() => {
-            const n = parseInt(draft, 10);
-            if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); setDraft(String(c)); onChange(c); }
-            else setDraft(String(value));
-          }}
-          selectTextOnFocus
-        />
-        <TouchableOpacity style={sf.btn} onPress={() => onChange(Math.min(max, numVal + 1))}>
-          <Text style={sf.btnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-const makeSf = (th) => StyleSheet.create({
-  card: {
-    flex:            1,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.sm + 2,
-    gap:             6,
-  },
-  label: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 0.5,
-    fontWeight:    typography.medium,
-    textAlign:     'center',
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  btn: {
-    width:           36,
-    height:          36,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  btnText: { fontSize: 18, color: th.colors.muted, lineHeight: 22 },
-  valueInput: {
-    flex:               1,
-    textAlign:          'center',
-    textAlignVertical:  'center',
-    includeFontPadding: false,
-    fontSize:           typography.lg,
-    fontWeight:         typography.bold,
-    color:              th.colors.text,
-    backgroundColor:    'transparent',
-    height:             36,
-    paddingVertical:    0,
-  },
-});
-
 export default function CustomExerciseScreen({ navigation, route }) {
+  const { t } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { templateId, currentExerciseId, sessionMode = false } = route.params ?? {};
-  const insets = useSafeAreaInsets();
+  const { label: weightLabel } = useWeightUnit();
 
   const addCustomExercise = useStore((s) => s.addCustomExercise);
   const addExercise       = useStore((s) => s.addExercise);
@@ -126,306 +56,418 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const addAdHocExercise  = useStore((s) => s.addAdHocExercise);
   const showToast         = useStore((s) => s.showToast);
 
-  const [advanced, setAdvanced] = useState(false);
-  const [errors,   setErrors]   = useState({});
-  const [form, setForm] = useState({
-    name: '', pattern: '',
-    sets: 3, minReps: 8, maxReps: 12, restSec: 90,
-    equipment: [], isUnilateral: false,
-    progressionModel: 'double_progression', level: 'intermediate', notes: '',
-    // Flexible tracking
-    metric: 'reps',       // 'reps' | 'time'
-    tempo: '',
-  });
+  const [name,      setName]      = useState('');
+  const [nameError, setNameError] = useState(false);
 
-  function set_(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
-  }
+  const [metric,  setMetric]  = useState('reps');
+  const [sets,    setSets]    = useState(3);
+  const [restSec, setRestSec] = useState(90);
+  const [minReps, setMinReps] = useState(8);
+  const [maxReps, setMaxReps] = useState(12);
+  const [minTime, setMinTime] = useState(20);
+  const [maxTime, setMaxTime] = useState(40);
+
+  const [progMode,       setProgMode]       = useState('auto');
+  const [progType,       setProgType]       = useState('double');
+  const [incrFixedValue, setIncrFixedValue] = useState(2.5);
+
+  const [pattern,      setPattern]      = useState('');
+  const [primaryGroup, setPrimaryGroup] = useState('');
+  const [equipment,    setEquipment]    = useState([]);
+  const [isCompound,   setIsCompound]   = useState(true);
+  const [level,        setLevel]        = useState('intermediate');
+  const [isUnilateral, setIsUnilateral] = useState(false);
+  const [tempo,        setTempo]        = useState('');
+  const [notes,        setNotes]        = useState('');
+
+  const [progSheetOpen,  setProgSheetOpen]  = useState(false);
+  const [tagsSheetOpen,  setTagsSheetOpen]  = useState(false);
+  const [tempoSheetOpen, setTempoSheetOpen] = useState(false);
+
+  const isTime        = metric === 'time';
+  const showRepsRange = !isTime && progMode !== 'submax';
+  const showTimeRange = isTime;
+  const showRepsIncr   = progType === 'reps';
+  const showTimeIncr   = progType === 'time';
 
   function toggleEquipment(val) {
-    setForm((f) => ({
-      ...f,
-      equipment: f.equipment.includes(val)
-        ? f.equipment.filter((e) => e !== val)
-        : [...f.equipment, val],
-    }));
+    setEquipment((prev) => (prev.includes(val) ? prev.filter((e) => e !== val) : [...prev, val]));
   }
 
-  // Always include weight — user simply leaves it blank when not applicable
-  function derivedInputType() {
-    return form.metric === 'time' ? 'weight_time' : 'weight_reps';
-  }
+  // ── Resumen / textos en lenguaje natural (mismo cálculo que el editor real) ──
+  const rangeTxt = isTime
+    ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
+    : progMode === 'submax'
+      ? t('workout.submax', 'submáx')
+      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+
+  const incTxt = showRepsIncr
+    ? String(incrFixedValue)
+    : `${incrFixedValue} ${showTimeIncr ? 's' : weightLabel}`;
+  const progLine = progMode === 'auto'
+    ? `${t(`exerciseEditor.progModeDesc.${progMode}`)} · +${incTxt}`
+    : t(`exerciseEditor.progModeDesc.${progMode}`);
+
+  const patternLabel = pattern ? t(`exerciseSelector.patterns.${pattern}`) : null;
+  const groupLabel   = primaryGroup ? t(`exerciseSelector.groups.${primaryGroup}`) : null;
+  const equipLabel   = equipment.length
+    ? equipment.map((e) => t(`exerciseSelector.equipment.${e}`)).join(', ')
+    : t('exerciseSelector.equipment.bodyweight');
+  const levelLabel = level === 'beginner' ? t('exerciseSelector.levelBeginner')
+    : level === 'intermediate' ? t('exerciseSelector.levelIntermediate')
+    : t('customExercise.levelAdvanced');
+
+  const volumeLine = [`${sets} × ${rangeTxt}`, t('exerciseEditor.restSummary', { s: restSec }), patternLabel, equipLabel]
+    .filter(Boolean).join(' · ');
+
+  const tagsSummary = [patternLabel, groupLabel, equipLabel, levelLabel].filter(Boolean).join(' · ');
 
   function handleCreate() {
-    const errs = {};
-    if (!form.name.trim()) errs.name = 'El nombre es obligatorio';
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (!name.trim()) { setNameError(true); return; }
 
-    const id  = generateCustomId();
-    const itp = derivedInputType();
+    const id = generateCustomId();
+    const isTimeMode = metric === 'time';
+    const progressionModel = progMode === 'auto'
+      ? (LEGACY_TYPE_MAP[progType] ?? 'double_progression')
+      : progMode === 'submax' ? 'submax' : 'double_progression';
+
     const def = {
       id,
-      name:                 form.name.trim(),
-      pattern:              form.pattern,
-      primaryGroup:         'custom',
+      name:                 name.trim(),
+      pattern,
+      primaryGroup:         primaryGroup || 'custom',
       muscles:              [],
-      equipment:            form.equipment,
-      level:                form.level,
-      isCompound:           true,
+      equipment,
+      level,
+      isCompound,
       isKeyCandidate:       true,
-      isUnilateral:         form.isUnilateral,
-      progressionModel:     form.progressionModel,
+      isUnilateral,
+      progressionModel,
       progressionDirection: 'increase',
-      sets:                 parseInt(form.sets)    || 3,
-      minReps:              parseInt(form.minReps) || 8,
-      maxReps:              parseInt(form.maxReps) || 12,
-      weightStep:           2.5,
-      restSec:              parseInt(form.restSec) || 90,
-      tips:                 form.notes.trim() ? [form.notes.trim()] : [],
-      isCustom:             true,
-      // Flexible tracking defaults
-      inputType:            itp,
-      tempo:                form.tempo.trim() || null,
+      sets,
+      ...(isTimeMode ? { minTime, maxTime } : { minReps, maxReps }),
+      weightStep: incrFixedValue,
+      restSec,
+      tips:       notes.trim() ? [notes.trim()] : [],
+      isCustom:   true,
+      inputType:  isTimeMode ? 'weight_time' : 'weight_reps',
+      tempo:      tempo.trim() || null,
     };
 
     addCustomExercise(def);
 
     if (sessionMode) {
       addAdHocExercise(id);
-      showToast('Ejercicio añadido', 2200, 'success');
+    } else if (templateId && currentExerciseId) {
+      replaceExercise(templateId, currentExerciseId, id);
     } else if (templateId) {
-      if (currentExerciseId) {
-        replaceExercise(templateId, currentExerciseId, id);
-        showToast('Ejercicio sustituido', 2200, 'success');
-      } else {
-        addExercise(templateId, id);
-        showToast('Ejercicio añadido', 2200, 'success');
-      }
+      addExercise(templateId, id);
     }
+    showToast(t('customExercise.toastCreated'), 2200, 'success');
     navigation.pop(2);
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-
-      {/* Header */}
+    <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>NUEVO EJERCICIO</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={styles.closeBtn}>✕</Text>
+        <Text style={styles.headerTitle}>{t('customExercise.title')}</Text>
+        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.closeGlyph}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 56}
-      >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.form}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Nombre */}
-          <View style={styles.field}>
-            <Text style={styles.label}>NOMBRE *</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+
+          {/* ══ NOMBRE — propio del alta, no existe en el editor ══════════════ */}
+          <View>
+            <Text style={styles.secLabel}>{t('customExercise.nameLabel')}</Text>
             <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
-              placeholder="Ej: Press Pallof con cable"
-              placeholderTextColor={th.colors.muted}
-              value={form.name}
-              onChangeText={(v) => set_('name', v)}
+              style={[styles.nameInput, nameError && styles.nameInputError]}
+              placeholder={t('customExercise.namePlaceholder')}
+              placeholderTextColor={th.colors.mutedLight}
+              value={name}
+              onChangeText={(v) => { setName(v); if (nameError) setNameError(false); }}
             />
-            {!!errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+            {nameError && <Text style={styles.errorText}>{t('customExercise.nameError')}</Text>}
           </View>
 
-          {/* Tipo de seguimiento */}
-          <View style={styles.field}>
-            <Text style={styles.label}>TIPO DE SEGUIMIENTO</Text>
-            {/* Reps / Tiempo */}
-            <View style={styles.segRow}>
-              <TouchableOpacity
-                style={[styles.segBtn, form.metric === 'reps' && styles.segBtnActive]}
-                onPress={() => set_('metric', 'reps')}
-              >
-                <Text style={[styles.segLabel, form.metric === 'reps' && styles.segLabelActive]}>Reps</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segBtn, form.metric === 'time' && styles.segBtnActive]}
-                onPress={() => set_('metric', 'time')}
-              >
-                <Text style={[styles.segLabel, form.metric === 'time' && styles.segLabelActive]}>Tiempo</Text>
-              </TouchableOpacity>
+          {/* ══ RESUMEN ═══════════════════════════════════════════════════════ */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+            <Text style={styles.summaryMain}>{volumeLine}</Text>
+            <Text style={styles.summarySub}>{progLine}</Text>
+          </View>
+
+          {/* ══ VOLUMEN ═══════════════════════════════════════════════════════ */}
+          <View style={styles.block}>
+            <Text style={styles.secLabel}>{t('exerciseEditor.sectionVolume').toUpperCase()}</Text>
+            <SegmentedControl
+              options={[
+                { id: 'reps', label: t('exerciseEditor.metricReps').toUpperCase() },
+                { id: 'time', label: t('exerciseEditor.metricTime').toUpperCase() },
+              ]}
+              value={metric}
+              onChange={setMetric}
+            />
+            <View style={styles.grid}>
+              <View style={styles.gridRow}>
+                <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
+                <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} unit="s" />
+              </View>
+              {showTimeRange ? (
+                <View style={styles.gridRow}>
+                  <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
+                  <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
+                </View>
+              ) : showRepsRange ? (
+                <View style={styles.gridRow}>
+                  <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
+                  <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
+                </View>
+              ) : (
+                <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
+              )}
             </View>
           </View>
 
-          {/* Series + rango */}
-          <View style={styles.stepRow}>
-            <StepField label="SERIES"   value={form.sets}    onChange={(v) => set_('sets', v)}    min={1}  max={8}   />
-            <StepField
-              label={form.metric === 'reps' ? 'REPS MÍN' : 'SEG MÍN'}
-              value={form.minReps}
-              onChange={(v) => set_('minReps', v)}
-              min={1} max={form.metric === 'reps' ? 50 : 300}
-            />
-            <StepField
-              label={form.metric === 'reps' ? 'REPS MÁX' : 'SEG MÁX'}
-              value={form.maxReps}
-              onChange={(v) => set_('maxReps', v)}
-              min={1} max={form.metric === 'reps' ? 50 : 300}
+          {/* ══ PROGRESIÓN — mismo sistema que el editor real ═══════════════════ */}
+          <View style={styles.block}>
+            <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgression').toUpperCase()}</Text>
+            <NavRow
+              icon={<ProgressionIcon size={15} color={th.colors.accent} />}
+              title={t(`exerciseEditor.progModes.${progMode}`)}
+              subtitle={progLine}
+              onPress={() => setProgSheetOpen(true)}
             />
           </View>
 
-          {/* Descanso */}
-          <View style={styles.stepRow}>
-            <StepField label="DESCANSO (s)" value={form.restSec} onChange={(v) => set_('restSec', v)} min={15} max={600} />
+          {/* ══ OPCIONES ══════════════════════════════════════════════════════ */}
+          <Text style={styles.secLabel}>{t('exerciseEditor.sectionOptions').toUpperCase()}</Text>
+          <View style={styles.optGroup}>
+            <ToggleRow
+              label={t('exerciseEditor.unilateralLabel')}
+              value={isUnilateral}
+              onChange={setIsUnilateral}
+            />
+            <OptionRow
+              label={t('exerciseEditor.tempoLabel')}
+              onPress={() => setTempoSheetOpen(true)}
+              right={(
+                <View style={styles.tempoValueRow}>
+                  <Text style={styles.tempoValue}>{tempo || '—'}</Text>
+                  <ArrowIcon size={9.23} color={CHEVRON_GREY} />
+                </View>
+              )}
+            />
+            <NoteRow
+              label={t('customExercise.notesLabel')}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder={t('customExercise.notesPlaceholder')}
+            />
           </View>
 
-          {/* Patrón de movimiento — opcional, útil para búsquedas */}
-          <View style={styles.field}>
-            <Text style={styles.label}>PATRÓN DE MOVIMIENTO</Text>
-            <View style={styles.chipWrap}>
-              {PATTERNS.map((p) => (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[styles.chip, form.pattern === p.value && styles.chipActive]}
-                  onPress={() => set_('pattern', form.pattern === p.value ? '' : p.value)}
-                >
-                  <Text style={[styles.chipText, form.pattern === p.value && styles.chipTextActive]}>
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* ══ CLASIFICACIÓN — patrón/grupo/equipo/tipo/nivel, no existe en el
+              editor real (el ejercicio ya está clasificado): mismo patrón "fila
+              + hoja" que Progresión/Calentamiento ═══════════════════════════ */}
+          <Text style={styles.secLabel}>{t('customExercise.tagsRowTitle').toUpperCase()}</Text>
+          <NavRow
+            title={tagsSummary || t('customExercise.tagsRowEmpty')}
+            subtitle={t('customExercise.tagsRowHint')}
+            onPress={() => setTagsSheetOpen(true)}
+          />
+
+          {/* ══ ACCIONES — abajo del proceso, no flotantes ═══════════════════ */}
+          <View style={styles.btnRow}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.createBtn} onPress={handleCreate} activeOpacity={0.85}>
+              <Text style={styles.createBtnText}>{t('customExercise.createBtn')}</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Tempo */}
-          <View style={styles.field}>
-            <Text style={styles.label}>TEMPO</Text>
-            <View style={styles.tempoRow}>
-              <TextInput
-                style={styles.tempoInput}
-                value={form.tempo}
-                onChangeText={(v) => set_('tempo', v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
-                maxLength={4}
-                placeholder="—"
-                placeholderTextColor={th.colors.muted2}
-                keyboardType="default"
-                autoCapitalize="characters"
-              />
-              <Text style={styles.tempoHint}>Exc · Pausa · Con · Pausa</Text>
-            </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* ══ HOJA: tempo — idéntica a la del editor real ══════════════════════ */}
+      <DragSheet
+        visible={tempoSheetOpen}
+        onClose={() => setTempoSheetOpen(false)}
+        title={t('exerciseEditor.tempoLabel')}
+      >
+        <View style={styles.sheetBody}>
+          <TextInput
+            style={styles.tempoInput}
+            value={tempo}
+            onChangeText={(v) => setTempo(v.replace(/[^0-9Xx]/g, '').toUpperCase().slice(0, 4))}
+            maxLength={4}
+            placeholder="—"
+            placeholderTextColor={th.colors.mutedLight}
+            autoCapitalize="characters"
+            returnKeyType="done"
+          />
+          <Text style={styles.hint}>{t('exerciseEditor.tempoHint')}</Text>
+        </View>
+      </DragSheet>
+
+      {/* ══ HOJA: progresión — mismos pasos que el editor real, sin el paso de
+          evaluación (es config por sesión, no de la ficha) ═══════════════════ */}
+      <DragSheet
+        visible={progSheetOpen}
+        onClose={() => setProgSheetOpen(false)}
+        title={t('exerciseEditor.sectionProgression')}
+      >
+        <View style={styles.sheetBody}>
+          <View>
+            <Text style={styles.stepTitle}>
+              <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
+            </Text>
+            <SegmentedControl
+              options={['auto', 'fixed', 'submax'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
+              value={progMode}
+              onChange={setProgMode}
+            />
+            <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
           </View>
 
-          {/* Equipo */}
-          <View style={styles.field}>
-            <Text style={styles.label}>MATERIAL NECESARIO</Text>
-            <View style={styles.chipWrap}>
-              {EQUIPMENT_OPTIONS.map((eq) => {
-                const active = form.equipment.includes(eq.value);
+          {progMode === 'auto' && (
+            <>
+              <View>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepType')}
+                </Text>
+                <SegmentedControl
+                  options={['double', 'weight', 'reps', 'time'].map((id) => ({ id, label: t(`exerciseEditor.progTypes.${id}`) }))}
+                  value={progType}
+                  onChange={setProgType}
+                />
+                <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
+              </View>
+
+              <View>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepIncr')}
+                </Text>
+                <StepField
+                  horizontal dark
+                  label={showRepsIncr ? t('exerciseEditor.incrFixedRepsLabel') : t('exerciseEditor.incrValueLabel')}
+                  unit={showRepsIncr ? undefined : (showTimeIncr ? 's' : weightLabel)}
+                  value={incrFixedValue}
+                  onChange={setIncrFixedValue}
+                  min={showRepsIncr ? 1 : 0}
+                  max={showRepsIncr ? 10 : 50}
+                  step={showRepsIncr ? 1 : 0.25}
+                />
+              </View>
+            </>
+          )}
+
+          <View style={styles.summaryCard}>
+            <Text style={styles.summarySub}>{progLine}</Text>
+          </View>
+        </View>
+      </DragSheet>
+
+      {/* ══ HOJA: clasificación (patrón / grupo muscular / equipo / tipo / nivel) */}
+      <DragSheet
+        visible={tagsSheetOpen}
+        onClose={() => setTagsSheetOpen(false)}
+        title={t('customExercise.tagsSheetTitle')}
+      >
+        <View style={styles.sheetBody}>
+          <View>
+            <Text style={styles.stepTitle}>{t('customExercise.patternSectionLabel')}</Text>
+            <View style={styles.pillWrap}>
+              {PATTERNS.map((p) => {
+                const on = pattern === p;
                 return (
                   <TouchableOpacity
-                    key={eq.value}
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => toggleEquipment(eq.value)}
+                    key={p}
+                    style={[styles.pill, on && styles.pillOn]}
+                    onPress={() => setPattern(on ? '' : p)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{eq.label}</Text>
+                    <Text style={[styles.pillText, on && styles.pillTextOn]}>
+                      {t(`exerciseSelector.patterns.${p}`)}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </View>
 
-          {/* Unilateral */}
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Ejercicio unilateral (por lado)</Text>
-            <Switch
-              value={form.isUnilateral}
-              onValueChange={(v) => set_('isUnilateral', v)}
-              trackColor={{ false: th.colors.surface2, true: withOpacity(th.colors.accent, 0.4) }}
-              thumbColor={form.isUnilateral ? th.colors.accent : th.colors.muted}
-            />
-          </View>
-
-          {/* Notas */}
-          <View style={styles.field}>
-            <Text style={styles.label}>NOTAS DE EJECUCIÓN</Text>
-            <TextInput
-              style={[styles.input, { height: 72, textAlignVertical: 'top', paddingTop: spacing.sm }]}
-              placeholder="Ej: Mantener la columna neutra..."
-              placeholderTextColor={th.colors.muted}
-              value={form.notes}
-              onChangeText={(v) => set_('notes', v)}
-              multiline
-            />
-          </View>
-
-          {/* Opciones avanzadas */}
-          <TouchableOpacity onPress={() => setAdvanced((a) => !a)} style={styles.advancedToggle}>
-            <Text style={styles.advancedToggleText}>{advanced ? '▾' : '›'} Opciones avanzadas</Text>
-          </TouchableOpacity>
-
-          {advanced && (
-            <View style={styles.advancedSection}>
-              {/* Modelo de progresión */}
-              <View style={styles.field}>
-                <Text style={styles.label}>MODELO DE PROGRESIÓN</Text>
-                {[
-                  { value: 'double_progression', label: 'Doble progresión (peso + reps)' },
-                  { value: 'time_progression',   label: 'Progresión en tiempo' },
-                  { value: 'submax',             label: 'Submáximo (RIR)' },
-                  { value: 'load_progression',   label: 'Progresión de carga' },
-                ].map((m) => (
+          <View>
+            <Text style={styles.stepTitle}>{t('exerciseSelector.filters.muscleGroup')}</Text>
+            <View style={styles.pillWrap}>
+              {MUSCLE_GROUPS.map((g) => {
+                const on = primaryGroup === g;
+                return (
                   <TouchableOpacity
-                    key={m.value}
-                    style={[styles.selectOption, form.progressionModel === m.value && styles.selectOptionActive]}
-                    onPress={() => set_('progressionModel', m.value)}
+                    key={g}
+                    style={[styles.pill, on && styles.pillOn]}
+                    onPress={() => setPrimaryGroup(on ? '' : g)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.selectOptionText, form.progressionModel === m.value && styles.selectOptionTextActive]}>
-                      {m.label}
+                    <Text style={[styles.pillText, on && styles.pillTextOn]}>
+                      {t(`exerciseSelector.groups.${g}`)}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Nivel */}
-              <View style={[styles.field, { marginTop: spacing.sm }]}>
-                <Text style={styles.label}>NIVEL TÉCNICO</Text>
-                {[
-                  { value: 'beginner',     label: 'Principiante' },
-                  { value: 'intermediate', label: 'Intermedio'   },
-                  { value: 'advanced',     label: 'Avanzado'     },
-                ].map((lv) => (
-                  <TouchableOpacity
-                    key={lv.value}
-                    style={[styles.selectOption, form.level === lv.value && styles.selectOptionActive]}
-                    onPress={() => set_('level', lv.value)}
-                  >
-                    <Text style={[styles.selectOptionText, form.level === lv.value && styles.selectOptionTextActive]}>
-                      {lv.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                );
+              })}
             </View>
-          )}
+          </View>
 
-          <View style={{ height: 120 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <View>
+            <Text style={styles.stepTitle}>{t('exerciseSelector.filters.equipment')}</Text>
+            <View style={styles.pillWrap}>
+              {EQUIPMENT.map((eq) => {
+                const on = equipment.includes(eq);
+                return (
+                  <TouchableOpacity
+                    key={eq}
+                    style={[styles.pill, on && styles.pillOn]}
+                    onPress={() => toggleEquipment(eq)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pillText, on && styles.pillTextOn]}>
+                      {t(`exerciseSelector.equipment.${eq}`)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
 
-      {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelBtnText}>Cancelar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.createExBtn} onPress={handleCreate}>
-          <Text style={styles.createExBtnText}>CREAR EJERCICIO</Text>
-        </TouchableOpacity>
-      </View>
+          <View>
+            <Text style={styles.stepTitle}>{t('exerciseSelector.filters.type')}</Text>
+            <SegmentedControl
+              options={[
+                { id: 'compound',  label: t('exerciseSelector.filters.compound') },
+                { id: 'isolation', label: t('exerciseSelector.filters.isolation') },
+              ]}
+              value={isCompound ? 'compound' : 'isolation'}
+              onChange={(id) => setIsCompound(id === 'compound')}
+            />
+          </View>
 
-    </View>
+          <View>
+            <Text style={styles.stepTitle}>{t('customExercise.levelSectionLabel')}</Text>
+            <SegmentedControl
+              options={[
+                { id: 'beginner',     label: t('exerciseSelector.levelBeginner') },
+                { id: 'intermediate', label: t('exerciseSelector.levelIntermediate') },
+                { id: 'advanced',     label: t('customExercise.levelAdvanced') },
+              ]}
+              value={level}
+              onChange={setLevel}
+            />
+          </View>
+        </View>
+      </DragSheet>
+
+    </SafeAreaView>
   );
 }
 
@@ -434,103 +476,86 @@ const makeStyles = (th) => StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
+    gap: spacing.md,
   },
-  headerTitle: {
-    fontSize: typography.xl, fontWeight: typography.heavy,
-    color: th.colors.text, letterSpacing: 1,
+  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  iconBox: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  closeBtn: { fontSize: 20, color: th.colors.muted },
+  closeGlyph: { fontSize: 17, color: th.colors.text },
 
-  form: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.lg },
-  field: {},
-  stepRow: { flexDirection: 'row', gap: spacing.sm },
-  label: { fontSize: typography.xs, color: th.colors.muted, letterSpacing: 1.5, marginBottom: spacing.xs },
+  form: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  block: { gap: spacing.md },
 
-  input: {
-    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
-    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
-  },
-  inputError: { borderColor: th.colors.red },
-  errorText: { fontSize: typography.xs, color: th.colors.red, marginTop: 4 },
+  secLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
 
-  // Tipo selector (same design as ExerciseEditorInline)
-  segRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
-  segBtn: {
-    flex: 1, paddingVertical: spacing.sm + 2,
-    borderRadius: th.radius.sm, borderWidth: borders.thin, borderColor: th.colors.border,
-    backgroundColor: th.colors.surface2, alignItems: 'center',
-  },
-  segBtnActive: { backgroundColor: withOpacity(th.colors.accent, 0.10), borderColor: withOpacity(th.colors.accent, 0.40) },
-  segLabel:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
-  segLabelActive: { color: th.colors.accent },
-
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    paddingHorizontal: spacing.sm + 2, paddingVertical: 6,
+  nameInput: {
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
-    borderWidth: borders.thin, borderColor: th.colors.border,
-  },
-  chipActive:     { backgroundColor: withOpacity(th.colors.accent, 0.12), borderColor: withOpacity(th.colors.accent, 0.4) },
-  chipText:       { fontSize: typography.xs, color: th.colors.muted },
-  chipTextActive: { color: th.colors.accent },
-
-
-  tempoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  tempoInput: {
-    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
-    borderRadius: th.radius.md, color: th.colors.text, fontSize: typography.lg,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
-    width: 80, textAlign: 'center', letterSpacing: 5,
-  },
-  tempoHint: { fontSize: typography.xs, color: th.colors.muted2, lineHeight: 18 },
-
-  switchRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
-    paddingHorizontal: 2,
-  },
-  switchLabel: { fontSize: typography.base, color: th.colors.text },
-
-  advancedToggle: { paddingVertical: spacing.xs },
-  advancedToggleText: { fontSize: typography.sm, color: th.colors.muted },
-  advancedSection: { gap: spacing.sm },
-
-  selectOption: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
-    borderWidth: borders.thin, borderColor: th.colors.border,
-    marginBottom: spacing.xs,
+    ...textStyles.cardTitle, color: th.colors.text,
   },
-  selectOptionActive:     { backgroundColor: withOpacity(th.colors.accent, 0.1), borderColor: withOpacity(th.colors.accent, 0.4) },
-  selectOptionText:       { fontSize: typography.sm, color: th.colors.muted },
-  selectOptionTextActive: { color: th.colors.accent },
+  nameInputError: { borderWidth: 1, borderColor: th.colors.red },
+  errorText: { ...textStyles.tag, color: th.colors.red, marginTop: spacing.xs },
 
-  footer: {
-    flexDirection: 'row', gap: spacing.sm,
-    paddingHorizontal: spacing.xl, paddingTop: spacing.md,
-    borderTopWidth: borders.thin, borderTopColor: th.colors.border,
-    backgroundColor: th.colors.bg,
+  // ── Resumen (166:1245) — solo relleno tint/accent-10, sin borde ────────────
+  summaryCard: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
   },
+  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
+  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
+
+  grid:    { gap: spacing.md },
+  gridRow: { flexDirection: 'row', gap: spacing.md },
+  hint:    { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+
+  optGroup: { borderRadius: th.radius.md, overflow: 'hidden', gap: spacing.xs },
+
+  tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  tempoValue:    { ...textStyles.cardType, color: th.colors.mutedLight, letterSpacing: 2 },
+  tempoInput: {
+    alignSelf: 'center', minWidth: 140, height: 48,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.sm,
+    ...textStyles.hero, letterSpacing: 6, color: th.colors.text,
+    textAlign: 'center', textAlignVertical: 'center',
+    includeFontPadding: false, paddingVertical: 0,
+  },
+
+  // ── Acciones — abajo del proceso ────────────────────────────────────────
+  btnRow: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md },
   cancelBtn: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 13, borderRadius: th.radius.md,
-    borderWidth: borders.thin, borderColor: th.colors.border,
+    paddingVertical: spacing.md, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
   },
-  cancelBtnText: { fontSize: typography.base, color: th.colors.text },
-  createExBtn: {
+  cancelBtnText: { ...textStyles.cardType, color: th.colors.text },
+  createBtn: {
     flex: 2, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 13, borderRadius: th.radius.md,
-    backgroundColor: th.colors.accent,
+    paddingVertical: spacing.md, borderRadius: th.radius.sm,
+    backgroundColor: '#b8ff00',
   },
-  createExBtnText: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.onAccent,
-    letterSpacing: 1,
+  createBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+
+  sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  stepTitle: {
+    ...textStyles.spacingTag, color: th.colors.mutedLight,
+    textTransform: 'uppercase', marginBottom: spacing.sm,
   },
+  stepNum: { color: th.colors.accent },
+
+  pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  pill: {
+    paddingHorizontal: spacing.lg, height: 36, justifyContent: 'center',
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
+  },
+  pillOn:     { backgroundColor: th.colors.accent },
+  pillText:   { ...textStyles.btnAction, color: th.colors.mutedLight },
+  pillTextOn: { color: th.colors.onAccent },
 });

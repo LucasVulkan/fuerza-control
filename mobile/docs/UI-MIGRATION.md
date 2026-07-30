@@ -30,6 +30,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Exercice Editor** (+ botones eliminar/sustituir) | ✅ | `src/components/editor/ExerciseEditorInline.jsx` |
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
+| **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)
@@ -346,6 +347,46 @@ usa su propio lenguaje de barra de búsqueda y botones, que **no** se copia.
 Las claves i18n viejas (`tabSimilar`, `tabPattern`, `allMuscles`, `levelBeginner`…)
 **no se borran**: las sigue usando el selector de la app web
 (`src/components/editor/ExerciseSelector.jsx`, fuera de `mobile/`).
+
+### Alta de ejercicio nuevo — desglose
+
+**No hay frame de Figma**: el pedido fue "que se parezca mucho al editor de
+ejercicios real, misma estructura, mismos elementos de UI". Para que fuera
+literal y no solo "parecido", se extrajeron `Switch`/`OptionRow`/`ToggleRow`/
+`NavRow`/`NoteRow` de `ExerciseEditorInline.jsx` a un módulo compartido
+(`src/components/ui/EditorRows.jsx`) — antes vivían como funciones locales no
+exportadas. `ExerciseEditorInline.jsx` ahora importa de ahí; el alta de
+ejercicio (`CustomExerciseScreen.jsx`) usa exactamente los mismos componentes,
+no una reimplementación. También se centralizó la taxonomía (patrón/grupo
+muscular/equipo) en `src/utils/exerciseTaxonomy.js`, de donde tira tanto el
+buscador como el alta.
+
+Estructura resultante (RESUMEN → VOLUMEN → PROGRESIÓN → OPCIONES), igual que el
+editor real, más dos piezas que solo tienen sentido en el ALTA:
+
+- **Nombre**: campo propio arriba del todo (el editor no lo necesita, el
+  ejercicio ya existe).
+- **Clasificación** (patrón / grupo muscular / equipo / tipo / nivel técnico):
+  un único `NavRow` que abre una hoja con todo — sustituye a los chips sueltos
+  de "Patrón"/"Material" y las "Opciones avanzadas" que tenía la pantalla
+  antigua. Mismo patrón "fila + hoja" que Progresión/Calentamiento en el editor
+  real (tampoco están en Figma). El título de la fila muestra el resumen de
+  tags ya elegidos (o el hint vacío); el subtítulo es fijo, explica qué
+  contiene la hoja.
+- **Resumen**: la línea de volumen añade el patrón y el equipo tras el
+  descanso (`3 × 8–12 reps · 90s descanso · Tracción · Mancuernas`), pedido
+  explícito del usuario. Se usa `" · "` (no el guión que escribió en el chat),
+  siguiendo la regla ya establecida de "guión en el mensaje = punto medio en la
+  app" (§4.5).
+- **Progresión** reutiliza el mismo sistema que el editor real (Modo → Tipo →
+  Incremento), pero **sin el paso de evaluación**: `pctThreshold`/`evalMode`
+  son config por SESIÓN (`exConfig.progression`), no de la ficha de librería —
+  la ficha solo puede persistir `progressionModel` (legado) y `weightStep`. Los
+  pasos se renumeran 1/2/3 en vez de 1/2/3/4.
+- **Unilateral** se queda en OPCIONES (como en el editor), no dentro de
+  Clasificación: es una propiedad de ejecución, no una etiqueta de búsqueda.
+- **Acciones** (Cancelar/Crear) van al final del scroll, no en un footer fijo
+  — pedido explícito del usuario.
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

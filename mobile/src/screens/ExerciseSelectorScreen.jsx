@@ -28,37 +28,21 @@ import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import { ArrowIcon, CheckIcon } from '../components/ui/EditorIcons';
+import {
+  PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf,
+} from '../utils/exerciseTaxonomy';
 
-// ─── Taxonomías ───────────────────────────────────────────────────────────────
-
-// Los 9 `pattern` de la librería colapsados a los 7 de la referencia: vertical y
-// horizontal se funden en un solo Empuje / Tracción. Filtrar por vertical vs.
-// horizontal deja de ser posible desde la UI (el dato sigue en la librería).
-const PATTERN_GROUPS = [
-  { id: 'push',  patterns: ['vertical_push', 'horizontal_push'] },
-  { id: 'pull',  patterns: ['vertical_pull', 'horizontal_pull'] },
-  { id: 'squat', patterns: ['squat'] },
-  { id: 'hinge', patterns: ['hip_hinge'] },
-  { id: 'core',  patterns: ['core'] },
-  { id: 'grip',  patterns: ['carry_grip'] },
-  { id: 'calf',  patterns: ['calf_raise'] },
-];
-const GROUP_OF_PATTERN = Object.fromEntries(
-  PATTERN_GROUPS.flatMap((g) => g.patterns.map((p) => [p, g.id]))
-);
-
+// El buscador filtra por grupo muscular abriendo 'arms' en Bíceps/Tríceps
+// (ver `muscleGroupIdsOf`) — no existe como `primaryGroup` real, solo aquí.
 const MUSCLE_GROUPS = [
-  'chest', 'back', 'shoulders', 'arms',
+  'chest', 'back', 'shoulders', 'biceps', 'triceps',
   'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip',
 ];
-
-// 'bodyweight' no existe en la librería: es el `equipment: []` de 43 ejercicios.
 const EQUIPMENT = [
   'bodyweight', 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell',
-  'resistance_band', 'pullup_bar', 'dip_bar', 'parallettes', 'rings',
+  'resistance_band', 'pullup_bar', 'parallettes', 'rings',
   'ab_wheel', 'rope', 'weight_belt',
 ];
-const equipmentOf = (ex) => (ex.equipment?.length ? ex.equipment : ['bodyweight']);
 
 // ─── ExerciseSelectorScreen ───────────────────────────────────────────────────
 
@@ -141,7 +125,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
       .filter((ex) => ex.id !== currentExerciseId)
       .filter((ex) => !q || [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase().includes(q))
       .filter((ex) => !patternGroup || GROUP_OF_PATTERN[ex.pattern] === patternGroup)
-      .filter((ex) => !groupFilter.length || groupFilter.includes(ex.primaryGroup))
+      .filter((ex) => !groupFilter.length || muscleGroupIdsOf(ex).some((id) => groupFilter.includes(id)))
       .filter((ex) => !equipFilter.length || equipmentOf(ex).some((e) => equipFilter.includes(e)))
       .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'))
       .sort((a, b) => getExName(a).localeCompare(getExName(b)));
@@ -252,7 +236,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
             return (
               <TouchableOpacity
                 key={id}
-                style={[styles.pill, on && styles.pillOn]}
+                style={[styles.patternPill, on && styles.pillOn]}
                 onPress={() => setPatternGroup(on ? '' : id)}
                 activeOpacity={0.7}
               >
@@ -265,10 +249,6 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         </ScrollView>
       </View>
 
-      <Text style={styles.sectionLabel}>
-        {t('exerciseSelector.exerciseCount', { count: filtered.length })}
-      </Text>
-
       {/* "+ Crear ejercicio" — texto plano, mismo tratamiento que "+ Añadir sesión" */}
       <TouchableOpacity
         style={styles.createBtn}
@@ -277,6 +257,10 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
       >
         <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
       </TouchableOpacity>
+
+      <Text style={styles.sectionLabel}>
+        {t('exerciseSelector.exerciseCount', { count: filtered.length })}
+      </Text>
 
       <FlatList
         style={{ flex: 1 }}
@@ -412,9 +396,13 @@ const makeStyles = (th) => StyleSheet.create({
   patternRowWrap: { paddingTop: spacing.md },
   patternRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
 
-  // Pill grande: surface2 / accent al seleccionar (mismo lenguaje que las de
-  // vinculación del editor de ejercicio).
+  // Pills de la fila de patrón (radius/full) y del sheet de filtros (radius/sm)
+  // comparten fondo/texto, solo cambia el radio.
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  patternPill: {
+    paddingHorizontal: spacing.lg, height: 36, justifyContent: 'center',
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.full,
+  },
   pill: {
     paddingHorizontal: spacing.lg, height: 36, justifyContent: 'center',
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
@@ -423,15 +411,18 @@ const makeStyles = (th) => StyleSheet.create({
   pillText:    { ...textStyles.btnAction, color: th.colors.mutedLight },
   pillTextOn:  { color: th.colors.onAccent },
 
-  sectionLabel: {
-    ...textStyles.spacingTag, color: th.colors.mutedLight,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg,
-  },
-
-  createBtn:     { alignItems: 'center', paddingVertical: spacing.md },
+  createBtn:     { alignItems: 'center', paddingVertical: spacing.md, paddingTop: spacing.lg },
   createBtnText: { ...textStyles.cardType, color: th.tint.accent50 },
 
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
+  sectionLabel: {
+    ...textStyles.spacingTag, color: th.colors.mutedLight,
+    paddingHorizontal: spacing.lg,
+  },
+
+  listContent: {
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
   exRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: th.colors.surface, borderRadius: th.radius.sm,

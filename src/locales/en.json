@@ -742,8 +742,8 @@
     "titleReplace": "Replace exercise",
     "searchPlaceholder2": "Search exercise",
     "patternGroups": { "push": "Push", "pull": "Pull", "squat": "Squat", "hinge": "Hinge", "core": "Core", "grip": "Grip", "calf": "Calves" },
-    "groups": { "chest": "Chest", "back": "Back", "shoulders": "Shoulders", "arms": "Arms", "quads": "Quads", "glutes_hamstrings": "Glutes & hams", "legs_lower": "Calves", "core": "Core", "grip": "Grip" },
-    "equipment": { "bodyweight": "Bodyweight", "barbell": "Barbell", "dumbbells": "Dumbbells", "cables": "Cable", "machines": "Machine", "kettlebell": "Kettlebell", "resistance_band": "Bands", "pullup_bar": "Pull-up bar", "dip_bar": "Dip bar", "parallettes": "Parallettes", "rings": "Rings", "ab_wheel": "Ab wheel", "rope": "Rope", "weight_belt": "Weight belt" },
+    "groups": { "chest": "Chest", "back": "Back", "shoulders": "Shoulders", "arms": "Arms", "biceps": "Biceps", "triceps": "Triceps", "quads": "Quads", "glutes_hamstrings": "Glutes & hams", "legs_lower": "Calves", "core": "Core", "grip": "Grip" },
+    "equipment": { "bodyweight": "Bodyweight", "barbell": "Barbell", "dumbbells": "Dumbbells", "cables": "Cable", "machines": "Machine", "kettlebell": "Kettlebell", "resistance_band": "Bands", "pullup_bar": "Pull-up bar", "parallettes": "Dip bar", "rings": "Rings", "ab_wheel": "Ab wheel", "rope": "Rope", "weight_belt": "Weight belt" },
     "filters": { "title": "Filters", "clear": "Clear", "muscleGroup": "MUSCLE GROUP", "equipment": "EQUIPMENT", "type": "TYPE", "compound": "Compound", "isolation": "Isolation", "see_one": "See {{count}} exercise", "see_other": "See {{count}} exercises", "seeNone": "No results" },
     "title": "SELECT EXERCISE",
     "searchPlaceholder": "Search exercise...",
@@ -918,6 +918,23 @@
       "rowAutoSub": "{{sets}} sets · {{rest}}",
       "rowCustomSub": "{{n}} steps · {{rest}}"
     }
+  },
+  "customExercise": {
+    "title": "New exercise",
+    "nameLabel": "NAME",
+    "namePlaceholder": "E.g. Pallof press",
+    "nameError": "Name is required",
+    "notesLabel": "EXECUTION NOTES",
+    "notesPlaceholder": "E.g. Keep spine neutral...",
+    "tagsRowTitle": "Classification",
+    "tagsRowEmpty": "Tap to configure",
+    "tagsRowHint": "Pattern · muscle group · equipment · type · level",
+    "tagsSheetTitle": "Classification & advanced",
+    "patternSectionLabel": "MOVEMENT PATTERN",
+    "levelSectionLabel": "TECHNICAL LEVEL",
+    "levelAdvanced": "Advanced",
+    "createBtn": "Create exercise",
+    "toastCreated": "Exercise created"
   },
   "clients": {
     "title": "Clients",
