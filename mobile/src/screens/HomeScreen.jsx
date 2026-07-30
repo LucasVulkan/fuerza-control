@@ -15,6 +15,8 @@ import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
+import { isStageLocked } from '../../../src/utils/stageLocks';
+import { LockIcon } from '../components/ui/EditorIcons';
 import { getWeekStatuses } from '../utils/weekProgress';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
@@ -538,8 +540,10 @@ function ArchiveOption({ label, desc, onPress, danger }) {
 
 function StagePickerModal({ program, onSelect, onClose }) {
   const { t }      = useTranslation();
+  const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const insets     = useSafeAreaInsets();
+  const clientSync = useStore((s) => s.clientSync);
   const currentIdx = program.currentStageIndex ?? 0;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -549,21 +553,34 @@ function StagePickerModal({ program, onSelect, onClose }) {
         <View style={styles.stageList}>
           {program.stages.map((stage, idx) => {
             const isActive = idx === currentIdx;
+            const locked   = isStageLocked(program, idx, clientSync);
             return (
               <TouchableOpacity
                 key={stage.id ?? idx}
-                style={[styles.stageOption, isActive && styles.stageOptionActive]}
+                style={[
+                  styles.stageOption,
+                  isActive && styles.stageOptionActive,
+                  locked   && styles.stageOptionLocked,
+                ]}
                 onPress={() => onSelect(idx)}
+                disabled={locked}
                 activeOpacity={isActive ? 1 : 0.7}
               >
                 <View style={styles.stageOptionHeader}>
-                  <Text style={[styles.stageOptionName, isActive && styles.stageOptionNameActive]}>
+                  {locked && <LockIcon size={13} color={th.colors.muted} />}
+                  <Text style={[
+                    styles.stageOptionName,
+                    isActive && styles.stageOptionNameActive,
+                    locked   && styles.stageOptionNameLocked,
+                  ]}>
                     {stage.name}
                   </Text>
                   {isActive && <Text style={styles.stageActiveLabel}>ACTIVA</Text>}
                 </View>
                 <Text style={styles.stageOptionDesc}>
-                  {`${stage.durationWeeks ?? 4} sem · ${stage.days?.length ?? 0} sesiones/ciclo`}
+                  {locked
+                    ? t('home.stageLockedShort')
+                    : `${stage.durationWeeks ?? 4} sem · ${stage.days?.length ?? 0} sesiones/ciclo`}
                 </Text>
               </TouchableOpacity>
             );
@@ -698,6 +715,7 @@ export default function HomeScreen() {
           const stageIdx    = activeProgram.currentStageIndex ?? 0;
           const currentStage = hasStages ? activeProgram.stages[stageIdx] : null;
           const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
+          const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
           // Computed values for progress header
           const stageInfo                  = computeStageInfo(activeProgram, t);
@@ -743,34 +761,61 @@ export default function HomeScreen() {
 
               <WeekSelector workoutLog={workoutLog} />
 
-              {/* Stage advance banner */}
+              {/* Stage advance banner. Con la siguiente etapa bloqueada el
+                  cliente no se queda sin nada que hacer: sigue en la actual
+                  (decisión de producto, spec §0.1), así que el banner solo
+                  cambia de mensaje — no aparece ningún botón que no funcione. */}
               {activeProgram.stageAdvancePending && nextStage && (
                 <View style={styles.stageBanner}>
-                  <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
-                  <Text style={styles.stageBannerText}>
-                    {t('home.stageAdvanceText', {
-                      current: currentStage?.name ?? t('home.currentStageDefault'),
-                      next: nextStage.name,
-                    })}
-                  </Text>
-                  <View style={styles.stageBannerBtns}>
-                    <TouchableOpacity
-                      style={styles.stageBannerAdvanceBtn}
-                      onPress={() => advanceStage(activeProgram.id)}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.stageBannerAdvanceBtnText}>
-                        {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
+                  {nextStageLocked ? (
+                    <>
+                      <Text style={styles.stageBannerLabel}>{t('home.stageLockedTitle').toUpperCase()}</Text>
+                      <Text style={styles.stageBannerText}>
+                        {t('home.stageLockedText', {
+                          current: currentStage?.name ?? t('home.currentStageDefault'),
+                          next: nextStage.name,
+                        })}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.stageBannerContinueBtn}
-                      onPress={() => dismissStageAdvance(activeProgram.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.stageBannerContinueBtnText}>{t('home.close').toUpperCase()}</Text>
-                    </TouchableOpacity>
-                  </View>
+                      <Text style={styles.stageBannerHint}>{t('home.stageLockedHint')}</Text>
+                      <View style={styles.stageBannerBtns}>
+                        <TouchableOpacity
+                          style={styles.stageBannerContinueBtn}
+                          onPress={() => dismissStageAdvance(activeProgram.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.stageBannerContinueBtnText}>{t('home.understood')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
+                      <Text style={styles.stageBannerText}>
+                        {t('home.stageAdvanceText', {
+                          current: currentStage?.name ?? t('home.currentStageDefault'),
+                          next: nextStage.name,
+                        })}
+                      </Text>
+                      <View style={styles.stageBannerBtns}>
+                        <TouchableOpacity
+                          style={styles.stageBannerAdvanceBtn}
+                          onPress={() => advanceStage(activeProgram.id)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.stageBannerAdvanceBtnText}>
+                            {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.stageBannerContinueBtn}
+                          onPress={() => dismissStageAdvance(activeProgram.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.stageBannerContinueBtnText}>{t('home.close').toUpperCase()}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </View>
               )}
 
@@ -1372,6 +1417,13 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     lineHeight: textStyles.subtitle.fontSize * 1.5,
   },
+  // Segunda línea del caso bloqueado: lo que SÍ puede hacer mientras tanto.
+  stageBannerHint: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    lineHeight: textStyles.subtitle.fontSize * 1.5,
+    marginTop:  spacing.xs,
+  },
   stageBannerBtns: {
     flexDirection: 'row',
     gap:           spacing.sm,
@@ -1602,19 +1654,29 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.06),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
+  // Bloqueada: sin fondo propio, solo apagada — que se lea como "no disponible",
+  // no como un estado más (que es lo que sugeriría un color).
+  stageOptionLocked: {
+    backgroundColor: 'transparent',
+  },
   stageOptionHeader: {
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
+    gap:            spacing.xs,
     marginBottom:   3,
   },
   stageOptionName: {
+    flex:       1,
     fontSize:   typography.base,
     fontWeight: typography.medium,
     color:      th.colors.text,
   },
   stageOptionNameActive: {
     color: th.colors.accent,
+  },
+  stageOptionNameLocked: {
+    color: th.colors.muted,
   },
   stageActiveLabel: {
     fontSize:      typography.xs,

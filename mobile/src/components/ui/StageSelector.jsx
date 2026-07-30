@@ -13,7 +13,8 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { spacing, textStyles } from '../../theme';
-import { useThemedStyles } from '../../useTheme';
+import { useTheme, useThemedStyles } from '../../useTheme';
+import { LockIcon } from './EditorIcons';
 
 // Hasta 4 etapas caben repartiéndose el ancho del control. A partir de la 5ª
 // cada segmento ocupa el suyo y la fila pasa a scroll horizontal; el "+" queda
@@ -27,6 +28,7 @@ const PEEK = 24;
 
 export default function StageSelector({ stages, value, onChange, onAdd }) {
   const styles     = useThemedStyles(makeStyles);
+  const th         = useTheme();
   const scrollable = stages.length >= SCROLL_FROM;
 
   const scrollRef = useRef(null);
@@ -77,9 +79,15 @@ export default function StageSelector({ stages, value, onChange, onAdd }) {
         onPress={() => onChange(stage.id)}
         activeOpacity={0.75}
       >
-        <Text style={[styles.name, active && styles.nameActive]} numberOfLines={1}>
-          {stage.name}
-        </Text>
+        <View style={styles.nameRow}>
+          {stage.locked && <LockIcon size={11} color={active ? th.colors.onAccent : th.colors.muted} />}
+          <Text
+            style={[styles.name, active && styles.nameActive, stage.locked && !active && styles.nameLocked]}
+            numberOfLines={1}
+          >
+            {stage.name}
+          </Text>
+        </View>
         <Text style={[styles.meta, active && styles.metaActive]} numberOfLines={1}>
           {stage.meta}
         </Text>
@@ -134,8 +142,10 @@ const makeStyles = (th) => StyleSheet.create({
     minWidth:          0,
   },
   segmentActive: { backgroundColor: th.colors.accent },
-  name:       { ...textStyles.cardType, color: th.colors.text },
+  nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, minWidth: 0 },
+  name:       { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
   nameActive: { color: th.colors.onAccent },
+  nameLocked: { color: th.colors.muted },
   meta:       { ...textStyles.tag, color: th.colors.mutedLight },
   // Sobre el relleno lima, la 2ª línea va en surface2 (Figma) — no en onAccent.
   metaActive: { color: th.colors.surface2 },

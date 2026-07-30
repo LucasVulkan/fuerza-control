@@ -16,7 +16,8 @@ import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
+import { isStageLocked } from '../../../src/utils/stageLocks';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
 const HEADER_H = 64;
@@ -127,6 +128,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const exerciseLibrary       = useStore((s) => s.exerciseLibrary);
   const customExercises       = useStore((s) => s.customExercises);
   const profile               = useStore((s) => s.profile);
+  const clientSync            = useStore((s) => s.clientSync);
   const ui                    = useStore((s) => s.ui);
   const beginEditSession      = useStore((s) => s.beginEditSession);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
@@ -395,7 +397,8 @@ export default function ProgramEditorScreen({ navigation }) {
     navigation.goBack();
   }
 
-  const isStageActive = selectedStageIdx === (activeProgram.currentStageIndex ?? 0);
+  const isStageActive       = selectedStageIdx === (activeProgram.currentStageIndex ?? 0);
+  const selectedStageLocked = isStageLocked(activeProgram, selectedStageIdx, clientSync);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -478,9 +481,12 @@ export default function ProgramEditorScreen({ navigation }) {
             <Text style={styles.secTitle}>{t('editor.sectionStages').toUpperCase()}</Text>
             <StageSelector
               stages={activeProgram.stages.map((stage, idx) => ({
-                id:   stage.id ?? String(idx),
-                name: stage.name,
-                meta: t('editor.cyclesShort', { count: stage.durationWeeks ?? 0 }),
+                id:     stage.id ?? String(idx),
+                name:   stage.name,
+                // El candado solo se pinta en el móvil del cliente: para el
+                // entrenador `isStageLocked` siempre es false (no tiene slot).
+                locked: isStageLocked(activeProgram, idx, clientSync),
+                meta:   t('editor.cyclesShort', { count: stage.durationWeeks ?? 0 }),
               }))}
               value={activeProgram.stages[selectedStageIdx]?.id ?? String(selectedStageIdx)}
               onChange={(id) => {
@@ -625,6 +631,14 @@ export default function ProgramEditorScreen({ navigation }) {
                     <Text style={styles.stateHint}>{t('editor.stageActiveHint')}</Text>
                   </View>
                   <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>
+                </View>
+              ) : selectedStageLocked ? (
+                // Bloqueada por el entrenador: sin botón, porque `setCurrentStage`
+                // lo rechazaría igual y un botón que no hace nada es peor que
+                // ninguno.
+                <View style={styles.stateRow}>
+                  <LockIcon size={14} color={th.colors.muted} />
+                  <Text style={styles.stateHint}>{t('home.stageLockedShort')}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
