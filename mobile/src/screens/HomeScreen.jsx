@@ -104,13 +104,10 @@ function computeStageInfo(program, t) {
   const stageIdx         = program.currentStageIndex ?? 0;
   const stage            = program.stages[stageIdx];
   if (!stage) return null;
-  const sessionsPerCycle = Math.max(1, stage.days?.length ?? 1);
   const totalWeeks       = stage.durationWeeks ?? 4;
-  const sessionsCompleted = program.stageSessionsCompleted ?? 0;
-  const weekInStage      = Math.min(
-    Math.floor(sessionsCompleted / sessionsPerCycle) + 1,
-    totalWeeks,
-  );
+  // A week is a closed rotation, not a session count — repeating a session must
+  // not move this. See `docs/specs/stage-locks.md` §3.
+  const weekInStage      = Math.min((program.stageWeeksCompleted ?? 0) + 1, totalWeeks);
   const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:    defaultLabel,

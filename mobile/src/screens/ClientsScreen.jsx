@@ -437,7 +437,10 @@ function ActiveProgramHero({
   const currentStage = hasStages ? stages[stageIdx] : null;
   const currentDays  = hasStages ? (currentStage?.days ?? []) : (program.days ?? []);
   const sessPerCycle = Math.max(1, currentDays.length);
-  const done         = program.stageSessionsCompleted ?? 0;
+  // Weeks = closed rotations (see `docs/specs/stage-locks.md` §3). NOTE: this is
+  // still the trainer's LOCAL copy of the program, which a synced client never
+  // updates — it reads 0 until phase 2 ships the client's progress blob.
+  const weeksDone    = program.stageWeeksCompleted ?? 0;
 
   // ── Next session in the rotation ── first one NOT done this cycle (by
   // template, replaying the client's synced history — not by position: an
@@ -453,9 +456,8 @@ function ActiveProgramHero({
 
   // ── Stage progress bar (multi-stage with a defined length) ──
   const stageWeeks    = currentStage?.durationWeeks ?? null;
-  const threshold     = stageWeeks ? stageWeeks * sessPerCycle : null;
-  const weekInStage   = stageWeeks ? Math.min(stageWeeks, Math.floor(done / sessPerCycle) + 1) : null;
-  const stageProgress = threshold ? Math.min(1, done / threshold) : null;
+  const weekInStage   = stageWeeks ? Math.min(stageWeeks, weeksDone + 1) : null;
+  const stageProgress = stageWeeks ? Math.min(1, weeksDone / stageWeeks) : null;
   const showStageBar  = stages.length > 1;
 
   // ── Real pace ──

@@ -39,6 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
+import { advanceCycle } from '../../src/utils/stageProgress';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -1295,7 +1296,7 @@ export const useStore = create(
               ...program,
               currentStageIndex: stageIndex,
               days: targetStage.days,
-              stageSessionsCompleted: 0,
+              stageWeeksCompleted: 0,
               cycleCompletedIds: [],
               stageAdvancePending: false,
             },
@@ -1318,7 +1319,7 @@ export const useStore = create(
               ...program,
               currentStageIndex: nextIdx,
               days: nextStage.days,
-              stageSessionsCompleted: 0,
+              stageWeeksCompleted: 0,
               cycleCompletedIds: [],
               stageAdvancePending: false,
             },
@@ -1918,44 +1919,31 @@ export const useStore = create(
         const ownerProgramId = template?.programId;
         const ownerProgram = ownerProgramId ? programs[ownerProgramId] : null;
         let stageUpdate = null;
+        // A week = one full rotation through the DISTINCT sessions of the cycle;
+        // repeating a session never advances it. The rule lives in advanceCycle
+        // so the trainer's mirror can't drift from it — see
+        // `docs/specs/stage-locks.md` §3.
         if (ownerProgram?.stages?.length > 0) {
           // ── Staged program ─────────────────────────────────────────────────
           const stageIdx = ownerProgram.currentStageIndex ?? 0;
           const stage = ownerProgram.stages[stageIdx];
-          const stageTplIds = new Set((stage?.days ?? []).map((d) => d.sessionTemplateId));
-          if (stageTplIds.has(activeSession.templateId) && stage) {
-            const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
-            const threshold = stage.durationWeeks * stage.days.length;
-            const isLast = stageIdx >= ownerProgram.stages.length - 1;
-            // A cycle is complete when every DISTINCT template in it has been
-            // done at least once — not every N-th save (a positional counter
-            // assumes strict A→B→C… order and breaks as soon as a session is
-            // completed out of rotation, marking the wrong slot as done).
-            const cycleIds = new Set(ownerProgram.cycleCompletedIds ?? []);
-            cycleIds.add(activeSession.templateId);
-            const cycleCompleted = cycleIds.size >= stageTplIds.size;
+          const stageTplIds = (stage?.days ?? []).map((d) => d.sessionTemplateId);
+          if (stage && stageTplIds.includes(activeSession.templateId)) {
             stageUpdate = {
               programId: ownerProgramId,
-              stageSessionsCompleted: newCount,
-              cycleCompletedIds: cycleCompleted ? [] : [...cycleIds],
-              stageAdvancePending: (newCount >= threshold && !isLast) || (ownerProgram.stageAdvancePending ?? false),
-              totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
+              ...advanceCycle(ownerProgram, activeSession.templateId, stageTplIds, {
+                durationWeeks: stage.durationWeeks,
+                isLastStage:   stageIdx >= ownerProgram.stages.length - 1,
+              }),
             };
           }
         } else if (ownerProgram && ownerProgramId) {
-          // ── Non-staged program: track rotation the same way ────────────────
-          const tplIds = new Set((ownerProgram.days ?? []).map((d) => d.sessionTemplateId));
-          if (tplIds.has(activeSession.templateId)) {
-            const newCount = (ownerProgram.stageSessionsCompleted ?? 0) + 1;
-            const cycleIds = new Set(ownerProgram.cycleCompletedIds ?? []);
-            cycleIds.add(activeSession.templateId);
-            const cycleCompleted = cycleIds.size >= tplIds.size;
+          // ── Non-staged program: same rotation, no stage threshold ──────────
+          const tplIds = (ownerProgram.days ?? []).map((d) => d.sessionTemplateId);
+          if (tplIds.includes(activeSession.templateId)) {
             stageUpdate = {
               programId: ownerProgramId,
-              stageSessionsCompleted: newCount,
-              cycleCompletedIds: cycleCompleted ? [] : [...cycleIds],
-              stageAdvancePending: ownerProgram.stageAdvancePending ?? false,
-              totalWeeksCompleted: (ownerProgram.totalWeeksCompleted ?? 0) + (cycleCompleted ? 1 : 0),
+              ...advanceCycle(ownerProgram, activeSession.templateId, tplIds),
             };
           }
         }
@@ -1976,10 +1964,10 @@ export const useStore = create(
               ...s.programs,
               [stageUpdate.programId]: {
                 ...s.programs[stageUpdate.programId],
-                stageSessionsCompleted: stageUpdate.stageSessionsCompleted,
-                cycleCompletedIds:      stageUpdate.cycleCompletedIds,
-                stageAdvancePending:    stageUpdate.stageAdvancePending,
-                totalWeeksCompleted:    stageUpdate.totalWeeksCompleted,
+                cycleCompletedIds:   stageUpdate.cycleCompletedIds,
+                stageWeeksCompleted: stageUpdate.stageWeeksCompleted,
+                stageAdvancePending: stageUpdate.stageAdvancePending,
+                totalWeeksCompleted: stageUpdate.totalWeeksCompleted,
               },
             },
           } : {}),
