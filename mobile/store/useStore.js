@@ -39,7 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, progressFromBlob } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from '../../src/utils/stageProgress';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -231,6 +231,7 @@ export const useStore = create(
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
+        lastImportedStageIndex: 0,    // stage the trainer had active last time — a change means they moved the client
         syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
         pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
         trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
@@ -2960,6 +2961,22 @@ export const useStore = create(
       },
 
       /**
+       * Writes a set of cycle counters onto a program, keeping `days` pointed at
+       * the active stage (the same invariant setCurrentStage maintains).
+       */
+      _writeProgress: (programId, counters) => {
+        const prog = get().programs[programId];
+        if (!prog) return;
+        const stageDays = prog.stages?.[counters.currentStageIndex]?.days;
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: { ...prog, ...counters, ...(stageDays ? { days: stageDays } : {}) },
+          },
+        }));
+      },
+
+      /**
        * Pulls the client's own slice back out of their slot after a (re)connect:
        * their cycle/stage counters ALWAYS, their workout log only if they
        * accepted the merge — progress is state, not a reading of the log, so a
@@ -2976,17 +2993,7 @@ export const useStore = create(
             await downloadHistory(slotId);
 
           const restored = progressFromBlob(progress, programId);
-          if (restored) {
-            const prog = get().programs[programId];
-            // `days` mirrors the active stage — keep them in step, as setCurrentStage does.
-            const stageDays = prog?.stages?.[restored.currentStageIndex]?.days;
-            set((s) => ({
-              programs: {
-                ...s.programs,
-                [programId]: { ...prog, ...restored, ...(stageDays ? { days: stageDays } : {}) },
-              },
-            }));
-          }
+          if (restored) get()._writeProgress(programId, restored);
 
           if (!mergeHistory) return;
 
@@ -3052,6 +3059,8 @@ export const useStore = create(
             lastSyncedAt:           null,
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
+            // Baseline for "did the trainer activate another stage?" (spec §6.3)
+            lastImportedStageIndex: slot.program_json?.program?.currentStageIndex ?? 0,
             previousActiveProgramId,
             trainerProgramIds:      [slot.program_json?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
@@ -3111,45 +3120,43 @@ export const useStore = create(
         }
       },
 
-      /** Apply the pending trainer program update. keepProgress=true preserves week/stage. */
-      applyPendingProgramUpdate: (keepProgress) => {
+      /**
+       * Applies the pending trainer program update.
+       *
+       * Who owns what (spec §6.3): the counters inside the incoming program_json
+       * are the TRAINER's and are always discarded — progress belongs to the
+       * client. The one exception is the active stage: if the trainer activated a
+       * different one since the last import, they meant it, so the client jumps
+       * there and that stage starts from zero. Otherwise the client stays where
+       * they were, which is why editing a program no longer sends anyone back to
+       * stage 1.
+       */
+      applyPendingProgramUpdate: () => {
         const { clientSync, programs, profile } = get();
         const pending = clientSync.pendingProgramUpdate;
         if (!pending) return;
 
-        // Snapshot current progress before overwriting
-        const oldProgram = programs[profile.activeProgramId];
-        const savedProgress = keepProgress && oldProgram ? {
-          currentWeek:       oldProgram.currentWeek       ?? 1,
-          currentStageIndex: oldProgram.currentStageIndex ?? 0,
-        } : null;
+        const mine          = progressBlob(programs[profile.activeProgramId]);
+        const incomingStage = pending.programJson?.program?.currentStageIndex ?? 0;
 
         get().importData(pending.programJson, { program: true, log: false }, { silent: true });
 
-        // Restore progress capped to new program bounds
-        if (savedProgress) {
-          const newProg = get().programs[profile.activeProgramId];
-          if (newProg) {
-            const stageCount = newProg.stages?.length ?? 1;
-            const safeStage  = Math.min(savedProgress.currentStageIndex, stageCount - 1);
-            set((s) => ({
-              programs: {
-                ...s.programs,
-                [profile.activeProgramId]: {
-                  ...s.programs[profile.activeProgramId],
-                  currentWeek:       savedProgress.currentWeek,
-                  currentStageIndex: Math.max(0, safeStage),
-                },
-              },
-            }));
-          }
+        const progId  = pending.programJson?.program?.id ?? profile.activeProgramId;
+        const newProg = get().programs[progId];
+        if (newProg) {
+          get()._writeProgress(progId, mergeProgressOnImport({
+            blob:              mine,
+            program:           newProg,
+            lastImportedStage: clientSync.lastImportedStageIndex ?? 0,
+          }));
         }
 
         set((s) => ({
           clientSync: {
             ...s.clientSync,
-            pendingProgramUpdate:  null,
-            lastProgramImportedAt: new Date().toISOString(),
+            pendingProgramUpdate:   null,
+            lastProgramImportedAt:  new Date().toISOString(),
+            lastImportedStageIndex: incomingStage,
             // The updated program may carry a new id — keep it in upload scope
             trainerProgramIds: [...new Set([
               ...(s.clientSync.trainerProgramIds ?? []),
@@ -3231,7 +3238,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastImportedStageIndex: 0, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -3303,6 +3310,7 @@ export const useStore = create(
             lastSyncedAt:           null,
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
+            lastImportedStageIndex: programJson?.program?.currentStageIndex ?? 0,
             previousActiveProgramId,
             trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),

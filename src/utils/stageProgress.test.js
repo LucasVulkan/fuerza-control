@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceCycle, progressBlob, progressFromBlob } from './stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
 
 const CYCLE = ['tpl_a', 'tpl_b', 'tpl_c'];
 const STAGE = { durationWeeks: 2, isLastStage: false };
@@ -90,5 +90,64 @@ describe('progressBlob / progressFromBlob', () => {
   it('has nothing to send for a program without an id', () => {
     expect(progressBlob(undefined)).toBeNull();
     expect(progressBlob({})).toBeNull();
+  });
+});
+
+describe('mergeProgressOnImport — quién manda al llegar un programa del entrenador', () => {
+  // 3 etapas de 2 semanas; el cliente va por la 2ª, con 1 semana hecha.
+  const stages  = [1, 2, 3].map((n) => ({ id: `st${n}`, durationWeeks: 2, days: [] }));
+  const arrives = (currentStageIndex) => ({ id: 'prog_1', currentStageIndex, stages });
+  const mine    = {
+    programId: 'prog_1', currentStageIndex: 1, cycleCompletedIds: ['tpl_a'],
+    stageWeeksCompleted: 1, totalWeeksCompleted: 7,
+  };
+
+  it('una edición sin mover etapa deja al cliente donde estaba', () => {
+    // El entrenador editó ejercicios; su copia sigue diciendo etapa 0.
+    expect(mergeProgressOnImport({ blob: mine, program: arrives(0), lastImportedStage: 0 }))
+      .toEqual({
+        currentStageIndex: 1, cycleCompletedIds: ['tpl_a'],
+        stageWeeksCompleted: 1, totalWeeksCompleted: 7, stageAdvancePending: false,
+      });
+  });
+
+  it('activar otra etapa sí mueve al cliente, y esa etapa empieza de cero', () => {
+    const r = mergeProgressOnImport({ blob: mine, program: arrives(2), lastImportedStage: 0 });
+    expect(r.currentStageIndex).toBe(2);
+    expect(r.cycleCompletedIds).toEqual([]);
+    expect(r.stageWeeksCompleted).toBe(0);
+    expect(r.totalWeeksCompleted).toBe(7);   // el contador de por vida no se toca
+  });
+
+  it('volver a la etapa 1 solo ocurre si el entrenador la activa', () => {
+    expect(mergeProgressOnImport({ blob: mine, program: arrives(0), lastImportedStage: 2 }).currentStageIndex).toBe(0);
+  });
+
+  it('recupera el aviso de etapa terminada en vez de heredar el del entrenador', () => {
+    const acabada = { ...mine, stageWeeksCompleted: 2 };
+    expect(mergeProgressOnImport({ blob: acabada, program: arrives(0), lastImportedStage: 0 }).stageAdvancePending).toBe(true);
+    // …salvo en la última etapa, donde no hay a dónde avanzar.
+    const enLaUltima = { ...acabada, currentStageIndex: 2 };
+    expect(mergeProgressOnImport({ blob: enLaUltima, program: arrives(0), lastImportedStage: 0 }).stageAdvancePending).toBe(false);
+  });
+
+  it('un programa distinto empieza limpio, no hereda la etapa del anterior', () => {
+    const r = mergeProgressOnImport({ blob: mine, program: { ...arrives(0), id: 'prog_2' }, lastImportedStage: 0 });
+    expect(r).toEqual({
+      currentStageIndex: 0, cycleCompletedIds: [],
+      stageWeeksCompleted: 0, totalWeeksCompleted: 0, stageAdvancePending: false,
+    });
+  });
+
+  it('recorta una etapa que ya no existe en el programa nuevo', () => {
+    const masCorto = { id: 'prog_1', currentStageIndex: 0, stages: stages.slice(0, 1) };
+    expect(mergeProgressOnImport({ blob: mine, program: masCorto, lastImportedStage: 0 }).currentStageIndex).toBe(0);
+  });
+
+  it('funciona con programas sin etapas', () => {
+    const plano = { id: 'prog_1', days: [] };
+    const r = mergeProgressOnImport({ blob: mine, program: plano, lastImportedStage: 0 });
+    expect(r.currentStageIndex).toBe(0);
+    expect(r.stageAdvancePending).toBe(false);
   });
 });

@@ -61,6 +61,43 @@ export function progressFromBlob(blob, programId) {
 }
 
 /**
+ * Which counters the client keeps when an updated program lands from their
+ * trainer. Progress belongs to the client, so whatever the incoming copy
+ * carries is discarded — with ONE exception: if the trainer activated a
+ * different stage since the last import, they meant it, and the client jumps
+ * there with that stage starting from zero.
+ *
+ * That exception is why editing a program no longer sends anyone back to
+ * stage 1: an edit leaves `currentStageIndex` untouched, so nothing moves.
+ *
+ * @param {object}      blob               the client's own progress
+ * @param {object}      program            the freshly imported program
+ * @param {number}      lastImportedStage   `currentStageIndex` of the previous import
+ */
+export function mergeProgressOnImport({ blob, program, lastImportedStage = 0 }) {
+  const kept          = progressFromBlob(blob, program?.id);
+  const incomingStage = program?.currentStageIndex ?? 0;
+  // No blob for THIS program means a different program arrived, not an update.
+  const jump          = !kept || incomingStage !== lastImportedStage;
+
+  const stages     = program?.stages ?? [];
+  const stageCount = Math.max(1, stages.length);
+  const stage      = Math.max(0, Math.min(jump ? incomingStage : kept.currentStageIndex, stageCount - 1));
+  const weeks      = jump ? 0 : kept.stageWeeksCompleted;
+  const duration   = stages[stage]?.durationWeeks;
+
+  return {
+    currentStageIndex:   stage,
+    cycleCompletedIds:   jump ? [] : kept.cycleCompletedIds,
+    stageWeeksCompleted: weeks,
+    totalWeeksCompleted: kept?.totalWeeksCompleted ?? 0,   // lifetime, never reset
+    // Recomputed rather than carried: the incoming copy's flag is the trainer's,
+    // and the client's was just overwritten by the import.
+    stageAdvancePending: duration != null && weeks >= duration && stage < stages.length - 1,
+  };
+}
+
+/**
  * Applies one saved session to a program's cycle counters.
  *
  * @param {object}   program        the program that owns the session's template

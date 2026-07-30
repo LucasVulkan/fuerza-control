@@ -3,9 +3,12 @@
  *
  * Shown when the trainer has pushed a new version of the client's program.
  * Lets the client choose:
- *   - Actualizar manteniendo progreso  → preserves currentWeek + currentStageIndex
- *   - Actualizar desde cero            → resets progress to week 1, stage 0
- *   - Ahora no                         → dismisses, update stays pending
+ *   - Actualizar  → applies it; their progress is theirs and carries over
+ *   - Ahora no    → dismisses, update stays pending
+ *
+ * There is no "start from scratch": progress is a counter owned by the client,
+ * not something the trainer's copy can reset (see `docs/specs/stage-locks.md`
+ * §6.2). Only the trainer activating a different stage moves them.
  */
 
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
@@ -52,15 +55,10 @@ export default function ProgramUpdateModal() {
           {/* Actions */}
           <View style={styles.actions}>
             <ActionBtn
-              label="Actualizar manteniendo progreso"
-              sub="Conserva tu semana y etapa actual"
+              label="Actualizar"
+              sub="Sigues en tu etapa y tu semana"
               accent
-              onPress={() => applyPendingProgramUpdate(true)}
-            />
-            <ActionBtn
-              label="Actualizar desde cero"
-              sub="Empieza desde la semana 1"
-              onPress={() => applyPendingProgramUpdate(false)}
+              onPress={applyPendingProgramUpdate}
             />
             <TouchableOpacity style={styles.laterBtn} onPress={dismissPendingProgramUpdate} activeOpacity={0.7}>
               <Text style={styles.laterTxt}>Ahora no</Text>
