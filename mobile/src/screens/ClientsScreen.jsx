@@ -35,6 +35,7 @@ import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
 import { progressFromBlob } from '../../../src/utils/stageProgress';
+import { LockIcon } from '../components/ui/EditorIcons';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -422,7 +423,7 @@ function DownloadIcon({ size = 18, color }) {
 
 function ActiveProgramHero({
   program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount, progress,
-  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete,
+  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete, onUnlock,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -459,6 +460,14 @@ function ActiveProgramHero({
   const weekInStage   = stageWeeks ? Math.min(stageWeeks, weeksDone + 1) : null;
   const stageProgress = stageWeeks ? Math.min(1, weeksDone / stageWeeks) : null;
   const showStageBar  = stages.length > 1;
+
+  // ── Did they finish the stage, and can they move on? ──
+  // `isStageLocked` is no use here: it answers for the device it runs on, and
+  // the trainer has no slot. The question is about the client, so it's the raw
+  // flag on the stage that follows theirs.
+  const nextStage    = stages[stageIdx + 1] ?? null;
+  const stageDone    = stageWeeks != null && weeksDone >= stageWeeks && !!nextStage;
+  const nextLocked   = stageDone && !!nextStage.locked;
 
   // ── Real pace ──
   const paceTarget  = adherence?.weekTarget ?? sessPerCycle;
@@ -506,9 +515,36 @@ function ActiveProgramHero({
               <View style={[styles.heroBarFill, { width: `${Math.round(stageProgress * 100)}%` }]} />
             </View>
           )}
+          {/* Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
+              ("hazme una semana más"), así que se informa sin alarmar — el aviso
+              naranja se reserva para cuando NO puede avanzar. */}
+          {stageDone && !nextLocked && (
+            <Text style={styles.heroStageMeta}>
+              {t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })}
+            </Text>
+          )}
         </View>
       ) : (
         <Text style={styles.heroStageMeta}>{t('clients.cycleDays', { count: sessPerCycle })}</Text>
+      )}
+
+      {/* Etapa bloqueada: el cliente está parado esperándote. */}
+      {nextLocked && (
+        <View style={styles.lockBox}>
+          <View style={styles.lockHeader}>
+            <LockIcon size={13} color={th.colors.orange} />
+            <Text style={styles.lockTag}>{t('clients.stageLockedTag')}</Text>
+          </View>
+          <Text style={styles.lockText}>
+            {t('clients.stageLockedText', {
+              current: currentStage?.name ?? '',
+              next:    nextStage.name,
+            })}
+          </Text>
+          <TouchableOpacity style={styles.lockBtn} onPress={() => onUnlock(stageIdx + 1)} activeOpacity={0.85}>
+            <Text style={styles.lockBtnText}>{t('clients.stageUnlockBtn')}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Next session in the rotation → prescription editor */}
@@ -1227,6 +1263,11 @@ function ClientListCard({
     : (activeProgram?.days ?? []);
   const sessPerCycle   = Math.max(1, currentDays.length);
   const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
+  // Parado esperando a que le abras la etapa siguiente — mismo cálculo que el
+  // hero, aquí solo para encender el aviso en la fila.
+  const stageStuck     = hasStages
+    && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity)
+    && !!activeProgram.stages[stageIdx + 1]?.locked;
   const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   const weekNum        = weeksTraining ?? 1;
 
@@ -1297,6 +1338,14 @@ function ClientListCard({
               ) : null}
             </Text>
           </View>
+
+          {/* El cliente está parado esperando que le abras la etapa siguiente */}
+          {stageStuck && (
+            <View style={styles.cLockRow}>
+              <LockIcon size={11} color={th.colors.orange} />
+              <Text style={styles.cLockText}>{t('clients.stageLockedShort')}</Text>
+            </View>
+          )}
 
           {/* Row 3: Real training pace (avg sessions/week) vs target. Tinted
               orange when below target, red/orange when adherence needs attention. */}
@@ -1427,6 +1476,7 @@ export default function ClientsScreen() {
   const deleteClientLogEntry     = useStore((s) => s.deleteClientLogEntry);
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
+  const updateStage              = useStore((s) => s.updateStage);
   const sendOverrides            = useStore((s) => s.sendOverrides);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
   const connectClientToCloud     = useStore((s) => s.connectClientToCloud);
@@ -2031,6 +2081,24 @@ export default function ClientsScreen() {
               Alert.alert('Error', err.message ?? t('clients.programUploadError'));
             }
           };
+          // Abrir la etapa y enviarla en un solo toque: un desbloqueo que se
+          // queda sin enviar no desbloquea nada. Arrastra las ediciones que
+          // hubiera pendientes en ese programa, igual que "Enviar programa".
+          const unlockStage = async (stageIdx) => {
+            const stage = activeProgram.stages?.[stageIdx];
+            if (!stage) return;
+            updateStage(activeProgram.id, stageIdx, { locked: false });
+            try {
+              await uploadProgramToClient(selectedClientId, activeProgram.id);
+              showToast(t('clients.toastStageUnlocked', { name: stage.name }), 2600, 'success');
+            } catch (err) {
+              // Si el envío falla hay que volver a cerrarla: el cliente sigue
+              // viéndola bloqueada, y dejarla abierta aquí borraría el aviso que
+              // recuerda que ese cliente está parado.
+              updateStage(activeProgram.id, stageIdx, { locked: true });
+              Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+            }
+          };
           const confirmDelete = (program) => Alert.alert(
             t('clients.deleteProgramTitle'),
             t('clients.deleteProgramConfirm', { name: program.name }),
@@ -2078,6 +2146,7 @@ export default function ClientsScreen() {
                       onExport={() => exportSpecificProgram(activeProgram.id, true)}
                       onDeassign={() => setClientActiveProgram(selectedClientId, null)}
                       onDelete={() => confirmDelete(activeProgram)}
+                      onUnlock={unlockStage}
                     />
                   ) : (
                     <View style={styles.noActiveBox}>
@@ -3880,6 +3949,16 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.cardType,
     color: th.colors.text,
   },
+  cLockRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+    marginTop:     spacing.xs,
+  },
+  cLockText: {
+    ...textStyles.tag,
+    color: th.colors.orange,
+  },
   // Row 3: meta
   cProgMeta: {
     ...textStyles.subtitle,
@@ -4414,6 +4493,42 @@ const makeStyles = (th) => StyleSheet.create({
   heroStageMeta: {
     fontSize: typography.sm,
     color:    th.colors.muted2,
+  },
+
+  // Aviso de etapa bloqueada. Naranja como el resto de "requiere acción tuya"
+  // del panel (programDirty, ritmo por debajo), no rojo: no hay nada roto.
+  lockBox: {
+    backgroundColor: withOpacity(th.colors.orange, 0.08),
+    borderWidth:     borders.thin,
+    borderColor:     withOpacity(th.colors.orange, 0.35),
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+  },
+  lockHeader: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
+  },
+  lockTag: {
+    ...textStyles.spacingTag,
+    color: th.colors.orange,
+  },
+  lockText: {
+    fontSize:   typography.sm,
+    color:      th.colors.text,
+    lineHeight: typography.sm * 1.45,
+  },
+  lockBtn: {
+    backgroundColor:   th.colors.orange,
+    borderRadius:      th.radius.sm,
+    paddingVertical:   spacing.sm2,
+    paddingHorizontal: spacing.md,
+    alignItems:        'center',
+  },
+  lockBtnText: {
+    ...textStyles.spacingTag,
+    color: th.colors.bg,
   },
   heroBar: {
     height:          5,
