@@ -4,7 +4,7 @@
  * Self-contained: manages settings sheet + import logic internally.
  */
 
-import { useState, useEffect, useMemo, Children, cloneElement } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView, TextInput,
 } from 'react-native';
@@ -22,14 +22,12 @@ import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
 import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
-import { ArrowIcon, PencilIcon } from './ui/EditorIcons';
-import { spacing, typography, textStyles, borders, getCardRadii } from '../theme';
+import { PencilIcon }   from './ui/EditorIcons';
+import { Section, MenuRow, Status, RowIcon } from './ui/MenuList';
+import { formatWhen } from '../utils/formatWhen';
+import { spacing, typography, textStyles, borders } from '../theme';
 import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
-
-// Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
-// 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
-const ROW_CHEVRON = 10.77;
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -103,19 +101,6 @@ function MenuIcon({ size = 24 }) {
 // menú parecía un árbol de Navidad. El lima queda para lo que informa (estado,
 // badge PRO, tema activo).
 
-function RowIcon({ children }) {
-  const th = useTheme();
-  return (
-    <Svg
-      width={18} height={18} viewBox="0 0 24 24" fill="none"
-      stroke={th.colors.mutedLight} strokeWidth={2.4}
-      strokeLinecap="round" strokeLinejoin="round"
-    >
-      {children}
-    </Svg>
-  );
-}
-
 const ICON_NEW      = <Path d="M12 5v14M5 12h14" />;
 const ICON_ARCHIVED = <Path d="M4 7h16M4 12h16M4 17h10" />;
 const ICON_TRAINER  = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
@@ -125,86 +110,6 @@ const ICON_EXPORT   = <Path d="M12 19V5M6 11l6-6 6 6" />;
 const ICON_IMPORT   = <Path d="M12 5v14M6 13l6 6 6-6" />;
 const ICON_PLAN     = <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />;
 const ICON_DOCS     = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
-
-// ── Sección + fila ────────────────────────────────────────────────────────────
-// Listas fusionadas, no cards anidados: la sección se marca con la etiqueta de
-// siempre (`spacingTag`) y las filas son el sistema de listas agrupadas de la
-// app (gap 2, extremos redondeados vía getCardRadii) — este es su caso de uso
-// canónico: filas uniformes de consulta/configuración.
-
-function Section({ title, children }) {
-  const styles = useThemedStyles(makeStyles);
-  // `Children.toArray` descarta los `false`/`null` de las filas condicionales,
-  // así que la primera y la última se calculan solas.
-  const rows = Children.toArray(children);
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{title}</Text>
-      <View style={styles.group}>
-        {rows.map((row, i) =>
-          cloneElement(row, { isFirst: i === 0, isLast: i === rows.length - 1 }),
-        )}
-      </View>
-    </View>
-  );
-}
-
-function Status({ tone, label }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const color  = tone === 'on' ? th.colors.accent : tone === 'warn' ? th.colors.orange : th.colors.muted;
-  const text   = tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent;
-  return (
-    <View style={styles.status}>
-      <View style={[styles.statusDot, { backgroundColor: color }]} />
-      <Text style={[styles.statusText, { color: text }]}>{label}</Text>
-    </View>
-  );
-}
-
-/**
- * Fila del menú: icono + etiqueta, y a la derecha lo que toque (valor, badge,
- * estado con punto o un control inline). El chevron solo aparece cuando la fila
- * navega y no lleva ya estado o control a la derecha.
- */
-function MenuRow({
-  icon, label, sub, value, badge, badgeMuted, status, control,
-  onPress, disabled, minHeight, isFirst, isLast,
-}) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const Wrap   = onPress ? TouchableOpacity : View;
-  const press  = onPress ? { onPress, activeOpacity: 0.7, disabled } : null;
-  return (
-    <Wrap
-      style={[
-        styles.row,
-        getCardRadii(th, isFirst, isLast),
-        minHeight ? { minHeight } : null,
-        disabled && styles.rowDisabled,
-      ]}
-      {...press}
-    >
-      {icon != null && <View style={styles.rowIcon}>{icon}</View>}
-      <View style={styles.rowMeta}>
-        <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
-        {!!sub && <Text style={styles.rowSub} numberOfLines={1}>{sub}</Text>}
-      </View>
-      {control}
-      {!!value && <Text style={styles.rowValue}>{value}</Text>}
-      {!!badge && (
-        // El lima informa: PRO va en lima, FREE en gris (no es un logro).
-        <View style={[styles.badge, badgeMuted && styles.badgeOff]}>
-          <Text style={[styles.badgeText, badgeMuted && styles.badgeTextOff]}>{badge}</Text>
-        </View>
-      )}
-      {status}
-      {onPress && !status && !control && (
-        <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
-      )}
-    </Wrap>
-  );
-}
 
 // ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
 // Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
@@ -361,28 +266,6 @@ function ArchivedProgramsModal({ onClose }) {
   );
 }
 
-// ── Última copia de Drive ─────────────────────────────────────────────────────
-// En una app offline el dato que tranquiliza no es "backup activo" sino CUÁNDO
-// fue la última copia — por eso va en el subtítulo de la fila.
-function formatBackupWhen(iso, lang, t) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-
-  const h    = d.getHours();
-  const m    = String(d.getMinutes()).padStart(2, '0');
-  const time = lang === 'en' ? `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}` : `${h}:${m}`;
-
-  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
-
-  if (days === 0) return `${t('dayCard.today').toLowerCase()} ${time}`;
-  if (days === 1) return `${t('dayCard.yesterday').toLowerCase()} ${time}`;
-
-  const months = lang === 'en' ? MONTHS_EN : MONTHS_ES;
-  const day    = lang === 'en' ? `${months[d.getMonth()]} ${d.getDate()}` : `${d.getDate()} ${months[d.getMonth()]}`;
-  return `${day} ${time}`;
-}
-
 // ── Hoja de exportar ──────────────────────────────────────────────────────────
 // Exportar backup y Exportar programa + historial son la misma acción con
 // distinto alcance: una sola fila en el menú y la decisión aquí, en el momento
@@ -466,7 +349,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         .filter(Boolean).join(' · ')
     : t('header.trainerSubOff');
 
-  const driveWhen  = driveBackup?.lastBackup ? formatBackupWhen(driveBackup.lastBackup, lang, t) : null;
+  const driveWhen  = formatWhen(driveBackup?.lastBackup, lang, t('dayCard.today'), t('dayCard.yesterday'));
   const driveTone  = driveBackup?.needsReconnect ? 'warn' : driveBackup?.enabled ? 'on' : 'off';
   const driveSub   = driveBackup?.needsReconnect ? t('header.driveSubReconnect')
     : !driveBackup?.enabled                      ? t('header.driveSubOff')
@@ -907,70 +790,6 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 0.88,
     color:         th.colors.accent,
   },
-
-  // ── Sección + lista agrupada ────────────────────────────────────────────────
-  section:      { marginBottom: spacing.xl },
-  sectionLabel: {
-    ...textStyles.spacingTag,
-    color:             th.colors.mutedLight,
-    textTransform:     'uppercase',
-    paddingHorizontal: spacing.xs2,
-    marginBottom:      spacing.sm2,
-  },
-  group: { gap: spacing.xs },
-
-  row: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.lg,
-    minHeight:         52,
-    backgroundColor:   th.colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-  },
-  rowDisabled: { opacity: 0.45 },
-  rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
-  rowMeta:     { flex: 1, minWidth: 0 },
-  // 14px ExtraBold sin tracking: tampoco tiene token (cardType es 12/1.2).
-  rowLabel: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize:   14,
-    color:      th.colors.text,
-  },
-  rowSub: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize:   11,
-    color:      th.colors.mutedLight,
-    marginTop:  spacing.xs,
-  },
-  rowValue: {
-    fontFamily:          'Inter_700Bold',
-    fontSize:            12,
-    color:               th.colors.muted,
-    fontVariant:         ['tabular-nums'],
-    flexShrink:          0,
-  },
-
-  // Estado de conexión: punto + texto. Lo que informa va en lima; cuando está
-  // apagado, el texto pasa a lima porque ahí SÍ hay una acción que ofrecer.
-  status:    { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 0 },
-  statusDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusText: { fontFamily: 'Inter_700Bold', fontSize: 12 },
-
-  // Badge (PRO/FREE en la fila de plan)
-  badge: {
-    paddingHorizontal: spacing.sm2,
-    paddingVertical:   3,
-    borderRadius:      th.radius.xs,
-    backgroundColor:   th.tint.accent10,
-    flexShrink:        0,
-  },
-  badgeText: {
-    ...textStyles.spacingTag,
-    color: th.colors.accent,
-  },
-  badgeOff:     { backgroundColor: th.colors.surface2 },
-  badgeTextOff: { color: th.colors.mutedLight },
 
   // Segmentado pequeño dentro de la fila (unidades / idioma)
   segWrap: { width: 104, flexShrink: 0 },

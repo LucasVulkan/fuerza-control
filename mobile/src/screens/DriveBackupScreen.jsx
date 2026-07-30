@@ -1,9 +1,14 @@
 /**
- * DriveBackupScreen
+ * DriveBackupScreen — copia de seguridad en el Google Drive del usuario.
  *
- * Full-screen version of the Drive backup panel, with two tabs:
- *   • Ajustes  — connect/disconnect, frequency, backup now
- *   • Backups  — list of files in Drive, tapeable to restore
+ * Dos pestañas: Ajustes (conectar, cuándo se guarda, nombre, acciones) y Copias
+ * (lista de archivos, tocar = restaurar).
+ *
+ * La prioridad del contenido es que se entienda qué hace sin tener que
+ * probarlo: qué se guarda y dónde, que la app solo ve sus propios archivos, que
+ * se conservan las 30 últimas copias (`MAX_BACKUPS` en `driveService.js`), y que
+ * restaurar REEMPLAZA los datos actuales. Toda la lógica de OAuth y de archivos
+ * se conserva tal cual; aquí solo cambian la presentación y los textos.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,17 +16,23 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView, RefreshControl, TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import { Path, G } from 'react-native-svg';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
-import * as SecureStore  from 'expo-secure-store';
-import Constants         from 'expo-constants';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation }     from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+import Constants        from 'expo-constants';
 
 import { useStore }                                                         from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID }                                         from '../config/google';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import { CheckIcon }    from '../components/ui/EditorIcons';
+import { Section, SectionLabel, MenuRow, RowIcon } from '../components/ui/MenuList';
+import { formatWhen } from '../utils/formatWhen';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -32,19 +43,23 @@ const DISCOVERY = {
 };
 const SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/drive.file'];
 
-const FREQ_OPTIONS = [
-  { key: 'session', label: 'Por sesión' },
-  { key: 'daily',   label: 'Diario'     },
-  { key: 'weekly',  label: 'Semanal'    },
-  { key: 'monthly', label: 'Mensual'    },
-];
+// Las frecuencias distintas de 'session' registran una tarea en segundo plano
+// (ver setDriveFrequency en el store), y eso es justo lo que dice el subtítulo.
+const FREQ_OPTIONS = ['session', 'daily', 'weekly', 'monthly'];
+const FREQ_KEY = { session: 'Session', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
 
-// ── DriveBackupScreen ─────────────────────────────────────────────────────────
+const ICON_CLOUD  = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
+const ICON_LOCK   = <G><Path d="M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3" /></G>;
+const ICON_STACK  = <Path d="M12 3 2 8l10 5 10-5-10-5zM2 16l10 5 10-5" />;
+const ICON_SAVE   = <Path d="M12 5v14M6 13l6 6 6-6" />;
+const ICON_TRASH  = <G><Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></G>;
+const ICON_UNLINK = <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />;
+const ICON_FILE   = <G><Path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><Path d="M14 3v5h5" /></G>;
 
 export default function DriveBackupScreen() {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const insets     = useSafeAreaInsets();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
+  const { t }      = useTranslation();
   const navigation = useNavigation();
 
   const driveBackup        = useStore((s) => s.driveBackup);
@@ -56,6 +71,7 @@ export default function DriveBackupScreen() {
   const deleteDriveBackups = useStore((s) => s.deleteDriveBackups);
   const importData         = useStore((s) => s.importData);
   const showToast          = useStore((s) => s.showToast);
+  const lang               = useStore((s) => s.profile?.language ?? 'es');
 
   const [activeTab,   setActiveTab]   = useState('settings'); // 'settings' | 'backups'
   const [nameInput,   setNameInput]   = useState(driveBackup.backupName ?? '');
@@ -63,6 +79,8 @@ export default function DriveBackupScreen() {
   const [loadingMsg,  setMsg]         = useState('');
   const [files,       setFiles]       = useState(null);  // null = not loaded yet
   const [refreshing,  setRefreshing]  = useState(false);
+
+  const when = (v) => formatWhen(v, lang, t('dayCard.today'), t('dayCard.yesterday'));
 
   // ── OAuth setup ──────────────────────────────────────────────────────────────
   const isExpoGo        = Constants.executionEnvironment === 'storeClient';
@@ -88,7 +106,7 @@ export default function DriveBackupScreen() {
     if (response?.type !== 'success') return;
     (async () => {
       setLoading(true);
-      setMsg('Conectando con Google…');
+      setMsg(t('drive.loadingConnect'));
       try {
         const tokens = await exchangeCodeForTokens({
           code:         response.params.code,
@@ -98,9 +116,9 @@ export default function DriveBackupScreen() {
         });
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);
-        showToast('Google Drive conectado', 2200, 'success');
+        showToast(t('drive.toastConnected'), 2200, 'success');
       } catch (err) {
-        Alert.alert('Error al conectar', err?.message ?? 'No se pudo conectar con Google Drive.');
+        Alert.alert(t('drive.errConnectTitle'), err?.message ?? t('drive.errBackupBody'));
       } finally {
         setLoading(false);
         setMsg('');
@@ -112,7 +130,7 @@ export default function DriveBackupScreen() {
   async function loadFiles(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
-    setMsg('Cargando lista…');
+    setMsg(t('drive.loadingBackups'));
     try {
       const token    = await SecureStore.getItemAsync('drive_access_token');
       const folderId = driveBackup.folderId ?? (token ? await findOrCreateFolder(token).catch(() => null) : null);
@@ -136,20 +154,19 @@ export default function DriveBackupScreen() {
   // ── Handlers ─────────────────────────────────────────────────────────────────
   async function handleBackupNow() {
     setLoading(true);
-    setMsg('Haciendo backup…');
+    setMsg(t('drive.loadingBackup'));
     try {
       const result = await performDriveBackup();
       if (result.ok) {
-        showToast('Backup guardado', 2200, 'success');
-        // Refresh list if on backups tab
+        showToast(t('drive.toastSaved'), 2200, 'success');
         if (activeTab === 'backups') loadFiles();
       } else if (result.error === 'Token expirado') {
-        Alert.alert('Sesión expirada', 'Vuelve a conectar tu cuenta de Google para continuar.');
+        Alert.alert(t('drive.errExpiredTitle'), t('drive.errExpiredBody'));
       } else {
-        Alert.alert('Error', result.error ?? 'No se pudo completar el backup.');
+        Alert.alert(t('drive.errBackupTitle'), result.error ?? t('drive.errBackupBody'));
       }
     } catch (err) {
-      Alert.alert('Error', err?.message ?? 'Fallo inesperado al hacer backup.');
+      Alert.alert(t('drive.errBackupTitle'), err?.message ?? t('drive.errBackupBody'));
     } finally {
       setLoading(false);
       setMsg('');
@@ -158,23 +175,23 @@ export default function DriveBackupScreen() {
 
   function handleRestoreFile(file) {
     Alert.alert(
-      'Restaurar backup',
-      `¿Restaurar "${file.name}"?\n\nTus datos actuales se reemplazarán con los de este backup.`,
+      t('drive.restoreTitle'),
+      t('drive.restoreBody', { when: when(file.createdTime) ?? file.name }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Restaurar', style: 'destructive',
+          text: t('drive.restoreConfirm'), style: 'destructive',
           onPress: async () => {
             setLoading(true);
-            setMsg('Descargando backup…');
+            setMsg(t('drive.loadingRestore'));
             try {
               const token = await SecureStore.getItemAsync('drive_access_token');
               const data  = await downloadBackup(token, file.id);
               importData(data, { program: true, log: true, settings: true, customExercises: true, clients: true }, { silent: true });
-              showToast('Backup restaurado', 2200, 'success');
+              showToast(t('drive.toastRestored'), 2200, 'success');
               navigation.goBack();
             } catch (err) {
-              Alert.alert('Error', err?.message ?? 'No se pudo restaurar el backup.');
+              Alert.alert(t('drive.errRestoreTitle'), err?.message ?? t('drive.errBackupBody'));
             } finally {
               setLoading(false);
               setMsg('');
@@ -187,21 +204,21 @@ export default function DriveBackupScreen() {
 
   function handleDeleteAll() {
     Alert.alert(
-      'Eliminar todos los backups',
-      '¿Seguro? Los archivos se eliminarán de Google Drive. Esta acción no se puede deshacer.',
+      t('drive.deleteAllTitle'),
+      t('drive.deleteAllBody'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar todo', style: 'destructive',
+          text: t('drive.deleteAllConfirm'), style: 'destructive',
           onPress: async () => {
             setLoading(true);
-            setMsg('Eliminando…');
+            setMsg(t('drive.loadingDelete'));
             try {
               await deleteDriveBackups();
               setFiles([]);
-              showToast('Backups eliminados', 2200, 'neutral');
+              showToast(t('drive.toastDeleted'), 2200, 'neutral');
             } catch {
-              Alert.alert('Error', 'No se pudieron eliminar los backups.');
+              Alert.alert(t('drive.errDeleteTitle'), t('drive.errBackupBody'));
             } finally {
               setLoading(false);
               setMsg('');
@@ -214,22 +231,24 @@ export default function DriveBackupScreen() {
 
   function handleDisconnect() {
     Alert.alert(
-      'Desconectar Google Drive',
-      '¿Desconectar tu cuenta? Los backups existentes en Drive no se eliminarán.',
+      t('drive.disconnectTitle'),
+      t('drive.disconnectBody'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Desconectar', style: 'destructive',
+          text: t('drive.disconnectConfirm'), style: 'destructive',
           onPress: async () => {
             await disconnectDrive();
-            showToast('Drive desconectado', 2200, 'neutral');
+            showToast(t('drive.toastDisconnected'), 2200, 'neutral');
           },
         },
       ],
     );
   }
 
-  // ── Backup name helpers ───────────────────────────────────────────────────────
+  // ── Nombre del archivo ───────────────────────────────────────────────────────
+  // Mismo saneado que `performDriveBackup` en el store, para que la vista previa
+  // sea el nombre real y no una aproximación.
   function sanitizeBackupName(raw) {
     const s = (raw || '').trim();
     if (!s) return 'forma-backup';
@@ -248,171 +267,177 @@ export default function DriveBackupScreen() {
   const previewName = `${sanitizeBackupName(nameInput)}-${today}.fitdata`;
 
   const isConnected = driveBackup.enabled;
+  const needsFix    = isConnected && driveBackup.needsReconnect;
+  const state       = !isConnected ? 'off' : needsFix ? 'warn' : 'on';
+  const lastWhen    = when(driveBackup.lastBackup);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-
-      {/* ── Header ── */}
+    <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
+        <Text style={styles.headerTitle}>{t('drive.title')}</Text>
+        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.closeGlyph}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>GOOGLE DRIVE</Text>
-        <View style={styles.headerRight}>
-          {/* Status dot */}
-          <View style={[
-            styles.statusDot,
-            isConnected && !driveBackup.needsReconnect && styles.dotGreen,
-            isConnected && driveBackup.needsReconnect  && styles.dotOrange,
-            !isConnected && styles.dotGray,
-          ]} />
-        </View>
       </View>
 
-      {/* ── Tab bar ── */}
-      <View style={styles.tabBar}>
-        {[
-          { id: 'settings', label: 'Ajustes'  },
-          { id: 'backups',  label: 'Backups'  },
-        ].map(({ id, label }) => (
-          <TouchableOpacity
-            key={id}
-            style={styles.tabItem}
-            onPress={() => setActiveTab(id)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabLabel, activeTab === id && styles.tabLabelActive]}>{label}</Text>
-            <View style={[styles.tabUnderline, activeTab === id && styles.tabUnderlineActive]} />
-          </TouchableOpacity>
-        ))}
+      <View style={styles.tabs}>
+        <SegmentedControl
+          options={[
+            { id: 'settings', label: t('drive.tabSettings') },
+            { id: 'backups',  label: t('drive.tabBackups')  },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </View>
 
-      {/* ── Tab: Ajustes ── */}
+      {/* ── Pestaña: Ajustes ── */}
       {activeTab === 'settings' && (
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Status card */}
-          <View style={styles.statusCard}>
-            <View style={styles.statusRow}>
-              <View style={[
-                styles.dot,
-                isConnected && !driveBackup.needsReconnect ? styles.dotGreen : null,
-                isConnected && driveBackup.needsReconnect  ? styles.dotOrange : null,
-                !isConnected ? styles.dotGray : null,
-              ]} />
-              <Text style={styles.statusText}>
-                {isConnected ? 'Conectado' : 'No conectado'}
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+          <View style={[styles.stateCard, state !== 'on' && styles.stateCardOff]}>
+            <View style={styles.stateTagRow}>
+              <View style={[styles.stateDot, {
+                backgroundColor: state === 'on' ? th.colors.accent : state === 'warn' ? th.colors.orange : th.colors.muted,
+              }]} />
+              <Text style={[styles.stateTag, state === 'warn' && { color: th.colors.orange }]}>
+                {t(state === 'on' ? 'drive.tagActive' : state === 'warn' ? 'drive.tagReconnect' : 'drive.tagOff')}
               </Text>
             </View>
-            {isConnected && driveBackup.email ? (
-              <Text style={styles.emailText}>{driveBackup.email}</Text>
-            ) : null}
-            {isConnected && driveBackup.lastBackup ? (
-              <Text style={styles.lastBackupText}>
-                Último backup: {new Date(driveBackup.lastBackup).toLocaleString('es-ES', {
-                  day: 'numeric', month: 'short', year: 'numeric',
-                  hour: '2-digit', minute: '2-digit',
-                })}
-              </Text>
-            ) : null}
-            {isConnected && driveBackup.needsReconnect ? (
-              <Text style={styles.warningText}>⚠️ Sesión expirada — vuelve a conectar</Text>
-            ) : null}
+            <Text style={styles.stateTitle} numberOfLines={1}>
+              {isConnected ? (driveBackup.email ?? t('drive.title')) : t('drive.offTitle')}
+            </Text>
+            <Text style={[styles.stateSub, state !== 'on' && styles.stateSubOff]}>
+              {needsFix        ? t('drive.reconnectSub')
+                : !isConnected ? t('drive.offSub')
+                : lastWhen     ? t('drive.activeSub', { when: lastWhen })
+                :                t('drive.activeSubNever')}
+            </Text>
           </View>
 
           {isConnected ? (
             <>
-              {/* Frequency */}
-              <Text style={styles.sectionLabel}>FRECUENCIA</Text>
-              <View style={styles.freqGrid}>
-                {FREQ_OPTIONS.map(({ key, label }) => (
-                  <TouchableOpacity
+              <Section title={t('drive.sectionFrequency')}>
+                {FREQ_OPTIONS.map((key) => (
+                  <MenuRow
                     key={key}
-                    style={[styles.freqBtn, driveBackup.frequency === key && styles.freqBtnActive]}
+                    label={t(`drive.freq${FREQ_KEY[key]}`)}
+                    sub={t(`drive.freq${FREQ_KEY[key]}Sub`)}
+                    subLines={0}
+                    minHeight={62}
+                    disabled={loading}
                     onPress={() => !loading && setDriveFrequency(key)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.freqTxt, driveBackup.frequency === key && styles.freqTxtActive]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
+                    control={driveBackup.frequency === key
+                      ? <CheckIcon size={16} color={th.colors.accent} />
+                      : <View style={styles.checkSpacer} />}
+                  />
                 ))}
-              </View>
+              </Section>
 
-              {/* Backup name */}
-              <Text style={styles.sectionLabel}>NOMBRE DE ARCHIVO</Text>
-              <View style={styles.nameInputWrap}>
+              <View style={styles.nameBlock}>
+                <SectionLabel>{t('drive.sectionName')}</SectionLabel>
                 <TextInput
                   style={styles.nameInput}
                   value={nameInput}
-                  onChangeText={(v) => {
-                    setNameInput(v);
-                    setDriveBackupName(v);
-                  }}
-                  placeholder="forma-backup"
-                  placeholderTextColor={th.colors.muted2}
+                  onChangeText={(v) => { setNameInput(v); setDriveBackupName(v); }}
+                  placeholder={t('drive.namePlaceholder')}
+                  placeholderTextColor={th.colors.mutedLight}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="done"
                   maxLength={40}
                 />
+                <Text style={styles.namePreview}>{t('drive.namePreview', { name: previewName })}</Text>
+                <Text style={styles.nameHint}>{t('drive.nameHint')}</Text>
               </View>
-              <Text style={styles.namePreview}>{previewName}</Text>
 
-              {/* Actions */}
-              <Text style={[styles.sectionLabel, { marginTop: spacing.xs }]}>ACCIONES</Text>
-              <ActionRow label="Hacer backup ahora"  onPress={handleBackupNow}  disabled={loading} />
-
-              <View style={styles.separator} />
-              <ActionRow label="Eliminar todos los backups"    onPress={handleDeleteAll}  disabled={loading} danger />
-              <ActionRow label="Desconectar cuenta de Google"  onPress={handleDisconnect} disabled={loading} ghost />
+              <Section title={t('drive.sectionActions')}>
+                <MenuRow
+                  icon={<RowIcon color={th.colors.accent}>{ICON_SAVE}</RowIcon>}
+                  label={t('drive.backupNow')}
+                  sub={t('drive.backupNowSub')}
+                  minHeight={62}
+                  disabled={loading}
+                  onPress={handleBackupNow}
+                />
+                <MenuRow
+                  icon={<RowIcon>{ICON_UNLINK}</RowIcon>}
+                  label={t('drive.disconnect')}
+                  sub={t('drive.disconnectSub')}
+                  subLines={0}
+                  minHeight={62}
+                  disabled={loading}
+                  onPress={handleDisconnect}
+                />
+                <MenuRow
+                  icon={<RowIcon color={th.tint.red50}>{ICON_TRASH}</RowIcon>}
+                  label={t('drive.deleteAll')}
+                  labelColor={th.tint.red50}
+                  sub={t('drive.deleteAllSub')}
+                  subLines={0}
+                  minHeight={62}
+                  disabled={loading}
+                  onPress={handleDeleteAll}
+                />
+              </Section>
             </>
           ) : (
             <>
-              <Text style={styles.explainTxt}>
-                Guarda copias de seguridad automáticas de todos tus datos en tu Google Drive personal.
-                Los archivos se guardan en una carpeta llamada "Forma Backups".
-              </Text>
+              {/* Sin conectar: explicar qué hace ANTES de pedir la cuenta. */}
+              <Section title={t('drive.sectionHow')}>
+                <MenuRow
+                  icon={<RowIcon>{ICON_CLOUD}</RowIcon>}
+                  label={t('drive.how1Title')}
+                  sub={t('drive.how1Sub')}
+                  subLines={0}
+                  minHeight={62}
+                />
+                <MenuRow
+                  icon={<RowIcon>{ICON_LOCK}</RowIcon>}
+                  label={t('drive.how2Title')}
+                  sub={t('drive.how2Sub')}
+                  subLines={0}
+                  minHeight={62}
+                />
+                <MenuRow
+                  icon={<RowIcon>{ICON_STACK}</RowIcon>}
+                  label={t('drive.how3Title')}
+                  sub={t('drive.how3Sub')}
+                  subLines={0}
+                  minHeight={62}
+                />
+              </Section>
+
               {isExpoGo ? (
-                <View style={styles.expoGoNote}>
-                  <Text style={styles.expoGoNoteText}>
-                    La conexión con Google no está disponible en Expo Go.{'\n'}
-                    Usa la app instalada (build EAS).
-                  </Text>
-                </View>
+                <Text style={styles.hint}>{t('drive.expoGoNote')}</Text>
               ) : (
                 <TouchableOpacity
-                  style={[styles.connectBtn, (!request || loading) && { opacity: 0.5 }]}
+                  style={[styles.primaryBtn, (!request || loading) && { opacity: 0.5 }]}
                   onPress={() => promptAsync()}
                   disabled={!request || loading}
                   activeOpacity={0.85}
                 >
                   {loading
-                    ? <ActivityIndicator size="small" color={th.colors.bg} />
-                    : <Text style={styles.connectTxt}>Conectar con Google</Text>
-                  }
+                    ? <ActivityIndicator size="small" color={th.colors.onAccent} />
+                    : <Text style={styles.primaryBtnText}>{t('drive.connectCta')}</Text>}
                 </TouchableOpacity>
               )}
             </>
           )}
 
-          {/* Global loading feedback */}
           {loading && loadingMsg ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={th.colors.muted} />
+              <ActivityIndicator size="small" color={th.colors.mutedLight} />
               <Text style={styles.loadingTxt}>{loadingMsg}</Text>
             </View>
           ) : null}
         </ScrollView>
       )}
 
-      {/* ── Tab: Backups ── */}
+      {/* ── Pestaña: Copias ── */}
       {activeTab === 'backups' && (
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -424,368 +449,135 @@ export default function DriveBackupScreen() {
           }
         >
           {!isConnected ? (
-            <Text style={styles.emptyTxt}>Conecta Google Drive primero.</Text>
+            <Text style={styles.hint}>{t('drive.backupsNeedConnect')}</Text>
           ) : loading && files === null ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={th.colors.muted} />
-              <Text style={styles.loadingTxt}>Cargando backups…</Text>
+              <ActivityIndicator size="small" color={th.colors.mutedLight} />
+              <Text style={styles.loadingTxt}>{t('drive.loadingBackups')}</Text>
             </View>
           ) : !files || files.length === 0 ? (
-            <Text style={styles.emptyTxt}>No hay backups guardados en Drive.</Text>
+            <Text style={styles.hint}>{t('drive.backupsEmpty')}</Text>
           ) : (
             <>
-              <Text style={styles.backupListHint}>
-                Pulsa un backup para restaurarlo. Tus datos actuales se reemplazarán.
-              </Text>
-              {files.map((f) => (
-                <TouchableOpacity
-                  key={f.id}
-                  style={styles.fileRow}
-                  onPress={() => handleRestoreFile(f)}
-                  activeOpacity={0.7}
-                  disabled={loading}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
-                    {f.createdTime ? (
-                      <Text style={styles.fileDate}>
-                        {new Date(f.createdTime).toLocaleString('es-ES', {
-                          day: 'numeric', month: 'short', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text style={styles.fileChevron}>›</Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={styles.listHint}>{t('drive.backupsHint')}</Text>
+              <Section>
+                {files.map((f) => (
+                  <MenuRow
+                    key={f.id}
+                    icon={<RowIcon>{ICON_FILE}</RowIcon>}
+                    label={f.name}
+                    sub={when(f.createdTime) ?? undefined}
+                    minHeight={62}
+                    disabled={loading}
+                    onPress={() => handleRestoreFile(f)}
+                  />
+                ))}
+              </Section>
             </>
           )}
 
-          {loading && loadingMsg ? (
+          {loading && loadingMsg && files !== null ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={th.colors.muted} />
+              <ActivityIndicator size="small" color={th.colors.mutedLight} />
               <Text style={styles.loadingTxt}>{loadingMsg}</Text>
             </View>
           ) : null}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
-
-// ── ActionRow ─────────────────────────────────────────────────────────────────
-
-function ActionRow({ label, onPress, disabled, danger, ghost }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[
-        styles.actionBtn,
-        danger && styles.actionDanger,
-        ghost  && styles.actionGhost,
-        disabled && { opacity: 0.5 },
-      ]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.8}
-    >
-      <Text style={[styles.actionTxt, danger && styles.dangerTxt, ghost && styles.ghostTxt]}>
-        {label}
-      </Text>
-      {!ghost && <Text style={[styles.actionChevron, danger && { color: th.colors.red }]}>›</Text>}
-    </TouchableOpacity>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  container: {
-    flex:            1,
-    backgroundColor: th.colors.bg,
-  },
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
-  // Header
   header: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
+    gap: spacing.md,
   },
-  backBtn: {
-    paddingRight: spacing.md,
-  },
-  backIcon: {
-    fontSize:  28,
-    color:     th.colors.text,
-    lineHeight: 32,
-  },
-  headerTitle: {
-    flex:          1,
-    fontSize:      typography.sm,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-  },
-  headerRight: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: spacing.sm,
-  },
-  statusDot: {
-    width: 10, height: 10, borderRadius: 5,
-  },
-
-  // Tab bar
-  tabBar: {
-    flexDirection:     'row',
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  tabItem: {
-    flex:            1,
-    alignItems:      'center',
-    paddingVertical: spacing.sm + 2,
-  },
-  tabLabel: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  tabLabelActive: {
-    color: th.colors.text,
-  },
-  tabUnderline: {
-    marginTop:       spacing.xs,
-    height:          2,
-    width:           '50%',
-    borderRadius:    1,
-    backgroundColor: 'transparent',
-  },
-  tabUnderlineActive: {
-    backgroundColor: th.colors.accent,
-  },
-
-  // Content
-  content: {
-    padding: spacing.xl,
-    gap:     spacing.sm,
-  },
-
-  // Status card
-  statusCard: {
+  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  iconBox: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    padding:         spacing.md,
-    gap:             4,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
-  },
-  dotGreen:  { backgroundColor: th.colors.green },
-  dotOrange: { backgroundColor: th.colors.orange },
-  dotGray:   { backgroundColor: th.colors.muted2 ?? th.colors.muted },
-  statusText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  emailText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
-  lastBackupText: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
-  warningText: {
-    fontSize:  typography.xs,
-    color:     th.colors.red,
-    marginTop: 4,
-  },
+  closeGlyph: { fontSize: 17, color: th.colors.text },
 
-  // Section label
-  sectionLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1.5,
-    marginTop:     spacing.xs,
-  },
+  tabs:    { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
-  // Frequency grid
-  freqGrid: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
+  // Tarjeta de estado — mismo tratamiento que el "Resumen" de los editores:
+  // relleno tint/accent-10 y sin borde. Sin conectar (o con el permiso
+  // caducado) pierde el tinte lima, que aquí significa "esto va bien".
+  stateCard: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    marginBottom:    spacing.xl,
+    gap:             spacing.sm,
   },
-  freqBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
+  stateCardOff: { backgroundColor: th.colors.surface },
+  stateTagRow:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  stateDot:     { width: 7, height: 7, borderRadius: 3.5 },
+  stateTag:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  stateTitle:   { ...textStyles.cardTitle, color: th.colors.text },
+  stateSub:     { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+  stateSubOff:  { color: th.colors.mutedLight },
+
+  // Hueco del mismo tamaño que el check, para que las 4 frecuencias tengan la
+  // etiqueta a la misma anchura aunque solo una lleve marca.
+  checkSpacer: { width: 16, height: 16 },
+
+  nameBlock: { marginBottom: spacing.xl },
+  nameInput: {
     backgroundColor:   th.colors.surface2,
-  },
-  freqBtnActive: {
-    borderColor:      th.colors.accent,
-    backgroundColor:  withOpacity(th.colors.accent, 0.08),
-  },
-  freqTxt: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
-  freqTxtActive: {
-    color:      th.colors.accent,
-    fontWeight: typography.medium,
-  },
-
-  // Backup name input
-  nameInputWrap: {
-    backgroundColor:   th.colors.surface,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
-    height:            42,
-    justifyContent:    'center',
-  },
-  nameInput: {
-    color:    th.colors.text,
-    fontSize: typography.base,
-    padding:  0,
+    paddingVertical:   spacing.sm,
+    ...textStyles.cardTitle,
+    color:             th.colors.text,
   },
   namePreview: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 4,
-    marginLeft: 2,
+    ...textStyles.subtitle,
+    color:     th.tint.accent50,
+    marginTop: spacing.sm2,
+  },
+  nameHint: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    lineHeight: 15,
+    marginTop:  spacing.xs,
   },
 
-  // Action rows
-  actionBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  actionDanger: {
-    borderBottomColor: withOpacity(th.colors.red, 0.2),
-  },
-  actionGhost: {
-    borderBottomWidth: 0,
-    marginTop:         spacing.xs,
-  },
-  actionTxt: {
-    fontSize: typography.base,
-    color:    th.colors.text,
-  },
-  actionChevron: {
-    fontSize: typography.lg,
-    color:    th.colors.muted,
-  },
-  dangerTxt: { color: th.colors.red },
-  ghostTxt:  { color: th.colors.muted },
-
-  separator: {
-    height:          borders.thin,
-    backgroundColor: th.colors.border,
-    marginVertical:  spacing.sm,
-  },
-
-  // Backups tab
-  backupListHint: {
-    fontSize:     typography.xs,
-    color:        th.colors.muted,
-    lineHeight:   typography.xs * 1.5,
-    marginBottom: spacing.sm,
-  },
-  fileRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-    gap:               spacing.sm,
-  },
-  fileName: {
-    fontSize:    typography.sm,
-    fontWeight:  typography.medium,
-    color:       th.colors.text,
-  },
-  fileDate: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  fileChevron: {
-    fontSize: typography.lg,
-    color:    th.colors.muted,
-  },
-
-  // Connect (not-connected)
-  explainTxt: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    lineHeight: typography.sm * 1.6,
-    marginTop:  spacing.sm,
-  },
-  connectBtn: {
+  primaryBtn: {
+    height:          44,
+    borderRadius:    th.radius.sm,
     backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md + 2,
-    alignItems:      'center',
-    marginTop:       spacing.sm,
-  },
-  connectTxt: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
-  },
-  expoGoNote: {
-    backgroundColor: withOpacity(th.colors.muted, 0.08),
-    borderWidth:     1,
-    borderColor:     withOpacity(th.colors.muted, 0.2),
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-    marginTop:       spacing.sm,
-  },
-  expoGoNoteText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    lineHeight: typography.sm * 1.5,
-    textAlign:  'center',
-  },
-
-  // Loading
-  loadingRow: {
-    flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'center',
-    gap:             spacing.xs,
-    paddingVertical: spacing.md,
   },
-  loadingTxt: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
-  emptyTxt: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
+  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+
+  hint: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    lineHeight: 15,
     textAlign:  'center',
-    paddingTop: spacing.xl,
+    marginTop:  spacing.md,
   },
+  listHint: {
+    ...textStyles.tag,
+    color:        th.colors.mutedLight,
+    lineHeight:   15,
+    marginBottom: spacing.md,
+  },
+
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    marginTop:     spacing.md,
+  },
+  loadingTxt: { ...textStyles.tag, color: th.colors.mutedLight },
 });

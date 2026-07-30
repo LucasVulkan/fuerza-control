@@ -1,275 +1,168 @@
 /**
- * TrainerSyncModal
+ * TrainerSyncModal — cómo sincroniza el ENTRENADOR con sus clientes.
  *
- * Shown the first time a trainer opens the Clients screen (trainerSync.mode === null).
- * Also accessible from the hamburger menu as "Modo de sincronización".
+ * Se abre la primera vez que entra en Clientes (`trainerSync.mode === null`) y
+ * desde el menú principal ("Sincronización con clientes").
  *
- * Three options:
- *  - 'offline'  → no Supabase, manual file sharing as before
- *  - 'code'     → anonymous Supabase account + generated recovery code
- *  - 'google'   → Google OAuth via expo-auth-session → supabase.auth.signInWithIdToken
+ * Cuatro pantallas dentro de la misma hoja:
+ *   • select      → elegir modo (Google / código personal / sin conexión)
+ *   • code_status → ya hay código guardado: verlo, copiarlo, reautenticarse
+ *   • code_reveal → el código recién creado, para guardarlo
+ *   • recovery    → recuperar la cuenta con un código existente
+ *
+ * Pasa a `DragSheet` como el resto de los modales (§9 de docs/UI-MIGRATION.md).
+ * Toda la lógica de Supabase/OAuth (claim de slots, fallback por código,
+ * refreshTrainerSlots) se conserva tal cual.
  */
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, Modal, TouchableOpacity,
-  ActivityIndicator, StyleSheet, ScrollView, Alert,
-  TextInput, Platform, KeyboardAvoidingView,
+  View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, TextInput,
 } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
+import * as Clipboard   from 'expo-clipboard';
 import Constants        from 'expo-constants';
-import * as Clipboard from 'expo-clipboard';
+import { Path, G, Circle } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
+
 import { useStore } from '../../store/useStore';
 import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer, signOut as supabaseSignOut } from '../services/supabaseAuth';
 import { claimTrainerSlots, getTrainerSlots } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import DragSheet from './DragSheet';
+import CodeField from './ui/CodeField';
+import { CheckIcon } from './ui/EditorIcons';
+import { SectionLabel, RowIcon } from './ui/MenuList';
+import { spacing, textStyles, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // Required so the in-app browser can redirect back after OAuth
 WebBrowser.maybeCompleteAuthSession();
-
-// ── Option definitions ─────────────────────────────────────────────────────────
-
-const MODES = [
-  {
-    id:       'google',
-    icon:     '🔵',
-    title:    'Google',
-    desc:     'Inicia sesión con tu cuenta de Google. No necesitas guardar ningún código — tu cuenta de Google es tu clave de recuperación.',
-    warn:     null,
-    expoOnly: true, // disabled in Expo Go — will be checked at render time
-  },
-  {
-    id:    'code',
-    icon:  '🔑',
-    title: 'Código personal',
-    desc:  'Se genera un código único que debes guardar. Lo necesitarás si cambias de móvil o reinstallas la app. Todo lo demás es automático.',
-    warn:  'Eres responsable de guardar el código. Sin él no podrás recuperar tu cuenta.',
-  },
-  {
-    id:    'offline',
-    icon:  '📁',
-    title: 'Sin conexión',
-    desc:  'Comparte programas e historial manualmente exportando e importando archivos. No se necesita cuenta.',
-    warn:  null,
-  },
-];
-
-// ── Sub-screen: Already connected (code stored in memory) ─────────────────────
-
-function CodeStatusScreen({ code, loading, nameInput, setNameInput, setTrainerName, onReconnect, onChangeMode, onClose, isFirstTime }) {
-  const th = useTheme();
-  const s = useThemedStyles(makeS);
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await Clipboard.setStringAsync(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function handleChangeMode() {
-    onChangeMode();
-  }
-
-  return (
-    <View style={s.codeStatus}>
-      <Text style={s.title}>
-        {isFirstTime ? 'Gestión de clientes' : 'Sincronización'}
-      </Text>
-
-      <View style={s.connectedRow}>
-        <View style={s.connectedDot} />
-        <Text style={s.connectedText}>Ya estás conectado</Text>
-      </View>
-
-      <Text style={s.codeStatusDesc}>
-        No pierdas el código. Podrías necesitarlo en el futuro para reconectarte.
-      </Text>
-
-      <TouchableOpacity style={[s.codeBox, s.codeBoxSm]} onPress={handleCopy} activeOpacity={0.7}>
-        <Text style={[s.codeText, s.codeTextSm]}>{code}</Text>
-        <Text style={s.codeCopyHint}>{copied ? '✓ Copiado' : 'Toca para copiar'}</Text>
-      </TouchableOpacity>
-
-      <View style={s.nameRow}>
-        <Text style={s.nameLabel}>TU NOMBRE (PARA CLIENTES)</Text>
-        <TextInput
-          style={s.nameInput}
-          placeholder="Ej. Lucas García"
-          placeholderTextColor={th.colors.mutedLight}
-          value={nameInput}
-          onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
-          returnKeyType="done"
-          autoCorrect={false}
-        />
-      </View>
-
-      <View style={s.actions}>
-        {!isFirstTime && (
-          <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={s.cancelBtnText}>Cerrar</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[s.primaryBtn, { flex: 1 }, loading && { opacity: 0.5 }]}
-          onPress={onReconnect}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading
-            ? <ActivityIndicator color={th.colors.bg} />
-            : <Text style={s.primaryBtnText}>Aceptar</Text>}
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity onPress={handleChangeMode} style={s.recoveryLink}>
-        <Text style={[s.recoveryLinkText, { color: th.colors.mutedLight }]}>
-          Cambiar modo de sincronización →
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ── Sub-screen: Code generated ─────────────────────────────────────────────────
-
-function CodeRevealScreen({ code, onDone }) {
-  const s = useThemedStyles(makeS);
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await Clipboard.setStringAsync(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <View style={s.reveal}>
-      <Text style={s.revealTitle}>Tu código personal</Text>
-      <Text style={s.revealSub}>
-        Guárdalo en un lugar seguro. Lo necesitarás si cambias de móvil o reinstallas la app.
-      </Text>
-
-      <TouchableOpacity style={s.codeBox} onPress={handleCopy} activeOpacity={0.7}>
-        <Text style={s.codeText}>{code}</Text>
-        <Text style={s.codeCopyHint}>{copied ? '✓ Copiado' : 'Toca para copiar'}</Text>
-      </TouchableOpacity>
-
-      <View style={s.warnBox}>
-        <Text style={s.warnText}>
-          ⚠️ Sin este código no podrás recuperar tu cuenta si pierdes el móvil.
-        </Text>
-      </View>
-
-      <TouchableOpacity style={s.primaryBtn} onPress={onDone} activeOpacity={0.85}>
-        <Text style={s.primaryBtnText}>He guardado el código</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ── Sub-screen: Recovery ───────────────────────────────────────────────────────
-
-function RecoveryScreen({ onSuccess, onBack }) {
-  const th = useTheme();
-  const s = useThemedStyles(makeS);
-  const [code,    setCode]    = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
-  const [pasted,  setPasted]  = useState(false);
-
-  async function handlePaste() {
-    const text = await Clipboard.getStringAsync();
-    if (text?.trim()) {
-      setCode(text.trim().toUpperCase());
-      setError(null);
-      setPasted(true);
-      setTimeout(() => setPasted(false), 1500);
-    }
-  }
-
-  const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
-
-  async function handleRecover() {
-    if (!code.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { userId } = await recoverWithTrainerCode(code);
-      setTrainerSyncMode('code', { code: code.trim().toUpperCase(), userId });
-      onSuccess();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <View style={s.recovery}>
-      <Text style={s.revealTitle}>Recuperar cuenta</Text>
-      <Text style={s.revealSub}>Introduce tu código de entrenador para recuperar el acceso.</Text>
-
-      <TextInput
-        style={s.codeInput}
-        placeholder="XXXX-XXXX-XXXX"
-        placeholderTextColor={th.colors.mutedLight}
-        value={code}
-        onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        returnKeyType="done"
-        onSubmitEditing={handleRecover}
-      />
-      <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.7}>
-        <Text style={s.pasteBtnText}>{pasted ? '✓ Pegado' : '📋 Pegar'}</Text>
-      </TouchableOpacity>
-
-      {error && <Text style={s.errorText}>{error}</Text>}
-
-      <TouchableOpacity
-        style={[s.primaryBtn, (!code.trim() || loading) && { opacity: 0.5 }]}
-        onPress={handleRecover}
-        disabled={!code.trim() || loading}
-        activeOpacity={0.85}
-      >
-        {loading
-          ? <ActivityIndicator color={th.colors.bg} />
-          : <Text style={s.primaryBtnText}>Recuperar</Text>}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={onBack} style={s.backLink}>
-        <Text style={s.backLinkText}>← Volver</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ── Google OAuth constants ─────────────────────────────────────────────────────
 
 const GOOGLE_DISCOVERY = {
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-// ── Main modal ─────────────────────────────────────────────────────────────────
+// Los iconos dicen de qué va cada modo: cuenta en la nube, llave, archivos.
+const ICON_CLOUD  = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
+const ICON_KEY    = <G><Circle cx="8" cy="12" r="3.5" /><Path d="M11.5 12H21M17 12v3.5" /></G>;
+const ICON_FOLDER = <Path d="M3 7h6l2 2h10v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />;
+
+const MODES = [
+  { id: 'google',  icon: ICON_CLOUD,  expoOnly: true },
+  { id: 'code',    icon: ICON_KEY                    },
+  { id: 'offline', icon: ICON_FOLDER                 },
+];
+const MODE_KEY = { google: 'Google', code: 'Code', offline: 'Offline' };
+
+// ── Caja del código (verlo y copiarlo) ────────────────────────────────────────
+
+function CodeBox({ code, small }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.7}>
+      <Text style={[styles.codeText, small && styles.codeTextSm]}>{code}</Text>
+      <Text style={styles.codeHint}>{copied ? t('sync.copied') : t('sync.copyHint')}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── Campo del nombre visible para los clientes ────────────────────────────────
+
+function NameField({ value, onChange }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  return (
+    <View>
+      <SectionLabel>{t('sync.nameLabel')}</SectionLabel>
+      <TextInput
+        style={styles.nameInput}
+        placeholder={t('sync.namePlaceholder')}
+        placeholderTextColor={th.colors.mutedLight}
+        value={value}
+        onChangeText={onChange}
+        returnKeyType="done"
+        autoCorrect={false}
+        maxLength={40}
+      />
+      <Text style={styles.hintLeft}>{t('sync.nameHint')}</Text>
+    </View>
+  );
+}
+
+// ── Modo (fila agrupada con su aviso propio) ──────────────────────────────────
+
+function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirst, isLast }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  return (
+    <TouchableOpacity
+      style={[styles.mode, getCardRadii(th, isFirst, isLast), unavailable && styles.modeDisabled]}
+      onPress={() => !unavailable && onPress()}
+      activeOpacity={unavailable ? 1 : 0.7}
+    >
+      <View style={styles.modeTop}>
+        <View style={styles.modeIcon}>
+          <RowIcon color={active ? th.colors.accent : th.colors.mutedLight}>{mode.icon}</RowIcon>
+        </View>
+        <View style={styles.modeMeta}>
+          <Text style={[styles.modeTitle, active && { color: th.colors.accent }]}>
+            {t(`sync.mode${MODE_KEY[mode.id]}Title`)}
+          </Text>
+          <Text style={styles.modeDesc}>{t(`sync.mode${MODE_KEY[mode.id]}Desc`)}</Text>
+          {unavailable && <Text style={styles.modeUnavail}>{t('sync.onlyInstalled')}</Text>}
+        </View>
+        {!unavailable && (
+          active
+            ? <CheckIcon size={16} color={th.colors.accent} />
+            : <View style={styles.checkSpacer} />
+        )}
+      </View>
+      {active && !!warn && (
+        <Text style={[
+          styles.modeWarn,
+          { color: warnTone === 'good' ? th.colors.accent : th.tint.orange50 },
+        ]}>
+          {warn}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
 
 export default function TrainerSyncModal({ visible, onClose, isFirstTime = true }) {
-  const th = useTheme();
-  const s = useThemedStyles(makeS);
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
   const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
   const setTrainerName     = useStore((s) => s.setTrainerName);
   const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [selected,     setSelected]     = useState(trainerSync.mode ?? 'google');
-  const [loading,      setLoading]      = useState(false);
-  const [screen,       setScreen]       = useState('select'); // 'select' | 'code_reveal' | 'recovery'
-  const [newCode,      setNewCode]      = useState(null);
-  const [nameInput,    setNameInput]    = useState(trainerSync.trainerName ?? '');
+  const [selected,  setSelected]  = useState(trainerSync.mode ?? 'google');
+  const [loading,   setLoading]   = useState(false);
+  const [screen,    setScreen]    = useState('select'); // 'select' | 'code_status' | 'code_reveal' | 'recovery'
+  const [newCode,   setNewCode]   = useState(null);
+  const [nameInput, setNameInput] = useState(trainerSync.trainerName ?? '');
+
+  // Recuperar cuenta (antes una sub-pantalla con su propio estado)
+  const [recoverCode,    setRecoverCode]    = useState('');
+  const [recoverError,   setRecoverError]   = useState(null);
 
   // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN).
   // If a code is already stored, jump directly to the "connected" status screen
@@ -279,6 +172,8 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       setNameInput(trainerSync.trainerName ?? '');
       setSelected(trainerSync.mode ?? 'google');
       setScreen(trainerSync.code ? 'code_status' : 'select');
+      setRecoverCode('');
+      setRecoverError(null);
     }
   }, [visible]);
 
@@ -287,10 +182,9 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   // expo-auth-session v7: useProxy removed. In Expo Go the redirect URI is always
   // exp://127.0.0.1:8081 (can't be registered in GCC → OAuth disabled in dev).
   // In standalone builds, native: 'forma://oauth2redirect' is used directly.
-  // Registered in GCC as a Desktop app client redirect URI. See google.js.
   //
-  const isExpoGo          = Constants.executionEnvironment === 'storeClient';
-  const googleClientId    = GOOGLE_ANDROID_CLIENT_ID;
+  const isExpoGo           = Constants.executionEnvironment === 'storeClient';
+  const googleClientId     = GOOGLE_ANDROID_CLIENT_ID;
   const androidRedirectUri = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
   const googleRedirectUri  = AuthSession.makeRedirectUri({ native: androidRedirectUri });
 
@@ -328,7 +222,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           redirectUri:  googleRedirectUri,
           clientId:     googleClientId,
         });
-        if (!tokens.id_token) throw new Error('Google no devolvió un id_token. Inténtalo de nuevo.');
+        if (!tokens.id_token) throw new Error(t('sync.errNoIdToken'));
         const { userId } = await loginWithGoogleTrainer({
           idToken:     tokens.id_token,
           accessToken: tokens.access_token,
@@ -369,7 +263,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
         onClose();
       } catch (err) {
-        Alert.alert('Error', err.message ?? 'No se pudo iniciar sesión con Google.');
+        Alert.alert(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
       } finally {
         setLoading(false);
       }
@@ -377,6 +271,11 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   }, [googleResponse]); // eslint-disable-line
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  function handleName(v) {
+    setNameInput(v);
+    setTrainerName(v.trim() || null);
+  }
 
   /** Re-establishes the Supabase session using the code already stored in memory.
    *  Also claims any local client slots that may be owned by a stale userId
@@ -400,7 +299,23 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
       onClose();
     } catch (err) {
-      Alert.alert('Error al reconectar', err.message ?? 'No se pudo recuperar la sesión. Comprueba tu código.');
+      Alert.alert(t('sync.errReconnectTitle'), err.message ?? t('sync.errReconnectBody'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRecover() {
+    if (!recoverCode.trim()) return;
+    setLoading(true);
+    setRecoverError(null);
+    try {
+      const { userId } = await recoverWithTrainerCode(recoverCode);
+      setTrainerSyncMode('code', { code: recoverCode.trim().toUpperCase(), userId });
+      setScreen('select');
+      onClose();
+    } catch (err) {
+      setRecoverError(err.message);
     } finally {
       setLoading(false);
     }
@@ -436,14 +351,13 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
         if (existingSlotIds.length > 0) {
           await claimTrainerSlots(existingSlotIds).catch(() => {
             // Non-fatal: SQL function may not be deployed yet.
-            // Trainer will see RLS errors on old slots until it is.
           });
         }
 
         setNewCode(code);
         setScreen('code_reveal');
       } catch (err) {
-        Alert.alert('Error', err.message ?? 'No se pudo crear la cuenta. Inténtalo de nuevo.');
+        Alert.alert(t('sync.errAccountTitle'), err.message ?? t('sync.errAccountBody'));
       } finally {
         setLoading(false);
       }
@@ -456,13 +370,15 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
       const isUpgrade = existingMode === 'code' && selected === 'google';
       Alert.alert(
-        isUpgrade ? 'Cambiar a Google' : 'Cambiar modo de sincronización',
-        isUpgrade
-          ? 'Pasarás a usar tu cuenta de Google. Tus clientes actuales se migran automáticamente.\n\n¿Continuar?'
-          : 'Se desconectará tu cuenta actual. Tu historial de clientes queda guardado en el dispositivo.\n\n¿Continuar?',
+        t(isUpgrade ? 'sync.switchUpgradeTitle' : 'sync.switchTitle'),
+        t(isUpgrade ? 'sync.switchUpgradeBody'  : 'sync.switchBody'),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: isUpgrade ? 'Cambiar a Google' : 'Cambiar', style: isUpgrade ? 'default' : 'destructive', onPress: doSwitch },
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t(isUpgrade ? 'sync.switchUpgradeConfirm' : 'sync.switchConfirm'),
+            style: isUpgrade ? 'default' : 'destructive',
+            onPress: doSwitch,
+          },
         ],
       );
       return;
@@ -470,439 +386,274 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     doSwitch();
   }
 
-  function handleRevealDone() {
-    setScreen('select');
-    onClose();
-  }
-
   const currentMode = trainerSync.mode;
 
+  // Aviso por modo: el genérico del código, el de "ya tienes uno" y el de que
+  // pasar a Google migra los clientes solo (esto último es buena noticia, va en
+  // lima; el resto en naranja).
+  function warnFor(modeId) {
+    if (modeId === 'code'   && trainerSync.code) return { text: t('sync.warnCodeExists'), tone: 'warn' };
+    if (modeId === 'code')                       return { text: t('sync.modeCodeWarn'),   tone: 'warn' };
+    if (modeId === 'google' && trainerSync.code) return { text: t('sync.warnUpgrade'),    tone: 'good' };
+    return { text: null, tone: 'warn' };
+  }
+
+  const titles = {
+    select:      isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
+    code_status: isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
+    code_reveal: t('sync.revealTitle'),
+    recovery:    t('sync.recoveryTitle'),
+  };
+
+  const action = screen === 'code_reveal'
+    ? { label: t('common.accept'),      onPress: () => { setScreen('select'); onClose(); } }
+    : screen === 'recovery'
+      ? { label: t('trainer.codeBack'), onPress: () => setScreen('select') }
+      : { label: isFirstTime ? t('common.accept') : t('common.cancel'), onPress: onClose };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.backdrop} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={s.center}
-      >
-        <View style={s.card}>
+    <DragSheet
+      visible={visible}
+      onClose={onClose}
+      background={th.colors.bg}
+      title={titles[screen]}
+      action={action}
+    >
+      {/* ── Ya hay código guardado ── */}
+      {screen === 'code_status' && (
+        <View style={styles.block}>
+          <View style={styles.stateCard}>
+            <View style={styles.stateTagRow}>
+              <View style={styles.stateDot} />
+              <Text style={styles.stateTag}>{t('sync.statusTag')}</Text>
+            </View>
+            <Text style={styles.stateTitle}>{t('sync.statusTitle')}</Text>
+            <Text style={styles.stateSub}>{t('sync.statusSub')}</Text>
+          </View>
 
-          {/* Already-connected status (code in memory → skip the mode selector) */}
-          {screen === 'code_status' && (
-            <CodeStatusScreen
-              code={trainerSync.code}
-              loading={loading}
-              nameInput={nameInput}
-              setNameInput={setNameInput}
-              setTrainerName={setTrainerName}
-              onReconnect={handleReconnect}
-              onChangeMode={() => setScreen('select')}
-              onClose={onClose}
-              isFirstTime={isFirstTime}
-            />
-          )}
+          <View>
+            <SectionLabel>{t('sync.yourCodeLabel')}</SectionLabel>
+            <CodeBox code={trainerSync.code} small />
+          </View>
 
-          {/* Code revealed after setup */}
-          {screen === 'code_reveal' && newCode && (
-            <CodeRevealScreen code={newCode} onDone={handleRevealDone} />
-          )}
+          <NameField value={nameInput} onChange={handleName} />
 
-          {/* Recovery flow */}
-          {screen === 'recovery' && (
-            <RecoveryScreen
-              onSuccess={() => { setScreen('select'); onClose(); }}
-              onBack={() => setScreen('select')}
-            />
-          )}
+          <TouchableOpacity
+            style={[styles.secondaryBtn, loading && styles.btnDisabled]}
+            onPress={handleReconnect}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading
+              ? <ActivityIndicator color={th.colors.text} size="small" />
+              : <Text style={styles.secondaryBtnText}>{t('sync.reauthCta')}</Text>}
+          </TouchableOpacity>
+          <Text style={styles.hint}>{t('sync.reauthHint')}</Text>
 
-          {/* Main selector */}
-          {screen === 'select' && (
-            <>
-              <Text style={s.title}>
-                {isFirstTime ? 'Gestión de clientes' : 'Modo de sincronización'}
-              </Text>
-              {isFirstTime && (
-                <Text style={s.subtitle}>
-                  ¿Cómo quieres sincronizar tus clientes?
+          <TouchableOpacity onPress={() => setScreen('select')} activeOpacity={0.7}>
+            <Text style={styles.link}>{t('sync.changeModeLink')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Código recién creado ── */}
+      {screen === 'code_reveal' && newCode && (
+        <View style={styles.block}>
+          <Text style={styles.lead}>{t('sync.revealLead')}</Text>
+
+          <CodeBox code={newCode} />
+
+          <View style={styles.warnCard}>
+            <Text style={styles.warnText}>{t('sync.revealWarn')}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => { setScreen('select'); onClose(); }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnText}>{t('sync.revealCta')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Recuperar cuenta ── */}
+      {screen === 'recovery' && (
+        <View style={styles.block}>
+          <Text style={styles.lead}>{t('sync.recoveryLead')}</Text>
+
+          <CodeField
+            value={recoverCode}
+            onChangeText={(v) => { setRecoverCode(v); setRecoverError(null); }}
+            groups={3}
+            onSubmitEditing={handleRecover}
+            error={recoverError}
+          />
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, (!recoverCode.trim() || loading) && styles.btnDisabled]}
+            onPress={handleRecover}
+            disabled={!recoverCode.trim() || loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={th.colors.onAccent} />
+              : <Text style={styles.primaryBtnText}>{t('sync.recoveryCta')}</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Elegir modo ── */}
+      {screen === 'select' && (
+        <View style={styles.block}>
+          <Text style={styles.lead}>{t('sync.selectLead')}</Text>
+
+          <View style={styles.modes}>
+            {MODES.map((mode, i) => {
+              const { text, tone } = warnFor(mode.id);
+              return (
+                <ModeOption
+                  key={mode.id}
+                  mode={mode}
+                  active={selected === mode.id}
+                  unavailable={mode.expoOnly && isExpoGo}
+                  warn={text}
+                  warnTone={tone}
+                  onPress={() => setSelected(mode.id)}
+                  isFirst={i === 0}
+                  isLast={i === MODES.length - 1}
+                />
+              );
+            })}
+          </View>
+
+          <NameField value={nameInput} onChange={handleName} />
+
+          <TouchableOpacity
+            style={[
+              styles.primaryBtn,
+              (loading || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
+            ]}
+            onPress={handleConfirm}
+            disabled={loading || (selected === 'google' && isExpoGo)}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={th.colors.onAccent} />
+              : (
+                <Text style={styles.primaryBtnText}>
+                  {t(selected === 'offline' ? 'sync.ctaOffline'
+                    : selected === 'google' ? 'sync.ctaGoogle'
+                    : 'sync.ctaCode')}
                 </Text>
               )}
+          </TouchableOpacity>
 
-              <ScrollView style={s.options} showsVerticalScrollIndicator={false}>
-                {MODES.map((mode) => {
-                  const active    = selected === mode.id;
-                  const unavailable = mode.expoOnly && isExpoGo;
-                  return (
-                    <TouchableOpacity
-                      key={mode.id}
-                      style={[s.option, active && s.optionActive, unavailable && s.optionDisabled]}
-                      onPress={() => !unavailable && setSelected(mode.id)}
-                      activeOpacity={unavailable ? 1 : 0.75}
-                    >
-                      <View style={s.optionTop}>
-                        <Text style={s.optionIcon}>{mode.icon}</Text>
-                        <View style={s.optionTextWrap}>
-                          <Text style={[s.optionTitle, active && s.optionTitleActive]}>
-                            {mode.title}
-                          </Text>
-                          <Text style={s.optionDesc}>{mode.desc}</Text>
-                          {unavailable && (
-                            <Text style={s.optionUnavailable}>Solo disponible en la app instalada</Text>
-                          )}
-                        </View>
-                        {!unavailable && (
-                          <View style={[s.radio, active && s.radioActive]}>
-                            {active && <View style={s.radioDot} />}
-                          </View>
-                        )}
-                      </View>
-                      {/* Warn genérico (solo cuando no hay código existente para esa opción) */}
-                      {active && mode.warn && !(mode.id === 'code' && trainerSync.code) && (
-                        <Text style={s.optionWarn}>{mode.warn}</Text>
-                      )}
-                      {/* Código: ya tienes uno, crear otro huerfanará a los clientes */}
-                      {active && mode.id === 'code' && trainerSync.code && (
-                        <Text style={s.optionWarn}>
-                          ⚠ Ya tienes un código. Al crear uno nuevo perderás la sincronización con tus clientes actuales.
-                        </Text>
-                      )}
-                      {/* Google: upgrade desde código — clientes se migran automáticamente */}
-                      {active && mode.id === 'google' && trainerSync.code && (
-                        <Text style={[s.optionWarn, { color: th.colors.green }]}>
-                          ✓ Tus clientes actuales se migran automáticamente a tu cuenta de Google.
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Trainer display name — shown to clients on their programs */}
-              <View style={s.nameRow}>
-                <Text style={s.nameLabel}>TU NOMBRE (PARA CLIENTES)</Text>
-                <TextInput
-                  style={s.nameInput}
-                  placeholder="Ej. Lucas García"
-                  placeholderTextColor={th.colors.mutedLight}
-                  value={nameInput}
-                  onChangeText={(t) => { setNameInput(t); setTrainerName(t.trim() || null); }}
-                  returnKeyType="done"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {/* Recovery link — visible when no mode set, or to re-auth with a different code */}
-              <TouchableOpacity onPress={() => setScreen('recovery')} style={s.recoveryLink}>
-                <Text style={s.recoveryLinkText}>
-                  {currentMode === 'code'
-                    ? 'Volver a autenticarse con código →'
-                    : '¿Ya tienes un código? Recuperar cuenta →'}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={s.actions}>
-                {!isFirstTime && (
-                  <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-                    <Text style={s.cancelBtnText}>Cancelar</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={[s.primaryBtn, { flex: 1 }, (loading || (selected === 'google' && isExpoGo)) && { opacity: 0.5 }]}
-                  onPress={handleConfirm}
-                  disabled={loading || (selected === 'google' && isExpoGo)}
-                  activeOpacity={0.85}
-                >
-                  {loading
-                    ? <ActivityIndicator color={th.colors.bg} />
-                    : <Text style={s.primaryBtnText}>
-                        {selected === 'offline'
-                          ? 'Continuar sin conexión'
-                          : selected === 'google'
-                          ? 'Continuar con Google'
-                          : 'Activar'}
-                      </Text>}
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
+          <TouchableOpacity onPress={() => setScreen('recovery')} activeOpacity={0.7}>
+            <Text style={styles.link}>
+              {currentMode === 'code' ? t('sync.reauthLink') : t('sync.recoveryLink')}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      )}
+    </DragSheet>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
-const makeS = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-  },
-  center: {
-    flex:              1,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  card: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-    maxHeight:       '85%',
-  },
-
-  title: {
-    fontSize:   typography.lg,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize:  typography.sm,
-    color:     th.colors.mutedLight,
-    marginTop: -spacing.xs,
-  },
-
-  // Options list
-  options: { maxHeight: 340 },
-  option: {
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    marginBottom:    spacing.xs,
-    backgroundColor: th.colors.surface2,
-    gap:             spacing.xs,
-  },
-  optionActive: {
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  optionDisabled: {
-    opacity: 0.5,
-  },
-  optionUnavailable: {
-    fontSize:  typography.xs,
-    color:     th.colors.mutedLight,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  optionTop: {
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           spacing.sm,
-  },
-  optionIcon: {
-    fontSize:  20,
-    lineHeight: 24,
-    marginTop: 1,
-  },
-  optionTextWrap: { flex: 1, gap: 3 },
-  optionTitle: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  optionTitleActive: { color: th.colors.accent },
-  optionDesc: {
-    fontSize:   typography.xs,
+const makeStyles = (th) => StyleSheet.create({
+  block: { gap: spacing.lg, paddingBottom: spacing.md },
+  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:  {
+    ...textStyles.tag,
     color:      th.colors.mutedLight,
-    lineHeight: typography.xs * 1.5,
+    lineHeight: 15,
+    textAlign:  'center',
+    marginTop:  -spacing.md,
   },
-  optionWarn: {
-    fontSize:   typography.xs,
-    color:      th.colors.orange,
-    lineHeight: typography.xs * 1.5,
-    marginTop:  spacing.xs,
-  },
-  // Radio button
-  radio: {
-    width:        18,
-    height:       18,
-    borderRadius: 9,
-    borderWidth:  2,
-    borderColor:  th.colors.border,
-    alignItems:   'center',
-    justifyContent: 'center',
-    marginTop:    2,
-    flexShrink:   0,
-  },
-  radioActive:  { borderColor: th.colors.accent },
-  radioDot: {
-    width:           8,
-    height:          8,
-    borderRadius:    4,
-    backgroundColor: th.colors.accent,
-  },
+  hintLeft: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
+  link:     { ...textStyles.cardType, color: th.tint.accent50, textAlign: 'center' },
 
-  // Trainer name
-  nameRow: { gap: 5 },
-  nameLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.mutedLight,
-    letterSpacing: 0.8,
+  // Estado "ya conectado" — tratamiento "Resumen" (tint/accent-10, sin borde).
+  stateCard: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    gap:             spacing.sm,
   },
+  stateTagRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  stateDot:    { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.accent },
+  stateTag:    { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  stateTitle:  { ...textStyles.cardTitle, color: th.colors.text },
+  stateSub:    { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+
+  // Caja del código: el código es el protagonista, con la pista de copiar debajo.
+  codeBox: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    paddingVertical: spacing.lg,
+    alignItems:      'center',
+    gap:             spacing.sm,
+  },
+  codeText: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      26,
+    letterSpacing: 4,
+    color:         th.colors.accent,
+    fontVariant:   ['tabular-nums'],
+  },
+  codeTextSm: { fontSize: 20 },
+  codeHint:   { ...textStyles.tag, color: th.colors.mutedLight },
+
+  // Modos, como lista agrupada (gap 2 + radios por posición) pero con sitio para
+  // el aviso propio de cada uno, que MenuRow no contempla.
+  modes: { gap: spacing.xs },
+  mode: {
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
+  },
+  modeDisabled: { opacity: 0.45 },
+  modeTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
+  modeIcon:     { width: 20, alignItems: 'center', paddingTop: 2, flexShrink: 0 },
+  modeMeta:     { flex: 1, minWidth: 0, gap: spacing.xs },
+  modeTitle:    { fontFamily: 'Inter_800ExtraBold', fontSize: 14, color: th.colors.text },
+  modeDesc:     { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15 },
+  modeUnavail:  { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
+  modeWarn:     { ...textStyles.tag, lineHeight: 15, paddingLeft: 20 + spacing.lg },
+  checkSpacer:  { width: 16, height: 16 },
+
+  warnCard: {
+    backgroundColor: th.tint.orange30,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+  },
+  warnText: { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
+
   nameInput: {
     backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
+    ...textStyles.cardTitle,
     color:             th.colors.text,
-    fontSize:          typography.base,
   },
 
-  // Recovery link
-  recoveryLink: { alignItems: 'center', paddingVertical: spacing.xs },
-  recoveryLinkText: {
-    fontSize: typography.xs,
-    color:    th.colors.accent,
-  },
-
-  // Actions row
-  actions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
   primaryBtn: {
-    backgroundColor: th.colors.accent,
+    height:          44,
     borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.bg,
-    letterSpacing: 0.5,
-  },
-  cancelBtn: {
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  cancelBtnText: { fontSize: typography.base, color: th.colors.mutedLight },
-
-  // Already-connected status screen
-  codeStatus: { gap: spacing.md },
-  connectedRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  connectedDot: {
-    width:           8,
-    height:          8,
-    borderRadius:    4,
-    backgroundColor: th.colors.green,
-  },
-  connectedText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      th.colors.green,
-  },
-  codeStatusDesc: {
-    ...textStyles.subtitle,
-    color:     th.colors.mutedLight,
-    marginTop: -spacing.xs,
-  },
-
-  // Code reveal
-  reveal: { gap: spacing.md },
-  revealTitle: {
-    fontSize:   typography.md,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  revealSub: {
-    fontSize:   typography.sm,
-    color:      th.colors.mutedLight,
-    lineHeight: typography.sm * 1.5,
-  },
-  codeBox: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-    borderRadius:    th.radius.md,
-    paddingVertical:   spacing.lg,
-    paddingHorizontal: spacing.xl,
-    alignItems:        'center',
-    gap:               spacing.xs,
-  },
-  // Compact variant for the status screen (code + hint stacked, less padding)
-  codeBoxSm: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  codeText: {
-    fontSize:      24,
-    fontWeight:    typography.heavy,
-    color:         th.colors.accent,
-    letterSpacing: 4,
-  },
-  codeTextSm: {
-    fontSize:      typography.xl,  // 18
-    letterSpacing: 2,
-  },
-  codeCopyHint: {
-    fontSize: typography.xs,
-    color:    th.colors.mutedLight,
-  },
-  warnBox: {
-    backgroundColor: withOpacity(th.colors.orange, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.orange, 0.3),
+  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  secondaryBtn: {
+    height:          44,
     borderRadius:    th.radius.sm,
-    padding:         spacing.md,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  warnText: {
-    fontSize:   typography.xs,
-    color:      th.colors.orange,
-    lineHeight: typography.xs * 1.5,
-  },
-
-  // Recovery
-  recovery: { gap: spacing.md },
-  codeInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.md,
-    color:             th.colors.text,
-    fontSize:          20,
-    fontWeight:        typography.heavy,
-    letterSpacing:     3,
-    textAlign:         'center',
-  },
-  errorText: {
-    fontSize:  typography.xs,
-    color:     th.colors.red,
-    textAlign: 'center',
-  },
-  pasteBtn: {
-    alignSelf:         'flex-end',
-    marginTop:         -spacing.xs,
-    paddingVertical:   spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  pasteBtnText: {
-    fontSize: typography.xs,
-    color:    th.colors.accent,
-  },
-  backLink: { alignItems: 'center', paddingVertical: spacing.xs },
-  backLinkText: {
-    fontSize: typography.xs,
-    color:    th.colors.mutedLight,
-  },
+  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  btnDisabled:      { opacity: 0.5 },
 });

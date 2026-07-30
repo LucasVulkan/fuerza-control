@@ -22,6 +22,9 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Modal de detalle de ejercicio | ✅ | `src/components/stats/ProgressTab.jsx` (mismo fichero) |
 | AppHeader + tab bar | ✅ | `src/components/AppHeader.jsx`, `src/navigation/RootNavigator.jsx` |
 | **Menú principal (≡)** + Documentación | ✅ | `src/components/AppHeader.jsx`, `src/screens/DocsScreen.jsx` |
+| **Entrenador (lado cliente)** | ✅ | `src/screens/TrainerConnectionScreen.jsx` |
+| **Copia en Drive** | ✅ | `src/screens/DriveBackupScreen.jsx` |
+| **Modales de conexión** (código / Google / modo sync) | ✅ | `ClientCodeModal.jsx`, `ClientGoogleLinkModal.jsx`, `TrainerSyncModal.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
@@ -445,6 +448,100 @@ líneas en `mutedLight`** (en `muted` a 11px casi no se leen, y es lo que ya usa
 las `NavRow`); y el **punto de estado del entrenador es lima**, siguiendo el
 texto del usuario ("dot lima" en las dos filas) y no la regla §8 de "azul =
 entrenador" que sí aplica en HomeView.
+
+### Entrenador y Copia en Drive — desglose
+
+**No hay frame de Figma** para ninguna de las dos: eran las últimas pantallas
+pre-migración (escala `typography`, `borders`, cadenas hardcodeadas en español) y
+el encargo fue doble — traerlas al lenguaje de la app **y revisar que lo que
+cuentan sea correcto, explicativo y claro**, sobre todo la del entrenador.
+
+- **`ui/MenuList.jsx` nuevo**: `Section`, `SectionLabel`, `MenuRow`, `Status` y
+  `RowIcon` salen del menú principal a una primitiva compartida, para que estas
+  dos pantallas usen EXACTAMENTE las mismas filas (mismo precedente que
+  `EditorRows.jsx`). `MenuRow` gana `subLines` (0 = sin límite, para subtítulos
+  que explican en vez de resumir) y `labelColor` (acciones destructivas).
+- **`utils/formatWhen.js` nuevo** (+ test): `hoy 9:41` / `ayer 21:03` /
+  `14 jul 9:41`, con año solo si es otro. Lo usan el menú, Drive y Entrenador —
+  antes el menú lo tenía como helper local y las dos pantallas usaban
+  `toLocaleString('es-ES')` a pelo, que ignoraba el idioma de la app.
+- **Cabecera** de las dos: título `text/hero` + caja de cerrar 42×42 `surface2`,
+  igual que el alta de ejercicio y Documentación (fuera el `‹` y el título
+  trackeado en `muted`).
+- **Tarjeta de estado**: tratamiento del "Resumen" de los editores (relleno
+  `tint/accent-10`, sin borde) con punto + etiqueta + titular + explicación.
+  Pierde el tinte lima cuando el estado NO es bueno (sin conectar; en Drive
+  también con el permiso caducado): en este tema el lima significa "esto va
+  bien".
+- **Pestañas de Drive** = `SegmentedControl` (antes un tab bar con subrayado que
+  no existe en ningún otro sitio de la app). Frecuencia = 4 filas con check
+  lima en la activa y subtítulo que explica cada una, en vez de un grid de
+  botones sin explicación.
+
+Correcciones de contenido (la parte que no es estilo):
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| "Sin conexión" | "Sin entrenador" + "si entrenas por tu cuenta no necesitas esto" | "Sin conexión" se lee como "sin internet" |
+| "Pendiente de sincronizar" / "Error de sincronización" | "Falta enviar" + qué está pendiente + fila **Reintentar el envío** | el estado nombraba el problema sin decir qué hacer; la acción de reintento existía en el store (`uploadHistoryToTrainer`) pero solo estaba en el banner del header |
+| "ACCESO: 🔑 Código de entrenador" | "Entras con un código" + "si cambias de móvil tendrás que pedirle uno nuevo" | decía el dato, no la consecuencia |
+| "ÚLTIMA SYNC" | "Último envío de tu historial" + "se envía solo al terminar cada sesión" | jerga abreviada |
+| — | Sección **QUÉ VE TU ENTRENADOR** (sí ve / no ve) | dato no obvio y verificado contra `scopeFilterForUpload`: salen las sesiones de SUS programas y las libres posteriores a la conexión; no salen los programas propios ni nada anterior |
+| "Desconectar entrenador" a secas | subtítulo con lo que pasa (se archiva su programa, vuelve el anterior) | la consecuencia solo aparecía en el `Alert`, ya pulsado |
+| Drive: "FRECUENCIA · Por sesión" | "CUÁNDO SE GUARDA · Al terminar cada sesión" + "no necesita permisos en segundo plano" | el resto de frecuencias sí registran tarea en segundo plano, y eso no se decía |
+| — | "Se guardan las 30 últimas… las más viejas se borran solas" | `MAX_BACKUPS = 30` en `driveService.js` era invisible en la UI |
+| — | "La app solo puede ver los archivos que ella misma crea" | es el scope real (`drive.file`) y es lo que la gente pregunta antes de dar acceso a su Drive |
+| "¿Restaurar «nombre»? Tus datos actuales se reemplazarán" | fecha legible de la copia + qué se reemplaza exactamente + "no se puede deshacer" | el nombre de archivo no dice cuándo es esa copia |
+
+Todo el texto pasa a i18n (`trainer.*`, `drive.*` en es/en). Los tres modales de
+conexión (código, vincular Google, modo de sincronización) **siguen sin migrar**:
+son piezas aparte y no entraban en este encargo.
+
+### Modales de conexión — desglose
+
+Los tres eran tarjetas centradas con borde, escala `typography` y texto
+hardcodeado. Pasan a **`DragSheet`**, que es lo que manda §9 ("cualquier modal
+nuevo se monta con él"), con el fondo en `bg` para que se vean las tarjetas de
+dentro — igual que el menú principal.
+
+- **Sin fila de botones Cancelar/Aceptar**: el hueco derecho de la cabecera de
+  `DragSheet` (`action`) hace de salida — *Cancelar* en los pasos iniciales,
+  *Atrás* en el paso de confirmación y en Recuperar cuenta. Abajo queda un solo
+  botón, el que avanza.
+- **Títulos de hoja en caso normal** ("Conectar con entrenador", "Tu código
+  personal"), que es la convención de las hojas ya migradas ("Añadir", "Tempo").
+  De paso se corrigió el "EXPORTAR" en mayúsculas de la hoja de exportar.
+- **`ui/CodeField.jsx` + `utils/codeFormat.js` nuevos** (con test): los dos
+  modales que piden un código tenían su propio input y su propio botón de pegar,
+  y el guion había que escribirlo a mano. Ahora el guion se pone solo, se fuerza
+  mayúscula, se descartan símbolos y se corta al largo exacto — 2 grupos para el
+  código de cliente (`XXXX-XXXX`), 3 para el de entrenador
+  (`XXXX-XXXX-XXXX`). NO se filtran `I`, `O`, `0` ni `1` (el generador no las
+  usa, pero borrar en silencio lo que alguien acaba de teclear es peor que un
+  error de validación claro). Esto además vuelve fiable el login por código del
+  entrenador, cuya contraseña ES el código con guiones.
+- **Radios → el mismo check lima** que las frecuencias de Drive, y los emoji de
+  los modos (🔵🔑📁) → iconos SVG en gris/lima (nube, llave, carpeta: la nube es
+  la cuenta, la llave el código, la carpeta los archivos).
+
+Correcciones de contenido:
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| `Aceptar` en la pantalla de código guardado | `VOLVER A AUTENTICAR` + "úsalo si la app dejó de reconocerte" | el botón no aceptaba nada: reautenticaba la sesión de Supabase |
+| `Activar` / `Continuar sin conexión` | `CREAR MI CÓDIGO` / `SEGUIR SIN CUENTA` | el CTA ahora dice qué va a pasar |
+| "Google · Inicia sesión con tu cuenta…" | "Con tu cuenta de Google · tus clientes quedan asociados a tu cuenta, no hay código que guardar" | los tres modos se describen por su consecuencia real, no por el mecanismo |
+| "Sin conexión" (modo) | "Sin cuenta · nada sale de este móvil" | otra vez el "sin conexión" que se lee como "sin internet" |
+| "TU NOMBRE (PARA CLIENTES)" | "TU NOMBRE" + "es el nombre que tus clientes ven en los programas que les envías" | la aclaración cabe debajo, no en mayúsculas dentro de la etiqueta |
+| 4 bullets sueltos en el paso de confirmar | sección "QUÉ PASA AL CONECTAR" con la 4ª corregida | decía "tu historial anterior se conserva"; lo que importa es que **no se le envía** (verificado en `scopeFilterForUpload`) |
+| "No hay cuenta vinculada a ese Google" | "Ese Google no tiene ninguna conexión guardada. Pídele el código a tu entrenador." | dice qué hacer |
+| Errores como `Alert('Error', …)` | títulos concretos ("No se pudo entrar con Google", "No se pudo crear la cuenta") | "Error" no informa de nada |
+
+Todo el texto pasa a i18n: `trainer.*` crece con el flujo del cliente y `sync.*`
+es nuevo para el del entrenador. `RecoveryScreen`/`CodeStatusScreen`/
+`CodeRevealScreen` dejan de ser componentes con estado propio dentro del fichero
+y pasan a ser bloques del mismo `DragSheet` (el estado del código de recuperación
+sube al modal), así que el estado del flujo vive en un solo sitio.
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

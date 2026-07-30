@@ -1,70 +1,101 @@
 /**
- * TrainerConnectionScreen
+ * TrainerConnectionScreen — la conexión con TU entrenador (lado cliente).
  *
- * Shows the current client ↔ trainer connection status and lets the user:
- *   • Connect to a trainer (enter code or reconnect via Google)
- *   • Link their Google account for seamless reconnect
- *   • Disconnect from the trainer
- *   • Change trainer (re-enter a new code)
+ * El objetivo de esta pantalla es que cualquiera entienda tres cosas sin
+ * preguntar: qué hace la conexión, en qué estado está, y qué pasa si toca cada
+ * opción. Por eso cada acción lleva subtítulo con su consecuencia (el programa
+ * se archiva, hará falta un código nuevo…) y hay un bloque explícito de qué
+ * datos salen del móvil y cuáles no.
+ *
+ * Lo que se comparte está verificado contra `scopeFilterForUpload`
+ * (`src/utils/clientLogs.js`): salen las sesiones de los programas del
+ * entrenador y las sesiones libres posteriores a la conexión — nada más.
  */
 
 import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation }     from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import { Path, G, Circle } from 'react-native-svg';
 
 import { useStore }               from '../../store/useStore';
 import ClientCodeModal            from '../components/ClientCodeModal';
 import ClientGoogleLinkModal      from '../components/ClientGoogleLinkModal';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { Section, MenuRow, RowIcon } from '../components/ui/MenuList';
+import { formatWhen } from '../utils/formatWhen';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
-// ── TrainerConnectionScreen ───────────────────────────────────────────────────
+const ICON_TRAINER = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
+const ICON_PROGRAM = <Path d="M4 7h16M4 12h16M4 17h10" />;
+const ICON_UPLOAD  = <Path d="M12 19V5M6 11l6-6 6 6" />;
+const ICON_GOOGLE  = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
+const ICON_KEY     = <G><Circle cx="8" cy="12" r="3.5" /><Path d="M11.5 12H21M17 12v3.5" /></G>;
+const ICON_RETRY   = <G><Path d="M20.5 12a8.5 8.5 0 0 1-14 6.4" /><Path d="M3.5 12a8.5 8.5 0 0 1 14-6.4" /><Path d="M17 2.5v3.2h-3.2" /></G>;
+const ICON_UNLINK  = <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />;
 
 export default function TrainerConnectionScreen() {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const insets     = useSafeAreaInsets();
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
+  const { t }      = useTranslation();
   const navigation = useNavigation();
 
-  const clientSync           = useStore((s) => s.clientSync);
-  const programs             = useStore((s) => s.programs);
-  const profile              = useStore((s) => s.profile);
+  const clientSync            = useStore((s) => s.clientSync);
+  const programs              = useStore((s) => s.programs);
+  const profile               = useStore((s) => s.profile);
   const disconnectFromTrainer = useStore((s) => s.unlinkFromTrainer);
+  const uploadHistory         = useStore((s) => s.uploadHistoryToTrainer);
+  const showToast             = useStore((s) => s.showToast);
 
-  const [showCodeModal,    setShowCodeModal]    = useState(false);
-  const [googleAutoStart,  setGoogleAutoStart]  = useState(false);
-  const [showGoogleModal,  setShowGoogleModal]  = useState(false);
+  const [showCodeModal,   setShowCodeModal]   = useState(false);
+  const [googleAutoStart, setGoogleAutoStart] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [retrying,        setRetrying]        = useState(false);
 
+  const lang          = profile.language ?? 'es';
   const isConnected   = !!clientSync.slotId;
   const hasError      = !!(clientSync.pendingUpload || clientSync.syncErrorAt);
   const activeProgram = profile.activeProgramId ? programs[profile.activeProgramId] : null;
 
-  // ── Derived status label ──────────────────────────────────────────────────
-  function statusLabel() {
-    if (!isConnected)            return 'Sin conexión';
-    if (clientSync.pendingUpload) return 'Pendiente de sincronizar';
-    if (clientSync.syncErrorAt)   return 'Error de sincronización';
-    return 'Conectado';
+  const when = (v) => formatWhen(v, lang, t('dayCard.today'), t('dayCard.yesterday'));
+
+  // ── Estado, en una frase ────────────────────────────────────────────────────
+  // El estado no dice solo "error": dice qué está pendiente y qué se puede
+  // hacer, que es lo que la versión anterior no contaba.
+  const state = !isConnected ? 'off' : hasError ? 'warn' : 'on';
+  const stateTag   = t(`trainer.tag${state === 'on' ? 'Connected' : state === 'warn' ? 'Pending' : 'Off'}`);
+  const stateTitle = !isConnected
+    ? t('trainer.offTitle')
+    : (clientSync.trainerName || t('trainer.unnamedTrainer'));
+  const stateSub = !isConnected
+    ? t('trainer.offSub')
+    : hasError
+      ? t('trainer.pendingSub')
+      : t('trainer.connectedSub');
+
+  async function handleRetry() {
+    setRetrying(true);
+    try {
+      await uploadHistory();
+      showToast(t('header.toastSynced'), 2200, 'success');
+    } catch {
+      showToast(t('header.toastSyncFailed'), 2200, 'error');
+    } finally {
+      setRetrying(false);
+    }
   }
 
-  function statusColor() {
-    if (!isConnected) return th.colors.muted;
-    if (hasError)     return th.colors.orange;
-    return th.colors.green;
-  }
-
-  // ── Disconnect ────────────────────────────────────────────────────────────
   function handleDisconnect() {
     Alert.alert(
-      'Desconectar entrenador',
-      '¿Seguro que quieres desconectarte? Tu programa del entrenador se archivará y se restaurará el anterior (si tenías uno).',
+      t('trainer.disconnectTitle'),
+      t('trainer.disconnectBody'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Desconectar', style: 'destructive',
+          text: t('trainer.disconnectConfirm'), style: 'destructive',
           onPress: async () => {
             await disconnectFromTrainer();
             navigation.goBack();
@@ -74,157 +105,164 @@ export default function TrainerConnectionScreen() {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-
-      {/* ── Header ── */}
+    <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
+        <Text style={styles.headerTitle}>{t('trainer.title')}</Text>
+        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.closeGlyph}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ENTRENADOR</Text>
-        <View style={styles.headerRight}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor() }]} />
-        </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Status card ── */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <View style={[styles.dot, { backgroundColor: statusColor() }]} />
-            <Text style={styles.statusText}>{statusLabel()}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── Estado ── */}
+        <View style={[styles.stateCard, !isConnected && styles.stateCardOff]}>
+          <View style={styles.stateTagRow}>
+            <View style={[styles.stateDot, {
+              backgroundColor: state === 'on' ? th.colors.accent : state === 'warn' ? th.colors.orange : th.colors.muted,
+            }]} />
+            <Text style={[styles.stateTag, state === 'warn' && { color: th.colors.orange }]}>{stateTag}</Text>
           </View>
-
-          {isConnected && (
-            <>
-              {clientSync.trainerName ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoLabel}>ENTRENADOR</Text>
-                  <Text style={styles.infoValue}>{clientSync.trainerName}</Text>
-                </View>
-              ) : null}
-
-              {activeProgram ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoLabel}>PROGRAMA</Text>
-                  <Text style={styles.infoValue}>{activeProgram.name}</Text>
-                </View>
-              ) : null}
-
-              <View style={styles.infoLine}>
-                <Text style={styles.infoLabel}>ACCESO</Text>
-                <Text style={styles.infoValue}>
-                  {clientSync.googleLinked ? '🔗 Cuenta Google' : '🔑 Código de entrenador'}
-                </Text>
-              </View>
-
-              {clientSync.lastSyncedAt ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoLabel}>ÚLTIMA SYNC</Text>
-                  <Text style={styles.infoValue}>
-                    {new Date(clientSync.lastSyncedAt).toLocaleString('es-ES', {
-                      day: 'numeric', month: 'short',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-              ) : null}
-
-              {clientSync.syncErrorAt ? (
-                <View style={styles.errorLine}>
-                  <Text style={styles.errorText}>
-                    ⚠️ Error de sync el{' '}
-                    {new Date(clientSync.syncErrorAt).toLocaleString('es-ES', {
-                      day: 'numeric', month: 'short',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-              ) : null}
-            </>
-          )}
-
-          {!isConnected && (
-            <Text style={styles.noConnectDesc}>
-              Conecta con tu entrenador para recibir programas personalizados y que tenga acceso a tu historial de sesiones.
-            </Text>
-          )}
+          <Text style={styles.stateTitle}>{stateTitle}</Text>
+          <Text style={[styles.stateSub, !isConnected && styles.stateSubOff]}>{stateSub}</Text>
         </View>
 
-        {/* ── Actions ── */}
         {isConnected ? (
           <>
-            <Text style={styles.sectionLabel}>ACCIONES</Text>
-
-            <ActionRow
-              label="Cambiar entrenador"
-              description="Introduce el código de un nuevo entrenador"
-              onPress={() => setShowCodeModal(true)}
-            />
-
-            {!clientSync.googleLinked && (
-              <ActionRow
-                label="Vincular cuenta Google"
-                description="Reconéctate automáticamente desde cualquier dispositivo"
-                onPress={() => setShowGoogleModal(true)}
+            {/* ── Detalles ── */}
+            <Section title={t('trainer.sectionDetails')}>
+              <MenuRow
+                icon={<RowIcon>{ICON_PROGRAM}</RowIcon>}
+                label={t('trainer.rowProgram')}
+                sub={activeProgram ? t('trainer.rowProgramSub') : t('trainer.rowProgramNoneSub')}
+                value={activeProgram?.name ?? t('trainer.rowProgramNone')}
+                minHeight={62}
               />
-            )}
+              <MenuRow
+                icon={<RowIcon>{ICON_UPLOAD}</RowIcon>}
+                label={t('trainer.rowLastUpload')}
+                sub={clientSync.syncErrorAt && clientSync.pendingUpload
+                  ? t('trainer.rowLastUploadFailed', { when: when(clientSync.syncErrorAt) })
+                  : t('trainer.rowLastUploadSub')}
+                value={when(clientSync.lastSyncedAt) ?? t('trainer.never')}
+                minHeight={62}
+              />
+              <MenuRow
+                icon={<RowIcon>{clientSync.googleLinked ? ICON_GOOGLE : ICON_KEY}</RowIcon>}
+                label={clientSync.googleLinked ? t('trainer.rowAccessGoogle') : t('trainer.rowAccessCode')}
+                sub={clientSync.googleLinked ? t('trainer.rowAccessGoogleSub') : t('trainer.rowAccessCodeSub')}
+                subLines={0}
+                minHeight={62}
+              />
+            </Section>
 
-            {clientSync.googleLinked && (
-              <View style={styles.linkedRow}>
-                <Text style={styles.linkedIcon}>✓</Text>
-                <View>
-                  <Text style={styles.linkedLabel}>Google vinculado</Text>
-                  <Text style={styles.linkedDesc}>Reconexión automática activada</Text>
-                </View>
-              </View>
-            )}
+            {/* ── Qué ve el entrenador ── */}
+            {/* Verificado contra scopeFilterForUpload: es lo que sale de verdad. */}
+            <Section title={t('trainer.sectionPrivacy')}>
+              <MenuRow
+                label={t('trainer.sharedTitle')}
+                sub={t('trainer.sharedBody')}
+                subLines={0}
+                minHeight={62}
+              />
+              <MenuRow
+                label={t('trainer.notSharedTitle')}
+                sub={t('trainer.notSharedBody')}
+                subLines={0}
+                minHeight={62}
+              />
+            </Section>
 
-            <View style={styles.separator} />
-
-            <ActionRow
-              label="Desconectar entrenador"
-              onPress={handleDisconnect}
-              danger
-            />
+            {/* ── Acciones ── */}
+            <Section title={t('trainer.sectionActions')}>
+              {hasError && (
+                <MenuRow
+                  icon={<RowIcon color={th.colors.accent}>{ICON_RETRY}</RowIcon>}
+                  label={retrying ? t('trainer.retryingLabel') : t('trainer.retryLabel')}
+                  sub={t('trainer.retrySub')}
+                  subLines={0}
+                  minHeight={62}
+                  disabled={retrying}
+                  onPress={handleRetry}
+                />
+              )}
+              {!clientSync.googleLinked && (
+                <MenuRow
+                  icon={<RowIcon>{ICON_GOOGLE}</RowIcon>}
+                  label={t('trainer.linkGoogleLabel')}
+                  sub={t('trainer.linkGoogleSub')}
+                  subLines={0}
+                  minHeight={62}
+                  onPress={() => setShowGoogleModal(true)}
+                />
+              )}
+              <MenuRow
+                icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
+                label={t('trainer.changeLabel')}
+                sub={t('trainer.changeSub')}
+                subLines={0}
+                minHeight={62}
+                onPress={() => setShowCodeModal(true)}
+              />
+              <MenuRow
+                icon={<RowIcon color={th.tint.red50}>{ICON_UNLINK}</RowIcon>}
+                label={t('trainer.disconnectLabel')}
+                labelColor={th.tint.red50}
+                sub={t('trainer.disconnectSub')}
+                subLines={0}
+                minHeight={62}
+                onPress={handleDisconnect}
+              />
+            </Section>
           </>
         ) : (
           <>
+            {/* ── Sin conectar: explicar antes de pedir un código ── */}
+            <Section title={t('trainer.sectionHow')}>
+              <MenuRow
+                icon={<RowIcon>{ICON_PROGRAM}</RowIcon>}
+                label={t('trainer.how1Title')}
+                sub={t('trainer.how1Sub')}
+                subLines={0}
+                minHeight={62}
+              />
+              <MenuRow
+                icon={<RowIcon>{ICON_UPLOAD}</RowIcon>}
+                label={t('trainer.how2Title')}
+                sub={t('trainer.how2Sub')}
+                subLines={0}
+                minHeight={62}
+              />
+              <MenuRow
+                icon={<RowIcon>{ICON_KEY}</RowIcon>}
+                label={t('trainer.how3Title')}
+                sub={t('trainer.how3Sub')}
+                subLines={0}
+                minHeight={62}
+              />
+            </Section>
+
             <TouchableOpacity
-              style={styles.connectBtn}
+              style={styles.primaryBtn}
               onPress={() => setShowCodeModal(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.connectBtnText}>Conectar con código</Text>
+              <Text style={styles.primaryBtnText}>{t('trainer.connectCta')}</Text>
             </TouchableOpacity>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
             <TouchableOpacity
-              style={styles.googleBtn}
+              style={styles.secondaryBtn}
               onPress={() => { setGoogleAutoStart(true); setShowCodeModal(true); }}
               activeOpacity={0.8}
             >
-              <Text style={styles.googleBtnText}>Reconectarse con Google</Text>
+              <Text style={styles.secondaryBtnText}>{t('trainer.googleCta')}</Text>
             </TouchableOpacity>
-
-            <Text style={styles.connectHint}>
-              Si ya estuviste conectado antes y vinculaste tu cuenta de Google, úsala para reconectarte automáticamente.
-            </Text>
+            <Text style={styles.hint}>{t('trainer.googleCtaHint')}</Text>
           </>
         )}
       </ScrollView>
 
-      {/* ── Modals overlay ── */}
       <ClientCodeModal
         visible={showCodeModal}
         startWithGoogle={googleAutoStart}
@@ -236,246 +274,71 @@ export default function TrainerConnectionScreen() {
         visible={showGoogleModal}
         onClose={() => setShowGoogleModal(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
-
-// ── ActionRow ─────────────────────────────────────────────────────────────────
-
-function ActionRow({ label, description, onPress, danger }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.actionRow, danger && styles.actionRowDanger]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.actionLabel, danger && styles.dangerLabel]}>{label}</Text>
-        {description ? (
-          <Text style={styles.actionDesc}>{description}</Text>
-        ) : null}
-      </View>
-      <Text style={[styles.actionChevron, danger && { color: th.colors.red }]}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  container: {
-    flex:            1,
-    backgroundColor: th.colors.bg,
-  },
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
-  // Header
   header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
+    gap: spacing.md,
   },
-  backBtn: {
-    paddingRight: spacing.md,
-  },
-  backIcon: {
-    fontSize:   28,
-    color:      th.colors.text,
-    lineHeight: 32,
-  },
-  headerTitle: {
-    flex:          1,
-    fontSize:      typography.sm,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-  },
-  headerRight: {
-    alignItems:     'center',
-    justifyContent: 'center',
-    paddingLeft:    spacing.sm,
-  },
-  statusDot: {
-    width: 10, height: 10, borderRadius: 5,
-  },
-
-  // Content
-  content: {
-    padding: spacing.xl,
-    gap:     spacing.sm,
-  },
-
-  // Status card
-  statusCard: {
+  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  iconBox: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  closeGlyph: { fontSize: 17, color: th.colors.text },
+
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+
+  // Tarjeta de estado — mismo tratamiento que el "Resumen" de los editores:
+  // relleno tint/accent-10 y SIN borde (§4.6). Sin conectar pierde el tinte
+  // lima, que en este tema significa "esto va bien".
+  stateCard: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    marginTop:       spacing.md,
+    marginBottom:    spacing.xl,
+    gap:             spacing.sm,
+  },
+  stateCardOff: { backgroundColor: th.colors.surface },
+  stateSubOff:  { color: th.colors.mutedLight },
+  stateTagRow:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  stateDot:     { width: 7, height: 7, borderRadius: 3.5 },
+  stateTag:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  stateTitle:   { ...textStyles.cardTitle, color: th.colors.text },
+  stateSub:     { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+
+  // Botones: primario accent h44 (mismo que "Guardar programa"), secundario
+  // surface2 sin borde (variante Secondary de Figma).
+  primaryBtn: {
+    height:          44,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    padding:         spacing.md,
-    gap:             spacing.xs + 2,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
-  },
-  statusText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  infoLine: {
-    flexDirection:  'row',
-    alignItems:     'flex-start',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
-  },
-  infoLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 0.8,
-    marginTop:     2,
-    flexShrink:    0,
-  },
-  infoValue: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    textAlign:  'right',
-    flex:       1,
-  },
-  errorLine: {
-    marginTop: 2,
-  },
-  errorText: {
-    fontSize:  typography.xs,
-    color:     th.colors.red,
-  },
-  noConnectDesc: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    lineHeight: typography.sm * 1.5,
-    marginTop:  spacing.xs,
-  },
-
-  // Section label
-  sectionLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1.5,
-    marginTop:     spacing.xs,
-  },
-
-  // Action rows
-  actionRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  actionRowDanger: {
-    borderBottomColor: withOpacity(th.colors.red, 0.15),
-  },
-  actionLabel: {
-    fontSize: typography.base,
-    color:    th.colors.text,
-  },
-  actionDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  actionChevron: {
-    fontSize: typography.lg,
-    color:    th.colors.muted,
-    marginLeft: spacing.sm,
-  },
-  dangerLabel: {
-    color: th.colors.red,
-  },
-
-  separator: {
-    height:          borders.thin,
-    backgroundColor: th.colors.border,
-    marginVertical:  spacing.xs,
-  },
-
-  // Google linked badge
-  linkedRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  linkedIcon: {
-    fontSize:   18,
-    color:      th.colors.green,
-  },
-  linkedLabel: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  linkedDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 1,
-  },
-
-  // Divider
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.border },
-  dividerText: { fontSize: typography.xs, color: th.colors.muted },
-
-  // Google button
-  googleBtn: {
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-    backgroundColor: th.colors.surface2,
-  },
-  googleBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-
-  // Not connected CTA
-  connectBtn: {
     backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md + 2,
     alignItems:      'center',
-    marginTop:       spacing.xs,
+    justifyContent:  'center',
+    marginBottom:    spacing.md,
   },
-  connectBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
+  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  secondaryBtn: {
+    height:          44,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  connectHint: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.6,
+  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  hint: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    lineHeight: 15,
     textAlign:  'center',
-    marginTop:  spacing.xs,
+    marginTop:  spacing.md,
   },
 });

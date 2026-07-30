@@ -1,31 +1,26 @@
 /**
- * ClientGoogleLinkModal
+ * ClientGoogleLinkModal — el cliente, ya conectado con su entrenador, vincula su
+ * cuenta de Google para poder reconectarse en otro móvil sin pedir código.
  *
- * Shown to a client who is already connected to a trainer (has slotId)
- * and wants to link their Google account for seamless reconnect on future devices.
+ * Flujo (sin cambios): OAuth → `linkGoogleForClient` → el RPC transfiere la fila
+ * de `trainer_clients` del id anónimo al id de Google.
  *
- * Flow:
- *   1. Client taps "Vincular Google" in the settings menu.
- *   2. Google OAuth opens in the browser.
- *   3. On success, loginWithGoogleClient is called — Supabase creates/fetches
- *      the Google user. The RPC transfer_client_slot updates the trainer_clients
- *      row: client_id goes from old anonymous ID to new Google user ID.
- *   4. Future devices: client signs in with Google → app auto-reconnects.
+ * Pasa a `DragSheet` como el resto de los modales de la app (§9).
  */
 
 import { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, Modal, TouchableOpacity, ActivityIndicator,
-  StyleSheet, Platform, KeyboardAvoidingView, Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import Constants        from 'expo-constants';
+import { useTranslation } from 'react-i18next';
 
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { spacing, typography, borders } from '../theme';
+import DragSheet from './DragSheet';
+import { SectionLabel } from './ui/MenuList';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -37,14 +32,15 @@ const GOOGLE_DISCOVERY = {
 
 export default function ClientGoogleLinkModal({ visible, onClose }) {
   const th     = useTheme();
-  const s = useThemedStyles(makeS);
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
   const linkGoogleForClient = useStore((s) => s.linkGoogleForClient);
   const showToast           = useStore((s) => s.showToast);
 
   const [loading, setLoading] = useState(false);
 
-  const isExpoGo         = Constants.executionEnvironment === 'storeClient';
-  const androidRedirect  = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+  const isExpoGo          = Constants.executionEnvironment === 'storeClient';
+  const androidRedirect   = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
   const googleRedirectUri = AuthSession.makeRedirectUri({ native: androidRedirect });
 
   const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
@@ -73,12 +69,12 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
           redirectUri:  googleRedirectUri,
           clientId:     GOOGLE_ANDROID_CLIENT_ID,
         });
-        if (!tokens.id_token) throw new Error('Google no devolvió un id_token. Inténtalo de nuevo.');
+        if (!tokens.id_token) throw new Error(t('trainer.errNoIdToken'));
         await linkGoogleForClient({ idToken: tokens.id_token, accessToken: tokens.access_token });
-        showToast('Google vinculado', 2200, 'success');
+        showToast(t('trainer.linkToast'), 2200, 'success');
         onClose();
       } catch (err) {
-        Alert.alert('Error', err.message ?? 'No se pudo vincular la cuenta de Google.');
+        Alert.alert(t('trainer.linkErrTitle'), err.message ?? t('trainer.linkErrBody'));
       } finally {
         setLoading(false);
       }
@@ -86,140 +82,62 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
   }, [googleResponse]); // eslint-disable-line
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.backdrop} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={s.center}
-      >
-        <View style={s.card}>
-          <Text style={s.title}>Vincular Google</Text>
+    <DragSheet
+      visible={visible}
+      onClose={onClose}
+      background={th.colors.bg}
+      title={t('trainer.linkTitle')}
+      action={{ label: t('common.cancel'), onPress: onClose }}
+    >
+      <View style={styles.block}>
+        <Text style={styles.lead}>{t('trainer.linkLead')}</Text>
 
-          <Text style={s.desc}>
-            Vincula tu cuenta de Google para reconectarte automáticamente desde cualquier
-            dispositivo sin necesidad de introducir el código de tu entrenador otra vez.
-          </Text>
-
-          <View style={s.infoBox}>
-            <InfoRow text="Tu conexión con el entrenador y tu historial no cambian." />
-            <InfoRow text="En dispositivos futuros, basta con iniciar sesión con Google." />
-            <InfoRow text="No necesitarás guardar ni recordar ningún código." />
-          </View>
-
-          {isExpoGo && (
-            <Text style={s.unavailText}>
-              No disponible en Expo Go. Usa la app instalada.
-            </Text>
-          )}
-
-          <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-              <Text style={s.cancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.primaryBtn, { flex: 1 }, (loading || isExpoGo) && { opacity: 0.5 }]}
-              onPress={() => googlePromptAsync()}
-              disabled={loading || isExpoGo}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator color={th.colors.bg} />
-                : <Text style={s.primaryBtnText}>Continuar con Google</Text>}
-            </TouchableOpacity>
+        <View>
+          <SectionLabel>{t('trainer.linkWhatHappens')}</SectionLabel>
+          <View style={styles.bullets}>
+            {['1', '2', '3'].map((n) => (
+              <View key={n} style={styles.bulletRow}>
+                <Text style={styles.bulletDot}>·</Text>
+                <Text style={styles.bulletText}>{t(`trainer.linkImplies${n}`)}</Text>
+              </View>
+            ))}
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, (loading || isExpoGo) && styles.btnDisabled]}
+          onPress={() => googlePromptAsync()}
+          disabled={loading || isExpoGo}
+          activeOpacity={0.85}
+        >
+          {loading
+            ? <ActivityIndicator color={th.colors.onAccent} />
+            : <Text style={styles.primaryBtnText}>{t('trainer.linkCta')}</Text>}
+        </TouchableOpacity>
+
+        {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
+      </View>
+    </DragSheet>
   );
 }
 
-function InfoRow({ text }) {
-  const s = useThemedStyles(makeS);
-  return (
-    <View style={s.infoRow}>
-      <Text style={s.infoDot}>·</Text>
-      <Text style={s.infoText}>{text}</Text>
-    </View>
-  );
-}
+const makeStyles = (th) => StyleSheet.create({
+  block: { gap: spacing.lg, paddingBottom: spacing.md },
+  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
 
-const makeS = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-  },
-  center: {
-    flex:              1,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  card: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-  },
-  title: {
-    fontSize:   typography.lg,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  desc: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    lineHeight: typography.sm * 1.5,
-  },
-  infoBox: { gap: spacing.xs },
-  infoRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-    alignItems:    'flex-start',
-  },
-  infoDot: {
-    fontSize:   typography.sm,
-    color:      th.colors.accent,
-    lineHeight: typography.sm * 1.4,
-  },
-  infoText: {
-    flex:       1,
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.5,
-  },
-  unavailText: {
-    fontSize:   typography.xs,
-    color:      th.colors.orange,
-    textAlign:  'center',
-    fontStyle:  'italic',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
+  bullets:    { gap: spacing.sm },
+  bulletRow:  { flexDirection: 'row', gap: spacing.sm },
+  bulletDot:  { ...textStyles.tag, color: th.colors.accent, lineHeight: 15 },
+  bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+
   primaryBtn: {
-    backgroundColor: th.colors.accent,
+    height:          44,
     borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 0.5,
-  },
-  cancelBtn: {
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  cancelBtnText: { fontSize: typography.base, color: th.colors.muted },
+  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  btnDisabled:    { opacity: 0.5 },
 });

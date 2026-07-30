@@ -1,30 +1,31 @@
 /**
- * ClientCodeModal
+ * ClientCodeModal — el cliente se conecta con su entrenador.
  *
- * Two-step modal for the client to connect with their trainer.
+ * Tres pantallas dentro de la misma hoja:
+ *   • código      → teclea el XXXX-XXXX que le dio su entrenador
+ *   • Google      → (abierta con `startWithGoogle`) busca su cuenta ya vinculada
+ *   • confirmar   → qué programa ha encontrado y qué implica conectarse
  *
- * Step 1 — Enter code:
- *   Client types the XXXX-XXXX code → app validates it against Supabase.
- *
- * Step 2 — Confirm:
- *   Shows program name found, explains what connecting means,
- *   warns that the current program will be archived.
+ * Pasa a `DragSheet` como el resto de los modales de la app (§9 de
+ * docs/UI-MIGRATION.md): fuera la tarjeta centrada con borde. Toda la lógica
+ * (OAuth, validación, linkToTrainer/confirmGoogleReconnect) se conserva.
  */
 
 import { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, Modal, TouchableOpacity, TextInput,
-  ActivityIndicator, StyleSheet, Platform, KeyboardAvoidingView, Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
-import * as Clipboard   from 'expo-clipboard';
 import Constants        from 'expo-constants';
+import { useTranslation } from 'react-i18next';
 
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import DragSheet from './DragSheet';
+import CodeField from './ui/CodeField';
+import { CheckIcon } from './ui/EditorIcons';
+import { Section, SectionLabel, MenuRow } from './ui/MenuList';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -35,13 +36,14 @@ const GOOGLE_DISCOVERY = {
 };
 
 export default function ClientCodeModal({ visible, onClose, onSuccess, startWithGoogle = false }) {
-  const th = useTheme();
-  const s = useThemedStyles(makeS);
-  const validateClientCode    = useStore((s) => s.validateClientCode);
-  const linkToTrainer         = useStore((s) => s.linkToTrainer);
-  const validateGoogleClient  = useStore((s) => s.validateGoogleClient);
+  const th        = useTheme();
+  const styles    = useThemedStyles(makeStyles);
+  const { t }     = useTranslation();
+  const validateClientCode     = useStore((s) => s.validateClientCode);
+  const linkToTrainer          = useStore((s) => s.linkToTrainer);
+  const validateGoogleClient   = useStore((s) => s.validateGoogleClient);
   const confirmGoogleReconnect = useStore((s) => s.confirmGoogleReconnect);
-  const clientSync            = useStore((s) => s.clientSync);
+  const clientSync             = useStore((s) => s.clientSync);
 
   const [step,         setStep]         = useState('enter'); // 'enter' | 'confirm'
   const [code,         setCode]         = useState('');
@@ -50,7 +52,6 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   const [googleUserId, setGoogleUserId] = useState(null);  // set when Google reconnect finds a slot
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
-  const [pasted,       setPasted]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleNoSlot,  setGoogleNoSlot]  = useState(false);
 
@@ -71,11 +72,11 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     GOOGLE_DISCOVERY,
   );
 
-  const googleRequestRef   = useRef(googleRequest);
-  const hasAutoTriggered   = useRef(false);
+  const googleRequestRef = useRef(googleRequest);
+  const hasAutoTriggered = useRef(false);
   useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
 
-  // Auto-trigger Google OAuth when opened via the "Reconectarse con Google" button
+  // Auto-trigger Google OAuth when opened via the "reconnect with Google" button
   useEffect(() => {
     if (!startWithGoogle || !visible) {
       hasAutoTriggered.current = false;
@@ -102,7 +103,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
           redirectUri:  googleRedirectUri,
           clientId:     GOOGLE_ANDROID_CLIENT_ID,
         });
-        if (!tokens.id_token) throw new Error('Google no devolvió un id_token.');
+        if (!tokens.id_token) throw new Error(t('trainer.errNoIdToken'));
         const result = await validateGoogleClient({ idToken: tokens.id_token, accessToken: tokens.access_token });
         if (result.found) {
           setGoogleUserId(result.userId);
@@ -118,22 +119,12 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
           setGoogleNoSlot(true);
         }
       } catch (err) {
-        setError(err.message ?? 'Error al conectar con Google.');
+        setError(err.message ?? t('trainer.errGoogle'));
       } finally {
         setGoogleLoading(false);
       }
     })();
   }, [googleResponse]); // eslint-disable-line
-
-  async function handlePaste() {
-    const text = await Clipboard.getStringAsync();
-    if (text?.trim()) {
-      setCode(text.trim().toUpperCase());
-      setError(null);
-      setPasted(true);
-      setTimeout(() => setPasted(false), 1500);
-    }
-  }
 
   function handleClose() {
     setStep('enter');
@@ -166,14 +157,12 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     setError(null);
     try {
       if (googleUserId) {
-        // Google auto-reconnect flow
         await confirmGoogleReconnect({
-          slotId:      slotInfo.slotId,
+          slotId:       slotInfo.slotId,
           googleUserId,
           mergeHistory: historyMode === 'merge',
         });
       } else {
-        // Code-based flow
         await linkToTrainer(code, { mergeHistory: historyMode === 'merge' });
       }
       handleClose();
@@ -186,462 +175,215 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   }
 
   const isAlreadyLinked = !!clientSync.slotId;
+  const isGoogleScreen  = step === 'enter' && startWithGoogle;
+
+  // Los títulos de hoja de la app van en caso normal y cortos ("Añadir",
+  // "Tempo"), no en mayúsculas como los botones.
+  const title = step === 'confirm'
+    ? t(googleUserId ? 'trainer.codeFoundAccount' : 'trainer.codeFoundProgram')
+    : t(isGoogleScreen ? 'trainer.googleTitle' : 'trainer.codeTitle');
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={s.backdrop} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={s.center}
-      >
-        <View style={s.card}>
+    <DragSheet
+      visible={visible}
+      onClose={handleClose}
+      background={th.colors.bg}
+      title={title}
+      // El hueco de la derecha de la hoja hace de salida: atrás en el paso de
+      // confirmación, cancelar en los demás. Así no hay dos botones abajo.
+      action={step === 'confirm'
+        ? { label: t('trainer.codeBack'), onPress: () => setStep('enter') }
+        : { label: t('common.cancel'),    onPress: handleClose }}
+    >
+      {/* ── Buscando la cuenta de Google ── */}
+      {isGoogleScreen && (
+        <View style={styles.block}>
+          <Text style={styles.lead}>
+            {googleNoSlot ? t('trainer.googleNoSlot') : t('trainer.googleSearching')}
+          </Text>
 
-          {/* ── Step 1a: Google auto-reconnect (no code form) ── */}
-          {step === 'enter' && startWithGoogle && (
-            <>
-              <Text style={s.title}>Reconectarse con Google</Text>
-              <Text style={s.subtitle}>
-                Buscando tu cuenta de entrenador vinculada…
-              </Text>
+          {googleLoading && <ActivityIndicator color={th.colors.accent} />}
+          {!!error && <Text style={styles.error}>{error}</Text>}
+          {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
 
-              {googleLoading && <ActivityIndicator color={th.colors.accent} style={{ marginVertical: spacing.sm }} />}
-
-              {error && <Text style={s.errorText}>{error}</Text>}
-
-              {googleNoSlot && (
-                <Text style={s.googleNoSlotText}>
-                  No hay cuenta vinculada a ese Google. Introduce el código de tu entrenador.
-                </Text>
-              )}
-
-              {isExpoGo && (
-                <Text style={s.googleUnavailText}>Google no disponible en Expo Go</Text>
-              )}
-
-              <View style={s.actions}>
-                <TouchableOpacity style={[s.cancelBtn, { flex: 1 }]} onPress={handleClose} activeOpacity={0.7}>
-                  <Text style={s.cancelBtnText}>Cancelar</Text>
-                </TouchableOpacity>
-                {/* Retry button appears if Google returned no slot or had an error */}
-                {(googleNoSlot || error) && !googleLoading && (
-                  <TouchableOpacity
-                    style={[s.primaryBtn, { flex: 1 }, isExpoGo && { opacity: 0.4 }]}
-                    onPress={() => { setGoogleNoSlot(false); setError(null); hasAutoTriggered.current = false; googlePromptAsync(); }}
-                    disabled={isExpoGo}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={s.primaryBtnText}>Reintentar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </>
+          {(googleNoSlot || error) && !googleLoading && (
+            <TouchableOpacity
+              style={[styles.primaryBtn, isExpoGo && styles.btnDisabled]}
+              onPress={() => {
+                setGoogleNoSlot(false);
+                setError(null);
+                hasAutoTriggered.current = false;
+                googlePromptAsync();
+              }}
+              disabled={isExpoGo}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryBtnText}>{t('trainer.retryCta')}</Text>
+            </TouchableOpacity>
           )}
-
-          {/* ── Step 1b: Enter code ── */}
-          {step === 'enter' && !startWithGoogle && (
-            <>
-              <Text style={s.title}>Conectar con entrenador</Text>
-              <Text style={s.subtitle}>
-                Introduce el código que te ha dado tu entrenador.
-              </Text>
-
-              <TextInput
-                style={s.codeInput}
-                placeholder="XXXX-XXXX"
-                placeholderTextColor={th.colors.muted}
-                value={code}
-                onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={handleValidate}
-                autoFocus
-              />
-              <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.7}>
-                <Text style={s.pasteBtnText}>{pasted ? '✓ Pegado' : '📋 Pegar'}</Text>
-              </TouchableOpacity>
-
-              {error && <Text style={s.errorText}>{error}</Text>}
-
-              <View style={s.actions}>
-                <TouchableOpacity style={s.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
-                  <Text style={s.cancelBtnText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.primaryBtn, { flex: 1 }, (!code.trim() || loading) && { opacity: 0.5 }]}
-                  onPress={handleValidate}
-                  disabled={!code.trim() || loading}
-                  activeOpacity={0.85}
-                >
-                  {loading
-                    ? <ActivityIndicator color={th.colors.bg} />
-                    : <Text style={s.primaryBtnText}>Continuar</Text>}
-                </TouchableOpacity>
-              </View>
-
-              {/* ── Google reconnect ── */}
-              <View style={s.dividerRow}>
-                <View style={s.dividerLine} />
-                <Text style={s.dividerText}>o</Text>
-                <View style={s.dividerLine} />
-              </View>
-              <TouchableOpacity
-                style={[s.googleBtn, (googleLoading || isExpoGo) && { opacity: 0.4 }]}
-                onPress={() => { setGoogleNoSlot(false); setError(null); googlePromptAsync(); }}
-                disabled={googleLoading || isExpoGo}
-                activeOpacity={0.8}
-              >
-                {googleLoading
-                  ? <ActivityIndicator color={th.colors.text} size="small" />
-                  : <Text style={s.googleBtnText}>Reconectarse con Google</Text>}
-              </TouchableOpacity>
-              {googleNoSlot && (
-                <Text style={s.googleNoSlotText}>
-                  No hay cuenta vinculada a ese Google. Introduce el código de tu entrenador.
-                </Text>
-              )}
-              {isExpoGo && (
-                <Text style={s.googleUnavailText}>Google no disponible en Expo Go</Text>
-              )}
-            </>
-          )}
-
-          {/* ── Step 2: Confirm ── */}
-          {step === 'confirm' && slotInfo && (
-            <>
-              <Text style={s.title}>
-                {googleUserId ? 'Cuenta encontrada' : 'Programa encontrado'}
-              </Text>
-
-              <View style={s.programFound}>
-                <Text style={s.programFoundLabel}>PROGRAMA</Text>
-                <Text style={s.programFoundName}>{slotInfo.programName}</Text>
-              </View>
-
-              {isAlreadyLinked && (
-                <View style={s.warnBox}>
-                  <Text style={s.warnText}>
-                    ⚠️ Ya estás conectado con un entrenador. Al continuar perderás el acceso al anterior.
-                  </Text>
-                </View>
-              )}
-
-              {/* History merge choice — only shown when there is remote history */}
-              {slotInfo.hasRemoteHistory && (
-                <View style={s.histSection}>
-                  <Text style={s.histSectionLabel}>¿QUÉ QUIERES SINCRONIZAR?</Text>
-                  <TouchableOpacity
-                    style={[s.histOption, historyMode === 'program' && s.histOptionActive]}
-                    onPress={() => setHistoryMode('program')}
-                    activeOpacity={0.75}
-                  >
-                    <View style={[s.radio, historyMode === 'program' && s.radioActive]}>
-                      {historyMode === 'program' && <View style={s.radioDot} />}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.histOptionTitle, historyMode === 'program' && s.histOptionTitleActive]}>
-                        Solo el programa
-                      </Text>
-                      <Text style={s.histOptionDesc}>
-                        Se importa el programa del entrenador. Tu historial local no cambia.
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.histOption, historyMode === 'merge' && s.histOptionActive]}
-                    onPress={() => setHistoryMode('merge')}
-                    activeOpacity={0.75}
-                  >
-                    <View style={[s.radio, historyMode === 'merge' && s.radioActive]}>
-                      {historyMode === 'merge' && <View style={s.radioDot} />}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.histOptionTitle, historyMode === 'merge' && s.histOptionTitleActive]}>
-                        Programa + historial
-                      </Text>
-                      <Text style={s.histOptionDesc}>
-                        Se combina el historial guardado en la nube con el local. Las sesiones duplicadas no se repiten.
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <View style={s.infoBox}>
-                <InfoRow text="Tu programa actual se archivará y se cargará el de tu entrenador." />
-                <InfoRow text="Tu entrenador tendrá acceso a tu historial de sesiones." />
-                <InfoRow text="Cualquier cambio que haga en el programa lo recibirás automáticamente." />
-                <InfoRow text="Tu historial anterior se conserva." />
-              </View>
-
-              {error && <Text style={s.errorText}>{error}</Text>}
-
-              <View style={s.actions}>
-                <TouchableOpacity style={s.cancelBtn} onPress={() => setStep('enter')} activeOpacity={0.7}>
-                  <Text style={s.cancelBtnText}>← Atrás</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.primaryBtn, { flex: 1 }, loading && { opacity: 0.5 }]}
-                  onPress={handleConfirm}
-                  disabled={loading}
-                  activeOpacity={0.85}
-                >
-                  {loading
-                    ? <ActivityIndicator color={th.colors.bg} />
-                    : <Text style={s.primaryBtnText}>Conectar</Text>}
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      )}
+
+      {/* ── Teclear el código ── */}
+      {step === 'enter' && !startWithGoogle && (
+        <View style={styles.block}>
+          <Text style={styles.lead}>{t('trainer.codeLead')}</Text>
+
+          <CodeField
+            value={code}
+            onChangeText={(v) => { setCode(v); setError(null); }}
+            groups={2}
+            onSubmitEditing={handleValidate}
+            autoFocus
+            error={error}
+          />
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, (!code.trim() || loading) && styles.btnDisabled]}
+            onPress={handleValidate}
+            disabled={!code.trim() || loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={th.colors.onAccent} />
+              : <Text style={styles.primaryBtnText}>{t('trainer.codeContinue')}</Text>}
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t('trainer.or')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.secondaryBtn, (googleLoading || isExpoGo) && styles.btnDisabled]}
+            onPress={() => { setGoogleNoSlot(false); setError(null); googlePromptAsync(); }}
+            disabled={googleLoading || isExpoGo}
+            activeOpacity={0.8}
+          >
+            {googleLoading
+              ? <ActivityIndicator color={th.colors.text} size="small" />
+              : <Text style={styles.secondaryBtnText}>{t('trainer.googleCta')}</Text>}
+          </TouchableOpacity>
+          <Text style={styles.hint}>
+            {googleNoSlot ? t('trainer.googleNoSlot') : t('trainer.googleCtaHint')}
+          </Text>
+          {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
+        </View>
+      )}
+
+      {/* ── Confirmar ── */}
+      {step === 'confirm' && slotInfo && (
+        <View style={styles.block}>
+          <View style={styles.foundCard}>
+            <Text style={styles.foundLabel}>{t('trainer.codeProgramLabel')}</Text>
+            <Text style={styles.foundName}>{slotInfo.programName}</Text>
+          </View>
+
+          {isAlreadyLinked && (
+            <View style={styles.warnCard}>
+              <Text style={styles.warnText}>{t('trainer.codeAlreadyLinked')}</Text>
+            </View>
+          )}
+
+          {/* La elección de historial solo existe si hay algo en la nube. */}
+          {slotInfo.hasRemoteHistory && (
+            <Section title={t('trainer.codeHistoryLabel')}>
+              {['program', 'merge'].map((mode) => (
+                <MenuRow
+                  key={mode}
+                  label={t(mode === 'program' ? 'trainer.codeHistoryProgram' : 'trainer.codeHistoryMerge')}
+                  sub={t(mode === 'program' ? 'trainer.codeHistoryProgramSub' : 'trainer.codeHistoryMergeSub')}
+                  subLines={0}
+                  minHeight={62}
+                  onPress={() => setHistoryMode(mode)}
+                  control={historyMode === mode
+                    ? <CheckIcon size={16} color={th.colors.accent} />
+                    : <View style={styles.checkSpacer} />}
+                />
+              ))}
+            </Section>
+          )}
+
+          <View>
+            <SectionLabel>{t('trainer.codeWhatHappens')}</SectionLabel>
+            <View style={styles.bullets}>
+              {['1', '2', '3', '4'].map((n) => (
+                <View key={n} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>·</Text>
+                  <Text style={styles.bulletText}>{t(`trainer.codeImplies${n}`)}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {!!error && <Text style={styles.error}>{error}</Text>}
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && styles.btnDisabled]}
+            onPress={handleConfirm}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={th.colors.onAccent} />
+              : <Text style={styles.primaryBtnText}>{t('trainer.codeConnectCta')}</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+    </DragSheet>
   );
 }
 
-function InfoRow({ text }) {
-  const s = useThemedStyles(makeS);
-  return (
-    <View style={s.infoRow}>
-      <Text style={s.infoDot}>·</Text>
-      <Text style={s.infoText}>{text}</Text>
-    </View>
-  );
-}
+const makeStyles = (th) => StyleSheet.create({
+  block: { gap: spacing.lg, paddingBottom: spacing.md },
+  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
+  error: { ...textStyles.tag, color: th.tint.red50, lineHeight: 15 },
 
-const makeS = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+  checkSpacer: { width: 16, height: 16 },
+
+  // Programa encontrado — tratamiento "Resumen": relleno tint/accent-10, sin borde.
+  foundCard: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    gap:             spacing.sm,
   },
-  center: {
-    flex:              1,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  card: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-  },
-  title: {
-    fontSize:   typography.lg,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  subtitle: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    marginTop:  -spacing.xs,
-    lineHeight: typography.sm * 1.5,
-  },
-  codeInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.md,
-    color:             th.colors.text,
-    fontSize:          22,
-    fontWeight:        typography.heavy,
-    letterSpacing:     4,
-    textAlign:         'center',
-  },
-  pasteBtn: {
-    alignSelf:   'flex-end',
-    marginTop:   -spacing.xs,
-    paddingVertical:   spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  pasteBtnText: {
-    fontSize: typography.xs,
-    color:    th.colors.accent,
-  },
-  errorText: {
-    fontSize:  typography.xs,
-    color:     th.colors.red,
-    textAlign: 'center',
-    marginTop: -spacing.xs,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
-  primaryBtn: {
-    backgroundColor: th.colors.accent,
+  foundLabel: { ...textStyles.spacingTag, color: th.colors.accent },
+  foundName:  { ...textStyles.cardTitle, color: th.colors.text },
+
+  warnCard: {
+    backgroundColor: th.tint.orange30,
     borderRadius:    th.radius.sm,
-    paddingVertical: spacing.md,
+    padding:         spacing.md,
+  },
+  warnText: { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
+
+  bullets:    { gap: spacing.sm },
+  bulletRow:  { flexDirection: 'row', gap: spacing.sm },
+  bulletDot:  { ...textStyles.tag, color: th.colors.accent, lineHeight: 15 },
+  bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+
+  primaryBtn: {
+    height:          44,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 0.5,
-  },
-  cancelBtn: {
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  cancelBtnText: { fontSize: typography.base, color: th.colors.muted },
-
-  // Program found card
-  programFound: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             spacing.xs,
-  },
-  programFoundLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1,
-  },
-  programFoundName: {
-    fontSize:   typography.md,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-
-  // Warning box
-  warnBox: {
-    backgroundColor: withOpacity(th.colors.orange, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.orange, 0.3),
+  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  secondaryBtn: {
+    height:          44,
     borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  warnText: {
-    fontSize:   typography.xs,
-    color:      th.colors.orange,
-    lineHeight: typography.xs * 1.5,
-  },
-
-  // History merge options
-  histSection: {
-    gap: spacing.xs,
-  },
-  histSectionLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 0.8,
-    marginBottom:  2,
-  },
-  histOption: {
-    flexDirection:   'row',
-    alignItems:      'flex-start',
-    gap:             spacing.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.sm,
     backgroundColor: th.colors.surface2,
-  },
-  histOptionActive: {
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  histOptionTitle: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-    marginBottom: 2,
-  },
-  histOptionTitleActive: { color: th.colors.accent },
-  histOptionDesc: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.5,
-  },
-  // Radio button
-  radio: {
-    width:          18,
-    height:         18,
-    borderRadius:   9,
-    borderWidth:    2,
-    borderColor:    th.colors.border,
-    alignItems:     'center',
-    justifyContent: 'center',
-    marginTop:      2,
-    flexShrink:     0,
-  },
-  radioActive: { borderColor: th.colors.accent },
-  radioDot: {
-    width:           8,
-    height:          8,
-    borderRadius:    4,
-    backgroundColor: th.colors.accent,
-  },
-
-  // Google reconnect
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.border },
-  dividerText: { fontSize: typography.xs, color: th.colors.muted },
-  googleBtn: {
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    paddingVertical: spacing.sm + 2,
     alignItems:      'center',
-    backgroundColor: th.colors.surface2,
+    justifyContent:  'center',
   },
-  googleBtnText: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  googleNoSlotText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    textAlign:  'center',
-    lineHeight: typography.xs * 1.5,
-  },
-  googleUnavailText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    textAlign:  'center',
-    fontStyle:  'italic',
-  },
+  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  btnDisabled:      { opacity: 0.5 },
 
-  // Info list
-  infoBox: {
-    gap: spacing.xs,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-    alignItems:    'flex-start',
-  },
-  infoDot: {
-    fontSize:  typography.sm,
-    color:     th.colors.accent,
-    lineHeight: typography.sm * 1.4,
-  },
-  infoText: {
-    flex:       1,
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.5,
-  },
+  dividerRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.surface2 },
+  dividerText: { ...textStyles.tag, color: th.colors.muted },
 });
