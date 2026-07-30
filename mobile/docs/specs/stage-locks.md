@@ -1,12 +1,7 @@
 # Spec — Bloqueo de etapas (entrenador → cliente)
 
-> Estado: **🚧 EN CURSO** (jul 2026) — fases 1-6 hechas, falta la 7 (pull al
-> volver a primer plano). Ver §7.
->
-> ⚠️ Sin la fase 7 el ciclo no se cierra en uso real: el desbloqueo solo llega
-> al cliente cuando **reinicia la app**, porque `checkAndPullProgramUpdates` solo
-> corre al arrancar. Para probar el flujo entero hay que matar la app del cliente
-> tras pulsar "Desbloquear y enviar".
+> Estado: **✅ IMPLEMENTADA, en testeo en dispositivo** (jul 2026). Las 7 fases
+> están en `main`; ver la tabla de §7 para el commit de cada una.
 >
 > El entrenador puede marcar una etapa como bloqueada. El cliente entrena
 > normalmente, pero no puede entrar en una etapa bloqueada: cuando termina la
@@ -299,7 +294,7 @@ progreso**: coherente con §0.7 (el progreso no se lee del log).
 | 4 | `stage.locked` + `isStageLocked` + guards en el store + UI de autoría (§2, §4) | ✅ `src/utils/stageLocks.js`; guards en `setCurrentStage`/`advanceStage`; fila ACCESO en el sheet de etapa |
 | 5 | UI cliente: candados en modal y editor, mensaje de etapa bloqueada (§5) | ✅ `43b9bab` — `LockIcon` dibujado a mano (no existe en Figma) |
 | 6 | UI entrenador: los tres estados del hero + botón desbloquear (§4) | ✅ desbloquear+enviar en un toque, con revert si falla el envío |
-| 7 | `AppState` pull (§6.1) + línea de diff "Etapa X desbloqueada" | ⬜ — sin esto el desbloqueo no llega hasta que el cliente reinicia la app |
+| 7 | `AppState` pull (§6.1) + línea de diff "Etapa X desbloqueada" | ✅ throttle de 60 s en un ref de `App.js`, no en el store: la acción sigue haciendo lo que se le pide y el freno vive en el llamante ruidoso |
 
 Las fases 1-3 son arreglos de bugs vivos y aportan solas; se pueden entregar
 antes de tocar nada de bloqueos.

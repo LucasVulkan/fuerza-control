@@ -11,8 +11,8 @@ import * as SplashScreen from 'expo-splash-screen';
 // fallback family before load, causing a visible font swap otherwise.
 SplashScreen.preventAutoHideAsync();
 
-import { useEffect, useCallback } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useCallback, useRef } from 'react';
+import { AppState, Platform, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Inter_500Medium,
@@ -42,6 +42,10 @@ import { colors } from './src/theme';
 import { registerBackupTask } from './src/tasks/driveBackupTask';
 import { RC_ANDROID_API_KEY, RC_IOS_API_KEY } from './src/config/revenuecat';
 import { useStore } from './store/useStore';
+
+// Ventana mínima entre dos comprobaciones de programa. Cambiar de app y volver
+// es gesto de segundos; sin esto, cada ida y vuelta pegaría a Supabase.
+const PULL_THROTTLE_MS = 60_000;
 
 export default function App() {
   const checkProStatus              = useStore((s) => s.checkProStatus);
@@ -134,11 +138,25 @@ export default function App() {
     registerBackupTask().catch(() => {});
   }, []);
 
-  // If the user is a client connected to a trainer, silently pull program updates on startup.
-  // This ensures trainerName, exercise changes, etc. are reflected without reconnecting.
+  // If the user is a client connected to a trainer, silently pull program updates
+  // on startup AND every time the app comes back to the foreground. Startup alone
+  // was not enough: something the trainer sends while the client has the app open
+  // (a stage unlock, a next-session prescription) would not land until they killed
+  // and reopened it. One SELECT of one row by primary key, throttled so an
+  // alt-tab burst doesn't repeat it.
+  const lastPullRef = useRef(0);
   useEffect(() => {
-    checkAndPullProgramUpdates().catch(() => {});
-  }, []);
+    const pull = () => {
+      if (Date.now() - lastPullRef.current < PULL_THROTTLE_MS) return;
+      lastPullRef.current = Date.now();
+      checkAndPullProgramUpdates().catch(() => {});
+    };
+    pull();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') pull();
+    });
+    return () => sub.remove();
+  }, [checkAndPullProgramUpdates]);
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
   // EXPO_PUBLIC_FORCE_PRO=true skips the RC check (used in preview builds for testing)
