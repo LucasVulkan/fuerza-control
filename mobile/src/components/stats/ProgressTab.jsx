@@ -31,7 +31,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore }      from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, textStyles, typography, borders, withOpacity } from '../../theme';
+import { spacing, textStyles, typography, borders, withOpacity, getCardRadii } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
@@ -1083,34 +1083,6 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 }
 
 // ── ExerciseStatCard ───────────────────────────────────────────────────────────
-
-// Radios asimétricos por posición dentro de la lista (fidelidad Figma):
-// primero/último redondeados, intermedios casi rectos.
-function getCardRadii(th, isFirst, isLast) {
-  const xxs = th.radius.xxs ?? 2;
-  if (isFirst && isLast) {
-    return {
-      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
-      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
-    };
-  }
-  if (isFirst) {
-    return {
-      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
-      borderBottomLeftRadius: th.radius.xs, borderBottomRightRadius: th.radius.xs,
-    };
-  }
-  if (isLast) {
-    return {
-      borderTopLeftRadius: xxs, borderTopRightRadius: th.radius.xs,
-      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
-    };
-  }
-  return {
-    borderTopLeftRadius: xxs, borderTopRightRadius: xxs,
-    borderBottomLeftRadius: xxs, borderBottomRightRadius: xxs,
-  };
-}
 
 function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, programTemplateIds, isFirst, isLast }) {
   const { i18n } = useTranslation();

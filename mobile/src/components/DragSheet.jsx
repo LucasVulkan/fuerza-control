@@ -28,7 +28,7 @@ import { useThemedStyles } from '../useTheme';
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
  */
-export default function DragSheet({ visible, onClose, title, action, children }) {
+export default function DragSheet({ visible, onClose, title, action, background, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
@@ -90,17 +90,27 @@ export default function DragSheet({ visible, onClose, title, action, children })
         </View>
       </Animated.View>
       <Animated.View
-        style={[styles.card, { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] }]}
+        style={[
+          styles.card,
+          // `background` solo lo usa el menú principal: sobre `bg` se ve la
+          // tarjeta de cada sección, que en `surface` se fundiría con la hoja.
+          background ? { backgroundColor: background } : null,
+          { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
+        ]}
       >
         <View {...panResponder.panHandlers} style={styles.handleWrap}>
           <View style={styles.handle} />
         </View>
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
-            <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
+            propio bloque de identidad ahí arriba y se cierra arrastrando. */}
+        {title != null && (
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
+              <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>

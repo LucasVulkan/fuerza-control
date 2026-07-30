@@ -21,6 +21,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Progress (cards, lista agrupada, dropdown) | ✅ | `src/components/stats/ProgressTab.jsx` |
 | Modal de detalle de ejercicio | ✅ | `src/components/stats/ProgressTab.jsx` (mismo fichero) |
 | AppHeader + tab bar | ✅ | `src/components/AppHeader.jsx`, `src/navigation/RootNavigator.jsx` |
+| **Menú principal (≡)** + Documentación | ✅ | `src/components/AppHeader.jsx`, `src/screens/DocsScreen.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
@@ -387,6 +388,63 @@ editor real, más dos piezas que solo tienen sentido en el ALTA:
   Clasificación: es una propiedad de ejecución, no una etiqueta de búsqueda.
 - **Acciones** (Cancelar/Crear) van al final del scroll, no en un footer fijo
   — pedido explícito del usuario.
+
+### Menú principal (≡) — desglose
+
+**No hay frame de Figma**: la referencia es un HTML que mandó el usuario
+(`formfit-v29-Main menu.html`) más su texto explicando cada decisión. El menú era
+un `card outlined` que contenía `cards outlined` — dos niveles de caja para lo
+mismo; ahora son **listas fusionadas**: `section-label` (`spacingTag`
+`mutedLight`, la misma de toda la app) + filas del sistema de listas agrupadas
+(`getCardRadii`, gap `space/xs`). Éste es su caso de uso canónico: filas
+uniformes de consulta/configuración.
+
+- **`getCardRadii` se mudó a `src/theme.js`** (antes vivía suelto en
+  `ProgressTab.jsx`): ahora lo comparten Progress, el detalle de ejercicio y el
+  menú.
+- **`SettingsSheet` ya usa `DragSheet`** (lo pedía §9): se borraron su `Modal`,
+  su `PanResponder` y sus estilos propios. `DragSheet` acepta ahora **`title`
+  opcional** — sin título pinta solo el asa, que es lo que necesita este menú.
+  Efecto colateral: 10 errores de lint menos en `AppHeader.jsx` (13 → 3, los 3
+  preexistentes).
+- **Iconos en gris (`mutedLight`), no en lima**: son decoración funcional. El
+  lima queda para lo que informa (estado, badge PRO, tema activo). Paths SVG
+  copiados literalmente de la referencia.
+- **Bloque de identidad arriba, solo PRO** (decisión del usuario) y **sin
+  avatar**: nombre editable inline con lápiz (mismo patrón que el título del
+  programa en el Program Editor) + `Entrenador · aparece en tus programas` +
+  badge PRO. El nombre es `trainerSync.trainerName` — el que ven los clientes —
+  y sustituye al campo "Tu nombre" que estaba enterrado en CUENTA. Una cuenta
+  free entra directa a los ajustes, sin cabecera ni título "AJUSTES".
+- **CONEXIONES con estado visible**: 2 filas de 2 líneas (Entrenador, Copia en
+  Google Drive) + una 3ª solo en PRO (Sincronización con clientes). Navegan a
+  las pantallas que YA existían (`TrainerConnection`, `DriveBackup`), así que
+  desaparecen del menú las 4 filas sueltas de entrenador (cambiar, vincular
+  Google, desconectar) y `DriveBackupModal` se queda sin usos. El subtítulo de
+  Drive lleva **cuándo** fue la última copia (`hoy 9:41`), que en una app
+  offline es el dato que tranquiliza, no "backup activo".
+- **DATOS de 4 filas a 2**: una sola fila `Exportar` abre un `DragSheet` donde
+  se elige el alcance (backup completo / programa + historial). Menos decisiones
+  en el menú, más contexto en el momento de decidir.
+- **PREFERENCIAS con controles inline**: unidades e idioma como
+  `SegmentedControl` de ancho fijo (104) dentro de la fila — sin navegar. El
+  idioma va **ES/EN sin banderas** (una bandera no representa un idioma). El
+  tema pasa de texto a **muestras**: cada chip usa el `surface` y el `accent` de
+  SU tema, con anillo lima en el activo (5 temas, no los 4 de la referencia).
+- **CUENTA**: `Plan y facturación` (valor `Activo` en PRO / badge `FREE` que abre
+  el paywall) y `Ayuda y soporte` → **Documentación**, pantalla nueva
+  (`DocsScreen`) con la terminología de la app. El texto vive entero en
+  `docs.sections` de i18n como lista de `{title, body}`: añadir apartados es
+  editar ese array, no la pantalla.
+- El toggle de pestañas PRO (solo free) pasa a `PREFERENCIAS` con el `Switch`
+  animado de `ui/EditorRows`, en vez del botón de texto que tenía.
+
+Dos desviaciones conscientes, por si en QA se quieren al revés:
+`.val`/chevrons van en `muted` como la referencia, pero los **subtítulos de 2
+líneas en `mutedLight`** (en `muted` a 11px casi no se leen, y es lo que ya usan
+las `NavRow`); y el **punto de estado del entrenador es lima**, siguiendo el
+texto del usuario ("dot lima" en las dos filas) y no la regla §8 de "azul =
+entrenador" que sí aplica en HomeView.
 
 ### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
 

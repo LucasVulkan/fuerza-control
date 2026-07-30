@@ -1,7 +1,7 @@
 /**
  * driveService.js
  * Google Drive REST API helpers.
- * Tokens are managed externally (expo-secure-store via DriveBackupModal).
+ * Tokens are managed externally (expo-secure-store via DriveBackupScreen).
  * All functions receive the access token as a parameter.
  */
 

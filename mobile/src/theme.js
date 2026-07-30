@@ -163,6 +163,38 @@ export function withOpacity(hex, opacity) {
   return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
 }
 
+/**
+ * Radios asimétricos por posición dentro de una lista agrupada (§9 de
+ * docs/UI-MIGRATION.md): primero/último redondeados, intermedios casi rectos.
+ * Vive aquí, y no en la pantalla que lo estrenó (Progress), porque lo comparten
+ * la lista de ejercicios, el detalle y el menú principal.
+ */
+export function getCardRadii(th, isFirst, isLast) {
+  const xxs = th.radius.xxs ?? 2;
+  if (isFirst && isLast) {
+    return {
+      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
+      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
+    };
+  }
+  if (isFirst) {
+    return {
+      borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
+      borderBottomLeftRadius: th.radius.xs, borderBottomRightRadius: th.radius.xs,
+    };
+  }
+  if (isLast) {
+    return {
+      borderTopLeftRadius: xxs, borderTopRightRadius: th.radius.xs,
+      borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
+    };
+  }
+  return {
+    borderTopLeftRadius: xxs, borderTopRightRadius: xxs,
+    borderBottomLeftRadius: xxs, borderBottomRightRadius: xxs,
+  };
+}
+
 // ─── Convenience re-export (backwards compat with old theme import) ───────────
 export const theme = { colors, spacing, radius, typography, borders, resolveColor, withOpacity };
 export default theme;

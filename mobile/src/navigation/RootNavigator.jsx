@@ -26,6 +26,7 @@ import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
 import ExerciseHistoryScreen    from '../screens/ExerciseHistoryScreen';
 import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
+import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
 
 const Stack = createNativeStackNavigator();
@@ -203,6 +204,11 @@ export default function RootNavigator() {
         <Stack.Screen
           name="TrainerConnection"
           component={TrainerConnectionScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="Docs"
+          component={DocsScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>

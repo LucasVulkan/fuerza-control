@@ -4,13 +4,12 @@
  * Self-contained: manages settings sheet + import logic internally.
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, Children, cloneElement } from 'react';
 import {
-  View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView,
-  Animated, PanResponder, TextInput,
+  View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView, TextInput,
 } from 'react-native';
-import Svg, { Path, G } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, G, Circle } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -18,14 +17,19 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
-import DriveBackupModal from './DriveBackupModal';
-import ClientCodeModal       from './ClientCodeModal';
-import ClientGoogleLinkModal from './ClientGoogleLinkModal';
+import DragSheet   from './DragSheet';
 import TrainerSyncModal      from './TrainerSyncModal';
 import PaywallModal from './PaywallModal';
-import { spacing, typography, borders } from '../theme';
+import SegmentedControl from './ui/SegmentedControl';
+import { Switch }       from './ui/EditorRows';
+import { ArrowIcon, PencilIcon } from './ui/EditorIcons';
+import { spacing, typography, textStyles, borders, getCardRadii } from '../theme';
 import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
+
+// Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
+// 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
+const ROW_CHEVRON = 10.77;
 
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -94,60 +98,209 @@ function MenuIcon({ size = 24 }) {
   );
 }
 
-// ── Icon ───────────────────────────────────────────────────────────────────────
+// ── Iconos de fila ────────────────────────────────────────────────────────────
+// Van en GRIS, no en lima: son decoración funcional, y con 12 iconos lima el
+// menú parecía un árbol de Navidad. El lima queda para lo que informa (estado,
+// badge PRO, tema activo).
 
-function Icon({ d, size = 18 }) {
+function RowIcon({ children }) {
   const th = useTheme();
   return (
     <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={th.colors.accent}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      width={18} height={18} viewBox="0 0 24 24" fill="none"
+      stroke={th.colors.mutedLight} strokeWidth={2.4}
+      strokeLinecap="round" strokeLinejoin="round"
     >
-      <Path d={d} />
+      {children}
     </Svg>
   );
 }
 
-// ── MenuItem ──────────────────────────────────────────────────────────────────
+const ICON_NEW      = <Path d="M12 5v14M5 12h14" />;
+const ICON_ARCHIVED = <Path d="M4 7h16M4 12h16M4 17h10" />;
+const ICON_TRAINER  = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
+const ICON_CLOUD    = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
+const ICON_SYNC     = <G><Path d="M20.5 12a8.5 8.5 0 0 1-14 6.4" /><Path d="M3.5 12a8.5 8.5 0 0 1 14-6.4" /><Path d="M17 2.5v3.2h-3.2M7 21.5v-3.2h3.2" /></G>;
+const ICON_EXPORT   = <Path d="M12 19V5M6 11l6-6 6 6" />;
+const ICON_IMPORT   = <Path d="M12 5v14M6 13l6 6 6-6" />;
+const ICON_PLAN     = <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />;
+const ICON_DOCS     = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
 
-function MenuItem({ icon, label, subtitle, onPress, disabled, badge }) {
+// ── Sección + fila ────────────────────────────────────────────────────────────
+// Listas fusionadas, no cards anidados: la sección se marca con la etiqueta de
+// siempre (`spacingTag`) y las filas son el sistema de listas agrupadas de la
+// app (gap 2, extremos redondeados vía getCardRadii) — este es su caso de uso
+// canónico: filas uniformes de consulta/configuración.
+
+function Section({ title, children }) {
   const styles = useThemedStyles(makeStyles);
+  // `Children.toArray` descarta los `false`/`null` de las filas condicionales,
+  // así que la primera y la última se calculan solas.
+  const rows = Children.toArray(children);
   return (
-    <TouchableOpacity
-      style={[styles.menuItem, disabled && styles.menuItemDisabled]}
-      onPress={disabled ? undefined : onPress}
-      activeOpacity={0.65}
-    >
-      <View style={styles.menuItemIcon}>{icon}</View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.menuItemText}>{label}</Text>
-        {subtitle != null && (
-          <Text style={styles.menuItemSubtitle} numberOfLines={1}>{subtitle}</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>{title}</Text>
+      <View style={styles.group}>
+        {rows.map((row, i) =>
+          cloneElement(row, { isFirst: i === 0, isLast: i === rows.length - 1 }),
         )}
       </View>
-      {badge != null && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
-// ── CategoryCard ──────────────────────────────────────────────────────────────
-
-function CategoryCard({ title, children }) {
+function Status({ tone, label }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const color  = tone === 'on' ? th.colors.accent : tone === 'warn' ? th.colors.orange : th.colors.muted;
+  const text   = tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent;
   return (
-    <View style={styles.category}>
-      <Text style={styles.categoryTitle}>{title}</Text>
-      {children}
+    <View style={styles.status}>
+      <View style={[styles.statusDot, { backgroundColor: color }]} />
+      <Text style={[styles.statusText, { color: text }]}>{label}</Text>
+    </View>
+  );
+}
+
+/**
+ * Fila del menú: icono + etiqueta, y a la derecha lo que toque (valor, badge,
+ * estado con punto o un control inline). El chevron solo aparece cuando la fila
+ * navega y no lleva ya estado o control a la derecha.
+ */
+function MenuRow({
+  icon, label, sub, value, badge, badgeMuted, status, control,
+  onPress, disabled, minHeight, isFirst, isLast,
+}) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const Wrap   = onPress ? TouchableOpacity : View;
+  const press  = onPress ? { onPress, activeOpacity: 0.7, disabled } : null;
+  return (
+    <Wrap
+      style={[
+        styles.row,
+        getCardRadii(th, isFirst, isLast),
+        minHeight ? { minHeight } : null,
+        disabled && styles.rowDisabled,
+      ]}
+      {...press}
+    >
+      {icon != null && <View style={styles.rowIcon}>{icon}</View>}
+      <View style={styles.rowMeta}>
+        <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
+        {!!sub && <Text style={styles.rowSub} numberOfLines={1}>{sub}</Text>}
+      </View>
+      {control}
+      {!!value && <Text style={styles.rowValue}>{value}</Text>}
+      {!!badge && (
+        // El lima informa: PRO va en lima, FREE en gris (no es un logro).
+        <View style={[styles.badge, badgeMuted && styles.badgeOff]}>
+          <Text style={[styles.badgeText, badgeMuted && styles.badgeTextOff]}>{badge}</Text>
+        </View>
+      )}
+      {status}
+      {onPress && !status && !control && (
+        <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
+      )}
+    </Wrap>
+  );
+}
+
+// ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
+// Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
+// "Cuenta" a tres scrolls. La 2ª línea explica por qué ese nombre importa.
+// Sin avatar (decisión del usuario: no hay icono de perfil).
+
+function IdentityBlock() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+
+  const trainerName    = useStore((s) => s.trainerSync?.trainerName);
+  const setTrainerName = useStore((s) => s.setTrainerName);
+
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState(trainerName ?? '');
+
+  function startEditing() { setDraft(trainerName ?? ''); setEditing(true); }
+  function commit() { setTrainerName(draft); setEditing(false); }
+
+  return (
+    <View style={styles.me}>
+      <View style={styles.meWho}>
+        {editing ? (
+          <TextInput
+            autoFocus
+            style={styles.meNameInput}
+            value={draft}
+            onChangeText={setDraft}
+            onBlur={commit}
+            onSubmitEditing={commit}
+            placeholder={t('header.namePlaceholder')}
+            placeholderTextColor={th.colors.muted}
+            returnKeyType="done"
+            maxLength={40}
+          />
+        ) : (
+          <View style={styles.meNameRow}>
+            <Text
+              style={[styles.meName, !trainerName && styles.meNameEmpty]}
+              numberOfLines={1}
+              onPress={startEditing}
+              suppressHighlighting
+            >
+              {trainerName || t('header.namePlaceholder')}
+            </Text>
+            <TouchableOpacity hitSlop={12} onPress={startEditing}>
+              <PencilIcon size={11} color={th.colors.muted} />
+            </TouchableOpacity>
+          </View>
+        )}
+        <Text style={styles.meRole} numberOfLines={1}>{t('header.identityRole')}</Text>
+      </View>
+      <View style={styles.plan}>
+        <Text style={styles.planText}>PRO</Text>
+      </View>
+    </View>
+  );
+}
+
+// ── Selector de tema con muestras ─────────────────────────────────────────────
+// Un selector de temas debe enseñar los temas: cada muestra usa el `surface` y
+// el `accent` de SU tema, y el activo se marca con un anillo lima.
+
+function ThemeSwatches() {
+  const th       = useTheme();
+  const styles   = useThemedStyles(makeStyles);
+  const theme    = useStore((s) => s.theme ?? 'dark');
+  const setTheme = useStore((s) => s.setTheme);
+
+  return (
+    <View style={styles.themes}>
+      {THEME_LIST.map((item) => {
+        const active = theme === item.id;
+        return (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.theme}
+            onPress={() => { if (!active) setTheme(item.id); }}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                styles.chip,
+                { backgroundColor: item.colors.surface },
+                active && { borderColor: th.colors.accent },
+              ]}
+            >
+              <View style={[styles.chipStripe, { backgroundColor: item.colors.accent }]} />
+            </View>
+            <Text style={[styles.themeName, active && styles.themeNameActive]} numberOfLines={1}>
+              {item.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -208,325 +361,287 @@ function ArchivedProgramsModal({ onClose }) {
   );
 }
 
-// ── Settings Sheet ─────────────────────────────────────────────────────────────
+// ── Última copia de Drive ─────────────────────────────────────────────────────
+// En una app offline el dato que tranquiliza no es "backup activo" sino CUÁNDO
+// fue la última copia — por eso va en el subtítulo de la fila.
+function formatBackupWhen(iso, lang, t) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowDrive, onConnectTrainer, onChangeSyncMode, onLinkGoogle }) {
+  const h    = d.getHours();
+  const m    = String(d.getMinutes()).padStart(2, '0');
+  const time = lang === 'en' ? `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}` : `${h}:${m}`;
+
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
+
+  if (days === 0) return `${t('dayCard.today').toLowerCase()} ${time}`;
+  if (days === 1) return `${t('dayCard.yesterday').toLowerCase()} ${time}`;
+
+  const months = lang === 'en' ? MONTHS_EN : MONTHS_ES;
+  const day    = lang === 'en' ? `${months[d.getMonth()]} ${d.getDate()}` : `${d.getDate()} ${months[d.getMonth()]}`;
+  return `${day} ${time}`;
+}
+
+// ── Hoja de exportar ──────────────────────────────────────────────────────────
+// Exportar backup y Exportar programa + historial son la misma acción con
+// distinto alcance: una sola fila en el menú y la decisión aquí, en el momento
+// de decidir.
+
+function ExportSheet({ visible, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t }         = useTranslation();
-  const insets        = useSafeAreaInsets();
-  const [exporting,    setExporting]   = useState(null);
-  const [showPaywall,  setShowPaywall] = useState(false);
-
-  const profile              = useStore((s) => s.profile);
-  const setProfile           = useStore((s) => s.setProfile);
-  const setLanguage          = useStore((s) => s.setLanguage);
-  const navigate             = useStore((s) => s.navigate);
+  const { t }  = useTranslation();
   const exportFullBackup     = useStore((s) => s.exportFullBackup);
   const exportProgramWithLog = useStore((s) => s.exportProgramWithLog);
-  const clientSync           = useStore((s) => s.clientSync);
-  const unlinkFromTrainer    = useStore((s) => s.unlinkFromTrainer);
-  const trainerSync          = useStore((s) => s.trainerSync);
-  const setTrainerName       = useStore((s) => s.setTrainerName);
-  const driveBackup          = useStore((s) => s.driveBackup);
-  const theme                = useStore((s) => s.theme ?? 'dark');
-  const setTheme             = useStore((s) => s.setTheme);
+  const [exporting, setExporting] = useState(null);
 
-  const lang           = profile.language      ?? 'es';
-  const unit           = profile.weightUnit    ?? 'kg';
-  const isPro          = profile.isPro         ?? true;
-  const proTabsHidden  = profile.proTabsHidden ?? false;
-
-  // ── Drag-to-close ────────────────────────────────────────────────────────────
-  const translateY      = useRef(new Animated.Value(900)).current;
-  const backdropOpacity = translateY.interpolate({
-    inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
-  });
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gs) => {
-        if (gs.dy > 0) translateY.setValue(gs.dy);
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dy > 120 || gs.vy > 0.8) {
-          Animated.timing(translateY, {
-            toValue: 900, duration: 240, useNativeDriver: true,
-          }).start(() => { onClose(); });
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0, useNativeDriver: true, tension: 80, friction: 10,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  // Slide-in al abrir (animationType="none" en el Modal — evita conflicto entre
-  // la animación nativa del Modal y el transform nativo de Animated)
-  useEffect(() => {
-    if (visible) {
-      translateY.setValue(900);
-      Animated.spring(translateY, {
-        toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
-      }).start();
-    }
-  }, [visible]);
-
-  async function handleExport(type) {
+  async function run(type) {
     setExporting(type);
     try {
       if (type === 'full') await exportFullBackup();
       else                 await exportProgramWithLog();
     } finally {
       setExporting(null);
+      onClose();
     }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      {/* Backdrop — opacidad sincronizada con el gesto de arrastre */}
-      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
-      </Animated.View>
-      {/* Layout shell — posiciona el sheet en la parte inferior */}
-      <View style={styles.sheetOverlay} pointerEvents="box-none">
-        <Animated.View
-          style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl), transform: [{ translateY }] }]}
-        >
-          {/* Drag handle */}
-          <View {...panResponder.panHandlers}>
-            <View style={styles.dragHandleWrap}>
-              <View style={styles.sheetHandle} />
-            </View>
-            <Text style={styles.settingsTitle}>{t('header.settings')}</Text>
-          </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-
-          {/* ── PROGRAMAS ── */}
-          <CategoryCard title={t('header.sectionPrograms')}>
-            <MenuItem
-              icon={<Icon d="M12 5v14M5 12h14" />}
-              label={t('header.newProgramItem')}
-              onPress={() => {
-                if (clientSync?.slotId) {
-                  Alert.alert(
-                    '¿Crear nuevo programa?',
-                    'Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado.',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      {
-                        text: 'Continuar',
-                        style: 'destructive',
-                        onPress: () => { onClose(); navigate('onboarding'); },
-                      },
-                    ],
-                  );
-                } else {
-                  onClose();
-                  navigate('onboarding');
-                }
-              }}
-            />
-            <MenuItem
-              icon={<Icon d="M4 6h16M4 10h16M4 14h10" />}
-              label={t('header.archivedProgramsItem')}
-              onPress={() => { onClose(); onShowArchived(); }}
-            />
-            {clientSync?.slotId ? (
-              <>
-                <MenuItem
-                  icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />}
-                  label={t('header.changeTrainer')}
-                  subtitle={clientSync.trainerName ? `Conectado con ${clientSync.trainerName}` : 'Conectado'}
-                  onPress={() => { onClose(); onConnectTrainer(); }}
-                />
-                {!clientSync.googleLinked && (
-                  <MenuItem
-                    icon={<Icon d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m4 4V7" />}
-                    label="Vincular Google"
-                    subtitle="Reconéctate sin código desde cualquier dispositivo"
-                    onPress={() => { onClose(); onLinkGoogle(); }}
-                  />
-                )}
-                {clientSync.googleLinked && (
-                  <MenuItem
-                    icon={<Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" />}
-                    label="Google vinculado"
-                    subtitle="Reconexión automática activa"
-                    onPress={null}
-                  />
-                )}
-                <MenuItem
-                  icon={<Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />}
-                  label={t('header.disconnectTrainer')}
-                  onPress={() => { unlinkFromTrainer(); onClose(); }}
-                />
-              </>
-            ) : (
-              <MenuItem
-                icon={<Icon d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" />}
-                label={t('header.connectTrainer')}
-                onPress={() => { onClose(); onConnectTrainer(); }}
-              />
-            )}
-          </CategoryCard>
-
-          {/* ── DATOS ── */}
-          <CategoryCard title={t('header.sectionData')}>
-            <MenuItem
-              icon={<Icon d="M12 15V3m0 0L8 7m4-4l4 4M3 20h18" />}
-              label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
-              onPress={() => handleExport('full')}
-              disabled={!!exporting}
-            />
-            <MenuItem
-              icon={<Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />}
-              label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
-              onPress={() => handleExport('log')}
-              disabled={!!exporting}
-            />
-            <MenuItem
-              icon={<Icon d="M12 3v12m0 0l-4-4m4 4l4-4M3 20h18" />}
-              label={t('header.importFile')}
-              onPress={() => { onClose(); onImport(); }}
-            />
-            <MenuItem
-              icon={<Icon d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />}
-              label={t('header.driveBackup')}
-              subtitle={driveBackup?.enabled && driveBackup?.email ? driveBackup.email : null}
-              onPress={() => { onClose(); onShowDrive(); }}
-            />
-          </CategoryCard>
-
-          {/* ── CONFIGURACIÓN ── */}
-          <CategoryCard title={t('header.sectionConfig')}>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>{t('header.theme')}</Text>
-              <View style={styles.toggleBtns}>
-                {THEME_LIST.map((th) => (
-                  <TouchableOpacity
-                    key={th.id}
-                    style={[styles.toggleBtn, theme === th.id && styles.toggleBtnActive]}
-                    onPress={() => { if (theme !== th.id) setTheme(th.id); }}
-                  >
-                    <Text style={[styles.toggleBtnText, theme === th.id && styles.toggleBtnTextActive]}>
-                      {th.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>{t('header.language')}</Text>
-              <View style={styles.toggleBtns}>
-                {['es', 'en'].map((l) => (
-                  <TouchableOpacity
-                    key={l}
-                    style={[styles.toggleBtn, lang === l && styles.toggleBtnActive]}
-                    onPress={() => { if (lang !== l) setLanguage(l); }}
-                  >
-                    <Text style={[styles.toggleBtnText, lang === l && styles.toggleBtnTextActive]}>
-                      {l === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>{t('header.units')}</Text>
-              <View style={styles.toggleBtns}>
-                {['kg', 'lb'].map((u) => (
-                  <TouchableOpacity
-                    key={u}
-                    style={[styles.toggleBtn, unit === u && styles.toggleBtnActive]}
-                    onPress={() => { if (unit !== u) setProfile({ weightUnit: u }); }}
-                  >
-                    <Text style={[styles.toggleBtnText, unit === u && styles.toggleBtnTextActive]}>
-                      {u.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            {!isPro && (
-              <View style={[styles.toggleRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.toggleLabel}>{t('header.proTabsLabel')}</Text>
-                <TouchableOpacity
-                  style={[styles.toggleBtn, !proTabsHidden && styles.toggleBtnActive]}
-                  onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
-                >
-                  <Text style={[styles.toggleBtnText, !proTabsHidden && styles.toggleBtnTextActive]}>
-                    {proTabsHidden ? t('header.proTabsHidden') : t('header.proTabsVisible')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </CategoryCard>
-
-          {/* ── CUENTA ── */}
-          <CategoryCard title={t('header.sectionAccount')}>
-            <MenuItem
-              icon={<Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />}
-              label={t('header.currentPlan')}
-              badge={isPro ? 'PRO' : 'FREE'}
-              onPress={isPro ? undefined : () => setShowPaywall(true)}
-            />
-            {isPro && (
-              <>
-                <MenuItem
-                  icon={<Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
-                  label={t('header.trainerSync')}
-                  badge={
-                    trainerSync.mode === 'google'  ? 'GOOGLE' :
-                    trainerSync.mode === 'code'    ? 'CÓDIGO' :
-                    trainerSync.mode === 'offline' ? 'OFFLINE' : null
-                  }
-                  onPress={() => { onClose(); onChangeSyncMode(); }}
-                />
-                {trainerSync.mode && trainerSync.mode !== 'offline' && (
-                  <View style={styles.nameFieldRow}>
-                    <Text style={styles.nameFieldLabel}>Tu nombre</Text>
-                    <TextInput
-                      style={styles.nameFieldInput}
-                      value={trainerSync.trainerName ?? ''}
-                      onChangeText={(v) => setTrainerName(v)}
-                      placeholder="Nombre visible para tus clientes"
-                      placeholderTextColor={th.colors.muted2}
-                      returnKeyType="done"
-                      maxLength={40}
-                    />
-                  </View>
-                )}
-              </>
-            )}
-          </CategoryCard>
-          {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-
-          {/* ── DESARROLLADOR — solo en dev builds ── */}
-          {__DEV__ && (
-            <CategoryCard title={t('header.sectionDeveloper')}>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>{t('header.plan')} {isPro ? 'PRO' : 'FREE'}</Text>
-                <TouchableOpacity
-                  style={[styles.toggleBtn, isPro && styles.toggleBtnActive]}
-                  onPress={() => setProfile({ isPro: !isPro })}
-                >
-                  <Text style={[styles.toggleBtnText, isPro && styles.toggleBtnTextActive]}>
-                    {isPro ? t('header.switchToFree') : t('header.switchToPro')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </CategoryCard>
-          )}
-
-        </ScrollView>
-        </Animated.View>
+    <DragSheet visible={visible} onClose={onClose} title={t('header.exportSheetTitle')} background={th.colors.bg}>
+      <View style={styles.group}>
+        <MenuRow
+          isFirst
+          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
+          sub={t('header.exportBackupSub')}
+          minHeight={62}
+          disabled={!!exporting}
+          onPress={() => run('full')}
+        />
+        <MenuRow
+          isLast
+          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
+          sub={t('header.exportProgramHistorySub')}
+          minHeight={62}
+          disabled={!!exporting}
+          onPress={() => run('log')}
+        />
       </View>
-    </Modal>
+    </DragSheet>
   );
 }
+
+// ── Settings Sheet ─────────────────────────────────────────────────────────────
+
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode }) {
+  const th         = useTheme();
+  const styles     = useThemedStyles(makeStyles);
+  const { t }      = useTranslation();
+  const navigation = useNavigation();
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const profile     = useStore((s) => s.profile);
+  const setProfile  = useStore((s) => s.setProfile);
+  const setLanguage = useStore((s) => s.setLanguage);
+  const navigate    = useStore((s) => s.navigate);
+  const clientSync  = useStore((s) => s.clientSync);
+  const trainerSync = useStore((s) => s.trainerSync);
+  const driveBackup = useStore((s) => s.driveBackup);
+  const archivedCount = useStore((s) => Object.values(s.programs ?? {})
+    .filter((p) => p.status === 'archived' && p.mode !== 'managed').length);
+
+  const lang          = profile.language      ?? 'es';
+  const unit          = profile.weightUnit    ?? 'kg';
+  const isPro         = profile.isPro         ?? true;
+  const proTabsHidden = profile.proTabsHidden ?? false;
+
+  function go(route) { onClose(); navigation.navigate(route); }
+
+  // ── Conexiones: estado visible en la propia fila ─────────────────────────────
+  const trainerConnected = !!clientSync?.slotId;
+  const trainerSub = trainerConnected
+    ? [clientSync.trainerName, clientSync.googleLinked ? t('header.trainerSubGoogle') : t('header.trainerSubCode')]
+        .filter(Boolean).join(' · ')
+    : t('header.trainerSubOff');
+
+  const driveWhen  = driveBackup?.lastBackup ? formatBackupWhen(driveBackup.lastBackup, lang, t) : null;
+  const driveTone  = driveBackup?.needsReconnect ? 'warn' : driveBackup?.enabled ? 'on' : 'off';
+  const driveSub   = driveBackup?.needsReconnect ? t('header.driveSubReconnect')
+    : !driveBackup?.enabled                      ? t('header.driveSubOff')
+    : driveWhen                                  ? t('header.driveSubLast', { when: driveWhen })
+    :                                              t('header.driveSubNever');
+
+  const syncMode   = trainerSync?.mode ?? null;
+  const syncActive = !!syncMode && syncMode !== 'offline';
+  const syncSub    = syncMode === 'google'  ? t('header.syncSubGoogle')
+    : syncMode === 'code'    ? t('header.syncSubCode')
+    : syncMode === 'offline' ? t('header.syncSubOffline')
+    :                          t('header.syncSubNone');
+
+  return (
+    <DragSheet visible={visible} onClose={onClose} background={th.colors.bg}>
+      {/* El bloque de identidad es la cabecera del menú y solo existe en PRO;
+          una cuenta free entra directa a los ajustes. */}
+      {isPro && <IdentityBlock />}
+
+      <Section title={t('header.sectionPrograms')}>
+        <MenuRow
+          icon={<RowIcon>{ICON_NEW}</RowIcon>}
+          label={t('header.newProgramItem')}
+          onPress={() => {
+            if (clientSync?.slotId) {
+              Alert.alert(
+                t('header.newProgramWarnTitle'),
+                t('header.newProgramWarnBody'),
+                [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  {
+                    text: t('common.continue'),
+                    style: 'destructive',
+                    onPress: () => { onClose(); navigate('onboarding'); },
+                  },
+                ],
+              );
+            } else {
+              onClose();
+              navigate('onboarding');
+            }
+          }}
+        />
+        <MenuRow
+          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          label={t('header.archivedProgramsItem')}
+          value={archivedCount > 0 ? String(archivedCount) : null}
+          onPress={() => { onClose(); onShowArchived(); }}
+        />
+      </Section>
+
+      {/* Drive va con Entrenador (las dos son conexiones externas); en DATOS
+          quedan solo las acciones manuales. */}
+      <Section title={t('header.sectionConnections')}>
+        <MenuRow
+          icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
+          label={t('header.trainerRow')}
+          sub={trainerSub}
+          minHeight={62}
+          status={<Status tone={trainerConnected ? 'on' : 'off'} label={trainerConnected ? t('header.statusConnected') : t('header.statusConnect')} />}
+          onPress={() => go('TrainerConnection')}
+        />
+        <MenuRow
+          icon={<RowIcon>{ICON_CLOUD}</RowIcon>}
+          label={t('header.driveRow')}
+          sub={driveSub}
+          minHeight={62}
+          status={<Status tone={driveTone} label={
+            driveTone === 'on'   ? t('header.statusActive')
+            : driveTone === 'warn' ? t('header.statusReconnect')
+            :                        t('header.statusActivate')
+          } />}
+          onPress={() => go('DriveBackup')}
+        />
+        {isPro && (
+          <MenuRow
+            icon={<RowIcon>{ICON_SYNC}</RowIcon>}
+            label={t('header.clientSyncRow')}
+            sub={syncSub}
+            minHeight={62}
+            status={<Status tone={syncActive ? 'on' : 'off'} label={syncActive ? t('header.statusActive') : t('header.statusSetUp')} />}
+            onPress={() => { onClose(); onChangeSyncMode(); }}
+          />
+        )}
+      </Section>
+
+      <Section title={t('header.sectionData')}>
+        <MenuRow
+          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          label={t('header.exportRow')}
+          value={t('header.exportRowValue')}
+          onPress={() => { onClose(); onShowExport(); }}
+        />
+        <MenuRow
+          icon={<RowIcon>{ICON_IMPORT}</RowIcon>}
+          label={t('header.importFile')}
+          onPress={() => { onClose(); onImport(); }}
+        />
+      </Section>
+
+      {/* Controles inline: unidades e idioma se cambian aquí mismo, sin navegar.
+          El idioma va como ES/EN, sin banderas (una bandera no es un idioma). */}
+      <Section title={t('header.sectionPreferences')}>
+        <MenuRow
+          label={t('header.units')}
+          minHeight={58}
+          control={(
+            <View style={styles.segWrap}>
+              <SegmentedControl
+                options={[{ id: 'kg', label: 'KG' }, { id: 'lb', label: 'LB' }]}
+                value={unit}
+                onChange={(u) => { if (u !== unit) setProfile({ weightUnit: u }); }}
+              />
+            </View>
+          )}
+        />
+        <MenuRow
+          label={t('header.language')}
+          minHeight={58}
+          control={(
+            <View style={styles.segWrap}>
+              <SegmentedControl
+                options={[{ id: 'es', label: 'ES' }, { id: 'en', label: 'EN' }]}
+                value={lang}
+                onChange={(l) => { if (l !== lang) setLanguage(l); }}
+              />
+            </View>
+          )}
+        />
+        <MenuRow
+          label={t('header.theme')}
+          minHeight={86}
+          control={<ThemeSwatches />}
+        />
+        {!isPro && (
+          <MenuRow
+            label={t('header.proTabsLabel')}
+            sub={t('header.proTabsHint')}
+            minHeight={62}
+            control={<Switch value={!proTabsHidden} />}
+            onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
+          />
+        )}
+      </Section>
+
+      <Section title={t('header.sectionAccount')}>
+        <MenuRow
+          icon={<RowIcon>{ICON_PLAN}</RowIcon>}
+          label={t('header.planRow')}
+          badge={isPro ? 'PRO' : 'FREE'}
+          badgeMuted={!isPro}
+          onPress={isPro ? undefined : () => setShowPaywall(true)}
+        />
+        <MenuRow
+          icon={<RowIcon>{ICON_DOCS}</RowIcon>}
+          label={t('header.docsRow')}
+          onPress={() => go('Docs')}
+        />
+      </Section>
+
+      {__DEV__ && (
+        <Section title={t('header.sectionDeveloper')}>
+          <MenuRow
+            label={`${t('header.plan')} ${isPro ? 'PRO' : 'FREE'}`}
+            value={isPro ? t('header.switchToFree') : t('header.switchToPro')}
+            onPress={() => setProfile({ isPro: !isPro })}
+          />
+        </Section>
+      )}
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+    </DragSheet>
+  );
+}
+
 
 // ── AppHeader ──────────────────────────────────────────────────────────────────
 
@@ -538,9 +653,7 @@ export default function AppHeader() {
   const [importState,       setImportState]       = useState(null);
   const [picking,           setPicking]           = useState(false);
   const [showArchived,      setShowArchived]       = useState(false);
-  const [showDrive,         setShowDrive]          = useState(false);
-  const [showClientCode,    setShowClientCode]     = useState(false);
-  const [showClientGoogle,  setShowClientGoogle]   = useState(false);
+  const [showExport,        setShowExport]         = useState(false);
   const [showSyncMode,      setShowSyncMode]       = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
@@ -657,9 +770,7 @@ export default function AppHeader() {
         onClose={() => setSettingsOpen(false)}
         onImport={handlePickFile}
         onShowArchived={() => setShowArchived(true)}
-        onShowDrive={() => setShowDrive(true)}
-        onConnectTrainer={() => setShowClientCode(true)}
-        onLinkGoogle={() => setShowClientGoogle(true)}
+        onShowExport={() => setShowExport(true)}
         onChangeSyncMode={() => setShowSyncMode(true)}
       />
 
@@ -667,19 +778,7 @@ export default function AppHeader() {
         <ArchivedProgramsModal onClose={() => setShowArchived(false)} />
       )}
 
-      {showDrive && (
-        <DriveBackupModal onClose={() => setShowDrive(false)} />
-      )}
-
-      <ClientCodeModal
-        visible={showClientCode}
-        onClose={() => setShowClientCode(false)}
-      />
-
-      <ClientGoogleLinkModal
-        visible={showClientGoogle}
-        onClose={() => setShowClientGoogle(false)}
-      />
+      <ExportSheet visible={showExport} onClose={() => setShowExport(false)} />
 
       <TrainerSyncModal
         visible={showSyncMode}
@@ -759,167 +858,137 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.xs * 1.5,
   },
 
-  // Settings sheet
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  sheetOverlay: {
-    flex:           1,
-    justifyContent: 'flex-end',
-  },
-  settingsSheet: {
-    maxHeight:            '88%',
-    backgroundColor:      th.colors.surface,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    paddingHorizontal:    spacing.lg,
-    paddingTop:           spacing.sm,
-  },
-  dragHandleWrap: {
-    paddingVertical: spacing.sm,
-    alignItems:      'center',
-  },
-  sheetHandle: {
-    width:           40,
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-  },
-  settingsTitle: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-    marginBottom:  spacing.md,
-  },
-
-  // Category card
-  category: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     1,
-    borderColor:     `${th.colors.accent}2e`,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.md,
-    marginBottom:    spacing.sm,
-    gap:             6,
-  },
-  categoryTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 2,
-    marginBottom:  2,
-  },
-
-  // Menu item
-  menuItem: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            spacing.sm,
-    paddingVertical:   spacing.sm + 2,
-    paddingHorizontal: spacing.sm,
-    borderRadius:   th.radius.md,
-    backgroundColor: `${th.colors.text}06`,
-    borderWidth:    1,
-    borderColor:    `${th.colors.text}0d`,
-  },
-  menuItemDisabled: {
-    opacity: 0.45,
-  },
-  menuItemIcon: {
-    width:           24,
-    height:          24,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  menuItemText: {
-    fontSize:   typography.base,
-    color:      th.colors.text,
-  },
-  menuItemSubtitle: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 1,
-  },
-
-  // Badge
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   3,
-    borderRadius:      999,
-    borderWidth:       1,
-    borderColor:       `${th.colors.accent}59`,
-    backgroundColor:   `${th.colors.accent}0f`,
-  },
-  badgeText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
-
-  // Toggles (inside category cards)
-  toggleRow: {
+  // ── Bloque de identidad ─────────────────────────────────────────────────────
+  // Medidas de la referencia (v29): fila con el badge a la derecha, 20 de aire
+  // por debajo antes de la primera etiqueta de sección.
+  me: {
     flexDirection:     'row',
     alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+    gap:               spacing.md,
+    paddingHorizontal: spacing.xs2,
+    paddingBottom:     spacing.xl,
   },
-  toggleLabel: {
-    fontSize: typography.base,
-    color:    th.colors.text,
-    flex:     1,
+  meWho:     { flex: 1, minWidth: 0 },
+  meNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  // 17px Black con tracking -0.01em: no hay token de Figma para este tamaño.
+  meName: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      17,
+    letterSpacing: -0.17,
+    color:         th.colors.text,
+    flexShrink:    1,
   },
-  toggleBtns: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
+  meNameEmpty: { color: th.colors.mutedLight },
+  meNameInput: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      17,
+    letterSpacing: -0.17,
+    color:         th.colors.text,
+    padding:       0,
   },
-  toggleBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
+  meRole: {
+    fontFamily:    'Inter_600SemiBold',
+    fontSize:      12,
+    color:         th.colors.mutedLight,
+    marginTop:     spacing.xs,
   },
-  toggleBtnActive: {
-    borderColor:     th.colors.accent,
-    backgroundColor: `${th.colors.accent}18`,
+  plan: {
+    height:           28,
+    borderRadius:     9,
+    backgroundColor:  th.tint.accent10,
+    paddingHorizontal: 11,
+    alignItems:       'center',
+    justifyContent:   'center',
+    flexShrink:       0,
   },
-  toggleBtnText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
-  toggleBtnTextActive: {
-    color: th.colors.accent,
+  planText: {
+    fontFamily:    'Inter_900Black',
+    fontSize:      11,
+    letterSpacing: 0.88,
+    color:         th.colors.accent,
   },
 
-  // Trainer name field
-  nameFieldRow: {
+  // ── Sección + lista agrupada ────────────────────────────────────────────────
+  section:      { marginBottom: spacing.xl },
+  sectionLabel: {
+    ...textStyles.spacingTag,
+    color:             th.colors.mutedLight,
+    textTransform:     'uppercase',
+    paddingHorizontal: spacing.xs2,
+    marginBottom:      spacing.sm2,
+  },
+  group: { gap: spacing.xs },
+
+  row: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.lg,
+    minHeight:         52,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-    gap:               spacing.xs,
   },
-  nameFieldLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  rowDisabled: { opacity: 0.45 },
+  rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
+  rowMeta:     { flex: 1, minWidth: 0 },
+  // 14px ExtraBold sin tracking: tampoco tiene token (cardType es 12/1.2).
+  rowLabel: {
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize:   14,
+    color:      th.colors.text,
   },
-  nameFieldInput: {
-    fontSize:          typography.base,
-    color:             th.colors.text,
-    paddingVertical:   spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
+  rowSub: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize:   11,
+    color:      th.colors.mutedLight,
+    marginTop:  spacing.xs,
   },
+  rowValue: {
+    fontFamily:          'Inter_700Bold',
+    fontSize:            12,
+    color:               th.colors.muted,
+    fontVariant:         ['tabular-nums'],
+    flexShrink:          0,
+  },
+
+  // Estado de conexión: punto + texto. Lo que informa va en lima; cuando está
+  // apagado, el texto pasa a lima porque ahí SÍ hay una acción que ofrecer.
+  status:    { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 0 },
+  statusDot: { width: 7, height: 7, borderRadius: 3.5 },
+  statusText: { fontFamily: 'Inter_700Bold', fontSize: 12 },
+
+  // Badge (PRO/FREE en la fila de plan)
+  badge: {
+    paddingHorizontal: spacing.sm2,
+    paddingVertical:   3,
+    borderRadius:      th.radius.xs,
+    backgroundColor:   th.tint.accent10,
+    flexShrink:        0,
+  },
+  badgeText: {
+    ...textStyles.spacingTag,
+    color: th.colors.accent,
+  },
+  badgeOff:     { backgroundColor: th.colors.surface2 },
+  badgeTextOff: { color: th.colors.mutedLight },
+
+  // Segmentado pequeño dentro de la fila (unidades / idioma)
+  segWrap: { width: 104, flexShrink: 0 },
+
+  // Muestras de tema
+  themes:    { flexDirection: 'row', gap: spacing.md, flexShrink: 0 },
+  theme:     { alignItems: 'center', gap: spacing.sm },
+  chip: {
+    width:        38,
+    height:       38,
+    borderRadius: 12,
+    overflow:     'hidden',
+    borderWidth:  borders.medium,
+    borderColor:  'transparent',
+  },
+  chipStripe: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 13 },
+  themeName:  { ...textStyles.tag, color: th.colors.muted },
+  themeNameActive: { fontFamily: 'Inter_900Black', color: th.colors.accent },
 
   // Archived programs modal
   modalBackdrop: {
