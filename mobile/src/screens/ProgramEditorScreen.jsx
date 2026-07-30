@@ -14,6 +14,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
 
@@ -638,6 +639,26 @@ export default function ProgramEditorScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* Acceso: el candado que el cliente ve en su móvil. La etapa 1 no
+                lo ofrece — bloquear la etapa de entrada dejaría al cliente sin
+                por dónde empezar (y `isStageLocked` la ignoraría igualmente). */}
+            {selectedStageIdx > 0 && (
+              <View>
+                <Text style={styles.sheetLabel}>{t('editor.stageAccessLabel')}</Text>
+                <SegmentedControl
+                  options={[
+                    { id: 'open',   label: t('editor.stageAccessOpen') },
+                    { id: 'locked', label: t('editor.stageAccessLocked') },
+                  ]}
+                  value={selectedStage.locked ? 'locked' : 'open'}
+                  onChange={(id) => updateStage(editingId, selectedStageIdx, { locked: id === 'locked' })}
+                />
+                <Text style={[styles.stateHint, { marginTop: spacing.sm }]}>
+                  {t(selectedStage.locked ? 'editor.stageAccessLockedHint' : 'editor.stageAccessOpenHint')}
+                </Text>
+              </View>
+            )}
 
             {/* Mismo par de botones que cierra el editor de ejercicio:
                 secundario `surface2` + destructivo `tint/red-30`. */}

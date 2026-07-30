@@ -40,6 +40,7 @@ import { assignActiveProgram, deassignProgram } from '../../src/utils/clientProg
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from '../../src/utils/stageProgress';
+import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { findBestArchetype } from '../../src/data/archetypes';
@@ -1285,11 +1286,14 @@ export const useStore = create(
       },
 
       setCurrentStage: (programId, stageIndex) => {
-        const { programs } = get();
+        const { programs, clientSync } = get();
         const program = programs[programId];
         if (!program?.stages?.length) return;
         const targetStage = program.stages[stageIndex];
         if (!targetStage) return;
+        // The guard lives here, not in the screens: Home's picker, the program
+        // editor and the end-of-stage banner all route through this action.
+        if (isStageLocked(program, stageIndex, clientSync)) return;
         set((s) => ({
           programs: {
             ...s.programs,
@@ -1306,12 +1310,13 @@ export const useStore = create(
       },
 
       advanceStage: (programId) => {
-        const { programs } = get();
+        const { programs, clientSync } = get();
         const program = programs[programId];
         if (!program?.stages?.length) return;
         const currentIdx = program.currentStageIndex ?? 0;
         const nextIdx = currentIdx + 1;
         if (nextIdx >= program.stages.length) return;
+        if (isStageLocked(program, nextIdx, clientSync)) return;
         const nextStage = program.stages[nextIdx];
         set((s) => ({
           programs: {
