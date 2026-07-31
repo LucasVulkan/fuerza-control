@@ -34,7 +34,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
-import { progressFromBlob } from '../../../src/utils/stageProgress';
+import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
 import { LockIcon } from '../components/ui/EditorIcons';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -439,7 +439,7 @@ function ActiveProgramHero({
   const mine         = progressFromBlob(progress, program.id);
   const stages       = program.stages ?? [];
   const hasStages    = stages.length > 0;
-  const stageIdx     = mine?.currentStageIndex ?? program.currentStageIndex ?? 0;
+  const stageIdx     = clientStageIndex({ progress }, program);
   const currentStage = hasStages ? stages[stageIdx] : null;
   const currentDays  = hasStages ? (currentStage?.days ?? []) : (program.days ?? []);
   const sessPerCycle = Math.max(1, currentDays.length);
@@ -1256,7 +1256,7 @@ function ClientListCard({
   // que nunca sincronizan.
   const mine           = progressFromBlob(client.progress, activeProgram?.id);
   const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
-  const stageIdx       = mine?.currentStageIndex ?? activeProgram?.currentStageIndex ?? 0;
+  const stageIdx       = clientStageIndex(client, activeProgram);
   const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
   const currentDays    = hasStages
     ? (currentStage?.days ?? [])

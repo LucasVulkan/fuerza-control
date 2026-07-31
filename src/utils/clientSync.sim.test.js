@@ -25,7 +25,7 @@ import {
   splitClientLogEntries,
 } from './clientLogs';
 import { assignActiveProgram, archivedProgramIds } from './clientPrograms';
-import { advanceCycle, progressBlob, progressFromBlob } from './stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -207,11 +207,16 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
         linkedAt:          new Date(at).toISOString(),
       };
       // Restaurar lo propio desde el slot: contadores SIEMPRE, historial solo si
-      // se acepta la fusión (spec stage-locks §6.4). Tras reinstalar, esto es lo
-      // que devuelve al cliente donde lo dejó.
+      // se acepta la fusión (spec stage-locks §6.4). Misma regla de merge que una
+      // actualización en vivo: el blob gana salvo que el programa traiga un sello
+      // de activación más nuevo que aquel bajo el que se calculó el blob.
       const { history, progress } = db.downloadHistory(slot.id);
-      const restored = progressFromBlob(progress, data.program.id);
-      if (restored) Object.assign(state.programs[data.program.id], restored);
+      Object.assign(state.programs[data.program.id], mergeProgressOnImport({
+        blob:           progress,
+        program:        state.programs[data.program.id],
+        lastActivation: progress?.appliedActivation ?? null,
+      }));
+      state.clientSync.lastAppliedStageActivation = data.program.stageActivatedAt ?? null;
       if (mergeHistory) {
         const localIds = new Set(state.workoutLog.map((e) => e.id));
         state.workoutLog.push(...history.filter((e) => !localIds.has(e.id)));
@@ -251,7 +256,7 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
       });
       db.uploadHistory(
         state.clientSync.slotId, entries, customExercises,
-        progressBlob(state.programs[state.activeProgramId]),
+        progressBlob(state.programs[state.activeProgramId], state.clientSync.lastAppliedStageActivation ?? null),
       );
       return entries;
     },
@@ -425,6 +430,29 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     expect(enCliente(nuevo, 'prog_trainer')).toEqual(antes);
     expect(nuevo.state.workoutLog).toEqual([]);          // rechazó fusionar historial…
     expect(antes.cycleCompletedIds).toEqual(['tplA']);   // …y aun así conserva el ciclo abierto
+  });
+
+  test('una activación enviada mientras el cliente estaba desconectado gana al blob al reconectar', () => {
+    const { db, trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();   // el blob queda en el slot: etapa 0, ciclo abierto
+
+    // Con el cliente sin la app, el entrenador activa la etapa 2 y la reenvía.
+    const file = programFile('prog_trainer', ['tplA', 'tplB']);
+    file.program.stages = [
+      { id: 'st1', durationWeeks: 2, days: file.program.days },
+      { id: 'st2', durationWeeks: 2, days: file.program.days },
+    ];
+    file.program.currentStageIndex = 1;
+    file.program.stageActivatedAt  = '2026-02-01T10:00:00.000Z';
+    trainer.pushProgram('ana', file);
+
+    // Reinstala y reconecta: el sello es nuevo para este dispositivo → gana el
+    // movimiento del entrenador, no la posición vieja del blob.
+    const nuevo = makeClient(db, { uid: 'client-uid-1' });
+    nuevo.connect('CODE-1', { at: LINK_TS + 5 * DAY });
+    expect(nuevo.state.programs.prog_trainer.currentStageIndex).toBe(1);
+    expect(nuevo.state.programs.prog_trainer.stageWeeksCompleted).toBe(0);
   });
 
   test('un blob de otro programa no se adopta', () => {

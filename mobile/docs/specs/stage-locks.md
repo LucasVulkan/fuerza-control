@@ -387,3 +387,37 @@ del programa como cualquier otro cambio, así que el cliente ve el
 como "Cambios menores en el programa" mientras por debajo le reiniciaba los
 contadores de la etapa. Ahora `buildProgramDiff` abre con **"Tu entrenador te pasa
 a {etapa}"**.
+
+### 9.3 Repaso completo del circuito (Fable) + activar ⇒ desbloquear
+
+Decisión nueva del usuario: **activar una etapa implica desbloquearla**.
+`setCurrentStage` limpia `locked` en la etapa destino — un candado sobre la etapa
+en la que ya estás solo puede confundir. En el móvil del cliente es un no-op (el
+guard le impide llegar a una bloqueada).
+
+Dos fallos encontrados en el repaso línea a línea, ambos del sello:
+
+1. **El cliente también sellaba.** `setCurrentStage` es compartida: un cliente
+   cambiando de etapa en su móvil escribía `stageActivatedAt` en su copia local,
+   dándole al campo dos significados según el dispositivo — la misma ambigüedad
+   que causó §9.1. Ahora solo sella el **autor** del programa (en el móvil del
+   cliente, para un programa del entrenador, no se sella). El gate cubre también
+   el caso entrenador-que-además-es-cliente.
+2. **Reinstalar se tragaba una activación pendiente.** Si el entrenador movía al
+   cliente mientras este tenía la app desinstalada, `_restoreFromSlot` restauraba
+   el blob (posición vieja) sin mirar el sello y luego lo marcaba como aplicado.
+   El blob ahora lleva `appliedActivation` (el sello bajo el que se calculó, leído
+   de `clientSync`, no del programa) y la reconexión usa **la misma
+   `mergeProgressOnImport` que una actualización en vivo**: el blob gana salvo
+   sello más nuevo. Reconectar ya no tiene lógica propia.
+
+Menor: `clientStageIndex` recorta al rango de etapas existente (el entrenador
+puede borrar etapas por debajo de donde el blob dice que está el cliente); el
+hero y la fila de Clientes pasan a usarla en vez de leer el blob a pelo.
+
+Verificado sin cambios necesarios: `_buildProgramJson` y `reidProgramFile`
+serializan el programa entero con spread (candados y sello viajan);
+`addStageToProgram` y `duplicateStageInProgram` crean el objeto etapa desde cero
+(las nuevas y las copias nacen desbloqueadas, §0.2); el revert de `unlockStage`
+si falla el envío; los guards del store; el caso "el entrenador borra la etapa
+donde estaba el cliente" (clamp en ambos lados).

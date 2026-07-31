@@ -93,6 +93,11 @@ describe('progressBlob / progressFromBlob', () => {
     expect(progressBlob(undefined)).toBeNull();
     expect(progressBlob({})).toBeNull();
   });
+
+  it('lleva el sello de activación bajo el que se calculó la posición', () => {
+    expect(progressBlob(program, 'T1').appliedActivation).toBe('T1');
+    expect(progressBlob(program).appliedActivation).toBeNull();
+  });
 });
 
 describe('mergeProgressOnImport — quién manda al llegar un programa del entrenador', () => {
@@ -187,5 +192,11 @@ describe('clientStageIndex — dónde está el cliente visto desde el entrenador
   it('ignora un blob de otro programa', () => {
     const client = { progress: { programId: 'prog_otro', currentStageIndex: 2 } };
     expect(clientStageIndex(client, program)).toBe(0);
+  });
+
+  it('recorta a la última etapa si el programa encogió', () => {
+    const conEtapas = { id: 'prog_1', currentStageIndex: 0, stages: [{}, {}] };
+    const client    = { progress: { programId: 'prog_1', currentStageIndex: 5 } };
+    expect(clientStageIndex(client, conEtapas)).toBe(1);
   });
 });

@@ -39,7 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, mergeProgressOnImport } from '../../src/utils/stageProgress';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
@@ -1309,19 +1309,27 @@ export const useStore = create(
         // The guard lives here, not in the screens: Home's picker, the program
         // editor and the end-of-stage banner all route through this action.
         if (isStageLocked(program, stageIndex, clientSync)) return;
+        // Activar implica desbloquear: si el entrenador te trae aquí, la etapa
+        // queda abierta — un candado sobre la etapa en la que YA estás solo
+        // puede confundir. En el móvil del cliente es un no-op (no puede llegar
+        // a una etapa bloqueada, el guard de arriba lo corta).
+        const newStages = program.stages.map((st, i) => (i === stageIndex ? { ...st, locked: false } : st));
+        // El sello significa "el AUTOR del programa movió la etapa a propósito"
+        // y dispara el salto en el cliente al importar. Deducirlo comparando
+        // índices no valía (la copia del entrenador se queda atrás en cuanto el
+        // cliente avanza solo — ver spec §9.1). Solo sella el autor: en el móvil
+        // del cliente, para un programa del entrenador, quien mueve no es el
+        // autor, y sellar ahí le daría al campo dos significados por dispositivo.
+        const isAuthor = !(clientSync?.slotId && clientSync.trainerProgramIds?.includes(programId));
         set((s) => ({
           programs: {
             ...s.programs,
             [programId]: {
               ...program,
               currentStageIndex: stageIndex,
-              days: targetStage.days,
-              // Sello de "yo he movido a este cliente a propósito". Deducirlo
-              // comparando índices no vale: la copia del entrenador se queda
-              // atrás en cuanto el cliente avanza solo, y entonces reactivar la
-              // etapa que el entrenador ya tenía marcada no cambia ningún número
-              // y el cliente nunca se enteraba. Ver spec §6.3.
-              stageActivatedAt: new Date().toISOString(),
+              days: newStages[stageIndex].days,
+              stages: newStages,
+              ...(isAuthor ? { stageActivatedAt: new Date().toISOString() } : {}),
               stageWeeksCompleted: 0,
               cycleCompletedIds: [],
               stageAdvancePending: false,
@@ -3018,8 +3026,18 @@ export const useStore = create(
           const { history: remoteEntries, customExercises: remoteCustom, progress } =
             await downloadHistory(slotId);
 
-          const restored = progressFromBlob(progress, programId);
-          if (restored) get()._writeProgress(programId, restored);
+          // Same merge rule as a live program update: the blob wins UNLESS the
+          // imported program carries an activation stamp newer than the one the
+          // blob was computed under — then the trainer moved this client while
+          // the blob sat in the slot, and the move wins.
+          const prog = get().programs[programId];
+          if (prog) {
+            get()._writeProgress(programId, mergeProgressOnImport({
+              blob:           progress,
+              program:        prog,
+              lastActivation: progress?.appliedActivation ?? null,
+            }));
+          }
 
           if (!mergeHistory) return;
 
@@ -3226,8 +3244,14 @@ export const useStore = create(
 
         // The trainer mirrors these counters instead of recomputing them from
         // `entries` — that is what keeps both sides from ever drifting, and what
-        // survives the client deleting log entries (spec §3.1).
-        const progress = progressBlob(programs[profile.activeProgramId]);
+        // survives the client deleting log entries (spec §3.1). The applied
+        // stamp comes from clientSync, NOT from the program: the program's copy
+        // can be overwritten by a local stage switch, while clientSync only
+        // moves when an import actually applies an activation.
+        const progress = progressBlob(
+          programs[profile.activeProgramId],
+          clientSync.lastAppliedStageActivation ?? null,
+        );
 
         try {
           await uploadHistory(clientSync.slotId, entries, relevantCustom, progress);

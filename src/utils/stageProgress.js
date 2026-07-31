@@ -33,7 +33,7 @@
  *
  * @returns {object|null} null when the program has no id (nothing to sync)
  */
-export function progressBlob(program) {
+export function progressBlob(program, appliedActivation = null) {
   if (!program?.id) return null;
   return {
     programId:           program.id,
@@ -41,6 +41,12 @@ export function progressBlob(program) {
     cycleCompletedIds:   program.cycleCompletedIds   ?? [],
     stageWeeksCompleted: program.stageWeeksCompleted ?? 0,
     totalWeeksCompleted: program.totalWeeksCompleted ?? 0,
+    // The activation stamp this position was computed under. On a reconnect the
+    // restore compares it against the incoming program's stamp: a newer stamp
+    // there means the trainer moved the client while this blob sat in the slot,
+    // and the move must win over the blob — same rule as a live update. Without
+    // this, a reinstall silently swallowed a pending activation.
+    appliedActivation,
     updatedAt:           new Date().toISOString(),
   };
 }
@@ -72,9 +78,13 @@ export function progressFromBlob(blob, programId) {
  * Falls back to the program's own index for clients who have never synced.
  */
 export function clientStageIndex(client, program) {
-  return progressFromBlob(client?.progress, program?.id)?.currentStageIndex
+  const idx = progressFromBlob(client?.progress, program?.id)?.currentStageIndex
     ?? program?.currentStageIndex
     ?? 0;
+  // Clamped: the trainer may have deleted stages below where the blob says the
+  // client is, and an out-of-range index renders an empty stage everywhere.
+  const last = (program?.stages?.length ?? 0) - 1;
+  return last >= 0 ? Math.max(0, Math.min(idx, last)) : Math.max(0, idx);
 }
 
 /**
