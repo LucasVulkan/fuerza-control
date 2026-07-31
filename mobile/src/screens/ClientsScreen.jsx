@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
+import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -412,6 +413,16 @@ function DownloadIcon({ size = 18, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M12 3v12M8 11l4 4 4-4M5 21h14" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+// Flecha de "enviar" de los CTA de la tarjeta de cliente. Va con el trazo del
+// texto que acompaña (card-type es ExtraBold): la "↑" tipográfica se veía
+// canija al lado de la etiqueta.
+function UploadIcon({ size = 12, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 20V5M5 12l7-7 7 7" stroke={color} strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -1231,8 +1242,9 @@ function AttentionPill({ label, count, color, active, onPress }) {
 }
 
 function ClientListCard({
-  client, tagNames, activeProgram, lastActivityTs, isConnected, weeksTraining,
-  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions, onSendOverrides, newSessionsCount = 0,
+  client, activeProgram, lastActivityTs, isConnected,
+  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions,
+  onSendOverrides, onUnlockStage, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1243,12 +1255,12 @@ function ClientListCard({
   const showOverrideDirty = isConnected && !showDirty && !!client.overridesDirty;
 
   // Last activity label
-  let lastStr = 'Nunca';
+  let lastStr = t('clients.lastNever');
   if (lastActivityTs) {
     const diffDays = Math.floor((Date.now() - lastActivityTs) / 86400000);
     if (diffDays === 0)      lastStr = t('dayCard.today');
     else if (diffDays === 1) lastStr = t('dayCard.yesterday');
-    else                     lastStr = `Hace ${diffDays} días`;
+    else                     lastStr = t('dayCard.daysAgo', { count: diffDays });
   }
 
   // Program info — posición espejada del último envío del cliente (§3.1 de
@@ -1269,10 +1281,13 @@ function ClientListCard({
     && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity)
     && !!activeProgram.stages[stageIdx + 1]?.locked;
   const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
-  const weekNum        = weeksTraining ?? 1;
+  // "Ciclo NN" = vueltas COMPLETAS al ciclo + 1, el mismo contador que el banner
+  // de Home (`totalWeeksCompleted`), espejado del blob del cliente. Antes aquí se
+  // pintaban semanas de calendario desde el log, que es otro número.
+  const cycleNum       = (mine?.totalWeeksCompleted ?? activeProgram?.totalWeeksCompleted ?? 0) + 1;
 
-  // Real training pace (avg sessions/week) vs target — replaces the redundant
-  // "X de Y esta semana" line, which only repeated what the cycle dots show.
+  // Real training pace (avg cycles/week) vs target — el objetivo ya no se pinta
+  // (era ilegible en la tarjeta), pero sigue decidiendo el color.
   const paceTarget   = adherence?.weekTarget ?? sessPerCycle;
   const paceRaw      = adherence?.recentPerWeek ?? 0;
   const paceRounded  = Math.round(paceRaw * 2) / 2; // nearest 0.5
@@ -1283,155 +1298,141 @@ function ClientListCard({
   // Flag when the real pace falls below target so the trainer notices a slowdown
   // even before adherence flips to slipping/at-risk.
   const paceBehind   = paceHasData && paceRounded < paceTarget;
+  const attnColor    = adherence && requiresAttention(adherence.status)
+    ? adherenceColor(th, adherence.status)
+    : null;
 
-  // Status dot color
-  const dotColor = showDirty ? th.colors.orange : th.colors.green;
+  // Una sola acción a la derecha, por urgencia. El botón constante de "Progreso"
+  // desaparece: sin nada urgente el hueco lo ocupa la fecha o "N sin revisar".
+  const cta = !activeProgram
+    ? { label: t('clients.btnProgramShort'), bg: th.colors.accent, onPress: onOpenEditor }
+    : showDirty
+      ? { label: t('clients.btnUploadChanges'), upload: true, bg: th.colors.orange, onPress: onUploadProgram }
+      : stageStuck
+        ? { label: t('clients.stageUnlockShort'), bg: th.colors.orange, onPress: () => onUnlockStage(stageIdx + 1) }
+        : showOverrideDirty
+          ? { label: t('clients.btnSendOverride'), upload: true, bg: th.colors.blue, onPress: onSendOverrides }
+          : null;
+
+  // Un cliente en pausa o inactivo ocupa el hueco de la última actividad: su
+  // adherencia está silenciada, así que la fecha ahí no dice nada.
+  const manualStatus = client.status ?? 'active';
+  const statusLabel  = manualStatus === 'paused'   ? t('clients.statusPaused')
+                     : manualStatus === 'inactive' ? t('clients.statusInactive')
+                     : null;
 
   return (
-    <TouchableOpacity style={styles.cCard} onPress={onPress} activeOpacity={0.75}>
-
-      {/* ── Row 1: Name · streak · date ── */}
-      <View style={styles.cRow1}>
+    <TouchableOpacity
+      style={styles.cCard}
+      onPress={onPress}
+      onLongPress={onOpenActions}
+      delayLongPress={350}
+      activeOpacity={0.75}
+    >
+      {/* ── Línea 1: nombre · racha · Ciclo NN ── */}
+      <View style={styles.cTop}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         {adherence?.streak >= 2 && (
           <Text style={styles.cStreak}>{t('clients.streakWeeks', { count: adherence.streak })}</Text>
         )}
-        <Text style={[
-          styles.cDate,
-          adherence && requiresAttention(adherence.status) && { color: adherenceColor(th, adherence.status) },
-        ]}>
-          {lastStr}
-        </Text>
+        {activeProgram && (
+          <Text style={styles.cCycle}>
+            {t('clients.cycleLabel')}{' '}
+            <Text style={styles.cCycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
+          </Text>
+        )}
       </View>
 
-      {/* Menú "···" — anclado a la esquina superior derecha de la card,
-          independiente del flujo del nombre */}
-      <TouchableOpacity onPress={onOpenActions} hitSlop={10} activeOpacity={0.7} style={styles.cInfoBtnWrap}>
-        <Svg width={20} height={4} viewBox="0 0 20 4">
-          <Circle cx={2}  cy={2} r={2} fill="#D9D9D9" />
-          <Circle cx={10} cy={2} r={2} fill="#D9D9D9" />
-          <Circle cx={18} cy={2} r={2} fill="#D9D9D9" />
-        </Svg>
-      </TouchableOpacity>
-
-      {activeProgram ? (
-        /* ── Program block: column layout so name spans full card width ── */
-        <View style={styles.cProgramBlock}>
-          {/* Row 2: Status dot · Program name (full width) */}
-          <View style={styles.cRow2}>
-            {showDirty ? (
-              <View style={styles.cStatusBadge}>
-                <Text style={styles.cStatusBadgeText}>↑</Text>
-              </View>
-            ) : (
-              <View style={styles.cStatusDot} />
-            )}
-            <Text
-              style={[styles.cProgName, showDirty && { color: th.colors.orange }]}
-              numberOfLines={1}
-            >
-              {activeProgram.name}
-              {currentStage?.name ? (
-                <Text style={[styles.cStageName, showDirty && { color: th.colors.orange }]}>
-                  {' · '}{currentStage.name}
-                </Text>
-              ) : null}
-            </Text>
-          </View>
-
-          {/* El cliente está parado esperando que le abras la etapa siguiente */}
-          {stageStuck && (
-            <View style={styles.cLockRow}>
-              <LockIcon size={11} color={th.colors.orange} />
-              <Text style={styles.cLockText}>{t('clients.stageLockedShort')}</Text>
-            </View>
-          )}
-
-          {/* Row 3: Real training pace (avg sessions/week) vs target. Tinted
-              orange when below target, red/orange when adherence needs attention. */}
-          <Text style={[
-            styles.cProgMeta,
-            paceBehind && { color: th.colors.orange },
-            adherence && requiresAttention(adherence.status) && { color: adherenceColor(th, adherence.status) },
-          ]}>
-            {paceHasData
-              ? t('clients.weekPace', { rate: paceRateStr, target: paceTarget })
-              : t('clients.weekPaceNoData', { target: paceTarget })}
-          </Text>
-
-          {/* Row 4: Counters — paddingRight reserves space for the absolute button */}
-          <View style={styles.cCounters}>
-            <View style={styles.cWeekTextRow}>
-              <Text style={styles.cWeekNum}>{String(weekNum).padStart(2, '0')}</Text>
-              <Text style={styles.cWeekLabel}> SEMANA</Text>
-            </View>
-            <View style={styles.cDots}>
-              {Array.from({ length: sessPerCycle }, (_, i) => (
-                <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
-              ))}
-            </View>
-          </View>
-
-          {/* Button: absolute bottom-right of the program block. */}
-          {showDirty ? (
-            <TouchableOpacity style={styles.cBtnOrange} onPress={onUploadProgram} activeOpacity={0.85}>
-              <Text style={styles.cBtnOrangeText}>↑ {t('clients.btnUploadChanges')}</Text>
-            </TouchableOpacity>
-          ) : showOverrideDirty ? (
-            <TouchableOpacity style={styles.cBtnOverride} onPress={onSendOverrides} activeOpacity={0.85}>
-              <Text style={styles.cBtnOverrideText}>↑ {t('clients.btnSendOverride')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.cBtnOutline, newSessionsCount > 0 && styles.cBtnOutlineNew]}
-              onPress={onViewProgress}
-              activeOpacity={0.85}
-            >
-              {newSessionsCount > 0 ? (
-                <View style={styles.sessionsBadge}>
-                  <Text style={styles.sessionsBadgeText}>
-                    {newSessionsCount > 99 ? '99+' : newSessionsCount}
-                  </Text>
-                </View>
-              ) : (
-                <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
-                  stroke={th.colors.accent} strokeWidth={4} strokeLinecap="round">
-                  <Path d="M18 20V10M12 20V4M6 20v-6" />
-                </Svg>
-              )}
-              <Text style={[styles.cBtnOutlineText, newSessionsCount > 0 && { color: th.colors.bg }]}>
-                {t('clients.btnViewProgress')}
+      <View style={styles.cBody}>
+        <View style={styles.cMain}>
+          {!activeProgram ? (
+            <View style={styles.cAvisoRow}>
+              <View style={[styles.cAvisoDot, { backgroundColor: th.colors.muted }]} />
+              <Text style={[styles.cAvisoText, { color: th.colors.mutedLight }]}>
+                {t('clients.noActiveProgram')}
               </Text>
-            </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {/* El aviso ocupa el sitio de la línea de programa; cuando además
+                  hay cambios sin enviar se pintan las dos. */}
+              {(!stageStuck || showDirty) && (
+                <Text
+                  style={[styles.cProgLine, showDirty && { color: th.colors.orange }]}
+                  numberOfLines={1}
+                >
+                  {activeProgram.name}
+                  {currentStage?.name ? (
+                    <Text style={[styles.cStageLine, showDirty && { color: th.colors.orange }]}>
+                      {' · '}{currentStage.name}
+                    </Text>
+                  ) : null}
+                </Text>
+              )}
+
+              {stageStuck && (
+                <View style={styles.cAvisoRow}>
+                  <View style={styles.cAvisoDot} />
+                  <Text style={styles.cAvisoText}>{t('clients.stageLockedShort')}</Text>
+                </View>
+              )}
+
+              <View style={styles.cPaceRow}>
+                <Text style={styles.cPace}>
+                  {paceHasData ? (
+                    <>
+                      <Text style={[
+                        styles.cPaceNum,
+                        paceBehind && { color: th.colors.orange },
+                        attnColor && { color: attnColor },
+                      ]}>{paceRateStr}</Text>
+                      <Text style={styles.cPaceUnit}> {t('clients.cyclesPerWeek')}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.cPaceUnit}>{t('clients.noPaceShort')}</Text>
+                  )}
+                </Text>
+
+                <View style={styles.cDots}>
+                  {Array.from({ length: sessPerCycle }, (_, i) => (
+                    <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
+                  ))}
+                </View>
+
+                {/* Jerarquía del hueco derecho: CTA > sin revisar > estado > fecha */}
+                {!cta && (newSessionsCount > 0 ? (
+                  <TouchableOpacity
+                    style={styles.cUnreviewed}
+                    onPress={onViewProgress}
+                    hitSlop={8}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.cUnreviewedDot} />
+                    <Text style={styles.cUnreviewedText}>
+                      {t('clients.unreviewedSessions', { count: newSessionsCount })}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.cLast, !statusLabel && attnColor && { color: attnColor }]}>
+                    {statusLabel ?? lastStr}
+                  </Text>
+                ))}
+              </View>
+            </>
           )}
         </View>
-      ) : (
-        /* ── No program state ── */
-        <View style={styles.cNoProgramRow}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={styles.cNoProgramDot} />
-              <Text style={styles.cNoProgramTitle}>Sin programa activo</Text>
-            </View>
-            <Text style={styles.cNoProgramSub}>Asigna un programa al cliente</Text>
-          </View>
-          <TouchableOpacity style={styles.cBtnAccent} onPress={onOpenEditor} activeOpacity={0.85}>
-            <Text style={styles.cBtnAccentText}>+ Programa</Text>
+
+        {cta && (
+          <TouchableOpacity
+            style={[styles.cCta, { backgroundColor: cta.bg }]}
+            onPress={cta.onPress}
+            activeOpacity={0.85}
+          >
+            {cta.upload && <UploadIcon color={th.colors.onAccent} />}
+            <Text style={styles.cCtaText}>{cta.label}</Text>
           </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ── Tags row (no separator, just spacing) ── */}
-      {(tagNames ?? []).length > 0 && (
-        <View style={styles.cTagsRow}>
-          {(tagNames ?? []).map((name) => (
-            <View key={name} style={styles.cTagPill}>
-              <Text style={styles.cTagPillText}>{name}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -1800,14 +1801,55 @@ export default function ClientsScreen() {
     setView('detail');
   }
 
-  function handleSelectClientProgress(clientId) {
-    markHistoryViewed(clientId); // progress tab also shows history-derived data
+  /**
+   * Abre el detalle de un cliente en la pestaña que lee su historial.
+   *
+   * Las sesiones "sin revisar" viven en el slot, no en `clientLogs`: entrar sin
+   * descargarlas enseñaba el progreso viejo hasta que alguien tiraba del refresh.
+   * Se marcan como vistas DESPUÉS de bajarlas — si la descarga falla, el aviso
+   * tiene que seguir ahí.
+   */
+  function openClientHistoryTab(clientId, tab) {
     setSelectedClientId(clientId);
-    setActiveTab('progress');
+    setActiveTab(tab);
     setScopeFilter('active');
     setPeriodFilter('all');
     setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
+    (async () => {
+      try {
+        if (clients[clientId]?.syncSlotId) await downloadClientHistory(clientId);
+        markHistoryViewed(clientId);
+      } catch {
+        // silencioso: lo ya cargado sigue siendo válido y el aviso se queda
+      }
+    })();
+  }
+
+  function handleSelectClientProgress(clientId) {
+    openClientHistoryTab(clientId, 'progress');
+  }
+
+  /**
+   * Abre la etapa `stageIdx` del programa activo del cliente y se la envía.
+   * La usan la tarjeta de la lista y el hero del detalle — vive aquí para que
+   * las dos compartan el rollback de abajo.
+   */
+  async function unlockClientStage(clientId, stageIdx) {
+    const programId = clients[clientId]?.activeProgramId;
+    const stage     = programId ? programs[programId]?.stages?.[stageIdx] : null;
+    if (!stage) return;
+    updateStage(programId, stageIdx, { locked: false });
+    try {
+      await uploadProgramToClient(clientId, programId);
+      showToast(t('clients.toastStageUnlocked', { name: stage.name }), 2600, 'success');
+    } catch (err) {
+      // Si el envío falla hay que volver a cerrarla: el cliente sigue viéndola
+      // bloqueada, y dejarla abierta aquí borraría el aviso que recuerda que ese
+      // cliente está parado.
+      updateStage(programId, stageIdx, { locked: true });
+      Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+    }
   }
 
   async function handleRefreshList() {
@@ -1822,13 +1864,7 @@ export default function ClientsScreen() {
   }
 
   function handleSelectClientHistory(clientId) {
-    markHistoryViewed(clientId);
-    setSelectedClientId(clientId);
-    setActiveTab('history');
-    setScopeFilter('active');
-    setPeriodFilter('all');
-    setOpenSections({ status: false, personal: true, weight: false, billing: false });
-    setView('detail');
+    openClientHistoryTab(clientId, 'history');
   }
 
   async function handleCreateClient() {
@@ -2084,21 +2120,7 @@ export default function ClientsScreen() {
           // Abrir la etapa y enviarla en un solo toque: un desbloqueo que se
           // queda sin enviar no desbloquea nada. Arrastra las ediciones que
           // hubiera pendientes en ese programa, igual que "Enviar programa".
-          const unlockStage = async (stageIdx) => {
-            const stage = activeProgram.stages?.[stageIdx];
-            if (!stage) return;
-            updateStage(activeProgram.id, stageIdx, { locked: false });
-            try {
-              await uploadProgramToClient(selectedClientId, activeProgram.id);
-              showToast(t('clients.toastStageUnlocked', { name: stage.name }), 2600, 'success');
-            } catch (err) {
-              // Si el envío falla hay que volver a cerrarla: el cliente sigue
-              // viéndola bloqueada, y dejarla abierta aquí borraría el aviso que
-              // recuerda que ese cliente está parado.
-              updateStage(activeProgram.id, stageIdx, { locked: true });
-              Alert.alert('Error', err.message ?? t('clients.programUploadError'));
-            }
-          };
+          const unlockStage = (stageIdx) => unlockClientStage(selectedClientId, stageIdx);
           const confirmDelete = (program) => Alert.alert(
             t('clients.deleteProgramTitle'),
             t('clients.deleteProgramConfirm', { name: program.name }),
@@ -2657,7 +2679,12 @@ export default function ClientsScreen() {
             <View style={styles.hdrIconGroup}>
               {/* Billing (€) */}
               <TouchableOpacity style={styles.hdrIconBox} onPress={() => setView('billing')} activeOpacity={0.7}>
-                <Text style={styles.hdrEuro}>€</Text>
+                {/* € dibujado, no el glifo: Figma pone aquí la "€" de Inter,
+                    pero al lado de la nube (icono de trazo) cantaba. Mismo
+                    tamaño y grosor que ella. */}
+                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M4 10h12M4 14h9M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" />
+                </Svg>
               </TouchableOpacity>
               {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
               <TouchableOpacity style={styles.hdrIconBox} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
@@ -2725,7 +2752,7 @@ export default function ClientsScreen() {
 
         {/* Row 3 — conditional: attention pills + applied filters. Hidden when
             there's nothing to show, so the default state is two clean rows. */}
-        {(atRiskCount > 0 || unreviewedCount > 0 || activeFilterCount > 0) && (
+        {(atRiskCount > 0 || unreviewedCount > 0 || tagFilter.length > 0) && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -2752,29 +2779,16 @@ export default function ClientsScreen() {
               />
             )}
 
-            {/* Applied status filter (only when it diverges from the default) */}
-            {statusFilter !== 'active' && (
-              <View style={[styles.tagRowPill, styles.tagRowPillActive]}>
-                <Text style={[styles.tagRowPillText, styles.tagRowPillTextActive]}>
-                  {statusFilter === 'inactive'
-                    ? t('clients.filterSheet.statusInactive')
-                    : t('clients.filterSheet.statusAll')}
-                </Text>
-                <TouchableOpacity onPress={() => setStatusFilter('active')} hitSlop={8} activeOpacity={0.7}>
-                  <Text style={[styles.tagRowPillX, styles.tagRowPillXActive]}>×</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Applied tag filters */}
+            {/* Applied tag filters. El estado (Todos/Inactivos) NO pinta pill:
+                es una vista del segmentado, igual que el orden. */}
             {tagFilter.map((id) => {
               const tagName = allTags.find((tg) => tg.id === id)?.name;
               if (!tagName) return null;
               return (
-                <View key={id} style={[styles.tagRowPill, styles.tagRowPillActive]}>
-                  <Text style={[styles.tagRowPillText, styles.tagRowPillTextActive]}>{tagName}</Text>
+                <View key={id} style={styles.tagRowPill}>
+                  <Text style={styles.tagRowPillText}>{tagName}</Text>
                   <TouchableOpacity onPress={() => toggleTagFilter(id)} hitSlop={8} activeOpacity={0.7}>
-                    <Text style={[styles.tagRowPillX, styles.tagRowPillXActive]}>×</Text>
+                    <Text style={styles.tagRowPillX}>×</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -2784,16 +2798,22 @@ export default function ClientsScreen() {
 
       </View>
 
-      {/* Global pending-uploads banner — between filters and the card list */}
+      {/* Global pending-uploads banner — between filters and the card list.
+          Al enviarlo todo, `pendingClients` se vacía y el aviso se desmonta: sale
+          hacia arriba y, cuando termina, el `layout` del bloque de la lista la
+          sube deslizando en vez de dar el salto. */}
       {pendingClients.length > 0 && (
-        <View style={styles.pendingBanner}>
+        <Reanimated.View style={styles.pendingBanner} exiting={FadeOutUp.duration(220)}>
           <CloudUpIcon size={19} color={th.colors.blue} />
+          {/* Titular corto y fijo: la frase larga no cabía en la columna que deja
+              el botón, y el detalle (a cuántos y de qué) se lee mejor abajo. */}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.pendingTitle} numberOfLines={1}>
-              {t('clients.pendingClients', { count: pendingClients.length })}
+              {t('clients.pendingTitle')}
             </Text>
-            <Text style={styles.pendingSub} numberOfLines={1}>
+            <Text style={styles.pendingSub} numberOfLines={2}>
               {[
+                t('clients.pendingClientsCount', { count: pendingClients.length }),
                 pendingOverrideCount ? t('clients.pendingPrescriptions', { count: pendingOverrideCount }) : null,
                 pendingProgramCount  ? t('clients.pendingPrograms',      { count: pendingProgramCount })  : null,
               ].filter(Boolean).join(' · ')}
@@ -2807,10 +2827,11 @@ export default function ClientsScreen() {
           >
             <Text style={styles.pendingBtnText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
           </TouchableOpacity>
-        </View>
+        </Reanimated.View>
       )}
 
       {/* Client list */}
+      <Reanimated.View style={{ flex: 1 }} layout={LinearTransition.duration(240)}>
       {clientList.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
@@ -2837,29 +2858,14 @@ export default function ClientsScreen() {
             // Last activity across the client's separated history
             const clientSessions  = clientLogs[client.id] ?? [];
             const lastActivityTs  = clientSessions.length ? Math.max(...clientSessions.map((e) => e.timestamp)) : null;
-            // Weeks training on the active program (from first logged session)
-            const activeTplIds    = activeProgram
-              ? new Set(getAllProgramDays(activeProgram).map((d) => d.sessionTemplateId))
-              : new Set();
-            const activeSessions  = clientSessions.filter((e) => activeTplIds.has(e.sessionTemplateId));
-            const firstActiveTs   = activeSessions.length ? Math.min(...activeSessions.map((e) => e.timestamp)) : null;
-            const weeksTraining   = firstActiveTs
-              ? Math.max(1, Math.ceil((Date.now() - firstActiveTs) / (7 * 24 * 60 * 60 * 1000)))
-              : null;
-            // Resolve tag IDs → names for display
-            const clientTagNames = (client.tags ?? [])
-              .map((id) => tagRegistry.find((t) => t.id === id)?.name)
-              .filter(Boolean);
 
             return (
               <>
                 <ClientListCard
                   client={client}
-                  tagNames={clientTagNames}
                   activeProgram={activeProgram}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
-                  weeksTraining={weeksTraining}
                   adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
@@ -2886,6 +2892,7 @@ export default function ClientsScreen() {
                       Alert.alert('Error', err.message ?? t('clients.overrideSendFailed'));
                     }
                   }}
+                  onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}
                 />
                 {infoSheetClientId === client.id && (
                   <ClientInfoSheet
@@ -2899,8 +2906,9 @@ export default function ClientsScreen() {
           }}
         />
       )}
+      </Reanimated.View>
 
-      {/* Client actions sheet (··· on the card) */}
+      {/* Client actions sheet (pulsación larga sobre la tarjeta) */}
       {actionsClientId && clients[actionsClientId] && (
         <ClientActionsSheet
           client={clients[actionsClientId]}
@@ -3198,11 +3206,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     flexShrink:      0,
   },
-  hdrEuro: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   20,
-    color:      th.colors.text,
-  },
   hdrNewBtn: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.md,
@@ -3383,63 +3386,56 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom:  spacing.xs,
   },
-  // Attention pills (En riesgo / Sin revisar)
+  // Attention pills (En riesgo / Sin revisar) — misma geometría y tipografía que
+  // las pills de etiqueta; lo único propio es el color, que es semántico.
   attnPill: {
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm,
-    paddingLeft:       spacing.lg,
-    paddingRight:      spacing.sm + 2,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      th.radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    borderRadius:      th.radius.sm,
     flexShrink:        0,
   },
   attnPillText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
+    ...textStyles.cardType,
   },
   attnPillBadge: {
     borderRadius:      th.radius.full,
-    minWidth:          20,
-    height:            20,
+    minWidth:          18,
+    height:            18,
     alignItems:        'center',
     justifyContent:    'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: spacing.xs2,
     flexShrink:        0,
   },
   attnPillBadgeText: {
-    fontSize:   11,
-    fontWeight: typography.bold,
+    ...textStyles.tag,
+    fontFamily: 'Inter_700Bold',
   },
-  // Tag pills in filter row
+  // Tag pills aplicadas — pill seleccionada del lenguaje nuevo: relleno accent
+  // sólido, `radius/sm` y `text/card-type` (igual que las pills de la hoja de
+  // filtros del buscador de ejercicios). Sin borde ni variante "inactiva": si
+  // está en esta fila, está aplicada.
   tagRowPill: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingLeft:       spacing.lg,
-    paddingRight:      spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      th.radius.full,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    gap:               spacing.sm,   // more gap between text and ×
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.accent,
     flexShrink:        0,
   },
-  tagRowPillActive: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
   tagRowPillText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
+    ...textStyles.cardType,
+    color: th.colors.onAccent,
   },
-  tagRowPillTextActive: { color: th.colors.accent },
   tagRowPillX: {
-    fontSize:   14,
-    color:      th.colors.muted2,
-    lineHeight: 16,
+    ...textStyles.cardType,
+    color:      th.colors.onAccent,
+    lineHeight: 14,
   },
-  tagRowPillXActive: { color: th.colors.accent },
 
   // Legacy — keep chip styles for compatibility with other views
   chip: {
@@ -3795,72 +3791,66 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Client list card ──────────────────────────────────────────────────────────
+  // El aire va entre el nombre y el bloque de abajo, no dentro de él: la línea
+  // de programa/aviso se lee pegada al ritmo, no colgando del nombre.
   cCard: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    gap:             spacing.sm,   // space between the three visual blocks
+    gap:               spacing.md,
   },
-  // Row 1: name · date · Info →
-  cRow1: {
+  // Línea 1: nombre · racha · Ciclo NN (Figma: gap 6, alineado arriba)
+  cTop: {
     flexDirection: 'row',
     alignItems:    'baseline',
     gap:           spacing.sm,
   },
   cName: {
     ...textStyles.cardTitle,
-    color:      th.colors.accent,
-    flexShrink: 1,
-  },
-  cDate: {
-    fontSize:  typography.xs,
-    color:     th.colors.mutedLight,
-    flexShrink: 0,
+    color:    th.colors.text,
+    flex:     1,
+    minWidth: 0,
   },
   cStreak: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted2,
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
     flexShrink: 0,
   },
-  // Menú "···" — anclado a la esquina superior derecha de la card. La
-  // posición de Figma (top 10/right 15) es la de la CAJA del icono, no la
-  // de los puntos visibles, que quedan inset dentro de ella — mismo caso
-  // que el bullet verde de cStatusDot.
-  cInfoBtnWrap: {
-    position: 'absolute',
-    top:      15,
-    right:    spacing.xl,
+  cCycle: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    flexShrink: 0,
   },
-  cInfoBtn: {
-    fontSize:   typography.sm,
-    color:      th.colors.accent,
-    fontWeight: typography.semibold,
+  cCycleNum: {
+    ...textStyles.cardType,
+    color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
   },
-  // Global pending-uploads banner
+  // Aviso global de envíos pendientes. Mismo ancho que el resto de la pantalla
+  // (`space/lg`, no `space/xl`) y sin borde: en este tema el relleno tintado ya
+  // marca la tarjeta (§4.6). Azul porque va de clientes/entrenador (§4.8).
   pendingBanner: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               spacing.sm,
-    marginHorizontal:  spacing.xl,
-    marginTop:         spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm + 1,
+    gap:               spacing.md,
+    marginHorizontal:  spacing.lg,
+    marginTop:         spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
     borderRadius:      th.radius.md,
-    backgroundColor:   withOpacity(th.colors.blue, 0.1),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.blue, 0.35),
+    backgroundColor:   withOpacity(th.colors.blue, 0.12),
   },
-  pendingTitle: { fontSize: typography.sm + 1, color: th.colors.text },
-  pendingSub:   { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
+  pendingTitle: { ...textStyles.cardType, color: th.colors.text },
+  pendingSub:   { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Misma geometría que los CTA de la tarjeta de cliente
   pendingBtn: {
-    backgroundColor:   th.colors.blue,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 3,
-    flexShrink:        0,
+    backgroundColor: th.colors.blue,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    flexShrink:      0,
   },
-  pendingBtnText: { fontSize: typography.sm, fontWeight: typography.semibold, color: th.colors.bg },
+  pendingBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',
@@ -3897,238 +3887,110 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.bold,
     color:      th.colors.onAccent,
   },
-  // Program block — rows 2+3+4 apiladas sin gap (Figma: flex-col sin gap-*)
-  cProgramBlock: {
-    flexDirection: 'column',
-  },
-  // Row 2: status dot · program · stage (Figma: gap space/xs = 2)
-  cRow2: {
+  // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
+  // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
+  // el botón va centrado contra el alto real.
+  cBody: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs2,
+    gap:           spacing.md,
   },
-  // Bullet — en Figma el círculo visible (~3.69px) vive centrado dentro de
-  // una caja invisible de 8px (icono con hit-box de sobra); replicamos solo
-  // el círculo real, no la caja.
-  cStatusDot: {
-    width:           3.69,
-    height:          3.69,
-    borderRadius:    1.85,
-    backgroundColor: th.colors.accent,
-    flexShrink:      0,
+  cMain: {
+    flex:     1,
+    minWidth: 0,
   },
-  cStatusBadge: {
-    width:           18,
-    height:          18,
-    borderRadius:    5,
-    backgroundColor: withOpacity(th.colors.orange, 0.18),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.orange, 0.5),
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
-  },
-  cStatusBadgeText: {
-    fontSize:   10,
-    fontWeight: typography.bold,
-    color:      th.colors.orange,
-    lineHeight: 12,
-  },
-  cStatusIcon: {
-    fontSize:   12,
-    fontWeight: typography.bold,
-    lineHeight: 14,
-    flexShrink: 0,
-  },
-  cProgName: {
+  // Línea de programa: nombre en card-type, etapa en subtitle, los dos mutedLight
+  cProgLine: {
     ...textStyles.cardType,
-    color: th.colors.text,
-    flex:  1,
+    color: th.colors.mutedLight,
   },
-  cStageName: {
-    ...textStyles.cardType,
-    color: th.colors.text,
-  },
-  cLockRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginTop:     spacing.xs,
-  },
-  cLockText: {
-    ...textStyles.tag,
-    color: th.colors.orange,
-  },
-  // Row 3: meta
-  cProgMeta: {
+  cStageLine: {
     ...textStyles.subtitle,
     color: th.colors.mutedLight,
   },
-  // Row 4: counters + button
-  cRow4: {
+  // Línea de aviso (sustituye a la de programa) — punto + texto en naranja
+  cAvisoRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  cCounters: {
+  cAvisoDot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: th.colors.orange,
+    flexShrink:      0,
+  },
+  cAvisoText: {
+    ...textStyles.cardType,
+    color:      th.colors.orange,
+    flexShrink: 1,
+  },
+  // Línea de ritmo: "1.2 cic/sem" · puntos de ciclo · fecha / sin revisar
+  cPaceRow: {
     flexDirection: 'row',
-    alignItems:    'flex-end',
-    flexWrap:      'wrap',
-    paddingRight:  110,
-  },
-  // Número + label justificados abajo entre sí (Figma: misma línea de base)
-  cWeekTextRow: {
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-  },
-  cWeekNum: {
-    ...textStyles.spacingTag,
-    color: th.colors.accent,
-  },
-  // "SEMANA" — variable Figma "small bold": 8px/tracking 1.12, Bold (no hay
-  // token compuesto exacto en textStyles todavía)
-  cWeekLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      8,
-    fontWeight:    '700',
-    letterSpacing: 1.12,
-    color:         th.colors.mutedLight,
-  },
-  // marginBottom compensa el hueco que deja el line-height del texto bajo
-  // su línea base — sin él, alinear al flex-end del row deja los puntos
-  // por debajo del final visual del texto, no a la altura de su base.
-  cDots: {
-    flexDirection: 'row',
-    gap:           5,
     alignItems:    'center',
-    marginLeft:    spacing.sm,
-    marginBottom:  2,
+    gap:           spacing.lg,
+  },
+  cPace: {
+    flexShrink: 0,
+  },
+  cPaceNum: {
+    ...textStyles.cardType,
+    color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  cPaceUnit: {
+    ...textStyles.subtitle,
+    color: th.colors.mutedLight,
+  },
+  cDots: {
+    flex:          1,
+    minWidth:      0,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
   },
   cDot: {
-    width:        8,
-    height:       8,
-    borderRadius: 4,
+    width:        6,
+    height:       6,
+    borderRadius: 3,
   },
-  cDotFull: {
+  cDotFull:  { backgroundColor: th.colors.accent },
+  cDotEmpty: { backgroundColor: th.colors.muted },
+  cLast: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    flexShrink: 0,
+  },
+  cUnreviewed: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    flexShrink:    0,
+  },
+  cUnreviewedDot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
     backgroundColor: th.colors.accent,
   },
-  cDotEmpty: {
-    backgroundColor: 'transparent',
-    borderWidth:     1.5,
-    borderColor:     th.colors.muted2,
-  },
-  // Contextual buttons — misma geometría que "Buttons" en Figma (padding
-  // space/md uniforme, radius/md, gap space/sm, texto card-type)
-  cBtnOutline: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    padding:         spacing.md,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface2,
-    position:        'absolute',
-    bottom:          0,
-    right:           0,
-  },
-  cBtnOutlineText: {
+  cUnreviewedText: {
     ...textStyles.cardType,
     color: th.colors.text,
   },
-  cBtnOutlineNew: {
-    backgroundColor: th.colors.orange,
-  },
-  sessionsBadge: {
-    width:           17,
-    height:          17,
-    borderRadius:    9,
-    backgroundColor: th.colors.bg,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  sessionsBadgeText: {
-    fontSize:   9,
-    fontWeight: typography.bold,
-    color:      th.colors.orange,
-    lineHeight: 13,
-  },
-  cBtnOrange: {
-    padding:         spacing.md,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.orange,
-    position:        'absolute',
-    bottom:          0,
-    right:           0,
-  },
-  cBtnOrangeText: {
-    ...textStyles.cardType,
-    color: th.colors.bg,
-  },
-  cBtnOverride: {
-    padding:         spacing.md,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.blue,
-    position:        'absolute',
-    bottom:          0,
-    right:           0,
-  },
-  cBtnOverrideText: {
-    ...textStyles.cardType,
-    color: th.colors.bg,
-  },
-  cBtnAccent: {
-    padding:         spacing.md,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.accent,
-    flexShrink:      0,
-  },
-  cBtnAccentText: {
-    ...textStyles.cardType,
-    color: th.colors.onAccent,
-  },
-  // No program state
-  cNoProgramRow: {
+  // CTA — geometría del componente "Buttons" de Figma
+  cCta: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
+    padding:       spacing.md,
+    borderRadius:  th.radius.md,
+    flexShrink:    0,
   },
-  cNoProgramDot: {
-    width:        9,
-    height:       9,
-    borderRadius: 5,
-    borderWidth:  1.5,
-    borderColor:  th.colors.muted,
-    flexShrink:   0,
-  },
-  cNoProgramTitle: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontStyle:  'italic',
-  },
-  cNoProgramSub: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted2,
-    marginTop:  2,
-    marginLeft: 15,
-  },
-  // Tags at bottom of card — no separator, just spacing
-  cTagsRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-    marginTop:     -spacing.xs,   // pull the tags closer to the block above
-    marginBottom:  -2,            // trim the space below the tags
-  },
-  cTagPill: {
-    borderWidth:       borders.thin,
-    borderColor:       th.tint.accent50,
-    borderRadius:      th.radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   1,
-  },
-  cTagPillText: {
-    fontSize:   9,
-    color:      th.tint.accent50,
-    fontWeight: typography.regular,
+  cCtaText: {
+    ...textStyles.cardType,
+    color: th.colors.onAccent,
   },
 
   // Legacy stubs — kept so detail view still compiles

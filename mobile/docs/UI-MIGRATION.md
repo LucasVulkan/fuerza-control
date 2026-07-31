@@ -25,7 +25,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Entrenador (lado cliente)** | ✅ | `src/screens/TrainerConnectionScreen.jsx` |
 | **Copia en Drive** | ✅ | `src/screens/DriveBackupScreen.jsx` |
 | **Modales de conexión** (código / Google / modo sync) | ✅ | `ClientCodeModal.jsx`, `ClientGoogleLinkModal.jsx`, `TrainerSyncModal.jsx` |
-| Clientes (tarjeta, header, modal de filtros) | ✅ | `src/screens/ClientsScreen.jsx` |
+| Clientes (tarjeta, header, modal de filtros) | ✅ (tarjeta **rehecha**, ver desglose) | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
@@ -109,6 +109,86 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
    También se quitó el icono de barra (`BarbellIcon`) que iba delante de
    "SESIONES": no está en el componente de Figma, era un añadido de la app previo
    a esta migración.
+
+### Tarjeta de cliente — desglose (2ª pasada, sustituye a la primera)
+
+El usuario rehizo el componente en Figma: pantalla `150:1165` ("Clients", página
+**Pages**) y 3 variantes nuevas dentro del set `Sesion Card` (`98:123`, página
+Components): `429:935` *no avisos*, `430:958` *sin revisar*, `417:2691` *con CTA y
+avisos*. La variante vieja sigue ahí como `150:1292` (*Old*) — no la mires.
+
+La tarjeta pasa a **3 líneas** dentro de `surface` / `radius/md` / px `space/lg` /
+py `space/md`:
+
+1. **nombre** (`text/card-title` en `color/text`, ya **no** en accent) · racha ·
+   `Ciclo NN` a la derecha (`Ciclo` en `text/subtitle` `mutedLight` + el número en
+   `text/card-type` `color/text`).
+2. **programa · etapa** (`text/card-type` + `text/subtitle`, los dos en
+   `mutedLight`) **o** una línea de aviso (punto de 6px + texto, los dos naranjas).
+3. **ritmo + puntos de ciclo + hueco derecho**: `1.2` (`card-type`, `text`) +
+   `cic/sem` (`subtitle`, `mutedLight`), gap `space/lg`; puntos de 6px con gap
+   `space/sm` (hechos = `accent`, pendientes = `muted` **relleno**, ya no anillo).
+
+El `space/md` de aire va **entre la línea 1 y el bloque 2+3**, no repartido entre
+las tres: la línea de programa se lee pegada al ritmo, no colgando del nombre
+(en pruebas — el usuario dijo que puede revertirlo).
+
+Decisiones de producto que manda el usuario (no están dibujadas, §10):
+
+- **Jerarquía del hueco derecho de la línea 3**: por defecto la fecha de última
+  actividad → `En pausa` / `Inactivo` si el estado manual del cliente no es
+  `active` (ahí la fecha no dice nada: la adherencia está silenciada) → si hay
+  sesiones sin ver, `N sin revisar` (punto lima + `card-type`) → si hay algo
+  urgente, el **CTA**, que se come toda la columna derecha.
+- **El botón constante de `Progreso` desaparece.** Solo hay botón cuando hay una
+  acción urgente: `+ Programa` (sin programa, accent) · `↑ Subir cambios`
+  (`programDirty`, naranja) · `Desbloquear` (etapa siguiente bloqueada, naranja) ·
+  `↑ Enviar` (prescripción pendiente, azul). Ese orden es el de prioridad.
+- **`N sin revisar` no es un botón** pero sí es pulsable, y lleva a Progreso.
+- **Dos líneas cuando coinciden dos avisos**: el aviso sustituye a la línea de
+  programa, salvo si además hay cambios sin enviar — entonces se pintan las dos
+  (la de programa en naranja).
+- **Fuera las etiquetas** (ya no tienen representación visual en la tarjeta) y
+  **fuera el `···`**: el menú de acciones se abre con **pulsación larga**.
+- El aviso de etapa bloqueada **gana CTA**: `unlockClientStage` sube del detalle a
+  la pantalla para que la tarjeta y el hero compartan el rollback (si el envío
+  falla se vuelve a cerrar la etapa).
+
+Dos cosas que NO son estilo y conviene no volver a romper:
+
+- **`Ciclo NN` = vueltas completas al ciclo + 1** (`totalWeeksCompleted` del blob
+  espejado del cliente, con la copia local de respaldo) — el mismo contador que el
+  banner de Home. Antes la tarjeta pintaba **semanas de calendario** calculadas
+  desde el log, que es otro número.
+- **Entrar en Progreso descarga el historial** (`openClientHistoryTab`): las
+  sesiones "sin revisar" viven en el slot, no en `clientLogs`, así que entrar
+  desde el aviso enseñaba el progreso viejo hasta que alguien tiraba del refresh.
+  `markHistoryViewed` se llama **después** de la descarga: si falla, el aviso se
+  queda. Aplica igual al historial, que tenía el mismo fallo.
+
+De paso, en la misma pantalla:
+
+- **El filtro de estado (Todos / Inactivos) ya no pinta pill** bajo el buscador:
+  es una vista del segmentado de la hoja de filtros, igual que el orden, que
+  tampoco la pintaba. Sí sigue contando en el badge del botón de filtros. Las
+  pills de **etiqueta** pasan al lenguaje nuevo (relleno `accent` sólido,
+  `radius/sm`, `text/card-type` en `onAccent`) y pierden la variante "inactiva":
+  si están en esa fila, están aplicadas. Las de **aviso** (En riesgo / Sin
+  revisar) comparten esa geometría y tipografía; lo único propio es el color.
+- **Aviso de envíos pendientes**: al ancho del resto de la pantalla (`space/lg`,
+  antes `space/xl`, que lo dejaba más estrecho), más aire respecto al buscador,
+  sin borde (§4.6) y con `textStyles` + la geometría de CTA de la tarjeta. El
+  titular pasa a ser corto y fijo (`Cambios sin enviar`): la frase larga no cabía
+  en la columna que deja el botón, y el detalle (`3 clientes · 2 prescripciones`)
+  se lee mejor en el subtítulo, que ahora admite 2 líneas.
+
+Divergencias conscientes respecto al mock:
+
+| Pieza | Decisión |
+|---|---|
+| Naranja de aviso | El `orange` del tema (`#fb923c`), **no** el `#ff9900` del mock — decisión explícita del usuario: el naranja de aviso ya existe en la app y no se duplica |
+| Icono del CTA | Figma dibuja el icono de barras (Progreso) en un botón que es placeholder; nuestros CTA usan el prefijo `↑` / `+` que ya tenía la app |
+| CTA centrado | Figma lo ancla arriba dentro de un bloque de 40px; aquí el bloque crece cuando hay 2 avisos, así que va centrado contra el alto real |
 
 ### Program Editor — desglose
 
