@@ -35,6 +35,7 @@ import { spacing, textStyles, typography, borders, withOpacity, getCardRadii } f
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
+import { recapStats }     from '../../../../src/utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { ChevronDown }   from '../ui/EditorIcons';
@@ -250,11 +251,11 @@ function buildSessionSummary(exercise, def, fmtWeight) {
   return parts.filter(Boolean).join(' / ') || null;
 }
 
+// Tonelaje de una sesión. Delega en `recapStats` para no tener dos definiciones
+// de "volumen" en la app: la de aquí se dejaba fuera las sub-series de los
+// dropsets, que son trabajo real y el recap sí contaba.
 function getSessionTotalVol(session) {
-  return session.exercises.reduce((sum, ex) => {
-    const done = ex.sets.filter((s) => s.done || s.weight || s.reps);
-    return sum + done.reduce((acc, s) => acc + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0);
-  }, 0);
+  return recapStats(session).volume;
 }
 
 function computeThisWeekCount(log) {

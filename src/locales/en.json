@@ -1055,7 +1055,9 @@
     "rpeLow": "Easy",
     "rpeMid": "Hard",
     "rpeHigh": "Maximal",
-    "bodyWeight": "Body weight"
+    "bodyWeight": "Body weight",
+    "sessionLoad": "Session load",
+    "vsMean7d": "vs 7d average"
   },
   "exerciseSelector": {
     "titleAdd": "Add exercises",

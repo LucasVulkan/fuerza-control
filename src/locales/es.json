@@ -1055,7 +1055,9 @@
     "rpeLow": "Suave",
     "rpeMid": "Dura",
     "rpeHigh": "Máxima",
-    "bodyWeight": "Peso corporal"
+    "bodyWeight": "Peso corporal",
+    "sessionLoad": "Carga de la sesión",
+    "vsMean7d": "vs media 7d"
   },
   "exerciseSelector": {
     "titleAdd": "Añadir ejercicios",

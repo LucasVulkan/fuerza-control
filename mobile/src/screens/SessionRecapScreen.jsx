@@ -17,7 +17,7 @@
  * la lista agrupada con `getCardRadii`. Sin bordes: en este tema solo aparecen
  * como highlight en 3 casos y ninguno es este (docs/UI-MIGRATION.md §4.6).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
@@ -28,6 +28,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../../../src/utils/sessionRecap';
 import { formatBlockScore, compareBlockResults } from '../../../src/utils/conditioningBlocks';
+import { sessionLoads, dailySeries, rollingMean } from '../../../src/utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles, getCardRadii } from '../theme';
@@ -123,9 +124,32 @@ export default function SessionRecapScreen({ navigation, route }) {
     return kg != null ? String(toDisplay(kg)) : '';
   });
 
+  const allExercises = useMemo(
+    () => ({ ...exerciseLibrary, ...customExercises }),
+    [exerciseLibrary, customExercises],
+  );
+
+  /**
+   * Carga de esta sesión y su comparación con la norma reciente.
+   * La media de 7 días se toma hasta AYER (no incluye la sesión que se acaba
+   * de guardar), que es lo que hace la comparación informativa en vez de
+   * circular. Sin sRPE no hay carga interna, así que no se muestra nada.
+   */
+  const loadInfo = useMemo(() => {
+    if (!entry || entry.sessionRpe == null) return null;
+    const loads = sessionLoads(workoutLog, allExercises, { fallbackBodyWeight: profileBodyWeight });
+    const mine  = loads.find((l) => l.id === entry.id);
+    if (mine?.internal == null) return null;
+    const means = rollingMean(dailySeries(loads).map((d) => d.internal), 7);
+    const base  = means.length >= 2 ? means[means.length - 2] : null;
+    return {
+      value: Math.round(mine.internal),
+      pct:   base > 0 ? Math.round(((mine.internal - base) / base) * 100) : null,
+    };
+  }, [entry, workoutLog, allExercises, profileBodyWeight]);
+
   if (!entry) return null;
 
-  const allExercises = { ...exerciseLibrary, ...customExercises };
   const exName = (id) => {
     const def = allExercises[id];
     if (!def) return id;
@@ -325,6 +349,23 @@ export default function SessionRecapScreen({ navigation, route }) {
             <Text style={styles.rpeLabel}>{t('recap.rpeMid')}</Text>
             <Text style={styles.rpeLabel}>{t('recap.rpeHigh')}</Text>
           </View>
+
+          {/* Carga de la sesión — aparece al contestar el sRPE. Sin unidad:
+              "AU" es jerga y el número solo vale comparado consigo mismo, que
+              es justo lo que aporta el porcentaje de al lado. */}
+          {loadInfo && (
+            <View style={styles.loadRow}>
+              <Text style={styles.loadLabel}>{t('recap.sessionLoad')}</Text>
+              <View style={styles.loadValueWrap}>
+                <Text style={styles.loadValue}>{loadInfo.value}</Text>
+                {loadInfo.pct != null && (
+                  <Text style={styles.loadPct}>
+                    {`${loadInfo.pct > 0 ? '+' : ''}${loadInfo.pct}% ${t('recap.vsMean7d')}`}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Body weight — always editable, prefilled with the last known value. */}
@@ -535,6 +576,18 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
+  loadRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.sm,
+  },
+  loadLabel:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  loadValueWrap: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  loadValue:     { ...textStyles.cardTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  // Neutro a propósito: más carga no es "mejor" ni "peor", así que no lleva el
+  // verde/rojo de los deltas de rendimiento.
+  loadPct:       { ...textStyles.tag, color: th.colors.mutedLight },
 
   weightRow: {
     flexDirection:  'row',

@@ -74,14 +74,23 @@ existe tiempo activo real. Se acota con un modelo:
 
 ```js
 modelSec(entry) =
-    Σ_ejercicios [ nSeriesHechas × (work + rest) + 180 ]
+    Σ_ejercicios [ Σ_series (work + rest) + 180 ]
   + Σ_bloques    [ segundosActivos + 180 ]
-  + 480                                    // calentamiento general, si hay algo
-// work = 35s (o punto medio del rango si el ejercicio es de tiempo)
+  + 480                                 // calentamiento general, si SE ENTRENÓ algo
+// work = el tiempo REAL de la serie si la tiene, si no 35 s
 // rest = ex.restSec ?? 90   ← restSec SÍ está guardado en el log por ejercicio
+// blockActiveSec: for-time usa su timeSec real; amrap/emom, blockEstimatedSec
 
 sessionMinutes(entry) = clamp(entry.duration / 60000, 0.5 × modelSec/60, 2 × modelSec/60)
 ```
+
+Dos matices que salieron al implementar:
+- `work` usa el **tiempo real registrado**, no el punto medio del rango prescrito
+  como hace `sessionStats`: el log guarda el tiempo de cada serie, y aquí se
+  modela lo hecho, no lo planificado.
+- El calentamiento general (480 s) solo se suma si de verdad se registró trabajo.
+  Un ejercicio presente con 0 series no es una sesión, y sin este guard
+  `sessionMinutes` devolvía un suelo de 4 minutos para una sesión vacía.
 
 Constantes idénticas a `mobile/src/utils/sessionStats.js` (180/480/35) —
 **duplicadas a propósito**, mismo precedente que `LIMITATION_GROUPS` en el
@@ -106,35 +115,72 @@ internalLoad(entry) = entry.sessionRpe != null
 intensidad relativa". Motivos en §10.1.
 
 ```js
-refE1RM(exerciseId, log, asOf, weeks = 6)
-  // mejor e1RM del ejercicio en las `weeks` semanas ANTERIORES a `asOf`.
-  // Reutiliza bestSetE1RM (src/utils/oneRm.js), que ya descarta series de >12
-  // reps efectivas. Es `recentE1RM` con una fecha de corte inyectable —
-  // AÑADIR el parámetro asOf allí en vez de duplicar la función.
-  // Corte por sesión = el histórico es inmutable: un PR de hoy no reescribe
-  // la carga de hace tres meses.
+isBodyweight(def)
+  // La carga es tu cuerpo salvo que el equipo aporte carga externa:
+  //   LOAD_BEARING = { barbell, dumbbells, cables, machines, kettlebell }
+  // Todo lo demás (pullup_bar, parallettes, rings, ab_wheel, weight_belt,
+  // resistance_band, rope, equipment vacío) es aparato de sujeción o lastre.
+  // ⚠ NO vale "equipment está vacío": las dominadas llevan ['pullup_bar'] y los
+  // fondos ['parallettes','dip_bar'], y son ejercicios de peso corporal.
+  // def desconocido (ejercicio borrado) → false, default seguro.
 
-pesoEfectivo(set, def, entry)
-  // 1. Ejercicio con equipment no vacío → parseFloat(set.weight)
-  // 2. Peso corporal (equipment: []) → entry.bodyWeight + (set.weight || 0)
-  // 3. def.progressionDirection === 'decrease' (asistido) →
-  //       entry.bodyWeight − (set.weight || 0)     ← weight es ASISTENCIA
-  // Sin entry.bodyWeight, los casos 2 y 3 no computan.
+effectiveWeight(set, def, bodyWeight)
+  // 1. Equipo con carga → parseFloat(set.weight)
+  // 2. Peso corporal    → bodyWeight + (set.weight || 0)      ← lastre
+  // 3. progressionDirection 'decrease' → bodyWeight − (set.weight || 0)
+  //    weight es ASISTENCIA (goma), no carga: sumarla invertiría el progreso.
+  // Sin bodyWeight, los casos 2 y 3 devuelven null.
 
-setLoad(set, ref) = reps × (pesoEfectivo / ref)        // null si falta cualquiera
+setLoad(set, ref) = reps × (effectiveWeight / ref)     // null si falta cualquiera
 
-externalLoad(entry, log, allExercises) =
-    Σ setLoad de todas las series hechas + sus drops
-  + Σ_bloques [ segundosActivos × BLOCK_LOAD_PER_SEC ]
+sessionLoads(log, allExercises, { fallbackBodyWeight, weeks })
+  // → [{ id, timestamp, internal, external, partial }] ordenado por fecha.
+  //   external = Σ setLoad (series + drops) + Σ_bloques segundosActivos × K
 ```
 
-Cascada de referencia cuando `refE1RM` es null (ejercicio nuevo, primeras
-semanas): usar el mejor e1RM **de la propia entrada**; si tampoco hay (todas las
-series >12 reps y sin historial), la serie no computa y la sesión se devuelve con
-`partial: true` para que la UI pueda atenuarla.
+**Verificado contra la librería real (182 ejercicios)**: 68 quedan como peso
+corporal y los 4 con `progressionDirection: 'decrease'` (los asistidos) caen
+todos dentro, ninguno fuera — la regla del caso 3 no puede dispararse por error
+en un ejercicio con barra.
+
+**Referencia de 1RM — cascada** (`refFor(exerciseId, entry)`):
+1. Mejor e1RM del ejercicio en las `weeks` semanas **anteriores** a esa sesión.
+2. Mejor e1RM **de la propia sesión** (ejercicio estrenado hoy).
+3. **Peso efectivo máximo visto** (previo o de hoy) — salva los ejercicios que
+   siempre se hacen por encima de 12 reps, donde Epley nunca da referencia.
+4. `null` → esas series no computan y la sesión sale `partial: true`.
+
+El corte por sesión (y no "hasta hoy") es lo que hace el histórico **inmutable**:
+un PR de esta semana no puede reescribir la carga de hace tres meses. Hay test.
 
 Series de >12 reps **sí cuentan**: no generan referencia, pero reciben su %1RM de
 la referencia existente. Ese es justo el mecanismo que salva a los accesorios.
+
+Series sin reps (isométricos, series de tiempo) **no computan y tampoco marcan la
+sesión como parcial**: quedan fuera del volumen relativo por definición, no por
+falta de datos.
+
+### 3.3-bis Dos desviaciones respecto al plan original de esta spec
+
+1. **`recentE1RM` NO recibe un parámetro `asOf`** y `oneRm.js` no se toca. La
+   referencia tiene que calcularse sobre el peso **efectivo**, y `recentE1RM` /
+   `bestSetE1RM` leen `set.weight` en crudo: con ellas, ningún ejercicio de peso
+   corporal tendría referencia jamás. Se reutiliza `epley1RM`, que es la fórmula
+   y el límite de 12 reps — la parte que sí debe estar compartida.
+2. **No existe `externalLoad(entry, log, …)` suelta.** Resolver la referencia
+   rescaneando el log por cada ejercicio de cada sesión es O(sesiones² ×
+   ejercicios) (~14 M operaciones con 3 años de historial). `sessionLoads`
+   construye un índice `exerciseId → [{id, ts, e1rm, maxW}]` **una sola vez** por
+   pasada y devuelve todas las sesiones. Quien quiera una sola sesión, la busca
+   por `id` en el resultado.
+
+### 3.4 Peso corporal del histórico
+
+`fallbackBodyWeight` (el último peso conocido del perfil) se usa en las entradas
+sin `bodyWeight` propio. Sin él, todo el historial anterior a la fase 1 quedaría
+sin carga en los ejercicios de peso corporal — es decir, meses de datos muertos.
+Hace el histórico **aproximado, no falso**, y se declara en la ficha de la
+métrica (ver [metric-transparency.md](metric-transparency.md)).
 
 ```js
 // ponytail: un solo factor para todos los bloques, calibrado a ojo
@@ -270,16 +316,17 @@ Namespace nuevo para el panel: `load.*`.
 - El array `clients[id].bodyWeight` del lado entrenador: es otra feature (el
   entrenador lo teclea a mano). Unificarlo es una decisión aparte.
 
-**Limpieza incluida en la fase 2:** `getSessionTotalVol` (`ProgressTab.jsx:253`)
-no suma los drops y `recapStats` sí. Unificar por lo correcto (sumarlos) — cambia
-los números de la card VOLUMEN, avisar al usuario.
+**Limpieza hecha en la fase 2:** `getSessionTotalVol` (`ProgressTab.jsx`) no
+sumaba las sub-series de los dropsets y `recapStats` sí. Ahora delega en
+`recapStats(session).volume` — una sola definición de "volumen" en la app. Sube
+ligeramente los números de la card VOLUMEN en quien use dropsets.
 
 ## 9. Fases
 
 | # | Contenido | Estado |
 |---|---|---|
-| 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha |
-| 2 | `src/utils/trainingLoad.js` + tests + `asOf` en `recentE1RM` + unificación de tonelaje + línea de carga en el recap | — |
+| 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha (`0bda778`) |
+| 2 | `src/utils/trainingLoad.js` + 52 tests + unificación de tonelaje + línea de carga en el recap | ✅ hecha |
 | 3 | Segmentado `EJERCICIOS/CARGA` + `LoadTab` con cards, gráfico de tendencia y strip de estado | — |
 | 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento. **Esperar 4+ semanas de sRPE real** o es un gráfico vacío | — |
 | 5 | Series por grupo muscular | — |
