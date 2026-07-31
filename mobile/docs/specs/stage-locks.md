@@ -267,14 +267,20 @@ Reglas al importar un programa del entrenador:
 1. Los campos de progreso del `program_json` entrante (`cycleCompletedIds`,
    `stageWeeksCompleted`, `totalWeeksCompleted`) **se ignoran siempre**. El
    progreso es del cliente (§3.1).
-2. `currentStageIndex`: se guarda `clientSync.lastImportedStageIndex` en cada
-   import. Si el entrante **difiere** de él, el entrenador lo movió a propósito →
-   gana el entrante y el cliente **salta a esa etapa como si hubiera terminado
-   todo lo anterior**: `cycleCompletedIds` y `stageWeeksCompleted` a 0, sin
-   intentar conservar nada de la etapa que deja. Si coincide, gana el del
-   cliente. (Decisión explícita: no se guarda progreso por etapa. Si el
-   entrenador devuelve al cliente a una etapa anterior, esa etapa empieza de
-   cero.)
+2. `currentStageIndex`: manda el del cliente **salvo que el entrenador haya
+   activado una etapa a propósito**, y eso se sabe por un sello, no comparando
+   índices: `setCurrentStage` escribe `program.stageActivatedAt` (ISO) y el
+   cliente lo compara con `clientSync.lastAppliedStageActivation`. Si es nuevo,
+   **salta a esa etapa como si hubiera terminado todo lo anterior**:
+   `cycleCompletedIds` y `stageWeeksCompleted` a 0.
+
+   El sello es necesario, no adorno: la copia del entrenador se queda atrás en
+   cuanto el cliente avanza solo, así que devolverle a una etapa que el entrenador
+   ya tenía marcada no cambia **ningún** índice, y comparando números eso parecía
+   "no ha pasado nada". Ver §9.
+
+   (Decisión explícita: no se guarda progreso por etapa. Si el entrenador devuelve
+   al cliente a una etapa anterior, esa etapa empieza de cero.)
 
 ### 6.4 Reinstalar y reconectar
 
@@ -351,3 +357,33 @@ desbloqueo.
 **Asimetría deliberada**: desbloquear es un toque desde Clientes (abre y envía);
 volver a bloquear se hace en el editor y necesita Guardar + Enviar, como cualquier
 otra edición del programa. Bloquear no es urgente y no merece un camino propio.
+
+### 9.1 El sello de activación (ronda 1, segunda tanda)
+
+Mostrar en el editor la etapa REAL del cliente destapó que la regla de §6.3 no se
+sostenía. Escenario: la copia del entrenador dice etapa 1, el cliente va por la 2.
+El editor ahora marca "Etapa 2 ACTIVA", así que la etapa 1 ofrece **Activar esta
+etapa**; el entrenador la pulsa para devolverle → `setCurrentStage` escribe el
+índice 0, que es **el que ya había** → el cliente comparaba "índice entrante vs
+último importado", 0 contra 0, y no se movía. Botón muerto y en silencio.
+
+Deducir la intención de un diff de índices solo funciona mientras los dos lados
+coinciden, y desde que el cliente puede avanzar solo, no coinciden casi nunca. La
+intención pasa a ser explícita: `stageActivatedAt`.
+
+Esto **no** es un bucle: `activeStageIdx` en el editor es un valor de pantalla, no
+se escribe en el programa, así que la posición del cliente no genera ninguna
+edición que subir.
+
+### 9.2 Para qué sirve activar una etapa a mano
+
+Es la única vía para: saltarse una etapa, repetir un bloque, sacar a alguien de un
+ciclo que no cierra nunca (§8, "el cliente nunca hace la sesión C") y arreglar un
+salto por accidente. Se queda.
+
+Lo que **no** hace: cambiarle la etapa al cliente sin que se entere. Viaja dentro
+del programa como cualquier otro cambio, así que el cliente ve el
+`ProgramUpdateModal` y decide. Lo que faltaba era que el modal lo dijera — pasaba
+como "Cambios menores en el programa" mientras por debajo le reiniciaba los
+contadores de la etapa. Ahora `buildProgramDiff` abre con **"Tu entrenador te pasa
+a {etapa}"**.

@@ -132,7 +132,7 @@ const INITIAL_UI = {
  * Returns a string[] with human-readable change lines, e.g.:
  *   ["+1 etapa nueva", "Etapa 1: +2 sesiones", "Sesión A: +3 ejercicios"]
  */
-function buildProgramDiff(storeState, newProgramJson) {
+function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const { programs, profile, sessionTemplates, userPrograms } = storeState;
   const oldProg = programs[profile.activeProgramId];
   if (!oldProg) return ['Programa nuevo del entrenador'];
@@ -147,6 +147,14 @@ function buildProgramDiff(storeState, newProgramJson) {
   const newStages = getStages(newProg);
 
   const lines = [];
+
+  // Un cambio de etapa activa reinicia los contadores de esa etapa: es lo más
+  // gordo que puede traer una actualización y hasta ahora pasaba en silencio.
+  const activation = newProg?.stageActivatedAt ?? null;
+  if (activation && activation !== lastActivation) {
+    const moved = newStages[newProg?.currentStageIndex ?? 0];
+    if (moved) lines.push(`Tu entrenador te pasa a ${moved.name ?? 'otra etapa'}`);
+  }
 
   const stageDiff = newStages.length - oldStages.length;
   if (stageDiff > 0) lines.push(`+${stageDiff} etapa${stageDiff > 1 ? 's' : ''} nueva${stageDiff > 1 ? 's' : ''}`);
@@ -239,7 +247,7 @@ export const useStore = create(
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
         lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
-        lastImportedStageIndex: 0,    // stage the trainer had active last time — a change means they moved the client
+        lastAppliedStageActivation: null, // `stageActivatedAt` already applied — a new one means the trainer moved this client
         syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
         pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
         trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
@@ -1308,6 +1316,12 @@ export const useStore = create(
               ...program,
               currentStageIndex: stageIndex,
               days: targetStage.days,
+              // Sello de "yo he movido a este cliente a propósito". Deducirlo
+              // comparando índices no vale: la copia del entrenador se queda
+              // atrás en cuanto el cliente avanza solo, y entonces reactivar la
+              // etapa que el entrenador ya tenía marcada no cambia ningún número
+              // y el cliente nunca se enteraba. Ver spec §6.3.
+              stageActivatedAt: new Date().toISOString(),
               stageWeeksCompleted: 0,
               cycleCompletedIds: [],
               stageAdvancePending: false,
@@ -3072,7 +3086,7 @@ export const useStore = create(
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
             // Baseline for "did the trainer activate another stage?" (spec §6.3)
-            lastImportedStageIndex: slot.program_json?.program?.currentStageIndex ?? 0,
+            lastAppliedStageActivation: slot.program_json?.program?.stageActivatedAt ?? null,
             previousActiveProgramId,
             trainerProgramIds:      [slot.program_json?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
@@ -3118,7 +3132,7 @@ export const useStore = create(
           if (lastImport && new Date(updatedAt) <= new Date(lastImport)) return; // already up to date
 
           // Build a simple diff so the modal can show what changed
-          const diff = buildProgramDiff(get(), programJson);
+          const diff = buildProgramDiff(get(), programJson, clientSync.lastAppliedStageActivation ?? null);
 
           // Store as pending — the user decides what to do via ProgramUpdateModal
           set((s) => ({
@@ -3148,8 +3162,8 @@ export const useStore = create(
         const pending = clientSync.pendingProgramUpdate;
         if (!pending) return;
 
-        const mine          = progressBlob(programs[profile.activeProgramId]);
-        const incomingStage = pending.programJson?.program?.currentStageIndex ?? 0;
+        const mine       = progressBlob(programs[profile.activeProgramId]);
+        const activation = pending.programJson?.program?.stageActivatedAt ?? null;
 
         get().importData(pending.programJson, { program: true, log: false }, { silent: true });
 
@@ -3157,9 +3171,9 @@ export const useStore = create(
         const newProg = get().programs[progId];
         if (newProg) {
           get()._writeProgress(progId, mergeProgressOnImport({
-            blob:              mine,
-            program:           newProg,
-            lastImportedStage: clientSync.lastImportedStageIndex ?? 0,
+            blob:           mine,
+            program:        newProg,
+            lastActivation: clientSync.lastAppliedStageActivation ?? null,
           }));
         }
 
@@ -3168,7 +3182,7 @@ export const useStore = create(
             ...s.clientSync,
             pendingProgramUpdate:   null,
             lastProgramImportedAt:  new Date().toISOString(),
-            lastImportedStageIndex: incomingStage,
+            lastAppliedStageActivation: activation,
             // The updated program may carry a new id — keep it in upload scope
             trainerProgramIds: [...new Set([
               ...(s.clientSync.trainerProgramIds ?? []),
@@ -3250,7 +3264,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastImportedStageIndex: 0, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastAppliedStageActivation: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -3322,7 +3336,7 @@ export const useStore = create(
             lastSyncedAt:           null,
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
-            lastImportedStageIndex: programJson?.program?.currentStageIndex ?? 0,
+            lastAppliedStageActivation: programJson?.program?.stageActivatedAt ?? null,
             previousActiveProgramId,
             trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),

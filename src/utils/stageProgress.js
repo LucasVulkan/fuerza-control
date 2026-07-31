@@ -80,26 +80,28 @@ export function clientStageIndex(client, program) {
 /**
  * Which counters the client keeps when an updated program lands from their
  * trainer. Progress belongs to the client, so whatever the incoming copy
- * carries is discarded — with ONE exception: if the trainer activated a
- * different stage since the last import, they meant it, and the client jumps
- * there with that stage starting from zero.
+ * carries is discarded — with ONE exception: if the trainer deliberately
+ * activated a stage since the last import, the client jumps there and that
+ * stage starts from zero.
  *
- * That exception is why editing a program no longer sends anyone back to
- * stage 1: an edit leaves `currentStageIndex` untouched, so nothing moves.
+ * That exception is why editing a program does not send anyone back to stage 1:
+ * an edit leaves `stageActivatedAt` untouched, so nothing moves.
  *
- * @param {object}      blob               the client's own progress
- * @param {object}      program            the freshly imported program
- * @param {number}      lastImportedStage   `currentStageIndex` of the previous import
+ * Intent is read from the STAMP, not from comparing stage indices. The trainer's
+ * copy falls behind as soon as the client advances on their own, so a trainer
+ * sending someone back to a stage their own copy already pointed at changes no
+ * number at all — and an index comparison would call that "no move".
+ *
+ * @param {object} blob              the client's own progress
+ * @param {object} program           the freshly imported program
+ * @param {string} lastActivation    `stageActivatedAt` already applied, if any
  */
-export function mergeProgressOnImport({ blob, program, lastImportedStage = 0 }) {
+export function mergeProgressOnImport({ blob, program, lastActivation = null }) {
   const kept          = progressFromBlob(blob, program?.id);
   const incomingStage = program?.currentStageIndex ?? 0;
+  const activation    = program?.stageActivatedAt ?? null;
   // No blob for THIS program means a different program arrived, not an update.
-  // Being sent to the stage they are ALREADY on is not a move either: the
-  // trainer's copy lags behind whenever the client advances on their own, so
-  // "activate stage 2" for someone already in stage 2 must not wipe their weeks.
-  const jump          = !kept
-    || (incomingStage !== lastImportedStage && incomingStage !== kept.currentStageIndex);
+  const jump          = !kept || (!!activation && activation !== lastActivation);
 
   const stages     = program?.stages ?? [];
   const stageCount = Math.max(1, stages.length);
