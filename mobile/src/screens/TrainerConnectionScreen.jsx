@@ -4,8 +4,12 @@
  * El objetivo de esta pantalla es que cualquiera entienda tres cosas sin
  * preguntar: qué hace la conexión, en qué estado está, y qué pasa si toca cada
  * opción. Por eso cada acción lleva subtítulo con su consecuencia (el programa
- * se archiva, hará falta un código nuevo…) y hay un bloque explícito de qué
- * datos salen del móvil y cuáles no.
+ * se archiva, hará falta volver a escribir el código…) y hay un bloque explícito
+ * de qué datos salen del móvil y cuáles no.
+ *
+ * Ojo con los textos del código: NO caduca ni se regenera, es siempre el mismo.
+ * Desconectarse no obliga a pedirle otro al entrenador, solo a volver a
+ * escribirlo — de ahí que la copia recomiende guardarlo.
  *
  * Lo que se comparte está verificado contra `scopeFilterForUpload`
  * (`src/utils/clientLogs.js`): salen las sesiones de los programas del
@@ -132,11 +136,16 @@ export default function TrainerConnectionScreen() {
           <>
             {/* ── Detalles ── */}
             <Section title={t('trainer.sectionDetails')}>
+              {/* `valueBelow`: el nombre del programa y la fecha del último
+                  envío no caben en la columna derecha (1 línea al 45%), y su
+                  explicación tampoco cabía en una línea. Apilados se leen enteros. */}
               <MenuRow
                 icon={<RowIcon>{ICON_PROGRAM}</RowIcon>}
                 label={t('trainer.rowProgram')}
                 sub={activeProgram ? t('trainer.rowProgramSub') : t('trainer.rowProgramNoneSub')}
+                subLines={0}
                 value={activeProgram?.name ?? t('trainer.rowProgramNone')}
+                valueBelow
                 minHeight={62}
               />
               <MenuRow
@@ -145,7 +154,9 @@ export default function TrainerConnectionScreen() {
                 sub={clientSync.syncErrorAt && clientSync.pendingUpload
                   ? t('trainer.rowLastUploadFailed', { when: when(clientSync.syncErrorAt) })
                   : t('trainer.rowLastUploadSub')}
+                subLines={0}
                 value={when(clientSync.lastSyncedAt) ?? t('trainer.never')}
+                valueBelow
                 minHeight={62}
               />
               <MenuRow

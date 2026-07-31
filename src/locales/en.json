@@ -90,19 +90,66 @@
   },
   "docs": {
     "title": "Documentation",
-    "intro": "What each term in the app means. First draft — expand or rewrite it here; every entry in this list is a card on the screen.",
+    "intro": "How training is organised in the app, and what each term means. The first four — session, cycle, stage and program — nest inside one another: each groups the one before it.",
     "sections": [
-      { "title": "Program", "body": "The full training plan. It holds stages, and each stage its sessions. Only one program is active at a time; the rest are archived." },
-      { "title": "Stage", "body": "A block of the program with its own set of sessions and a duration in cycles (for example, an accumulation stage and an intensity one)." },
-      { "title": "Cycle", "body": "One full pass through the stage's sessions. If the stage has 3 sessions, a cycle is those 3 — not a calendar week: cycles advance when you train, not when days go by." },
-      { "title": "Session", "body": "A single workout (A, B, C…). The letter marks its position in the cycle, not its identity: reordering reassigns the letters." },
-      { "title": "Block", "body": "Conditioning work driven by the clock instead of sets: AMRAP (most rounds in a time cap), EMOM (one task per minute) or For time (a fixed amount of work, as fast as possible)." },
-      { "title": "Superset", "body": "Two or more exercises chained with no rest between them. The rest is taken after the last one in the chain." },
-      { "title": "Dropset", "body": "Extra sets after the last working set, dropping the weight without resting. They add volume, but don't count towards PRs or progression." },
-      { "title": "Progression", "body": "The rule that sets the weight for your next session. Automatic (goes up when you hit the target), fixed (always the same increment) or submaximal (a percentage of your max)." },
-      { "title": "RPE", "body": "Perceived effort from 1 to 10: how many reps you'd have left in the tank. RPE 8 means roughly 2 reps in reserve." },
-      { "title": "1RM", "body": "Your estimated maximum for a single rep. It isn't measured by lifting it: it's calculated from your sets." },
-      { "title": "PR", "body": "A personal record on an exercise: more weight, more reps at the same weight, or more volume than in any previous session." }
+      { "title": "Session", "points": [
+        "One training day: the exercises you do in one go.",
+        "Within the cycle they're named in order: A, B, C…",
+        "The letter tells you when it comes up, not what it is: reorder them and they're reassigned."
+      ] },
+      { "title": "Cycle", "points": [
+        "The group of sessions that repeats over and over. In training theory, the microcycle.",
+        "If you train A, B and C, the cycle is A-B-C; finish it and it starts again at A.",
+        "It usually matches the days you train in a week.",
+        "It moves on once you complete ALL of its sessions, not when the week ends.",
+        "Order doesn't matter, and repeating a session doesn't count twice."
+      ] },
+      { "title": "Stage", "points": [
+        "A stretch of the program with one goal: build volume, gain strength, peak. In training theory, the mesocycle.",
+        "You build it from a cycle and the number of times you want to repeat it.",
+        "Four cycles of A-B-C are A-B-C, A-B-C, A-B-C, A-B-C.",
+        "Once you complete them the app tells you, but it never jumps to the next one on its own.",
+        "Stages are what let a program evolve instead of repeating the same thing forever."
+      ] },
+      { "title": "Program", "points": [
+        "The complete plan from start to finish: all of its stages together. In training theory, the macrocycle.",
+        "Only one is active at a time.",
+        "The rest are archived and you can bring them back whenever you want."
+      ] },
+      { "title": "Block", "points": [
+        "Conditioning work driven by the clock instead of sets.",
+        "AMRAP: most rounds in a time cap.",
+        "EMOM: one task per minute.",
+        "For time: a fixed amount of work, as fast as possible."
+      ] },
+      { "title": "Superset", "points": [
+        "Two or more exercises chained with no rest between them.",
+        "The rest is taken after the last one in the chain."
+      ] },
+      { "title": "Dropset", "points": [
+        "Extra sets after the last working set, dropping the weight without resting.",
+        "They add volume.",
+        "They don't count towards PRs or progression."
+      ] },
+      { "title": "Progression", "points": [
+        "The rule that sets the weight for your next session.",
+        "Automatic: goes up when you hit the target.",
+        "Fixed: always the same increment.",
+        "Submaximal: a percentage of your max."
+      ] },
+      { "title": "RPE", "points": [
+        "Perceived effort from 1 to 10.",
+        "How many reps you'd have left in the tank.",
+        "RPE 8 means roughly 2 reps in reserve."
+      ] },
+      { "title": "1RM", "points": [
+        "Your estimated maximum for a single rep.",
+        "It isn't measured by lifting it: it's calculated from your sets."
+      ] },
+      { "title": "PR", "points": [
+        "A personal record on an exercise.",
+        "More weight, more reps at the same weight, or more volume than in any previous session."
+      ] }
     ]
   },
   "trainer": {
@@ -127,7 +174,7 @@
     "rowAccessGoogle": "You sign in with Google",
     "rowAccessGoogleSub": "You can restore the connection on another phone without asking your trainer for anything.",
     "rowAccessCode": "You sign in with a code",
-    "rowAccessCodeSub": "If you change phones or reinstall the app, you'll need a new code from them.",
+    "rowAccessCodeSub": "The code never expires or changes: it's always the same one. Save it so you can get back in if you change phones or reinstall the app.",
     "sectionPrivacy": "WHAT YOUR TRAINER SEES",
     "sharedTitle": "They do see",
     "sharedBody": "The sessions you complete from the programs they send you, plus any free sessions you log after you connected.",
@@ -142,9 +189,9 @@
     "changeLabel": "Change trainer",
     "changeSub": "You'll enter the new trainer's code. The current program is archived and theirs arrives instead.",
     "disconnectLabel": "Disconnect",
-    "disconnectSub": "You stop sending sessions. Their program is archived and your previous one comes back.",
+    "disconnectSub": "You stop sending sessions. Their program is archived and your previous one comes back. Same code to come back.",
     "disconnectTitle": "Disconnect from your trainer?",
-    "disconnectBody": "You'll stop sending them your sessions. Their program will be archived and your previous one restored, if you had one. You can reconnect with a code later.",
+    "disconnectBody": "You'll stop sending them your sessions. Their program will be archived and your previous one restored, if you had one. You can reconnect later with the same code.",
     "disconnectConfirm": "Disconnect",
     "sectionHow": "HOW IT WORKS",
     "how1Title": "They write your program",
@@ -152,10 +199,10 @@
     "how2Title": "Your sessions reach them on their own",
     "how2Sub": "After every session the log is sent so they can see how you're doing.",
     "how3Title": "You need their code",
-    "how3Sub": "Eight characters like XK7M-2P4T, given to you by your trainer. No code, no connection.",
+    "how3Sub": "Eight characters like XK7M-2P4T, given to you by your trainer. It's always the same one, so save it: you'll need it if you reinstall the app.",
     "connectCta": "CONNECT WITH A CODE",
     "googleCta": "RECONNECT WITH GOOGLE",
-    "googleCtaHint": "Only if you were connected before and linked your Google account: it restores the connection without a new code.",
+    "googleCtaHint": "Only if you were connected before and linked your Google account: it restores the connection without typing the code again.",
     "googleTitle": "Reconnect with Google",
     "googleSearching": "Looking for the trainer connection linked to your Google account…",
     "googleNoSlot": "That Google account has no saved connection. Ask your trainer for the code.",
@@ -212,6 +259,8 @@
     "namePlaceholder": "e.g. Lucas García",
     "nameHint": "This is the name your clients see on the programs you send them.",
     "ctaGoogle": "CONTINUE WITH GOOGLE",
+    "ctaGoogleConnected": "ALREADY CONNECTED",
+    "reauthGoogleLink": "Sign in with a different Google account →",
     "ctaCode": "CREATE MY CODE",
     "ctaOffline": "CONTINUE WITHOUT AN ACCOUNT",
     "statusTag": "SYNCING",
@@ -261,7 +310,7 @@
     "reconnectCta": "RECONNECT",
     "sectionHow": "WHAT IT DOES",
     "how1Title": "Saves everything to your Drive",
-    "how1Sub": "Programs, history, your own exercises and settings, in a \"Forma Backups\" folder on your Google Drive.",
+    "how1Sub": "Programs, history, your own exercises, settings, and also your clients and session templates, in a \"Forma Backups\" folder on your Google Drive.",
     "how2Title": "It's your account, not ours",
     "how2Sub": "The app can only see the files it creates itself; the rest of your Drive is invisible to it.",
     "how3Title": "The last 30 are kept",

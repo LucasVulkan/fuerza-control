@@ -90,19 +90,66 @@
   },
   "docs": {
     "title": "Documentación",
-    "intro": "Qué significa cada término de la app. Borrador inicial — amplíalo o reescríbelo aquí, cada apartado de esta lista es una tarjeta de la pantalla.",
+    "intro": "Cómo se organiza el entrenamiento en la app y qué significa cada término. Los cuatro primeros —sesión, ciclo, etapa y programa— encajan unos dentro de otros: cada uno agrupa al anterior.",
     "sections": [
-      { "title": "Programa", "body": "El plan completo de entrenamiento. Contiene etapas, y cada etapa sus sesiones. Solo hay un programa activo a la vez; el resto se archiva." },
-      { "title": "Etapa", "body": "Un tramo del programa con su propio conjunto de sesiones y su duración en ciclos (por ejemplo, una etapa de acumulación y otra de intensidad)." },
-      { "title": "Ciclo", "body": "Una vuelta completa a las sesiones de la etapa. Si la etapa tiene 3 sesiones, un ciclo son esas 3 — no una semana natural: el ciclo avanza cuando entrenas, no cuando pasan los días." },
-      { "title": "Sesión", "body": "Un entrenamiento concreto (A, B, C…). La letra indica su posición en el ciclo, no su identidad: al reordenar, las letras se reasignan." },
-      { "title": "Bloque", "body": "Trabajo de acondicionamiento con reloj en vez de series: AMRAP (máximas rondas en un tiempo), EMOM (una tarea por minuto) o For time (un trabajo fijo lo más rápido posible)." },
-      { "title": "Superserie", "body": "Dos o más ejercicios encadenados sin descanso entre ellos. El descanso se toma al terminar el último de la cadena." },
-      { "title": "Dropset", "body": "Series extra al final de la última serie, bajando el peso sin descansar. Suman volumen, pero no cuentan para PRs ni para la progresión." },
-      { "title": "Progresión", "body": "La regla que decide el peso de la próxima sesión. Automática (sube si cumples el objetivo), fija (siempre el mismo incremento) o submáxima (porcentaje de tu máximo)." },
-      { "title": "RPE", "body": "Esfuerzo percibido de 1 a 10: cuántas repeticiones te habrías dejado en el depósito. Un RPE 8 son unas 2 repeticiones de margen." },
-      { "title": "1RM", "body": "El peso máximo estimado para una sola repetición. No se mide levantándolo: se calcula a partir de tus series." },
-      { "title": "PR", "body": "Récord personal en un ejercicio: más peso, más repeticiones con el mismo peso, o más volumen que en cualquier sesión anterior." }
+      { "title": "Sesión", "points": [
+        "Un día de entrenamiento: los ejercicios que haces de una sentada.",
+        "Dentro del ciclo se nombran por orden: A, B, C…",
+        "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
+      ] },
+      { "title": "Ciclo", "points": [
+        "Grupo de sesiones que se repite una y otra vez. En entrenamiento, el microciclo.",
+        "Si entrenas A, B y C, el ciclo es A-B-C; al acabarlo vuelve a empezar por A.",
+        "Suele coincidir con los días que entrenas en una semana.",
+        "Avanza al completar TODAS sus sesiones, no al acabar la semana.",
+        "El orden da igual, y repetir una sesión no cuenta dos veces."
+      ] },
+      { "title": "Etapa", "points": [
+        "Tramo del programa con un objetivo: acumular volumen, ganar fuerza, afinar. En entrenamiento, el mesociclo.",
+        "Se forma con un ciclo y el número de veces que quieres repetirlo.",
+        "Cuatro ciclos de A-B-C son A-B-C, A-B-C, A-B-C, A-B-C.",
+        "Al completarlos la app te avisa, pero no salta sola a la siguiente.",
+        "Son lo que permite que un programa evolucione en vez de repetir siempre lo mismo."
+      ] },
+      { "title": "Programa", "points": [
+        "El plan completo de principio a fin: todas sus etapas juntas. En entrenamiento, el macrociclo.",
+        "Solo hay uno activo a la vez.",
+        "Los demás quedan archivados y puedes recuperarlos cuando quieras."
+      ] },
+      { "title": "Bloque", "points": [
+        "Trabajo de acondicionamiento con reloj en vez de series.",
+        "AMRAP: máximas rondas en un tiempo.",
+        "EMOM: una tarea por minuto.",
+        "For time: un trabajo fijo, lo más rápido posible."
+      ] },
+      { "title": "Superserie", "points": [
+        "Dos o más ejercicios encadenados sin descanso entre ellos.",
+        "El descanso se toma al terminar el último de la cadena."
+      ] },
+      { "title": "Dropset", "points": [
+        "Series extra al final de la última serie, bajando el peso sin descansar.",
+        "Suman volumen.",
+        "No cuentan para PRs ni para la progresión."
+      ] },
+      { "title": "Progresión", "points": [
+        "La regla que decide el peso de tu próxima sesión.",
+        "Automática: sube si cumples el objetivo.",
+        "Fija: siempre el mismo incremento.",
+        "Submáxima: un porcentaje de tu máximo."
+      ] },
+      { "title": "RPE", "points": [
+        "Esfuerzo percibido de 1 a 10.",
+        "Cuántas repeticiones te habrías dejado en el depósito.",
+        "Un RPE 8 son unas 2 repeticiones de margen."
+      ] },
+      { "title": "1RM", "points": [
+        "El peso máximo estimado para una sola repetición.",
+        "No se mide levantándolo: se calcula a partir de tus series."
+      ] },
+      { "title": "PR", "points": [
+        "Récord personal en un ejercicio.",
+        "Más peso, más repeticiones con el mismo peso, o más volumen que en cualquier sesión anterior."
+      ] }
     ]
   },
   "trainer": {
@@ -127,7 +174,7 @@
     "rowAccessGoogle": "Entras con tu cuenta de Google",
     "rowAccessGoogleSub": "Puedes recuperar la conexión en otro móvil sin pedirle nada a tu entrenador.",
     "rowAccessCode": "Entras con un código",
-    "rowAccessCodeSub": "Si cambias de móvil o reinstalas la app, tendrás que pedirle un código nuevo.",
+    "rowAccessCodeSub": "El código no caduca ni cambia: es siempre el mismo. Guárdalo para volver a entrar si cambias de móvil o reinstalas la app.",
     "sectionPrivacy": "QUÉ VE TU ENTRENADOR",
     "sharedTitle": "Sí ve",
     "sharedBody": "Las sesiones que completas de los programas que él te envía, y las sesiones libres que hagas desde que os conectasteis.",
@@ -142,9 +189,9 @@
     "changeLabel": "Cambiar de entrenador",
     "changeSub": "Te pedirá el código del nuevo. El programa actual se archiva y recibirás el suyo.",
     "disconnectLabel": "Desconectarme",
-    "disconnectSub": "Dejas de enviarle sesiones. Su programa se archiva y se restaura el que tenías antes.",
+    "disconnectSub": "Dejas de enviarle sesiones. Su programa se archiva y se restaura el que tenías antes. Para volver, el mismo código.",
     "disconnectTitle": "¿Desconectarte de tu entrenador?",
-    "disconnectBody": "Dejarás de enviarle tus sesiones. Su programa se archivará y se restaurará el que tenías antes, si tenías uno. Podrás volver a conectarte con un código.",
+    "disconnectBody": "Dejarás de enviarle tus sesiones. Su programa se archivará y se restaurará el que tenías antes, si tenías uno. Podrás volver a conectarte con el mismo código.",
     "disconnectConfirm": "Desconectarme",
     "sectionHow": "CÓMO FUNCIONA",
     "how1Title": "Él escribe tu programa",
@@ -152,10 +199,10 @@
     "how2Title": "Tus sesiones le llegan solas",
     "how2Sub": "Al terminar cada sesión se le envía el registro para que vea cómo vas.",
     "how3Title": "Hace falta su código",
-    "how3Sub": "Ocho caracteres tipo XK7M-2P4T que te da tu entrenador. Sin código no hay conexión.",
+    "how3Sub": "Ocho caracteres tipo XK7M-2P4T que te da tu entrenador. Es siempre el mismo, así que guárdalo: lo necesitarás si reinstalas la app.",
     "connectCta": "CONECTAR CON UN CÓDIGO",
     "googleCta": "RECONECTAR CON GOOGLE",
-    "googleCtaHint": "Solo si ya estuviste conectado y vinculaste tu cuenta de Google: recupera la conexión sin pedir un código nuevo.",
+    "googleCtaHint": "Solo si ya estuviste conectado y vinculaste tu cuenta de Google: recupera la conexión sin tener que escribir el código otra vez.",
     "googleTitle": "Reconectar con Google",
     "googleSearching": "Buscando la cuenta de entrenador vinculada a tu Google…",
     "googleNoSlot": "Ese Google no tiene ninguna conexión guardada. Pídele el código a tu entrenador.",
@@ -212,6 +259,8 @@
     "namePlaceholder": "Ej. Lucas García",
     "nameHint": "Es el nombre que tus clientes ven en los programas que les envías.",
     "ctaGoogle": "CONTINUAR CON GOOGLE",
+    "ctaGoogleConnected": "YA CONECTADO",
+    "reauthGoogleLink": "Entrar con otra cuenta de Google →",
     "ctaCode": "CREAR MI CÓDIGO",
     "ctaOffline": "SEGUIR SIN CUENTA",
     "statusTag": "SINCRONIZANDO",
@@ -261,7 +310,7 @@
     "reconnectCta": "VOLVER A CONECTAR",
     "sectionHow": "QUÉ HACE",
     "how1Title": "Guarda todo en tu Drive",
-    "how1Sub": "Programas, historial, ejercicios propios y ajustes, en la carpeta «Forma Backups» de tu Google Drive.",
+    "how1Sub": "Programas, historial, ejercicios propios, ajustes, y también tus clientes y plantillas de sesión, en la carpeta «Forma Backups» de tu Google Drive.",
     "how2Title": "Es tu cuenta, no la nuestra",
     "how2Sub": "La app solo puede ver los archivos que ella misma crea; el resto de tu Drive le es invisible.",
     "how3Title": "Se guardan las 30 últimas",

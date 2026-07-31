@@ -111,7 +111,14 @@ function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirs
   const { t }  = useTranslation();
   return (
     <TouchableOpacity
-      style={[styles.mode, getCardRadii(th, isFirst, isLast), unavailable && styles.modeDisabled]}
+      style={[
+        styles.mode,
+        getCardRadii(th, isFirst, isLast),
+        // El check solo no bastaba para ver cuál está elegida: la fila activa
+        // se tiñe de lima además de agrandar la marca.
+        active && !unavailable && styles.modeActive,
+        unavailable && styles.modeDisabled,
+      ]}
       onPress={() => !unavailable && onPress()}
       activeOpacity={unavailable ? 1 : 0.7}
     >
@@ -128,7 +135,7 @@ function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirs
         </View>
         {!unavailable && (
           active
-            ? <CheckIcon size={16} color={th.colors.accent} />
+            ? <View style={styles.checkBadge}><CheckIcon size={16} color={th.colors.onAccent} /></View>
             : <View style={styles.checkSpacer} />
         )}
       </View>
@@ -387,6 +394,9 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   }
 
   const currentMode = trainerSync.mode;
+  // Ya está la cuenta de Google puesta y es la opción elegida: no hay nada que
+  // confirmar, solo cambiar de cuenta (enlace aparte).
+  const alreadyGoogle = currentMode === 'google' && selected === 'google';
 
   // Aviso por modo: el genérico del código, el de "ya tienes uno" y el de que
   // pasar a Google migra los clientes solo (esto último es buena noticia, va en
@@ -529,29 +539,38 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
           <NameField value={nameInput} onChange={handleName} />
 
+          {/* Ya conectado con Google: el CTA decía "CONTINUAR CON GOOGLE" y
+              volvía a abrir el selector de cuenta. Ahora informa del estado y no
+              hace nada; para cambiar de cuenta está el enlace de abajo. */}
           <TouchableOpacity
             style={[
               styles.primaryBtn,
-              (loading || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
+              (loading || alreadyGoogle || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
             ]}
             onPress={handleConfirm}
-            disabled={loading || (selected === 'google' && isExpoGo)}
+            disabled={loading || alreadyGoogle || (selected === 'google' && isExpoGo)}
             activeOpacity={0.85}
           >
             {loading
               ? <ActivityIndicator color={th.colors.onAccent} />
               : (
                 <Text style={styles.primaryBtnText}>
-                  {t(selected === 'offline' ? 'sync.ctaOffline'
-                    : selected === 'google' ? 'sync.ctaGoogle'
+                  {t(alreadyGoogle          ? 'sync.ctaGoogleConnected'
+                    : selected === 'offline' ? 'sync.ctaOffline'
+                    : selected === 'google'  ? 'sync.ctaGoogle'
                     : 'sync.ctaCode')}
                 </Text>
               )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setScreen('recovery')} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => alreadyGoogle ? googlePromptAsync() : setScreen('recovery')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.link}>
-              {currentMode === 'code' ? t('sync.reauthLink') : t('sync.recoveryLink')}
+              {alreadyGoogle             ? t('sync.reauthGoogleLink')
+                : currentMode === 'code' ? t('sync.reauthLink')
+                : t('sync.recoveryLink')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -613,6 +632,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
+  modeActive:   { backgroundColor: th.tint.accent10 },
   modeDisabled: { opacity: 0.45 },
   modeTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
   modeIcon:     { width: 20, alignItems: 'center', paddingTop: 2, flexShrink: 0 },
@@ -621,7 +641,14 @@ const makeStyles = (th) => StyleSheet.create({
   modeDesc:     { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15 },
   modeUnavail:  { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
   modeWarn:     { ...textStyles.tag, lineHeight: 15, paddingLeft: 20 + spacing.lg },
-  checkSpacer:  { width: 16, height: 16 },
+  // Marca de elegida: disco lima con el check en negativo. Ocupa 24 para que se
+  // vea de un vistazo; el hueco de las no elegidas mide lo mismo.
+  checkBadge: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  checkSpacer:  { width: 24, height: 24 },
 
   warnCard: {
     backgroundColor: th.tint.orange30,

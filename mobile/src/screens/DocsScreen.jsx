@@ -3,8 +3,12 @@
  *
  * Explica la terminología de la app (etapa, ciclo, bloque, dropset…). El texto
  * vive entero en i18n (`docs.sections` en src/locales/{es,en}.json) como una
- * lista de `{ title, body }`: añadir o reordenar apartados es editar ese array,
- * no esta pantalla.
+ * lista de `{ title, points: [] }`: añadir, reordenar o repuntear apartados es
+ * editar ese array, no esta pantalla.
+ *
+ * Cada apartado va en viñetas cortas, no en párrafo: la pantalla se consulta
+ * para resolver una duda concreta, y un bloque de texto obliga a leerlo entero
+ * para encontrar la línea que importa.
  */
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,10 +36,15 @@ export default function DocsScreen() {
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>{t('docs.intro')}</Text>
-        {(Array.isArray(sections) ? sections : []).map(({ title, body }) => (
+        {(Array.isArray(sections) ? sections : []).map(({ title, points }) => (
           <View key={title} style={styles.section}>
             <Text style={styles.secLabel}>{title}</Text>
-            <Text style={styles.secBody}>{body}</Text>
+            {(points ?? []).map((point) => (
+              <View key={point} style={styles.pointRow}>
+                <Text style={styles.pointDot}>·</Text>
+                <Text style={styles.pointText}>{point}</Text>
+              </View>
+            ))}
           </View>
         ))}
       </ScrollView>
@@ -67,9 +76,28 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop: spacing.md,
   },
 
+  // `sm` entre viñetas y algo más bajo el título, para que cada apartado se lea
+  // como un grupo y no como una lista corrida.
   section:  { gap: spacing.sm },
-  secLabel: { ...textStyles.spacingTag, color: th.colors.accent, textTransform: 'uppercase' },
-  secBody:  {
+  secLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.accent,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.xs,
+  },
+
+  // Mismo patrón de viñeta que las de "qué pasa al conectar" (ClientCodeModal):
+  // punto lima a la izquierda y el texto en su propia columna, para que las
+  // líneas que envuelven queden alineadas bajo la primera y no bajo el punto.
+  pointRow:  { flexDirection: 'row', gap: spacing.sm },
+  pointDot:  {
+    fontFamily: 'Inter_500Medium',
+    fontSize:   13,
+    lineHeight: 20,
+    color:      th.colors.accent,
+  },
+  pointText: {
+    flex:       1,
     fontFamily: 'Inter_500Medium',
     fontSize:   13,
     color:      th.colors.text,

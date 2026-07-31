@@ -83,9 +83,14 @@ export function Status({ tone, label }) {
  *
  * `subLines` limita el subtítulo a una línea por defecto; 0 = sin límite, para
  * los subtítulos que explican en vez de resumir.
+ *
+ * `valueBelow` baja el valor a su propia línea, debajo de la etiqueta y a todo
+ * el ancho. En la columna de la derecha el valor se corta a una línea y al 45%
+ * (un nombre de programa o una fecha larga no cabían), así que las filas que
+ * solo informan lo apilan y así se lee entero.
  */
 export function MenuRow({
-  icon, label, labelColor, sub, subLines = 1, value, badge, badgeMuted, status, control,
+  icon, label, labelColor, sub, subLines = 1, value, valueBelow, badge, badgeMuted, status, control,
   onPress, disabled, minHeight, isFirst, isLast,
 }) {
   const th     = useTheme();
@@ -104,15 +109,19 @@ export function MenuRow({
     >
       {icon != null && <View style={styles.rowIcon}>{icon}</View>}
       <View style={styles.rowMeta}>
-        <Text style={[styles.rowLabel, labelColor ? { color: labelColor } : null]} numberOfLines={2}>
+        <Text
+          style={[styles.rowLabel, labelColor ? { color: labelColor } : null]}
+          numberOfLines={valueBelow ? undefined : 2}
+        >
           {label}
         </Text>
+        {!!value && valueBelow && <Text style={styles.rowValueBelow}>{value}</Text>}
         {!!sub && (
           <Text style={styles.rowSub} numberOfLines={subLines || undefined}>{sub}</Text>
         )}
       </View>
       {control}
-      {!!value && <Text style={styles.rowValue} numberOfLines={1}>{value}</Text>}
+      {!!value && !valueBelow && <Text style={styles.rowValue} numberOfLines={1}>{value}</Text>}
       {!!badge && (
         // El lima informa: PRO va en lima, FREE en gris (no es un logro).
         <View style={[styles.badge, badgeMuted && styles.badgeOff]}>
@@ -171,6 +180,15 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant: ['tabular-nums'],
     flexShrink:  0,
     maxWidth:    '45%',
+  },
+  // Apilado: sin `maxWidth` ni `numberOfLines`, y en lima porque al bajar de la
+  // columna derecha pierde el contraste de posición que lo hacía destacar.
+  rowValueBelow: {
+    fontFamily:  'Inter_700Bold',
+    fontSize:    13,
+    color:       th.colors.accent,
+    fontVariant: ['tabular-nums'],
+    marginTop:   spacing.xs,
   },
 
   // Estado de conexión: punto + texto. Lo que informa va en lima; cuando está
