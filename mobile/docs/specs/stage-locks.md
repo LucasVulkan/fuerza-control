@@ -3,6 +3,10 @@
 > Estado: **✅ IMPLEMENTADA, en testeo en dispositivo** (jul 2026). Las 7 fases
 > están en `main`; ver la tabla de §7 para el commit de cada una.
 >
+> **Ronda 1 de QA en dispositivo** (§9) — tres fallos encontrados por el usuario,
+> los tres del mismo origen: el lado del entrenador leía `currentStageIndex` de su
+> propia copia del programa en vez de la posición real del cliente.
+>
 > El entrenador puede marcar una etapa como bloqueada. El cliente entrena
 > normalmente, pero no puede entrar en una etapa bloqueada: cuando termina la
 > suya y la siguiente está cerrada, ve un aviso y sigue repitiendo la etapa
@@ -314,3 +318,36 @@ antes de tocar nada de bloqueos.
 | Última etapa terminada | No hay siguiente: ni banner de avance ni aviso de bloqueo |
 | Entrenador desbloquea con ediciones a medias | Se envían también. Comportamiento actual de "Enviar programa" |
 | Programa sin etapas | `isStageLocked` devuelve `false` siempre; el ciclo opera sobre `program.days` |
+
+## 9. QA en dispositivo — ronda 1
+
+Tres fallos, un origen común: en el móvil del entrenador,
+`program.currentStageIndex` significa **"la etapa que yo he activado"**, no "donde
+está el cliente". Solo se mueve cuando el entrenador la mueve, así que en cuanto
+el cliente avanza por su cuenta, todo lo que lo leyera como posición del cliente
+mentía. `clientStageIndex(client, program)` (en `stageProgress.js`) es ahora la
+única forma correcta de preguntarlo desde ese lado.
+
+| # | Síntoma | Causa | Arreglo |
+|---|---|---|---|
+| 1 | El cliente podía abrir la hoja de una etapa bloqueada desde el editor | El candado de `StageSelector` era decorativo: el `onPress` seguía vivo | `disabled={stage.locked}` en el segmento |
+| 2 | "Preparar siguiente sesión" cargaba las sesiones de la etapa equivocada | `NextSessionScreen` leía `activeProgram.currentStageIndex` | Usa `clientStageIndex` |
+| 3 | Volver a bloquear una etapa no hacía nada en el cliente | La etapa re-bloqueada era la que el cliente ya estaba entrenando, y `isStageLocked` nunca cierra la actual (§2) | El editor ya no ofrece bloquear la etapa activa del cliente, así que la acción imposible desaparece de la UI |
+
+Dos fallos latentes cerrados de camino:
+
+- **Activar la etapa en la que el cliente ya está le borraba las semanas.** Como
+  la copia del entrenador se queda atrás, "activar la etapa 2" para alguien que ya
+  está en la 2 entraba por la rama de salto de `mergeProgressOnImport` y reseteaba
+  sus contadores. Ahora un `incomingStage` que coincide con el del cliente no
+  cuenta como movimiento.
+- **El control ACCESO aparecía en el móvil del cliente** para las etapas por
+  delante de la suya — podía abrirse las suyas. Solo se muestra si el programa no
+  viene de un entrenador.
+
+`buildProgramDiff` anuncia también el re-bloqueo ("X bloqueada"), no solo el
+desbloqueo.
+
+**Asimetría deliberada**: desbloquear es un toque desde Clientes (abre y envía);
+volver a bloquear se hace en el editor y necesita Guardar + Enviar, como cualquier
+otra edición del programa. Bloquear no es urgente y no merece un camino propio.

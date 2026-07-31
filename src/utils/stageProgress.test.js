@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
+import {
+  advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, clientStageIndex,
+} from './stageProgress';
 
 const CYCLE = ['tpl_a', 'tpl_b', 'tpl_c'];
 const STAGE = { durationWeeks: 2, isLastStage: false };
@@ -149,5 +151,33 @@ describe('mergeProgressOnImport — quién manda al llegar un programa del entre
     const r = mergeProgressOnImport({ blob: mine, program: plano, lastImportedStage: 0 });
     expect(r.currentStageIndex).toBe(0);
     expect(r.stageAdvancePending).toBe(false);
+  });
+
+  it('activar la etapa donde el cliente YA está no le borra las semanas', () => {
+    // El cliente avanzó solo a la 1; la copia del entrenador seguía en la 0 y
+    // ahora activa la 1 "para ponerle al día".
+    const r = mergeProgressOnImport({ blob: mine, program: arrives(1), lastImportedStage: 0 });
+    expect(r.currentStageIndex).toBe(1);
+    expect(r.stageWeeksCompleted).toBe(1);            // intactas
+    expect(r.cycleCompletedIds).toEqual(['tpl_a']);
+  });
+});
+
+describe('clientStageIndex — dónde está el cliente visto desde el entrenador', () => {
+  const program = { id: 'prog_1', currentStageIndex: 0 };
+
+  it('manda el progreso espejado, no la copia local del entrenador', () => {
+    const client = { progress: { programId: 'prog_1', currentStageIndex: 2 } };
+    expect(clientStageIndex(client, program)).toBe(2);
+  });
+
+  it('cae a la copia local si el cliente nunca ha sincronizado', () => {
+    expect(clientStageIndex({}, { id: 'prog_1', currentStageIndex: 1 })).toBe(1);
+    expect(clientStageIndex(undefined, program)).toBe(0);
+  });
+
+  it('ignora un blob de otro programa', () => {
+    const client = { progress: { programId: 'prog_otro', currentStageIndex: 2 } };
+    expect(clientStageIndex(client, program)).toBe(0);
   });
 });

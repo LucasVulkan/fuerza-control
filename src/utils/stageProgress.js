@@ -61,6 +61,23 @@ export function progressFromBlob(blob, programId) {
 }
 
 /**
+ * Where the athlete actually is in a program, seen from the TRAINER's device.
+ *
+ * `program.currentStageIndex` on that device means something different: it is
+ * the stage the trainer has activated for them, and it only moves when the
+ * trainer moves it. Reading it as "where the client is" is wrong the moment the
+ * client advances on their own — which is what made "prepare next session" load
+ * the wrong stage's sessions.
+ *
+ * Falls back to the program's own index for clients who have never synced.
+ */
+export function clientStageIndex(client, program) {
+  return progressFromBlob(client?.progress, program?.id)?.currentStageIndex
+    ?? program?.currentStageIndex
+    ?? 0;
+}
+
+/**
  * Which counters the client keeps when an updated program lands from their
  * trainer. Progress belongs to the client, so whatever the incoming copy
  * carries is discarded — with ONE exception: if the trainer activated a
@@ -78,7 +95,11 @@ export function mergeProgressOnImport({ blob, program, lastImportedStage = 0 }) 
   const kept          = progressFromBlob(blob, program?.id);
   const incomingStage = program?.currentStageIndex ?? 0;
   // No blob for THIS program means a different program arrived, not an update.
-  const jump          = !kept || incomingStage !== lastImportedStage;
+  // Being sent to the stage they are ALREADY on is not a move either: the
+  // trainer's copy lags behind whenever the client advances on their own, so
+  // "activate stage 2" for someone already in stage 2 must not wipe their weeks.
+  const jump          = !kept
+    || (incomingStage !== lastImportedStage && incomingStage !== kept.currentStageIndex);
 
   const stages     = program?.stages ?? [];
   const stageCount = Math.max(1, stages.length);

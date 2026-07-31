@@ -18,6 +18,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
 import { isStageLocked } from '../../../src/utils/stageLocks';
+import { clientStageIndex } from '../../../src/utils/stageProgress';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
 const HEADER_H = 64;
@@ -128,6 +129,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const exerciseLibrary       = useStore((s) => s.exerciseLibrary);
   const customExercises       = useStore((s) => s.customExercises);
   const profile               = useStore((s) => s.profile);
+  const clients               = useStore((s) => s.clients);
   const clientSync            = useStore((s) => s.clientSync);
   const ui                    = useStore((s) => s.ui);
   const beginEditSession      = useStore((s) => s.beginEditSession);
@@ -397,8 +399,23 @@ export default function ProgramEditorScreen({ navigation }) {
     navigation.goBack();
   }
 
-  const isStageActive       = selectedStageIdx === (activeProgram.currentStageIndex ?? 0);
+  // Etapa activa REAL. En el móvil del entrenador la del programa es solo la que
+  // él activó; el cliente puede haber avanzado por su cuenta. En el del cliente
+  // no hay ficha de cliente que consultar y se cae a la del programa, que ahí sí
+  // es la suya.
+  const editedClient        = activeProgram.clientId ? clients?.[activeProgram.clientId] : null;
+  const activeStageIdx      = clientStageIndex(editedClient, activeProgram);
+  const isStageActive       = selectedStageIdx === activeStageIdx;
   const selectedStageLocked = isStageLocked(activeProgram, selectedStageIdx, clientSync);
+  // Poner y quitar candados es cosa del entrenador: en el móvil del cliente el
+  // control no aparece (si no, se abriría sus propias etapas). Y solo por
+  // delante de donde está — encerrarle fuera de la etapa que entrena no tiene
+  // sentido, e `isStageLocked` lo ignoraría igualmente.
+  const isTrainerProgram    = !!clientSync?.slotId
+    && !!clientSync.trainerProgramIds?.includes(activeProgram.id);
+  const canLockStage        = !isTrainerProgram
+    && selectedStageIdx > 0
+    && selectedStageIdx > activeStageIdx;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -654,10 +671,9 @@ export default function ProgramEditorScreen({ navigation }) {
               )}
             </View>
 
-            {/* Acceso: el candado que el cliente ve en su móvil. La etapa 1 no
-                lo ofrece — bloquear la etapa de entrada dejaría al cliente sin
-                por dónde empezar (y `isStageLocked` la ignoraría igualmente). */}
-            {selectedStageIdx > 0 && (
+            {/* Acceso: el candado que el cliente ve en su móvil. Solo por
+                delante de donde está — ver `canLockStage`. */}
+            {canLockStage && (
               <View>
                 <Text style={styles.sheetLabel}>{t('editor.stageAccessLabel')}</Text>
                 <SegmentedControl

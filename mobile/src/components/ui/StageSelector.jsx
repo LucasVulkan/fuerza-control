@@ -76,7 +76,10 @@ export default function StageSelector({ stages, value, onChange, onAdd }) {
           segRects.current[stage.id] = { x, w: width };
           if (active) ensureVisible(idx);
         }}
+        // Bloqueada: ni seleccionar ni abrir su hoja de edición. El candado sin
+        // esto era decorativo — el tap seguía abriendo el modal de la etapa.
         onPress={() => onChange(stage.id)}
+        disabled={stage.locked}
         activeOpacity={0.75}
       >
         <View style={styles.nameRow}>

@@ -158,10 +158,11 @@ function buildProgramDiff(storeState, newProgramJson) {
     const stageLabel = oldStages.length > 1 ? `Etapa ${si + 1}` : null;
     const sesDiff = newDays.length - oldDays.length;
 
-    // Un desbloqueo suele venir solo, sin más cambios: sin esta línea el cliente
-    // vería "Cambios menores en el programa" para lo único que le importa.
-    if (oldStages[si].locked && !newStages[si].locked) {
-      lines.push(`${newStages[si].name ?? stageLabel ?? `Etapa ${si + 1}`} desbloqueada`);
+    // Un cambio de candado suele venir solo, sin nada más: sin esta línea el
+    // cliente vería "Cambios menores en el programa" para lo único que le importa.
+    if (!!oldStages[si].locked !== !!newStages[si].locked) {
+      const stageName = newStages[si].name ?? stageLabel ?? `Etapa ${si + 1}`;
+      lines.push(`${stageName} ${newStages[si].locked ? 'bloqueada' : 'desbloqueada'}`);
     }
 
     if (sesDiff !== 0) {

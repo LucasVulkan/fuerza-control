@@ -16,6 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { clientStageIndex } from '../../../src/utils/stageProgress';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -80,13 +81,17 @@ export default function NextSessionScreen({ navigation, route }) {
   const activeProgram = client ? programs[client.activeProgramId] : null;
   const allExercises  = { ...exerciseLibrary, ...customExercises };
 
+  // Las sesiones que se pueden prescribir son las de la etapa en la que está el
+  // cliente DE VERDAD (su progreso espejado), no la que tenga marcada la copia
+  // local del entrenador — que no se mueve sola y dejaba preparar sesiones de
+  // una etapa que el cliente ya había dejado atrás.
   const templateIds = useMemo(() => {
     if (!activeProgram) return [];
     const hasStages = (activeProgram.stages?.length ?? 0) > 0;
-    const stageIdx  = activeProgram.currentStageIndex ?? 0;
+    const stageIdx  = clientStageIndex(client, activeProgram);
     const days = hasStages ? (activeProgram.stages[stageIdx]?.days ?? []) : (activeProgram.days ?? []);
     return days.map((d) => d.sessionTemplateId);
-  }, [activeProgram]);
+  }, [activeProgram, client]);
 
   // Selected session — clamped during render so it stays valid without an effect.
   const [selRaw, setSelRaw] = useState(null);
