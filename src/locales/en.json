@@ -1447,6 +1447,20 @@
     "periodLast3Months": "3 months",
     "periodAll": "Always",
     "noBillingEntries": "No entries for this filter.",
+    "billSheet": {
+      "title": "New entry",
+      "client": "Client",
+      "clientPlaceholder": "Pick a client",
+      "searchClient": "Search client…",
+      "noMatches": "No client with that name",
+      "date": "Date",
+      "amount": "Amount",
+      "concept": "Concept",
+      "status": "Status",
+      "add": "ADD",
+      "added": "Payment recorded",
+      "noClients": "Create a client before recording a payment."
+    },
     "newClientModal": {
       "title": "NEW CLIENT",
       "namePlaceholder": "Client name",

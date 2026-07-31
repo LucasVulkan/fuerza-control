@@ -36,7 +36,7 @@ import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
 import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
-import { LockIcon } from '../components/ui/EditorIcons';
+import { LockIcon, ChevronDown } from '../components/ui/EditorIcons';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -787,9 +787,106 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
   );
 }
 
-// ── Global add billing modal ──────────────────────────────────────────────────
+// ── Global billing ─────────────────────────────────────────────────────────────
 
-function GlobalAddBillingModal({ clients, onClose }) {
+const billLocale = (lang) => (lang === 'en' ? 'en-US' : 'es-ES');
+
+/** Date → 'AAAA-MM-DD' en hora LOCAL (`toISOString()` es UTC y adelanta el día). */
+function toIsoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** '2026-07-14' → '14 jul' (con año si `withYear` o si no es el año en curso). */
+function formatBillDate(iso, lang, withYear = false) {
+  const [y, m, d] = (iso ?? '').split('-').map(Number);
+  if (!y || !m || !d) return iso ?? '';
+  return new Date(y, m - 1, d).toLocaleDateString(billLocale(lang), {
+    day: 'numeric', month: 'short',
+    ...((withYear || y !== new Date().getFullYear()) && { year: 'numeric' }),
+  });
+}
+
+/**
+ * Calendario de mes para elegir la fecha del cobro. Es propio, no el picker
+ * nativo (`@react-native-community/datetimepicker`): en Android ese abre un
+ * diálogo Material que no se puede estilar, justo lo que §9 de
+ * `docs/UI-MIGRATION.md` prohíbe — y además es módulo nativo, o sea rebuild del
+ * dev client. Aquí basta una rejilla y los tokens del tema.
+ * Semana Lun→Dom, la misma convención que el selector semanal de Home.
+ */
+function BillDateSheet({ value, lang, onPick, onClose }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+
+  const [y0, m0] = (value ?? '').split('-').map(Number);
+  const [cursor, setCursor] = useState(() => new Date(y0 || new Date().getFullYear(), (m0 || 1) - 1, 1));
+
+  const year   = cursor.getFullYear();
+  const month  = cursor.getMonth();
+  // getDay(): 0 = domingo. Rotamos para que el lunes sea la primera columna.
+  const lead   = (new Date(year, month, 1).getDay() + 6) % 7;
+  const days   = new Date(year, month + 1, 0).getDate();
+  const today  = toIsoDate(new Date());
+
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) =>
+    // 2024-01-01 fue lunes: sirve de semana de referencia para sacar las
+    // iniciales en el idioma activo sin tabla hardcodeada.
+    new Date(2024, 0, 1 + i).toLocaleDateString(billLocale(lang), { weekday: 'narrow' })
+  ), [lang]);
+
+  const monthLabel = cursor.toLocaleDateString(billLocale(lang), { month: 'long', year: 'numeric' });
+
+  return (
+    <DragSheet visible onClose={onClose} title={t('clients.billSheet.date')}>
+      <View style={styles.calBody}>
+        <View style={styles.calNav}>
+          <TouchableOpacity style={styles.calNavBtn} onPress={() => setCursor(new Date(year, month - 1, 1))} activeOpacity={0.7}>
+            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
+              stroke={th.colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M15 18 9 12l6-6" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.calMonth}>{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</Text>
+          <TouchableOpacity style={styles.calNavBtn} onPress={() => setCursor(new Date(year, month + 1, 1))} activeOpacity={0.7}>
+            <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
+              stroke={th.colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="m9 18 6-6-6-6" />
+            </Svg>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calGrid}>
+          {weekDays.map((w, i) => (
+            <View key={`w${i}`} style={styles.calCell}>
+              <Text style={styles.calWeekDay}>{w.toUpperCase()}</Text>
+            </View>
+          ))}
+          {Array.from({ length: lead }, (_, i) => <View key={`b${i}`} style={styles.calCell} />)}
+          {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
+            const iso     = toIsoDate(new Date(year, month, d));
+            const sel     = iso === value;
+            const isToday = iso === today;
+            return (
+              <TouchableOpacity key={d} style={styles.calCell} onPress={() => onPick(iso)} activeOpacity={0.7}>
+                <View style={[styles.calDay, sel && styles.calDaySel, !sel && isToday && styles.calDayToday]}>
+                  <Text style={[styles.calDayText, sel && styles.calDayTextSel]}>{d}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </DragSheet>
+  );
+}
+
+/**
+ * Hoja de alta de cobro. Antes era un `<Modal>` propio; pasa a `DragSheet`, que es
+ * el único bottom-sheet de la app (§9 de docs/UI-MIGRATION.md). La salida vive en
+ * el hueco derecho de la cabecera y abajo queda un solo botón, el que avanza.
+ */
+function GlobalAddBillingSheet({ clients, lang, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -802,94 +899,184 @@ function GlobalAddBillingModal({ clients, onClose }) {
   );
 
   const [clientId,  setClientId]  = useState('');
-  const [date,      setDate]      = useState(() => new Date().toISOString().split('T')[0]);
+  const [date,      setDate]      = useState(() => toIsoDate(new Date()));
   const [concept,   setConcept]   = useState('');
   const [amount,    setAmount]    = useState('');
   const [status,    setStatus]    = useState('pending');
+  const [dropOpen,     setDropOpen]     = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showCal,      setShowCal]      = useState(false);
 
-  function handleAdd() {
-    if (!clientId || !concept.trim() || !amount || !date) return;
-    addClientBilling(clientId, {
-      date, concept: concept.trim(), amount: parseFloat(amount), status,
-    });
-    showToast('Cobro registrado', 2200, 'success');
-    onClose();
-  }
+  const selectedClient = clientList.find((c) => c.id === clientId);
+  const matches = clientSearch.trim()
+    ? clientList.filter((c) => c.name.toLowerCase().includes(clientSearch.trim().toLowerCase()))
+    : clientList;
 
   const canAdd = clientId && concept.trim() && amount && date;
 
+  function handleAdd() {
+    if (!canAdd) return;
+    addClientBilling(clientId, {
+      date, concept: concept.trim(), amount: parseFloat(amount), status,
+    });
+    showToast(t('clients.billSheet.added'), 2200, 'success');
+    onClose();
+  }
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>NUEVA ENTRADA</Text>
+    <>
+    <DragSheet
+      visible
+      onClose={onClose}
+      title={t('clients.billSheet.title')}
+      action={{ label: t('common.cancel'), onPress: onClose }}
+    >
+      <View style={styles.billSheetBody}>
 
-          {/* Client selector */}
-          <Text style={styles.fieldLabel}>CLIENTE</Text>
-          <ScrollView style={{ maxHeight: 140, marginBottom: spacing.xs }} showsVerticalScrollIndicator={false}>
-            {clientList.map((c) => (
+        {/* Cliente — dropdown con buscador, mismo patrón que el desplegable de
+            ejercicios de Progress: ancla relativa + menú `position:absolute`
+            colgando de `top:'100%'`, que FLOTA sobre los campos de abajo. */}
+        <View style={styles.billDropField}>
+          <Text style={styles.billSecLabel}>{t('clients.billSheet.client')}</Text>
+          {clientList.length === 0 ? (
+            <Text style={styles.billEmpty}>{t('clients.billSheet.noClients')}</Text>
+          ) : (
+            <View style={styles.billDropAnchor}>
               <TouchableOpacity
-                key={c.id}
-                style={[styles.templateOption, clientId === c.id && styles.templateOptionActive]}
-                onPress={() => setClientId(c.id)}
+                style={[styles.billSelect, dropOpen && styles.billSelectOpen]}
+                onPress={() => setDropOpen((o) => !o)}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.templateOptionName, clientId === c.id && { color: th.colors.accent }]}>
-                  {c.name}
+                <Text
+                  style={[styles.billSelectText, !selectedClient && { color: th.colors.mutedLight }]}
+                  numberOfLines={1}
+                >
+                  {selectedClient?.name ?? t('clients.billSheet.clientPlaceholder')}
                 </Text>
+                <ChevronDown size={12} color={th.colors.mutedLight} />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
 
-          {/* Date + amount */}
-          <View style={styles.addRow}>
+              {dropOpen && (
+                <View style={styles.billDropList}>
+                  <View style={styles.billDropSearch}>
+                    <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                      stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" />
+                    </Svg>
+                    <TextInput
+                      style={styles.billDropSearchInput}
+                      placeholder={t('clients.billSheet.searchClient')}
+                      placeholderTextColor={th.colors.mutedLight}
+                      value={clientSearch}
+                      onChangeText={setClientSearch}
+                      returnKeyType="search"
+                    />
+                  </View>
+                  <ScrollView
+                    style={{ maxHeight: 200 }}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {matches.length === 0 ? (
+                      <Text style={styles.billDropEmpty}>{t('clients.billSheet.noMatches')}</Text>
+                    ) : matches.map((c) => {
+                      const sel = c.id === clientId;
+                      return (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[styles.billDropItem, sel && styles.billDropItemSel]}
+                          onPress={() => { setClientId(c.id); setDropOpen(false); setClientSearch(''); }}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={[styles.billDropItemText, sel && { color: th.colors.text }]} numberOfLines={1}>
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.billFieldRow}>
+          {/* Fecha — fila + hoja, el mismo patrón que Progresión/Tempo en el
+              editor de ejercicio. Abre el calendario, no un teclado. */}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.billSecLabel}>{t('clients.billSheet.date')}</Text>
+            <TouchableOpacity style={styles.billSelect} onPress={() => setShowCal(true)} activeOpacity={0.8}>
+              <Text style={styles.billSelectText} numberOfLines={1}>{formatBillDate(date, lang, true)}</Text>
+              <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+              </Svg>
+            </TouchableOpacity>
+          </View>
+          <View style={{ width: 120 }}>
+            <Text style={styles.billSecLabel}>{t('clients.billSheet.amount')}</Text>
             <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Fecha (AAAA-MM-DD)"
-              placeholderTextColor={th.colors.muted}
-              value={date}
-              onChangeText={setDate}
-              returnKeyType="next"
-            />
-            <TextInput
-              style={[styles.input, { width: 90, textAlign: 'center' }]}
-              placeholder="0.00"
-              placeholderTextColor={th.colors.muted}
+              style={styles.billInput}
+              placeholder="0,00 €"
+              placeholderTextColor={th.colors.mutedLight}
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
               returnKeyType="next"
             />
           </View>
-
-          {/* Concept + status */}
-          <View style={styles.addRow}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Concepto"
-              placeholderTextColor={th.colors.muted}
-              value={concept}
-              onChangeText={setConcept}
-              returnKeyType="done"
-              onSubmitEditing={handleAdd}
-            />
-            <TouchableOpacity
-              style={[styles.billStatusBtnForm, status === 'paid' && styles.billStatusBtnPaid]}
-              onPress={() => setStatus((s) => s === 'paid' ? 'pending' : 'paid')}
-            >
-              <Text style={[styles.billStatusText, status === 'paid' && styles.billStatusTextPaid]}>
-                {status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalActions}>
-            <GhostBtn label="Cancelar" onPress={onClose} />
-            <AccentBtn label="AÑADIR" disabled={!canAdd} onPress={handleAdd} />
-          </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <View>
+          <Text style={styles.billSecLabel}>{t('clients.billSheet.concept')}</Text>
+          <TextInput
+            style={styles.billInput}
+            placeholder={t('clients.billConceptPlaceholder')}
+            placeholderTextColor={th.colors.mutedLight}
+            value={concept}
+            onChangeText={setConcept}
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+          />
+        </View>
+
+        <View>
+          <Text style={styles.billSecLabel}>{t('clients.billSheet.status')}</Text>
+          <SegmentedControl
+            options={[
+              { id: 'pending', label: t('clients.billPending') },
+              { id: 'paid',    label: t('clients.statusPaid')  },
+            ]}
+            value={status}
+            onChange={setStatus}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.billCta, !canAdd && { opacity: 0.4 }]}
+          disabled={!canAdd}
+          onPress={handleAdd}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.billCtaText}>{t('clients.billSheet.add')}</Text>
+        </TouchableOpacity>
+
+      </View>
+    </DragSheet>
+
+    {/* Hermana de la hoja, no hija: un `Modal` dentro del ScrollView de otro se
+        monta igual, pero así el árbol dice lo que pasa en pantalla. */}
+    {showCal && (
+      <BillDateSheet
+        value={date}
+        lang={lang}
+        onPick={(iso) => { setDate(iso); setShowCal(false); }}
+        onClose={() => setShowCal(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -898,11 +1085,13 @@ function GlobalAddBillingModal({ clients, onClose }) {
 function GlobalBillingView({ clients, onClose, onSelectClient }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
   const [statusFilter, setStatusFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all');
   const [showAdd,      setShowAdd]      = useState(false);
+
+  const lang = i18n.language?.startsWith('en') ? 'en' : 'es';
 
   const allEntries = useMemo(() => {
     const entries = [];
@@ -933,108 +1122,117 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
     return periodFiltered.filter((e) => e.status === statusFilter);
   }, [periodFiltered, statusFilter]);
 
-  const total   = filtered.reduce((a, b) => a + (b.amount ?? 0), 0);
-  const paid    = filtered.filter((e) => e.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
+  // Las 3 tarjetas resumen el PERIODO, no el filtro de estado: ese filtro es
+  // justo lo que ellas desglosan, así que atarlas a él dejaba PENDIENTE en
+  // 0,00 € cada vez que se miraba "Pagado".
+  const total   = periodFiltered.reduce((a, b) => a + (b.amount ?? 0), 0);
+  const paid    = periodFiltered.filter((e) => e.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
   const pending = total - paid;
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Back header */}
-      <View style={styles.detailHeader}>
-        <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
+      {/* Cabecera: ‹ + título hero + ＋ (convención de Docs / Entrenador / Drive) */}
+      <View style={styles.billHeader}>
+        <TouchableOpacity style={styles.hdrIconBox} onPress={onClose} activeOpacity={0.7}>
+          <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
+            stroke={th.colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M15 18 9 12l6-6" />
+          </Svg>
         </TouchableOpacity>
-        <Text style={styles.detailName}>Facturación global</Text>
-        <AccentBtn label="＋" onPress={() => setShowAdd(true)} small />
+        <Text style={styles.billHeaderTitle} numberOfLines={1}>{t('clients.globalBilling')}</Text>
+        <TouchableOpacity style={styles.tagAddBtn} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
+          <Text style={styles.tagAddBtnText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {showAdd && (
-        <GlobalAddBillingModal clients={clients} onClose={() => setShowAdd(false)} />
+        <GlobalAddBillingSheet clients={clients} lang={lang} onClose={() => setShowAdd(false)} />
       )}
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl }}>
-        {/* Summary tiles */}
-        <View style={styles.billingRow}>
+      <ScrollView contentContainerStyle={styles.billBody} showsVerticalScrollIndicator={false}>
+
+        {/* Tarjetas resumen — mismo tratamiento que las de Progress (statTile),
+            con el valor a `card-title` en vez de `hero`: caben más dígitos. */}
+        <View style={styles.billTilesRow}>
           {[
-            { label: 'FACTURADO', value: `${total.toFixed(2)}€`,   color: th.colors.text },
-            { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,    color: th.colors.green },
-            { label: 'PENDIENTE', value: `${pending.toFixed(2)}€`, color: pending > 0 ? th.colors.orange : th.colors.muted },
+            { label: t('clients.billedLabel'),   value: total,   color: th.colors.text },
+            { label: t('clients.receivedLabel'), value: paid,    color: th.colors.green },
+            { label: t('clients.pendingLabel'),  value: pending, color: pending > 0 ? th.colors.orange : th.colors.mutedLight },
           ].map(({ label, value, color }) => (
-            <View key={label} style={styles.billingTile}>
-              <Text style={styles.billingTileLabel}>{label}</Text>
-              <Text style={[styles.billingTileValue, { color }]}>{value}</Text>
+            <View key={label} style={styles.billTile}>
+              <Text style={styles.billTileLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {label}
+              </Text>
+              <Text style={[styles.billTileValue, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {value.toFixed(2)}€
+              </Text>
             </View>
           ))}
         </View>
 
-        {/* Filters */}
-        <View style={{ gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md }}>
-          {/* Status row */}
-          <View style={styles.billFilterRow}>
-            {[
-              { id: 'all',     label: t('clients.filterAll')   },
-              { id: 'pending', label: t('clients.billPending') },
-              { id: 'paid',    label: t('clients.statusPaid')  },
-            ].map(({ id, label }) => {
-              const active = statusFilter === id;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.billFilterBtn, active && styles.billFilterBtnActive]}
-                  onPress={() => setStatusFilter(id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{label}</Text>
-                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{statusCounts[id]}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {/* Period row */}
-          <View style={styles.billFilterRow}>
-            {[
-              { id: 'all', label: t('clients.periodAll')        },
-              { id: '1m',  label: t('clients.periodThisMonth')  },
-              { id: '3m',  label: t('clients.periodLast3Months')},
-            ].map(({ id, label }) => {
-              const active = periodFilter === id;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.billFilterBtn, active && styles.billFilterBtnActive]}
-                  onPress={() => setPeriodFilter(id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.billFilterBtnText, active && styles.billFilterBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+        {/* Filtros — dos segmentados apilados. El contador va dentro del propio
+            label: la primitiva no pinta badges y no hay variante así en Figma. */}
+        <View style={styles.billFilters}>
+          <SegmentedControl
+            options={[
+              { id: 'all',     label: `${t('clients.filterAll')} · ${statusCounts.all}`     },
+              { id: 'pending', label: `${t('clients.billPending')} · ${statusCounts.pending}` },
+              { id: 'paid',    label: `${t('clients.statusPaid')} · ${statusCounts.paid}`   },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
+          <SegmentedControl
+            options={[
+              { id: 'all', label: t('clients.periodAll')         },
+              { id: '1m',  label: t('clients.periodThisMonth')   },
+              { id: '3m',  label: t('clients.periodLast3Months') },
+            ]}
+            value={periodFilter}
+            onChange={setPeriodFilter}
+          />
         </View>
 
-        {/* Entries */}
+        {/* Entradas — 2 líneas: importe arriba con el nombre, pill abajo con el
+            concepto. Precio y estado en la misma línea competían entre sí. */}
         {filtered.length === 0 ? (
-          <Text style={styles.emptyText}>Sin entradas para este filtro</Text>
-        ) : filtered.map((entry) => (
-          <View key={entry.id} style={styles.billEntry}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <TouchableOpacity onPress={() => onSelectClient(entry.clientId)}>
-                <Text style={styles.billClientLink}>{entry.clientName} ›</Text>
-              </TouchableOpacity>
-              <Text style={styles.billConcept} numberOfLines={1}>{entry.concept}</Text>
-              <Text style={styles.billDate}>{entry.date}</Text>
-            </View>
-            <Text style={styles.billAmount}>{entry.amount?.toFixed(2)}€</Text>
-            <TouchableOpacity
-              style={[styles.billStatusBtn, entry.status === 'paid' && styles.billStatusBtnPaid]}
-              onPress={() => updateClientBillingStatus(entry.clientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
-            >
-              <Text style={[styles.billStatusText, entry.status === 'paid' && styles.billStatusTextPaid]}>
-                {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-              </Text>
-            </TouchableOpacity>
+          <Text style={styles.billEmpty}>{t('clients.noBillingEntries')}</Text>
+        ) : (
+          <View style={styles.billList}>
+            {filtered.map((entry) => {
+              const isPaid = entry.status === 'paid';
+              const c      = isPaid ? th.colors.green : th.colors.orange;
+              return (
+                <TouchableOpacity
+                  key={entry.id}
+                  style={styles.billCard}
+                  onPress={() => onSelectClient(entry.clientId)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.billCardLine}>
+                    <Text style={styles.billCardName} numberOfLines={1}>{entry.clientName}</Text>
+                    <Text style={styles.billCardAmount}>{entry.amount?.toFixed(2)}€</Text>
+                  </View>
+                  <View style={styles.billCardLine}>
+                    <Text style={styles.billCardMeta} numberOfLines={1}>
+                      {entry.concept} · {formatBillDate(entry.date, lang)}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.billPill, { backgroundColor: withOpacity(c, 0.12) }]}
+                      onPress={() => updateClientBillingStatus(entry.clientId, entry.id, isPaid ? 'pending' : 'paid')}
+                      activeOpacity={0.75}
+                      hitSlop={8}
+                    >
+                      <Text style={[styles.billPillText, { color: c }]}>
+                        {isPaid ? t('clients.statusPaid') : t('clients.billPending')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        ))}
+        )}
       </ScrollView>
     </View>
   );
@@ -4897,55 +5095,235 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight: typography.medium,
   },
 
-  // ── Billing status filter row ──
-  // ── Billing filter rows (status + period) ──
-  billFilterRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
+  // ══ Facturación global — pantalla migrada ═══════════════════════════════════
+  // Los estilos `billing*` / `billEntry` / `billStatus*` de arriba y abajo siguen
+  // siendo los del detalle de cliente, que NO está migrado: no los toques aquí.
+
+  // Cabecera: ‹ + título hero + ＋, misma geometría que el header de la lista.
+  billHeader: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.sm,
   },
-  billFilterBtn: {
-    flex:            1,
-    flexDirection:   'row',
-    alignItems:      'center',
-    justifyContent:  'center',
-    gap:             spacing.xs,
-    paddingVertical: spacing.xs + 1,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: withOpacity(th.colors.surface2, 0.35),
+  billHeaderTitle: {
+    ...textStyles.hero,
+    color:      th.colors.text,
+    flex:       1,
   },
-  billFilterBtnActive: {
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
+  billBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.lg,
   },
-  billFilterBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.regular,
-    color:      th.colors.muted,
-  },
-  billFilterBtnTextActive: { color: withOpacity(th.colors.accent, 0.9) },
-  billFilterBadge: {
-    backgroundColor:   'transparent',
-    borderWidth:       1,
-    borderColor:       th.colors.border,
-    borderRadius:      999,
-    minWidth:          22,
-    height:            22,
+
+  // Tarjetas resumen — `statTile` de Progress con el valor a `card-title`
+  // (Black 16) en vez de `hero` (Black 20): son importes, no contadores de 1-3
+  // dígitos. `adjustsFontSizeToFit` cubre los que aun así no entren.
+  billTilesRow: { flexDirection: 'row', gap: spacing.md },
+  billTile: {
+    flex:              1,
+    height:            86,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.lg,
+    paddingHorizontal: spacing.sm2,
     alignItems:        'center',
     justifyContent:    'center',
-    paddingHorizontal: 5,
+    gap:               spacing.sm,
+    overflow:          'hidden',
   },
-  billFilterBadgeActive: {
+  billTileValue: {
+    ...textStyles.cardTitle,
+    textAlign:   'center',
+    fontVariant: ['tabular-nums'],
+  },
+  // La etiqueta va ARRIBA de la cifra y en `mutedLight`: aquí nombra el dato,
+  // no lo remata (al revés que en las cards de Progress).
+  billTileLabel: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+    textAlign:     'center',
+  },
+
+  billFilters: { gap: spacing.sm },
+
+  // ── Entradas ──
+  billList: { gap: spacing.sm },
+  billCard: {
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm2,
+  },
+  billCardLine: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.md,
+  },
+  billCardName: {
+    ...textStyles.cardTitle,
+    color:      th.colors.text,
+    flexShrink: 1,
+  },
+  // Importe a `card-type` (12) y no a `card-title` (16): es el mismo peso que el
+  // número de "Ciclo NN" en la tarjeta de cliente, y deja el nombre de titular.
+  billCardAmount: {
+    ...textStyles.cardType,
+    color:       th.colors.text,
+    flexShrink:  0,
+    fontVariant: ['tabular-nums'],
+  },
+  billCardMeta: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    flexShrink: 1,
+  },
+  // Pill de estado: geometría de `attnPill` un escalón por debajo (radius/xs,
+  // padding sm/xs2, `spacing-tag` en vez de `card-type`).
+  billPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs2,
+    borderRadius:      th.radius.xs,
+    flexShrink:        0,
+  },
+  billPillText: { ...textStyles.spacingTag, textTransform: 'uppercase' },
+  billEmpty: {
+    ...textStyles.subtitle,
+    color:           th.colors.mutedLight,
+    textAlign:       'center',
+    paddingVertical: spacing.xl,
+  },
+
+  // ── Hoja de alta de cobro ──
+  billSheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  billSecLabel: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+    marginBottom:  spacing.sm,
+  },
+  // Selector de cliente (barra) + menú desplegable con buscador.
+  billSelect: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.sm,
+    height:            42,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.surface2,
+  },
+  // Abierta: esquinas inferiores rectas para fundirse con el menú de debajo
+  // (mismo recurso que el desplegable de ejercicios de Progress).
+  billSelectOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  billSelectText: { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  // El grupo entero se eleva sobre los campos siguientes (hermanos dentro de
+  // `billSheetBody`); el ancla da el contexto de posición al menú absoluto.
+  billDropField:  { zIndex: 100 },
+  billDropAnchor: { zIndex: 100 },
+  billDropList: {
+    position:                'absolute',
+    top:                     '100%',
+    left:                    0,
+    right:                   0,
+    zIndex:                  100,
+    elevation:               12,   // en Android es esto, no zIndex, lo que lo pone encima
+    backgroundColor:         th.colors.bg,
+    borderBottomLeftRadius:  th.radius.sm,
+    borderBottomRightRadius: th.radius.sm,
+    overflow:                'hidden',
+    shadowColor:   '#000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius:  10,
+  },
+  billDropSearch: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    height:            42,
+    paddingHorizontal: spacing.md,
+  },
+  // `padding: 0` obligatorio: si no, Android le añade el suyo y el campo deja
+  // de casar con el alto de la fila (§8 de docs/UI-MIGRATION.md).
+  billDropSearchInput: {
+    flex:    1,
+    padding: 0,
+    ...textStyles.subtitle,
+    color:   th.colors.text,
+  },
+  billDropItem: {
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  billDropItemSel:  { backgroundColor: th.tint.accent10 },
+  billDropItemText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  billDropEmpty: {
+    ...textStyles.subtitle,
+    color:           th.colors.mutedLight,
+    textAlign:       'center',
+    paddingVertical: spacing.lg,
+  },
+
+  billFieldRow: { flexDirection: 'row', gap: spacing.sm },
+  // Alto fijo + `padding: 0`: con `paddingVertical` Android suma el suyo y los
+  // dos campos de la fila (fecha / importe) salen con alturas distintas.
+  billInput: {
+    height:            42,
+    paddingVertical:   0,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.surface2,
+    ...textStyles.cardTitle,
+    color:             th.colors.text,
+  },
+  billCta: {
+    height:          44,
+    borderRadius:    th.radius.md,
     backgroundColor: th.colors.accent,
-    borderColor:     th.colors.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginTop:       spacing.sm,
   },
-  billFilterBadgeText: {
-    fontSize:   11,
-    fontWeight: typography.bold,
-    color:      th.colors.muted,
+  billCtaText: { ...textStyles.cardType, color: th.colors.onAccent },
+
+  // ── Calendario (hoja de fecha) ──
+  calBody: { paddingBottom: spacing.sm, gap: spacing.md },
+  calNav:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  calMonth: { ...textStyles.cardTitle, color: th.colors.text },
+  calNavBtn: {
+    width:           34,
+    height:          34,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  billFilterBadgeTextActive: { color: th.colors.bg },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calCell: {
+    width:          `${100 / 7}%`,
+    aspectRatio:    1,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  calWeekDay: { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  calDay: {
+    width:          34,
+    height:         34,
+    borderRadius:   th.radius.full,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  calDaySel:     { backgroundColor: th.colors.accent },
+  calDayToday:   { borderWidth: borders.thin, borderColor: th.tint.accent50 },
+  calDayText:    { ...textStyles.cardType, color: th.colors.text },
+  calDayTextSel: { color: th.colors.onAccent },
 
   // ── Billing entries ──
   billEntry: {
@@ -4958,11 +5336,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     gap:             spacing.sm,
     marginBottom:    spacing.xs,
-  },
-  billClientLink: {
-    fontSize:      typography.xs,
-    color:         th.colors.accent,
-    marginBottom:  2,
   },
   billConcept: {
     fontSize:   typography.sm,
@@ -5167,3 +5540,4 @@ const makeStyles = (th) => StyleSheet.create({
   },
   contextMenuText: { fontSize: typography.base, color: th.colors.text },
 });
+

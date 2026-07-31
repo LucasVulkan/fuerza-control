@@ -75,7 +75,9 @@ export default function SegmentedControl({ options, value, onChange }) {
             onPress={() => onChange(id)}
             activeOpacity={0.75}
           >
-            <Text style={[styles.optionText, active && styles.optionTextActive]}>
+            {/* Un label largo (p. ej. "Pendiente · 12" en Facturación) partiría
+                el pill en dos líneas y desalinearía el highlight animado. */}
+            <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={1}>
               {label}
             </Text>
           </TouchableOpacity>

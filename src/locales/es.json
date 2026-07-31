@@ -1447,6 +1447,20 @@
     "periodLast3Months": "3 meses",
     "periodAll": "Siempre",
     "noBillingEntries": "Sin entradas para este filtro.",
+    "billSheet": {
+      "title": "Nueva entrada",
+      "client": "Cliente",
+      "clientPlaceholder": "Elige un cliente",
+      "searchClient": "Buscar cliente…",
+      "noMatches": "Ningún cliente con ese nombre",
+      "date": "Fecha",
+      "amount": "Importe",
+      "concept": "Concepto",
+      "status": "Estado",
+      "add": "AÑADIR",
+      "added": "Cobro registrado",
+      "noClients": "Crea un cliente antes de registrar un cobro."
+    },
     "newClientModal": {
       "title": "NUEVO CLIENTE",
       "namePlaceholder": "Nombre del cliente",
