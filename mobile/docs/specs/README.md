@@ -8,6 +8,8 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
+| [training-load.md](training-load.md) — Carga de entrenamiento | fase 1 implementada (captura de sRPE + peso corporal en el recap); fases 2-6 listas para ejecutar | 🟡 | siguiente = fase 2 (`src/utils/trainingLoad.js` + tests). La fase 4 necesita 4+ semanas de sRPE real antes de tener sentido |
+| [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | sin empezar | 🟢 | transversal (métricas viejas y nuevas). La fase 1 (registro i18n + apartado en `DocsScreen`) cubre todas las métricas sin tocar ninguna pantalla de datos |
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); fase C EN PAUSA (4/~10-12 plantillas, ver §6.2) | 🔴 | contenido de plantillas (fase C) = Fable+usuario; onboarding "muy extenso", pendiente decidir si simplificar antes de seguir |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
@@ -20,10 +22,10 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 ## Aparcado (decisión de producto pendiente, NO implementar)
 
-- **Volumen semanal por patrón** (pestaña Progreso): mockups hechos (opción A
-  plan-vs-hecho, opción B evolución 4 semanas). El usuario no tiene clara su
-  utilidad ni ubicación. Si revive: empezar por la A; la B encaja mejor en el
-  lado entrenador (detalle de cliente).
+- ~~**Volumen semanal por patrón**~~ — **REVIVIDO** como fase 5 de
+  [training-load.md](training-load.md): pasa a ser series por GRUPO MUSCULAR
+  (no por patrón) dentro de la vista Carga, con rango de referencia 10-20.
+  Aprobado por el usuario sobre mockup (jul 2026).
 - **Aviso de balance de patrones**: descartado a nivel sesión (un día Push sin
   pierna es por diseño); como idea futura, a nivel programa/semana.
 

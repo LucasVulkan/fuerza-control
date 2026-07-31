@@ -1,21 +1,39 @@
 /**
  * SessionRecapScreen — post-session summary, shown right after saving.
  *
- * Read-only: duration · volume · sets, PRs (only when they exist), and the
- * per-exercise comparison against the previous run of the same session.
- * All numbers come from the just-saved log entry + pure utils; nothing new
- * is stored.
+ * Duration · volume · sets, PRs (only when they exist), and the per-exercise
+ * comparison against the previous run of the same session. All numbers come
+ * from the just-saved log entry + pure utils.
+ *
+ * The only thing it WRITES is the post-session feedback (session RPE + body
+ * weight) — see `setSessionFeedback` in the store and
+ * `docs/specs/training-load.md` §2.
+ *
+ * Estilo: FormaFit. Esta pantalla NO tiene nodo en Figma (no aparece en la
+ * extracción), así que hereda tokens y anatomías ya cerradas en otras
+ * pantallas en vez de inventar: las 3 cards de cabecera son las Progress cards
+ * de `ProgressTab`, las series usan las pills compartidas de `setDisplay.js`
+ * (mismas que History y el detalle de ejercicio) y la lista de ejercicios usa
+ * la lista agrupada con `getCardRadii`. Sin bordes: en este tema solo aparecen
+ * como highlight en 3 casos y ninguno es este (docs/UI-MIGRATION.md §4.6).
  */
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../../../src/utils/sessionRecap';
 import { formatBlockScore, compareBlockResults } from '../../../src/utils/conditioningBlocks';
+import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, textStyles, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+
+const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 
 function TrophyIcon({ size = 17, color }) {
   return (
@@ -23,6 +41,41 @@ function TrophyIcon({ size = 17, color }) {
       stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4zM7 6H4a1 1 0 0 0-1 1v1a3 3 0 0 0 3 3M17 6h3a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3" />
     </Svg>
+  );
+}
+
+// Session RPE (Foster CR-10). Whole numbers only — a session rating is a gut
+// call, not a measurement, so the per-set RPE's decimals would be false
+// precision.
+const RPE_VALUES = Array.from({ length: 10 }, (_, i) => i + 1);
+
+/**
+ * Un botón de la escala de sRPE. NO es un SegmentedControl: ese control sirve
+ * para alternar entre vistas/opciones existentes, no para puntuar en una
+ * escala. Aun así el cambio de estado no puede ser en seco (regla de feedback
+ * táctil, docs/UI-MIGRATION.md §4.10), así que el color de fondo y el del
+ * número se interpolan con Reanimated.
+ */
+function RpeButton({ value, active, onPress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const p      = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    p.value = withTiming(active ? 1 : 0, { duration: 160 });
+  }, [active, p]);
+
+  const boxStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(p.value, [0, 1], [th.colors.surface2, th.colors.accent]),
+  }));
+  const textStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(p.value, [0, 1], [th.colors.mutedLight, th.colors.onAccent]),
+  }));
+
+  return (
+    <AnimatedTouchable style={[styles.rpeBtn, boxStyle]} onPress={onPress} activeOpacity={0.8}>
+      <Reanimated.Text style={[styles.rpeBtnText, textStyle]}>{value}</Reanimated.Text>
+    </AnimatedTouchable>
   );
 }
 
@@ -50,7 +103,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   // fmt() appends the unit ("82.5kg"); toDisplay() gives the bare number.
-  const { fmt, toDisplay, label: weightLabel } = useWeightUnit();
+  const { fmt, toDisplay, toKg, label: weightLabel } = useWeightUnit();
   const round1 = (v) => Math.round(v * 10) / 10;
 
   const workoutLog       = useStore((s) => s.workoutLog);
@@ -58,8 +111,18 @@ export default function SessionRecapScreen({ navigation, route }) {
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
+  const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
+  const setSessionFeedback = useStore((s) => s.setSessionFeedback);
 
   const entry = workoutLog.find((e) => e.id === entryId);
+
+  // Draft for the body-weight field: the last known weight prefills it, and it
+  // only reaches the store once it parses (so "78." mid-typing isn't saved).
+  const [weightDraft, setWeightDraft] = useState(() => {
+    const kg = entry?.bodyWeight ?? profileBodyWeight;
+    return kg != null ? String(toDisplay(kg)) : '';
+  });
+
   if (!entry) return null;
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
@@ -86,37 +149,98 @@ export default function SessionRecapScreen({ navigation, route }) {
     exerciseId: ex.exerciseId, sets: doneSets(ex), note: ex.note ?? null, delta: null,
   }));
 
-  // Dropset — the last work set may carry sub-series at decreasing weight;
-  // shown chained onto the line with "→" so they read as a continuation.
-  function dropsSuffix(sets) {
-    const drops = doneDrops(sets[sets.length - 1] ?? {});
-    if (!drops.length) return '';
-    return ' → ' + drops.map((d) => {
-      const w = parseFloat(d.weight);
-      if (w > 0 && d.reps) return `${fmt(w)}×${d.reps}`;
-      if (d.reps)          return `${d.reps}`;
-      return '·';
-    }).join(' → ');
-  }
+  // The logged entry carries each exercise's own minReps/maxReps — that's what
+  // getPillVariant needs to colour a set as in/out of the target range.
+  const exCfgById = Object.fromEntries((entry.exercises ?? []).map((ex) => [ex.exerciseId, ex]));
 
-  function setsLine(sets) {
-    if (!sets.length) return '—';
-    const weights = sets.map((s) => parseFloat(s.weight)).filter((w) => w > 0);
-    const sameW = weights.length === sets.length && weights.every((w) => w === weights[0]);
-    if (sameW) {
-      return `${fmt(weights[0])} × ${sets.map((s) => s.reps || (s.time ? `${s.time}s` : '·')).join(' · ')}`
-        + dropsSuffix(sets);
+  function saveBodyWeight() {
+    const n = parseFloat(weightDraft.replace(',', '.'));
+    if (!isNaN(n) && n > 0) {
+      setSessionFeedback(entry.id, { bodyWeight: Math.round(toKg(n) * 10) / 10 });
     }
-    return sets.map((s) => {
-      const w = parseFloat(s.weight);
-      if (w > 0 && s.reps) return `${fmt(w)}×${s.reps}`;
-      if (s.reps)          return `${s.reps}`;
-      if (s.time)          return `${s.time}s`;
-      return '·';
-    }).join(' · ') + dropsSuffix(sets);
   }
 
-  function deltaChip(delta) {
+  // Weight-runs: a weightless weight pill + its reps/RPE pills (History
+  // anatomy). Función, no componente: declarado dentro del render, un
+  // componente tendría identidad nueva en cada pasada y remontaría las pills.
+  function setPillsFor(sets, exCfg) {
+    // Dropset — the last work set may carry sub-series at decreasing weight,
+    // chained with "→" so they read as a continuation of that set.
+    const drops = doneDrops(sets[sets.length - 1] ?? {});
+    return (
+      <View style={styles.setPills}>
+        {groupSetsByWeight(sets).map((group, gi) => (
+          <View key={`grp-${gi}`} style={styles.setGroup}>
+            {group.weight ? (
+              <View style={styles.weightPill}>
+                <Text style={styles.weightPillText}>
+                  <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
+                  <Text style={styles.weightPillUnit}>{weightLabel}</Text>
+                  <Text style={styles.weightPillX}>{' x'}</Text>
+                </Text>
+              </View>
+            ) : null}
+            {group.sets.map((s, i) => {
+              const variant = getPillVariant(s, exCfg);
+              const { main, rpeNum } = buildSetLabel(s, i, fmt, true);
+              return (
+                <View
+                  key={`set-${gi}-${i}`}
+                  style={[
+                    styles.setPill,
+                    variant === 'done'    && styles.setPillDone,
+                    variant === 'partial' && styles.setPillPartial,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.setPillText,
+                      variant === 'done'    && styles.setPillTextDone,
+                      variant === 'partial' && styles.setPillTextPartial,
+                    ]}
+                  >
+                    {main}
+                    {rpeNum ? (
+                      <>
+                        <Text
+                          style={[
+                            styles.setPillRpeAt,
+                            variant === 'done'    && styles.setPillRpeAtDone,
+                            variant === 'partial' && styles.setPillRpeAtPartial,
+                          ]}
+                        >
+                          @
+                        </Text>
+                        {rpeNum}
+                      </>
+                    ) : null}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+        {drops.map((d, i) => {
+          const w = parseFloat(d.weight);
+          return (
+            <View key={`drop-${i}`} style={styles.setGroup}>
+              <Text style={styles.dropArrow}>→</Text>
+              <View style={styles.setPill}>
+                <Text style={styles.setPillText}>
+                  {w > 0 && d.reps ? `${toDisplay(w)}${weightLabel}×${d.reps}` : (d.reps || '·')}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
+  // Desviación vs la sesión anterior: texto suelto alineado a la derecha, SIN
+  // pill — mismo tratamiento que `sesDelta` en el detalle de ejercicio de
+  // Progreso. Las pills se reservan para los datos de serie y para el badge PR.
+  function deltaText(delta) {
     if (!delta) return null;
     const sign = (n) => (n > 0 ? '+' : '−');
     let txt, tone;
@@ -134,23 +258,15 @@ export default function SessionRecapScreen({ navigation, route }) {
       txt = `${sign(delta.diff)}${Math.abs(delta.diff)} ${t('recap.setsShort')}`;
       tone = delta.diff > 0 ? 'up' : 'dn';
     }
-    return (
-      <View style={[styles.chip, styles[`chip_${tone}`]]}>
-        <Text style={[styles.chipText, styles[`chipText_${tone}`]]}>{txt}</Text>
-      </View>
-    );
+    return <Text style={[styles.delta, styles[`delta_${tone}`]]}>{txt}</Text>;
   }
 
-  // Block delta chip — compareBlockResults returns a structured { better, kind, diff },
-  // NOT a pre-formatted string, so the i18n text is built here.
-  function blockDeltaChip(delta) {
+  // compareBlockResults devuelve { better, kind, diff } estructurado, NO una
+  // cadena ya formateada, así que el texto i18n se arma aquí.
+  function blockDeltaText(delta) {
     if (delta.kind === null) return null; // no previous entry with this blockId
     if (delta.kind === 'equal') {
-      return (
-        <View style={[styles.chip, styles.chip_eq]}>
-          <Text style={[styles.chipText, styles.chipText_eq]}>=</Text>
-        </View>
-      );
+      return <Text style={[styles.delta, styles.delta_eq]}>=</Text>;
     }
     const tone = delta.better ? 'up' : 'dn';
     let txt;
@@ -168,11 +284,7 @@ export default function SessionRecapScreen({ navigation, route }) {
         : t('blocks.delta.completedShort');
       txt = `${sign}${abs}${label ? ` ${label}` : ''}`;
     }
-    return (
-      <View style={[styles.chip, styles[`chip_${tone}`]]}>
-        <Text style={[styles.chipText, styles[`chipText_${tone}`]]}>{txt}</Text>
-      </View>
-    );
+    return <Text style={[styles.delta, styles[`delta_${tone}`]]}>{txt}</Text>;
   }
 
   const sessionNote = entry.notes?.trim();
@@ -180,8 +292,9 @@ export default function SessionRecapScreen({ navigation, route }) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xl }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
 
         {/* Header */}
@@ -193,36 +306,80 @@ export default function SessionRecapScreen({ navigation, route }) {
           {stageName ? <Text style={styles.contextLine}>{stageName}</Text> : null}
         </View>
 
-        {/* Hero stats */}
+        {/* Session RPE — how hard the whole session felt (CR-10). Saved on tap;
+            the per-set RPE rates one set, this rates the session. */}
+        <View style={styles.card}>
+          <Text style={styles.feedbackTitle}>{t('recap.rpeQuestion')}</Text>
+          <View style={styles.rpeScale}>
+            {RPE_VALUES.map((v) => (
+              <RpeButton
+                key={v}
+                value={v}
+                active={entry.sessionRpe === v}
+                onPress={() => setSessionFeedback(entry.id, { sessionRpe: v })}
+              />
+            ))}
+          </View>
+          <View style={styles.rpeLabels}>
+            <Text style={styles.rpeLabel}>{t('recap.rpeLow')}</Text>
+            <Text style={styles.rpeLabel}>{t('recap.rpeMid')}</Text>
+            <Text style={styles.rpeLabel}>{t('recap.rpeHigh')}</Text>
+          </View>
+        </View>
+
+        {/* Body weight — always editable, prefilled with the last known value. */}
+        <View style={[styles.card, styles.weightRow]}>
+          <Text style={styles.feedbackTitle}>{t('recap.bodyWeight')}</Text>
+          <View style={styles.weightInputWrap}>
+            <TextInput
+              style={styles.weightInput}
+              value={weightDraft}
+              onChangeText={setWeightDraft}
+              onEndEditing={saveBodyWeight}
+              onBlur={saveBodyWeight}
+              keyboardType="decimal-pad"
+              placeholder="—"
+              placeholderTextColor={th.colors.muted}
+              selectTextOnFocus
+              maxLength={6}
+            />
+            <Text style={styles.weightUnit}>{weightLabel}</Text>
+          </View>
+        </View>
+
+        {/* Hero stats — Progress card anatomy (surface, radius/lg, text/hero) */}
         <View style={styles.statsRow}>
           <View style={styles.statTile}>
-            <Text style={styles.statValue}>{fmtDuration(entry.duration)}</Text>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {fmtDuration(entry.duration)}
+            </Text>
             <Text style={styles.statLabel}>{t('recap.duration')}</Text>
           </View>
           <View style={styles.statTile}>
-            <Text style={styles.statValue}>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {stats.volume > 0 ? toDisplay(stats.volume) : '—'}
               {stats.volume > 0 ? <Text style={styles.statUnit}> {weightLabel}</Text> : null}
             </Text>
             <Text style={styles.statLabel}>{t('recap.volume')}</Text>
           </View>
           <View style={styles.statTile}>
-            <Text style={styles.statValue}>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {stats.setsDone}<Text style={styles.statUnit}>/{stats.setsPlanned}</Text>
             </Text>
             <Text style={styles.statLabel}>{t('recap.sets')}</Text>
           </View>
         </View>
 
-        {/* PRs — only when there are any */}
+        {/* PRs — only when there are any. Accent tint fill, no border: same
+            treatment as the "Resumen" cards of the editors. */}
         {prs.length > 0 && (
-          <View>
+          <View style={styles.section}>
             <Text style={[styles.secTitle, { color: th.colors.accent }]}>{t('recap.prs')}</Text>
-            <View style={[styles.card, styles.prCard]}>
-              {prs.map((pr, i) => (
-                <View key={pr.exerciseId} style={[styles.row, i === prs.length - 1 && styles.rowLast]}>
+            <View style={styles.prCard}>
+              {prs.map((pr) => (
+                <View key={pr.exerciseId} style={styles.prRow}>
                   <TrophyIcon color={th.colors.accent} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.rowBody}>
                     <Text style={styles.exName}>{exName(pr.exerciseId)}</Text>
                     <Text style={styles.exSub}>
                       {pr.kind === 'e1rm'
@@ -232,8 +389,8 @@ export default function SessionRecapScreen({ navigation, route }) {
                         : `${t('recap.bestSet')} · ${pr.value} reps`}
                     </Text>
                   </View>
-                  <View style={[styles.chip, styles.chip_up]}>
-                    <Text style={[styles.chipText, styles.chipText_up]}>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
                       {pr.kind === 'reps'
                         ? `+${pr.value - pr.prev} ${t('recap.repsShort')}`
                         : `+${fmt(round1(pr.value - pr.prev))}`}
@@ -247,15 +404,18 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* Conditioning blocks — only blocks that were actually started */}
         {entry.blocks?.length > 0 && (
-          <View>
+          <View style={styles.section}>
             <Text style={styles.secTitle}>{t('blocks.recapSection')}</Text>
-            <View style={styles.card}>
+            <View style={styles.groupedList}>
               {entry.blocks.map((block, i) => {
                 const prev  = prevBlockResult(entry, workoutLog, block.blockId);
                 const delta = compareBlockResults(block.format, block.result, prev);
                 return (
-                  <View key={block.blockId} style={[styles.row, i === entry.blocks.length - 1 && styles.rowLast]}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
+                  <View
+                    key={block.blockId}
+                    style={[styles.listItem, styles.listItemRow, getCardRadii(th, i === 0, i === entry.blocks.length - 1)]}
+                  >
+                    <View style={styles.rowBody}>
                       <View style={styles.blockNameRow}>
                         <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
                           <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
@@ -269,7 +429,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                         {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
                       </Text>
                     </View>
-                    {blockDeltaChip(delta)}
+                    {blockDeltaText(delta)}
                   </View>
                 );
               })}
@@ -279,21 +439,26 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* Vs. last session / exercise list */}
         {rows.length > 0 && (
-          <View>
+          <View style={styles.section}>
             <Text style={styles.secTitle}>
               {deltas ? t('recap.vsLast') : t('recap.exercises')}
             </Text>
-            <View style={styles.card}>
+            <View style={styles.groupedList}>
               {rows.map((row, i) => (
-                <View key={row.exerciseId} style={[styles.row, i === rows.length - 1 && styles.rowLast]}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.exName}>{exName(row.exerciseId)}</Text>
-                    <Text style={styles.exSub}>{setsLine(row.sets)}</Text>
-                    {row.note ? (
-                      <Text style={styles.exNote} numberOfLines={1}>“{row.note}”</Text>
-                    ) : null}
+                <View
+                  key={row.exerciseId}
+                  style={[styles.listItem, getCardRadii(th, i === 0, i === rows.length - 1)]}
+                >
+                  <View style={styles.itemHead}>
+                    <Text style={styles.exName} numberOfLines={1}>{exName(row.exerciseId)}</Text>
+                    {deltaText(row.delta)}
                   </View>
-                  {deltaChip(row.delta)}
+                  {row.sets.length > 0
+                    ? setPillsFor(row.sets, exCfgById[row.exerciseId])
+                    : <Text style={styles.exSub}>—</Text>}
+                  {row.note ? (
+                    <Text style={styles.exNote} numberOfLines={1}>“{row.note}”</Text>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -302,7 +467,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* Session note */}
         {sessionNote ? (
-          <View style={styles.noteCard}>
+          <View style={styles.card}>
             <Text style={styles.noteText}>“{sessionNote}”</Text>
           </View>
         ) : null}
@@ -323,150 +488,194 @@ export default function SessionRecapScreen({ navigation, route }) {
 
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
+  // Página: padding lateral space/lg y gap space/md, igual que History/Progress.
   scroll: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    gap:               spacing.md,
   },
 
-  headerBlock: { alignItems: 'center', gap: 3, paddingTop: spacing.sm },
-  completedTag: {
-    fontSize: typography.xs,
-    fontWeight: typography.heavy,
-    letterSpacing: 2,
-    color: th.colors.accent,
-  },
-  sessionName: {
-    fontSize: typography.xxl,
-    fontWeight: typography.heavy,
-    color: th.colors.text,
-  },
-  contextLine: { fontSize: typography.sm, color: th.colors.muted },
+  headerBlock: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
+  completedTag: { ...textStyles.spacingTag, color: th.colors.accent },
+  sessionName:  { ...textStyles.hero, color: th.colors.text, textAlign: 'center' },
+  contextLine:  { ...textStyles.subtitle, color: th.colors.mutedLight },
 
-  statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statTile: {
-    flex: 1,
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.borderCard,
-    borderRadius: th.radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: typography.xl,
-    fontWeight: typography.heavy,
-    color: th.colors.text,
-    fontVariant: ['tabular-nums'],
-  },
-  statUnit: { fontSize: typography.sm, fontWeight: typography.medium, color: th.colors.muted },
-  statLabel: {
-    fontSize: typography.xs - 1,
-    fontWeight: typography.bold,
-    letterSpacing: 0.8,
-    color: th.colors.muted,
-    textTransform: 'uppercase',
-  },
-
+  section: { gap: spacing.sm },
   secTitle: {
-    fontSize: typography.xs,
-    fontWeight: typography.bold,
-    color: th.colors.muted,
-    letterSpacing: 1,
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
     textTransform: 'uppercase',
-    marginBottom: spacing.sm,
   },
 
   card: {
     backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.borderCard,
-    borderRadius: th.radius.md,
+    borderRadius:    th.radius.lg,
+    padding:         spacing.lg,
+    gap:             spacing.md,
   },
-  prCard: {
-    borderColor: withOpacity(th.colors.accent, 0.35),
+
+  // ── Post-session feedback (sRPE + body weight) ──
+  feedbackTitle: { ...textStyles.cardType, color: th.colors.text },
+  rpeScale: { flexDirection: 'row', gap: spacing.xs2 },
+  rpeBtn: {
+    flex:            1,
+    paddingVertical: spacing.sm2,
+    borderRadius:    th.radius.sm,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + 2,
+  rpeBtnText: { ...textStyles.btnAction, fontVariant: ['tabular-nums'] },
+  rpeLabels: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    marginTop:      -spacing.sm, // el gap de la card ya separa; esto lo acerca a la escala
+  },
+  rpeLabel: {
+    ...textStyles.smallBold,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+  },
+
+  weightRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  weightInputWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  weightInput: {
+    minWidth:          70,
+    paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.borderCard,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.surface2,
+    textAlign:         'right',
+    ...textStyles.cardTitle,
+    color:             th.colors.accent,
+    fontVariant:       ['tabular-nums'],
   },
-  rowLast: { borderBottomWidth: 0 },
-  exName: { fontSize: typography.base, fontWeight: typography.semibold, color: th.colors.text },
-  exSub: {
-    fontSize: typography.xs,
-    color: th.colors.muted,
-    marginTop: 1,
-    fontVariant: ['tabular-nums'],
+  weightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+
+  // ── Hero stats (anatomía de las Progress cards) ──
+  statsRow: { flexDirection: 'row', gap: spacing.md },
+  statTile: {
+    flex:              1,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.lg,
+    borderRadius:      th.radius.lg,
+    alignItems:        'center',
+    justifyContent:    'center',
+    gap:               spacing.xs,
+    overflow:          'hidden',
   },
-  exNote: {
-    fontSize: typography.xs,
-    color: th.colors.muted2,
-    fontStyle: 'italic',
-    marginTop: 2,
+  statValue: { ...textStyles.hero, color: th.colors.text, textAlign: 'center' },
+  statUnit:  { ...textStyles.tag,  color: th.colors.mutedLight },
+  statLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.text,
+    textTransform: 'uppercase',
+    textAlign:     'center',
   },
 
-  blockNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  // ── PRs ──
+  prCard: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.lg,
+    padding:         spacing.md,
+    gap:             spacing.md,
+  },
+  prRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+
+  // ── Lista agrupada (bloques y ejercicios) ──
+  groupedList: { gap: spacing.xs },
+  listItem: {
+    backgroundColor: th.colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
+  },
+  listItemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+  itemHead: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.sm,
+    minWidth:       0,
+  },
+  rowBody:  { flex: 1, minWidth: 0, gap: spacing.xs },
+
+  exName: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+  exSub:  { ...textStyles.tag, color: th.colors.mutedLight },
+  exNote: { ...textStyles.tag, color: th.colors.muted, fontStyle: 'italic' },
+
+  // ── Pills de series (misma anatomía exacta que History) ──
+  setPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  setGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  weightPill:     { paddingLeft: spacing.sm, paddingVertical: spacing.sm },
+  weightPillText: { ...textStyles.tag },
+  weightPillNum:  { color: th.colors.accent },
+  weightPillUnit: { color: th.colors.text },
+  weightPillX:    { color: th.colors.mutedLight },
+  setPill: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.xs,
+    padding:         spacing.sm,
+  },
+  setPillDone:    { backgroundColor: th.tint.accent10 },
+  setPillPartial: { backgroundColor: th.tint.orange30 },
+  setPillText:        { ...textStyles.tag, color: th.colors.mutedLight },
+  setPillTextDone:    { color: th.colors.accent },
+  setPillTextPartial: { color: th.colors.orange },
+  setPillRpeAt:        { color: th.colors.mutedLight },
+  setPillRpeAtDone:    { color: th.tint.accent50 },
+  setPillRpeAtPartial: { color: th.tint.orange50 },
+  // Dropset: la flecha va DELANTE de la pill porque la sub-serie es una
+  // continuación de la anterior (al revés que las pills de calentamiento).
+  dropArrow: { fontSize: 14, color: th.colors.mutedLight },
+
+  // ── Bloques ──
+  blockNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   badge: {
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: 1,
-    borderRadius: th.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   1,
+    borderRadius:      th.radius.xs,
   },
-  badgeText: { fontSize: 9, fontWeight: typography.bold, letterSpacing: 0.5 },
-  badgeBlockAmrap:       { backgroundColor: withOpacity(th.colors.accent, 0.12) },
+  badgeText: { ...textStyles.smallBold },
+  badgeBlockAmrap:       { backgroundColor: th.tint.accent10 },
   badgeBlockAmrapText:   { color: th.colors.accent },
-  badgeBlockEmom:        { backgroundColor: withOpacity(th.colors.blue, 0.12) },
+  badgeBlockEmom:        { backgroundColor: th.tint.blue30 },
   badgeBlockEmomText:    { color: th.colors.blue },
-  badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
+  badgeBlockForTime:     { backgroundColor: th.tint.orange30 },
   badgeBlockForTimeText: { color: th.colors.orange },
-  blockScore: {
-    fontSize: typography.lg,
-    fontWeight: typography.heavy,
-    color: th.colors.text,
-    marginTop: 2,
-    fontVariant: ['tabular-nums'],
-  },
+  blockScore: { ...textStyles.cardTitle, color: th.colors.text, fontVariant: ['tabular-nums'] },
 
+  // ── Desviación vs sesión anterior: texto suelto a la derecha, sin pill.
+  // accent = propio/positivo (en este tema no se usa verde); red apagado para
+  // los retrocesos — decisión explícita del usuario para el recap.
+  delta:    { ...textStyles.cardType, fontVariant: ['tabular-nums'], flexShrink: 0 },
+  delta_up: { color: th.colors.accent },
+  delta_eq: { color: th.colors.mutedLight },
+  delta_dn: { color: th.tint.red50 },
+
+  // El badge de PR sí es pill (igual que `prPill` en el detalle de ejercicio).
   chip: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: th.radius.sm,
-    flexShrink: 0,
+    paddingVertical:   spacing.xs2,
+    borderRadius:      th.radius.xs,
+    flexShrink:        0,
+    backgroundColor:   th.tint.accent10,
   },
-  chipText: { fontSize: typography.xs, fontWeight: typography.bold, fontVariant: ['tabular-nums'] },
-  chip_up:     { backgroundColor: withOpacity(th.colors.green, 0.12) },
-  chipText_up: { color: th.colors.green },
-  chip_eq:     { backgroundColor: th.colors.surface2 },
-  chipText_eq: { color: th.colors.muted },
-  chip_dn:     { backgroundColor: withOpacity(th.colors.red, 0.12) },
-  chipText_dn: { color: th.colors.red },
+  chipText: { ...textStyles.tag, color: th.colors.accent, fontVariant: ['tabular-nums'] },
 
-  noteCard: {
-    flexDirection: 'row',
-    backgroundColor: th.colors.surface,
-    borderWidth: borders.thin,
-    borderColor: th.colors.borderCard,
-    borderRadius: th.radius.md,
-    padding: spacing.md,
-  },
-  noteText: { flex: 1, fontSize: typography.sm, color: th.colors.mutedLight, fontStyle: 'italic' },
+  noteText: { ...textStyles.subtitle, color: th.colors.mutedLight, fontStyle: 'italic' },
 
   doneBtn: {
     backgroundColor: th.colors.accent,
-    borderRadius: th.radius.md,
+    borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.xs,
+    alignItems:      'center',
+    marginTop:       spacing.sm,
   },
-  doneBtnText: {
-    fontSize: typography.md,
-    fontWeight: typography.heavy,
-    color: th.colors.onAccent,
-    letterSpacing: 0.5,
-  },
+  doneBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
 });

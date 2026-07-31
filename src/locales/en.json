@@ -1050,7 +1050,12 @@
     "topWeight": "Top weight",
     "repsShort": "rep",
     "setsShort": "set",
-    "done": "DONE"
+    "done": "DONE",
+    "rpeQuestion": "How hard was the session?",
+    "rpeLow": "Easy",
+    "rpeMid": "Hard",
+    "rpeHigh": "Maximal",
+    "bodyWeight": "Body weight"
   },
   "exerciseSelector": {
     "titleAdd": "Add exercises",

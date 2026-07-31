@@ -1050,7 +1050,12 @@
     "topWeight": "Peso máx",
     "repsShort": "rep",
     "setsShort": "serie",
-    "done": "HECHO"
+    "done": "HECHO",
+    "rpeQuestion": "¿Cómo de dura fue la sesión?",
+    "rpeLow": "Suave",
+    "rpeMid": "Dura",
+    "rpeHigh": "Máxima",
+    "bodyWeight": "Peso corporal"
   },
   "exerciseSelector": {
     "titleAdd": "Añadir ejercicios",

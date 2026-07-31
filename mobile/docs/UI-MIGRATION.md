@@ -28,6 +28,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Clientes (tarjeta, header, modal de filtros) | ✅ (tarjeta **rehecha**, ver desglose) | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
+| **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
@@ -189,6 +190,46 @@ Divergencias conscientes respecto al mock:
 | Naranja de aviso | El `orange` del tema (`#fb923c`), **no** el `#ff9900` del mock — decisión explícita del usuario: el naranja de aviso ya existe en la app y no se duplica |
 | Icono del CTA | Figma dibuja el icono de barras (Progreso) en un botón que es placeholder; nuestros CTA usan el prefijo `↑` / `+` que ya tenía la app |
 | CTA centrado | Figma lo ancla arriba dentro de un bloque de 40px; aquí el bloque crece cuando hay 2 avisos, así que va centrado contra el alto real |
+
+### Recap de sesión — desglose
+
+**No tiene nodo en Figma** (no aparece en la extracción de Pages). Por tanto NO se
+extrajo nada: hereda anatomías ya cerradas en otras pantallas, que es la única
+forma de restylear sin inventar. Si algún día el usuario dibuja el recap en Figma,
+esta pantalla se re-verifica contra ese nodo como cualquier otra.
+
+- **Página**: `paddingHorizontal: space/lg`, `gap: space/md` — igual que History/Progress.
+- **Cabecera**: tag `text/spacingTag` accent + nombre `text/hero` + etapa `text/subtitle`.
+- **3 cards de cabecera** (duración/volumen/series): anatomía EXACTA de las Progress
+  cards (`surface`, `radius/lg`, valor `text/hero`, label `text/spacingTag`), con
+  `adjustsFontSizeToFit` como allí. Sin la 3ª línea de subtítulo (aquí no hay delta).
+- **Series**: pasan de una cadena de texto (`setsLine()`) a las **pills compartidas**
+  de `src/utils/setDisplay.js` — las mismas de History y del detalle de ejercicio, con
+  su anatomía real (sin borde, `radius/xs`, padding `space/sm`, "@" en tint-50). El
+  `exConfig` que necesita `getPillVariant` sale del propio log: la entrada guarda
+  `minReps`/`maxReps` por ejercicio.
+  - **Dropset**: se conserva el encadenado con "→", ahora como pills neutras con la
+    flecha DELANTE (es continuación de la serie anterior — al revés que las pills de
+    calentamiento de `ExerciseCard`, donde la flecha va detrás).
+- **Lista de ejercicios y de bloques**: lista agrupada con `getCardRadii`, gap
+  `space/xs`, en vez de una card con divisores.
+- **PRs**: relleno `tint/accent-10` **sin borde** — mismo tratamiento que las tarjetas
+  "Resumen" de los editores. Antes tenía borde accent.
+- **Desviación vs sesión anterior**: **texto suelto alineado a la derecha, SIN pill** —
+  mismo tratamiento que `sesDelta` en el detalle de ejercicio de Progreso
+  (`textStyles.cardType` coloreado). Las pills quedan reservadas a los datos de serie y
+  al badge de PR, que allí también es pill. Aplicado igual a los deltas de bloque (misma
+  función en una lista contigua). Color: `accent` para mejora — en este tema no hay
+  verde semántico — y **rojo apagado** (`tint/red-50`) para retroceso, decisión
+  explícita del usuario para el recap ("motivación honesta"), aunque el detalle de
+  ejercicio use naranja. Son dos decisiones distintas para dos pantallas distintas.
+- **Escala de sRPE**: botones propios, **NO `SegmentedControl`**. Regla del usuario:
+  el segmented sirve para *alternar entre opciones/vistas existentes*, no para puntuar
+  en una escala. Aun así el cambio de estado no puede ser en seco (§4.10), así que cada
+  botón interpola su color de fondo y de texto con Reanimated (`interpolateColor`,
+  160 ms) — ver `RpeButton` en el propio fichero.
+- **Sin bordes en ninguna card** (§4.6) y `typography` genérica retirada por completo:
+  la pantalla usa sólo `textStyles`.
 
 ### Program Editor — desglose
 

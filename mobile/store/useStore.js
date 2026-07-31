@@ -2037,6 +2037,33 @@ export const useStore = create(
       deleteLogEntry: (logId) =>
         set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
 
+      /**
+       * Post-session feedback captured in the recap (the entry is already saved
+       * when that screen opens, so this patches it by id).
+       *
+       *   sessionRpe  0-10, how hard the WHOLE session felt (Foster's CR-10) —
+       *               a different construct from the per-set RPE, which rates a
+       *               single set. Feeds the session load (sRPE × minutes).
+       *   bodyWeight  kg. Also becomes profile.bodyWeight so the next recap can
+       *               prefill it, and so bodyweight exercises stop counting 0.
+       *
+       * Both are optional and patched independently — passing only one leaves
+       * the other untouched.
+       */
+      setSessionFeedback: (logId, { sessionRpe, bodyWeight } = {}) =>
+        set((state) => ({
+          workoutLog: state.workoutLog.map((e) => (
+            e.id !== logId ? e : {
+              ...e,
+              ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
+              ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
+            }
+          )),
+          ...(bodyWeight !== undefined && bodyWeight !== null
+            ? { profile: { ...state.profile, bodyWeight } }
+            : {}),
+        })),
+
       /** Deletes an entry from a client's separated history (trainer side). */
       deleteClientLogEntry: (clientId, logId) =>
         set((state) => ({
