@@ -29,7 +29,7 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import ProgressTab from '../components/stats/ProgressTab';
+import ProgressPanel from '../components/stats/ProgressPanel';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
@@ -2453,7 +2453,7 @@ export default function ClientsScreen() {
 
         {/* ── Tab: Progresión ── */}
         {activeTab === 'progress' && (
-          <ProgressTab
+          <ProgressPanel
             baseLog={clientBaseLog}
             programTemplateIds={activeClientTemplateIds}
             allExercises={allExercises}
@@ -5540,4 +5540,4 @@ const makeStyles = (th) => StyleSheet.create({
   },
   contextMenuText: { fontSize: typography.base, color: th.colors.text },
 });
-
+

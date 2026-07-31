@@ -1059,6 +1059,40 @@
     "sessionLoad": "Carga de la sesión",
     "vsMean7d": "vs media 7d"
   },
+  "load": {
+    "tabExercises": "Ejercicios",
+    "tabLoad": "Carga",
+    "load7d": "Carga 7d",
+    "vs28d": "vs 28d",
+    "monotony": "Monoton.",
+    "monotonyLow": "baja",
+    "monotonyModerate": "moderada",
+    "monotonyHigh": "alta",
+    "needsSessions": "pocas sesiones",
+    "strain": "Strain",
+    "vsBaseline": "vs tu base",
+    "trendTitle": "Tendencia de carga",
+    "perDay": "por día",
+    "legendDaily": "carga diaria",
+    "legend7d": "media 7d",
+    "legend28d": "media 28d",
+    "state": {
+      "loading": {
+        "title": "Estás acumulando carga.",
+        "detail": "La semana va un {{pct}}% por encima de tu media del mes."
+      },
+      "steady": {
+        "title": "Carga estable.",
+        "detail": "La semana está en línea con tu media del mes."
+      },
+      "unloading": {
+        "title": "Estás descargando.",
+        "detail": "La semana va un {{pct}}% por debajo de tu media del mes."
+      }
+    },
+    "emptyNoSessions": "Completa tu primera sesión para ver la carga aquí.",
+    "emptyNoRpe": "Aún no hay datos de esfuerzo. Al terminar una sesión, responde a «¿Cómo de dura fue?» en el resumen: la carga se calcula con ese valor y la duración."
+  },
   "exerciseSelector": {
     "titleAdd": "Añadir ejercicios",
     "titleReplace": "Sustituir ejercicio",

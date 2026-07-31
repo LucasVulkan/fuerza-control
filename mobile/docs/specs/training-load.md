@@ -239,10 +239,20 @@ se usan (Foster las definió sobre sRPE).
 de cliente → **el panel llega al lado entrenador gratis**, que es donde monotonía
 y strain son más accionables.
 
-Segmentado nuevo `EJERCICIOS | CARGA` como primera fila. `EJERCICIOS` = el
+Segmentado nuevo `EJERCICIOS | CARGA` como primera fila, en
+`mobile/src/components/stats/ProgressPanel.jsx` — un envoltorio fino que
+consumen **las dos** pantallas, para que no diverjan. `EJERCICIOS` = el
 `ProgressTab` actual **sin tocar** (1954 líneas ya migradas a Figma). `CARGA` =
 componente nuevo `mobile/src/components/stats/LoadTab.jsx`. No meter el panel
 dentro de `ProgressTab`.
+
+El conmutador va FUERA del scroll de cada pestaña: cada una trae su propia
+`ScrollView` con su padding de página.
+
+**Peso corporal de referencia**: `StatsScreen` pasa `profile.bodyWeight` (más al
+día que el log). `ClientsScreen` **no pasa nada** a propósito — el peso del
+entrenador no es el del cliente — y `LoadTab` lo deduce de la entrada más
+reciente del propio log del cliente.
 
 ### 5.2 Contenido de la vista Carga (aprobado por mockup, jul 2026)
 
@@ -267,9 +277,18 @@ dentro de `ProgressTab`.
 
 ### 5.3 Gráficos
 
-Extender el `MiniLineChart` de `ProgressTab.jsx` con un prop `series[]` (hoy pinta
-una sola). Ya resuelve eje, scroll, tooltip y animación. **No añadir
-`victory-native` ni `gifted-charts`** por tres polilíneas.
+**Corregido al implementar la fase 3.** La idea original era extender el
+`MiniLineChart` de `ProgressTab.jsx` con un prop `series[]`. No se puede: ese
+componente guarda las posiciones en un array **fijo de 80** `Animated.Value`
+(`Y_ANIM_COUNT = 80`) y la serie de carga es un punto por DÍA — 365+ en un año.
+Además la marca es distinta (barras diarias bajo dos líneas) y no necesita
+scroll ni tooltip, porque el zoom lo da el selector de período.
+
+`LoadTab.jsx` trae su propio `LoadChart`, ~60 líneas de `react-native-svg`. Los
+tramos sin dato (sesión sin sRPE) **parten la polilínea** en segmentos en vez de
+cruzarlos con una recta que inventaría carga inexistente.
+
+Sigue en pie lo importante: **no añadir `victory-native` ni `gifted-charts`**.
 
 ### 5.4 Transparencia de fórmulas — obligatoria
 
@@ -327,7 +346,7 @@ ligeramente los números de la card VOLUMEN en quien use dropsets.
 |---|---|---|
 | 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha (`0bda778`) |
 | 2 | `src/utils/trainingLoad.js` + 52 tests + unificación de tonelaje + línea de carga en el recap | ✅ hecha |
-| 3 | Segmentado `EJERCICIOS/CARGA` + `LoadTab` con cards, gráfico de tendencia y strip de estado | — |
+| 3 | Segmentado `EJERCICIOS/CARGA` (`ProgressPanel`) + `LoadTab` con cards, gráfico de tendencia y strip de estado | ✅ hecha |
 | 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento. **Esperar 4+ semanas de sRPE real** o es un gráfico vacío | — |
 | 5 | Series por grupo muscular | — |
 | 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | — |

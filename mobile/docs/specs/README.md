@@ -8,7 +8,7 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [training-load.md](training-load.md) — Carga de entrenamiento | fases 1 y 2 implementadas (captura en el recap + `src/utils/trainingLoad.js`); fases 3-6 listas para ejecutar | 🟡 | siguiente = fase 3 (vista Carga). La fase 4 necesita 4+ semanas de sRPE real antes de tener sentido |
+| [training-load.md](training-load.md) — Carga de entrenamiento | fases 1-3 implementadas (captura, `trainingLoad.js`, vista Carga); fases 4-6 listas | 🟡 | siguiente = fase 4 (esfuerzo vs carga + rendimiento), pero necesita 4+ semanas de sRPE real antes de tener sentido. `npm run seed` genera historial de prueba |
 | [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | sin empezar | 🟢 | transversal (métricas viejas y nuevas). La fase 1 (registro i18n + apartado en `DocsScreen`) cubre todas las métricas sin tocar ninguna pantalla de datos |
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); fase C EN PAUSA (4/~10-12 plantillas, ver §6.2) | 🔴 | contenido de plantillas (fase C) = Fable+usuario; onboarding "muy extenso", pendiente decidir si simplificar antes de seguir |
 

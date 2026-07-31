@@ -1059,6 +1059,40 @@
     "sessionLoad": "Session load",
     "vsMean7d": "vs 7d average"
   },
+  "load": {
+    "tabExercises": "Exercises",
+    "tabLoad": "Load",
+    "load7d": "Load 7d",
+    "vs28d": "vs 28d",
+    "monotony": "Monotony",
+    "monotonyLow": "low",
+    "monotonyModerate": "moderate",
+    "monotonyHigh": "high",
+    "needsSessions": "too few sessions",
+    "strain": "Strain",
+    "vsBaseline": "vs your baseline",
+    "trendTitle": "Load trend",
+    "perDay": "per day",
+    "legendDaily": "daily load",
+    "legend7d": "7d average",
+    "legend28d": "28d average",
+    "state": {
+      "loading": {
+        "title": "You're building load.",
+        "detail": "This week is {{pct}}% above your monthly average."
+      },
+      "steady": {
+        "title": "Load is steady.",
+        "detail": "This week is in line with your monthly average."
+      },
+      "unloading": {
+        "title": "You're deloading.",
+        "detail": "This week is {{pct}}% below your monthly average."
+      }
+    },
+    "emptyNoSessions": "Complete your first session to see load here.",
+    "emptyNoRpe": "No effort data yet. When you finish a session, answer “How hard was it?” in the recap: load is computed from that and the duration."
+  },
   "exerciseSelector": {
     "titleAdd": "Add exercises",
     "titleReplace": "Replace exercise",
