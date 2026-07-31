@@ -22,9 +22,9 @@ import {
   Modal, KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
-} from 'react-native-reanimated';
+import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { resolveProgressionConfig } from '../../../src/utils/progression';
@@ -35,6 +35,7 @@ import { spacing, typography, textStyles, borders, withOpacity } from '../theme'
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { SORTABLE_PROPS } from '../components/ui/sortable';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
@@ -56,12 +57,6 @@ const HEADER_EDIT_W = 16;
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
 const CARD_GAP = spacing.sm;
 const SS_GAP   = 2;
-// Fracción de hueco que hay que recorrer para saltar. Por encima de 0.5 deja una
-// banda muerta que evita que el orden vaya y venga con el temblor del dedo.
-const SWAP_AT = 0.65;
-// Duración del asentamiento al soltar y de la animación con la que los vecinos
-// ceden el hueco. Iguales a propósito: ver `handleDragEnd`.
-const SETTLE = { duration: 160, easing: Easing.inOut(Easing.ease) };
 
 // ─── Texto de las filas ───────────────────────────────────────────────────────
 
@@ -130,13 +125,12 @@ function defaultBlock() {
 // ─── Fila ─────────────────────────────────────────────────────────────────────
 // Deslizar a la derecha descubre sustituir/eliminar (se conserva del diseño
 // anterior: Figma no dibuja esas acciones en ningún sitio). El asa de arrastre
-// va a la derecha y reclama el gesto en `onStart`, así que se lleva los toques
-// que caen sobre ella antes de que el swipe o el ScrollView los vean.
+// va a la derecha y es un `Sortable.Handle`: el gesto de reordenar vive SOLO
+// ahí, así que no compite con este swipe horizontal ni con el ScrollView.
 
 function EditorRow({
   number, name, meta, pill, radii, onPress,
   isOpen, onOpenChange, onSwipeDelete, onSubstitute,
-  dragHandlers,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -228,9 +222,9 @@ function EditorRow({
             <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
           ) : null}
         </TouchableOpacity>
-        <View {...dragHandlers} style={styles.dragHandle}>
+        <Sortable.Handle style={styles.dragHandle}>
           <DragIcon color={th.colors.mutedLight} />
-        </View>
+        </Sortable.Handle>
       </Animated.View>
     </View>
   );
@@ -292,15 +286,11 @@ export default function SessionEditorScreen({ navigation, route }) {
   const [editingName, setEditingName]       = useState(false);
   const [nameValue, setNameValue]           = useState('');
 
-  // ── Estado del arrastre ───────────────────────────────────────────────────
-  // Mismo enfoque que en el editor de programa: durante el gesto la lista se
-  // pinta SIEMPRE en el orden del store y solo se mueven transforms, así que no
-  // hay reflow con el que competir. Aquí, además, los huecos tienen alturas
-  // distintas (una superserie ocupa el doble), así que se miden todos.
-  const [drag, setDrag]       = useState(null); // { id, kind, from, to } o null
-  const [heights, setHeights] = useState({});   // slotId → alto medido
-  const dragRef = useRef(null);
-  const dragY   = useSharedValue(0);
+  // Refs de los dos ScrollView que contienen una lista reordenable: el de la
+  // pantalla (huecos) y el del modal del editor de bloque (movimientos). Los
+  // necesitan para hacer autoscroll al arrastrar cerca del borde.
+  const scrollRef      = useAnimatedRef();
+  const blockScrollRef = useAnimatedRef();
 
   function switchSession(id) {
     if (id === templateId) return;
@@ -344,87 +334,17 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // ── Arrastre ──────────────────────────────────────────────────────────────
   // Cualquier hueco puede ir a cualquier posición: ejercicios y bloques se
-  // mezclan libremente y ese orden es el que se entrena.
-  const slotH = (i) => (heights[slots[i]?.id] ?? 0) + CARD_GAP;
-
-  // Distancia que hay que recorrer para que el hueco `from` acabe en el `k`.
-  function offsetFor(from, k) {
-    let s = 0;
-    if (k > from) for (let i = from + 1; i <= k; i += 1) s += slotH(i);
-    else          for (let i = k; i <= from - 1; i += 1) s -= slotH(i);
-    return s;
-  }
-
-  // Cuánto se aparta el hueco `idx` para dejar sitio al que se arrastra.
-  function shiftFor(idx) {
-    if (!drag || idx === drag.from) return 0;
-    const h = slotH(drag.from);
-    if (drag.to > drag.from && idx > drag.from && idx <= drag.to) return -h;
-    if (drag.to < drag.from && idx >= drag.to   && idx <  drag.from) return  h;
-    return 0;
-  }
-
-  function handleDragStart(slot) {
-    // `drag` sin `dragRef` = soltada y asentándose; no admitir otro gesto hasta
-    // que termine, o se escribiría el orden dos veces.
-    if (drag && !dragRef.current) return;
-    const from = slots.findIndex((s) => s.id === slot.id);
-    if (from < 0) return;
-    dragY.value     = 0;
-    dragRef.current = { id: slot.id, kind: slot.kind, from, to: from };
-    setDrag(dragRef.current);
+  // mezclan libremente y ese orden es el que se entrena. Los huecos tienen
+  // alturas distintas (una superserie ocupa el doble) — `Sortable.Grid` las mide
+  // sola, así que aquí no hay que llevar ninguna geometría.
+  function handleReorder({ data, key, fromIndex, toIndex }) {
     setOpenRowId(null);
-  }
-
-  function handleDragMove(slot, dy) {
-    const state = dragRef.current;
-    if (state?.id !== slot.id) return;
-    dragY.value = dy;
-
-    const hi = slots.length - 1;
-    let to = state.to;
-    // Avanza de hueco en hueco: cada salto cuesta el alto del vecino, y se
-    // confirma al SWAP_AT de ese tramo (banda muerta contra el rebote).
-    while (to < hi && dy > offsetFor(state.from, to) + slotH(to + 1) * SWAP_AT) to += 1;
-    while (to > 0  && dy < offsetFor(state.from, to) - slotH(to - 1) * SWAP_AT) to -= 1;
-    if (to === state.to) return;
-
-    dragRef.current = { ...state, to };
-    setDrag(dragRef.current);
-  }
-
-  // Al soltar NO se escribe el orden todavía: primero la tarjeta se asienta con
-  // una animación hasta la posición exacta de su hueco destino. Cuando termina,
-  // el transform vale justo lo que la separa de su sitio nuevo y los vecinos ya
-  // están en el suyo, así que cambiar el orden y poner los transforms a cero es
-  // un cambio de CERO píxeles — da igual que React y Reanimated no confirmen en
-  // el mismo frame. Escribiendo el orden en el momento de soltar sí se notaba:
-  // durante un frame la lista estaba ya recolocada pero con los transforms
-  // viejos encima, y las tarjetas aparecían en sitios raros.
-  function handleDragEnd(slot) {
-    const state = dragRef.current;
-    if (state?.id !== slot.id) return;
-    dragRef.current = null;
-    const target = offsetFor(state.from, state.to);
-    dragY.value = withTiming(target, SETTLE, (done) => {
-      'worklet';
-      if (done) runOnJS(commitDrag)(state);
-    });
-  }
-
-  function commitDrag(state) {
-    setDrag(null);
-    dragY.value = 0;
-    if (state.to === state.from) return;
-
-    const next = [...slots];
-    next.splice(state.from, 1);
-    next.splice(state.to, 0, slots[state.from]);
+    if (fromIndex === toIndex) return;
 
     // Mover un hueco puede cambiar a la vez el orden de los ejercicios y la
     // posición de los bloques, así que se escriben los dos arrays.
-    const { exercises, blocks } = slotsToArrays(next);
-    if (exercises.length > 0) reorderExercise(templateId, state.id, 'custom', exercises);
+    const { exercises, blocks } = slotsToArrays(data);
+    if (exercises.length > 0) reorderExercise(templateId, key, 'custom', exercises);
     if (blocks.length > 0)    reorderBlocks(templateId, blocks);
   }
 
@@ -585,11 +505,11 @@ export default function SessionEditorScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <Reanimated.ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
-        scrollEnabled={!drag}
       >
         {/* ── Segmented de sesiones hermanas (210:2624) ── */}
         {sessionIds.length > 1 && (
@@ -616,22 +536,17 @@ export default function SessionEditorScreen({ navigation, route }) {
           <Text style={styles.secTitle}>
             {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
           </Text>
-          <View style={{ gap: CARD_GAP }}>
-            {slots.map((slot, idx) => (
+          <Sortable.Grid
+            {...SORTABLE_PROPS}
+            data={slots}
+            keyExtractor={(slot) => slot.id}
+            rowGap={CARD_GAP}
+            scrollableRef={scrollRef}
+            onDragEnd={handleReorder}
+            renderItem={({ item: slot, index }) => (
               <Slot
-                key={slot.id}
                 slot={slot}
-                number={idx + 1}
-                isDragging={drag?.id === slot.id}
-                dragY={dragY}
-                shift={shiftFor(idx)}
-                animateShift={!!drag}
-                onMeasure={(h) => {
-                  if (heights[slot.id] !== h) setHeights((prev) => ({ ...prev, [slot.id]: h }));
-                }}
-                onDragStart={() => handleDragStart(slot)}
-                onDragMove={(dy) => handleDragMove(slot, dy)}
-                onDragEnd={()  => handleDragEnd(slot)}
+                number={index + 1}
                 openRowId={openRowId}
                 setOpenRowId={setOpenRowId}
                 metaFor={metaFor}
@@ -645,8 +560,8 @@ export default function SessionEditorScreen({ navigation, route }) {
                   templateId, currentExerciseId: exerciseId, existingPatterns: [],
                 })}
               />
-            ))}
-          </View>
+            )}
+          />
         </View>
 
         {/* ── Añadir (210:2784) ── */}
@@ -655,7 +570,7 @@ export default function SessionEditorScreen({ navigation, route }) {
             <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* ── Hoja de "añadir" — el Alert nativo de Android no se puede estilar ── */}
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
@@ -803,6 +718,11 @@ export default function SessionEditorScreen({ navigation, route }) {
           presentationStyle="pageSheet"
           onRequestClose={() => setEditingBlockId(null)}
         >
+          {/* Un `Modal` de RN monta su contenido en OTRA jerarquía nativa, fuera
+              del `GestureHandlerRootView` de `App.js`: sin uno propio aquí, los
+              gestos de gesture-handler no llegan y el asa de arrastre de los
+              movimientos no responde. */}
+          <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
             {/* Misma cabecera que el editor de ejercicio (190:1662): barra accent
                 con el nombre del bloque y desplegable de los bloques de la
@@ -859,7 +779,11 @@ export default function SessionEditorScreen({ navigation, route }) {
               style={{ flex: 1 }}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Reanimated.ScrollView
+                ref={blockScrollRef}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
                 {/* Mismo motivo que en el editor de ejercicio: saltar a otro
                     bloque desde el desplegable lo remonta. */}
                 <BlockEditorInline
@@ -869,10 +793,12 @@ export default function SessionEditorScreen({ navigation, route }) {
                   allExercises={allExercises}
                   onClose={() => setEditingBlockId(null)}
                   navigation={navigation}
+                  scrollableRef={blockScrollRef}
                 />
-              </ScrollView>
+              </Reanimated.ScrollView>
             </KeyboardAvoidingView>
           </SafeAreaView>
+          </GestureHandlerRootView>
         </Modal>
       )}
 
@@ -925,41 +851,11 @@ export default function SessionEditorScreen({ navigation, route }) {
 // hueco ENTERO: una superserie se mueve como una pieza.
 
 function Slot({
-  slot, number, isDragging, dragY, shift, animateShift, onMeasure,
-  onDragStart, onDragMove, onDragEnd,
+  slot, number,
   openRowId, setOpenRowId, metaFor, allExercises, t,
   onOpenExercise, onOpenBlock, onRemoveExercise, onRemoveBlock, onSubstitute,
 }) {
   const styles = useThemedStyles(makeStyles);
-
-  const cbs = useRef({ onDragStart, onDragMove, onDragEnd });
-  useEffect(() => { cbs.current = { onDragStart, onDragMove, onDragEnd }; });
-
-  /* eslint-disable-next-line react-hooks/refs */
-  const [pan] = useState(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant:     ()      => cbs.current.onDragStart(),
-    onPanResponderMove:      (_, gs) => cbs.current.onDragMove(gs.dy),
-    onPanResponderRelease:   ()      => cbs.current.onDragEnd(),
-    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
-  }));
-
-  // Fuera del gesto, el desplazamiento se lee del prop DIRECTAMENTE, no del
-  // shared value: al soltar, el store trae ya el orden nuevo y `shift` vale 0 en
-  // ese mismo commit. Pasando por el efecto, el 0 llegaba un frame tarde y
-  // durante ese frame las tarjetas se pintaban ya recolocadas pero todavía con
-  // el transform viejo encima — el parpadeo de "sitios raros" al terminar.
-  const shiftSv = useSharedValue(0);
-  useEffect(() => {
-    if (!animateShift) return;
-    shiftSv.value = withTiming(shift, SETTLE);
-  }, [shift, animateShift, shiftSv]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
-    }],
-  }), [isDragging, animateShift, shift]);
 
   const pad = String(number).padStart(2, '0');
 
@@ -990,14 +886,7 @@ function Slot({
   const isGroup = rows.length > 1;
 
   return (
-    <Reanimated.View
-      onLayout={(e) => onMeasure(Math.round(e.nativeEvent.layout.height))}
-      style={[
-        isGroup && styles.ssGroup,
-        isDragging && { zIndex: 2, elevation: 4 },
-        animStyle,
-      ]}
-    >
+    <View style={isGroup ? styles.ssGroup : null}>
       {rows.map((row, i) => (
         <EditorRow
           key={row.key}
@@ -1011,10 +900,9 @@ function Slot({
           onOpenChange={(open) => setOpenRowId(open ? row.key : null)}
           onSwipeDelete={row.onDelete}
           onSubstitute={row.onSubstitute}
-          dragHandlers={pan.panHandlers}
         />
       ))}
-    </Reanimated.View>
+    </View>
   );
 }
 

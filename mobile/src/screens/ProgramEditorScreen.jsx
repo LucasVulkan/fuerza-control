@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Keyboard, PanResponder,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, Alert, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
-} from 'react-native-reanimated';
+import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
+import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { spacing, textStyles, withOpacity } from '../theme';
@@ -17,6 +16,7 @@ import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
+import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked } from '../../../src/utils/stageLocks';
 import { clientStageIndex } from '../../../src/utils/stageProgress';
 
@@ -24,86 +24,28 @@ import { clientStageIndex } from '../../../src/utils/stageProgress';
 const HEADER_H = 64;
 // Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
 const HEADER_EDIT_W = 16;
-// Gap entre tarjetas de sesión (space/sm) — se suma al alto de fila medido para
-// obtener el paso del drag.
+// Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
+// `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
-// Fracción de fila que hay que recorrer para saltar de hueco al reordenar. Por
-// encima de 0.5 deja una banda muerta de 2·(SWAP_AT−0.5) que evita el rebote.
-const SWAP_AT = 0.65;
-// Asentamiento al soltar y animación con la que los vecinos ceden el hueco.
-// Iguales a propósito: ver `handleDragEnd`.
-const SETTLE = { duration: 160, easing: Easing.inOut(Easing.ease) };
 
 // ─── Tarjeta de sesión ────────────────────────────────────────────────────────
 // Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
 // pedidos: el eyebrow "SESIÓN A" se sustituye por la letra delante del nombre, y
-// se antepone un asa de arrastre. El asa reclama el gesto en `onStart` (igual
-// que las filas del editor de sesión) — si esperase al movimiento, el ScrollView
-// se lo llevaría antes.
+// se antepone un asa de arrastre.
+//
+// El reordenado lo lleva `react-native-sortables` (ver la lista más abajo): el
+// asa solo tiene que envolverse en `Sortable.Handle`.
 
-function SessionCard({
-  label, name, meta, isDragging, dragY, shift, animateShift, onPress,
-  onDragStart, onDragMove, onDragEnd, onMeasure,
-}) {
+function SessionCard({ label, name, meta, onPress }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const cbs = useRef({ onDragStart, onDragMove, onDragEnd });
-  useEffect(() => { cbs.current = { onDragStart, onDragMove, onDragEnd }; });
-
-  // Las tarjetas que ceden el hueco se apartan una fila con `withTiming`;
-  // cuando el gesto termina (`animateShift` false) el desplazamiento vuelve a 0
-  // de golpe, en el mismo commit en que el store ya trae el orden nuevo — así no
-  // se ve deshacer la animación.
-  // Fuera del gesto, el desplazamiento se lee del prop DIRECTAMENTE, no del
-  // shared value: al soltar, el store trae ya el orden nuevo y `shift` vale 0 en
-  // ese mismo commit. Pasando por el efecto, el 0 llegaba un frame tarde y
-  // durante ese frame las tarjetas se pintaban ya recolocadas pero todavía con
-  // el transform viejo encima — el parpadeo de "sitios raros" al terminar.
-  const shiftSv = useSharedValue(0);
-  useEffect(() => {
-    if (!animateShift) return;
-    shiftSv.value = withTiming(shift, SETTLE);
-  }, [shift, animateShift, shiftSv]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
-    }],
-  }), [isDragging, animateShift, shift]);
-
-  // El PanResponder tiene que ser UNA sola instancia por tarjeta: su
-  // `gestureState` (el dy acumulado) vive dentro y se reinicia en cada `create`,
-  // así que recrearlo a media pulsación perdería el arrastre. Inicializador
-  // perezoso de useState en vez de useRef: misma estabilidad sin leer `.current`
-  // durante el render.
-  // Los `cbs.current` de dentro solo se evalúan al recibir el gesto, nunca en
-  // render; la regla de purezas no puede verlo desde el inicializador.
-  /* eslint-disable-next-line react-hooks/refs */
-  const [pan] = useState(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant:   ()        => cbs.current.onDragStart(),
-    onPanResponderMove:    (_, gs)   => cbs.current.onDragMove(gs.dy),
-    onPanResponderRelease: ()        => cbs.current.onDragEnd(),
-    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
-  }));
-
   return (
-    <Reanimated.View
-      onLayout={onMeasure}
-      style={[
-        styles.sesCard,
-        isDragging && styles.sesCardDragging,
-        // `elevation` además de `zIndex`: en Android sin ella la tarjeta
-        // levantada pasa por debajo de sus hermanas.
-        isDragging && { zIndex: 2, elevation: 4 },
-        animStyle,
-      ]}
-    >
-      <View {...pan.panHandlers} style={styles.dragHandle}>
+    <View style={styles.sesCard}>
+      <Sortable.Handle style={styles.dragHandle}>
         <DragIcon color={th.colors.mutedLight} />
-      </View>
-      <TouchableOpacity style={styles.sesBody} onPress={onPress} activeOpacity={0.7} disabled={isDragging}>
+      </Sortable.Handle>
+      <TouchableOpacity style={styles.sesBody} onPress={onPress} activeOpacity={0.7}>
         {/* La letra acompaña al bloque entero (nombre + meta), centrada contra
             él — no es un prefijo del nombre. */}
         <Text style={styles.sesLetter}>{label}</Text>
@@ -113,7 +55,7 @@ function SessionCard({
         </View>
         <ArrowIcon size={18} color={th.colors.accent} />
       </TouchableOpacity>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -163,31 +105,8 @@ export default function ProgramEditorScreen({ navigation }) {
   const selectedStage = hasStages ? (activeProgram?.stages?.[selectedStageIdx] ?? null) : null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
 
-  // ── Reordenar sesiones con drag ───────────────────────────────────────────
-  // Reanimated no trae un primitivo de reordenar y las librerías que lo hacen
-  // (draggable-flatlist y compañía) son una dependencia más y van por detrás de
-  // Reanimated 4, así que va a mano — pero SIN tocar el orden pintado.
-  //
-  // Durante el gesto la lista se renderiza siempre en el orden del store: la
-  // arrastrada sigue al dedo y las demás se apartan una fila con un transform.
-  // Cero cambios de layout mientras se arrastra, que es lo que provocaba que las
-  // tarjetas se solaparan, desaparecieran o dejaran huecos: las layout
-  // animations competían con el reflow de la lista. El orden real solo se
-  // escribe una vez, al soltar.
-  const [drag, setDrag] = useState(null); // { id, from, to } o null
-  const [rowH, setRowH] = useState(0);
-  const dragRef = useRef(null);
-  const dragY   = useSharedValue(0);
-
-  const pitch = rowH + CARD_GAP;
-
-  // Cuánto tiene que apartarse la tarjeta que ocupa `idx` en el orden del store.
-  function shiftFor(idx) {
-    if (!drag || pitch <= 0 || idx === drag.from) return 0;
-    if (drag.to > drag.from && idx > drag.from && idx <= drag.to) return -pitch;
-    if (drag.to < drag.from && idx >= drag.to   && idx <  drag.from) return  pitch;
-    return 0;
-  }
+  // Ref del ScrollView para el autoscroll de la lista reordenable.
+  const scrollRef = useAnimatedRef();
 
   useEffect(() => {
     beginEditSession();
@@ -287,63 +206,20 @@ export default function ProgramEditorScreen({ navigation }) {
       });
 
   // ── Drag de sesiones ──────────────────────────────────────────────────────
+  // Lo lleva `Sortable.Grid` (react-native-sortables): el orden pintado no
+  // cambia durante el gesto, cada tarjeta se posiciona con un transform que vive
+  // en el hilo de UI, y al soltar la librería reordena ahí mismo. El orden del
+  // store solo se escribe en `onDragEnd`, cuando las posiciones ya coinciden.
+  const sortableSessions = editorDays
+    .map(({ sessionTemplateId: id }) => ({ id, template: userPrograms[id] ?? sessionTemplates[id] }))
+    .filter((s) => s.template);
 
-  function handleDragStart(templateId) {
-    // `drag` sin `dragRef` = soltada y asentándose; no admitir otro gesto hasta
-    // que termine, o se escribiría el orden dos veces.
-    if (drag && !dragRef.current) return;
-    const from = editorDays.findIndex((d) => d.sessionTemplateId === templateId);
-    if (from < 0) return;
-    dragY.value     = 0;
-    dragRef.current = { id: templateId, from, to: from };
-    setDrag(dragRef.current);
-  }
-
-  function handleDragMove(templateId, dy) {
-    const state = dragRef.current;
-    if (state?.id !== templateId) return;
-    dragY.value = dy;
-    if (pitch <= 0) return;
-
-    // Banda muerta: hay que pasar de SWAP_AT para ceder el hueco, y volver a
-    // pasarlo en sentido contrario para deshacerlo. Con el 0.5 implícito de un
-    // `round`, el temblor del dedo justo en la frontera hacía ir y venir el
-    // orden — ése era el flickering al arrastrar despacio.
-    let to     = state.to;
-    let offset = dy - (to - state.from) * pitch;
-    while (offset >  pitch * SWAP_AT && to < editorDays.length - 1) { to += 1; offset -= pitch; }
-    while (offset < -pitch * SWAP_AT && to > 0)                     { to -= 1; offset += pitch; }
-    if (to === state.to) return;
-
-    dragRef.current = { ...state, to };
-    setDrag(dragRef.current);
-  }
-
-  // Al soltar NO se escribe el orden todavía: primero la tarjeta se asienta con
-  // una animación hasta la posición exacta de su hueco destino. Cuando termina,
-  // el transform vale justo lo que la separa de su sitio nuevo y los vecinos ya
-  // están en el suyo, así que cambiar el orden y poner los transforms a cero es
-  // un cambio de CERO píxeles — da igual que React y Reanimated no confirmen en
-  // el mismo frame. Escribiendo el orden al soltar sí se notaba: durante un
-  // frame la lista estaba ya recolocada pero con los transforms viejos encima.
-  function handleDragEnd(templateId) {
-    const state = dragRef.current;
-    if (state?.id !== templateId) return;
-    dragRef.current = null;
-    dragY.value = withTiming((state.to - state.from) * pitch, SETTLE, (done) => {
-      'worklet';
-      if (done) runOnJS(commitDrag)(state);
-    });
-  }
-
-  function commitDrag(state) {
-    setDrag(null);
-    dragY.value = 0;
-    if (state.to === state.from) return;
-    const order = editorDays.map((d) => d.sessionTemplateId);
-    order.splice(state.from, 1);
-    order.splice(state.to, 0, state.id);
-    reorderSessionsInStage(editingId, hasStages ? selectedStageIdx : null, order);
+  function handleReorder({ data }) {
+    reorderSessionsInStage(
+      editingId,
+      hasStages ? selectedStageIdx : null,
+      data.map((s) => s.id),
+    );
   }
 
   function commitName() {
@@ -480,11 +356,11 @@ export default function ProgramEditorScreen({ navigation }) {
       </View>
 
       {/* Scrollable content */}
-      <ScrollView
+      <Reanimated.ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
-        scrollEnabled={!drag}
       >
         {/* ── Resumen (Exercice editor elements / Resumen) ── */}
         <View style={styles.summaryCard}>
@@ -531,43 +407,31 @@ export default function ProgramEditorScreen({ navigation }) {
               : t('editor.sectionSessions')).toUpperCase()}
           </Text>
 
-          {/* La lista se pinta SIEMPRE en el orden del store; durante el gesto
-              solo se mueven transforms. */}
-          <View style={{ gap: CARD_GAP }}>
-            {editorDays.map(({ sessionTemplateId }, idx) => {
-              const template = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
-              if (!template) return null;
+          <Sortable.Grid
+            {...SORTABLE_PROPS}
+            data={sortableSessions}
+            keyExtractor={(s) => s.id}
+            rowGap={CARD_GAP}
+            scrollableRef={scrollRef}
+            onDragEnd={handleReorder}
+            renderItem={({ item: { id, template } }) => {
               const stats = sessionStats(template, allExercises);
               return (
                 <SessionCard
-                  key={sessionTemplateId}
                   label={template.label ?? ''}
                   name={template.name ?? ''}
                   meta={stats.minutes > 0
                     ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
                     : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-                  isDragging={drag?.id === sessionTemplateId}
-                  dragY={dragY}
-                  shift={shiftFor(idx)}
-                  animateShift={!!drag}
-                  onMeasure={idx === 0
-                    ? (e) => {
-                        const h = Math.round(e.nativeEvent.layout.height);
-                        if (h !== rowH) setRowH(h);
-                      }
-                    : undefined}
                   onPress={() => navigation.navigate('SessionEditor', {
-                    templateId: sessionTemplateId,
+                    templateId: id,
                     programId:  editingId,
                     stageIdx:   hasStages ? selectedStageIdx : null,
                   })}
-                  onDragStart={() => handleDragStart(sessionTemplateId)}
-                  onDragMove={(dy) => handleDragMove(sessionTemplateId, dy)}
-                  onDragEnd={()  => handleDragEnd(sessionTemplateId)}
                 />
               );
-            })}
-          </View>
+            }}
+          />
 
           <TouchableOpacity
             style={styles.addSessionBtn}
@@ -590,7 +454,7 @@ export default function ProgramEditorScreen({ navigation }) {
           <Text style={styles.saveBtnText}>{t('editor.saveProgram')}</Text>
         </TouchableOpacity>
 
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* ── Menú "···" del header ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.menuTitle')}>
@@ -821,7 +685,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:     spacing.lg,
     paddingVertical:  spacing.md,
   },
-  sesCardDragging: { backgroundColor: th.colors.surface2 },
   dragHandle: {
     width:          26,
     alignSelf:      'stretch',

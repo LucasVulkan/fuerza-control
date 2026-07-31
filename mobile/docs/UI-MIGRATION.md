@@ -297,14 +297,22 @@ time"** — se compone por analogía. Comparte cabecera con el editor de ejercic
   arranca ya en modo Custom.
 - **For time**: rondas en fila ± y el tope como segmentado `Sin tope / Con tope`
   (no un switch), coherente con que en Figma los modos son segmentados.
-- **Fila de movimiento**: nombre + campo + **selector de unidad** + campo de peso
-  + `Kg` + asa de arrastre. El "reps" del mock ES el selector que ya existía: se
-  mantiene pulsable (cicla reps/cal/m/seg), en `color/accent` para que se lea
-  como control y con nombres de 3 letras (`s` → `seg`/`sec`). Eliminar pasa al
-  swipe para dejarle el sitio al asa, con el mismo botón `tint/red-30` de la
-  lista del editor de sesión. Reordenar movimientos es **funcionalidad nueva**,
-  con el mismo patrón de arrastre de los otros editores (aquí las filas miden
-  todas 42, así que el paso es una constante y no hay que medir nada).
+- **Tarjeta de movimiento — se APARTA del mock, a dos líneas.** Figma la dibuja como
+  fila compacta (nombre + campo + unidad + peso + `Kg` + asa, todo en una línea de 42),
+  pero ahí el nombre competía con dos inputs, el selector y el asa, y se truncaba casi
+  siempre. Ahora el cuerpo va a dos líneas — **nombre a `text/cardType`, hasta 2
+  líneas**, y debajo los controles (cantidad + selector de unidad, y el peso + `Kg`
+  a `space/lg` de ellos: junto, pero con aire que separa los dos pares) — y el asa
+  es HERMANA del cuerpo, centrada contra el alto entero de la tarjeta, no contra la
+  línea del nombre. Y deja de ser lista agrupada: **cada movimiento es una
+  tarjeta suelta** con `radius/sm` completo y `space/sm` entre ellas — con dos líneas
+  por movimiento los radios interiores de 2 px ya no agrupaban nada.
+  El "reps" del mock ES el selector que ya existía: pulsable (cicla reps/cal/m/seg),
+  en `color/accent` y con nombres de 3 letras (`s` → `seg`/`sec`); ahora con caja
+  `tint/accent-10` para que se lea como control junto a su campo. Eliminar sigue en
+  el swipe, con el mismo botón `tint/red-30` de la lista del editor de sesión.
+  Reordenar movimientos es **funcionalidad nueva**, con el mismo `Sortable.Grid` que
+  los otros dos editores (ver §"Reordenar").
 - **Unidad por defecto de un movimiento nuevo**: sale del ejercicio — los que
   tienen `progressionModel: 'time_progression'` entran en segundos, el resto en
   reps. Antes siempre entraban en reps.
@@ -543,27 +551,47 @@ es nuevo para el del entrenador. `RecoveryScreen`/`CodeStatusScreen`/
 y pasan a ser bloques del mismo `DragSheet` (el estado del código de recuperación
 sube al modal), así que el estado del flujo vive en un solo sitio.
 
-### ⚠️ Reordenar: por qué el orden se escribe DESPUÉS de la animación
+### ⚠️ Reordenar: lo lleva `react-native-sortables`, NO lo montes a mano
 
-Costó tres intentos. El patrón definitivo, en los dos editores:
+Las tres listas reordenables del editor (sesiones del programa, huecos de la sesión,
+movimientos del bloque) usan **`Sortable.Grid` con `columns={1}`**. Los ajustes comunes
+viven en `src/components/ui/sortable.js` (`SORTABLE_PROPS`); el `onDragEnd` de cada
+pantalla recibe `{ data, key, fromIndex, toIndex }` y escribe el orden en el store.
 
-1. Durante el gesto **no se toca el orden pintado**. La lista se renderiza siempre como
-   está en el store; la arrastrada sigue al dedo (`dragY`) y las demás se apartan un
-   hueco con un transform. Reordenar la lista en caliente hacía que las layout animations
-   compitieran con el reflow y las tarjetas se solaparan o desaparecieran.
-2. El salto de hueco lleva **banda muerta** (`SWAP_AT = 0.65`): con el 0.5 implícito de
-   un `round`, el temblor del dedo en la frontera hacía ir y venir el orden.
-3. Al soltar, la tarjeta **se asienta con `withTiming` hasta la posición exacta de su
-   hueco destino** y solo entonces, en el callback, se escribe el orden y se ponen los
-   transforms a cero. En ese instante el transform vale justo lo que la separa de su
-   sitio nuevo y los vecinos ya están en el suyo, así que el cambio es de CERO píxeles:
-   da igual que React y Reanimated no confirmen en el mismo frame. Escribiendo el orden
-   en el momento de soltar (aunque el transform se leyera del prop y no de un efecto) se
-   veía un frame con la lista ya recolocada pero los transforms viejos encima, y las
-   tarjetas aparecían en sitios raros.
+**Se montó a mano tres veces y las tres tuvo el mismo bug**: al soltar, durante uno o
+varios frames algunas tarjetas aparecían en posiciones aleatorias, a veces fuera de la
+lista. La causa es estructural, no un ajuste: la posición final estaba repartida entre
+dos pipelines que nadie sincroniza — el *layout* (orden de hijos, commit de React →
+shadow tree) y el *transform* (Reanimated, directo en el hilo de UI). `commitDrag`
+disparaba los dos a la vez y ganaba el que ganaba: o el transform volvía a cero con la
+lista aún en el orden viejo, o la lista se recolocaba con los offsets viejos encima
+(cientos de px en un movimiento largo). El truco de "asentar primero y escribir después"
+reducía el caso estable pero no podía eliminar la carrera. Aparte, `shiftSv` no se
+reseteaba al soltar, así que el arrastre siguiente arrancaba desde el valor rancio y las
+vecinas se deslizaban una fila entera durante 160 ms.
 
-Mientras dura el asentamiento, `drag` sigue puesto pero `dragRef` ya es null — eso es lo
-que distingue "arrastrando" de "asentándose" y bloquea empezar otro gesto encima.
+La librería no tiene ese problema porque **nunca deja que React reordene los hijos**: el
+orden de render es fijo y cada celda se posiciona desde un mapa de posiciones en shared
+value. Reordenar = escribir ese mapa en el hilo de UI, atómico por construcción.
+
+Notas de uso:
+- **`Sortable.Grid`, no `Sortable.Flex`.** Solo el grid vertical controla el ancho de
+  celda (ancho del contenedor ÷ columnas); el flex deja a cada hijo su ancho natural y
+  las tarjetas a ancho completo salen encogidas. El alto lo sigue midiendo por celda, así
+  que una superserie puede ocupar el doble.
+- **`customHandle` + `Sortable.Handle`**: el gesto vive SOLO en el asa. Las filas llevan
+  encima su propio swipe horizontal (`PanResponder`) y el cuerpo es pulsable; con el
+  gesto en toda la tarjeta se pelearían.
+- **`key` estable de verdad.** Una `key` posicional (`${id}-${idx}`) hace que la librería
+  y el estado apliquen el reordenado dos veces. Los movimientos de un bloque no tienen id
+  propio (dos pueden ser el mismo ejercicio), así que `BlockEditorInline` les pone un
+  `uid` al entrar en estado y lo quita al guardar.
+- El ScrollView que contiene la lista tiene que ser `Reanimated.ScrollView` con
+  `useAnimatedRef`, y pasarse como `scrollableRef` para el autoscroll.
+- **Dentro de un `Modal` de RN hace falta su propio `GestureHandlerRootView`.** El
+  `Modal` monta su contenido en otra jerarquía nativa, fuera del de `App.js`, así que
+  sin uno propio los gestos no llegan y el asa simplemente no responde — es lo que
+  pasaba en el modal del editor de bloque.
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su

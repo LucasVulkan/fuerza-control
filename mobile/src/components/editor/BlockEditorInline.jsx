@@ -26,9 +26,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, PanResponder,
 } from 'react-native';
-import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing,
-} from 'react-native-reanimated';
+import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { emomTotalIntervals } from '../../../../src/utils/conditioningBlocks';
@@ -38,23 +36,30 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import StepField from '../ui/StepField';
 import { DragIcon } from '../ui/EditorIcons';
+import { SORTABLE_PROPS } from '../ui/sortable';
 
 const UNIT_CYCLE = ['reps', 'cal', 'm', 'sec'];
 
-// Geometría de la lista de movimientos. Todas las filas miden lo mismo
-// (padding 6+6 sobre un Input Field de 30), así que el paso del arrastre es un
-// número fijo y no hay que medir nada.
-const MOV_ROW_H = 42;
-const MOV_GAP   = spacing.xs;
-const MOV_STEP  = MOV_ROW_H + MOV_GAP;
+// Hueco entre tarjetas de movimiento — el mismo que entre las del editor de
+// sesión, ahora que cada movimiento es una tarjeta suelta y no una lista pegada.
+const MOV_GAP   = spacing.sm;
 // Botón que descubre el swipe, con el mismo lenguaje que el del editor de sesión.
 const SWIPE_BTN_W = 104;
 const SWIPE_INSET = spacing.md;
 const SWIPE_OPEN  = SWIPE_BTN_W + SWIPE_INSET;
-// Banda muerta del salto de hueco y asentamiento al soltar — mismos valores que
-// los otros dos editores (ver UI-MIGRATION §"Reordenar").
-const SWAP_AT = 0.65;
-const SETTLE  = { duration: 160, easing: Easing.inOut(Easing.ease) };
+
+// Identidad estable de cada movimiento MIENTRAS dura la edición: la lista
+// reordenable la necesita como `key` y el dato guardado no sirve — dos
+// movimientos pueden ser el mismo ejercicio, y una `key` posicional haría que
+// la librería y el estado aplicasen el reordenado dos veces. No se persiste:
+// `stripUids` la quita en los dos únicos puntos de escritura.
+let uidSeq = 0;
+const withUid   = (m) => ({ ...m, uid: `mov${(uidSeq += 1)}` });
+const stripUids = (list) => list.map((m) => {
+  const copy = { ...m };
+  delete copy.uid;
+  return copy;
+});
 
 // Compact "M:SS" / "M min" for a duration in seconds — matches how the
 // workout clock reads, but collapses to whole minutes when there's no
@@ -72,24 +77,20 @@ function defaultUnitFor(def) {
 }
 
 // Radios de la lista agrupada: solo el primero y el último redondean por fuera.
-function movRadii(th, isFirst, isLast) {
-  const r = th.radius.sm;
-  const x = th.radius.xxs ?? 2;
-  return {
-    borderTopLeftRadius:     isFirst ? r : x,
-    borderTopRightRadius:    isFirst ? r : x,
-    borderBottomLeftRadius:  isLast  ? r : x,
-    borderBottomRightRadius: isLast  ? r : x,
-  };
-}
-
-// ─── Fila de movimiento (Exercice editor elements / Ejercicio blqoues) ────────
+// ─── Tarjeta de movimiento ────────────────────────────────────────────────────
+// Dos líneas, no la fila compacta del mock original: en una sola línea el nombre
+// competía por el ancho con dos inputs, el selector de unidad y el asa, y se
+// truncaba casi siempre. Arriba nombre (a dos líneas si hace falta) y asa;
+// abajo los controles, que ahí ya caben holgados.
+//
+// Cada movimiento es una tarjeta suelta con su radio completo: agrupadas con
+// radios interiores de 2 px se leían como una lista continua, y con dos líneas
+// por movimiento ya no hay nada que agrupar.
 
 function MovementRow({
-  name, amount, unitLabel, weightValue, weightLabel, radii,
+  name, amount, unitLabel, weightValue, weightLabel,
   onAmountChange, onUnitPress, onWeightChange, onRemove,
   isOpen, onOpenChange,
-  isDragging, dragY, shift, animateShift, onDragStart, onDragMove, onDragEnd,
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -98,8 +99,8 @@ function MovementRow({
   // ── Swipe para eliminar ──
   const [dragX] = useState(() => new Animated.Value(0));
   const openRef = useRef(false);
-  const cbs     = useRef({ onOpenChange, onDragStart, onDragMove, onDragEnd });
-  useEffect(() => { cbs.current = { onOpenChange, onDragStart, onDragMove, onDragEnd }; });
+  const cbs     = useRef({ onOpenChange });
+  useEffect(() => { cbs.current = { onOpenChange }; });
 
   useEffect(() => {
     if (!isOpen && openRef.current) {
@@ -120,66 +121,51 @@ function MovementRow({
     },
   }));
 
-  // ── Arrastre para reordenar (el asa reclama el gesto en `onStart`) ──
-  /* eslint-disable-next-line react-hooks/refs */
-  const [dragPan] = useState(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant:     ()      => cbs.current.onDragStart(),
-    onPanResponderMove:      (_, gs) => cbs.current.onDragMove(gs.dy),
-    onPanResponderRelease:   ()      => cbs.current.onDragEnd(),
-    onPanResponderTerminate: ()      => cbs.current.onDragEnd(),
-  }));
-
-  // Los vecinos ceden el hueco con `withTiming`; fuera del gesto el
-  // desplazamiento se lee del prop DIRECTAMENTE, no del shared value — al
-  // soltar, el orden nuevo y `shift = 0` llegan en el mismo commit y pasando
-  // por el efecto el 0 llegaría un frame tarde (ver UI-MIGRATION §"Reordenar").
-  const shiftSv = useSharedValue(0);
-  useEffect(() => {
-    if (!animateShift) return;
-    shiftSv.value = withTiming(shift, SETTLE);
-  }, [shift, animateShift, shiftSv]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateY: isDragging ? dragY.value : (animateShift ? shiftSv.value : shift),
-    }],
-  }), [isDragging, animateShift, shift]);
-
   return (
-    <Reanimated.View style={[styles.movWrap, isDragging && { zIndex: 2, elevation: 4 }, animStyle]}>
+    <View style={styles.movWrap}>
       <View style={styles.movActions}>
         <TouchableOpacity style={styles.movDeleteBtn} onPress={onRemove} activeOpacity={0.8}>
           <Text style={styles.movDeleteText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
 
-      <Animated.View style={[styles.movRow, radii, { transform: [{ translateX: dragX }] }]} {...pan.panHandlers}>
-        <Text style={styles.movName} numberOfLines={1}>{name}</Text>
-        <TextInput
-          style={styles.movField}
-          keyboardType="numeric"
-          value={String(amount)}
-          onChangeText={onAmountChange}
-          selectTextOnFocus
-        />
-        <TouchableOpacity onPress={onUnitPress} hitSlop={8} activeOpacity={0.6}>
-          <Text style={styles.movUnit}>{unitLabel}</Text>
-        </TouchableOpacity>
-        <TextInput
-          style={styles.movField}
-          keyboardType="decimal-pad"
-          placeholder="—"
-          placeholderTextColor={th.colors.mutedLight}
-          value={weightValue}
-          onChangeText={onWeightChange}
-        />
-        <Text style={styles.movWeightUnit}>{weightLabel}</Text>
-        <View {...dragPan.panHandlers} style={styles.movHandle}>
-          <DragIcon color={th.colors.mutedLight} />
+      <Animated.View style={[styles.movCard, { transform: [{ translateX: dragX }] }]} {...pan.panHandlers}>
+        <View style={styles.movBody}>
+          <Text style={styles.movName} numberOfLines={2}>{name}</Text>
+
+          <View style={styles.movControls}>
+            <TextInput
+              style={styles.movField}
+              keyboardType="numeric"
+              value={String(amount)}
+              onChangeText={onAmountChange}
+              selectTextOnFocus
+            />
+            {/* El selector de unidad cicla reps/cal/m/seg; en accent y con caja
+                propia para que se lea como control y no como etiqueta del campo. */}
+            <TouchableOpacity style={styles.movUnitBtn} onPress={onUnitPress} activeOpacity={0.6}>
+              <Text style={styles.movUnit}>{unitLabel}</Text>
+            </TouchableOpacity>
+
+            <TextInput
+              style={[styles.movField, styles.movFieldWeight]}
+              keyboardType="decimal-pad"
+              placeholder="—"
+              placeholderTextColor={th.colors.mutedLight}
+              value={weightValue}
+              onChangeText={onWeightChange}
+            />
+            <Text style={styles.movWeightUnit}>{weightLabel}</Text>
+          </View>
         </View>
+
+        {/* Fuera del cuerpo para que el asa se centre contra la tarjeta ENTERA,
+            no contra la línea del nombre. */}
+        <Sortable.Handle style={styles.movHandle}>
+          <DragIcon color={th.colors.mutedLight} />
+        </Sortable.Handle>
       </Animated.View>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -192,7 +178,7 @@ function computeInitial(block) {
     intervalSec: block.intervalSec ?? 60,
     rounds:      block.rounds ?? (block.format === 'for_time' ? 3 : 10),
     emomMode:    block.emomMode ?? 'rotate',
-    movements:   block.movements ?? [],
+    movements:   (block.movements ?? []).map(withUid),
     name:        block.name ?? '',
     notes:       block.notes ?? '',
     hasCap:      block.format === 'for_time' ? block.capSec != null : true,
@@ -201,7 +187,9 @@ function computeInitial(block) {
 
 const INTERVAL_PRESETS = [30, 45, 60, 90];
 
-export default function BlockEditorInline({ templateId, block, allExercises, onClose, navigation }) {
+// `scrollableRef` es el del ScrollView de la pantalla que contiene el editor:
+// lo necesita la lista reordenable para autoscroll al arrastrar cerca del borde.
+export default function BlockEditorInline({ templateId, block, allExercises, onClose, navigation, scrollableRef }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
@@ -245,7 +233,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
       intervalSec: s.format === 'emom' ? s.intervalSec : null,
       rounds:      s.format === 'amrap' ? null : s.rounds,
       emomMode:    s.emomMode,
-      movements:   s.movements,
+      movements:   stripUids(s.movements),
       name:        s.name.trim() || null,
       notes:       s.notes.trim() || null,
     };
@@ -277,7 +265,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
     const def = allExercisesRef.current?.[blockPickerResult];
     setMovements((prev) => [
       ...prev,
-      { exerciseId: blockPickerResult, amount: 10, unit: defaultUnitFor(def), weight: null },
+      withUid({ exerciseId: blockPickerResult, amount: 10, unit: defaultUnitFor(def), weight: null }),
     ]);
     setBlockPickerResult(null);
   }, [blockPickerResult, setBlockPickerResult]);
@@ -302,62 +290,13 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   }
 
   // ── Reordenado de movimientos ─────────────────────────────────────────────
-  // Mismo patrón que los otros dos editores: durante el gesto no se toca el
-  // orden pintado, y al soltar la fila se asienta ANTES de escribir el orden.
-  const [drag, setDrag] = useState(null);   // { idx, to }
-  const dragRef = useRef(null);
-  const dragY   = useSharedValue(0);
-
-  function handleDragStart(idx) {
+  // Lo lleva `Sortable.Grid`: el orden pintado no cambia durante el gesto y las
+  // posiciones viven en el hilo de UI, así que no hay dos commits que
+  // sincronizar. El estado solo se escribe al soltar, y solo si algo se movió —
+  // si no, el autosave se dispararía por un arrastre que acabó donde empezó.
+  function handleReorder({ data, fromIndex, toIndex }) {
     setOpenRowIdx(null);
-    dragRef.current = { idx, to: idx };
-    setDrag(dragRef.current);
-    dragY.value = 0;
-  }
-
-  function handleDragMove(idx, dy) {
-    const state = dragRef.current;
-    if (state?.idx !== idx) return;
-    dragY.value = dy;
-    // Banda muerta: con el 0.5 implícito de un `round`, el temblor del dedo en
-    // la frontera hacía ir y venir el orden.
-    const raw  = dy / MOV_STEP;
-    const step = raw > 0 ? Math.floor(raw + (1 - SWAP_AT)) : Math.ceil(raw - (1 - SWAP_AT));
-    const to   = Math.min(movements.length - 1, Math.max(0, idx + step));
-    if (to === state.to) return;
-    dragRef.current = { ...state, to };
-    setDrag(dragRef.current);
-  }
-
-  function handleDragEnd(idx) {
-    const state = dragRef.current;
-    if (state?.idx !== idx) return;
-    dragRef.current = null;
-    dragY.value = withTiming((state.to - state.idx) * MOV_STEP, SETTLE, (done) => {
-      'worklet';
-      if (done) runOnJS(commitDrag)(state);
-    });
-  }
-
-  function commitDrag(state) {
-    setDrag(null);
-    dragY.value = 0;
-    if (state.to === state.idx) return;
-    setMovements((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(state.idx, 1);
-      next.splice(state.to, 0, moved);
-      return next;
-    });
-  }
-
-  // Desplazamiento de los vecinos mientras dura el gesto.
-  function shiftFor(idx) {
-    if (!drag || idx === drag.idx) return 0;
-    const { idx: from, to } = drag;
-    if (from < to && idx > from && idx <= to) return -MOV_STEP;
-    if (from > to && idx < from && idx >= to) return  MOV_STEP;
-    return 0;
+    if (fromIndex !== toIndex) setMovements(data);
   }
 
   function handleSavePreset() {
@@ -369,7 +308,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
       intervalSec: format === 'emom' ? intervalSec : null,
       rounds:      format === 'amrap' ? null : rounds,
       emomMode,
-      movements,
+      movements: stripUids(movements),
       name:  name.trim() || null,
       notes: notes.trim() || null,
     });
@@ -555,18 +494,22 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
         </View>
 
         {movements.length > 0 && (
-          <View style={styles.movList}>
-            {movements.map((m, idx) => {
+          <Sortable.Grid
+            {...SORTABLE_PROPS}
+            data={movements}
+            keyExtractor={(m) => m.uid}
+            rowGap={MOV_GAP}
+            scrollableRef={scrollableRef}
+            onDragEnd={handleReorder}
+            renderItem={({ item: m, index: idx }) => {
               const def = allExercises?.[m.exerciseId];
               return (
                 <MovementRow
-                  key={`${m.exerciseId}-${idx}`}
                   name={def?.name ?? m.exerciseId}
                   amount={m.amount}
                   unitLabel={t(`blocks.units.${m.unit ?? 'reps'}`)}
                   weightValue={m.weight == null ? '' : String(toDisplay(m.weight))}
                   weightLabel={weightLabel}
-                  radii={movRadii(th, idx === 0, idx === movements.length - 1)}
                   onAmountChange={(v) => {
                     const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
                     updateMovement(idx, { amount: isNaN(n) ? 0 : n });
@@ -579,17 +522,10 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
                   onRemove={() => handleRemoveMovement(idx)}
                   isOpen={openRowIdx === idx}
                   onOpenChange={(open) => setOpenRowIdx(open ? idx : null)}
-                  isDragging={drag?.idx === idx}
-                  dragY={dragY}
-                  shift={shiftFor(idx)}
-                  animateShift={!!drag}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragMove={(dy) => handleDragMove(idx, dy)}
-                  onDragEnd={()   => handleDragEnd(idx)}
                 />
               );
-            })}
-          </View>
+            }}
+          />
         )}
 
         <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.75}>
@@ -671,23 +607,41 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.md,
   },
   movHeaderNote: { ...textStyles.tag, color: th.colors.mutedLight },
-  movList:       { gap: MOV_GAP },
-  movWrap:       { position: 'relative' },
-  movRow: {
+  movWrap: { position: 'relative' },
+  // El asa es hermana del cuerpo, no hija: así se centra contra el alto entero
+  // de la tarjeta. El padding derecho lo pone ella, para que su blanco llegue al
+  // borde en vez de dejar un hueco muerto.
+  movCard: {
     flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    height:          MOV_ROW_H,
     backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.sm,
+    paddingLeft:     spacing.md,
     overflow:        'hidden',
   },
-  // El nombre lleva su propio padding izquierdo: la fila no tiene padding
-  // horizontal para que el asa llegue al borde, como en Figma.
-  movName: { ...textStyles.cardType, color: th.colors.text, flex: 1, minWidth: 0, paddingLeft: spacing.md },
+  movBody: {
+    flex:            1,
+    minWidth:        0,
+    paddingVertical: spacing.md,
+    gap:             spacing.md,
+  },
+  movName: { ...textStyles.cardType, color: th.colors.text },
+  // Ancho de sobra alrededor del icono: el asa es un blanco de 26px y costaba
+  // acertar (QA). El área tiene que ser la de la propia View.
+  movHandle: {
+    width:          44,
+    alignSelf:      'stretch',
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  movControls: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
   // Input Field del mock: `color/workout-card`, que en este tema es `bg`.
   movField: {
-    width:              51,
-    height:             30,
+    width:              56,
+    height:             34,
     backgroundColor:    th.colors.bg,
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.sm,
@@ -698,14 +652,20 @@ const makeStyles = (th) => StyleSheet.create({
     textAlignVertical:  'center',
     includeFontPadding: false,
   },
-  // Selector de unidad: el "reps" del mock es pulsable y cicla reps/cal/m/seg,
-  // así que va en accent para que se lea como control, no como etiqueta.
-  movUnit:       { ...textStyles.tag, color: th.colors.accent },
+  // Separación extra contra el bloque de cantidad+unidad: pegados se leerían
+  // como un mismo grupo, y el peso es otra cosa.
+  movFieldWeight: { marginLeft: spacing.lg },
+  // Selector de unidad: pulsable, cicla reps/cal/m/seg. Va en accent y con caja
+  // para que se lea como control y no como etiqueta del campo de al lado.
+  movUnitBtn: {
+    height:            34,
+    justifyContent:    'center',
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.tint.accent10,
+  },
+  movUnit:       { ...textStyles.cardType, color: th.colors.accent },
   movWeightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
-  // Ancho de sobra alrededor del icono: el asa es un blanco de 26px y costaba
-  // acertar (QA). El PanResponder no respeta `hitSlop`, así que el área tiene
-  // que ser la de la propia View.
-  movHandle: { width: 44, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
 
   // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
   movActions: {
