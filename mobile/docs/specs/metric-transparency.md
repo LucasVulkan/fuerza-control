@@ -48,8 +48,45 @@ métrica:
 }
 ```
 
-Cuatro campos, siempre los cuatro: `name` · `what` (una frase, sin jerga) ·
-`formula` (la expresión literal) · `caveat` (el límite conocido).
+**Cinco campos**, separados a propósito para no mezclar concepto con
+implementación (la primera versión los mezclaba y se notaba):
+
+| campo | contenido | obligatorio |
+|---|---|---|
+| `name` | cómo se llama en la app | sí |
+| `what` | qué mide **y para qué sirve** | sí |
+| `formula` | el cálculo, sin reglas ni matices | sí |
+| `rules` | reglas de la aplicación: qué entra, qué se excluye, cuándo se oculta | no |
+| `caveat` | el límite conocido: cuánto puedes fiarte del número | sí |
+
+Las fórmulas que son un resumen y no el cálculo literal se declaran en
+`APPROX_FORMULA` (`metricDocs.js`) y la ficha las etiqueta como *"Cómo se calcula
+(simplificado)"*. Presentar un resumen como fórmula exacta es justo la
+imprecisión que esta spec existe para evitar.
+
+### 2.1-bis Vocabulario — un término por concepto
+
+Regla editorial, no estilo: usar dos palabras para lo mismo hace dudar de si son
+lo mismo.
+
+| Concepto | Término único |
+|---|---|
+| Estimación del máximo | **1RM estimado** — nunca "marca", "fuerza" ni "récord" |
+| Denominador de la carga externa | **1RM de referencia** |
+| Ancla de un índice | **valor inicial** |
+| Todas las sesiones guardadas | **historial** |
+| Lo elegido en el selector 1M/3M/6M | **período** |
+| Regresión | **línea de tendencia (regresión lineal)** |
+| Ventana de cuatro semanas | **las 4 semanas anteriores** |
+
+Dos reglas más:
+- **"Tendencia" solo para pendientes.** Una variación entre dos puntos no es una
+  tendencia y decirlo así confunde. Por eso el gráfico del panel de Carga pasó de
+  "Tendencia de carga" a **"Evolución de la carga"**: son barras diarias con dos
+  medias móviles, no una regresión.
+- **Nunca "fuerza" para hablar del e1RM.** Es *rendimiento estimado*: "fuerza"
+  tiene un significado preciso en entrenamiento y sugiere una medición objetiva
+  que aquí no existe.
 
 Las constantes se **interpolan desde el código**, no se teclean en el JSON:
 `t('metrics.e1rm.caveat', { maxReps: MAX_RELIABLE_REPS })`. Así cambiar la

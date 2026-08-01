@@ -89,6 +89,10 @@
     "toastImported": "Data imported"
   },
   "docs": {
+    "metricFormula": "How it is calculated",
+    "metricFormulaApprox": "How it is calculated (simplified)",
+    "metricRules": "App rules",
+    "metricCaveat": "Limits",
     "metricsTitle": "How each number is calculated",
     "metricsIntro": "Every figure in the app comes from a specific formula, and every one of them has a limit. Here are both.",
     "metricGroups": {
@@ -164,147 +168,170 @@
   "metrics": {
     "e1rm": {
       "name": "Estimated 1RM",
-      "what": "The weight you could lift once, inferred from normal sets without testing a true max.",
-      "formula": "1RM = weight × (1 + reps ÷ 30)",
-      "caveat": "Epley's formula. Sets above {{maxReps}} reps are ignored: beyond that it overestimates badly. If you log RPE, the reps you had left are added (reps + 10 − RPE), so a set at RPE 8 counts as two more reps."
+      "what": "Estimates the heaviest weight you could lift once, without having to actually attempt it. It lets you track progress on an exercise even when your rep counts change week to week.",
+      "formula": "estimated 1RM = weight × (1 + reps ÷ 30)",
+      "rules": "If you log RPE, the reps you had left in reserve (10 − RPE) are estimated and added to the reps performed before applying the formula: a set at RPE 8 is calculated as if you had done two more reps.",
+      "caveat": "This is Epley's formula, an estimate and not a measurement. Sets above {{maxReps}} reps are ignored because beyond that it overestimates noticeably."
     },
     "pr": {
-      "name": "Personal record",
-      "what": "Marks the session where you beat your previous best on an exercise.",
-      "formula": "estimated 1RM → else top weight → else bodyweight reps",
-      "caveat": "Compared against your WHOLE history, not just the last session. The first time you do an exercise is never a record: it is your baseline. Only one record per exercise and session, the first on that ladder."
+      "name": "Personal record (PR)",
+      "what": "Flags the sessions where you beat your previous best on an exercise.",
+      "formula": "estimated 1RM is compared; if it can't be computed, top weight; and failing that, bodyweight reps",
+      "rules": "The comparison runs against your whole previous history, not just the last session. The first time you do an exercise sets your initial reference, so it doesn't count as a record. One record is flagged per exercise and session: the first on that ladder.",
+      "caveat": "Because it leans on the estimated 1RM, it inherits its margin of error: a narrow record may come from the estimate rather than from a real improvement."
     },
     "performanceIndex": {
       "name": "Performance",
-      "what": "How much your strength has changed on average since the start of the period you are viewing.",
-      "formula": "average of (each exercise's estimated 1RM ÷ its own starting value) × 100",
-      "caveat": "Kilos from different exercises are not averaged together; the indexes are, because otherwise squats would drown out curls. Each week uses your best mark from the last 4 weeks, not that week alone, so a deload does not look like lost strength. An exercise with a single week of data does not count."
+      "what": "Sums up in a single number how your estimated performance has evolved across every exercise in the period. It tells you whether the training is turning into results.",
+      "formula": "average of (each exercise's estimated 1RM ÷ its initial value) × 100",
+      "rules": "For each week the best estimated 1RM from the 4 previous weeks is used, not that week alone, so a deload doesn't show up as lost performance. An exercise only counts if it has an initial value and at least one later week with data. The indexes are averaged, not the kilos.",
+      "caveat": "This is estimated performance, not measured strength: it rests entirely on the estimated 1RM. Changing exercises mid-period moves the number even if your performance doesn't change."
     },
     "loadTrend": {
       "name": "Load (Progress tab)",
-      "what": "The average trend of your exercises in the period: whether the numbers you move go up or down.",
-      "formula": "fitted line over each exercise's sessions, averaged across exercises",
-      "caveat": "It is the slope of a fitted line, not the difference between the first and last session. An exercise with 20 sessions counts the same as one with 3, so a brand-new exercise can move the number more than it deserves."
+      "what": "Tells you whether the weights you move are going up or down on average during the period, combining all your exercises into one percentage.",
+      "formula": "trend line (linear regression) over each exercise's sessions; the percentage is the change between its ends, averaged across exercises",
+      "rules": "Every exercise carries the same weight in the average, regardless of how many sessions it has.",
+      "caveat": "It's the slope of a line fitted to all your sessions, not the difference between the first and the last. A brand-new exercise with few points can move the result more than it should."
     },
     "lastSessionDelta": {
-      "name": "Vs. previous session",
-      "what": "The difference between your last session and the previous one of the same type.",
+      "name": "Difference from previous session",
+      "what": "Compares your last session with the previous one of the same type so you can see at a glance whether you went up or down.",
       "formula": "(last − previous) ÷ previous × 100",
-      "caveat": "It compares just two sessions, so one bad day or one unusually good day moves the whole thing. In History this delta is volume and compares against the previous run of THAT same session, not the chronologically previous one."
+      "rules": "In History this difference is computed on volume and compares against the previous run of that same session, not the chronologically previous one.",
+      "caveat": "It's only two sessions: one bad day, or one unusually good one, moves the result entirely."
     },
     "volume": {
       "name": "Volume",
-      "what": "The total kilos you moved in a session.",
+      "what": "Adds up the total kilos you moved in a session. Useful for comparing the amount of work between similar sessions.",
       "formula": "volume = sum of (weight × reps) over every logged set",
-      "caveat": "Dropset sub-sets count too. Bodyweight exercises add 0 because they carry no logged weight, so a session of pull-ups and dips can show very little volume even if it was hard."
+      "rules": "Dropset sub-sets count too.",
+      "caveat": "Bodyweight exercises count as 0 kg of volume because they have no external weight logged. A session of pull-ups and dips can show very little volume even if it was hard."
     },
     "setsDonePlanned": {
       "name": "Sets done and planned",
-      "what": "How many sets you logged versus how many the session had.",
-      "formula": "done = sets with data or ticked · planned = sum of the template's sets",
-      "caveat": "Planned sets are frozen when the session is saved. An exercise you skip disappears from the saved session but its sets still count in the plan, which is exactly what makes the gap visible."
+      "what": "Shows how many sets you logged versus how many the session had, so you can see whether you finished it.",
+      "formula": "done = sets with logged data or ticked · planned = sum of the template's sets",
+      "rules": "Planned sets are frozen when the session is saved. An exercise you skip disappears from the saved session, but its sets still count as planned: that's what makes the gap visible.",
+      "caveat": "A set ticked without data counts as done exactly like one with weight and reps."
     },
     "volumeTrend": {
       "name": "Volume (Progress tab)",
-      "what": "How much volume changed between the start and the end of the period.",
-      "formula": "(last session's volume − the first session's) ÷ the first session's × 100",
-      "caveat": "Two points, not a trend: an unusual session at either end changes the result completely."
+      "what": "Compares the volume of the period's first session with that of the last one.",
+      "formula": "(last session's volume − first session's volume) ÷ first session's volume × 100",
+      "caveat": "It is not a trend line: it's two points. An unusual session at either end changes the result completely."
     },
     "muscleGroupSets": {
       "name": "Sets per muscle group",
-      "what": "How many sets you have done per muscle group over the last 7 days.",
-      "formula": "sum of the sets of the exercises whose primary group is that one",
-      "caveat": "Counts DIRECT volume: a bench press adds to chest and gives nothing to triceps or shoulders. A dropset counts as one set. The {{min}} to {{max}} reference range is a hypertrophy guideline and depends on your goal."
+      "what": "Splits the last 7 days' sets across muscle groups, so you can spot one falling behind.",
+      "formula": "sum of the sets of the exercises whose primary muscle group is that one",
+      "rules": "It counts direct volume: a bench press adds to chest and gives nothing to triceps or shoulders. A dropset counts as a single set. Groups you trained in the 4 previous weeks but not in the last 7 days show as zero instead of disappearing.",
+      "caveat": "The {{min}} to {{max}} set reference range is a hypertrophy guideline and depends on your goal. By ignoring indirect volume, groups you mostly work as secondary come out lower than you actually train them."
     },
     "sessionLoad": {
       "name": "Session load",
-      "what": "What the session cost you: how long it lasted combined with how hard it felt.",
+      "what": "Sums up in one number how much a session cost you, combining its duration with how hard it felt. It's the basis of the whole Load tab.",
       "formula": "load = session RPE × session minutes",
-      "caveat": "This is Foster's sRPE method. The number means nothing on its own: it only works compared to your own sessions. Without answering the RPE there is no load, and the session leaves a gap in the charts rather than a zero. Conditioning blocks add {{blockFactor}} per active second, a hand-tuned factor."
+      "rules": "Without answering the RPE there is no load: the session leaves a gap in the charts, never a zero. Conditioning blocks contribute {{blockFactor}} units per active second.",
+      "caveat": "This is Foster's sRPE method. The number means nothing on its own: it only makes sense compared to your own sessions. The block factor is hand-tuned and is the least reliable part of the calculation."
     },
     "sessionMinutes": {
       "name": "Session minutes",
-      "what": "The duration used to compute load.",
-      "formula": "minutes = real clock, clamped between half and double the estimated duration",
-      "caveat": "The clock runs from start to save, so it includes rests, pauses and the phone in your pocket. Since sets carry no timestamp there is no real active time: the clamp stops a session left open for three hours from multiplying your load."
+      "what": "This is the duration used to compute the session load.",
+      "formula": "minutes = real elapsed time, limited to between half and double the estimated duration",
+      "rules": "Real time runs from when you start the session until you save it. The limit stops a session left open for several hours from multiplying your load.",
+      "caveat": "That time includes rests, pauses and the phone in your pocket. Since sets don't record when you did them, there's no measure of genuinely active time."
     },
     "externalLoad": {
       "name": "External load",
-      "what": "The work you did, measured as reps weighted by how close to your max they were.",
+      "what": "Measures the work you did as reps weighted by how close to your max they were. It lets you compare sessions made of different exercises.",
       "formula": "external load = sum of reps × (weight ÷ reference 1RM)",
-      "caveat": "Not tonnage: it normalises by your current capacity, so a curl set and a squat set at the same relative intensity weigh the same. The reference is your best estimated 1RM from the {{weeks}} weeks before that session, frozen by date so today's record cannot rewrite your history. Bodyweight exercises need your logged body weight; isometrics do not count."
+      "rules": "The reference 1RM is your best estimated 1RM from the 6 weeks before that session, frozen by date so today's record can't rewrite your history. Bodyweight exercises need your logged body weight; isometrics and timed sets don't count, as they have no reps.",
+      "caveat": "It's not tonnage: it normalises by your current capacity, so a curl set and a squat set at the same relative intensity contribute a similar load. Because it depends on the estimated 1RM, it inherits its margin of error."
     },
     "movingAverage": {
       "name": "7 and 28 day averages",
-      "what": "The smooth lines on the load chart: your typical load over the last week and the last month.",
+      "what": "These are the smooth lines on the load chart: your usual load over the last week and the last month. They show the overall shape above the day-to-day noise.",
       "formula": "average daily load over the last 7 (or 28) days, counting rest days as 0",
-      "caveat": "Until you have 28 days of history it averages whatever exists, rather than leaving the line unstarted. Days you trained without answering the RPE are left out of the average instead of counting as zero: unknown is not rest."
+      "rules": "Until you have 28 days of history it averages whatever days exist, rather than leaving the line unstarted. Days you trained without answering the RPE are left out of the average instead of counting as zero: unknown is not rest.",
+      "caveat": "A moving average smooths, but it also lags: a real change in load takes a few days to show up in the line."
     },
     "loadState": {
       "name": "Load state",
-      "what": "Whether you are building load, steady, or deloading.",
+      "what": "Sums up whether you're building load, holding steady, or deloading.",
       "formula": "7-day average ÷ 28-day average → below 0.8 deload · 0.8 to 1.3 steady · above 1.3 building",
-      "caveat": "This is the acute/chronic ratio. It is shown as a state and not a number on purpose: the numeric version carries known mathematical artefacts and its risk thresholds do not replicate well. Treat it as guidance, not a traffic light."
+      "rules": "It's shown as a state and not as a number on purpose.",
+      "caveat": "This is the acute/chronic ratio. The numeric version carries known mathematical artefacts and its risk thresholds don't replicate consistently across studies, so treat it as guidance rather than a traffic light."
     },
     "monotony": {
       "name": "Monotony",
-      "what": "Whether you repeat the same load day after day without variation.",
+      "what": "Indicates whether you repeat the same load day after day without variation, a pattern linked to worse recovery.",
       "formula": "monotony = average daily load ÷ its standard deviation, over 7 days",
-      "caveat": "Foster's index. Above {{high}} is a warning sign; below {{moderate}} is low. Rest days count as zero, which is the original definition. Hidden below {{minSessions}} sessions in the week: with one or two, the zeros dominate the deviation and the number lies."
+      "rules": "Rest days count as 0, as the original method defines. It's hidden when the week has fewer than {{minSessions}} sessions. Above {{high}} it's flagged as high; below {{moderate}}, as low.",
+      "caveat": "With one or two sessions in the week, rest days dominate the deviation and the number stops meaning anything: that's why it's hidden rather than shown in green."
     },
     "strain": {
       "name": "Strain",
-      "what": "The week's accumulated stress: how much load you did combined with how little you varied it.",
+      "what": "Sums up the week's accumulated stress by combining how much load you did with how little you varied it.",
       "formula": "strain = the week's total load × monotony",
-      "caveat": "There is no universal strain threshold, so it is shown against your own average of the previous 4 weeks and never with fixed colours. Hidden below {{minSessions}} sessions, same as monotony."
+      "rules": "It's shown against your own average of the 4 previous weeks. It's hidden when the week has fewer than {{minSessions}} sessions, same as monotony.",
+      "caveat": "There is no universal strain threshold, so it's never shown with fixed colours or an alarm value: it only makes sense against your own history."
     },
     "indexed100": {
       "name": "Base 100",
-      "what": "The rescaling that lets two quantities with different units be drawn together.",
+      "what": "The rescaling that lets two quantities with different units be drawn together, such as external load and effort.",
       "formula": "value ÷ first value of the period × 100",
-      "caveat": "The 100 is the start of what you are viewing, so it changes when you move the period selector. If that first week was unusual — a deload, say — it shifts the whole series."
+      "rules": "The 100 corresponds to the start of the selected period, so it changes when you move the selector.",
+      "caveat": "If the period's first week was unusual — a deload, say — it shifts the whole series upwards."
     },
     "loadHeatmap": {
       "name": "Calendar heatmap",
-      "what": "Each calendar day's shade, according to how hard that session was.",
-      "formula": "four steps by quartiles of your own daily load",
-      "caveat": "The colour ranks your days against each other, not against an absolute value: there will always be dark and light days even if you train very uniformly. The cuts come from your whole history, not the visible month. A day trained without answering the RPE is outlined, because there is no load to paint."
+      "what": "Shades each calendar day by that session's load, so you can spot your hard days and your streaks at a glance.",
+      "formula": "four steps spread by quartiles of your own daily load",
+      "rules": "The cuts are computed over your whole history, not the visible month, so they mean the same thing as you move between months. A day trained without answering the RPE is drawn as an outline with no fill, because there's no load to represent.",
+      "caveat": "The colour ranks your days against each other, not against an absolute value: there will always be dark and light days even if you train very uniformly."
     },
     "progressionChip": {
       "name": "Progression suggestion",
-      "what": "The go up, hold or back off hint shown on each exercise during a workout.",
+      "what": "The go up, hold or back off hint shown on each exercise during a workout, based on how the last one went.",
       "formula": "qualifying sets ÷ target sets, crossed with the rep range and with RPE if you log it",
-      "caveat": "It only looks at your last session of that exercise, not the trend. With RPE evaluation mode, going up also requires the average RPE to stay under the ceiling you set. It is a suggestion: ignoring it costs nothing."
+      "rules": "A qualifying set is one that reached the exercise's minimum reps (or time); a set ticked as done without data also counts. With RPE evaluation mode, going up additionally requires the average RPE to stay under the ceiling you set.",
+      "caveat": "It only looks at your last session of that exercise, not your progression over time. It's a suggestion: ignoring it affects nothing else."
     },
     "estimatedDuration": {
       "name": "Estimated duration",
-      "what": "How long a session is expected to take before you do it.",
+      "what": "Works out how long a session will take before you do it, so you can fit it to the time you have.",
       "formula": "sets × (35 s + rest) + 180 s per exercise + 480 s general warm-up",
-      "caveat": "It is a model, not a measurement: it assumes you keep the configured rests and does not know if you linger between sets. In supersets it counts each member's full rest, so it overestimates them slightly."
+      "rules": "The 180 seconds per exercise cover the changeover: finding the machine, loading the bar, adjusting. In supersets each member's full rest is counted.",
+      "caveat": "It's a model, not a measurement: it assumes you keep the configured rests and doesn't know if you linger between sets. It overestimates supersets slightly."
     },
     "warmupWeight": {
       "name": "Warm-up weights",
-      "what": "The weights suggested for your ramp-up sets.",
+      "what": "Suggests the weights for your ramp-up sets from the day's working weight.",
       "formula": "weight = percentage of the day's working weight, rounded to 2.5 kg",
-      "caveat": "The working weight comes from the trainer's prescription or, failing that, your heaviest set last time. With neither, the pills stay empty until you type your first weight. They are not stored in your history: they are guidance."
+      "rules": "The working weight comes from the trainer's prescription or, failing that, your heaviest set last time. With neither, the pills stay empty until you type your first weight. They aren't saved to your history.",
+      "caveat": "They're guidance: the percentage doesn't distinguish between exercises and doesn't know how you feel that day."
     },
     "blockDelta": {
       "name": "Block comparison",
-      "what": "Whether you improved on the last time you did that same block.",
+      "what": "Tells you whether you improved on the last time you did that same conditioning block.",
       "formula": "AMRAP: rounds and reps · EMOM: intervals completed · For time: time",
-      "caveat": "In for-time blocks less time is better, so the sign is inverted compared to the other two formats. It compares against the previous run of the same session, not against your best ever."
+      "rules": "In for-time blocks less time is better, so the sign is inverted compared to the other two formats. It compares against the previous run of the same session, not your best ever result.",
+      "caveat": "Blocks don't record the weight used, so two identical results with different loads are compared as if they were equivalent."
     },
     "stageProgress": {
       "name": "Stage progress",
-      "what": "How many weeks of the stage you have completed.",
+      "what": "Counts how many weeks of the stage you've completed, so you know how far you are from moving on.",
       "formula": "one week = one full pass through every distinct session of the cycle",
-      "caveat": "It is not a calendar week: if you train A-B-C over five days, that is your week. Repeating a session does not count twice. That is why this counter and the Load panel's weeks can disagree."
+      "rules": "Repeating a session doesn't count twice: you have to go through all the cycle's sessions. The counter belongs to the client and is replicated to the trainer; it isn't derived from the history.",
+      "caveat": "It's not a calendar week: if you train A-B-C over five days, that's your week. That's why this counter and the Load tab's weeks can disagree."
     },
     "adherence": {
       "name": "Adherence",
-      "what": "Whether a client is keeping the pace their program asks for.",
+      "what": "Flags which clients are drifting away from the frequency their program asks for. It measures drop-off risk from time without training, not the percentage of sessions completed.",
       "formula": "days since the last session ÷ (7 ÷ sessions per week) → up to 2 on track · above 4 at risk",
-      "caveat": "The threshold scales with the program's frequency, so it is fair across clients training 2 or 5 days a week. The weekly average uses the last 4 COMPLETE weeks, excluding the one in progress, so a Monday morning does not look like a slowdown. Pausing a client silences adherence."
+      "rules": "The threshold scales with the program's frequency, so it's fair across clients training 2 or 5 days a week. The weekly average uses the 4 complete previous weeks, excluding the one in progress, so a Monday morning doesn't look like a slowdown. Pausing a client silences adherence.",
+      "caveat": "It's not a completion percentage: a client who trains today looks fine even if they'd been off for three weeks. It measures how long they've gone without training relative to what they should, not their cumulative record."
     }
   },
   "trainer": {
@@ -1265,7 +1292,7 @@
     "last7d": "last 7 days",
     "groupOther": "Other",
     "groupsHint": "The marks show the {{min}}-{{max}} weekly sets reference range per group. Counts direct volume: a bench press adds to chest, not triceps.",
-    "trendTitle": "Load trend",
+    "trendTitle": "Load over time",
     "perDay": "per day",
     "legendDaily": "daily load",
     "legend7d": "7d average",
