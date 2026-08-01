@@ -35,8 +35,10 @@ import { spacing, textStyles, typography, borders, withOpacity, getCardRadii } f
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../../../src/utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
+import { recapStats }     from '../../../../src/utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
+import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -250,11 +252,11 @@ function buildSessionSummary(exercise, def, fmtWeight) {
   return parts.filter(Boolean).join(' / ') || null;
 }
 
+// Tonelaje de una sesión. Delega en `recapStats` para no tener dos definiciones
+// de "volumen" en la app: la de aquí se dejaba fuera las sub-series de los
+// dropsets, que son trabajo real y el recap sí contaba.
 function getSessionTotalVol(session) {
-  return session.exercises.reduce((sum, ex) => {
-    const done = ex.sets.filter((s) => s.done || s.weight || s.reps);
-    return sum + done.reduce((acc, s) => acc + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0);
-  }, 0);
+  return recapStats(session).volume;
 }
 
 function computeThisWeekCount(log) {
@@ -556,6 +558,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const { i18n } = useTranslation();
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
+
+  const [info, setInfo] = useState(null);
 
   const [modalPeriod, setModalPeriod] = useState('all');
   const [modalScope,  setModalScope]  = useState('all');
@@ -914,7 +918,11 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
             {/* 3 Progress cards — mismo look que las de ProgressTab (statTile) */}
             <View style={styles.modalStatsRow}>
-              <View style={styles.statTile}>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo({ ids: ['e1rm', 'pr'] })}
+                activeOpacity={0.75}
+              >
                 {e1rmData ? (
                   <>
                     <View style={styles.statValueBlock}>
@@ -936,21 +944,29 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
                 )}
-              </View>
-              <View style={styles.statTile}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo({ ids: ['loadTrend'] })}
+                activeOpacity={0.75}
+              >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <Text style={styles.statLabel}>CARGA</Text>
+                  <Text style={styles.statLabel}>MEJORA</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
-              </View>
-              <View style={styles.statTile}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo({ ids: ['volumeTrend'] })}
+                activeOpacity={0.75}
+              >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: volImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volImpStr}</Text>
                   <Text style={styles.statLabel}>VOLUMEN</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Segmented de métrica + chart (el selector controla el chart) */}
@@ -1069,6 +1085,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
           </Animated.View>{/* content opacity wrapper */}
         </Animated.View>{/* modal sheet */}
       </View>
+      {/* La hoja se monta DENTRO de este Modal: fuera quedaría por debajo y no
+          se vería, porque el detalle de ejercicio ocupa la pantalla entera. */}
+      <MetricInfoSheet ids={info?.ids} onClose={() => setInfo(null)} />
     </Modal>
   );
 }
@@ -1137,6 +1156,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const { i18n } = useTranslation();
   const { fmt: fmtWeight, toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
+
+  const [info, setInfo] = useState(null);
 
   const [scope,         setScope]         = useState('all');
   const [period,        setPeriod]        = useState('all');
@@ -1291,7 +1312,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
       {/* ── Progress cards ───────────────────────────────────────────────────── */}
       <View style={styles.statsGrid}>
-        <View style={styles.statTile}>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo({ ids: ['sessionCount'] })}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{String(filteredLog.length)}</Text>
             <Text style={styles.statLabel}>SESIONES</Text>
@@ -1299,17 +1324,25 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {`${thisWeekCount} esta semana`}
           </Text>
-        </View>
-        <View style={styles.statTile}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo({ ids: ['loadTrend'] })}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <Text style={styles.statLabel}>CARGA</Text>
+            <Text style={styles.statLabel}>MEJORA</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}
           </Text>
-        </View>
-        <View style={styles.statTile}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo({ ids: ['volumeTrend'] })}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: volColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volStr}</Text>
             <Text style={styles.statLabel}>VOLUMEN</Text>
@@ -1317,7 +1350,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
             {volSubStr ?? '—'}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
       </View>
 
@@ -1431,6 +1464,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           })}
         </Reanimated.View>
       )}
+
+      <MetricInfoSheet ids={info?.ids} onClose={() => setInfo(null)} />
     </ScrollView>
   );
 }

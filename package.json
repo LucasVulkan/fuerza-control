@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "panel": "node devpanel.mjs"
+    "panel": "node devpanel.mjs",
+    "seed": "node seed-load-data.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

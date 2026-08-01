@@ -22,11 +22,15 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import DragSheet from '../components/DragSheet';
+import { ArrowIcon } from '../components/ui/EditorIcons';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
+import { recapStats, volumeDeltas } from '../../../src/utils/sessionRecap';
+import { internalLoad } from '../../../src/utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
@@ -40,8 +44,56 @@ const BLOCK_BADGE_STYLE = {
 const CELL_H  = 30;
 const CELL_GAP = 3;
 
+// ── Mapa de calor ──────────────────────────────────────────────────────────────
+// Cuatro escalones, no un degradado continuo: en celdas de 30 px nadie
+// distingue un 0,42 de un 0,55 de opacidad, y cuatro pasos sí se comparan de un
+// vistazo. Por encima del segundo escalón el fondo ya es lo bastante sólido
+// como para que el número del día tenga que ir en oscuro.
+const HEAT_STEPS = [0.18, 0.42, 0.66, 0.9];
+const HEAT_DARK_TEXT_FROM = 2;
+
+/** Escalón de un día según los cortes de cuartil del propio usuario. */
+function heatLevel(load, cuts) {
+  if (!(load > 0) || !cuts?.length) return 0;
+  return Math.min(HEAT_STEPS.length - 1, cuts.filter((c) => load >= c).length);
+}
+
+/**
+ * Carga interna por día del log completo, y los cortes de la escala.
+ *
+ * Los cortes son **cuartiles del propio usuario**, no fracciones de un máximo.
+ * Con una escala lineal desde cero el escalón más flojo no se usaba nunca: una
+ * sesión de entrenamiento jamás está cerca de cero, así que la mitad baja de la
+ * paleta quedaba muerta (verificado con datos reales: 0/6/22/13 días por
+ * escalón). Por cuartiles, el color ordena los días entre sí, que es justo la
+ * pregunta — "¿cuáles fueron mis días duros?".
+ *
+ * Se calculan sobre TODO el historial, no sobre el mes visible: si no,
+ * cambiarían al pasar de mes y un mes de descarga se pintaría tan intenso como
+ * uno duro.
+ *
+ * `internalLoad` es puro por entrada (sRPE × minutos acotados), así que esto no
+ * necesita ni la librería de ejercicios ni el peso corporal.
+ */
+function getLoadHeat(workoutLog) {
+  const byDay = new Map();
+  for (const entry of workoutLog ?? []) {
+    const d = new Date(entry.timestamp);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const load = internalLoad(entry);
+    const cur = byDay.get(key) ?? { load: null, sessions: 0 };
+    if (load != null) cur.load = (cur.load ?? 0) + load;
+    cur.sessions += 1;
+    byDay.set(key, cur);
+  }
+  const values = [...byDay.values()].map((v) => v.load).filter((v) => v > 0).sort((a, b) => a - b);
+  const q = (p) => values[Math.min(values.length - 1, Math.floor(values.length * p))];
+  const cuts = values.length ? [q(0.25), q(0.5), q(0.75)] : [];
+  return { byDay, cuts };
+}
+
 // Pure helper — computes grid weeks + trained-day map for any year/month
-function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
+function getMonthData(y, m, heat) {
   const daysInM = new Date(y, m + 1, 0).getDate();
   let   startDow = new Date(y, m, 1).getDay();
   startDow = startDow === 0 ? 6 : startDow - 1; // Mon-aligned
@@ -52,16 +104,13 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
   while (cells.length < 42) cells.push(null);
   const weeks = Array.from({ length: 6 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
 
+  // day → { load: number|null, sessions }. `load: null` con sessions > 0 =
+  // entrenó pero no contestó el sRPE: no hay carga que pintar.
   const trainedDays = {};
-  workoutLog.forEach((entry) => {
-    const d = new Date(entry.timestamp);
-    if (d.getFullYear() !== y || d.getMonth() !== m) return;
-    const day  = d.getDate();
-    const tmpl = userPrograms[entry.sessionTemplateId] ?? sessionTemplates[entry.sessionTemplateId];
-    const lbl  = entry.sessionTemplateId === '__free__' ? '★' : (tmpl?.label ?? '·');
-    if (!trainedDays[day]) trainedDays[day] = [];
-    if (!trainedDays[day].includes(lbl)) trainedDays[day].push(lbl);
-  });
+  for (let day = 1; day <= daysInM; day++) {
+    const hit = heat.byDay.get(`${y}-${m}-${day}`);
+    if (hit) trainedDays[day] = hit;
+  }
   return { weeks, trainedDays };
 }
 
@@ -71,9 +120,8 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
 function WorkoutCalendar({ onDayPress, selectedDate }) {
   const { t }            = useTranslation();
   const cal              = useThemedStyles(makeCal);
+  const th               = useTheme();
   const workoutLog       = useStore((s) => s.workoutLog);
-  const sessionTemplates = useStore((s) => s.sessionTemplates);
-  const userPrograms     = useStore((s) => s.userPrograms);
 
   const today = new Date();
   const [year,  setYear]  = useState(today.getFullYear());
@@ -91,9 +139,11 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
     else               setMonth((m) => m + 1);
   }
 
+  // La escala se calcula sobre TODO el log, no sobre el mes visible.
+  const heat = useMemo(() => getLoadHeat(workoutLog), [workoutLog]);
   const { weeks, trainedDays } = useMemo(
-    () => getMonthData(year, month, workoutLog, sessionTemplates, userPrograms),
-    [year, month, workoutLog, sessionTemplates, userPrograms],
+    () => getMonthData(year, month, heat),
+    [year, month, heat],
   );
 
   return (
@@ -127,8 +177,13 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
           <View key={wi} style={cal.week}>
             {week.map((day, di) => {
               if (day === null) return <View key={di} style={cal.cellBlank} />;
-              const labels  = trainedDays[day] ?? [];
-              const trained = labels.length > 0;
+              const hit     = trainedDays[day];
+              const trained = !!hit;
+              // Entrenó pero sin sRPE: no hay carga que pintar. Va en contorno,
+              // NO en el tono más flojo — ese diría "sesión suave", cuando lo
+              // que dice el dato es "no contestaste".
+              const noRpe   = trained && hit.load == null;
+              const level   = trained && !noRpe ? heatLevel(hit.load, heat.cuts) : -1;
               const isToday = isCurrentMonth && day === today.getDate();
               const isSel   = trained
                 && selectedDate?.year  === year
@@ -139,7 +194,8 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   key={di}
                   style={[
                     cal.cell,
-                    trained && cal.cellTrained,
+                    level >= 0 && { backgroundColor: withOpacity(th.colors.accent, HEAT_STEPS[level]) },
+                    noRpe   && cal.cellNoRpe,
                     isToday && !trained && cal.cellToday,
                     isSel   && cal.cellSel,
                   ]}
@@ -149,20 +205,34 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   <Text
                     style={[
                       cal.dayNum,
-                      trained             && cal.dayNumTrained,
+                      // El texto se invierte solo cuando el fondo ya es sólido.
+                      level >= HEAT_DARK_TEXT_FROM && cal.dayNumOnHeat,
+                      level >= 0 && level < HEAT_DARK_TEXT_FROM && cal.dayNumOnTint,
+                      noRpe   && cal.dayNumNoRpe,
                       isToday && !trained && cal.dayNumToday,
                     ]}
                   >
                     {day}
                   </Text>
-                  {trained && (
-                    <Text style={cal.sesLetter} numberOfLines={1}>{labels[0]}</Text>
-                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
         ))}
+      </View>
+
+      {/* Leyenda — tres estados que no se deducen del color solo */}
+      <View style={cal.legend}>
+        <Text style={cal.legendLabel}>{t('history.heatLegend')}</Text>
+        <View style={cal.legendScale}>
+          {HEAT_STEPS.map((a) => (
+            <View key={a} style={[cal.legendSwatch, { backgroundColor: withOpacity(th.colors.accent, a) }]} />
+          ))}
+        </View>
+        <Text style={cal.legendLabel}>{t('history.heatMore')}</Text>
+        <View style={cal.legendSpacer} />
+        <View style={[cal.legendSwatch, cal.cellNoRpe]} />
+        <Text style={cal.legendLabel}>{t('history.heatNoRpe')}</Text>
       </View>
     </View>
   );
@@ -201,12 +271,15 @@ const makeCal = (th) => StyleSheet.create({
     gap:           CELL_GAP,
     marginBottom:  4,
   },
+  // Subida de brillo y peso: en muted2 a 9 px la fila de días se perdía y el
+  // calendario quedaba sin sus ejes.
   hDay: {
     flex:          1,
     textAlign:     'center',
-    fontSize:      9,
-    color:         th.colors.muted2,
-    letterSpacing: 0.5,
+    fontSize:      10,
+    fontWeight:    typography.heavy,
+    color:         th.colors.mutedLight,
+    letterSpacing: 1.2,
   },
 
   // Grid
@@ -222,30 +295,34 @@ const makeCal = (th) => StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  cellTrained: { backgroundColor: th.colors.accent },
-  cellToday:   { borderWidth: 1, borderColor: withOpacity(th.colors.accent, 0.55) },
-  // Selected trained day — green so it's clearly distinct from unselected yellow
-  cellSel:     { backgroundColor: th.colors.green },
+  cellNoRpe: { borderWidth: 1, borderColor: th.tint.accent50 },
+  cellToday: { borderWidth: 1, borderColor: withOpacity(th.colors.accent, 0.55) },
+  // Seleccionado = contorno claro, NO otro color de fondo: el fondo ya codifica
+  // la carga y pintarlo encima destruiría el dato que el mapa existe para dar.
+  cellSel:   { borderWidth: 2, borderColor: th.colors.text },
 
-  dayNum:        { fontSize: 10, color: th.colors.muted2 },
-  dayNumTrained: { fontSize: 11, fontWeight: typography.bold, color: th.colors.onAccent },
-  dayNumToday:   { color: th.colors.accent, fontWeight: typography.medium },
+  dayNum:       { fontSize: 10, color: th.colors.muted2 },
+  dayNumOnTint: { color: th.colors.text,     fontWeight: typography.bold },
+  dayNumOnHeat: { color: th.colors.onAccent, fontWeight: typography.heavy },
+  dayNumNoRpe:  { color: th.colors.accent,   fontWeight: typography.bold },
+  dayNumToday:  { color: th.colors.accent,   fontWeight: typography.medium },
 
-  // Tiny session-label overlay — bottom-right corner of trained cell
-  sesLetter: {
-    position:   'absolute',
-    bottom:     1,
-    right:      2,
-    fontSize:   7,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-    lineHeight: 8,
+  // ── Leyenda del mapa de calor ──
+  legend: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs2,
+    marginTop:     spacing.sm,
   },
+  legendLabel:  { ...textStyles.tag, color: th.colors.muted },
+  legendScale:  { flexDirection: 'row', gap: 2 },
+  legendSwatch: { width: 12, height: 12, borderRadius: th.radius.xs - 1 },
+  legendSpacer: { flex: 1 },
 });
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
-function SessionCard({ session, onDelete }) {
+function SessionCard({ session, onDelete, volumeDelta = null }) {
   const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
@@ -285,6 +362,8 @@ function SessionCard({ session, onDelete }) {
   }, [template, programs, session.sessionTemplateId]);
 
   const durationMin = session.duration ? Math.round(session.duration / 60000) : null;
+  // Series hechas/planificadas: puro por entrada, sin recorrer el log.
+  const { setsDone, setsPlanned } = useMemo(() => recapStats(session), [session]);
   const hasNotes    = !!session.notes?.trim()
                    || (session.exercises ?? []).some((e) => !!e.note);
 
@@ -313,6 +392,16 @@ function SessionCard({ session, onDelete }) {
   // Rendered only while `open` — see the FadeIn/FadeOut wrapper below.
   const detailContent = (
     <View style={styles.detail}>
+      {/* Duración y nº de ejercicios bajan aquí: en la cabecera competían con
+          los tres datos que de verdad se comparan entre sesiones, y esta es
+          información de contexto que se consulta al abrir, no al ojear. */}
+      <Text style={styles.detailMeta}>
+        {[
+          durationMin ? `${durationMin} min` : null,
+          exerciseCount > 0 ? t('common.exercises', { count: exerciseCount }) : null,
+        ].filter(Boolean).join('  ·  ')}
+      </Text>
+
       {!!session.notes?.trim() && (
         <View style={styles.noteSection}>
           <Text style={styles.noteSectionLabel}>NOTA</Text>
@@ -423,6 +512,14 @@ function SessionCard({ session, onDelete }) {
           </Text>
         </View>
       ))}
+
+      {/* Borrar vive aquí y no en la cabecera: es una acción rara y destructiva,
+          y ahí competía por la esquina con la fecha —que sí se consulta— con
+          dos alturas de texto que no había forma de alinear. Mismo tratamiento
+          que "Descartar sesión" en el recap. */}
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteRow} activeOpacity={0.7}>
+        <Text style={styles.deleteRowText}>{t('history.deleteTitle')}</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -440,43 +537,58 @@ function SessionCard({ session, onDelete }) {
             activeOpacity={0.75}
           >
             <View style={styles.cardHeaderLeft}>
-              {/* "Sesión A" tag — or "Sesión libre" badge */}
-              <Text style={styles.cardSesTag} numberOfLines={1}>
-                {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
-              </Text>
-              <View style={styles.cardTitleBlock}>
-                {/* Session name in white */}
-                <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
-                {/* Meta: date · stage · exercises · duration · nota */}
-                <View style={styles.cardMeta}>
-                  <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-                  {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
-                  {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
-                  {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
-                  {exerciseCount > 0 && (
-                    <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
-                  )}
-                  {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-                  {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
-                  {hasNotes && (
-                    <View style={styles.noteTag}>
-                      <Text style={styles.noteTagText}>NOTA</Text>
-                    </View>
-                  )}
-                  {session.adapted && (
-                    <View style={styles.adaptedTag}>
-                      <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-                    </View>
-                  )}
-                </View>
+              {/* Identidad: letra en accent + nombre + etapa, todo en una línea.
+                  La etapa va pegada al nombre y no perdida entre metadatos: es
+                  lo que sitúa la sesión dentro del programa. */}
+              <View style={styles.cardIdRow}>
+                <Text style={styles.cardSesName} numberOfLines={1}>
+                  <Text style={styles.cardSesLetter}>{isFree ? '★' : label}</Text>
+                  {'  '}{name}
+                </Text>
+                {stageName ? (
+                  <Text style={styles.cardStage} numberOfLines={1}>{stageName}</Text>
+                ) : null}
+              </View>
+
+              {/* Datos de la sesión. Texto suelto, no chips: son tres cifras,
+                  no tres botones. Sin carga — un número de carga aislado no
+                  dice nada sin su serie temporal, que vive en la pestaña Carga. */}
+              <View style={styles.cardStatsRow}>
+                <Text style={styles.cardStat}>
+                  <Text style={styles.cardStatNum}>{setsDone}</Text>
+                  <Text style={styles.cardStatUnit}>{`/${setsPlanned} `}</Text>
+                  {t('history.setsShort')}
+                </Text>
+                <Text style={styles.cardStatSep}>·</Text>
+                <Text style={styles.cardStat}>
+                  {'RPE '}
+                  <Text style={session.sessionRpe != null ? styles.cardStatNum : styles.cardStatUnit}>
+                    {session.sessionRpe ?? '—'}
+                  </Text>
+                </Text>
+                {volumeDelta != null && (
+                  <>
+                    <Text style={styles.cardStatSep}>·</Text>
+                    <Text style={[styles.cardStat, volumeDelta >= 0 ? styles.deltaUp : styles.deltaDown]}>
+                      {`${volumeDelta > 0 ? '+' : ''}${volumeDelta}%`}
+                    </Text>
+                  </>
+                )}
+                {hasNotes && (
+                  <View style={styles.noteTag}>
+                    <Text style={styles.noteTagText}>NOTA</Text>
+                  </View>
+                )}
+                {session.adapted && (
+                  <View style={styles.adaptedTag}>
+                    <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+                  </View>
+                )}
               </View>
             </View>
 
-            <View style={styles.cardHeaderRight}>
-              <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-                <Text style={styles.deleteBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Fecha aislada en su esquina: se busca por ella, no se lee de corrido. */}
+            <Text style={styles.cardDateCorner} numberOfLines={1}>{formatDate(session.timestamp)}</Text>
           </TouchableOpacity>
 
           {/* Expanded detail — the card's own `layout` (LinearTransition, on the
@@ -498,17 +610,21 @@ export default function HistoryScreen() {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
-  const workoutLog     = useStore((s) => s.workoutLog);
-  const deleteLogEntry = useStore((s) => s.deleteLogEntry);
-  const programs       = useStore((s) => s.programs);
-  const profile        = useStore((s) => s.profile);
-  const activeProgram  = programs[profile.activeProgramId];
+  const workoutLog      = useStore((s) => s.workoutLog);
+  const deleteLogEntry  = useStore((s) => s.deleteLogEntry);
+  const clearWorkoutLog = useStore((s) => s.clearWorkoutLog);
+  const showToast       = useStore((s) => s.showToast);
+  const programs        = useStore((s) => s.programs);
+  const profile         = useStore((s) => s.profile);
+  const activeProgram   = programs[profile.activeProgramId];
 
   const [scope,            setScope]            = useState('all');
   const [selectedStageIds, setSelectedStageIds] = useState(new Set());
   const [selectedDate,     setSelectedDate]     = useState(null); // { year, month, day }
+  const [menuOpen,         setMenuOpen]         = useState(false);
 
   const hasStages = (activeProgram?.stages?.length ?? 0) > 0;
+
 
   function handleScope(newScope) {
     setScope(newScope);
@@ -552,6 +668,9 @@ export default function HistoryScreen() {
     return ids;
   }, [activeProgram, scope, selectedStageIds, programTemplateIds, hasStages]);
 
+  // Una sola pasada para TODA la lista: por tarjeta sería O(n²).
+  const deltas = useMemo(() => volumeDeltas(workoutLog), [workoutLog]);
+
   const filtered = useMemo(() => {
     let list = [...workoutLog];
     if (scope === 'program' && effectiveTemplateIds.size > 0) {
@@ -569,6 +688,38 @@ export default function HistoryScreen() {
     }
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scope, effectiveTemplateIds, selectedDate]);
+
+  /**
+   * Borrado en bloque. Destructivo y sin deshacer, así que va con confirmación
+   * nativa que dice cuántas sesiones se van y recuerda exportar. La cuenta se
+   * calcula antes para que el aviso sea concreto y no un "esto borrará datos".
+   */
+  function confirmClear(scopeId) {
+    setMenuOpen(false);
+    const willDelete = scopeId === 'all'
+      ? workoutLog.length
+      : workoutLog.filter((e) => !programTemplateIds.has(e.sessionTemplateId)).length;
+
+    if (willDelete === 0) {
+      showToast(t('history.clearNothing'), 2200, 'neutral');
+      return;
+    }
+    Alert.alert(
+      t(`history.clear.${scopeId}.title`),
+      t(`history.clear.${scopeId}.body`, { count: willDelete }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text:    t('history.clear.confirm'),
+          style:   'destructive',
+          onPress: () => {
+            const removed = clearWorkoutLog(scopeId);
+            showToast(t('history.clearDone', { count: removed }), 2200, 'neutral');
+          },
+        },
+      ],
+    );
+  }
 
   // Rendered inline so it closes over scope/hasStages/selectedStageIds state
   const listHeader = (
@@ -591,16 +742,26 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      {/* Scope selector */}
+      {/* Scope selector + menú de gestión del historial */}
       <View style={styles.scopeRow}>
-        <SegmentedControl
-          options={[
-            { id: 'program', label: t('history.currentProgram') },
-            { id: 'all',     label: t('history.all') },
-          ]}
-          value={scope}
-          onChange={handleScope}
-        />
+        <View style={styles.scopeSegmented}>
+          <SegmentedControl
+            options={[
+              { id: 'program', label: t('history.currentProgram') },
+              { id: 'all',     label: t('history.all') },
+            ]}
+            value={scope}
+            onChange={handleScope}
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.menuBtn}
+          onPress={() => setMenuOpen(true)}
+          activeOpacity={0.75}
+          hitSlop={8}
+        >
+          <Text style={styles.menuBtnGlyph}>···</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stage pills */}
@@ -656,7 +817,11 @@ export default function HistoryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <SessionCard session={item} onDelete={deleteLogEntry} />
+          <SessionCard
+            session={item}
+            onDelete={deleteLogEntry}
+            volumeDelta={deltas.get(item.id) ?? null}
+          />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -674,7 +839,27 @@ export default function HistoryScreen() {
           </View>
         }
       />
+
+      {/* Gestión del historial — patrón unificado de modales (DragSheet) */}
+      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('history.manageTitle')}>
+        <View style={styles.sheetBody}>
+          <SheetRow label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
+          <SheetRow label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          <Text style={styles.sheetHint}>{t('history.clearHint')}</Text>
+        </View>
+      </DragSheet>
     </View>
+  );
+}
+
+function SheetRow({ label, onPress, danger = false }) {
+  const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
+  return (
+    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
+      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
+    </TouchableOpacity>
   );
 }
 
@@ -688,9 +873,35 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Scope selector
   scopeRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm2,
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
+  },
+  scopeSegmented: { flex: 1 },
+  // 42×42 = misma caja que los botones que acompañan a la barra de búsqueda
+  // (docs/UI-MIGRATION.md §9), para que las cajas de acción sean una sola familia.
+  menuBtn: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuBtnGlyph: { ...textStyles.cardTitle, color: th.colors.text, marginTop: -6 },
+
+  // ── Hoja de gestión ──
+  sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: th.colors.surface2,
+    borderRadius: th.radius.sm,
+    padding: spacing.md,
+  },
+  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetHint: {
+    ...textStyles.tag, color: th.colors.mutedLight,
+    lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,
   },
 
   // Stage pills
@@ -758,7 +969,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardHeader: {
     flexDirection:     'row',
-    alignItems:        'center',
+    // flex-start y no center: la fecha tiene que quedar clavada en la esquina
+    // superior, no centrada respecto a las dos filas de la izquierda.
+    alignItems:        'flex-start',
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
@@ -767,40 +980,47 @@ const makeStyles = (th) => StyleSheet.create({
     flex: 1,
     gap:  spacing.sm,
   },
-  // Nombre + subtítulo van pegados (0px) — el gap de 6 vive entre el tag y este bloque
-  cardTitleBlock: {
-    gap: 0,
-  },
+  cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // "Sesión A" tag line — Figma text/spacing-tag (Inter ExtraBold 10px,
-  // tracking 2px), NO card-type; siempre en accent, sin color por-programa
-  // (Figma no distingue color de sesión por programa — el #b8ff00 suelto del
-  // mock es un bug conocido, en código va a color/accent).
-  cardSesTag: {
+  // El nombre baja de `cardTitle` (16) a `cardType` (12) para que la tarjeta no
+  // crezca al ganar la fila de datos: dos filas compactas ocupan lo mismo que
+  // el título grande + la línea de metadatos de antes.
+  cardSesName: {
+    ...textStyles.cardType,
+    color:      th.colors.text,
+    flexShrink: 1,
+  },
+  cardSesLetter: { ...textStyles.cardType, color: th.colors.accent },
+  cardStage:     { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
+
+  // ── Fila de datos ──
+  cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  cardStat:     { ...textStyles.tag, color: th.colors.mutedLight },
+  cardStatNum:  { ...textStyles.cardType, color: th.colors.text },
+  cardStatUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+  cardStatSep:  { ...textStyles.tag, color: th.colors.muted2 },
+  deltaUp:      { color: th.colors.accent },
+  deltaDown:    { color: th.tint.red50 },
+
+  cardDateCorner: { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
+  // `detail` no lleva padding lateral —cada sección se lo pone— así que este
+  // texto suelto necesita el suyo o sale a sangre con el borde de la tarjeta.
+  detailMeta: {
+    ...textStyles.tag,
+    color:             th.colors.mutedLight,
+    paddingHorizontal: spacing.lg,
+    marginBottom:      spacing.sm,
+  },
+  deleteRow: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.xs,
+  },
+  deleteRowText: {
     ...textStyles.spacingTag,
     textTransform: 'uppercase',
-    color:         th.colors.accent,
-  },
-  // Session name
-  cardSesName: {
-    ...textStyles.cardTitle,
-    color: th.colors.text,
+    color:         th.tint.red50,
   },
 
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  cardDate: {
-    ...textStyles.subtitle,
-    color: th.colors.mutedLight,
-  },
-  cardMetaSep: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
-  },
   noteTag: {
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,
@@ -829,14 +1049,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.blue,
     letterSpacing: 0.5,
   },
-  cardHeaderRight: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexShrink:    0,
-  },
-  deleteBtn:     { padding: spacing.xs },
-  deleteBtnText: { fontSize: 18, color: th.colors.muted2 },
 
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)

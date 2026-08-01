@@ -1,7 +1,27 @@
 # Spec — Carga de entrenamiento (sRPE, carga interna/externa, panel de Carga)
 
-> Estado: **Fase 1 IMPLEMENTADA** (captura de sRPE + peso corporal en el recap).
-> Fases 2-6 sin empezar. Cada fase = 1 commit y aporta valor por sí sola.
+> Estado: **fases 1-5 implementadas, fase 6 APARCADA** (ago 2026) — captura de
+> sRPE y peso corporal en el recap, `src/utils/trainingLoad.js`, vista Carga,
+> esfuerzo vs carga,
+> rendimiento y series por grupo muscular. Cada fase = 1 commit y aporta valor
+> por sí sola. Desglose y estado exacto en §9.
+>
+> **Por qué se aparca la 6**: al ir a implementarla aparecieron dos problemas que
+> no se ven desde el papel. (1) Las etapas **no guardan cuándo empezaron** —
+> llevan `id, name, days, durationWeeks, locked, meta`— así que anclar una curva
+> de progresión a la etapa exige un campo nuevo en la zona que ya arrastró cuatro
+> bugs (`stage-locks.md`). (2) La app y el sistema de carga usan **dos
+> definiciones distintas de "semana"**: `stageWeeksCompleted` cuenta rotaciones
+> completas por las sesiones del ciclo, y `weeklySeries` cuenta lunes a domingo;
+> se separan en cuanto la vida real interfiere.
+>
+> Y por encima de eso, una duda de producto: la carga en AU es buena para
+> **detectar** (te estás pasando, estás plano) pero mala como **objetivo** — no
+> se le puede decir a un cliente "esta semana quiero 2.400", porque el número no
+> significa nada fuera de su propia serie y no es accionable. Alternativa
+> recomendada si se retoma: objetivo de **series por grupo muscular**, que la
+> fase 5 ya calcula y con banda de referencia. La carga es un termómetro, no un
+> mando.
 >
 > Origen: conversación Opus + usuario (jul 2026) a partir de una propuesta de
 > panel con tendencia de carga, monotonía, strain y ACWR. Varias piezas de la
@@ -74,14 +94,23 @@ existe tiempo activo real. Se acota con un modelo:
 
 ```js
 modelSec(entry) =
-    Σ_ejercicios [ nSeriesHechas × (work + rest) + 180 ]
+    Σ_ejercicios [ Σ_series (work + rest) + 180 ]
   + Σ_bloques    [ segundosActivos + 180 ]
-  + 480                                    // calentamiento general, si hay algo
-// work = 35s (o punto medio del rango si el ejercicio es de tiempo)
+  + 480                                 // calentamiento general, si SE ENTRENÓ algo
+// work = el tiempo REAL de la serie si la tiene, si no 35 s
 // rest = ex.restSec ?? 90   ← restSec SÍ está guardado en el log por ejercicio
+// blockActiveSec: for-time usa su timeSec real; amrap/emom, blockEstimatedSec
 
 sessionMinutes(entry) = clamp(entry.duration / 60000, 0.5 × modelSec/60, 2 × modelSec/60)
 ```
+
+Dos matices que salieron al implementar:
+- `work` usa el **tiempo real registrado**, no el punto medio del rango prescrito
+  como hace `sessionStats`: el log guarda el tiempo de cada serie, y aquí se
+  modela lo hecho, no lo planificado.
+- El calentamiento general (480 s) solo se suma si de verdad se registró trabajo.
+  Un ejercicio presente con 0 series no es una sesión, y sin este guard
+  `sessionMinutes` devolvía un suelo de 4 minutos para una sesión vacía.
 
 Constantes idénticas a `mobile/src/utils/sessionStats.js` (180/480/35) —
 **duplicadas a propósito**, mismo precedente que `LIMITATION_GROUPS` en el
@@ -106,35 +135,72 @@ internalLoad(entry) = entry.sessionRpe != null
 intensidad relativa". Motivos en §10.1.
 
 ```js
-refE1RM(exerciseId, log, asOf, weeks = 6)
-  // mejor e1RM del ejercicio en las `weeks` semanas ANTERIORES a `asOf`.
-  // Reutiliza bestSetE1RM (src/utils/oneRm.js), que ya descarta series de >12
-  // reps efectivas. Es `recentE1RM` con una fecha de corte inyectable —
-  // AÑADIR el parámetro asOf allí en vez de duplicar la función.
-  // Corte por sesión = el histórico es inmutable: un PR de hoy no reescribe
-  // la carga de hace tres meses.
+isBodyweight(def)
+  // La carga es tu cuerpo salvo que el equipo aporte carga externa:
+  //   LOAD_BEARING = { barbell, dumbbells, cables, machines, kettlebell }
+  // Todo lo demás (pullup_bar, parallettes, rings, ab_wheel, weight_belt,
+  // resistance_band, rope, equipment vacío) es aparato de sujeción o lastre.
+  // ⚠ NO vale "equipment está vacío": las dominadas llevan ['pullup_bar'] y los
+  // fondos ['parallettes','dip_bar'], y son ejercicios de peso corporal.
+  // def desconocido (ejercicio borrado) → false, default seguro.
 
-pesoEfectivo(set, def, entry)
-  // 1. Ejercicio con equipment no vacío → parseFloat(set.weight)
-  // 2. Peso corporal (equipment: []) → entry.bodyWeight + (set.weight || 0)
-  // 3. def.progressionDirection === 'decrease' (asistido) →
-  //       entry.bodyWeight − (set.weight || 0)     ← weight es ASISTENCIA
-  // Sin entry.bodyWeight, los casos 2 y 3 no computan.
+effectiveWeight(set, def, bodyWeight)
+  // 1. Equipo con carga → parseFloat(set.weight)
+  // 2. Peso corporal    → bodyWeight + (set.weight || 0)      ← lastre
+  // 3. progressionDirection 'decrease' → bodyWeight − (set.weight || 0)
+  //    weight es ASISTENCIA (goma), no carga: sumarla invertiría el progreso.
+  // Sin bodyWeight, los casos 2 y 3 devuelven null.
 
-setLoad(set, ref) = reps × (pesoEfectivo / ref)        // null si falta cualquiera
+setLoad(set, ref) = reps × (effectiveWeight / ref)     // null si falta cualquiera
 
-externalLoad(entry, log, allExercises) =
-    Σ setLoad de todas las series hechas + sus drops
-  + Σ_bloques [ segundosActivos × BLOCK_LOAD_PER_SEC ]
+sessionLoads(log, allExercises, { fallbackBodyWeight, weeks })
+  // → [{ id, timestamp, internal, external, partial }] ordenado por fecha.
+  //   external = Σ setLoad (series + drops) + Σ_bloques segundosActivos × K
 ```
 
-Cascada de referencia cuando `refE1RM` es null (ejercicio nuevo, primeras
-semanas): usar el mejor e1RM **de la propia entrada**; si tampoco hay (todas las
-series >12 reps y sin historial), la serie no computa y la sesión se devuelve con
-`partial: true` para que la UI pueda atenuarla.
+**Verificado contra la librería real (182 ejercicios)**: 68 quedan como peso
+corporal y los 4 con `progressionDirection: 'decrease'` (los asistidos) caen
+todos dentro, ninguno fuera — la regla del caso 3 no puede dispararse por error
+en un ejercicio con barra.
+
+**Referencia de 1RM — cascada** (`refFor(exerciseId, entry)`):
+1. Mejor e1RM del ejercicio en las `weeks` semanas **anteriores** a esa sesión.
+2. Mejor e1RM **de la propia sesión** (ejercicio estrenado hoy).
+3. **Peso efectivo máximo visto** (previo o de hoy) — salva los ejercicios que
+   siempre se hacen por encima de 12 reps, donde Epley nunca da referencia.
+4. `null` → esas series no computan y la sesión sale `partial: true`.
+
+El corte por sesión (y no "hasta hoy") es lo que hace el histórico **inmutable**:
+un PR de esta semana no puede reescribir la carga de hace tres meses. Hay test.
 
 Series de >12 reps **sí cuentan**: no generan referencia, pero reciben su %1RM de
 la referencia existente. Ese es justo el mecanismo que salva a los accesorios.
+
+Series sin reps (isométricos, series de tiempo) **no computan y tampoco marcan la
+sesión como parcial**: quedan fuera del volumen relativo por definición, no por
+falta de datos.
+
+### 3.3-bis Dos desviaciones respecto al plan original de esta spec
+
+1. **`recentE1RM` NO recibe un parámetro `asOf`** y `oneRm.js` no se toca. La
+   referencia tiene que calcularse sobre el peso **efectivo**, y `recentE1RM` /
+   `bestSetE1RM` leen `set.weight` en crudo: con ellas, ningún ejercicio de peso
+   corporal tendría referencia jamás. Se reutiliza `epley1RM`, que es la fórmula
+   y el límite de 12 reps — la parte que sí debe estar compartida.
+2. **No existe `externalLoad(entry, log, …)` suelta.** Resolver la referencia
+   rescaneando el log por cada ejercicio de cada sesión es O(sesiones² ×
+   ejercicios) (~14 M operaciones con 3 años de historial). `sessionLoads`
+   construye un índice `exerciseId → [{id, ts, e1rm, maxW}]` **una sola vez** por
+   pasada y devuelve todas las sesiones. Quien quiera una sola sesión, la busca
+   por `id` en el resultado.
+
+### 3.4 Peso corporal del histórico
+
+`fallbackBodyWeight` (el último peso conocido del perfil) se usa en las entradas
+sin `bodyWeight` propio. Sin él, todo el historial anterior a la fase 1 quedaría
+sin carga en los ejercicios de peso corporal — es decir, meses de datos muertos.
+Hace el histórico **aproximado, no falso**, y se declara en la ficha de la
+métrica (ver [metric-transparency.md](metric-transparency.md)).
 
 ```js
 // ponytail: un solo factor para todos los bloques, calibrado a ojo
@@ -193,37 +259,102 @@ se usan (Foster las definió sobre sRPE).
 de cliente → **el panel llega al lado entrenador gratis**, que es donde monotonía
 y strain son más accionables.
 
-Segmentado nuevo `EJERCICIOS | CARGA` como primera fila. `EJERCICIOS` = el
+Segmentado nuevo `EJERCICIOS | CARGA` como primera fila, en
+`mobile/src/components/stats/ProgressPanel.jsx` — un envoltorio fino que
+consumen **las dos** pantallas, para que no diverjan. `EJERCICIOS` = el
 `ProgressTab` actual **sin tocar** (1954 líneas ya migradas a Figma). `CARGA` =
 componente nuevo `mobile/src/components/stats/LoadTab.jsx`. No meter el panel
 dentro de `ProgressTab`.
 
+El conmutador va FUERA del scroll de cada pestaña: cada una trae su propia
+`ScrollView` con su padding de página.
+
+**Peso corporal de referencia**: `StatsScreen` pasa `profile.bodyWeight` (más al
+día que el log). `ClientsScreen` **no pasa nada** a propósito — el peso del
+entrenador no es el del cliente — y `LoadTab` lo deduce de la entrada más
+reciente del propio log del cliente.
+
 ### 5.2 Contenido de la vista Carga (aprobado por mockup, jul 2026)
 
 1. Fila de período (`1M/3M/6M/TODO`, sin toggle de programa).
-2. **3 progress cards** reutilizando el componente exacto, con significado nuevo:
-   `CARGA 7D` (+% vs 28d) · `MONOTONÍA` (baja/moderada/alta) · `STRAIN` (+% vs
-   base). Condición del usuario: sólo si la información cabe bien; si no, bajar
-   monotonía/strain a strips.
-3. **Card "Tendencia de carga"** — barras diarias (`muted2`) + línea 7d (`accent`)
-   + línea 28d (`blue`), leyenda, y strip de estado con punto de color y frase
-   ("Estás acumulando carga. La semana va un 34% por encima de tu media del mes").
-4. **Card "Esfuerzo vs carga"** — dos líneas **indexadas base 100** sobre su
-   propia media de 28d. En unidades crudas (kg vs AU) una aplasta a la otra.
-   Debajo, chip de interpretación: `↑ carga + = esfuerzo → adaptación`,
-   `= carga + ↑ esfuerzo → fatiga`, `↓ ambas → descarga`.
+2. **3 progress cards** reutilizando el componente exacto, con significado nuevo.
+   Tras el QA quedaron así: `CARGA 7D` · `SESIONES` · `MONOTONÍA`.
+   - **`CARGA 7D` enseña el PORCENTAJE, no la carga absoluta.** El número en
+     bruto va en unidades arbitrarias y su propia ficha dice que no significa
+     nada suelto; destacarlo contradecía la documentación. Sin histórico para
+     comparar sí se enseña la carga, para no dejar la tarjeta vacía.
+   - **`SESIONES` (últimos 7 días) sustituyó a `STRAIN`**, que se mudó a su
+     propia tira (punto 3-bis). La carga es sRPE × minutos sumada: saber si
+     salió de 3 sesiones o de 5 es lo que la hace legible, y es además el
+     recuento que decide si monotonía y strain se muestran.
+   - **La monotonía dice el significado, no el nivel**: "variada / normal /
+     repetitiva" en vez de "baja / moderada / alta", que no respondía a la única
+     pregunta que se hace el usuario — si eso es bueno o malo.
+3. **Card "Evolución de la carga"** — barras diarias + línea 7d (`accent`) +
+   línea 28d (`blue`), leyenda, y strip de estado con punto de color. El strip
+   **no repite el porcentaje** de la card: nombra el estado en palabras y la
+   cifra la da la tarjeta.
+3-bis. **Tira de strain semana a semana** (añadida tras el QA). El valor absoluto
+   del strain no significa nada, así que el número suelto comunicaba poco: lo que
+   se lee es la serie. Una barra por semana, la actual en `accent` y las
+   anteriores en `tint.accent50`; las semanas por debajo del mínimo de sesiones
+   van **en contorno**, el mismo idioma que el mapa de calor del historial, donde
+   contorno = "no se puede calcular" y nunca "salió bajo". Obedece al selector de
+   período como el resto del panel.
+4. **Card "Esfuerzo vs carga"** — dos líneas **indexadas base 100**. En unidades
+   crudas (reps relativas vs AU) una aplasta a la otra. Debajo, chip de
+   interpretación: `↑ carga + = esfuerzo → adaptación`, `= carga + ↑ esfuerzo →
+   fatiga`, `↑ ambas → bloque duro`, `↓ ambas → descarga`.
+   - **Resolución SEMANAL**, no diaria: a resolución diaria las dos líneas son
+     ruido con ceros de por medio.
+   - La base 100 es el **primer punto de la ventana visible** (se indexa después
+     de recortar por período), pero **el chip se calcula sobre la serie
+     completa**: si cambiara al mover el selector sería un veredicto que depende
+     del zoom.
+   - `effortTrend` compara **medias de bloque de 4 semanas**, no dos puntos
+     sueltos. Con un mesociclo 3:1, comparar la última semana contra la de hace
+     cuatro enfrenta descarga con descarga y siempre sale "sin cambios".
 5. **Card "Rendimiento"** — e1RM medio indexado. Es la salida del sistema; sin
    ella el panel mide fatiga pero no responde a "¿me estoy adaptando?".
-6. **Card "Series por grupo"** (fase 5) — barras horizontales de la semana actual
-   por `primaryGroup`, con marcas verticales del rango 10-20 series. **No** son
-   barras apiladas por semana: a ancho de móvil, 9 grupos × 4 semanas es
-   ilegible, y la pregunta real es "¿me falta hombro?".
+   - Los e1RM de ejercicios distintos no son comparables (150 kg de sentadilla y
+     40 de curl no promedian), así que **cada ejercicio se indexa contra su
+     propia línea base** y se promedian los índices, no los kilos.
+   - Cada semana toma el **mejor e1RM de las últimas 4 semanas**, no el de esa
+     semana suelta: nadie pierde fuerza por hacer una descarga. Con el dato
+     semanal a pelo el índice caía un 10% cada cuatro semanas dibujando una
+     sierra sin significado (verificado con la semilla). Es el mismo criterio que
+     ya usa `recentE1RM` en `oneRm.js`.
+   - Un ejercicio solo entra con línea base **y** al menos una observación
+     posterior: con un único dato no hay progreso, solo un 100 que diluye.
+6. **Card "Series por grupo"** — barras horizontales por `primaryGroup` con
+   marcas verticales del rango 10-20 series. **No** son barras apiladas por
+   semana: a ancho de móvil, 9 grupos × 4 semanas es ilegible, y la pregunta real
+   es "¿me falta hombro?". Dentro de rango = `accent`, fuera (por arriba o por
+   abajo) = `orange`, nunca rojo (§4.9 de UI-MIGRATION).
+
+   Dos correcciones sobre el plan original, ambas de la misma raíz —que la card
+   responda de verdad a "¿me falta hombro?":
+   - **Ventana móvil de 7 días, no semana natural.** Un lunes por la mañana la
+     semana natural está casi vacía y el panel diría que te falta todo.
+   - **Los grupos entrenados en los últimos 28 días pero NO esta semana salen a
+     cero**, no desaparecen de la lista. Con la agregación a secas, el hombro sin
+     entrenar simplemente no se pinta — y el hueco es exactamente lo que hay que
+     ver. La referencia de "lo que entrenas habitualmente" es el propio usuario.
 
 ### 5.3 Gráficos
 
-Extender el `MiniLineChart` de `ProgressTab.jsx` con un prop `series[]` (hoy pinta
-una sola). Ya resuelve eje, scroll, tooltip y animación. **No añadir
-`victory-native` ni `gifted-charts`** por tres polilíneas.
+**Corregido al implementar la fase 3.** La idea original era extender el
+`MiniLineChart` de `ProgressTab.jsx` con un prop `series[]`. No se puede: ese
+componente guarda las posiciones en un array **fijo de 80** `Animated.Value`
+(`Y_ANIM_COUNT = 80`) y la serie de carga es un punto por DÍA — 365+ en un año.
+Además la marca es distinta (barras diarias bajo dos líneas) y no necesita
+scroll ni tooltip, porque el zoom lo da el selector de período.
+
+`LoadTab.jsx` trae su propio `LoadChart`, ~60 líneas de `react-native-svg`. Los
+tramos sin dato (sesión sin sRPE) **parten la polilínea** en segmentos en vez de
+cruzarlos con una recta que inventaría carga inexistente.
+
+Sigue en pie lo importante: **no añadir `victory-native` ni `gifted-charts`**.
 
 ### 5.4 Transparencia de fórmulas — obligatoria
 
@@ -270,20 +401,21 @@ Namespace nuevo para el panel: `load.*`.
 - El array `clients[id].bodyWeight` del lado entrenador: es otra feature (el
   entrenador lo teclea a mano). Unificarlo es una decisión aparte.
 
-**Limpieza incluida en la fase 2:** `getSessionTotalVol` (`ProgressTab.jsx:253`)
-no suma los drops y `recapStats` sí. Unificar por lo correcto (sumarlos) — cambia
-los números de la card VOLUMEN, avisar al usuario.
+**Limpieza hecha en la fase 2:** `getSessionTotalVol` (`ProgressTab.jsx`) no
+sumaba las sub-series de los dropsets y `recapStats` sí. Ahora delega en
+`recapStats(session).volume` — una sola definición de "volumen" en la app. Sube
+ligeramente los números de la card VOLUMEN en quien use dropsets.
 
 ## 9. Fases
 
 | # | Contenido | Estado |
 |---|---|---|
-| 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha |
-| 2 | `src/utils/trainingLoad.js` + tests + `asOf` en `recentE1RM` + unificación de tonelaje + línea de carga en el recap | — |
-| 3 | Segmentado `EJERCICIOS/CARGA` + `LoadTab` con cards, gráfico de tendencia y strip de estado | — |
-| 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento. **Esperar 4+ semanas de sRPE real** o es un gráfico vacío | — |
-| 5 | Series por grupo muscular | — |
-| 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | — |
+| 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha (`0bda778`) |
+| 2 | `src/utils/trainingLoad.js` + 52 tests + unificación de tonelaje + línea de carga en el recap | ✅ hecha |
+| 3 | Segmentado `EJERCICIOS/CARGA` (`ProgressPanel`) + `LoadTab` con cards, gráfico de tendencia y strip de estado | ✅ hecha |
+| 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento | ✅ hecha |
+| 5 | Series por grupo muscular | ✅ hecha |
+| 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | ⏸ **APARCADA** (ago 2026) |
 
 ## 10. Decisiones cerradas y por qué (no re-litigar)
 

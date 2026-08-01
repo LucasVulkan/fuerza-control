@@ -75,10 +75,65 @@ function SectionRow({ label, desc, enabled, disabled, onToggle }) {
   );
 }
 
+/**
+ * Sección con selector Combinar/Reemplazar dentro de la misma tarjeta.
+ * La usan historial y plantillas: son las dos secciones donde "importar" puede
+ * significar dos cosas distintas y hay que elegir. `modeHint` deja escrito qué
+ * hace la opción elegida, porque "Reemplazar" borra datos y eso no debería
+ * deducirse de una palabra.
+ */
+function ModeSectionRow({ label, desc, enabled, disabled, onToggle, mode, onSetMode, modeHint }) {
+  const th = useTheme();
+  const s  = useThemedStyles(makeS);
+  const on = enabled && !disabled;
+  return (
+    <View style={[s.templateCard, on && s.templateCardActive]}>
+      <TouchableOpacity
+        style={s.templateCardRow}
+        onPress={disabled ? undefined : onToggle}
+        activeOpacity={disabled ? 1 : 0.7}
+      >
+        <View style={s.sectionInfo}>
+          <Text style={[s.sectionLabel, disabled && { color: th.colors.muted2 }]}>{label}</Text>
+          {desc ? <Text style={s.sectionDesc}>{desc}</Text> : null}
+        </View>
+        <Switch
+          value={on}
+          onValueChange={disabled ? undefined : onToggle}
+          disabled={disabled}
+          trackColor={{ false: th.colors.border, true: th.colors.accent }}
+          thumbColor={on ? '#FFFFFF' : th.colors.muted}
+        />
+      </TouchableOpacity>
+      {on && (
+        <>
+          <View style={s.templateModeRow}>
+            {['merge', 'replace'].map((m) => (
+              <TouchableOpacity
+                key={m}
+                style={[s.modeBtn, mode === m && s.modeBtnActive]}
+                onPress={() => onSetMode(m)}
+              >
+                <Text style={[s.modeBtnText, mode === m && s.modeBtnTextActive]}>
+                  {m === 'merge' ? 'Combinar' : 'Reemplazar'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {modeHint ? (
+            <Text style={[s.sectionDesc, mode === 'replace' && { color: th.colors.red }]}>
+              {modeHint}
+            </Text>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
 // ── Backup sections (full-backup flow) ────────────────────────────────────────
 
-function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) {
-  const th = useTheme();
+function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, onSetLogMode }) {
   const s = useThemedStyles(makeS);
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
@@ -102,12 +157,17 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
           disabled={!hasPrograms}
           onToggle={() => onToggle('program')}
         />
-        <SectionRow
+        <ModeSectionRow
           label="Historial de sesiones"
           desc={hasLog ? `${(parsedData.workoutLog ?? []).length} sesiones` : 'No disponible'}
           enabled={sections.log}
           disabled={!hasLog}
           onToggle={() => onToggle('log')}
+          mode={sections.logMode}
+          onSetMode={onSetLogMode}
+          modeHint={sections.logMode === 'replace'
+            ? 'Sustituye TODO tu historial actual'
+            : 'Añade las sesiones que falten'}
         />
         <SectionRow
           label="Ejercicios personalizados"
@@ -124,45 +184,15 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode }) 
           onToggle={() => onToggle('clients')}
         />
 
-        {/* Template section — mode buttons inside same card */}
-        <View style={[s.templateCard, sections.templates && hasTemplates && s.templateCardActive]}>
-          <TouchableOpacity
-            style={s.templateCardRow}
-            onPress={hasTemplates ? () => onToggle('templates') : undefined}
-            activeOpacity={hasTemplates ? 0.7 : 1}
-          >
-            <View style={s.sectionInfo}>
-              <Text style={[s.sectionLabel, !hasTemplates && { color: th.colors.muted2 }]}>
-                Plantillas de programa
-              </Text>
-              <Text style={s.sectionDesc}>
-                {hasTemplates ? 'Plantillas reutilizables' : 'No disponible'}
-              </Text>
-            </View>
-            <Switch
-              value={sections.templates && hasTemplates}
-              onValueChange={hasTemplates ? () => onToggle('templates') : undefined}
-              disabled={!hasTemplates}
-              trackColor={{ false: th.colors.border, true: th.colors.accent }}
-              thumbColor={sections.templates && hasTemplates ? '#FFFFFF' : th.colors.muted}
-            />
-          </TouchableOpacity>
-          {sections.templates && hasTemplates && (
-            <View style={s.templateModeRow}>
-              {['merge', 'replace'].map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  style={[s.modeBtn, sections.templatesMode === mode && s.modeBtnActive]}
-                  onPress={() => onSetTemplatesMode(mode)}
-                >
-                  <Text style={[s.modeBtnText, sections.templatesMode === mode && s.modeBtnTextActive]}>
-                    {mode === 'merge' ? 'Combinar' : 'Reemplazar'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+        <ModeSectionRow
+          label="Plantillas de programa"
+          desc={hasTemplates ? 'Plantillas reutilizables' : 'No disponible'}
+          enabled={sections.templates}
+          disabled={!hasTemplates}
+          onToggle={() => onToggle('templates')}
+          mode={sections.templatesMode}
+          onSetMode={onSetTemplatesMode}
+        />
       </View>
     </>
   );
@@ -232,6 +262,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
     clients:         hasClients,
     templates:       hasTemplates,
     templatesMode:   'merge',
+    logMode:         'merge',
   });
 
   // ── Program-mode state ────────────────────────────────────────────────────
@@ -288,6 +319,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
                   sections={sections}
                   onToggle={toggle}
                   onSetTemplatesMode={(mode) => setSections((prev) => ({ ...prev, templatesMode: mode }))}
+                  onSetLogMode={(mode) => setSections((prev) => ({ ...prev, logMode: mode }))}
                 />
               )
               : (

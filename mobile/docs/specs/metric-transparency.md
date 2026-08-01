@@ -1,6 +1,10 @@
 # Spec — Transparencia de métricas ("¿de dónde sale este número?")
 
-> Estado: **NO IMPLEMENTADA**. Pedida por el usuario (jul 2026) al cerrar
+> Estado: **FASES 1 Y 2 IMPLEMENTADAS** (ago 2026) — registro `metrics.*` con
+> las 26 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se
+> calcula cada número" en Documentación, y la hoja informativa al tocar la
+> etiqueta de un dato en Progreso, detalle de ejercicio y Carga. Pedida por el
+> usuario (jul 2026) al cerrar
 > [training-load.md](training-load.md): *"en todos los elementos en los que hay
 > fórmulas y datos expuestos, que haya una forma de ver la fórmula exacta usada,
 > a modo informativo"*.
@@ -45,8 +49,45 @@ métrica:
 }
 ```
 
-Cuatro campos, siempre los cuatro: `name` · `what` (una frase, sin jerga) ·
-`formula` (la expresión literal) · `caveat` (el límite conocido).
+**Cinco campos**, separados a propósito para no mezclar concepto con
+implementación (la primera versión los mezclaba y se notaba):
+
+| campo | contenido | obligatorio |
+|---|---|---|
+| `name` | cómo se llama en la app | sí |
+| `what` | qué mide **y para qué sirve** | sí |
+| `formula` | el cálculo, sin reglas ni matices | sí |
+| `rules` | reglas de la aplicación: qué entra, qué se excluye, cuándo se oculta | no |
+| `caveat` | el límite conocido: cuánto puedes fiarte del número | sí |
+
+Las fórmulas que son un resumen y no el cálculo literal se declaran en
+`APPROX_FORMULA` (`metricDocs.js`) y la ficha las etiqueta como *"Cómo se calcula
+(simplificado)"*. Presentar un resumen como fórmula exacta es justo la
+imprecisión que esta spec existe para evitar.
+
+### 2.1-bis Vocabulario — un término por concepto
+
+Regla editorial, no estilo: usar dos palabras para lo mismo hace dudar de si son
+lo mismo.
+
+| Concepto | Término único |
+|---|---|
+| Estimación del máximo | **1RM estimado** — nunca "marca", "fuerza" ni "récord" |
+| Denominador de la carga externa | **1RM de referencia** |
+| Ancla de un índice | **valor inicial** |
+| Todas las sesiones guardadas | **historial** |
+| Lo elegido en el selector 1M/3M/6M | **período** |
+| Regresión | **línea de tendencia (regresión lineal)** |
+| Ventana de cuatro semanas | **las 4 semanas anteriores** |
+
+Dos reglas más:
+- **"Tendencia" solo para pendientes.** Una variación entre dos puntos no es una
+  tendencia y decirlo así confunde. Por eso el gráfico del panel de Carga pasó de
+  "Tendencia de carga" a **"Evolución de la carga"**: son barras diarias con dos
+  medias móviles, no una regresión.
+- **Nunca "fuerza" para hablar del e1RM.** Es *rendimiento estimado*: "fuerza"
+  tiene un significado preciso en entrenamiento y sugiere una medición objetiva
+  que aquí no existe.
 
 Las constantes se **interpolan desde el código**, no se teclean en el JSON:
 `t('metrics.e1rm.caveat', { maxReps: MAX_RELIABLE_REPS })`. Así cambiar la
@@ -65,7 +106,42 @@ export const METRIC_VARS = {
 };
 ```
 
-### 2.2 `MetricInfoSheet`
+### 2.1-ter Un gráfico NO es una métrica
+
+Namespace aparte `chartDocs.*`, con tres campos por gráfico: `name`, `what` (qué
+representa) y `read` (**cómo se interpreta**).
+
+Salió del QA: al abrir "Esfuerzo vs carga" aparecían las fichas de carga externa,
+carga de sesión y base 100, pero en ningún sitio se decía qué representa el
+gráfico ni cómo leerlo — había que deducirlo de tres fichas. La hoja pinta ahora
+el bloque del gráfico **primero**, con relleno accent porque es la cabecera y no
+una ficha más, y debajo, tras un separador "Datos que lo componen", las fichas de
+sus métricas.
+
+Efecto lateral buscado: la interpretación deja de vivir en un párrafo largo
+debajo del gráfico. Bajo la tira de strain quedó una línea.
+
+### 2.2 `MetricInfoSheet` — alcance cerrado
+
+**Qué es tocable** (decisión del usuario, ago 2026): las 3 cards de Progreso,
+las 3 del detalle de ejercicio, las 3 de Carga y los 4 títulos de gráfico de esa
+pestaña. **Qué no**: la gráfica del detalle de ejercicio, que ya es interactiva y
+no es lo bastante compleja como para necesitar explicación.
+
+La regla de fondo: **no hacer tocable todo lo que tenga un número.** Si el icono
+aparece en todas partes deja de significar nada y se convierte en ruido.
+
+**El icono ⓘ va solo en los títulos de gráfico.** Las tarjetas pequeñas son
+pulsables enteras y sin icono: en una caja de 108 px con un número grande y dos
+etiquetas el aro era ruido, y una tarjeta pequeña no tiene ninguna otra acción
+con la que competir por el toque —al contrario que las de Progreso, que abren el
+detalle del ejercicio, y por eso allí el disparador sí es la etiqueta.
+
+**Un dato puede necesitar varias fichas**, así que la hoja recibe una lista:
+"Carga 7d" no se explica solo con la carga de sesión, hace falta la media móvil;
+"Esfuerzo vs carga" necesita carga externa, carga de sesión y base 100.
+
+### 2.2-bis Implementación
 
 Componente nuevo en `mobile/src/components/ui/`. Recibe `metricId`, muestra los
 cuatro campos y se cierra arrastrando. **Reutiliza `mobile/src/components/DragSheet.jsx`**
@@ -127,9 +203,9 @@ acondicionamiento (calibrado a ojo).
 
 | # | Contenido | Nota |
 |---|---|---|
-| 1 | Registro `metrics.*` (es+en) + `metricDocs.js` + apartado en `DocsScreen` | Cubre TODAS las métricas de golpe sin tocar ninguna pantalla de datos. Es el 80% del valor |
-| 2 | `MetricInfoSheet` + etiquetas tocables en Progreso y Recap | |
-| 3 | Extender a Workout (chip de progresión, calentamiento) y lado entrenador (adherencia) | |
+| 1 | Registro `metrics.*` (es+en) + `metricDocs.js` + apartado en `DocsScreen` | ✅ **hecha** — 24 fichas, cubre todas las métricas sin tocar ninguna pantalla de datos |
+| 2 | `MetricInfoSheet` + etiquetas tocables en Progreso, detalle de ejercicio y Carga | ✅ **hecha** |
+| 3 | Extender a Workout (chip de progresión, calentamiento), Recap, historial y lado entrenador (adherencia) | pendiente de decidir si merece la pena |
 
 Fase 1 puede hacerse antes o después de la fase 2 de training-load, son
 independientes. Las métricas nuevas se añaden al registro **en el mismo commit**

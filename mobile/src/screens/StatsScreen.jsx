@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }    from '../../store/useStore';
 import AppHeader       from '../components/AppHeader';
-import ProgressTab     from '../components/stats/ProgressTab';
+import ProgressPanel   from '../components/stats/ProgressPanel';
 import { useThemedStyles } from '../useTheme';
 
 export default function StatsScreen() {
@@ -38,10 +38,11 @@ export default function StatsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
-      <ProgressTab
+      <ProgressPanel
         baseLog={workoutLog}
         programTemplateIds={programTemplateIds}
         allExercises={allExercises}
+        fallbackBodyWeight={profile.bodyWeight ?? null}
       />
     </View>
   );

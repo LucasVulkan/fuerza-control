@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recapStats, detectPRs, compareToLast, prevBlockResult } from './sessionRecap';
+import { recapStats, detectPRs, compareToLast, prevBlockResult, volumeDeltas } from './sessionRecap';
 
 const set = (weight, reps, extra = {}) => ({ weight: String(weight), reps: String(reps), time: '', done: true, ...extra });
 const bw  = (reps) => ({ weight: '', reps: String(reps), time: '', done: true });
@@ -276,5 +276,58 @@ describe('compareToLast — data types', () => {
     const now = entry({ exercises: [{ exerciseId: 'bench', sets: [set(80, 10)] }] });
     const d = compareToLast(now, [oldest, latest, now]);
     expect(d[0].delta).toEqual({ kind: 'equal', diff: 0 }); // vs 80, not vs 70
+  });
+});
+
+describe('volumeDeltas', () => {
+  const ex = (sets) => ({ exerciseId: 'sq', sets });
+
+  it('compara cada sesión con la anterior de SU MISMA plantilla', () => {
+    const log = [
+      entry({ id: 'a1', tpl: 'A', ts: 1, exercises: [ex([set(100, 10)])] }), // 1000
+      entry({ id: 'b1', tpl: 'B', ts: 2, exercises: [ex([set(50, 10)])] }),  // 500
+      entry({ id: 'a2', tpl: 'A', ts: 3, exercises: [ex([set(110, 10)])] }), // 1100 → +10%
+      entry({ id: 'b2', tpl: 'B', ts: 4, exercises: [ex([set(40, 10)])] }),  // 400  → −20%
+    ];
+    const d = volumeDeltas(log);
+    expect(d.get('a1')).toBeNull();
+    expect(d.get('b1')).toBeNull();
+    expect(d.get('a2')).toBe(10);
+    expect(d.get('b2')).toBe(-20);
+  });
+
+  it('ordena por fecha aunque el log venga desordenado', () => {
+    const log = [
+      entry({ id: 'a2', tpl: 'A', ts: 9, exercises: [ex([set(120, 10)])] }),
+      entry({ id: 'a1', tpl: 'A', ts: 1, exercises: [ex([set(100, 10)])] }),
+    ];
+    const d = volumeDeltas(log);
+    expect(d.get('a1')).toBeNull();
+    expect(d.get('a2')).toBe(20);
+  });
+
+  it('deja fuera las sesiones libres: comparten plantilla pero no son la misma sesión', () => {
+    const log = [
+      entry({ id: 'f1', tpl: '__free__', ts: 1, exercises: [ex([set(100, 10)])] }),
+      entry({ id: 'f2', tpl: '__free__', ts: 2, exercises: [ex([set(200, 10)])] }),
+    ];
+    const d = volumeDeltas(log);
+    expect(d.has('f1')).toBe(false);
+    expect(d.has('f2')).toBe(false);
+  });
+
+  it('una sesión sin tonelaje no sirve de referencia ni arrastra el cero', () => {
+    const log = [
+      entry({ id: 'a1', tpl: 'A', ts: 1, exercises: [ex([set(100, 10)])] }), // 1000
+      entry({ id: 'a2', tpl: 'A', ts: 2, exercises: [ex([bw(20)])] }),       // 0, peso corporal
+      entry({ id: 'a3', tpl: 'A', ts: 3, exercises: [ex([set(150, 10)])] }), // 1500 → +50% vs a1
+    ];
+    const d = volumeDeltas(log);
+    expect(d.get('a2')).toBeNull();
+    expect(d.get('a3')).toBe(50);
+  });
+
+  it('log vacío → mapa vacío', () => {
+    expect(volumeDeltas([]).size).toBe(0);
   });
 });

@@ -17,6 +17,8 @@ import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
+import { METRIC_GROUPS } from '../utils/metricDocs';
+import MetricDoc from '../components/ui/MetricDoc';
 
 export default function DocsScreen() {
   const styles     = useThemedStyles(makeStyles);
@@ -45,6 +47,18 @@ export default function DocsScreen() {
                 <Text style={styles.pointText}>{point}</Text>
               </View>
             ))}
+          </View>
+        ))}
+
+        {/* Cómo se calcula cada número — una ficha por métrica expuesta */}
+        <View style={styles.section}>
+          <Text style={styles.secLabel}>{t('docs.metricsTitle')}</Text>
+          <Text style={styles.metricsIntro}>{t('docs.metricsIntro')}</Text>
+        </View>
+        {METRIC_GROUPS.map((group) => (
+          <View key={group.id} style={styles.section}>
+            <Text style={styles.groupLabel}>{t(`docs.metricGroups.${group.id}`)}</Text>
+            {group.ids.map((id) => <MetricDoc key={id} id={id} />)}
           </View>
         ))}
       </ScrollView>
@@ -102,5 +116,18 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:   13,
     color:      th.colors.text,
     lineHeight: 20,
+  },
+
+  // ── Fichas de métrica ──
+  metricsIntro: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    lineHeight: 19,
+  },
+  groupLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.xs,
   },
 });

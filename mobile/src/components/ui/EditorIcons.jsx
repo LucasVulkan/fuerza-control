@@ -101,3 +101,17 @@ export function LockIcon({ size = 14, color }) {
     </Svg>
   );
 }
+
+// Información — dispara la ficha de una métrica (docs/specs/metric-transparency.md).
+// Tampoco sale de Figma: el diseño no contempla esta feature. Trazo 2 como el
+// resto de iconos dibujados a mano, y aro sin relleno para que no compita con
+// el número al que acompaña.
+export function InfoIcon({ size = 12, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3a9 9 0 100 18 9 9 0 000-18z" stroke={color} strokeWidth={2} />
+      <Path d="M12 11v5" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+      <Path d="M12 7.6v.2" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  );
+}

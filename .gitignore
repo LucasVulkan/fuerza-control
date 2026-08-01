@@ -28,3 +28,4 @@ dist-ssr
 
 # Local design mockups
 mockups-home.html
+*.fitdata

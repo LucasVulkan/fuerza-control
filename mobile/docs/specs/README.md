@@ -8,8 +8,8 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [training-load.md](training-load.md) — Carga de entrenamiento | fase 1 implementada (captura de sRPE + peso corporal en el recap); fases 2-6 listas para ejecutar | 🟡 | siguiente = fase 2 (`src/utils/trainingLoad.js` + tests). La fase 4 necesita 4+ semanas de sRPE real antes de tener sentido |
-| [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | sin empezar | 🟢 | transversal (métricas viejas y nuevas). La fase 1 (registro i18n + apartado en `DocsScreen`) cubre todas las métricas sin tocar ninguna pantalla de datos |
+| [training-load.md](training-load.md) — Carga de entrenamiento | fases 1-5 implementadas + tira de strain (captura, `trainingLoad.js`, vista Carga, esfuerzo vs carga, rendimiento, series por grupo, strain semanal); fase 6 APARCADA | 🟡 | fase 6 (objetivos por etapa) parada: las etapas no guardan fecha de inicio y hay dos definiciones de "semana" en conflicto — ver cabecera de la spec. `npm run seed` genera historial de prueba |
+| [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | fases 1 y 2 implementadas (26 fichas + 5 gráficos documentados, apartado en Documentación y hoja al tocar el dato) | 🟢 | fase 3 (Workout, Recap, historial, adherencia) pendiente de decidir si merece la pena |
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); fase C EN PAUSA (4/~10-12 plantillas, ver §6.2) | 🔴 | contenido de plantillas (fase C) = Fable+usuario; onboarding "muy extenso", pendiente decidir si simplificar antes de seguir |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
@@ -19,6 +19,29 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 | [strength-blocks.md](strength-blocks.md) — Dropset + Superserie | implementada (`92ab414`) |
 | [conditioning-blocks.md](conditioning-blocks.md) — AMRAP/EMOM/For time | implementada, 4 fases + fix rondas EMOM + resumen en editor (`a15ee07`) |
 | [warmup-sets.md](warmup-sets.md) — Series de calentamiento | implementada, 3 fases (`45a74ee` utils, `f04a254` editor, `8d7d187` workout) |
+| Gestión del historial (sin spec propia) | implementada ago-2026: `logMode` merge/replace al importar + menú "···" en Historial con borrado en bloque (todo / ajeno al programa activo). Detalle abajo |
+
+### Gestión del historial — desglose
+
+Antes solo se podía borrar sesión a sesión. Tres piezas:
+
+1. **`sections.logMode`** (`'merge' | 'replace'`) en `importData`. Sin él,
+   reimportar un backup corregido NO actualizaba nada: la fusión deduplica por
+   id y daba por buena la copia vieja. Simétrico al `templatesMode` que ya
+   existía; el selector de `ImportModal` se extrajo a `ModeSectionRow` y ahora lo
+   comparten historial y plantillas en vez de estar duplicado.
+2. **`clearWorkoutLog(scope)`** en el store: `'all'` y `'off_program'`. Las
+   sesiones libres (`__free__`) cuentan como ajenas al programa — es justo lo que
+   se quiere limpiar (pruebas, semillas, sueltas). **Sin programa activo no borra
+   nada**: sería un borrado total por sorpresa. Devuelve cuántas borró, para el
+   toast.
+3. **Menú "···" en `HistoryScreen`** con `DragSheet` (patrón unificado), junto al
+   selector de ámbito. Confirmación nativa que dice **cuántas** sesiones se van
+   —contadas antes— y recuerda exportar.
+
+Trampa pisada: declarar el manejador antes de los `useMemo` que captura hace que
+el compilador de React abandone la memoización de la pantalla entera (+1 error de
+lint). Va después de `programTemplateIds`/`effectiveTemplateIds`.
 
 ## Aparcado (decisión de producto pendiente, NO implementar)
 
