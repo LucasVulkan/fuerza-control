@@ -487,6 +487,39 @@ export function effortTrend(external, internal, { block = 4, flat = 8 } = {}) {
   return 'mixed';
 }
 
+/**
+ * Strain de cada semana natural, para poder ver su evolución.
+ *
+ * El valor absoluto del strain no significa nada —lo dice su propia ficha—, así
+ * que un número suelto es casi inútil: lo que comunica es la SERIE, ver que
+ * llevas tres semanas subiendo. Por eso existe esta función además del dato de
+ * la semana en curso.
+ *
+ * Aplica el mismo mínimo de sesiones que el indicador: una semana con una o dos
+ * sesiones devuelve `null` en vez de un número que mentiría, y la tira dibuja un
+ * hueco.
+ *
+ * @returns {Array<{ weekStart: number, strain: number|null, sessions: number }>}
+ */
+export function weeklyStrain(days) {
+  if (!days?.length) return [];
+  const byWeek = new Map();
+  for (const d of days) {
+    const key = startOfWeek(d.day);
+    if (!byWeek.has(key)) byWeek.set(key, { weekStart: key, values: [], sessions: 0 });
+    const w = byWeek.get(key);
+    w.values.push(d.internal);
+    w.sessions += d.sessions;
+  }
+  return [...byWeek.values()]
+    .sort((a, b) => a.weekStart - b.weekStart)
+    .map(({ weekStart, values, sessions }) => ({
+      weekStart,
+      sessions,
+      strain: sessions >= MIN_SESSIONS_FOR_MONOTONY ? strain(values) : null,
+    }));
+}
+
 // ── Rendimiento ───────────────────────────────────────────────────────────────
 
 /**

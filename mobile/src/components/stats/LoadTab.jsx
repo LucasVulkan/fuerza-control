@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
-  weeklySeries, indexTo100, effortTrend, performanceWeekly,
+  weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
   SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../../../../src/utils/trainingLoad';
@@ -50,6 +50,10 @@ const PAD_BOT = 6;
 // `LoadChart` no lo necesita — no lleva punto final, y sus barras ya quedan
 // dentro por el medio paso del centrado.
 const DOT_R   = 3;
+
+// Semanas que enseña la tira de strain. Doce cubre tres mesociclos de 3:1, que
+// es donde el patrón de acumulación y descarga se reconoce.
+const STRAIN_WEEKS = 12;
 
 // Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
 // entre grupos y semanas; solo crece si alguien se sale del rango.
@@ -337,6 +341,13 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
     return { values, pct: last != null ? Math.round(last - 100) : null, weeks: visible.length };
   }, [baseLog, allExercises, bodyWeight, period]);
 
+  // Strain semana a semana. El valor absoluto del strain no significa nada, así
+  // que un número suelto dice poco: lo que comunica es ver la serie subir.
+  const strainWeeks = useMemo(
+    () => weeklyStrain(days).slice(-STRAIN_WEEKS),
+    [days],
+  );
+
   const hasSessions = (loads?.length ?? 0) > 0;
   const hasRpe      = loads.some((l) => l.internal != null);
 
@@ -437,6 +448,41 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Strain semana a semana ──────────────────────────────────────── */}
+      {strainWeeks.some((w) => w.strain != null) && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['strain', 'monotony'])}>
+              {t('load.strainTitle')}
+            </InfoLabel>
+            <Text style={styles.cardMeta}>{t('load.lastWeeks', { count: strainWeeks.length })}</Text>
+          </View>
+
+          <View style={styles.strainRow}>
+            {strainWeeks.map((w, i) => {
+              const max = Math.max(...strainWeeks.map((x) => x.strain ?? 0), 1);
+              const isLast = i === strainWeeks.length - 1;
+              return (
+                <View key={w.weekStart} style={styles.strainSlot}>
+                  {w.strain != null ? (
+                    <View style={[styles.strainBar, {
+                      height: `${Math.max(4, (w.strain / max) * 100)}%`,
+                      backgroundColor: isLast ? th.colors.accent : th.tint.accent50,
+                    }]} />
+                  ) : (
+                    // Semana sin dato suficiente: marca a ras de suelo, para que
+                    // el hueco se vea como hueco y no como una semana suave.
+                    <View style={[styles.strainBar, styles.strainBarEmpty]} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <Text style={styles.groupHint}>{t('load.strainHint')}</Text>
+        </View>
+      )}
 
       {/* ── Tendencia ───────────────────────────────────────────────────── */}
       <View style={styles.card}>
@@ -665,6 +711,17 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
+
+  // ── Tira de strain ──
+  strainRow: {
+    flexDirection: 'row',
+    alignItems:    'flex-end',
+    gap:           spacing.xs2,
+    height:        56,
+  },
+  strainSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
+  strainBar:  { width: '100%', borderRadius: 2 },
+  strainBarEmpty: { height: 2, backgroundColor: th.colors.surface2 },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },

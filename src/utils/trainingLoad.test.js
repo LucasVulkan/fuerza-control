@@ -3,7 +3,7 @@ import {
   blockActiveSec, modelSec, sessionMinutes, internalLoad,
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
   rollingMean, monotony, strain, loadState, setsByMuscleGroup,
-  weeklySeries, indexTo100, effortTrend, performanceWeekly,
+  weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -406,6 +406,43 @@ describe('weeklySeries', () => {
 
   it('serie vacía → []', () => {
     expect(weeklySeries([])).toEqual([]);
+  });
+});
+
+describe('weeklyStrain', () => {
+  // T0 = lunes 5 ene 2026. `sessions` decide si la semana computa.
+  const day = (i, internal, sessions) => ({
+    day: new Date(2026, 0, 5 + i).getTime(), internal, external: 0, sessions,
+  });
+  const week = (offset, loads) => loads.map((v, i) =>
+    day(offset + i, v, v > 0 ? 1 : 0));
+
+  it('calcula un strain por semana natural', () => {
+    const out = weeklyStrain([
+      ...week(0, [200, 0, 150, 0, 180, 0, 0]),   // 3 sesiones
+      ...week(7, [300, 0, 250, 0, 280, 0, 0]),   // 3 sesiones
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0].sessions).toBe(3);
+    expect(out[1].strain).toBeGreaterThan(out[0].strain);
+  });
+
+  it('una semana por debajo del mínimo de sesiones deja hueco, no un cero', () => {
+    const out = weeklyStrain(week(0, [200, 0, 0, 0, 0, 0, 0]));
+    expect(out[0].sessions).toBe(1);
+    expect(out[0].strain).toBeNull();
+  });
+
+  it('devuelve las semanas ordenadas de más antigua a más reciente', () => {
+    const out = weeklyStrain([
+      ...week(7, [300, 0, 250, 0, 280, 0, 0]),
+      ...week(0, [200, 0, 150, 0, 180, 0, 0]),
+    ]);
+    expect(out[0].weekStart).toBeLessThan(out[1].weekStart);
+  });
+
+  it('serie vacía → []', () => {
+    expect(weeklyStrain([])).toEqual([]);
   });
 });
 
