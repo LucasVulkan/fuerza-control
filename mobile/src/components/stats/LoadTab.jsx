@@ -50,6 +50,12 @@ const MIN_SESSIONS_FOR_MONOTONY = 3;
 const CHART_H = 140;
 const PAD_TOP = 10;
 const PAD_BOT = 6;
+// Radio del punto que remata cada línea indexada. El eje X de `IndexChart` se
+// insetea esta cantidad por los dos lados: sin ello el último punto cae en el
+// borde exacto del SVG y el círculo sale cortado por la mitad.
+// `LoadChart` no lo necesita — no lleva punto final, y sus barras ya quedan
+// dentro por el medio paso del centrado.
+const DOT_R   = 3;
 
 // Rango de referencia de series semanales por grupo muscular. Es la horquilla
 // habitual para hipertrofia; depende del objetivo, y así se dice en el pie.
@@ -151,7 +157,7 @@ function IndexChart({ series, height = 96 }) {
     const hi  = max + pad;
     const n   = Math.max(...series.map((s) => s.values.length));
     const y = (v) => 8 + (height - 16) - ((v - lo) / (hi - lo)) * (height - 16);
-    const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - 4) + 2);
+    const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - DOT_R * 2) + DOT_R);
 
     const toSegments = (vals) => {
       const out = []; let cur = [];
@@ -189,7 +195,7 @@ function IndexChart({ series, height = 96 }) {
                 <Polyline key={si} points={pts} fill="none" stroke={l.color} strokeWidth={2}
                   strokeLinejoin="round" strokeLinecap="round" />
               ))}
-              {l.last && <Circle cx={l.last.x} cy={l.last.y} r={2.8} fill={l.color} />}
+              {l.last && <Circle cx={l.last.x} cy={l.last.y} r={DOT_R} fill={l.color} />}
             </React.Fragment>
           ))}
         </Svg>
