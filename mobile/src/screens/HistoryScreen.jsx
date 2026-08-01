@@ -29,6 +29,7 @@ import { spacing, typography, borders, withOpacity, textStyles } from '../theme'
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
+import { internalLoad } from '../../../src/utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
@@ -42,8 +43,56 @@ const BLOCK_BADGE_STYLE = {
 const CELL_H  = 30;
 const CELL_GAP = 3;
 
+// ── Mapa de calor ──────────────────────────────────────────────────────────────
+// Cuatro escalones, no un degradado continuo: en celdas de 30 px nadie
+// distingue un 0,42 de un 0,55 de opacidad, y cuatro pasos sí se comparan de un
+// vistazo. Por encima del segundo escalón el fondo ya es lo bastante sólido
+// como para que el número del día tenga que ir en oscuro.
+const HEAT_STEPS = [0.18, 0.42, 0.66, 0.9];
+const HEAT_DARK_TEXT_FROM = 2;
+
+/** Escalón de un día según los cortes de cuartil del propio usuario. */
+function heatLevel(load, cuts) {
+  if (!(load > 0) || !cuts?.length) return 0;
+  return Math.min(HEAT_STEPS.length - 1, cuts.filter((c) => load >= c).length);
+}
+
+/**
+ * Carga interna por día del log completo, y los cortes de la escala.
+ *
+ * Los cortes son **cuartiles del propio usuario**, no fracciones de un máximo.
+ * Con una escala lineal desde cero el escalón más flojo no se usaba nunca: una
+ * sesión de entrenamiento jamás está cerca de cero, así que la mitad baja de la
+ * paleta quedaba muerta (verificado con datos reales: 0/6/22/13 días por
+ * escalón). Por cuartiles, el color ordena los días entre sí, que es justo la
+ * pregunta — "¿cuáles fueron mis días duros?".
+ *
+ * Se calculan sobre TODO el historial, no sobre el mes visible: si no,
+ * cambiarían al pasar de mes y un mes de descarga se pintaría tan intenso como
+ * uno duro.
+ *
+ * `internalLoad` es puro por entrada (sRPE × minutos acotados), así que esto no
+ * necesita ni la librería de ejercicios ni el peso corporal.
+ */
+function getLoadHeat(workoutLog) {
+  const byDay = new Map();
+  for (const entry of workoutLog ?? []) {
+    const d = new Date(entry.timestamp);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const load = internalLoad(entry);
+    const cur = byDay.get(key) ?? { load: null, sessions: 0 };
+    if (load != null) cur.load = (cur.load ?? 0) + load;
+    cur.sessions += 1;
+    byDay.set(key, cur);
+  }
+  const values = [...byDay.values()].map((v) => v.load).filter((v) => v > 0).sort((a, b) => a - b);
+  const q = (p) => values[Math.min(values.length - 1, Math.floor(values.length * p))];
+  const cuts = values.length ? [q(0.25), q(0.5), q(0.75)] : [];
+  return { byDay, cuts };
+}
+
 // Pure helper — computes grid weeks + trained-day map for any year/month
-function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
+function getMonthData(y, m, heat) {
   const daysInM = new Date(y, m + 1, 0).getDate();
   let   startDow = new Date(y, m, 1).getDay();
   startDow = startDow === 0 ? 6 : startDow - 1; // Mon-aligned
@@ -54,16 +103,13 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
   while (cells.length < 42) cells.push(null);
   const weeks = Array.from({ length: 6 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
 
+  // day → { load: number|null, sessions }. `load: null` con sessions > 0 =
+  // entrenó pero no contestó el sRPE: no hay carga que pintar.
   const trainedDays = {};
-  workoutLog.forEach((entry) => {
-    const d = new Date(entry.timestamp);
-    if (d.getFullYear() !== y || d.getMonth() !== m) return;
-    const day  = d.getDate();
-    const tmpl = userPrograms[entry.sessionTemplateId] ?? sessionTemplates[entry.sessionTemplateId];
-    const lbl  = entry.sessionTemplateId === '__free__' ? '★' : (tmpl?.label ?? '·');
-    if (!trainedDays[day]) trainedDays[day] = [];
-    if (!trainedDays[day].includes(lbl)) trainedDays[day].push(lbl);
-  });
+  for (let day = 1; day <= daysInM; day++) {
+    const hit = heat.byDay.get(`${y}-${m}-${day}`);
+    if (hit) trainedDays[day] = hit;
+  }
   return { weeks, trainedDays };
 }
 
@@ -73,9 +119,8 @@ function getMonthData(y, m, workoutLog, sessionTemplates, userPrograms) {
 function WorkoutCalendar({ onDayPress, selectedDate }) {
   const { t }            = useTranslation();
   const cal              = useThemedStyles(makeCal);
+  const th               = useTheme();
   const workoutLog       = useStore((s) => s.workoutLog);
-  const sessionTemplates = useStore((s) => s.sessionTemplates);
-  const userPrograms     = useStore((s) => s.userPrograms);
 
   const today = new Date();
   const [year,  setYear]  = useState(today.getFullYear());
@@ -93,9 +138,11 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
     else               setMonth((m) => m + 1);
   }
 
+  // La escala se calcula sobre TODO el log, no sobre el mes visible.
+  const heat = useMemo(() => getLoadHeat(workoutLog), [workoutLog]);
   const { weeks, trainedDays } = useMemo(
-    () => getMonthData(year, month, workoutLog, sessionTemplates, userPrograms),
-    [year, month, workoutLog, sessionTemplates, userPrograms],
+    () => getMonthData(year, month, heat),
+    [year, month, heat],
   );
 
   return (
@@ -129,8 +176,13 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
           <View key={wi} style={cal.week}>
             {week.map((day, di) => {
               if (day === null) return <View key={di} style={cal.cellBlank} />;
-              const labels  = trainedDays[day] ?? [];
-              const trained = labels.length > 0;
+              const hit     = trainedDays[day];
+              const trained = !!hit;
+              // Entrenó pero sin sRPE: no hay carga que pintar. Va en contorno,
+              // NO en el tono más flojo — ese diría "sesión suave", cuando lo
+              // que dice el dato es "no contestaste".
+              const noRpe   = trained && hit.load == null;
+              const level   = trained && !noRpe ? heatLevel(hit.load, heat.cuts) : -1;
               const isToday = isCurrentMonth && day === today.getDate();
               const isSel   = trained
                 && selectedDate?.year  === year
@@ -141,7 +193,8 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   key={di}
                   style={[
                     cal.cell,
-                    trained && cal.cellTrained,
+                    level >= 0 && { backgroundColor: withOpacity(th.colors.accent, HEAT_STEPS[level]) },
+                    noRpe   && cal.cellNoRpe,
                     isToday && !trained && cal.cellToday,
                     isSel   && cal.cellSel,
                   ]}
@@ -151,20 +204,34 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   <Text
                     style={[
                       cal.dayNum,
-                      trained             && cal.dayNumTrained,
+                      // El texto se invierte solo cuando el fondo ya es sólido.
+                      level >= HEAT_DARK_TEXT_FROM && cal.dayNumOnHeat,
+                      level >= 0 && level < HEAT_DARK_TEXT_FROM && cal.dayNumOnTint,
+                      noRpe   && cal.dayNumNoRpe,
                       isToday && !trained && cal.dayNumToday,
                     ]}
                   >
                     {day}
                   </Text>
-                  {trained && (
-                    <Text style={cal.sesLetter} numberOfLines={1}>{labels[0]}</Text>
-                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
         ))}
+      </View>
+
+      {/* Leyenda — tres estados que no se deducen del color solo */}
+      <View style={cal.legend}>
+        <Text style={cal.legendLabel}>{t('history.heatLegend')}</Text>
+        <View style={cal.legendScale}>
+          {HEAT_STEPS.map((a) => (
+            <View key={a} style={[cal.legendSwatch, { backgroundColor: withOpacity(th.colors.accent, a) }]} />
+          ))}
+        </View>
+        <Text style={cal.legendLabel}>{t('history.heatMore')}</Text>
+        <View style={cal.legendSpacer} />
+        <View style={[cal.legendSwatch, cal.cellNoRpe]} />
+        <Text style={cal.legendLabel}>{t('history.heatNoRpe')}</Text>
       </View>
     </View>
   );
@@ -203,12 +270,15 @@ const makeCal = (th) => StyleSheet.create({
     gap:           CELL_GAP,
     marginBottom:  4,
   },
+  // Subida de brillo y peso: en muted2 a 9 px la fila de días se perdía y el
+  // calendario quedaba sin sus ejes.
   hDay: {
     flex:          1,
     textAlign:     'center',
-    fontSize:      9,
-    color:         th.colors.muted2,
-    letterSpacing: 0.5,
+    fontSize:      10,
+    fontWeight:    typography.heavy,
+    color:         th.colors.mutedLight,
+    letterSpacing: 1.2,
   },
 
   // Grid
@@ -224,25 +294,29 @@ const makeCal = (th) => StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  cellTrained: { backgroundColor: th.colors.accent },
-  cellToday:   { borderWidth: 1, borderColor: withOpacity(th.colors.accent, 0.55) },
-  // Selected trained day — green so it's clearly distinct from unselected yellow
-  cellSel:     { backgroundColor: th.colors.green },
+  cellNoRpe: { borderWidth: 1, borderColor: th.tint.accent50 },
+  cellToday: { borderWidth: 1, borderColor: withOpacity(th.colors.accent, 0.55) },
+  // Seleccionado = contorno claro, NO otro color de fondo: el fondo ya codifica
+  // la carga y pintarlo encima destruiría el dato que el mapa existe para dar.
+  cellSel:   { borderWidth: 2, borderColor: th.colors.text },
 
-  dayNum:        { fontSize: 10, color: th.colors.muted2 },
-  dayNumTrained: { fontSize: 11, fontWeight: typography.bold, color: th.colors.onAccent },
-  dayNumToday:   { color: th.colors.accent, fontWeight: typography.medium },
+  dayNum:       { fontSize: 10, color: th.colors.muted2 },
+  dayNumOnTint: { color: th.colors.text,     fontWeight: typography.bold },
+  dayNumOnHeat: { color: th.colors.onAccent, fontWeight: typography.heavy },
+  dayNumNoRpe:  { color: th.colors.accent,   fontWeight: typography.bold },
+  dayNumToday:  { color: th.colors.accent,   fontWeight: typography.medium },
 
-  // Tiny session-label overlay — bottom-right corner of trained cell
-  sesLetter: {
-    position:   'absolute',
-    bottom:     1,
-    right:      2,
-    fontSize:   7,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-    lineHeight: 8,
+  // ── Leyenda del mapa de calor ──
+  legend: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs2,
+    marginTop:     spacing.sm,
   },
+  legendLabel:  { ...textStyles.tag, color: th.colors.muted },
+  legendScale:  { flexDirection: 'row', gap: 2 },
+  legendSwatch: { width: 12, height: 12, borderRadius: th.radius.xs - 1 },
+  legendSpacer: { flex: 1 },
 });
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
