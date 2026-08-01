@@ -188,7 +188,7 @@
       "caveat": "Es rendimiento estimado, no fuerza medida: se apoya por completo en el 1RM estimado. Cambiar de ejercicios a mitad del período mueve el número aunque tu rendimiento no cambie."
     },
     "loadTrend": {
-      "name": "Progresión",
+      "name": "Mejora",
       "what": "Indica si los pesos que mueves suben o bajan de media en el período, juntando todos tus ejercicios en un porcentaje.",
       "formula": "línea de tendencia (regresión lineal) sobre las sesiones de cada ejercicio; el porcentaje es el cambio entre sus extremos, promediado entre ejercicios",
       "rules": "Todos los ejercicios pesan lo mismo en el promedio, independientemente de cuántas sesiones tengan.",
