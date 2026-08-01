@@ -1309,7 +1309,7 @@
     "tabExercises": "Ejercicios",
     "tabLoad": "Carga",
     "load7d": "Carga 7d",
-    "vs28d": "vs 28d",
+    "vs28d": "vs media 28d",
     "monotony": "Monoton.",
     "monotonyLow": "variada",
     "monotonyModerate": "normal",
@@ -1340,7 +1340,8 @@
     "strainHint": "Una barra por semana. Las de menos de 3 sesiones van en contorno.",
     "thisWeek": "esta semana",
     "sessions7d": "Sesiones",
-    "avgPerWeek": "{{n}}/sem de media",
+    "avgPerWeek": "media {{n}}/sem",
+    "thisWeekLoad": "esta semana",
     "trendTitle": "Evolución de la carga",
     "perDay": "por día",
     "legendDaily": "carga diaria",
@@ -1349,15 +1350,15 @@
     "state": {
       "loading": {
         "title": "Estás acumulando carga.",
-        "detail": "La semana va un {{pct}}% por encima de tu media del mes."
+        "detail": "Estás entrenando por encima de tu media del último mes."
       },
       "steady": {
         "title": "Carga estable.",
-        "detail": "La semana está en línea con tu media del mes."
+        "detail": "La semana está en línea con tu media del último mes."
       },
       "unloading": {
         "title": "Estás descargando.",
-        "detail": "La semana va un {{pct}}% por debajo de tu media del mes."
+        "detail": "Estás entrenando por debajo de tu media del último mes."
       }
     },
     "emptyNoSessions": "Completa tu primera sesión para ver la carga aquí.",

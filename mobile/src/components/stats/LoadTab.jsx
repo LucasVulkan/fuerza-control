@@ -425,13 +425,17 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
+            {/* El protagonista es el %, no la carga absoluta: el número en bruto
+                va en unidades arbitrarias y su propia ficha dice que no
+                significa nada suelto. Sin comparación posible todavía, se
+                enseña la carga para no dejar la tarjeta vacía. */}
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {Math.round(summary.weekLoad)}
+              {summary.vs28 != null ? signed(summary.vs28) : Math.round(summary.weekLoad)}
             </Text>
             <Text style={styles.statLabel}>{t('load.load7d')}</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
-            {summary.vs28 != null ? `${signed(summary.vs28)} ${t('load.vs28d')}` : '—'}
+            {summary.vs28 != null ? t('load.vs28d') : t('load.thisWeekLoad')}
           </Text>
         </TouchableOpacity>
 
@@ -545,7 +549,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
             <View style={[styles.dot, { backgroundColor: stateColor }]} />
             <Text style={styles.stripText}>
               <Text style={styles.stripTitle}>{t(`load.state.${summary.state}.title`)}</Text>
-              {` ${t(`load.state.${summary.state}.detail`, { pct: Math.abs(summary.vs28 ?? 0) })}`}
+              {` ${t(`load.state.${summary.state}.detail`)}`}
             </Text>
           </View>
         )}

@@ -1309,7 +1309,7 @@
     "tabExercises": "Exercises",
     "tabLoad": "Load",
     "load7d": "Load 7d",
-    "vs28d": "vs 28d",
+    "vs28d": "vs 28d average",
     "monotony": "Monotony",
     "monotonyLow": "varied",
     "monotonyModerate": "normal",
@@ -1340,7 +1340,8 @@
     "strainHint": "One bar per week. Weeks with fewer than 3 sessions are outlined.",
     "thisWeek": "this week",
     "sessions7d": "Sessions",
-    "avgPerWeek": "{{n}}/wk average",
+    "avgPerWeek": "avg {{n}}/wk",
+    "thisWeekLoad": "this week",
     "trendTitle": "Load over time",
     "perDay": "per day",
     "legendDaily": "daily load",
@@ -1349,15 +1350,15 @@
     "state": {
       "loading": {
         "title": "You're building load.",
-        "detail": "This week is {{pct}}% above your monthly average."
+        "detail": "You are training above your average for the last month."
       },
       "steady": {
         "title": "Load is steady.",
-        "detail": "This week is in line with your monthly average."
+        "detail": "This week is in line with your average for the last month."
       },
       "unloading": {
         "title": "You're deloading.",
-        "detail": "This week is {{pct}}% below your monthly average."
+        "detail": "You are training below your average for the last month."
       }
     },
     "emptyNoSessions": "Complete your first session to see load here.",
