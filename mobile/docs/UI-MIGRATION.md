@@ -29,6 +29,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
+| **Progreso › pestaña Carga** | ✅ (pantalla NUEVA, sin nodo en Figma — ver desglose) | `src/components/stats/LoadTab.jsx`, `ProgressPanel.jsx` |
 | Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
@@ -190,6 +191,32 @@ Divergencias conscientes respecto al mock:
 | Naranja de aviso | El `orange` del tema (`#fb923c`), **no** el `#ff9900` del mock — decisión explícita del usuario: el naranja de aviso ya existe en la app y no se duplica |
 | Icono del CTA | Figma dibuja el icono de barras (Progreso) en un botón que es placeholder; nuestros CTA usan el prefijo `↑` / `+` que ya tenía la app |
 | CTA centrado | Figma lo ancla arriba dentro de un bloque de 40px; aquí el bloque crece cuando hay 2 avisos, así que va centrado contra el alto real |
+
+### Progreso › pestaña Carga — desglose
+
+Pantalla **nueva**, no un restyle: no existe en Figma porque la feature es
+posterior al diseño. Spec funcional completa en
+[`specs/training-load.md`](specs/training-load.md); aquí solo lo visual.
+
+- **Entrada**: `SegmentedControl` `EJERCICIOS | CARGA` en `ProgressPanel.jsx`,
+  que consumen tanto `StatsScreen` como el detalle de cliente de `ClientsScreen`.
+  El conmutador va FUERA del scroll de cada pestaña: cada una trae su propia
+  `ScrollView` con su padding de página.
+- **Reutiliza sin cambios**: la anatomía de las Progress cards (`surface`,
+  `radius/lg`, valor `text/hero`, label `text/spacingTag`) y el
+  `SegmentedControl` de período.
+- **Gráficos propios**, no el `MiniLineChart` de `ProgressTab`: aquel guarda las
+  posiciones en un array FIJO de 80 `Animated.Value` y aquí las series son un
+  punto por día. Dos componentes locales, `LoadChart` (barras + 2 medias) e
+  `IndexChart` (líneas indexadas). Los tramos sin dato **parten la polilínea**
+  en vez de cruzarla con una recta que inventaría carga.
+  - Trampa pisada: el punto que remata cada línea se recortaba a la mitad porque
+    el eje llegaba al borde exacto del SVG. Se insetea el radio del punto.
+- **Sin toggle de "Programa actual"** y período `1M/3M/6M/Todo` (no `7D`): ver
+  las reglas §4 de la spec, no son decisiones estéticas.
+- **Iconos ⓘ solo en los títulos de gráfico.** Las tarjetas pequeñas son
+  pulsables enteras y sin icono: en una caja de 108 px con un número grande y dos
+  etiquetas el aro era ruido. Ver [`specs/metric-transparency.md`](specs/metric-transparency.md).
 
 ### Recap de sesión — desglose
 

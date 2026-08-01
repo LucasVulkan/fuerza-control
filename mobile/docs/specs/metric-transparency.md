@@ -1,7 +1,7 @@
 # Spec — Transparencia de métricas ("¿de dónde sale este número?")
 
 > Estado: **FASES 1 Y 2 IMPLEMENTADAS** (ago 2026) — registro `metrics.*` con
-> las 25 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se
+> las 26 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se
 > calcula cada número" en Documentación, y la hoja informativa al tocar la
 > etiqueta de un dato en Progreso, detalle de ejercicio y Carga. Pedida por el
 > usuario (jul 2026) al cerrar
@@ -105,6 +105,21 @@ export const METRIC_VARS = {
   ...
 };
 ```
+
+### 2.1-ter Un gráfico NO es una métrica
+
+Namespace aparte `chartDocs.*`, con tres campos por gráfico: `name`, `what` (qué
+representa) y `read` (**cómo se interpreta**).
+
+Salió del QA: al abrir "Esfuerzo vs carga" aparecían las fichas de carga externa,
+carga de sesión y base 100, pero en ningún sitio se decía qué representa el
+gráfico ni cómo leerlo — había que deducirlo de tres fichas. La hoja pinta ahora
+el bloque del gráfico **primero**, con relleno accent porque es la cabecera y no
+una ficha más, y debajo, tras un separador "Datos que lo componen", las fichas de
+sus métricas.
+
+Efecto lateral buscado: la interpretación deja de vivir en un párrafo largo
+debajo del gráfico. Bajo la tira de strain quedó una línea.
 
 ### 2.2 `MetricInfoSheet` — alcance cerrado
 

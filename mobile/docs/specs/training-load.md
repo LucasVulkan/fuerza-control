@@ -277,13 +277,30 @@ reciente del propio log del cliente.
 ### 5.2 Contenido de la vista Carga (aprobado por mockup, jul 2026)
 
 1. Fila de período (`1M/3M/6M/TODO`, sin toggle de programa).
-2. **3 progress cards** reutilizando el componente exacto, con significado nuevo:
-   `CARGA 7D` (+% vs 28d) · `MONOTONÍA` (baja/moderada/alta) · `STRAIN` (+% vs
-   base). Condición del usuario: sólo si la información cabe bien; si no, bajar
-   monotonía/strain a strips.
-3. **Card "Tendencia de carga"** — barras diarias (`muted2`) + línea 7d (`accent`)
-   + línea 28d (`blue`), leyenda, y strip de estado con punto de color y frase
-   ("Estás acumulando carga. La semana va un 34% por encima de tu media del mes").
+2. **3 progress cards** reutilizando el componente exacto, con significado nuevo.
+   Tras el QA quedaron así: `CARGA 7D` · `SESIONES` · `MONOTONÍA`.
+   - **`CARGA 7D` enseña el PORCENTAJE, no la carga absoluta.** El número en
+     bruto va en unidades arbitrarias y su propia ficha dice que no significa
+     nada suelto; destacarlo contradecía la documentación. Sin histórico para
+     comparar sí se enseña la carga, para no dejar la tarjeta vacía.
+   - **`SESIONES` (últimos 7 días) sustituyó a `STRAIN`**, que se mudó a su
+     propia tira (punto 3-bis). La carga es sRPE × minutos sumada: saber si
+     salió de 3 sesiones o de 5 es lo que la hace legible, y es además el
+     recuento que decide si monotonía y strain se muestran.
+   - **La monotonía dice el significado, no el nivel**: "variada / normal /
+     repetitiva" en vez de "baja / moderada / alta", que no respondía a la única
+     pregunta que se hace el usuario — si eso es bueno o malo.
+3. **Card "Evolución de la carga"** — barras diarias + línea 7d (`accent`) +
+   línea 28d (`blue`), leyenda, y strip de estado con punto de color. El strip
+   **no repite el porcentaje** de la card: nombra el estado en palabras y la
+   cifra la da la tarjeta.
+3-bis. **Tira de strain semana a semana** (añadida tras el QA). El valor absoluto
+   del strain no significa nada, así que el número suelto comunicaba poco: lo que
+   se lee es la serie. Una barra por semana, la actual en `accent` y las
+   anteriores en `tint.accent50`; las semanas por debajo del mínimo de sesiones
+   van **en contorno**, el mismo idioma que el mapa de calor del historial, donde
+   contorno = "no se puede calcular" y nunca "salió bajo". Obedece al selector de
+   período como el resto del panel.
 4. **Card "Esfuerzo vs carga"** — dos líneas **indexadas base 100**. En unidades
    crudas (reps relativas vs AU) una aplasta a la otra. Debajo, chip de
    interpretación: `↑ carga + = esfuerzo → adaptación`, `= carga + ↑ esfuerzo →
