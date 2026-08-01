@@ -327,6 +327,13 @@
     "rules": "It follows the period selector and the program filter. The “this week” subtitle, however, always counts the current calendar week, Monday to Sunday, regardless of the period selected.",
     "caveat": "It counts sessions, not their size: a ten-minute warm-up and a two-hour session add up the same."
   },
+  "weekSessions": {
+    "name": "Sessions (last 7 days)",
+    "what": "How many times you have trained in the last 7 days. It sits next to load because it is what gives load meaning: 2,400 of load does not mean the same coming from 3 sessions as from 5.",
+    "formula": "number of sessions saved in the last 7 days",
+    "rules": "It is a rolling 7-day window, not the calendar week: on a Monday morning the calendar week is nearly empty and the figure would be useless. The subtitle is your average over the 4 previous weeks, to tell whether this week is normal for you. It is also the count that decides whether monotony and strain are shown or hidden.",
+    "caveat": "It counts sessions, not their size: a ten-minute warm-up and a two-hour session add up the same. Not to be confused with the “Sessions” card in Progress, which counts the selected period."
+  },
   "progressionChip": {
       "name": "Progression suggestion",
       "what": "The go up, hold or back off hint shown on each exercise during a workout, based on how the last one went.",

@@ -327,6 +327,13 @@
     "rules": "Responde al selector de período y al filtro de programa. El subtítulo «esta semana», en cambio, siempre cuenta la semana natural en curso, de lunes a domingo, con independencia del período elegido.",
     "caveat": "Cuenta sesiones, no su tamaño: un calentamiento de diez minutos y una sesión de dos horas suman lo mismo."
   },
+  "weekSessions": {
+    "name": "Sesiones (últimos 7 días)",
+    "what": "Cuántas veces has entrenado en los últimos 7 días. Está junto a la carga porque es lo que le da sentido: 2.400 de carga no significa lo mismo saliendo de 3 sesiones que de 5.",
+    "formula": "número de sesiones guardadas en los últimos 7 días",
+    "rules": "Es una ventana móvil de 7 días, no la semana natural: un lunes por la mañana la semana natural está casi vacía y el dato no serviría. El subtítulo es tu media de las 4 semanas anteriores, para saber si esta semana es normal para ti. Es además el recuento que decide si la monotonía y el strain se muestran o se ocultan.",
+    "caveat": "Cuenta sesiones, no su tamaño: un calentamiento de diez minutos y una sesión de dos horas suman lo mismo. No confundir con la tarjeta «Sesiones» de Progreso, que cuenta el período seleccionado."
+  },
   "progressionChip": {
       "name": "Recomendación de progresión",
       "what": "Es la sugerencia de subir, mantener o bajar que aparece en cada ejercicio durante el entrenamiento, a partir de cómo te fue la última vez.",

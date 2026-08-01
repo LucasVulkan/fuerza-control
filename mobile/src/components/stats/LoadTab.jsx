@@ -453,7 +453,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo({ ids: ['sessionCount'] })}
+          onPress={() => setInfo({ ids: ['weekSessions'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>

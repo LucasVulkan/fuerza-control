@@ -40,7 +40,7 @@ export const METRIC_GROUPS = [
   { id: 'volume',      ids: ['volume', 'setsDonePlanned', 'volumeTrend', 'muscleGroupSets'] },
   { id: 'load',        ids: ['sessionLoad', 'sessionMinutes', 'externalLoad', 'movingAverage',
                              'loadState', 'monotony', 'strain', 'indexed100', 'loadHeatmap'] },
-  { id: 'session',     ids: ['sessionCount', 'progressionChip', 'estimatedDuration', 'warmupWeight',
+  { id: 'session',     ids: ['sessionCount', 'weekSessions', 'progressionChip', 'estimatedDuration', 'warmupWeight',
                              'blockDelta', 'stageProgress'] },
   { id: 'trainer',     ids: ['adherence'] },
 ];
