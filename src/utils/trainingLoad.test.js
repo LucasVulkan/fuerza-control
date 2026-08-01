@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   blockActiveSec, modelSec, sessionMinutes, internalLoad,
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
-  rollingMean, monotony, strain, loadState,
+  rollingMean, monotony, strain, loadState, setsByMuscleGroup,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -369,6 +369,67 @@ describe('monotony / strain', () => {
 
   it('strain hereda el null de la monotonía', () => {
     expect(strain([0, 0, 0])).toBeNull();
+  });
+});
+
+describe('setsByMuscleGroup', () => {
+  const ex = (exerciseId, nSets, extra = {}) => ({
+    exerciseId,
+    sets: Array.from({ length: nSets }, () => ({ ...set(100, 8), ...extra })),
+    restSec: 120,
+  });
+  const sesion = (id, ts, exercises) => ({ id, timestamp: ts, duration: 0, exercises });
+
+  it('agrupa por primaryGroup y ordena de más a menos', () => {
+    const log = [sesion('a', T0, [
+      ex('squat_barbell', 4),        // quads
+      ex('bench_press_barbell', 3),  // chest
+      ex('barbell_row', 3),          // back
+      ex('romanian_deadlift', 2),    // glutes_hamstrings
+    ])];
+    expect(setsByMuscleGroup(log, EXERCISE_LIBRARY)).toEqual([
+      { group: 'quads', sets: 4 },
+      { group: 'chest', sets: 3 },
+      { group: 'back',  sets: 3 },
+      { group: 'glutes_hamstrings', sets: 2 },
+    ]);
+  });
+
+  it('suma el mismo grupo entre ejercicios y sesiones distintos', () => {
+    const log = [
+      sesion('a', T0,        [ex('bench_press_barbell', 3)]),
+      sesion('b', T0 + DAY,  [ex('push_up', 2), ex('bench_press_db', 2)]),
+    ];
+    const chest = setsByMuscleGroup(log, EXERCISE_LIBRARY).find((g) => g.group === 'chest');
+    expect(chest.sets).toBe(7);
+  });
+
+  it('un dropset cuenta como UNA serie, no como una por sub-serie', () => {
+    const withDrops = [sesion('a', T0, [{
+      exerciseId: 'bench_press_barbell',
+      sets: [set(100, 8, { drops: [{ weight: '80', reps: '6', done: true }, { weight: '60', reps: '6', done: true }] })],
+    }])];
+    expect(setsByMuscleGroup(withDrops, EXERCISE_LIBRARY)).toEqual([{ group: 'chest', sets: 1 }]);
+  });
+
+  it('respeta la ventana temporal', () => {
+    const log = [
+      sesion('viejo',  T0,            [ex('squat_barbell', 4)]),
+      sesion('dentro', T0 + 5 * DAY,  [ex('squat_barbell', 3)]),
+    ];
+    const out = setsByMuscleGroup(log, EXERCISE_LIBRARY, { from: T0 + DAY, to: T0 + 6 * DAY });
+    expect(out).toEqual([{ group: 'quads', sets: 3 }]);
+  });
+
+  it('los ejercicios sin grupo o desconocidos caen en "other", no se pierden', () => {
+    const log = [sesion('a', T0, [ex('mi_ejercicio_propio', 3), ex('otro_borrado', 2)])];
+    const lib = { mi_ejercicio_propio: { primaryGroup: 'custom' } };
+    expect(setsByMuscleGroup(log, lib)).toEqual([{ group: 'other', sets: 5 }]);
+  });
+
+  it('ignora ejercicios sin series registradas y devuelve [] con un log vacío', () => {
+    expect(setsByMuscleGroup([sesion('a', T0, [ex('squat_barbell', 0)])], EXERCISE_LIBRARY)).toEqual([]);
+    expect(setsByMuscleGroup([], EXERCISE_LIBRARY)).toEqual([]);
   });
 });
 

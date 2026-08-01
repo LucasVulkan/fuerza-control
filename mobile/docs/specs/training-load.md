@@ -1,7 +1,10 @@
 # Spec — Carga de entrenamiento (sRPE, carga interna/externa, panel de Carga)
 
-> Estado: **Fase 1 IMPLEMENTADA** (captura de sRPE + peso corporal en el recap).
-> Fases 2-6 sin empezar. Cada fase = 1 commit y aporta valor por sí sola.
+> Estado: **fases 1, 2, 3 y 5 implementadas** — captura de sRPE y peso corporal
+> en el recap, `src/utils/trainingLoad.js`, vista Carga y series por grupo
+> muscular. **Faltan la 4** (esfuerzo vs carga + rendimiento; necesita 4+ semanas
+> de sRPE real o el gráfico no dice nada) **y la 6** (objetivos de etapa). Cada
+> fase = 1 commit y aporta valor por sí sola. Desglose y estado exacto en §9.
 >
 > Origen: conversación Opus + usuario (jul 2026) a partir de una propuesta de
 > panel con tendencia de carga, monotonía, strain y ACWR. Varias piezas de la
@@ -270,10 +273,20 @@ reciente del propio log del cliente.
    `= carga + ↑ esfuerzo → fatiga`, `↓ ambas → descarga`.
 5. **Card "Rendimiento"** — e1RM medio indexado. Es la salida del sistema; sin
    ella el panel mide fatiga pero no responde a "¿me estoy adaptando?".
-6. **Card "Series por grupo"** (fase 5) — barras horizontales de la semana actual
-   por `primaryGroup`, con marcas verticales del rango 10-20 series. **No** son
-   barras apiladas por semana: a ancho de móvil, 9 grupos × 4 semanas es
-   ilegible, y la pregunta real es "¿me falta hombro?".
+6. **Card "Series por grupo"** — barras horizontales por `primaryGroup` con
+   marcas verticales del rango 10-20 series. **No** son barras apiladas por
+   semana: a ancho de móvil, 9 grupos × 4 semanas es ilegible, y la pregunta real
+   es "¿me falta hombro?". Dentro de rango = `accent`, fuera (por arriba o por
+   abajo) = `orange`, nunca rojo (§4.9 de UI-MIGRATION).
+
+   Dos correcciones sobre el plan original, ambas de la misma raíz —que la card
+   responda de verdad a "¿me falta hombro?":
+   - **Ventana móvil de 7 días, no semana natural.** Un lunes por la mañana la
+     semana natural está casi vacía y el panel diría que te falta todo.
+   - **Los grupos entrenados en los últimos 28 días pero NO esta semana salen a
+     cero**, no desaparecen de la lista. Con la agregación a secas, el hombro sin
+     entrenar simplemente no se pinta — y el hueco es exactamente lo que hay que
+     ver. La referencia de "lo que entrenas habitualmente" es el propio usuario.
 
 ### 5.3 Gráficos
 
@@ -348,7 +361,7 @@ ligeramente los números de la card VOLUMEN en quien use dropsets.
 | 2 | `src/utils/trainingLoad.js` + 52 tests + unificación de tonelaje + línea de carga en el recap | ✅ hecha |
 | 3 | Segmentado `EJERCICIOS/CARGA` (`ProgressPanel`) + `LoadTab` con cards, gráfico de tendencia y strip de estado | ✅ hecha |
 | 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento. **Esperar 4+ semanas de sRPE real** o es un gráfico vacío | — |
-| 5 | Series por grupo muscular | — |
+| 5 | Series por grupo muscular | ✅ hecha |
 | 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | — |
 
 ## 10. Decisiones cerradas y por qué (no re-litigar)

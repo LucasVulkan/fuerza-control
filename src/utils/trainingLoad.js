@@ -17,6 +17,7 @@
  */
 import { epley1RM } from './oneRm';
 import { blockEstimatedSec } from './conditioningBlocks';
+import { doneSets } from './sessionRecap';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -376,6 +377,47 @@ export function strain(values) {
   if (m == null) return null;
   const sum = (values ?? []).filter((x) => x != null).reduce((a, b) => a + b, 0);
   return sum * m;
+}
+
+// ── Volumen por grupo muscular ────────────────────────────────────────────────
+
+/**
+ * Series por grupo muscular en una ventana temporal.
+ *
+ * Se cuentan SERIES, no kilos: el estándar del sector (y la única referencia
+ * que se le puede enseñar al usuario, ~10-20 series/semana por grupo) está en
+ * series. En kilos no hay ninguna cifra orientativa que mostrar.
+ *
+ * Decisiones, todas conservadoras a propósito:
+ * - **Atribución por `primaryGroup`**, el único campo que existe siempre en la
+ *   librería. Es volumen DIRECTO: un press de banca suma a pecho y no reparte
+ *   nada a tríceps u hombro. Contar volumen indirecto exigiría un reparto por
+ *   ejercicio que la librería no tiene.
+ * - **Un dropset cuenta como UNA serie.** `doneSets` devuelve solo las series
+ *   padre; las sub-series son intensificación de esa misma serie, no series
+ *   nuevas. Contarlas dispararía el volumen de quien use dropsets.
+ * - Ejercicios propios sin grupo (`primaryGroup: 'custom'`) y ejercicios
+ *   borrados caen en `'other'`, visible en vez de silenciosamente perdido.
+ * - Los bloques de acondicionamiento no entran: no tienen series ni grupo.
+ *
+ * @returns {Array<{ group: string, sets: number }>} de más a menos series.
+ */
+export function setsByMuscleGroup(log, allExercises, { from = null, to = Date.now() } = {}) {
+  const counts = new Map();
+  for (const entry of log ?? []) {
+    if (from != null && entry.timestamp < from) continue;
+    if (entry.timestamp > to) continue;
+    for (const ex of entry.exercises ?? []) {
+      const n = doneSets(ex).length;
+      if (!n) continue;
+      const raw   = allExercises?.[ex.exerciseId]?.primaryGroup;
+      const group = raw && raw !== 'custom' ? raw : 'other';
+      counts.set(group, (counts.get(group) ?? 0) + n);
+    }
+  }
+  return [...counts.entries()]
+    .map(([group, sets]) => ({ group, sets }))
+    .sort((a, b) => b.sets - a.sets);
 }
 
 /**

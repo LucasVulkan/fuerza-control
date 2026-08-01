@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import {
-  sessionLoads, dailySeries, rollingMean, monotony, strain, loadState,
+  sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
 } from '../../../../src/utils/trainingLoad';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -49,6 +49,14 @@ const MIN_SESSIONS_FOR_MONOTONY = 3;
 const CHART_H = 140;
 const PAD_TOP = 10;
 const PAD_BOT = 6;
+
+// Rango de referencia de series semanales por grupo muscular. Es la horquilla
+// habitual para hipertrofia; depende del objetivo, y así se dice en el pie.
+const SETS_TARGET_MIN = 10;
+const SETS_TARGET_MAX = 20;
+// Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
+// entre grupos y semanas; solo crece si alguien se sale del rango.
+const SETS_SCALE_MIN  = 24;
 
 // ── Gráfico de tendencia ──────────────────────────────────────────────────────
 //
@@ -208,6 +216,26 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
     };
   }, [period, days, mean7, mean28]);
 
+  // Series por grupo de los últimos 7 días — ventana móvil, NO semana natural:
+  // un lunes por la mañana la semana natural está casi vacía y el panel diría
+  // que te falta todo.
+  // `now` se congela al montar: la ventana no debe moverse mientras la pantalla
+  // está abierta, y `Date.now()` dentro del useMemo es impuro (react-hooks/purity).
+  const [now] = useState(() => Date.now());
+  const groupSets = useMemo(() => {
+    const DAY = 86400000;
+    const week  = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 7 * DAY,  to: now });
+    const month = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 28 * DAY, to: now });
+    // Un grupo que entrenas habitualmente pero NO esta semana tiene que salir a
+    // cero, no desaparecer: el hueco es exactamente lo que hay que ver. La
+    // referencia de "habitualmente" son los últimos 28 días del propio usuario.
+    const byGroup = new Map(week.map((g) => [g.group, g.sets]));
+    for (const { group } of month) if (!byGroup.has(group)) byGroup.set(group, 0);
+    return [...byGroup.entries()]
+      .map(([group, sets]) => ({ group, sets }))
+      .sort((a, b) => b.sets - a.sets);
+  }, [baseLog, allExercises, now]);
+
   const hasSessions = (loads?.length ?? 0) > 0;
   const hasRpe      = loads.some((l) => l.internal != null);
 
@@ -331,6 +359,49 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
           </View>
         )}
       </View>
+
+      {/* ── Series por grupo muscular ───────────────────────────────────── */}
+      {groupSets.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>{t('load.groupsTitle')}</Text>
+            <Text style={styles.cardMeta}>{t('load.last7d')}</Text>
+          </View>
+
+          <View style={styles.groupList}>
+            {groupSets.map(({ group, sets }) => {
+              const scale = Math.max(SETS_SCALE_MIN, groupSets[0].sets);
+              const inRange = sets >= SETS_TARGET_MIN && sets <= SETS_TARGET_MAX;
+              // Dentro de rango = accent; fuera = naranja, por arriba y por
+              // abajo (docs/UI-MIGRATION.md §4.9 — aquí no se usa rojo).
+              const color = inRange ? th.colors.accent : th.colors.orange;
+              return (
+                <View key={group} style={styles.groupRow}>
+                  <Text style={styles.groupName} numberOfLines={1}>
+                    {group === 'other'
+                      ? t('load.groupOther')
+                      : t(`exerciseSelector.groups.${group}`)}
+                  </Text>
+                  <View style={styles.groupTrack}>
+                    <View style={[styles.groupFill, {
+                      width: `${Math.min(100, (sets / scale) * 100)}%`,
+                      backgroundColor: color,
+                    }]} />
+                    {/* Marcas del rango de referencia */}
+                    <View style={[styles.groupMark, { left: `${(SETS_TARGET_MIN / scale) * 100}%` }]} />
+                    <View style={[styles.groupMark, { left: `${(SETS_TARGET_MAX / scale) * 100}%` }]} />
+                  </View>
+                  <Text style={[styles.groupCount, { color }]}>{sets}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <Text style={styles.groupHint}>
+            {t('load.groupsHint', { min: SETS_TARGET_MIN, max: SETS_TARGET_MAX })}
+          </Text>
+        </View>
+      )}
     </>,
   );
 }
@@ -395,6 +466,20 @@ const makeStyles = (th) => StyleSheet.create({
   dot:        { width: 7, height: 7, borderRadius: 4 },
   stripText:  { ...textStyles.tag, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
   stripTitle: { ...textStyles.tag, color: th.colors.text },
+
+  // ── Series por grupo ──
+  groupList:  { gap: spacing.sm2 },
+  groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+  groupName:  { ...textStyles.tag, color: th.colors.mutedLight, width: 76 },
+  groupTrack: {
+    flex: 1, height: 9, borderRadius: 3,
+    backgroundColor: th.colors.surface2,
+    overflow: 'hidden',
+  },
+  groupFill:  { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
+  groupMark:  { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
+  groupCount: { ...textStyles.cardType, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  groupHint:  { ...textStyles.tag, color: th.colors.muted, lineHeight: 15 },
 
   emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   emptyText:  { ...textStyles.subtitle, color: th.colors.mutedLight, textAlign: 'center', lineHeight: 19 },
