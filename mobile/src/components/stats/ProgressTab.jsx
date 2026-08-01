@@ -38,7 +38,7 @@ import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
 import { recapStats }     from '../../../../src/utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
-import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
+import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -918,14 +918,18 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
             {/* 3 Progress cards — mismo look que las de ProgressTab (statTile) */}
             <View style={styles.modalStatsRow}>
-              <View style={styles.statTile}>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo(['e1rm', 'pr'])}
+                activeOpacity={0.75}
+              >
                 {e1rmData ? (
                   <>
                     <View style={styles.statValueBlock}>
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                         {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
                       </Text>
-                      <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['e1rm', 'pr'])}>1RM</InfoLabel>
+                      <Text style={styles.statLabel}>1RM</Text>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>
                       {prDisplay ? `PR ${prDisplay} · ${prAgoStr ?? ''}` : '—'}
@@ -935,26 +939,34 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   <>
                     <View style={styles.statValueBlock}>
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{prDisplay ?? '—'}</Text>
-                      <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['e1rm', 'pr'])}>PR</InfoLabel>
+                      <Text style={styles.statLabel}>PR</Text>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
                 )}
-              </View>
-              <View style={styles.statTile}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo(['loadTrend'])}
+                activeOpacity={0.75}
+              >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['loadTrend'])}>MEJORA</InfoLabel>
+                  <Text style={styles.statLabel}>MEJORA</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
-              </View>
-              <View style={styles.statTile}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statTile}
+                onPress={() => setInfo(['volumeTrend'])}
+                activeOpacity={0.75}
+              >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: volImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volImpStr}</Text>
-                  <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['volumeTrend'])}>VOLUMEN</InfoLabel>
+                  <Text style={styles.statLabel}>VOLUMEN</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Segmented de métrica + chart (el selector controla el chart) */}
@@ -1300,33 +1312,45 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
       {/* ── Progress cards ───────────────────────────────────────────────────── */}
       <View style={styles.statsGrid}>
-        <View style={styles.statTile}>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['sessionCount'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{String(filteredLog.length)}</Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['sessionCount'])}>SESIONES</InfoLabel>
+            <Text style={styles.statLabel}>SESIONES</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {`${thisWeekCount} esta semana`}
           </Text>
-        </View>
-        <View style={styles.statTile}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['loadTrend'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['loadTrend'])}>MEJORA</InfoLabel>
+            <Text style={styles.statLabel}>MEJORA</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}
           </Text>
-        </View>
-        <View style={styles.statTile}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['volumeTrend'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: volColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volStr}</Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['volumeTrend'])}>VOLUMEN</InfoLabel>
+            <Text style={styles.statLabel}>VOLUMEN</Text>
           </View>
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
             {volSubStr ?? '—'}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
       </View>
 

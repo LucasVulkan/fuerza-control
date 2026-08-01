@@ -265,7 +265,7 @@
     },
     "monotony": {
       "name": "Monotonía",
-      "what": "Indica si repites la misma carga día tras día sin variación, un patrón asociado a peor recuperación.",
+      "what": "Indica si repites la misma carga día tras día sin variación, un patrón asociado a peor recuperación. Cuanto MÁS BAJA, mejor: significa que alternas días duros con días suaves.",
       "formula": "monotonía = media de la carga diaria ÷ su desviación típica, sobre 7 días",
       "rules": "Los días de descanso cuentan como 0, tal como define el método original. Se oculta cuando la semana tiene menos de {{minSessions}} sesiones. Por encima de {{high}} se marca como alta; por debajo de {{moderate}}, como baja.",
       "caveat": "Con una o dos sesiones en la semana, los días de descanso dominan la desviación y el número deja de significar nada: por eso se oculta en lugar de mostrarse en verde."
@@ -1275,9 +1275,9 @@
     "load7d": "Carga 7d",
     "vs28d": "vs 28d",
     "monotony": "Monoton.",
-    "monotonyLow": "baja",
-    "monotonyModerate": "moderada",
-    "monotonyHigh": "alta",
+    "monotonyLow": "variada",
+    "monotonyModerate": "normal",
+    "monotonyHigh": "repetitiva",
     "needsSessions": "pocas sesiones",
     "strain": "Strain",
     "vsBaseline": "vs tu base",

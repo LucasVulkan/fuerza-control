@@ -16,7 +16,7 @@
  * programa convertiría las sesiones de fuera en días de descanso falsos.
  */
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -389,47 +389,59 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
       {/* ── Indicadores ─────────────────────────────────────────────────── */}
       <View style={styles.statsGrid}>
-        <View style={styles.statTile}>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['sessionLoad', 'movingAverage'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {Math.round(summary.weekLoad)}
             </Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['sessionLoad', 'movingAverage'])}>{t('load.load7d')}</InfoLabel>
+            <Text style={styles.statLabel}>{t('load.load7d')}</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {summary.vs28 != null ? `${signed(summary.vs28)} ${t('load.vs28d')}` : '—'}
           </Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.statTile}>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['monotony'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: monoColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {summary.mono != null ? summary.mono.toFixed(1) : '—'}
             </Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['monotony'])}>{t('load.monotony')}</InfoLabel>
+            <Text style={styles.statLabel}>{t('load.monotony')}</Text>
           </View>
           <Text style={[styles.statSub, { color: monoColor }]} numberOfLines={1}>
             {monoLabel ?? t('load.needsSessions')}
           </Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.statTile}>
+        <TouchableOpacity
+          style={styles.statTile}
+          onPress={() => setInfo(['strain'])}
+          activeOpacity={0.75}
+        >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {summary.strain != null ? Math.round(summary.strain) : '—'}
             </Text>
-            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['strain'])}>{t('load.strain')}</InfoLabel>
+            <Text style={styles.statLabel}>{t('load.strain')}</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {summary.strainPct != null ? `${signed(summary.strainPct)} ${t('load.vsBaseline')}` : '—'}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* ── Tendencia ───────────────────────────────────────────────────── */}
       <View style={styles.card}>
         <View style={styles.cardHead}>
-          <Text style={styles.cardTitle}>{t('load.trendTitle')}</Text>
+          <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['sessionLoad', 'movingAverage', 'loadState'])}>{t('load.trendTitle')}</InfoLabel>
           <Text style={styles.cardMeta}>{t('load.perDay')}</Text>
         </View>
 

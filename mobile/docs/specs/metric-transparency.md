@@ -116,6 +116,12 @@ no es lo bastante compleja como para necesitar explicación.
 La regla de fondo: **no hacer tocable todo lo que tenga un número.** Si el icono
 aparece en todas partes deja de significar nada y se convierte en ruido.
 
+**El icono ⓘ va solo en los títulos de gráfico.** Las tarjetas pequeñas son
+pulsables enteras y sin icono: en una caja de 108 px con un número grande y dos
+etiquetas el aro era ruido, y una tarjeta pequeña no tiene ninguna otra acción
+con la que competir por el toque —al contrario que las de Progreso, que abren el
+detalle del ejercicio, y por eso allí el disparador sí es la etiqueta.
+
 **Un dato puede necesitar varias fichas**, así que la hoja recibe una lista:
 "Carga 7d" no se explica solo con la carga de sesión, hace falta la media móvil;
 "Esfuerzo vs carga" necesita carga externa, carga de sesión y base 100.

@@ -21,6 +21,11 @@
  * esa pestaña. La gráfica del detalle de ejercicio NO: ya es interactiva y no
  * es lo bastante compleja como para necesitar explicación. No hacer tocable
  * todo lo que tenga un número — el icono deja de significar algo.
+ *
+ * **`InfoLabel` es solo para títulos de gráfico.** Las tarjetas pequeñas son
+ * pulsables ENTERAS y no llevan icono: en una caja de 108 px con un número
+ * grande y dos etiquetas, un aro de 11 px era ruido, y una tarjeta pequeña no
+ * tiene ninguna otra acción con la que competir por el toque.
  */
 import { Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';

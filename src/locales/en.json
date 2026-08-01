@@ -265,7 +265,7 @@
     },
     "monotony": {
       "name": "Monotony",
-      "what": "Indicates whether you repeat the same load day after day without variation, a pattern linked to worse recovery.",
+      "what": "Indicates whether you repeat the same load day after day without variation, a pattern linked to worse recovery. The LOWER the better: it means you alternate hard days with easy ones.",
       "formula": "monotony = average daily load ÷ its standard deviation, over 7 days",
       "rules": "Rest days count as 0, as the original method defines. It's hidden when the week has fewer than {{minSessions}} sessions. Above {{high}} it's flagged as high; below {{moderate}}, as low.",
       "caveat": "With one or two sessions in the week, rest days dominate the deviation and the number stops meaning anything: that's why it's hidden rather than shown in green."
@@ -1275,9 +1275,9 @@
     "load7d": "Load 7d",
     "vs28d": "vs 28d",
     "monotony": "Monotony",
-    "monotonyLow": "low",
-    "monotonyModerate": "moderate",
-    "monotonyHigh": "high",
+    "monotonyLow": "varied",
+    "monotonyModerate": "normal",
+    "monotonyHigh": "repetitive",
     "needsSessions": "too few sessions",
     "strain": "Strain",
     "vsBaseline": "vs your baseline",
