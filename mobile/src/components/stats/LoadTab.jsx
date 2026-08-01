@@ -30,6 +30,7 @@ import {
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
+import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 
 // "7D" no existe aquí: siete barras y dos líneas planas no son una tendencia.
 const PERIOD_OPTIONS = [
@@ -201,6 +202,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
+  const [info, setInfo] = useState(null);
   const [period, setPeriod] = useState('3m');
 
   // Peso de referencia: el que pase el llamador (el perfil, más al día que el
@@ -392,7 +394,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {Math.round(summary.weekLoad)}
             </Text>
-            <Text style={styles.statLabel}>{t('load.load7d')}</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['sessionLoad', 'movingAverage'])}>{t('load.load7d')}</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {summary.vs28 != null ? `${signed(summary.vs28)} ${t('load.vs28d')}` : '—'}
@@ -404,7 +406,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
             <Text style={[styles.statValue, { color: monoColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {summary.mono != null ? summary.mono.toFixed(1) : '—'}
             </Text>
-            <Text style={styles.statLabel}>{t('load.monotony')}</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['monotony'])}>{t('load.monotony')}</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: monoColor }]} numberOfLines={1}>
             {monoLabel ?? t('load.needsSessions')}
@@ -416,7 +418,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {summary.strain != null ? Math.round(summary.strain) : '—'}
             </Text>
-            <Text style={styles.statLabel}>{t('load.strain')}</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['strain'])}>{t('load.strain')}</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {summary.strainPct != null ? `${signed(summary.strainPct)} ${t('load.vsBaseline')}` : '—'}
@@ -463,7 +465,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {effort && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <Text style={styles.cardTitle}>{t('load.effortTitle')}</Text>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['externalLoad', 'sessionLoad', 'indexed100'])}>{t('load.effortTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.base100')}</Text>
           </View>
 
@@ -505,7 +507,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {performance && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <Text style={styles.cardTitle}>{t('load.perfTitle')}</Text>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['performanceIndex', 'e1rm'])}>{t('load.perfTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.perfMeta')}</Text>
           </View>
 
@@ -531,7 +533,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {groupSets.length > 0 && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <Text style={styles.cardTitle}>{t('load.groupsTitle')}</Text>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['muscleGroupSets'])}>{t('load.groupsTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.last7d')}</Text>
           </View>
 
@@ -569,6 +571,8 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
           </Text>
         </View>
       )}
+
+      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
     </>,
   );
 }

@@ -38,6 +38,7 @@ import { bestSetE1RM, recentE1RM } from '../../../../src/utils/oneRm';
 import { recapStats }     from '../../../../src/utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import SegmentedControl  from '../ui/SegmentedControl';
+import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -558,6 +559,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
 
+  const [info, setInfo] = useState(null);
+
   const [modalPeriod, setModalPeriod] = useState('all');
   const [modalScope,  setModalScope]  = useState('all');
   const [chartMetric, setChartMetric] = useState(null);
@@ -922,7 +925,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                         {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
                       </Text>
-                      <Text style={styles.statLabel}>1RM</Text>
+                      <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['e1rm', 'pr'])}>1RM</InfoLabel>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>
                       {prDisplay ? `PR ${prDisplay} · ${prAgoStr ?? ''}` : '—'}
@@ -932,7 +935,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   <>
                     <View style={styles.statValueBlock}>
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{prDisplay ?? '—'}</Text>
-                      <Text style={styles.statLabel}>PR</Text>
+                      <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['e1rm', 'pr'])}>PR</InfoLabel>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
@@ -941,14 +944,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               <View style={styles.statTile}>
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <Text style={styles.statLabel}>MEJORA</Text>
+                  <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['loadTrend'])}>MEJORA</InfoLabel>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </View>
               <View style={styles.statTile}>
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: volImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volImpStr}</Text>
-                  <Text style={styles.statLabel}>VOLUMEN</Text>
+                  <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['volumeTrend'])}>VOLUMEN</InfoLabel>
                 </View>
                 <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
               </View>
@@ -1070,6 +1073,9 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
           </Animated.View>{/* content opacity wrapper */}
         </Animated.View>{/* modal sheet */}
       </View>
+      {/* La hoja se monta DENTRO de este Modal: fuera quedaría por debajo y no
+          se vería, porque el detalle de ejercicio ocupa la pantalla entera. */}
+      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
     </Modal>
   );
 }
@@ -1138,6 +1144,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const { i18n } = useTranslation();
   const { fmt: fmtWeight, toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
+
+  const [info, setInfo] = useState(null);
 
   const [scope,         setScope]         = useState('all');
   const [period,        setPeriod]        = useState('all');
@@ -1295,7 +1303,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{String(filteredLog.length)}</Text>
-            <Text style={styles.statLabel}>SESIONES</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['sessionCount'])}>SESIONES</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
             {`${thisWeekCount} esta semana`}
@@ -1304,7 +1312,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <Text style={styles.statLabel}>MEJORA</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['loadTrend'])}>MEJORA</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}
@@ -1313,7 +1321,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: volColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volStr}</Text>
-            <Text style={styles.statLabel}>VOLUMEN</Text>
+            <InfoLabel textStyle={styles.statLabel} onPress={() => setInfo(['volumeTrend'])}>VOLUMEN</InfoLabel>
           </View>
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
             {volSubStr ?? '—'}
@@ -1432,6 +1440,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           })}
         </Reanimated.View>
       )}
+
+      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
     </ScrollView>
   );
 }

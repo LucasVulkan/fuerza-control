@@ -291,7 +291,14 @@
       "rules": "The cuts are computed over your whole history, not the visible month, so they mean the same thing as you move between months. A day trained without answering the RPE is drawn as an outline with no fill, because there's no load to represent.",
       "caveat": "The colour ranks your days against each other, not against an absolute value: there will always be dark and light days even if you train very uniformly."
     },
-    "progressionChip": {
+    "sessionCount": {
+    "name": "Sessions",
+    "what": "Counts the sessions you completed within the selected period. It tells you whether you are keeping the pace.",
+    "formula": "number of sessions saved within the period",
+    "rules": "It follows the period selector and the program filter. The “this week” subtitle, however, always counts the current calendar week, Monday to Sunday, regardless of the period selected.",
+    "caveat": "It counts sessions, not their size: a ten-minute warm-up and a two-hour session add up the same."
+  },
+  "progressionChip": {
       "name": "Progression suggestion",
       "what": "The go up, hold or back off hint shown on each exercise during a workout, based on how the last one went.",
       "formula": "qualifying sets ÷ target sets, crossed with the rep range and with RPE if you log it",

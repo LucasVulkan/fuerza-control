@@ -291,7 +291,14 @@
       "rules": "Los cortes se calculan sobre todo tu historial, no sobre el mes visible, para que al cambiar de mes signifiquen lo mismo. Un día entrenado sin responder al sRPE se dibuja con contorno y sin relleno, porque no hay carga que representar.",
       "caveat": "El color ordena tus días entre sí, no contra un valor absoluto: siempre habrá días oscuros y días claros aunque entrenes de forma muy uniforme."
     },
-    "progressionChip": {
+    "sessionCount": {
+    "name": "Sesiones",
+    "what": "Cuenta las sesiones que has completado dentro del período seleccionado. Sirve para saber si estás manteniendo el ritmo.",
+    "formula": "número de sesiones guardadas dentro del período",
+    "rules": "Responde al selector de período y al filtro de programa. El subtítulo «esta semana», en cambio, siempre cuenta la semana natural en curso, de lunes a domingo, con independencia del período elegido.",
+    "caveat": "Cuenta sesiones, no su tamaño: un calentamiento de diez minutos y una sesión de dos horas suman lo mismo."
+  },
+  "progressionChip": {
       "name": "Recomendación de progresión",
       "what": "Es la sugerencia de subir, mantener o bajar que aparece en cada ejercicio durante el entrenamiento, a partir de cómo te fue la última vez.",
       "formula": "series válidas ÷ series objetivo, cruzado con el rango de repeticiones y con el RPE si lo registras",

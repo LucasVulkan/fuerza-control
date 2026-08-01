@@ -1,9 +1,10 @@
 # Spec — Transparencia de métricas ("¿de dónde sale este número?")
 
-> Estado: **FASE 1 IMPLEMENTADA** (ago 2026) — registro `metrics.*` con las 24
-> métricas que la app expone, `mobile/src/utils/metricDocs.js` y el apartado
-> "Cómo se calcula cada número" en Documentación. Faltan las fases 2 y 3 (hacer
-> tocable la etiqueta de cada dato). Pedida por el usuario (jul 2026) al cerrar
+> Estado: **FASES 1 Y 2 IMPLEMENTADAS** (ago 2026) — registro `metrics.*` con
+> las 25 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se
+> calcula cada número" en Documentación, y la hoja informativa al tocar la
+> etiqueta de un dato en Progreso, detalle de ejercicio y Carga. Pedida por el
+> usuario (jul 2026) al cerrar
 > [training-load.md](training-load.md): *"en todos los elementos en los que hay
 > fórmulas y datos expuestos, que haya una forma de ver la fórmula exacta usada,
 > a modo informativo"*.
@@ -105,7 +106,21 @@ export const METRIC_VARS = {
 };
 ```
 
-### 2.2 `MetricInfoSheet`
+### 2.2 `MetricInfoSheet` — alcance cerrado
+
+**Qué es tocable** (decisión del usuario, ago 2026): las 3 cards de Progreso,
+las 3 del detalle de ejercicio, las 3 de Carga y los 4 títulos de gráfico de esa
+pestaña. **Qué no**: la gráfica del detalle de ejercicio, que ya es interactiva y
+no es lo bastante compleja como para necesitar explicación.
+
+La regla de fondo: **no hacer tocable todo lo que tenga un número.** Si el icono
+aparece en todas partes deja de significar nada y se convierte en ruido.
+
+**Un dato puede necesitar varias fichas**, así que la hoja recibe una lista:
+"Carga 7d" no se explica solo con la carga de sesión, hace falta la media móvil;
+"Esfuerzo vs carga" necesita carga externa, carga de sesión y base 100.
+
+### 2.2-bis Implementación
 
 Componente nuevo en `mobile/src/components/ui/`. Recibe `metricId`, muestra los
 cuatro campos y se cierra arrastrando. **Reutiliza `mobile/src/components/DragSheet.jsx`**
@@ -168,8 +183,8 @@ acondicionamiento (calibrado a ojo).
 | # | Contenido | Nota |
 |---|---|---|
 | 1 | Registro `metrics.*` (es+en) + `metricDocs.js` + apartado en `DocsScreen` | ✅ **hecha** — 24 fichas, cubre todas las métricas sin tocar ninguna pantalla de datos |
-| 2 | `MetricInfoSheet` + etiquetas tocables en Progreso y Recap | |
-| 3 | Extender a Workout (chip de progresión, calentamiento) y lado entrenador (adherencia) | |
+| 2 | `MetricInfoSheet` + etiquetas tocables en Progreso, detalle de ejercicio y Carga | ✅ **hecha** |
+| 3 | Extender a Workout (chip de progresión, calentamiento), Recap, historial y lado entrenador (adherencia) | pendiente de decidir si merece la pena |
 
 Fase 1 puede hacerse antes o después de la fase 2 de training-load, son
 independientes. Las métricas nuevas se añaden al registro **en el mismo commit**
