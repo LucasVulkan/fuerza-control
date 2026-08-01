@@ -41,6 +41,13 @@ const PERIOD_OPTIONS = [
 ];
 const PERIOD_DAYS = { '1m': 30, '3m': 90, '6m': 180 };
 
+/** Fecha corta "5 may" para anclar el extremo izquierdo de la tira de strain. */
+function fmtWeek(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${d.getDate()} ${d.toLocaleDateString(undefined, { month: 'short' }).replace('.', '')}`;
+}
+
 const CHART_H = 140;
 const PAD_TOP = 10;
 const PAD_BOT = 6;
@@ -50,10 +57,6 @@ const PAD_BOT = 6;
 // `LoadChart` no lo necesita — no lleva punto final, y sus barras ya quedan
 // dentro por el medio paso del centrado.
 const DOT_R   = 3;
-
-// Semanas que enseña la tira de strain. Doce cubre tres mesociclos de 3:1, que
-// es donde el patrón de acumulación y descarga se reconoce.
-const STRAIN_WEEKS = 12;
 
 // Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
 // entre grupos y semanas; solo crece si alguien se sale del rango.
@@ -343,10 +346,13 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
   // Strain semana a semana. El valor absoluto del strain no significa nada, así
   // que un número suelto dice poco: lo que comunica es ver la serie subir.
-  const strainWeeks = useMemo(
-    () => weeklyStrain(days).slice(-STRAIN_WEEKS),
-    [days],
-  );
+  const strainWeeks = useMemo(() => {
+    const all = weeklyStrain(days);
+    // Obedece al selector de período como el resto del panel: tener una tira con
+    // ventana propia obligaba a preguntarse por qué esta enseña otra cosa.
+    const n = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : all.length;
+    return all.slice(-n);
+  }, [days, period]);
 
   const hasSessions = (loads?.length ?? 0) > 0;
   const hasRpe      = loads.some((l) => l.internal != null);
@@ -470,14 +476,25 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
                       height: `${Math.max(4, (w.strain / max) * 100)}%`,
                       backgroundColor: isLast ? th.colors.accent : th.tint.accent50,
                     }]} />
+                  ) : w.sessions > 0 ? (
+                    // Entrenó, pero con menos sesiones de las que hacen falta
+                    // para que el strain signifique algo. Va en CONTORNO y a
+                    // altura fija: el mismo idioma que el mapa de calor del
+                    // historial, donde el contorno significa "no se puede
+                    // calcular" y nunca "salió bajo". Inventar una altura sería
+                    // dibujar un número que no es fiable.
+                    <View style={[styles.strainBar, styles.strainBarPartial]} />
                   ) : (
-                    // Semana sin dato suficiente: marca a ras de suelo, para que
-                    // el hueco se vea como hueco y no como una semana suave.
                     <View style={[styles.strainBar, styles.strainBarEmpty]} />
                   )}
                 </View>
               );
             })}
+          </View>
+
+          <View style={styles.strainAxis}>
+            <Text style={styles.strainAxisLabel}>{fmtWeek(strainWeeks[0]?.weekStart)}</Text>
+            <Text style={styles.strainAxisLabel}>{t('load.thisWeek')}</Text>
           </View>
 
           <Text style={styles.groupHint}>{t('load.strainHint')}</Text>
@@ -721,7 +738,18 @@ const makeStyles = (th) => StyleSheet.create({
   },
   strainSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   strainBar:  { width: '100%', borderRadius: 2 },
-  strainBarEmpty: { height: 2, backgroundColor: th.colors.surface2 },
+  strainBarEmpty:   { height: 2, backgroundColor: th.colors.surface2 },
+  strainBarPartial: {
+    height:      14,
+    borderWidth: 1,
+    borderColor: th.tint.accent50,
+  },
+  strainAxis: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    marginTop:      spacing.xs2,
+  },
+  strainAxisLabel: { ...textStyles.smallBold, color: th.colors.muted },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },
