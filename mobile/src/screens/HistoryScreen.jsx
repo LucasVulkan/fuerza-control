@@ -512,6 +512,14 @@ function SessionCard({ session, onDelete, volumeDelta = null }) {
           </Text>
         </View>
       ))}
+
+      {/* Borrar vive aquí y no en la cabecera: es una acción rara y destructiva,
+          y ahí competía por la esquina con la fecha —que sí se consulta— con
+          dos alturas de texto que no había forma de alinear. Mismo tratamiento
+          que "Descartar sesión" en el recap. */}
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteRow} activeOpacity={0.7}>
+        <Text style={styles.deleteRowText}>{t('history.deleteTitle')}</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -580,12 +588,7 @@ function SessionCard({ session, onDelete, volumeDelta = null }) {
             </View>
 
             {/* Fecha aislada en su esquina: se busca por ella, no se lee de corrido. */}
-            <View style={styles.cardHeaderRight}>
-              <Text style={styles.cardDateCorner} numberOfLines={1}>{formatDate(session.timestamp)}</Text>
-              <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-                <Text style={styles.deleteBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.cardDateCorner} numberOfLines={1}>{formatDate(session.timestamp)}</Text>
           </TouchableOpacity>
 
           {/* Expanded detail — the card's own `layout` (LinearTransition, on the
@@ -988,7 +991,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 1,
   },
   cardSesLetter: { ...textStyles.cardType, color: th.colors.accent },
-  cardStage:     { ...textStyles.tag, color: th.colors.muted, flexShrink: 0 },
+  cardStage:     { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
 
   // ── Fila de datos ──
   cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
@@ -999,8 +1002,24 @@ const makeStyles = (th) => StyleSheet.create({
   deltaUp:      { color: th.colors.accent },
   deltaDown:    { color: th.tint.red50 },
 
-  cardDateCorner: { ...textStyles.tag, color: th.colors.mutedLight },
-  detailMeta:     { ...textStyles.tag, color: th.colors.muted, marginBottom: spacing.sm },
+  cardDateCorner: { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
+  // `detail` no lleva padding lateral —cada sección se lo pone— así que este
+  // texto suelto necesita el suyo o sale a sangre con el borde de la tarjeta.
+  detailMeta: {
+    ...textStyles.tag,
+    color:             th.colors.mutedLight,
+    paddingHorizontal: spacing.lg,
+    marginBottom:      spacing.sm,
+  },
+  deleteRow: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.xs,
+  },
+  deleteRowText: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.tint.red50,
+  },
 
   noteTag: {
     backgroundColor: withOpacity(th.colors.accent, 0.08),
@@ -1030,14 +1049,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.blue,
     letterSpacing: 0.5,
   },
-  cardHeaderRight: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexShrink:    0,
-  },
-  deleteBtn:     { padding: spacing.xs },
-  deleteBtnText: { fontSize: 18, color: th.colors.muted2 },
 
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)
