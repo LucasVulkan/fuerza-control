@@ -16,6 +16,13 @@
  * la carga de sesión: hace falta también la media móvil. Por eso `ids` es una
  * lista y no un id suelto.
  *
+ * **Un gráfico no es una métrica.** Al abrir "Esfuerzo vs carga" lo primero que
+ * hace falta no es qué mide cada línea, sino qué representa el gráfico y cómo
+ * se interpreta; las fichas de sus componentes van después. Por eso la hoja
+ * recibe además un `chart`, y esa explicación vive en `chartDocs.*` y no en
+ * `metrics.*`: son dos cosas distintas y mezclarlas obligaba a leer tres fichas
+ * para deducir algo que se dice en dos frases.
+ *
  * Qué es tocable y qué no (decisión del usuario, ago 2026): las tres cards de
  * Progreso, las del detalle de ejercicio, las tres de Carga y los gráficos de
  * esa pestaña. La gráfica del detalle de ejercicio NO: ya es interactiva y no
@@ -27,25 +34,42 @@
  * grande y dos etiquetas, un aro de 11 px era ruido, y una tarjeta pequeña no
  * tiene ninguna otra acción con la que competir por el toque.
  */
-import { Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { spacing } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import DragSheet from '../DragSheet';
 import MetricDoc from './MetricDoc';
 import { InfoIcon } from './EditorIcons';
 
-export function MetricInfoSheet({ ids, onClose }) {
+export function MetricInfoSheet({ chart, ids, onClose }) {
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
+  const open   = !!chart || !!ids?.length;
   return (
-    <DragSheet visible={!!ids?.length} onClose={onClose} title={t('docs.metricsTitle')}>
+    <DragSheet
+      visible={open}
+      onClose={onClose}
+      title={chart ? t(`chartDocs.${chart}.name`) : t('docs.metricsTitle')}
+    >
       <ScrollView
         style={styles.sheetScroll}
         contentContainerStyle={styles.sheetBody}
         showsVerticalScrollIndicator={false}
       >
+        {chart ? (
+          <View style={styles.chartDoc}>
+            <Text style={styles.chartWhat}>{t(`chartDocs.${chart}.what`)}</Text>
+            <Text style={styles.chartLabel}>{t('docs.chartRead')}</Text>
+            <Text style={styles.chartRead}>{t(`chartDocs.${chart}.read`)}</Text>
+          </View>
+        ) : null}
+
+        {chart && ids?.length ? (
+          <Text style={styles.partsLabel}>{t('docs.chartParts')}</Text>
+        ) : null}
+
         {(ids ?? []).map((id) => <MetricDoc key={id} id={id} />)}
       </ScrollView>
     </DragSheet>
@@ -73,7 +97,34 @@ export function InfoLabel({ children, textStyle, onPress, align = 'center' }) {
   );
 }
 
-const makeStyles = () => StyleSheet.create({
+const makeStyles = (th) => StyleSheet.create({
+  // El bloque del gráfico va con relleno accent, como las tarjetas "Resumen" de
+  // los editores: es la cabecera de la hoja, no una ficha más de la lista.
+  chartDoc: {
+    backgroundColor: th.tint.accent10,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    gap:             spacing.sm,
+  },
+  chartWhat: {
+    fontFamily: 'Inter_500Medium',
+    fontSize:   13,
+    color:      th.colors.text,
+    lineHeight: 19,
+  },
+  chartLabel: {
+    ...textStyles.smallBold,
+    color:         th.colors.accent,
+    textTransform: 'uppercase',
+    marginTop:     spacing.xs2,
+  },
+  chartRead: { ...textStyles.tag, color: th.colors.text, lineHeight: 16 },
+  partsLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginTop:     spacing.xs2,
+  },
   labelRow: {
     flexDirection: 'row',
     alignItems:    'center',

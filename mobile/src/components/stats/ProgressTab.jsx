@@ -920,7 +920,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             <View style={styles.modalStatsRow}>
               <TouchableOpacity
                 style={styles.statTile}
-                onPress={() => setInfo(['e1rm', 'pr'])}
+                onPress={() => setInfo({ ids: ['e1rm', 'pr'] })}
                 activeOpacity={0.75}
               >
                 {e1rmData ? (
@@ -947,7 +947,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.statTile}
-                onPress={() => setInfo(['loadTrend'])}
+                onPress={() => setInfo({ ids: ['loadTrend'] })}
                 activeOpacity={0.75}
               >
                 <View style={styles.statValueBlock}>
@@ -958,7 +958,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.statTile}
-                onPress={() => setInfo(['volumeTrend'])}
+                onPress={() => setInfo({ ids: ['volumeTrend'] })}
                 activeOpacity={0.75}
               >
                 <View style={styles.statValueBlock}>
@@ -1087,7 +1087,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
       </View>
       {/* La hoja se monta DENTRO de este Modal: fuera quedaría por debajo y no
           se vería, porque el detalle de ejercicio ocupa la pantalla entera. */}
-      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
+      <MetricInfoSheet ids={info?.ids} onClose={() => setInfo(null)} />
     </Modal>
   );
 }
@@ -1314,7 +1314,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       <View style={styles.statsGrid}>
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['sessionCount'])}
+          onPress={() => setInfo({ ids: ['sessionCount'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
@@ -1327,7 +1327,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['loadTrend'])}
+          onPress={() => setInfo({ ids: ['loadTrend'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
@@ -1340,7 +1340,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['volumeTrend'])}
+          onPress={() => setInfo({ ids: ['volumeTrend'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
@@ -1465,7 +1465,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         </Reanimated.View>
       )}
 
-      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
+      <MetricInfoSheet ids={info?.ids} onClose={() => setInfo(null)} />
     </ScrollView>
   );
 }

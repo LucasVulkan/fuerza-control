@@ -89,6 +89,8 @@
     "toastImported": "Datos importados"
   },
   "docs": {
+    "chartRead": "Cómo leerla",
+    "chartParts": "Datos que lo componen",
     "metricFormula": "Cómo se calcula",
     "metricFormulaApprox": "Cómo se calcula (simplificado)",
     "metricRules": "Reglas de la app",
@@ -165,7 +167,34 @@
       ] }
     ]
   },
-  "metrics": {
+"chartDocs": {
+    "loadOverTime": {
+      "name": "Evolución de la carga",
+      "what": "Cada barra es la carga de un día. Las dos líneas son la media de los últimos 7 días (lima) y de los últimos 28 (azul), que enseñan la forma general por debajo del ruido del día a día.",
+      "read": "Cuando la línea de 7 días va por encima de la de 28 estás acumulando más carga de la habitual; cuando cae por debajo, estás descargando. Que se crucen a menudo es señal de alternancia sana. Lo que conviene vigilar es una separación grande y sostenida."
+    },
+    "effortVsLoad": {
+      "name": "Esfuerzo vs carga",
+      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que las dos se reescalan a base 100 para poder compararlas.",
+      "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
+    },
+    "performance": {
+      "name": "Rendimiento",
+      "what": "Cómo evoluciona tu 1RM estimado medio a lo largo del período, con 100 en tu punto de partida.",
+      "read": "Es la salida del sistema: la carga es lo que metes y esto es lo que sale. Subir aquí con la carga estable es la señal más clara de que el entrenamiento está funcionando. Que baje mientras la carga sube suele avisar de un estancamiento."
+    },
+    "strainWeekly": {
+      "name": "Strain por semana",
+      "what": "El estrés acumulado de cada semana, una barra por semana. Las semanas con menos de 3 sesiones van en contorno: se entrenó, pero no hay dato fiable que dibujar.",
+      "read": "Manda la forma, no la altura concreta. Tres o cuatro semanas subiendo y luego una caída es un mesociclo sano. Subir sin caer nunca es lo que hay que vigilar."
+    },
+    "muscleGroups": {
+      "name": "Series por grupo",
+      "what": "Las series de los últimos 7 días repartidas por grupo muscular, con dos marcas que señalan el rango de referencia.",
+      "read": "Busca huecos, no perfección. Un grupo a cero o muy por debajo del rango varias semanas seguidas es lo accionable. Pasarse por arriba no es malo en sí mismo si te recuperas bien."
+    }
+  },
+    "metrics": {
     "e1rm": {
       "name": "1RM estimado",
       "what": "Estima el peso máximo que podrías levantar una sola vez, sin tener que intentarlo de verdad. Sirve para seguir tu progreso en un ejercicio aunque cambies de repeticiones cada semana.",
@@ -1301,8 +1330,10 @@
     "groupsHint": "Las marcas señalan el rango de referencia de {{min}}-{{max}} series semanales por grupo. Cuenta volumen directo: un press de banca suma a pecho, no a tríceps.",
     "strainTitle": "Strain por semana",
     "lastWeeks": "últimas {{count}}",
-    "strainHint": "Cada barra es una semana. Lo que importa es la forma, no el número: subir varias semanas seguidas es acumulación, y bajar de golpe, una descarga. Las semanas con menos de 3 sesiones aparecen en contorno: se entrenó, pero no hay dato fiable que dibujar.",
+    "strainHint": "Una barra por semana. Las de menos de 3 sesiones van en contorno.",
     "thisWeek": "esta semana",
+    "sessions7d": "Sesiones",
+    "avgPerWeek": "{{n}}/sem de media",
     "trendTitle": "Evolución de la carga",
     "perDay": "por día",
     "legendDaily": "carga diaria",

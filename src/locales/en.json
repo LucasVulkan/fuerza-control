@@ -89,6 +89,8 @@
     "toastImported": "Data imported"
   },
   "docs": {
+    "chartRead": "How to read it",
+    "chartParts": "What it is made of",
     "metricFormula": "How it is calculated",
     "metricFormulaApprox": "How it is calculated (simplified)",
     "metricRules": "App rules",
@@ -165,7 +167,34 @@
       ] }
     ]
   },
-  "metrics": {
+"chartDocs": {
+    "loadOverTime": {
+      "name": "Load over time",
+      "what": "Each bar is one day's load. The two lines are the average of the last 7 days (lime) and the last 28 (blue), which show the overall shape beneath the day-to-day noise.",
+      "read": "When the 7-day line runs above the 28-day one you are building more load than usual; when it drops below, you are deloading. Frequent crossings are a sign of healthy alternation. What's worth watching is a large, sustained gap."
+    },
+    "effortVsLoad": {
+      "name": "Effort vs load",
+      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so both are rescaled to base 100 to make them comparable.",
+      "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is accumulated fatigue. Both rising is a hard block, and both falling is a deload."
+    },
+    "performance": {
+      "name": "Performance",
+      "what": "How your average estimated 1RM evolves over the period, with 100 at your starting point.",
+      "read": "This is the system's output: load is what you put in, this is what comes out. Rising here with steady load is the clearest sign the training is working. Falling while load rises usually warns of a plateau."
+    },
+    "strainWeekly": {
+      "name": "Strain by week",
+      "what": "Each week's accumulated stress, one bar per week. Weeks with fewer than 3 sessions appear as an outline: you trained, but there is no reliable value to draw.",
+      "read": "The shape rules, not the exact height. Three or four weeks rising and then a drop is a healthy mesocycle. Rising without ever dropping is what to watch for."
+    },
+    "muscleGroups": {
+      "name": "Sets per group",
+      "what": "The last 7 days' sets split by muscle group, with two marks showing the reference range.",
+      "read": "Look for gaps, not perfection. A group at zero or well below the range for several weeks in a row is what's actionable. Going over the top isn't bad in itself if you recover well."
+    }
+  },
+    "metrics": {
     "e1rm": {
       "name": "Estimated 1RM",
       "what": "Estimates the heaviest weight you could lift once, without having to actually attempt it. It lets you track progress on an exercise even when your rep counts change week to week.",
@@ -1301,8 +1330,10 @@
     "groupsHint": "The marks show the {{min}}-{{max}} weekly sets reference range per group. Counts direct volume: a bench press adds to chest, not triceps.",
     "strainTitle": "Strain by week",
     "lastWeeks": "last {{count}}",
-    "strainHint": "Each bar is one week. What matters is the shape, not the number: several weeks rising is accumulation, a sharp drop is a deload. Weeks with fewer than 3 sessions appear as an outline: you trained, but there is no reliable value to draw.",
+    "strainHint": "One bar per week. Weeks with fewer than 3 sessions are outlined.",
     "thisWeek": "this week",
+    "sessions7d": "Sessions",
+    "avgPerWeek": "{{n}}/wk average",
     "trendTitle": "Load over time",
     "perDay": "per day",
     "legendDaily": "daily load",

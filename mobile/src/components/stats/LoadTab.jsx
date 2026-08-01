@@ -262,6 +262,18 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       const s = strain(internal.slice(from, from + 7));
       if (s != null) prevStrains.push(s);
     }
+    // Frecuencia habitual de las 4 semanas anteriores, para saber si la semana
+    // en curso es normal para este usuario o una excepción.
+    const prevWeekSessions = [];
+    for (let k = 1; k <= 4; k++) {
+      const from = days.length - 7 * (k + 1);
+      if (from < 0) break;
+      prevWeekSessions.push(days.slice(from, from + 7).reduce((a, d) => a + d.sessions, 0));
+    }
+    const avgSessions = prevWeekSessions.length
+      ? prevWeekSessions.reduce((a, b) => a + b, 0) / prevWeekSessions.length
+      : null;
+
     const strainBase = prevStrains.length
       ? prevStrains.reduce((a, b) => a + b, 0) / prevStrains.length
       : null;
@@ -273,6 +285,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       mono,
       strain: strn,
       strainPct: strn != null && strainBase > 0 ? Math.round((strn / strainBase - 1) * 100) : null,
+      avgSessions,
       state: loadState(m7, m28),
     };
   }, [days, internal, mean7, mean28]);
@@ -408,7 +421,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       <View style={styles.statsGrid}>
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['sessionLoad', 'movingAverage'])}
+          onPress={() => setInfo({ ids: ['sessionLoad', 'movingAverage'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
@@ -424,7 +437,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['monotony'])}
+          onPress={() => setInfo({ ids: ['monotony'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
@@ -440,17 +453,19 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
         <TouchableOpacity
           style={styles.statTile}
-          onPress={() => setInfo(['strain'])}
+          onPress={() => setInfo({ ids: ['sessionCount'] })}
           activeOpacity={0.75}
         >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {summary.strain != null ? Math.round(summary.strain) : '—'}
+              {summary.weekSessions}
             </Text>
-            <Text style={styles.statLabel}>{t('load.strain')}</Text>
+            <Text style={styles.statLabel}>{t('load.sessions7d')}</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
-            {summary.strainPct != null ? `${signed(summary.strainPct)} ${t('load.vsBaseline')}` : '—'}
+            {summary.avgSessions != null
+              ? t('load.avgPerWeek', { n: summary.avgSessions.toFixed(1).replace('.', ',') })
+              : '—'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -459,7 +474,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {strainWeeks.some((w) => w.strain != null) && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['strain', 'monotony'])}>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'strainWeekly', ids: ['strain', 'monotony'] })}>
               {t('load.strainTitle')}
             </InfoLabel>
             <Text style={styles.cardMeta}>{t('load.lastWeeks', { count: strainWeeks.length })}</Text>
@@ -504,7 +519,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {/* ── Tendencia ───────────────────────────────────────────────────── */}
       <View style={styles.card}>
         <View style={styles.cardHead}>
-          <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['sessionLoad', 'movingAverage', 'loadState'])}>{t('load.trendTitle')}</InfoLabel>
+          <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] })}>{t('load.trendTitle')}</InfoLabel>
           <Text style={styles.cardMeta}>{t('load.perDay')}</Text>
         </View>
 
@@ -540,7 +555,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {effort && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['externalLoad', 'sessionLoad', 'indexed100'])}>{t('load.effortTitle')}</InfoLabel>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad', 'indexed100'] })}>{t('load.effortTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.base100')}</Text>
           </View>
 
@@ -582,7 +597,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {performance && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['performanceIndex', 'e1rm'])}>{t('load.perfTitle')}</InfoLabel>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'performance', ids: ['performanceIndex', 'e1rm'] })}>{t('load.perfTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.perfMeta')}</Text>
           </View>
 
@@ -608,7 +623,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       {groupSets.length > 0 && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(['muscleGroupSets'])}>{t('load.groupsTitle')}</InfoLabel>
+            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'muscleGroups', ids: ['muscleGroupSets'] })}>{t('load.groupsTitle')}</InfoLabel>
             <Text style={styles.cardMeta}>{t('load.last7d')}</Text>
           </View>
 
@@ -647,7 +662,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
         </View>
       )}
 
-      <MetricInfoSheet ids={info} onClose={() => setInfo(null)} />
+      <MetricInfoSheet chart={info?.chart} ids={info?.ids} onClose={() => setInfo(null)} />
     </>,
   );
 }
