@@ -22,9 +22,11 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import DragSheet from '../components/DragSheet';
+import { ArrowIcon } from '../components/ui/EditorIcons';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
@@ -498,17 +500,21 @@ export default function HistoryScreen() {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
-  const workoutLog     = useStore((s) => s.workoutLog);
-  const deleteLogEntry = useStore((s) => s.deleteLogEntry);
-  const programs       = useStore((s) => s.programs);
-  const profile        = useStore((s) => s.profile);
-  const activeProgram  = programs[profile.activeProgramId];
+  const workoutLog      = useStore((s) => s.workoutLog);
+  const deleteLogEntry  = useStore((s) => s.deleteLogEntry);
+  const clearWorkoutLog = useStore((s) => s.clearWorkoutLog);
+  const showToast       = useStore((s) => s.showToast);
+  const programs        = useStore((s) => s.programs);
+  const profile         = useStore((s) => s.profile);
+  const activeProgram   = programs[profile.activeProgramId];
 
   const [scope,            setScope]            = useState('all');
   const [selectedStageIds, setSelectedStageIds] = useState(new Set());
   const [selectedDate,     setSelectedDate]     = useState(null); // { year, month, day }
+  const [menuOpen,         setMenuOpen]         = useState(false);
 
   const hasStages = (activeProgram?.stages?.length ?? 0) > 0;
+
 
   function handleScope(newScope) {
     setScope(newScope);
@@ -570,6 +576,38 @@ export default function HistoryScreen() {
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scope, effectiveTemplateIds, selectedDate]);
 
+  /**
+   * Borrado en bloque. Destructivo y sin deshacer, así que va con confirmación
+   * nativa que dice cuántas sesiones se van y recuerda exportar. La cuenta se
+   * calcula antes para que el aviso sea concreto y no un "esto borrará datos".
+   */
+  function confirmClear(scopeId) {
+    setMenuOpen(false);
+    const willDelete = scopeId === 'all'
+      ? workoutLog.length
+      : workoutLog.filter((e) => !programTemplateIds.has(e.sessionTemplateId)).length;
+
+    if (willDelete === 0) {
+      showToast(t('history.clearNothing'), 2200, 'neutral');
+      return;
+    }
+    Alert.alert(
+      t(`history.clear.${scopeId}.title`),
+      t(`history.clear.${scopeId}.body`, { count: willDelete }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text:    t('history.clear.confirm'),
+          style:   'destructive',
+          onPress: () => {
+            const removed = clearWorkoutLog(scopeId);
+            showToast(t('history.clearDone', { count: removed }), 2200, 'neutral');
+          },
+        },
+      ],
+    );
+  }
+
   // Rendered inline so it closes over scope/hasStages/selectedStageIds state
   const listHeader = (
     <>
@@ -591,16 +629,26 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      {/* Scope selector */}
+      {/* Scope selector + menú de gestión del historial */}
       <View style={styles.scopeRow}>
-        <SegmentedControl
-          options={[
-            { id: 'program', label: t('history.currentProgram') },
-            { id: 'all',     label: t('history.all') },
-          ]}
-          value={scope}
-          onChange={handleScope}
-        />
+        <View style={styles.scopeSegmented}>
+          <SegmentedControl
+            options={[
+              { id: 'program', label: t('history.currentProgram') },
+              { id: 'all',     label: t('history.all') },
+            ]}
+            value={scope}
+            onChange={handleScope}
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.menuBtn}
+          onPress={() => setMenuOpen(true)}
+          activeOpacity={0.75}
+          hitSlop={8}
+        >
+          <Text style={styles.menuBtnGlyph}>···</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stage pills */}
@@ -674,7 +722,27 @@ export default function HistoryScreen() {
           </View>
         }
       />
+
+      {/* Gestión del historial — patrón unificado de modales (DragSheet) */}
+      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('history.manageTitle')}>
+        <View style={styles.sheetBody}>
+          <SheetRow label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
+          <SheetRow label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          <Text style={styles.sheetHint}>{t('history.clearHint')}</Text>
+        </View>
+      </DragSheet>
     </View>
+  );
+}
+
+function SheetRow({ label, onPress, danger = false }) {
+  const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
+  return (
+    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
+      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
+    </TouchableOpacity>
   );
 }
 
@@ -688,9 +756,35 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Scope selector
   scopeRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm2,
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
     paddingBottom:     spacing.sm,
+  },
+  scopeSegmented: { flex: 1 },
+  // 42×42 = misma caja que los botones que acompañan a la barra de búsqueda
+  // (docs/UI-MIGRATION.md §9), para que las cajas de acción sean una sola familia.
+  menuBtn: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuBtnGlyph: { ...textStyles.cardTitle, color: th.colors.text, marginTop: -6 },
+
+  // ── Hoja de gestión ──
+  sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: th.colors.surface2,
+    borderRadius: th.radius.sm,
+    padding: spacing.md,
+  },
+  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetHint: {
+    ...textStyles.tag, color: th.colors.mutedLight,
+    lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,
   },
 
   // Stage pills

@@ -2064,6 +2064,38 @@ export const useStore = create(
             : {}),
         })),
 
+      /**
+       * Borrado en bloque del historial personal. Destructivo y sin deshacer —
+       * la UI confirma y recuerda exportar antes.
+       *
+       *   'all'          → todo.
+       *   'off_program'  → lo que NO pertenece al programa activo. Las sesiones
+       *                    libres ('__free__') cuentan como ajenas, que es justo
+       *                    lo que se quiere limpiar (pruebas, semillas, sueltas).
+       *
+       * Devuelve cuántas se borraron, para el toast.
+       */
+      clearWorkoutLog: (scope) => {
+        const { workoutLog, profile, programs } = get();
+        let keep = [];
+        if (scope === 'off_program') {
+          const active = programs[profile.activeProgramId];
+          const ids = new Set(
+            (active?.stages?.length > 0
+              ? active.stages.flatMap((st) => st.days ?? [])
+              : (active?.days ?? [])
+            ).map((d) => d.sessionTemplateId),
+          );
+          // Sin programa activo no hay nada "del programa": no borrar nada a
+          // ciegas, que sería equivalente a un borrado total por sorpresa.
+          if (ids.size === 0) return 0;
+          keep = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+        }
+        const removed = workoutLog.length - keep.length;
+        if (removed > 0) set({ workoutLog: keep });
+        return removed;
+      },
+
       /** Deletes an entry from a client's separated history (trainer side). */
       deleteClientLogEntry: (clientId, logId) =>
         set((state) => ({
@@ -2495,9 +2527,17 @@ export const useStore = create(
             }
           }
           if (sections.log) {
-            const currentIds = new Set(s.workoutLog.map((e) => e.id));
-            const newEntries = (data.workoutLog ?? []).filter((e) => !currentIds.has(e.id));
-            updates.workoutLog = [...s.workoutLog, ...newEntries];
+            const incoming = data.workoutLog ?? [];
+            if (sections.logMode === 'replace') {
+              // Reemplazar, no combinar: sin esto no hay forma de corregir un
+              // historial ya importado, porque la fusión deduplica por id y da
+              // por buena la copia vieja.
+              updates.workoutLog = [...incoming].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+            } else {
+              const currentIds = new Set(s.workoutLog.map((e) => e.id));
+              const newEntries = incoming.filter((e) => !currentIds.has(e.id));
+              updates.workoutLog = [...s.workoutLog, ...newEntries];
+            }
           }
           if (sections.customExercises) {
             updates.customExercises = { ...s.customExercises, ...(data.customExercises ?? {}) };

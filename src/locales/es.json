@@ -588,7 +588,24 @@
     "noSessionsDate": "No hay sesiones registradas el {{day}} de {{month}}.",
     "noteLabel": "Nota",
     "noteTag": "📝 nota",
-    "modifiedTag": "＋ modificado"
+    "modifiedTag": "＋ modificado",
+    "manageTitle": "GESTIONAR HISTORIAL",
+    "clearHint": "Acciones sin deshacer. Exporta una copia desde ≡ → Exportar antes de borrar.",
+    "clearNothing": "No hay sesiones que borrar",
+    "clearDone": "{{count}} sesiones borradas",
+    "clear": {
+        "confirm": "Borrar",
+        "all": {
+            "action": "Borrar todo el historial",
+            "title": "¿Borrar todo el historial?",
+            "body": "Se borrarán {{count}} sesiones. No se puede deshacer."
+        },
+        "off_program": {
+            "action": "Borrar lo ajeno al programa activo",
+            "title": "¿Borrar las sesiones de fuera del programa?",
+            "body": "Se borrarán {{count}} sesiones que no pertenecen al programa activo, incluidas las sesiones libres. No se puede deshacer."
+        }
+    }
   },
   "archived": {
     "title": "PROGRAMAS ARCHIVADOS",

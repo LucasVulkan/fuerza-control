@@ -588,7 +588,24 @@
     "noSessionsDate": "No sessions recorded on {{day}} of {{month}}.",
     "noteLabel": "Note",
     "noteTag": "📝 note",
-    "modifiedTag": "＋ modified"
+    "modifiedTag": "＋ modified",
+    "manageTitle": "MANAGE HISTORY",
+    "clearHint": "These actions cannot be undone. Export a copy from ≡ → Export before deleting.",
+    "clearNothing": "No sessions to delete",
+    "clearDone": "{{count}} sessions deleted",
+    "clear": {
+        "confirm": "Delete",
+        "all": {
+            "action": "Delete all history",
+            "title": "Delete all history?",
+            "body": "{{count}} sessions will be deleted. This cannot be undone."
+        },
+        "off_program": {
+            "action": "Delete everything outside the active program",
+            "title": "Delete sessions outside the program?",
+            "body": "{{count}} sessions that don't belong to the active program will be deleted, including free sessions. This cannot be undone."
+        }
+    }
   },
   "archived": {
     "title": "ARCHIVED PROGRAMS",
