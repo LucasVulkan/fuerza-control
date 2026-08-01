@@ -32,6 +32,18 @@ const SESSION_OVERHEAD_SEC  = 480; // calentamiento general, una vez por sesión
 /** Ventana de la referencia de 1RM, en semanas. */
 export const REF_WEEKS = 6;
 
+// Umbrales de interpretación. Viven aquí y no en la pantalla porque son
+// conocimiento de dominio —los de monotonía son los de Foster, el rango de
+// series es la horquilla habitual de hipertrofia— y porque la ficha de cada
+// métrica interpola estos valores en su explicación: tecleados a mano en el
+// JSON de i18n quedarían obsoletos a la primera calibración.
+export const MONOTONY_MODERATE = 1.5;
+export const MONOTONY_HIGH     = 2.0;
+/** Mínimo de sesiones semanales para que monotonía y strain signifiquen algo. */
+export const MIN_SESSIONS_FOR_MONOTONY = 3;
+export const SETS_TARGET_MIN = 10;
+export const SETS_TARGET_MAX = 20;
+
 // ponytail: un solo factor para TODOS los bloques de acondicionamiento,
 // calibrado a ojo (un AMRAP de 12' ≈ un ejercicio de 4×10 al 70% ≈ 28 reps
 // relativas → 28/720 ≈ 0.04). Es la parte menos defendible del modelo: los

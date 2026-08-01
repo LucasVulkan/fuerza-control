@@ -1,10 +1,27 @@
 # Spec — Carga de entrenamiento (sRPE, carga interna/externa, panel de Carga)
 
-> Estado: **fases 1-5 implementadas** — captura de sRPE y peso corporal en el
-> recap, `src/utils/trainingLoad.js`, vista Carga, esfuerzo vs carga,
-> rendimiento y series por grupo muscular. **Falta solo la 6** (objetivos de
-> etapa). Cada fase = 1 commit y aporta valor por sí sola. Desglose y estado
-> exacto en §9.
+> Estado: **fases 1-5 implementadas, fase 6 APARCADA** (ago 2026) — captura de
+> sRPE y peso corporal en el recap, `src/utils/trainingLoad.js`, vista Carga,
+> esfuerzo vs carga,
+> rendimiento y series por grupo muscular. Cada fase = 1 commit y aporta valor
+> por sí sola. Desglose y estado exacto en §9.
+>
+> **Por qué se aparca la 6**: al ir a implementarla aparecieron dos problemas que
+> no se ven desde el papel. (1) Las etapas **no guardan cuándo empezaron** —
+> llevan `id, name, days, durationWeeks, locked, meta`— así que anclar una curva
+> de progresión a la etapa exige un campo nuevo en la zona que ya arrastró cuatro
+> bugs (`stage-locks.md`). (2) La app y el sistema de carga usan **dos
+> definiciones distintas de "semana"**: `stageWeeksCompleted` cuenta rotaciones
+> completas por las sesiones del ciclo, y `weeklySeries` cuenta lunes a domingo;
+> se separan en cuanto la vida real interfiere.
+>
+> Y por encima de eso, una duda de producto: la carga en AU es buena para
+> **detectar** (te estás pasando, estás plano) pero mala como **objetivo** — no
+> se le puede decir a un cliente "esta semana quiero 2.400", porque el número no
+> significa nada fuera de su propia serie y no es accionable. Alternativa
+> recomendada si se retoma: objetivo de **series por grupo muscular**, que la
+> fase 5 ya calcula y con banda de referencia. La carga es un termómetro, no un
+> mando.
 >
 > Origen: conversación Opus + usuario (jul 2026) a partir de una propuesta de
 > panel con tendencia de carga, monotonía, strain y ACWR. Varias piezas de la
@@ -381,7 +398,7 @@ ligeramente los números de la card VOLUMEN en quien use dropsets.
 | 3 | Segmentado `EJERCICIOS/CARGA` (`ProgressPanel`) + `LoadTab` con cards, gráfico de tendencia y strip de estado | ✅ hecha |
 | 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento | ✅ hecha |
 | 5 | Series por grupo muscular | ✅ hecha |
-| 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | — |
+| 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | ⏸ **APARCADA** (ago 2026) |
 
 ## 10. Decisiones cerradas y por qué (no re-litigar)
 

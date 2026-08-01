@@ -1,6 +1,9 @@
 # Spec — Transparencia de métricas ("¿de dónde sale este número?")
 
-> Estado: **NO IMPLEMENTADA**. Pedida por el usuario (jul 2026) al cerrar
+> Estado: **FASE 1 IMPLEMENTADA** (ago 2026) — registro `metrics.*` con las 24
+> métricas que la app expone, `mobile/src/utils/metricDocs.js` y el apartado
+> "Cómo se calcula cada número" en Documentación. Faltan las fases 2 y 3 (hacer
+> tocable la etiqueta de cada dato). Pedida por el usuario (jul 2026) al cerrar
 > [training-load.md](training-load.md): *"en todos los elementos en los que hay
 > fórmulas y datos expuestos, que haya una forma de ver la fórmula exacta usada,
 > a modo informativo"*.
@@ -127,7 +130,7 @@ acondicionamiento (calibrado a ojo).
 
 | # | Contenido | Nota |
 |---|---|---|
-| 1 | Registro `metrics.*` (es+en) + `metricDocs.js` + apartado en `DocsScreen` | Cubre TODAS las métricas de golpe sin tocar ninguna pantalla de datos. Es el 80% del valor |
+| 1 | Registro `metrics.*` (es+en) + `metricDocs.js` + apartado en `DocsScreen` | ✅ **hecha** — 24 fichas, cubre todas las métricas sin tocar ninguna pantalla de datos |
 | 2 | `MetricInfoSheet` + etiquetas tocables en Progreso y Recap | |
 | 3 | Extender a Workout (chip de progresión, calentamiento) y lado entrenador (adherencia) | |
 

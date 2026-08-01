@@ -8,7 +8,9 @@
  * callers convert for display via useWeightUnit.
  */
 
-const MAX_RELIABLE_REPS = 12;
+// Exportada para que la ficha de la métrica interpole el valor real en vez de
+// tenerlo tecleado en el JSON de i18n (ver docs/specs/metric-transparency.md §2.1).
+export const MAX_RELIABLE_REPS = 12;
 
 /**
  * e1RM for a single set, or null when not computable.

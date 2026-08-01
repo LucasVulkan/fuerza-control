@@ -24,6 +24,8 @@ import { useTranslation } from 'react-i18next';
 import {
   sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly,
+  MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
+  SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../../../../src/utils/trainingLoad';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -38,15 +40,6 @@ const PERIOD_OPTIONS = [
 ];
 const PERIOD_DAYS = { '1m': 30, '3m': 90, '6m': 180 };
 
-// Umbrales de monotonía. >2 es la señal de alarma clásica de Foster: mucha
-// carga repetida sin variación.
-const MONOTONY_MODERATE = 1.5;
-const MONOTONY_HIGH     = 2.0;
-
-// Mínimo de sesiones en la semana para que monotonía y strain signifiquen algo.
-// Con una o dos, la desviación típica la dominan los ceros y el número miente.
-const MIN_SESSIONS_FOR_MONOTONY = 3;
-
 const CHART_H = 140;
 const PAD_TOP = 10;
 const PAD_BOT = 6;
@@ -57,10 +50,6 @@ const PAD_BOT = 6;
 // dentro por el medio paso del centrado.
 const DOT_R   = 3;
 
-// Rango de referencia de series semanales por grupo muscular. Es la horquilla
-// habitual para hipertrofia; depende del objetivo, y así se dice en el pie.
-const SETS_TARGET_MIN = 10;
-const SETS_TARGET_MAX = 20;
 // Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
 // entre grupos y semanas; solo crece si alguien se sale del rango.
 const SETS_SCALE_MIN  = 24;

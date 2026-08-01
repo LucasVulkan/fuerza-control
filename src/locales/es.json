@@ -89,6 +89,15 @@
     "toastImported": "Datos importados"
   },
   "docs": {
+    "metricsTitle": "Cómo se calcula cada número",
+    "metricsIntro": "Cada dato que ves en la app sale de una fórmula concreta, y todas tienen un límite. Aquí están las dos cosas.",
+    "metricGroups": {
+      "performance": "Rendimiento y récords",
+      "volume": "Volumen",
+      "load": "Carga",
+      "session": "Sesión y plan",
+      "trainer": "Lado entrenador"
+    },
     "title": "Documentación",
     "intro": "Cómo se organiza el entrenamiento en la app y qué significa cada término. Los cuatro primeros —sesión, ciclo, etapa y programa— encajan unos dentro de otros: cada uno agrupa al anterior.",
     "sections": [
@@ -151,6 +160,152 @@
         "Más peso, más repeticiones con el mismo peso, o más volumen que en cualquier sesión anterior."
       ] }
     ]
+  },
+  "metrics": {
+    "e1rm": {
+      "name": "1RM estimado",
+      "what": "El peso que podrías levantar una sola vez, deducido de series normales sin tener que hacer un máximo.",
+      "formula": "1RM = peso × (1 + reps ÷ 30)",
+      "caveat": "Fórmula de Epley. Se ignoran las series de más de {{maxReps}} reps: por encima de ahí sobreestima mucho. Si registras RPE, se suman las reps que te quedaban (reps + 10 − RPE), así que una serie a RPE 8 se trata como si hubieras hecho dos más."
+    },
+    "pr": {
+      "name": "Récord personal",
+      "what": "Marca la sesión en la que superaste tu mejor registro previo en un ejercicio.",
+      "formula": "1RM estimado → si no, peso máximo → si no, reps a peso corporal",
+      "caveat": "Se compara contra TODO tu historial anterior, no contra la última sesión. La primera vez que haces un ejercicio nunca es récord: es tu punto de partida. Solo se marca un récord por ejercicio y sesión, el primero de esa escalera."
+    },
+    "performanceIndex": {
+      "name": "Rendimiento",
+      "what": "Cuánto ha cambiado tu fuerza de media desde el principio del período que estás mirando.",
+      "formula": "media de (1RM estimado de cada ejercicio ÷ su propio valor de partida) × 100",
+      "caveat": "Los kilos de ejercicios distintos no se promedian entre sí; lo que se promedia son los índices, porque si no la sentadilla mandaría sobre el curl. Cada semana usa tu mejor marca de las 4 últimas, no la de esa semana suelta, para que una descarga no parezca pérdida de fuerza. Un ejercicio con una sola semana de datos no entra."
+    },
+    "loadTrend": {
+      "name": "Carga (pestaña Progreso)",
+      "what": "Tendencia media de tus ejercicios en el período: si los números que mueves suben o bajan.",
+      "formula": "recta de ajuste sobre las sesiones de cada ejercicio, promediada entre ejercicios",
+      "caveat": "Es la pendiente de una recta ajustada, no la diferencia entre la primera y la última sesión. Trata igual a un ejercicio con 20 sesiones que a uno con 3, así que uno recién estrenado puede mover el número más de lo que merece."
+    },
+    "lastSessionDelta": {
+      "name": "Vs. sesión anterior",
+      "what": "Diferencia entre tu última sesión y la anterior del mismo tipo.",
+      "formula": "(última − anterior) ÷ anterior × 100",
+      "caveat": "Compara solo dos sesiones, así que un mal día o una sesión especialmente buena lo mueven entero. En el historial este delta es de volumen y compara con la vez anterior de ESA misma sesión, no con la inmediatamente anterior en el tiempo."
+    },
+    "volume": {
+      "name": "Volumen",
+      "what": "Los kilos totales que has movido en una sesión.",
+      "formula": "volumen = suma de (peso × reps) de cada serie registrada",
+      "caveat": "Cuenta también las sub-series de los dropsets. Los ejercicios de peso corporal suman 0 porque no llevan peso registrado, así que una sesión de dominadas y fondos puede salir con muy poco volumen aunque haya sido dura."
+    },
+    "setsDonePlanned": {
+      "name": "Series hechas y planificadas",
+      "what": "Cuántas series registraste frente a las que tenía la sesión.",
+      "formula": "hechas = series con datos o marcadas · planificadas = suma de las de la plantilla",
+      "caveat": "Las planificadas se congelan al guardar la sesión. Un ejercicio que te saltas desaparece de la sesión guardada pero sus series siguen contando en el plan, que es justo lo que hace visible el hueco."
+    },
+    "volumeTrend": {
+      "name": "Volumen (pestaña Progreso)",
+      "what": "Cuánto ha cambiado el volumen entre el principio y el final del período.",
+      "formula": "(volumen de la última sesión − el de la primera) ÷ el de la primera × 100",
+      "caveat": "Son dos puntos, no una tendencia: una sesión atípica en cualquiera de los dos extremos cambia el resultado por completo."
+    },
+    "muscleGroupSets": {
+      "name": "Series por grupo muscular",
+      "what": "Cuántas series has hecho de cada grupo muscular en los últimos 7 días.",
+      "formula": "suma de las series de los ejercicios cuyo grupo principal es ese",
+      "caveat": "Cuenta volumen DIRECTO: un press de banca suma a pecho y no reparte nada a tríceps ni a hombro. Un dropset cuenta como una serie. El rango de referencia de {{min}} a {{max}} es orientativo para hipertrofia y depende de tu objetivo."
+    },
+    "sessionLoad": {
+      "name": "Carga de la sesión",
+      "what": "Lo que te costó la sesión: junta cuánto duró con lo dura que te pareció.",
+      "formula": "carga = sRPE × minutos de sesión",
+      "caveat": "Es el método sRPE de Foster. El número no significa nada por sí solo: solo vale comparado con tus propias sesiones. Sin responder al sRPE no hay carga, y la sesión deja un hueco en las gráficas en vez de un cero. Los bloques de acondicionamiento aportan {{blockFactor}} por segundo activo, un factor calibrado a ojo."
+    },
+    "sessionMinutes": {
+      "name": "Minutos de sesión",
+      "what": "La duración que se usa para calcular la carga.",
+      "formula": "minutos = reloj real, acotado entre la mitad y el doble de la duración estimada",
+      "caveat": "El reloj va desde que empiezas hasta que guardas, así que incluye descansos, pausas y el móvil en el bolsillo. Como las series no llevan hora, no existe un tiempo activo real: el acotado evita que una sesión olvidada abierta tres horas multiplique tu carga."
+    },
+    "externalLoad": {
+      "name": "Carga externa",
+      "what": "El trabajo que hiciste, medido en repeticiones ponderadas por lo cerca que estuviste de tu máximo.",
+      "formula": "carga externa = suma de reps × (peso ÷ 1RM de referencia)",
+      "caveat": "No es tonelaje: normaliza por tu capacidad actual, así que una serie de curl y una de sentadilla a la misma intensidad relativa pesan lo mismo. La referencia es tu mejor 1RM estimado de las {{weeks}} semanas anteriores a esa sesión, congelada por fecha para que un récord de hoy no reescriba tu historial. Los ejercicios de peso corporal necesitan que hayas registrado tu peso; los isométricos no computan."
+    },
+    "movingAverage": {
+      "name": "Medias de 7 y 28 días",
+      "what": "Las líneas suaves del gráfico de carga: tu carga típica de la última semana y del último mes.",
+      "formula": "media de la carga diaria de los últimos 7 (o 28) días, contando los de descanso como 0",
+      "caveat": "Mientras no tienes 28 días de historial promedia los que haya, en vez de dejar la línea sin empezar. Los días en los que entrenaste sin responder al sRPE quedan fuera del promedio en lugar de contar como cero: desconocido no es descanso."
+    },
+    "loadState": {
+      "name": "Estado de carga",
+      "what": "Si estás acumulando carga, estable o descargando.",
+      "formula": "media de 7 días ÷ media de 28 días → menos de 0,8 descarga · 0,8 a 1,3 estable · más de 1,3 acumulación",
+      "caveat": "Es la relación agudo/crónico. Se enseña como estado y no como número a propósito: la versión numérica arrastra artefactos matemáticos conocidos y sus umbrales de riesgo no se replican bien. Tómalo como orientación, no como semáforo."
+    },
+    "monotony": {
+      "name": "Monotonía",
+      "what": "Si repites la misma carga día tras día sin variación.",
+      "formula": "monotonía = media de la carga diaria ÷ su desviación típica, sobre 7 días",
+      "caveat": "Índice de Foster. Por encima de {{high}} es señal de alarma; por debajo de {{moderate}} es baja. Los días de descanso cuentan como cero, que es la definición original. Se oculta con menos de {{minSessions}} sesiones en la semana: con una o dos, la desviación la dominan los ceros y el número miente."
+    },
+    "strain": {
+      "name": "Strain",
+      "what": "El estrés acumulado de la semana: junta cuánta carga hiciste con lo poco que la variaste.",
+      "formula": "strain = carga total de la semana × monotonía",
+      "caveat": "No existe un umbral universal de strain, así que se muestra comparado con tu propio promedio de las 4 semanas anteriores y nunca con colores fijos. Se oculta con menos de {{minSessions}} sesiones, igual que la monotonía."
+    },
+    "indexed100": {
+      "name": "Base 100",
+      "what": "El reescalado que permite dibujar juntas dos magnitudes con unidades distintas.",
+      "formula": "valor ÷ primer valor del período × 100",
+      "caveat": "El 100 es el principio de lo que estás mirando, así que cambia al mover el selector de período. Si esa primera semana fue atípica —una descarga, por ejemplo— desplaza toda la serie."
+    },
+    "loadHeatmap": {
+      "name": "Mapa de calor del calendario",
+      "what": "El tono de cada día del calendario, según lo dura que fue la sesión.",
+      "formula": "cuatro escalones por cuartiles de tu propia carga diaria",
+      "caveat": "El color ordena tus días entre sí, no contra un valor absoluto: siempre habrá días oscuros y días claros aunque entrenes de forma muy uniforme. Los cortes salen de todo tu historial, no del mes visible. Un día entrenado sin responder al sRPE va en contorno, porque no hay carga que pintar."
+    },
+    "progressionChip": {
+      "name": "Recomendación de progresión",
+      "what": "La sugerencia de subir, mantener o bajar que aparece en cada ejercicio durante el entrenamiento.",
+      "formula": "series válidas ÷ series objetivo, cruzado con el rango de reps y con el RPE si lo registras",
+      "caveat": "Mira solo tu última sesión de ese ejercicio, no la tendencia. Con el modo de evaluación por RPE, subir exige además que el RPE promedio no pase del techo que hayas fijado. Es una sugerencia: puedes ignorarla sin que pase nada."
+    },
+    "estimatedDuration": {
+      "name": "Duración estimada",
+      "what": "Lo que se prevé que dure una sesión antes de hacerla.",
+      "formula": "series × (35 s + descanso) + 180 s por ejercicio + 480 s de calentamiento general",
+      "caveat": "Es un modelo, no una medida: asume que respetas los descansos configurados y no sabe si te entretienes entre series. En superseries cuenta el descanso completo de cada miembro, así que las sobreestima un poco."
+    },
+    "warmupWeight": {
+      "name": "Pesos de calentamiento",
+      "what": "Los pesos que se proponen en las series de aproximación.",
+      "formula": "peso = porcentaje del peso de trabajo del día, redondeado a 2,5 kg",
+      "caveat": "El peso de trabajo sale de la prescripción del entrenador o, si no la hay, de tu serie más pesada la última vez. Si no hay ninguna de las dos, las pills salen vacías hasta que escribas tu primer peso. No se guardan en el historial: son orientativas."
+    },
+    "blockDelta": {
+      "name": "Comparación de bloques",
+      "what": "Si mejoraste respecto a la última vez que hiciste ese mismo bloque.",
+      "formula": "AMRAP: rondas y reps · EMOM: intervalos completados · For time: tiempo",
+      "caveat": "En los bloques for time menos tiempo es mejor, así que el signo va invertido respecto a los otros dos formatos. Compara contra la vez anterior de la misma sesión, no contra tu mejor marca."
+    },
+    "stageProgress": {
+      "name": "Progreso de etapa",
+      "what": "Cuántas semanas de la etapa llevas completadas.",
+      "formula": "una semana = una vuelta completa a todas las sesiones distintas del ciclo",
+      "caveat": "No es una semana de calendario: si entrenas A-B-C en cinco días, esa es tu semana. Repetir una sesión no cuenta dos veces. Por eso este contador y las semanas del panel de Carga pueden no coincidir."
+    },
+    "adherence": {
+      "name": "Adherencia",
+      "what": "Si un cliente mantiene el ritmo que pide su programa.",
+      "formula": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo",
+      "caveat": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las últimas 4 semanas COMPLETAS, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+    }
   },
   "trainer": {
     "title": "Entrenador",

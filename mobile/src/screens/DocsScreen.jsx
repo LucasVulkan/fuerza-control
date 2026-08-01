@@ -17,6 +17,32 @@ import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
+import { METRIC_GROUPS, METRIC_VARS } from '../utils/metricDocs';
+
+/**
+ * Ficha de una métrica: qué es, la fórmula real y su límite conocido.
+ *
+ * El límite no es opcional (ver `docs/specs/metric-transparency.md` §1):
+ * enseñar solo la fórmula vende una precisión que la métrica no tiene.
+ *
+ * Las constantes se interpolan desde el código a través de `METRIC_VARS`, no
+ * se teclean en el JSON: si no, la ficha mentiría a la primera calibración.
+ */
+function MetricDoc({ id }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const vars   = METRIC_VARS[id] ?? {};
+  return (
+    <View style={styles.metric}>
+      <Text style={styles.metricName}>{t(`metrics.${id}.name`)}</Text>
+      <Text style={styles.metricWhat}>{t(`metrics.${id}.what`, vars)}</Text>
+      <View style={styles.metricFormulaBox}>
+        <Text style={styles.metricFormula}>{t(`metrics.${id}.formula`, vars)}</Text>
+      </View>
+      <Text style={styles.metricCaveat}>{t(`metrics.${id}.caveat`, vars)}</Text>
+    </View>
+  );
+}
 
 export default function DocsScreen() {
   const styles     = useThemedStyles(makeStyles);
@@ -45,6 +71,18 @@ export default function DocsScreen() {
                 <Text style={styles.pointText}>{point}</Text>
               </View>
             ))}
+          </View>
+        ))}
+
+        {/* Cómo se calcula cada número — una ficha por métrica expuesta */}
+        <View style={styles.section}>
+          <Text style={styles.secLabel}>{t('docs.metricsTitle')}</Text>
+          <Text style={styles.metricsIntro}>{t('docs.metricsIntro')}</Text>
+        </View>
+        {METRIC_GROUPS.map((group) => (
+          <View key={group.id} style={styles.section}>
+            <Text style={styles.groupLabel}>{t(`docs.metricGroups.${group.id}`)}</Text>
+            {group.ids.map((id) => <MetricDoc key={id} id={id} />)}
           </View>
         ))}
       </ScrollView>
@@ -102,5 +140,49 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:   13,
     color:      th.colors.text,
     lineHeight: 20,
+  },
+
+  // ── Fichas de métrica ──
+  metricsIntro: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    lineHeight: 19,
+  },
+  groupLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.xs,
+  },
+  metric: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+  },
+  metricName: { ...textStyles.cardType, color: th.colors.text },
+  metricWhat: {
+    fontFamily: 'Inter_500Medium',
+    fontSize:   13,
+    color:      th.colors.text,
+    lineHeight: 19,
+  },
+  // La fórmula va en su propia caja: es la parte que se consulta, no se lee.
+  metricFormulaBox: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+  },
+  metricFormula: {
+    ...textStyles.tag,
+    color:       th.colors.accent,
+    lineHeight:  16,
+    fontVariant: ['tabular-nums'],
+  },
+  metricCaveat: {
+    ...textStyles.tag,
+    color:      th.colors.mutedLight,
+    lineHeight: 16,
   },
 });

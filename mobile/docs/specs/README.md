@@ -8,8 +8,8 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [training-load.md](training-load.md) — Carga de entrenamiento | fases 1-5 implementadas (captura, `trainingLoad.js`, vista Carga, esfuerzo vs carga, rendimiento, series por grupo); falta solo la 6 | 🟡 | fase 6 = objetivos de carga por etapa, sin empezar. `npm run seed` genera historial de prueba con sRPE incluido |
-| [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | sin empezar | 🟢 | transversal (métricas viejas y nuevas). La fase 1 (registro i18n + apartado en `DocsScreen`) cubre todas las métricas sin tocar ninguna pantalla de datos |
+| [training-load.md](training-load.md) — Carga de entrenamiento | fases 1-5 implementadas (captura, `trainingLoad.js`, vista Carga, esfuerzo vs carga, rendimiento, series por grupo); fase 6 APARCADA | 🟡 | fase 6 (objetivos por etapa) parada: las etapas no guardan fecha de inicio y hay dos definiciones de "semana" en conflicto — ver cabecera de la spec. `npm run seed` genera historial de prueba |
+| [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | fase 1 implementada (24 fichas + apartado en Documentación); faltan 2 y 3 | 🟢 | siguiente = `MetricInfoSheet` + etiquetas tocables en Progreso y Recap |
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); fase C EN PAUSA (4/~10-12 plantillas, ver §6.2) | 🔴 | contenido de plantillas (fase C) = Fable+usuario; onboarding "muy extenso", pendiente decidir si simplificar antes de seguir |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
