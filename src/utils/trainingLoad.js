@@ -379,6 +379,175 @@ export function strain(values) {
   return sum * m;
 }
 
+// ── Serie semanal e indexado ──────────────────────────────────────────────────
+
+/** Lunes 00:00 local de la semana que contiene `ts`. */
+function startOfWeek(ts) {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+
+/**
+ * Agrupa la serie diaria en semanas naturales (lunes a domingo).
+ *
+ * La semana es la unidad natural del entrenamiento y, sobre todo, la que hace
+ * legible el gráfico de esfuerzo vs carga: a resolución diaria las dos líneas
+ * son ruido con ceros de por medio.
+ *
+ * `internal` es `null` —no 0— cuando la semana tuvo sesiones pero ninguna con
+ * sRPE: desconocido no es cero. Una semana entera de descanso sí vale 0.
+ */
+export function weeklySeries(days) {
+  if (!days?.length) return [];
+  const byWeek = new Map();
+  for (const d of days) {
+    const key = startOfWeek(d.day);
+    const cur = byWeek.get(key) ?? { weekStart: key, internal: null, external: null, sessions: 0 };
+    if (d.internal != null) cur.internal = (cur.internal ?? 0) + d.internal;
+    if (d.external != null) cur.external = (cur.external ?? 0) + d.external;
+    cur.sessions += d.sessions;
+    byWeek.set(key, cur);
+  }
+  return [...byWeek.values()].sort((a, b) => a.weekStart - b.weekStart);
+}
+
+/**
+ * Reescala una serie a base 100 sobre su PRIMER valor no nulo.
+ *
+ * Sin esto, carga externa (reps a intensidad relativa) y esfuerzo (sRPE ×
+ * minutos) no se pueden pintar juntas: van en unidades distintas y una aplasta
+ * a la otra. Indexadas, lo que se lee es la forma y la divergencia, que es de
+ * lo que trata el gráfico.
+ *
+ * Limitación conocida: si la primera semana de la ventana fue atípica (una
+ * descarga), desplaza toda la serie. Es el precio de un "base 100" legible
+ * frente a normalizar por la media, que nadie sabe interpretar.
+ */
+export function indexTo100(values) {
+  const base = (values ?? []).find((v) => v != null && v > 0);
+  if (base == null) return (values ?? []).map(() => null);
+  return values.map((v) => (v == null ? null : (v / base) * 100));
+}
+
+/**
+ * Lectura conjunta de carga externa y esfuerzo, ambos ya indexados.
+ *
+ * Compara el último punto contra el de hace `lookback` semanas — "dónde estoy
+ * respecto a hace un mes", no respecto al principio del histórico, que con seis
+ * meses de ventana no diría nada accionable.
+ *
+ * `flat` es la banda (en puntos de índice) dentro de la cual un cambio se
+ * considera "igual"; sin ella cualquier ruido del 1% se leería como tendencia.
+ *
+ * @returns {'adaptation'|'fatigue'|'hard'|'deload'|'mixed'|null}
+ */
+export function effortTrend(external, internal, { block = 4, flat = 8 } = {}) {
+  const n = Math.min(external?.length ?? 0, internal?.length ?? 0);
+  if (n < 2) return null;
+
+  // Se comparan MEDIAS de bloque, no dos puntos sueltos. Con un mesociclo 3:1,
+  // comparar la última semana contra la de hace cuatro enfrenta descarga con
+  // descarga y siempre sale "sin cambios"; y un punto suelto es rehén de una
+  // semana rara. Bloque contra bloque responde a lo que importa: ¿este mes va
+  // más duro o más productivo que el anterior?
+  const size = Math.max(1, Math.min(block, Math.floor(n / 2)));
+  const mean = (arr, from, to) => {
+    const v = arr.slice(from, to).filter((x) => x != null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const e0 = mean(external, n - size * 2, n - size), e1 = mean(external, n - size, n);
+  const i0 = mean(internal, n - size * 2, n - size), i1 = mean(internal, n - size, n);
+  if (e0 == null || e1 == null || i0 == null || i1 == null) return null;
+
+  const dir = (a, b) => (b - a > flat ? 1 : b - a < -flat ? -1 : 0);
+  const de = dir(e0, e1);
+  const di = dir(i0, i1);
+
+  // Más trabajo al mismo coste = te estás adaptando. Mismo trabajo costando más
+  // = fatiga. Las dos arriba = bloque duro (ni bueno ni malo). Las dos abajo =
+  // descarga.
+  if (de > 0 && di <= 0) return 'adaptation';
+  if (de <= 0 && di > 0) return 'fatigue';
+  if (de > 0 && di > 0)  return 'hard';
+  if (de < 0 && di < 0)  return 'deload';
+  return 'mixed';
+}
+
+// ── Rendimiento ───────────────────────────────────────────────────────────────
+
+/**
+ * Índice semanal de rendimiento: cuánto ha cambiado tu e1RM, en media, respecto
+ * al principio de la ventana. 100 = tu nivel de partida.
+ *
+ * Los e1RM de ejercicios distintos no son comparables entre sí (150 kg de
+ * sentadilla y 40 de curl no promedian), así que **cada ejercicio se indexa
+ * contra su propia línea base** y luego se promedian los índices, no los kilos.
+ *
+ * Un ejercicio solo entra cuando tiene línea base y al menos una observación
+ * posterior: con un único dato no hay progreso que medir, solo un 100 que
+ * diluiría la media.
+ *
+ * Cada semana toma el **mejor e1RM de las últimas `windowWeeks` semanas**, no el
+ * de esa semana suelta. Nadie pierde fuerza por hacer una descarga, y con el
+ * dato semanal a pelo el índice caía un 10% cada cuatro semanas dibujando una
+ * sierra que no describe nada. Es el mismo criterio que ya usa `recentE1RM` en
+ * `oneRm.js` ("what you can do NOW", ventana en vez de última sesión); cuatro
+ * semanas cubren un mesociclo entero con su descarga sin llegar a ocultar una
+ * pérdida de fuerza real.
+ *
+ * Es la SALIDA del sistema (¿me estoy adaptando?), frente a la carga, que es la
+ * entrada. Ver §1 de la spec.
+ */
+export function performanceWeekly(log, allExercises, opts = {}) {
+  const { fallbackBodyWeight = null, windowWeeks = 4 } = opts;
+  const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp);
+  const idx = buildIndex(sorted, allExercises, fallbackBodyWeight);
+
+  // exerciseId → Map<semana, mejor e1RM de esa semana>
+  const perExercise = new Map();
+  for (const [exerciseId, records] of idx) {
+    const weeks = new Map();
+    for (const r of records) {
+      if (r.e1rm == null) continue;
+      const w = startOfWeek(r.ts);
+      if (!weeks.has(w) || r.e1rm > weeks.get(w)) weeks.set(w, r.e1rm);
+    }
+    if (weeks.size >= 2) perExercise.set(exerciseId, weeks);
+  }
+  if (!perExercise.size) return [];
+
+  const allWeeks = [...new Set([...perExercise.values()].flatMap((w) => [...w.keys()]))].sort();
+  const baselines = new Map(
+    [...perExercise].map(([id, weeks]) => {
+      const first = [...weeks.keys()].sort()[0];
+      return [id, weeks.get(first)];
+    }),
+  );
+
+  const WEEK_MS = 7 * 86400000;
+  return allWeeks.map((week) => {
+    const from = week - (windowWeeks - 1) * WEEK_MS;
+    const ratios = [];
+    for (const [id, weeks] of perExercise) {
+      // Mejor marca de la ventana, no la de esta semana suelta.
+      let best = null;
+      for (const [w, v] of weeks) {
+        if (w < from || w > week) continue;
+        if (best == null || v > best) best = v;
+      }
+      const base = baselines.get(id);
+      if (best != null && base > 0) ratios.push((best / base) * 100);
+    }
+    return {
+      weekStart: week,
+      index: ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : null,
+      exercises: ratios.length,
+    };
+  });
+}
+
 // ── Volumen por grupo muscular ────────────────────────────────────────────────
 
 /**

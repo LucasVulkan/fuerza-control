@@ -1,10 +1,10 @@
 # Spec — Carga de entrenamiento (sRPE, carga interna/externa, panel de Carga)
 
-> Estado: **fases 1, 2, 3 y 5 implementadas** — captura de sRPE y peso corporal
-> en el recap, `src/utils/trainingLoad.js`, vista Carga y series por grupo
-> muscular. **Faltan la 4** (esfuerzo vs carga + rendimiento; necesita 4+ semanas
-> de sRPE real o el gráfico no dice nada) **y la 6** (objetivos de etapa). Cada
-> fase = 1 commit y aporta valor por sí sola. Desglose y estado exacto en §9.
+> Estado: **fases 1-5 implementadas** — captura de sRPE y peso corporal en el
+> recap, `src/utils/trainingLoad.js`, vista Carga, esfuerzo vs carga,
+> rendimiento y series por grupo muscular. **Falta solo la 6** (objetivos de
+> etapa). Cada fase = 1 commit y aporta valor por sí sola. Desglose y estado
+> exacto en §9.
 >
 > Origen: conversación Opus + usuario (jul 2026) a partir de una propuesta de
 > panel con tendencia de carga, monotonía, strain y ACWR. Varias piezas de la
@@ -267,12 +267,31 @@ reciente del propio log del cliente.
 3. **Card "Tendencia de carga"** — barras diarias (`muted2`) + línea 7d (`accent`)
    + línea 28d (`blue`), leyenda, y strip de estado con punto de color y frase
    ("Estás acumulando carga. La semana va un 34% por encima de tu media del mes").
-4. **Card "Esfuerzo vs carga"** — dos líneas **indexadas base 100** sobre su
-   propia media de 28d. En unidades crudas (kg vs AU) una aplasta a la otra.
-   Debajo, chip de interpretación: `↑ carga + = esfuerzo → adaptación`,
-   `= carga + ↑ esfuerzo → fatiga`, `↓ ambas → descarga`.
+4. **Card "Esfuerzo vs carga"** — dos líneas **indexadas base 100**. En unidades
+   crudas (reps relativas vs AU) una aplasta a la otra. Debajo, chip de
+   interpretación: `↑ carga + = esfuerzo → adaptación`, `= carga + ↑ esfuerzo →
+   fatiga`, `↑ ambas → bloque duro`, `↓ ambas → descarga`.
+   - **Resolución SEMANAL**, no diaria: a resolución diaria las dos líneas son
+     ruido con ceros de por medio.
+   - La base 100 es el **primer punto de la ventana visible** (se indexa después
+     de recortar por período), pero **el chip se calcula sobre la serie
+     completa**: si cambiara al mover el selector sería un veredicto que depende
+     del zoom.
+   - `effortTrend` compara **medias de bloque de 4 semanas**, no dos puntos
+     sueltos. Con un mesociclo 3:1, comparar la última semana contra la de hace
+     cuatro enfrenta descarga con descarga y siempre sale "sin cambios".
 5. **Card "Rendimiento"** — e1RM medio indexado. Es la salida del sistema; sin
    ella el panel mide fatiga pero no responde a "¿me estoy adaptando?".
+   - Los e1RM de ejercicios distintos no son comparables (150 kg de sentadilla y
+     40 de curl no promedian), así que **cada ejercicio se indexa contra su
+     propia línea base** y se promedian los índices, no los kilos.
+   - Cada semana toma el **mejor e1RM de las últimas 4 semanas**, no el de esa
+     semana suelta: nadie pierde fuerza por hacer una descarga. Con el dato
+     semanal a pelo el índice caía un 10% cada cuatro semanas dibujando una
+     sierra sin significado (verificado con la semilla). Es el mismo criterio que
+     ya usa `recentE1RM` en `oneRm.js`.
+   - Un ejercicio solo entra con línea base **y** al menos una observación
+     posterior: con un único dato no hay progreso, solo un 100 que diluye.
 6. **Card "Series por grupo"** — barras horizontales por `primaryGroup` con
    marcas verticales del rango 10-20 series. **No** son barras apiladas por
    semana: a ancho de móvil, 9 grupos × 4 semanas es ilegible, y la pregunta real
@@ -360,7 +379,7 @@ ligeramente los números de la card VOLUMEN en quien use dropsets.
 | 1 | `entry.sessionRpe` + `entry.bodyWeight` + `setSessionFeedback` + UI de recap + i18n | ✅ hecha (`0bda778`) |
 | 2 | `src/utils/trainingLoad.js` + 52 tests + unificación de tonelaje + línea de carga en el recap | ✅ hecha |
 | 3 | Segmentado `EJERCICIOS/CARGA` (`ProgressPanel`) + `LoadTab` con cards, gráfico de tendencia y strip de estado | ✅ hecha |
-| 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento. **Esperar 4+ semanas de sRPE real** o es un gráfico vacío | — |
+| 4 | Gráfico esfuerzo vs carga (indexado) + card Rendimiento | ✅ hecha |
 | 5 | Series por grupo muscular | ✅ hecha |
 | 6 | `stage.loadTarget` + progreso contra el objetivo de la etapa | — |
 

@@ -15,14 +15,15 @@
  * Tampoco hay toggle de "Programa actual": la carga es sistémica y filtrar por
  * programa convertiría las sesiones de fuera en días de descanso falsos.
  */
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
-import Svg, { Rect, Polyline } from 'react-native-svg';
+import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import {
   sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
+  weeklySeries, indexTo100, effortTrend, performanceWeekly,
 } from '../../../../src/utils/trainingLoad';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -123,6 +124,73 @@ function LoadChart({ days, mean7, mean28 }) {
           {geometry.line7.map((pts, i) => (
             <Polyline key={`m7-${i}`} points={pts} fill="none" stroke={th.colors.accent} strokeWidth={2}
               strokeLinejoin="round" strokeLinecap="round" />
+          ))}
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Gráfico de líneas indexadas (base 100) para las series SEMANALES.
+ *
+ * Separado de `LoadChart` porque no comparte nada con él: sin barras, pocos
+ * puntos, y una referencia horizontal en 100 que es la mitad del mensaje.
+ */
+function IndexChart({ series, height = 96 }) {
+  const th = useTheme();
+  const [width, setWidth] = useState(0);
+
+  const geometry = useMemo(() => {
+    const values = series.flatMap((s) => s.values).filter((v) => v != null);
+    if (!width || values.length < 2) return null;
+    const min = Math.min(...values, 100);
+    const max = Math.max(...values, 100);
+    const pad = (max - min) * 0.12 || 10;
+    const lo  = min - pad;
+    const hi  = max + pad;
+    const n   = Math.max(...series.map((s) => s.values.length));
+    const y = (v) => 8 + (height - 16) - ((v - lo) / (hi - lo)) * (height - 16);
+    const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - 4) + 2);
+
+    const toSegments = (vals) => {
+      const out = []; let cur = [];
+      vals.forEach((v, i) => {
+        if (v == null) { if (cur.length > 1) out.push(cur); cur = []; return; }
+        cur.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+      });
+      if (cur.length > 1) out.push(cur);
+      return out.map((p) => p.join(' '));
+    };
+
+    const lines = series.map((s) => ({
+      color: s.color,
+      segments: toSegments(s.values),
+      last: (() => {
+        for (let i = s.values.length - 1; i >= 0; i--) {
+          if (s.values[i] != null) return { x: x(i), y: y(s.values[i]) };
+        }
+        return null;
+      })(),
+    }));
+    return { lines, baselineY: y(100) };
+  }, [width, series, height]);
+
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {geometry && (
+        <Svg width={width} height={height}>
+          {/* Referencia: 100 = punto de partida de la ventana */}
+          <Line x1={0} y1={geometry.baselineY} x2={width} y2={geometry.baselineY}
+            stroke={th.colors.surface2} strokeWidth={1} strokeDasharray="3 3" />
+          {geometry.lines.map((l, li) => (
+            <React.Fragment key={li}>
+              {l.segments.map((pts, si) => (
+                <Polyline key={si} points={pts} fill="none" stroke={l.color} strokeWidth={2}
+                  strokeLinejoin="round" strokeLinecap="round" />
+              ))}
+              {l.last && <Circle cx={l.last.x} cy={l.last.y} r={2.8} fill={l.color} />}
+            </React.Fragment>
           ))}
         </Svg>
       )}
@@ -235,6 +303,42 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
       .map(([group, sets]) => ({ group, sets }))
       .sort((a, b) => b.sets - a.sets);
   }, [baseLog, allExercises, now]);
+
+  /**
+   * Esfuerzo vs carga y rendimiento, ambos SEMANALES.
+   *
+   * A resolución diaria las dos líneas son ruido con ceros de por medio; la
+   * semana es la unidad en la que se piensa el entrenamiento.
+   *
+   * El indexado se hace DESPUÉS de recortar por período: "base 100" significa
+   * el principio de lo que estás mirando. La lectura del chip, en cambio, sale
+   * de la serie COMPLETA — si cambiara al mover el selector, sería un veredicto
+   * que depende del zoom.
+   */
+  const effort = useMemo(() => {
+    const allWeeks = weeklySeries(days);
+    if (allWeeks.length < 2) return null;
+    const nWeeks  = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : allWeeks.length;
+    const visible = allWeeks.slice(-nWeeks);
+    return {
+      external: indexTo100(visible.map((w) => w.external)),
+      internal: indexTo100(visible.map((w) => w.internal)),
+      trend: effortTrend(
+        indexTo100(allWeeks.map((w) => w.external)),
+        indexTo100(allWeeks.map((w) => w.internal)),
+      ),
+    };
+  }, [days, period]);
+
+  const performance = useMemo(() => {
+    const all = performanceWeekly(baseLog ?? [], allExercises, { fallbackBodyWeight: bodyWeight });
+    if (all.length < 2) return null;
+    const nWeeks  = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : all.length;
+    const visible = all.slice(-nWeeks);
+    const values  = indexTo100(visible.map((w) => w.index));
+    const last    = [...values].reverse().find((v) => v != null);
+    return { values, pct: last != null ? Math.round(last - 100) : null, weeks: visible.length };
+  }, [baseLog, allExercises, bodyWeight, period]);
 
   const hasSessions = (loads?.length ?? 0) > 0;
   const hasRpe      = loads.some((l) => l.internal != null);
@@ -360,6 +464,74 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
         )}
       </View>
 
+      {/* ── Esfuerzo vs carga ───────────────────────────────────────────── */}
+      {effort && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>{t('load.effortTitle')}</Text>
+            <Text style={styles.cardMeta}>{t('load.base100')}</Text>
+          </View>
+
+          <IndexChart series={[
+            { values: effort.internal, color: th.colors.orange },
+            { values: effort.external, color: th.colors.accent },
+          ]} />
+
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
+              <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
+              <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
+            </View>
+          </View>
+
+          {effort.trend && (
+            <View style={[
+              styles.trendChip,
+              effort.trend === 'adaptation' && styles.trendChipGood,
+              effort.trend === 'fatigue'    && styles.trendChipWarn,
+            ]}>
+              <Text style={[
+                styles.trendChipText,
+                effort.trend === 'adaptation' && { color: th.colors.accent },
+                effort.trend === 'fatigue'    && { color: th.colors.orange },
+              ]}>
+                {t(`load.trend.${effort.trend}`)}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── Rendimiento ─────────────────────────────────────────────────── */}
+      {performance && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>{t('load.perfTitle')}</Text>
+            <Text style={styles.cardMeta}>{t('load.perfMeta')}</Text>
+          </View>
+
+          <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} height={72} />
+
+          {performance.pct != null && (
+            <View style={styles.strip}>
+              <View style={[styles.dot, {
+                backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
+              }]} />
+              <Text style={styles.stripText}>
+                <Text style={styles.stripTitle}>
+                  {`${performance.pct > 0 ? '+' : ''}${performance.pct}%`}
+                </Text>
+                {` ${t('load.perfDetail', { weeks: performance.weeks })}`}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* ── Series por grupo muscular ───────────────────────────────────── */}
       {groupSets.length > 0 && (
         <View style={styles.card}>
@@ -466,6 +638,22 @@ const makeStyles = (th) => StyleSheet.create({
   dot:        { width: 7, height: 7, borderRadius: 4 },
   stripText:  { ...textStyles.tag, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
   stripTitle: { ...textStyles.tag, color: th.colors.text },
+
+  // ── Chip de lectura (esfuerzo vs carga) ──
+  trendChip: {
+    alignSelf:         'flex-start',
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm,
+  },
+  trendChipGood: { backgroundColor: th.tint.accent10 },
+  trendChipWarn: { backgroundColor: th.tint.orange30 },
+  trendChipText: {
+    ...textStyles.smallBold,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+  },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },

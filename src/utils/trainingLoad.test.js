@@ -3,6 +3,7 @@ import {
   blockActiveSec, modelSec, sessionMinutes, internalLoad,
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
   rollingMean, monotony, strain, loadState, setsByMuscleGroup,
+  weeklySeries, indexTo100, effortTrend, performanceWeekly,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -369,6 +370,144 @@ describe('monotony / strain', () => {
 
   it('strain hereda el null de la monotonía', () => {
     expect(strain([0, 0, 0])).toBeNull();
+  });
+});
+
+describe('weeklySeries', () => {
+  // T0 = lunes 5 ene 2026 12:00
+  const day = (i, internal, external, sessions = 1) => ({
+    day: new Date(2026, 0, 5 + i).getTime(), internal, external, sessions,
+  });
+
+  it('agrupa por semanas naturales de lunes a domingo', () => {
+    const out = weeklySeries([
+      day(0, 100, 10), day(3, 200, 20),       // semana 1 (lun 5, jue 8)
+      day(7, 300, 30),                        // semana 2 (lun 12)
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0].internal).toBe(300);
+    expect(out[0].external).toBe(30);
+    expect(out[0].sessions).toBe(2);
+    expect(out[1].internal).toBe(300);
+  });
+
+  it('una semana con sesiones pero sin sRPE deja internal null, no 0', () => {
+    const out = weeklySeries([day(0, null, 12, 1), day(1, null, 8, 1)]);
+    expect(out[0].internal).toBeNull();
+    expect(out[0].external).toBe(20);
+    expect(out[0].sessions).toBe(2);
+  });
+
+  it('una semana entera de descanso sí vale 0', () => {
+    const out = weeklySeries([day(0, 0, 0, 0), day(1, 0, 0, 0)]);
+    expect(out[0].internal).toBe(0);
+    expect(out[0].sessions).toBe(0);
+  });
+
+  it('serie vacía → []', () => {
+    expect(weeklySeries([])).toEqual([]);
+  });
+});
+
+describe('indexTo100', () => {
+  it('el primer valor no nulo pasa a ser 100', () => {
+    expect(indexTo100([50, 75, 100])).toEqual([100, 150, 200]);
+  });
+
+  it('salta los nulos iniciales para elegir la base y los conserva', () => {
+    expect(indexTo100([null, 40, 20])).toEqual([null, 100, 50]);
+  });
+
+  it('sin ningún valor utilizable devuelve todo null', () => {
+    expect(indexTo100([null, 0])).toEqual([null, null]);
+    expect(indexTo100([])).toEqual([]);
+  });
+});
+
+describe('effortTrend', () => {
+  // 5 puntos: el último se compara contra el de hace 4 semanas.
+  const flat = [100, 100, 100, 100, 100];
+  const up   = [100, 105, 110, 115, 130];
+  const down = [100, 95,  90,  85,  70];
+
+  it('más trabajo al mismo coste = adaptación', () => {
+    expect(effortTrend(up, flat)).toBe('adaptation');
+  });
+
+  it('mismo trabajo costando más = fatiga', () => {
+    expect(effortTrend(flat, up)).toBe('fatigue');
+  });
+
+  it('las dos arriba = bloque duro; las dos abajo = descarga', () => {
+    expect(effortTrend(up, up)).toBe('hard');
+    expect(effortTrend(down, down)).toBe('deload');
+  });
+
+  it('menos trabajo costando lo mismo no es ninguna de las anteriores', () => {
+    expect(effortTrend(down, flat)).toBe('mixed');
+  });
+
+  it('un pico de una semana no mueve la lectura; un cambio sostenido sí', () => {
+    // 8 puntos → compara la media de las 4 últimas contra las 4 anteriores.
+    const flat8 = [100, 100, 100, 100, 100, 100, 100, 100];
+    const spike = [100, 100, 100, 100, 100, 100, 100, 130]; // +7,5 de media
+    const risen = [100, 100, 100, 100, 130, 130, 130, 130]; // +30 de media
+    expect(effortTrend(spike, flat8)).toBe('mixed');
+    expect(effortTrend(risen, flat8)).toBe('adaptation');
+  });
+
+  it('null sin datos suficientes o con huecos en los extremos', () => {
+    expect(effortTrend([100], [100])).toBeNull();
+    expect(effortTrend([null, 100], [100, 100])).toBeNull();
+  });
+});
+
+describe('performanceWeekly', () => {
+  const sesion = (id, ts, exerciseId, w, r) => ({
+    id, timestamp: ts, duration: 0,
+    exercises: [{ exerciseId, sets: [set(w, r)], restSec: 120 }],
+  });
+
+  it('indexa cada ejercicio contra su propia base y promedia los índices', () => {
+    // Sentadilla 100→110 (+10%) y press 50→55 (+10%): la media debe ser 110,
+    // no una mezcla de kilos donde la sentadilla mandaría.
+    const log = [
+      sesion('a', T0,        'squat_barbell',       100, 5),
+      sesion('b', T0 + 60000, 'bench_press_barbell', 50, 5),
+      sesion('c', T0 + WEEK,        'squat_barbell',       110, 5),
+      sesion('d', T0 + WEEK + 60000, 'bench_press_barbell', 55, 5),
+    ];
+    const out = performanceWeekly(log, EXERCISE_LIBRARY);
+    expect(out).toHaveLength(2);
+    expect(out[0].index).toBeCloseTo(100, 6);
+    expect(out[1].index).toBeCloseTo(110, 6);
+    expect(out[1].exercises).toBe(2);
+  });
+
+  it('ignora los ejercicios con una sola semana de datos', () => {
+    const log = [
+      sesion('a', T0,        'squat_barbell', 100, 5),
+      sesion('b', T0 + WEEK, 'squat_barbell', 110, 5),
+      sesion('c', T0 + WEEK, 'bench_press_barbell', 50, 5), // solo aparece una vez
+    ];
+    const out = performanceWeekly(log, EXERCISE_LIBRARY);
+    expect(out[out.length - 1].exercises).toBe(1);
+    expect(out[out.length - 1].index).toBeCloseTo(110, 6);
+  });
+
+  it('toma el MEJOR e1RM de cada semana, no el último', () => {
+    const log = [
+      sesion('a', T0,               'squat_barbell', 100, 5),
+      sesion('b', T0 + WEEK,        'squat_barbell', 120, 5),
+      sesion('c', T0 + WEEK + DAY,  'squat_barbell',  80, 5), // día flojo
+    ];
+    const out = performanceWeekly(log, EXERCISE_LIBRARY);
+    expect(out[1].index).toBeCloseTo(120, 6);
+  });
+
+  it('sin datos suficientes devuelve []', () => {
+    expect(performanceWeekly([], EXERCISE_LIBRARY)).toEqual([]);
+    expect(performanceWeekly([sesion('a', T0, 'squat_barbell', 100, 5)], EXERCISE_LIBRARY)).toEqual([]);
   });
 });
 
