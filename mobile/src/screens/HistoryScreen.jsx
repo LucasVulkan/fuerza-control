@@ -29,6 +29,7 @@ import { spacing, typography, borders, withOpacity, textStyles } from '../theme'
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
 import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
+import { recapStats, volumeDeltas } from '../../../src/utils/sessionRecap';
 import { internalLoad } from '../../../src/utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 
@@ -321,7 +322,7 @@ const makeCal = (th) => StyleSheet.create({
 
 // ── SessionCard ────────────────────────────────────────────────────────────────
 
-function SessionCard({ session, onDelete }) {
+function SessionCard({ session, onDelete, volumeDelta = null }) {
   const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
@@ -361,6 +362,8 @@ function SessionCard({ session, onDelete }) {
   }, [template, programs, session.sessionTemplateId]);
 
   const durationMin = session.duration ? Math.round(session.duration / 60000) : null;
+  // Series hechas/planificadas: puro por entrada, sin recorrer el log.
+  const { setsDone, setsPlanned } = useMemo(() => recapStats(session), [session]);
   const hasNotes    = !!session.notes?.trim()
                    || (session.exercises ?? []).some((e) => !!e.note);
 
@@ -389,6 +392,16 @@ function SessionCard({ session, onDelete }) {
   // Rendered only while `open` — see the FadeIn/FadeOut wrapper below.
   const detailContent = (
     <View style={styles.detail}>
+      {/* Duración y nº de ejercicios bajan aquí: en la cabecera competían con
+          los tres datos que de verdad se comparan entre sesiones, y esta es
+          información de contexto que se consulta al abrir, no al ojear. */}
+      <Text style={styles.detailMeta}>
+        {[
+          durationMin ? `${durationMin} min` : null,
+          exerciseCount > 0 ? t('common.exercises', { count: exerciseCount }) : null,
+        ].filter(Boolean).join('  ·  ')}
+      </Text>
+
       {!!session.notes?.trim() && (
         <View style={styles.noteSection}>
           <Text style={styles.noteSectionLabel}>NOTA</Text>
@@ -516,39 +529,59 @@ function SessionCard({ session, onDelete }) {
             activeOpacity={0.75}
           >
             <View style={styles.cardHeaderLeft}>
-              {/* "Sesión A" tag — or "Sesión libre" badge */}
-              <Text style={styles.cardSesTag} numberOfLines={1}>
-                {isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label })}
-              </Text>
-              <View style={styles.cardTitleBlock}>
-                {/* Session name in white */}
-                <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
-                {/* Meta: date · stage · exercises · duration · nota */}
-                <View style={styles.cardMeta}>
-                  <Text style={styles.cardDate}>{formatDate(session.timestamp)}</Text>
-                  {stageName   && <Text style={styles.cardMetaSep}>·</Text>}
-                  {stageName   && <Text style={styles.cardDate}>{stageName}</Text>}
-                  {exerciseCount > 0 && <Text style={styles.cardMetaSep}>·</Text>}
-                  {exerciseCount > 0 && (
-                    <Text style={styles.cardDate}>{t('common.exercises', { count: exerciseCount })}</Text>
-                  )}
-                  {durationMin ? <Text style={styles.cardMetaSep}>·</Text> : null}
-                  {durationMin ? <Text style={styles.cardDate}>{`${durationMin} min`}</Text> : null}
-                  {hasNotes && (
-                    <View style={styles.noteTag}>
-                      <Text style={styles.noteTagText}>NOTA</Text>
-                    </View>
-                  )}
-                  {session.adapted && (
-                    <View style={styles.adaptedTag}>
-                      <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-                    </View>
-                  )}
-                </View>
+              {/* Identidad: letra en accent + nombre + etapa, todo en una línea.
+                  La etapa va pegada al nombre y no perdida entre metadatos: es
+                  lo que sitúa la sesión dentro del programa. */}
+              <View style={styles.cardIdRow}>
+                <Text style={styles.cardSesName} numberOfLines={1}>
+                  <Text style={styles.cardSesLetter}>{isFree ? '★' : label}</Text>
+                  {'  '}{name}
+                </Text>
+                {stageName ? (
+                  <Text style={styles.cardStage} numberOfLines={1}>{stageName}</Text>
+                ) : null}
+              </View>
+
+              {/* Datos de la sesión. Texto suelto, no chips: son tres cifras,
+                  no tres botones. Sin carga — un número de carga aislado no
+                  dice nada sin su serie temporal, que vive en la pestaña Carga. */}
+              <View style={styles.cardStatsRow}>
+                <Text style={styles.cardStat}>
+                  <Text style={styles.cardStatNum}>{setsDone}</Text>
+                  <Text style={styles.cardStatUnit}>{`/${setsPlanned} `}</Text>
+                  {t('history.setsShort')}
+                </Text>
+                <Text style={styles.cardStatSep}>·</Text>
+                <Text style={styles.cardStat}>
+                  {'RPE '}
+                  <Text style={session.sessionRpe != null ? styles.cardStatNum : styles.cardStatUnit}>
+                    {session.sessionRpe ?? '—'}
+                  </Text>
+                </Text>
+                {volumeDelta != null && (
+                  <>
+                    <Text style={styles.cardStatSep}>·</Text>
+                    <Text style={[styles.cardStat, volumeDelta >= 0 ? styles.deltaUp : styles.deltaDown]}>
+                      {`${volumeDelta > 0 ? '+' : ''}${volumeDelta}%`}
+                    </Text>
+                  </>
+                )}
+                {hasNotes && (
+                  <View style={styles.noteTag}>
+                    <Text style={styles.noteTagText}>NOTA</Text>
+                  </View>
+                )}
+                {session.adapted && (
+                  <View style={styles.adaptedTag}>
+                    <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
+                  </View>
+                )}
               </View>
             </View>
 
+            {/* Fecha aislada en su esquina: se busca por ella, no se lee de corrido. */}
             <View style={styles.cardHeaderRight}>
+              <Text style={styles.cardDateCorner} numberOfLines={1}>{formatDate(session.timestamp)}</Text>
               <TouchableOpacity onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
                 <Text style={styles.deleteBtnText}>✕</Text>
               </TouchableOpacity>
@@ -631,6 +664,9 @@ export default function HistoryScreen() {
     });
     return ids;
   }, [activeProgram, scope, selectedStageIds, programTemplateIds, hasStages]);
+
+  // Una sola pasada para TODA la lista: por tarjeta sería O(n²).
+  const deltas = useMemo(() => volumeDeltas(workoutLog), [workoutLog]);
 
   const filtered = useMemo(() => {
     let list = [...workoutLog];
@@ -778,7 +814,11 @@ export default function HistoryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <SessionCard session={item} onDelete={deleteLogEntry} />
+          <SessionCard
+            session={item}
+            onDelete={deleteLogEntry}
+            volumeDelta={deltas.get(item.id) ?? null}
+          />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -926,7 +966,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardHeader: {
     flexDirection:     'row',
-    alignItems:        'center',
+    // flex-start y no center: la fecha tiene que quedar clavada en la esquina
+    // superior, no centrada respecto a las dos filas de la izquierda.
+    alignItems:        'flex-start',
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
@@ -935,40 +977,31 @@ const makeStyles = (th) => StyleSheet.create({
     flex: 1,
     gap:  spacing.sm,
   },
-  // Nombre + subtítulo van pegados (0px) — el gap de 6 vive entre el tag y este bloque
-  cardTitleBlock: {
-    gap: 0,
-  },
+  cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // "Sesión A" tag line — Figma text/spacing-tag (Inter ExtraBold 10px,
-  // tracking 2px), NO card-type; siempre en accent, sin color por-programa
-  // (Figma no distingue color de sesión por programa — el #b8ff00 suelto del
-  // mock es un bug conocido, en código va a color/accent).
-  cardSesTag: {
-    ...textStyles.spacingTag,
-    textTransform: 'uppercase',
-    color:         th.colors.accent,
-  },
-  // Session name
+  // El nombre baja de `cardTitle` (16) a `cardType` (12) para que la tarjeta no
+  // crezca al ganar la fila de datos: dos filas compactas ocupan lo mismo que
+  // el título grande + la línea de metadatos de antes.
   cardSesName: {
-    ...textStyles.cardTitle,
-    color: th.colors.text,
+    ...textStyles.cardType,
+    color:      th.colors.text,
+    flexShrink: 1,
   },
+  cardSesLetter: { ...textStyles.cardType, color: th.colors.accent },
+  cardStage:     { ...textStyles.tag, color: th.colors.muted, flexShrink: 0 },
 
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  cardDate: {
-    ...textStyles.subtitle,
-    color: th.colors.mutedLight,
-  },
-  cardMetaSep: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
-  },
+  // ── Fila de datos ──
+  cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  cardStat:     { ...textStyles.tag, color: th.colors.mutedLight },
+  cardStatNum:  { ...textStyles.cardType, color: th.colors.text },
+  cardStatUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+  cardStatSep:  { ...textStyles.tag, color: th.colors.muted2 },
+  deltaUp:      { color: th.colors.accent },
+  deltaDown:    { color: th.tint.red50 },
+
+  cardDateCorner: { ...textStyles.tag, color: th.colors.mutedLight },
+  detailMeta:     { ...textStyles.tag, color: th.colors.muted, marginBottom: spacing.sm },
+
   noteTag: {
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderWidth:     borders.thin,

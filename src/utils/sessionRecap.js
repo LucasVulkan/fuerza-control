@@ -119,6 +119,45 @@ export function detectPRs(entry, workoutLog) {
 }
 
 /**
+ * Delta de volumen de cada sesión frente a la ANTERIOR de su misma plantilla,
+ * en %, para toda la lista de una vez.
+ *
+ * Existe por rendimiento: `compareToLast` recorre el log entero en cada llamada,
+ * así que usarlo por tarjeta en el historial sería O(n²). Aquí se agrupa una vez
+ * por plantilla y la "anterior" de cada sesión es su predecesora en el grupo.
+ *
+ * NO se guarda el resultado en la entrada al terminar la sesión: el borrado —y
+ * más ahora que se puede borrar en bloque— dejaría el número apuntando a una
+ * sesión que ya no existe, sin forma de detectarlo. Calculado, se corrige solo.
+ *
+ * Las sesiones libres quedan fuera: comparten `__free__` como plantilla pero no
+ * son la misma sesión, así que compararlas entre sí no significa nada (misma
+ * regla que `compareToLast`).
+ *
+ * @returns {Map<string, number|null>} id de la entrada → % (null = sin referencia)
+ */
+export function volumeDeltas(log) {
+  const byTemplate = new Map();
+  for (const e of [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp)) {
+    if (!e.sessionTemplateId || e.sessionTemplateId === '__free__') continue;
+    if (!byTemplate.has(e.sessionTemplateId)) byTemplate.set(e.sessionTemplateId, []);
+    byTemplate.get(e.sessionTemplateId).push(e);
+  }
+  const out = new Map();
+  for (const entries of byTemplate.values()) {
+    let prev = null;
+    for (const e of entries) {
+      const vol = recapStats(e).volume;
+      out.set(e.id, prev > 0 && vol > 0 ? Math.round(((vol - prev) / prev) * 100) : null);
+      // Una sesión sin tonelaje (solo peso corporal) no sirve de referencia:
+      // arrastraría el 0 y la siguiente saldría con un delta absurdo.
+      if (vol > 0) prev = vol;
+    }
+  }
+  return out;
+}
+
+/**
  * Result of the previous entry (same template, earlier timestamp) that logged
  * a block with this `blockId` — for the recap's block delta chip (§7.2).
  * Returns null when there's no such entry (new block / first run).
