@@ -941,7 +941,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               <View style={styles.statTile}>
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <Text style={styles.statLabel}>CARGA</Text>
+                  <Text style={styles.statLabel}>PROGRESIÓN</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </View>
@@ -1304,7 +1304,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         <View style={styles.statTile}>
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <Text style={styles.statLabel}>CARGA</Text>
+            <Text style={styles.statLabel}>PROGRESIÓN</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}

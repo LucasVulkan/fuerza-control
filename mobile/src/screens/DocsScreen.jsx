@@ -189,7 +189,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   metricLabel: {
     ...textStyles.smallBold,
-    color:         th.colors.muted,
+    color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginTop:     spacing.xs2,
   },
