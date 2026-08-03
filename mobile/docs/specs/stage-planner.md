@@ -610,6 +610,27 @@ Bug preexistente encontrado de camino: `editor.cyclesShort` no existía en
 ninguno de los dos locales, así que el meta del `StageSelector` pintaba la clave
 en crudo. Añadida con formas de plural.
 
+**La escalera es un configurador, no una plantilla** (QA de la fase 4). Una
+escalera cerrada solo sirve si tu bloque coincide con ella: la hoja del "+"
+lleva un `SegmentedControl` de tipo (lineal / intensificación / volumen), un
+contador de etapas de trabajo, un interruptor de "terminar con descarga" y, por
+peldaño, ciclos más los campos propios del tipo — reps en básicos y descanso en
+intensificación, series en las otras dos. Todo viene prerrellenado y todo se
+puede tocar antes de aplicar.
+
+Por eso `LADDERS` (tabla fija) desaparece y lo sustituye `buildRungs(ladderId,
+count, withDeload)`, que **extrapola**: pedir 4 peldaños no puede depender de que
+alguien escribiera el cuarto a mano. `LADDER_FIELDS` declara qué campos son
+editables por tipo, y hay test de que cada campo declarado lo escribe de verdad
+algún peldaño — si no, el planificador pintaría un control que no controla nada.
+
+Bug de camino: `StepField` filtraba el signo al teclear, así que en un campo de
+delta negativo (−3 reps) se podía escribir "3" y el valor se clampaba a 0. Ahora
+admite el signo cuando `min < 0`.
+
+Pendiente y apuntado por el usuario: un **bloque a medida** donde se elija qué
+parámetros tocar, para lo que no encaje en los tres tipos.
+
 ### 7.5 Nota
 
 El paso de ciclos de la creación de programa **está en la fase 0** (§3.2.h),

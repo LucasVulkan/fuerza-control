@@ -1918,18 +1918,7 @@
       "intensification": "Intensificación",
       "volume": "Volumen"
     },
-    "ladderDesc": {
-      "linear": "Sube volumen dos bloques y descarga.",
-      "intensification": "Acorta el rango de los básicos y alarga el descanso.",
-      "volume": "Añade series a los accesorios, sin tocar los básicos."
-    },
     "rungs": {
-      "accumulation2": "Acumulación 2",
-      "accumulation3": "Acumulación 3",
-      "intensify1": "Intensificación",
-      "intensify2": "Intensificación 2",
-      "volume2": "Volumen 2",
-      "volume3": "Volumen 3",
       "deload": "Descarga"
     },
     "rxParts": {
@@ -1949,6 +1938,29 @@
       "restDown": "−{{n}}% descanso",
       "incrementHalf": "incremento a la mitad",
       "deload": "sin progresión"
+    },
+    "rungCount": "Etapas de trabajo",
+    "withDeload": "Terminar con descarga",
+    "withDeloadHint": "Una etapa corta de menos volumen y sin progresión",
+    "applyBtn": "Añadir",
+    "rungNames": {
+      "linear": "Acumulación {{n}}",
+      "intensification": "Intensificación {{n}}",
+      "volume": "Volumen {{n}}"
+    },
+    "fields": {
+      "setsDelta": "Series",
+      "setsDelta_keys": "Series en básicos",
+      "setsDelta_accessories": "Series en accesorios",
+      "repsShift": "Reps",
+      "repsShift_keys": "Reps en básicos",
+      "repsShift_accessories": "Reps en accesorios",
+      "restPct": "Descanso (%)"
+    },
+    "ladderDesc": {
+      "linear": "Sube volumen y termina descargando.",
+      "intensification": "Acorta el rango de los básicos y alarga el descanso.",
+      "volume": "Añade series a los accesorios, sin tocar los básicos."
     }
   }
 }

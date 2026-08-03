@@ -41,8 +41,13 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   const round  = (n) => Math.round(n * 100) / 100;
   const commit = (n) => onChange(round(Math.min(max, Math.max(min, n))));
 
+  // Los campos con mínimo negativo (los deltas del planificador: −3 reps,
+  // −1 serie) admiten el signo, y solo al principio. Sin esto el teclado dejaba
+  // escribir "3" en un campo cuyo máximo es 0 y el valor se clampaba a 0.
+  const signed = min < 0;
   function handleChangeText(v) {
-    setDraft(decimals ? v.replace(/[^0-9.]/g, '') : v.replace(/[^0-9]/g, ''));
+    const body = (decimals ? v.replace(/[^0-9.]/g, '') : v.replace(/[^0-9]/g, ''));
+    setDraft(signed && v.trim().startsWith('-') ? `-${body}` : body);
   }
   function handleBlur() {
     const n = decimals ? parseFloat(draft) : parseInt(draft, 10);
@@ -58,7 +63,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
       <View style={sf.valueWrap}>
         <TextInput
           style={sf.valueInput}
-          keyboardType={decimals ? 'decimal-pad' : 'numeric'}
+          keyboardType={decimals ? 'decimal-pad' : (signed ? 'numbers-and-punctuation' : 'numeric')}
           value={draft}
           onChangeText={handleChangeText}
           onBlur={handleBlur}

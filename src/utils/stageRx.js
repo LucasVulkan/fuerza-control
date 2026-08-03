@@ -38,8 +38,11 @@ export const DEFAULT_RX = {
 };
 
 /**
- * Escaleras predefinidas: los peldaños que se añaden DETRÁS de la etapa base.
- * Todos derivan de la base, nunca del anterior (ver cabecera).
+ * Escaleras: tipos de bloque que el planificador sabe montar.
+ *
+ * NO son plantillas fijas. `buildRungs` genera los peldaños por defecto para el
+ * número que se le pida, y el planificador los deja editar uno a uno antes de
+ * aplicarlos — una escalera cerrada solo sirve si tu bloque coincide con ella.
  *
  * Por qué dos de las tres llevan `scope`: sin alcance, un peldaño de
  * intensificación empujaría los curls a 5-9 repeticiones, y eso contradice una
@@ -48,37 +51,57 @@ export const DEFAULT_RX = {
  * básicos; los accesorios viven en 8-15 haga el bloque lo que haga. Y al revés
  * en volumen: las series extra van a los accesorios, no a la sentadilla pesada.
  *
- * La descarga y la acumulación lineal sí van a `all`: bajar el volumen o añadir
- * una serie a todo es exactamente lo que se quiere ahí.
- *
- * `nameKey` se traduce en la pantalla; aquí no entra i18n.
+ * La descarga sí va a `all`: bajar el volumen de todo es lo que se quiere ahí.
  */
-export const LADDERS = [
-  {
-    id: 'linear',
-    rungs: [
-      { nameKey: 'accumulation2', durationWeeks: 4, rx: { setsDelta: 1 } },
-      { nameKey: 'accumulation3', durationWeeks: 3, rx: { setsDelta: 2 } },
-      { nameKey: 'deload',        durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
-    ],
-  },
-  {
-    id: 'intensification',
-    rungs: [
-      { nameKey: 'intensify1', durationWeeks: 4, rx: { scope: 'keys', repsShift: -3, restPct: 25 } },
-      { nameKey: 'intensify2', durationWeeks: 3, rx: { scope: 'keys', repsShift: -5, restPct: 50, incrementScale: 0.5 } },
-      { nameKey: 'deload',     durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
-    ],
-  },
-  {
-    id: 'volume',
-    rungs: [
-      { nameKey: 'volume2', durationWeeks: 4, rx: { scope: 'accessories', setsDelta: 1 } },
-      { nameKey: 'volume3', durationWeeks: 4, rx: { scope: 'accessories', setsDelta: 2 } },
-      { nameKey: 'deload',  durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
-    ],
-  },
-];
+export const LADDER_IDS = ['linear', 'intensification', 'volume'];
+
+/**
+ * Campos editables de cada tipo, en orden de aparición. `key` es el campo de
+ * `rx`; el planificador pinta un stepper por cada uno y traduce la etiqueta con
+ * `planner.fields.<key>`.
+ */
+export const LADDER_FIELDS = {
+  linear:          [{ key: 'setsDelta', min: -2, max: 3,   step: 1 }],
+  intensification: [{ key: 'repsShift', min: -6, max: 0,   step: 1 },
+                    { key: 'restPct',   min: 0,  max: 100, step: 5 }],
+  volume:          [{ key: 'setsDelta', min: 0,  max: 3,   step: 1 }],
+};
+
+/** Campos editables del peldaño de descarga, sea cual sea la escalera. */
+export const DELOAD_FIELDS = [{ key: 'setsDelta', min: -3, max: 0, step: 1 }];
+
+const DELOAD_RUNG = { kind: 'deload', durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } };
+
+/**
+ * Peldaños por defecto de una escalera: `count` de trabajo + descarga opcional.
+ * Puros y extrapolables a cualquier `count`, para que subir de 2 a 3 etapas no
+ * dependa de una tabla escrita a mano.
+ *
+ * @returns [{ kind, durationWeeks, rx }] — `kind` distingue trabajo de descarga
+ *          y decide qué campos se pueden editar y cómo se nombra el peldaño.
+ */
+export function buildRungs(ladderId, count, withDeload = true) {
+  const work = Array.from({ length: Math.max(0, count) }, (_, i) => {
+    if (ladderId === 'intensification') {
+      return {
+        kind: 'work', durationWeeks: i === 0 ? 4 : 3,
+        rx: {
+          scope: 'keys',
+          repsShift: -3 - 2 * i,
+          restPct:   25 + 25 * i,
+          // A partir del segundo peldaño el margen se estrecha: subir a saltos
+          // enteros deja de tener sentido.
+          ...(i > 0 ? { incrementScale: 0.5 } : {}),
+        },
+      };
+    }
+    if (ladderId === 'volume') {
+      return { kind: 'work', durationWeeks: 4, rx: { scope: 'accessories', setsDelta: i + 1 } };
+    }
+    return { kind: 'work', durationWeeks: 4, rx: { setsDelta: i + 1 } };
+  });
+  return withDeload ? [...work, { ...DELOAD_RUNG, rx: { ...DELOAD_RUNG.rx } }] : work;
+}
 
 /**
  * Resumen legible de una regla, para la fila de procedencia ("+1 serie ·

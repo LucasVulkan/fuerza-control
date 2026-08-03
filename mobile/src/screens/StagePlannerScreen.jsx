@@ -33,7 +33,9 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon } from '../components/ui/EditorIcons';
-import { LADDERS, describeRx } from '../../../src/utils/stageRx';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import { ToggleRow } from '../components/ui/EditorRows';
+import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx } from '../../../src/utils/stageRx';
 import { clientStageIndex } from '../../../src/utils/stageProgress';
 
 const HEADER_H = 64;
@@ -121,6 +123,24 @@ export default function StagePlannerScreen({ navigation }) {
   const showToast       = useStore((s) => s.showToast);
 
   const [ladderOpen, setLadderOpen] = useState(false);
+  const [ladderId,   setLadderId]   = useState('linear');
+  const [withDeload, setWithDeload] = useState(true);
+  // Los peldaños son estado EDITABLE de la hoja, no una plantilla fija:
+  // `buildRungs` solo los prerrellena. Cambiar de tipo o de número los
+  // regenera — se asume que quien cambia de escalera quiere sus defectos.
+  const [rungs, setRungs] = useState(() => buildRungs('linear', 2, true));
+
+  function regenerate(id, count, deload) {
+    setLadderId(id);
+    setWithDeload(deload);
+    setRungs(buildRungs(id, count, deload));
+  }
+
+  const workCount = rungs.filter((r) => r.kind === 'work').length;
+
+  function patchRung(idx, patch) {
+    setRungs((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch, rx: { ...r.rx, ...(patch.rx ?? {}) } } : r)));
+  }
 
   const programId = ui._editingProgramId ?? profile.activeProgramId;
   const program   = programs[programId];
@@ -138,15 +158,21 @@ export default function StagePlannerScreen({ navigation }) {
   const anyOpen    = stages.some((s) => s.durationWeeks == null);
   const totalCycles = stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0);
 
-  function handleLadder(ladder) {
-    const rungs = ladder.rungs.map((r) => ({
-      name:          t(`planner.rungs.${r.nameKey}`),
+  function rungName(rung, i) {
+    return rung.kind === 'deload'
+      ? t('planner.rungs.deload')
+      : t(`planner.rungNames.${ladderId}`, { n: i + 2 });
+  }
+
+  function handleApply() {
+    const payload = rungs.map((r, i) => ({
+      name:          rungName(r, i),
       durationWeeks: r.durationWeeks,
       rx:            r.rx,
     }));
-    const firstIdx = addStageLadder(programId, { sourceStageIdx: baseIdx, rungs });
+    const firstIdx = addStageLadder(programId, { sourceStageIdx: baseIdx, rungs: payload });
     setLadderOpen(false);
-    if (firstIdx != null) showToast(t('planner.toastAdded', { count: rungs.length }), 2400, 'success');
+    if (firstIdx != null) showToast(t('planner.toastAdded', { count: payload.length }), 2400, 'success');
   }
 
   function handleDelete(idx) {
@@ -210,27 +236,71 @@ export default function StagePlannerScreen({ navigation }) {
         <Text style={styles.baseHint}>{t('planner.baseHint', { name: baseStage?.name ?? '' })}</Text>
       </ScrollView>
 
-      <DragSheet visible={ladderOpen} onClose={() => setLadderOpen(false)} title={t('planner.ladderTitle')}>
+      <DragSheet
+        visible={ladderOpen}
+        onClose={() => setLadderOpen(false)}
+        title={t('planner.ladderTitle')}
+        action={{ label: t('planner.applyBtn'), onPress: handleApply }}
+      >
         <View style={styles.sheetBody}>
-          {LADDERS.map((ladder) => (
-            <TouchableOpacity
-              key={ladder.id}
-              style={styles.ladderCard}
-              onPress={() => handleLadder(ladder)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.ladderName}>{t(`planner.ladders.${ladder.id}`)}</Text>
-              <Text style={styles.ladderDesc}>{t(`planner.ladderDesc.${ladder.id}`)}</Text>
-              {ladder.rungs.map((r, i) => (
-                <Text key={i} style={styles.ladderRung} numberOfLines={1}>
-                  {`${t(`planner.rungs.${r.nameKey}`)} · ${t('editor.cyclesShort', { count: r.durationWeeks })}`}
-                  {describeRx(r.rx, t).length ? ` · ${describeRx(r.rx, t).join(' · ')}` : ''}
-                </Text>
+          <SegmentedControl
+            options={LADDER_IDS.map((id) => ({ id, label: t(`planner.ladders.${id}`) }))}
+            value={ladderId}
+            onChange={(id) => regenerate(id, workCount, withDeload)}
+          />
+          <Text style={styles.ladderDesc}>{t(`planner.ladderDesc.${ladderId}`)}</Text>
+
+          <View style={styles.countRow}>
+            <Text style={styles.fieldLabel}>{t('planner.rungCount')}</Text>
+            <StepField
+              horizontal dark
+              value={workCount}
+              onChange={(v) => regenerate(ladderId, v, withDeload)}
+              min={1}
+              max={4}
+            />
+          </View>
+
+          <ToggleRow
+            label={t('planner.withDeload')}
+            hint={t('planner.withDeloadHint')}
+            value={withDeload}
+            onChange={(v) => regenerate(ladderId, workCount, v)}
+          />
+
+          {rungs.map((rung, i) => (
+            <View key={i} style={styles.rungCard}>
+              <Text style={styles.rungName}>{rungName(rung, i)}</Text>
+              <View style={styles.rungField}>
+                <Text style={styles.fieldLabel}>{t('editor.stageWeeksUnit')}</Text>
+                <StepField
+                  horizontal dark
+                  value={rung.durationWeeks}
+                  onChange={(v) => patchRung(i, { durationWeeks: v })}
+                  min={1}
+                  max={12}
+                />
+              </View>
+              {(rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[ladderId]).map((f) => (
+                <View key={f.key} style={styles.rungField}>
+                  <Text style={styles.fieldLabel}>
+                    {t(`planner.fields.${f.key}${rung.rx.scope && rung.rx.scope !== 'all' ? `_${rung.rx.scope}` : ''}`)}
+                  </Text>
+                  <StepField
+                    horizontal dark
+                    value={rung.rx[f.key] ?? 0}
+                    onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
+                    min={f.min}
+                    max={f.max}
+                    step={f.step}
+                  />
+                </View>
               ))}
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
       </DragSheet>
+
     </SafeAreaView>
   );
 }
@@ -314,7 +384,15 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     gap:             spacing.xs2,
   },
-  ladderName: { ...textStyles.cardType, color: th.colors.text },
-  ladderDesc: { ...textStyles.subtitle, color: th.colors.muted, paddingBottom: spacing.xs },
-  ladderRung: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  ladderDesc: { ...textStyles.subtitle, color: th.colors.muted },
+  countRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  fieldLabel: { ...textStyles.cardType, color: th.colors.mutedLight, flexShrink: 1 },
+  rungCard: {
+    backgroundColor: th.colors.app,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+  },
+  rungName:   { ...textStyles.cardType, color: th.colors.accent },
+  rungField:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
 });

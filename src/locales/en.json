@@ -1918,18 +1918,7 @@
       "intensification": "Intensification",
       "volume": "Volume"
     },
-    "ladderDesc": {
-      "linear": "Two blocks of rising volume, then a deload.",
-      "intensification": "Shortens the key lifts' rep range and lengthens rest.",
-      "volume": "Adds sets to the accessories, leaving the key lifts alone."
-    },
     "rungs": {
-      "accumulation2": "Accumulation 2",
-      "accumulation3": "Accumulation 3",
-      "intensify1": "Intensification",
-      "intensify2": "Intensification 2",
-      "volume2": "Volume 2",
-      "volume3": "Volume 3",
       "deload": "Deload"
     },
     "rxParts": {
@@ -1949,6 +1938,29 @@
       "restDown": "−{{n}}% rest",
       "incrementHalf": "half increment",
       "deload": "no progression"
+    },
+    "rungCount": "Work stages",
+    "withDeload": "End with a deload",
+    "withDeloadHint": "A short stage with less volume and no progression",
+    "applyBtn": "Add",
+    "rungNames": {
+      "linear": "Accumulation {{n}}",
+      "intensification": "Intensification {{n}}",
+      "volume": "Volume {{n}}"
+    },
+    "fields": {
+      "setsDelta": "Sets",
+      "setsDelta_keys": "Sets on key lifts",
+      "setsDelta_accessories": "Sets on accessories",
+      "repsShift": "Reps",
+      "repsShift_keys": "Reps on key lifts",
+      "repsShift_accessories": "Reps on accessories",
+      "restPct": "Rest (%)"
+    },
+    "ladderDesc": {
+      "linear": "Rising volume, then a deload.",
+      "intensification": "Shortens the key lifts' rep range and lengthens rest.",
+      "volume": "Adds sets to the accessories, leaving the key lifts alone."
     }
   }
 }
