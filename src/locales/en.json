@@ -1667,6 +1667,8 @@
     "stageLockedText": "Finished {{current}}. {{next}} is locked and they cannot move in.",
     "stageUnlockBtn": "Unlock and send",
     "stageLockedShort": "Next stage locked",
+    "blockDoneShort": "No next stage",
+    "blockPlanShort": "Plan",
     "blockDoneTag": "BLOCK FINISHED",
     "blockDoneText": "Finished {{current}} and there is no next stage: they will repeat it until you build the next block.",
     "blockDoneBtn": "Plan next stage",

@@ -226,19 +226,23 @@ hero + su botón. En `src/locales/es.json` Y `en.json`.
 
 | # | Alcance | Coste |
 |---|---|---|
-| 1a | ✅ Cuarto estado del hero (aviso + botón al planificador) — ago 2026 | 🟢 |
-| 1b | `clientAttention.js` + `blockFinished` + pill con contador en el listado | 🟢 |
+| 1a | ✅ Aviso en la fila del listado + cuarto estado del hero, los dos con acción al planificador — ago 2026 | 🟢 |
+| 1b | `clientAttention.js` + `blockFinished` + pill con contador | 🟢 |
 | 2 | `isStalled` + memo por cliente + pill, con calibración de `flat` contra la semilla | 🟡 |
 
 La fase 1 no depende de la 2 y cierra el bucle con el planificador, así que va
 primero.
 
-**1a hecha, 1b no.** Decisión del usuario: primero el aviso en la ficha, que es
-lo que cierra el bucle con el planificador. El aviso vive dentro de
-`ActiveProgramHero` ([ClientsScreen.jsx](../../src/screens/ClientsScreen.jsx),
-`blockDone`) reutilizando la caja del aviso de etapa bloqueada; no hay
-`clientAttention.js` todavía porque no hace falta función pura hasta que la
-condición se evalúe para los 20 clientes a la vez. La 1b es la que la pide: ahí
-sí se extrae `blockFinished(client, program)` con sus tests y las reglas de §2.2
-(estado manual `paused`/`inactive` silencia), que hoy no aplican porque el hero
-solo mira al cliente que ya has abierto.
+**1a hecha, 1b no.** Decisión del usuario: primero el aviso, y **exactamente con
+el mismo trato que el de etapa bloqueada** — punto naranja + texto en la fila del
+listado (`blockStuck`) y caja naranja en el hero de la ficha (`blockDone`), los
+dos en [ClientsScreen.jsx](../../src/screens/ClientsScreen.jsx), reutilizando el
+markup del aviso vecino. El CTA de la fila y el botón del hero van al
+planificador de ese programa.
+
+No hay `clientAttention.js` todavía: la condición (`stageEnded && !nextStage`)
+son dos líneas sobre datos que ambos sitios ya calculan, y no hace falta función
+pura hasta que se evalúe para los 20 clientes a la vez. La 1b es la que la pide
+— ahí sí se extrae `blockFinished(client, program)` con sus tests y la regla de
+§2.2 (estado manual `paused`/`inactive` silencia), que hoy no aplica porque el
+aviso es por cliente, igual que el de etapa bloqueada.
