@@ -700,7 +700,7 @@
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
     "setsSectionLabel": "Series",
-    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar" },
+    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga" },
     "warmup": {
       "blockLabel": "Calentamiento",
       "metaSuffix": " · C×{{count}}",
@@ -1887,6 +1887,7 @@
     "normal_mostHit": "Bien ejecutado. Mantén {{weightStr}} y busca más reps dentro del rango.",
     "normal_struggling": "No llegaste al mínimo de reps. Prueba con {{next}}kg para consolidar técnica.",
     "normal_hold": "Sigue con {{weightStr}} y foco en la técnica.",
+    "deload_hold": "Semana de descarga: mantén {{weightStr}} y deja 3-4 reps en recámara.",
     "withAssist": "{{kg}}kg de asistencia",
     "noAssist": "sin asistencia",
     "withWeight": "{{kg}}kg",

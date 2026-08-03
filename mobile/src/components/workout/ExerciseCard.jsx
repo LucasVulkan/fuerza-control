@@ -606,8 +606,15 @@ export default function ExerciseCard({
           {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
           {!hasCoachTarget && progression ? (
             <View style={styles.progLine}>
-              <Text style={[styles.progDir, progression.type === 'hold' && styles.progDirHold]}>
-                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.type}`, '')}`}
+              <Text style={[
+                styles.progDir,
+                progression.type === 'hold' && styles.progDirHold,
+                // La descarga no es un mantenimiento más: es una instrucción
+                // del bloque, y se lee antes si no comparte color con el gris
+                // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
+                progression.reason === 'deload' && styles.progDirDeload,
+              ]}>
+                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.reason === 'deload' ? 'deload' : progression.type}`, '')}`}
               </Text>
               {progDetail ? <Text style={styles.progDetail}>{progDetail}</Text> : null}
             </View>
@@ -1043,6 +1050,9 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.1,
     color:         th.colors.accent,
     textTransform: 'uppercase',
+  },
+  progDirDeload: {
+    color: th.colors.blue,
   },
   progDirHold: {
     color: th.colors.mutedLight,

@@ -1,6 +1,6 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
-> Estado: **fases 0, 1 y 2 implementadas; fases 3-4 sin implementar** (ago 2026). 5 fases, cada una un
+> Estado: **fases 0-3 implementadas; fase 4 sin implementar** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -463,7 +463,7 @@ Sustituye a `workout.keyBadge` y al `' · CLAVE'` hardcodeado de
 
 ---
 
-## 6. FASE 3 — El chip de descarga 🟢
+## 6. FASE 3 — El chip de descarga 🟢 ✅ IMPLEMENTADA
 
 **Ocultar el chip en una descarga es barato y falla como entrenamiento.** Es la
 única voz de la app en el momento de la serie: sin chip, el cliente lee "esto
@@ -498,9 +498,15 @@ Cambios, todos en [`src/utils/progression.js`](../../../src/utils/progression.js
 **Es el único lectura-en-runtime que añade toda la feature**, y vive en una
 función pura que ya tiene tests. Merece la excepción a §1.
 
-Nota visual: el chip de descarga debería distinguirse del `hold` normal
-(mismo icono, color distinto — `blue` o `tint.accent50`, nunca rojo, §4.9 de
-UI-MIGRATION). Decidir con el usuario contra Figma.
+**Cómo quedó al implementar.** El chip lleva `reason: 'deload'` y mantiene
+`type: 'hold'`, en vez de estrenar un tipo nuevo: así ningún consumidor que ya
+mire `chip.type` (que solo conoce up/hold/down) se rompe, y la tarjeta puede
+pintarlo distinto igualmente. Etiqueta propia ("Descarga") y color `blue`, para
+que no comparta el gris de "sin novedad" — nunca rojo (§4.9 de UI-MIGRATION).
+
+La rama va **antes** de mirar el rendimiento y **después** de la guarda
+`type === 'none'`: da igual lo bien o mal que saliera la sesión, el bloque pide
+mantener; pero un ejercicio sin progresión sigue sin chip.
 
 ---
 
@@ -627,7 +633,7 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 | 0 | Unificación del modelo + paso de ciclos en los 2 modales de creación (§3) | 🟢 | ✅ **IMPLEMENTADA** — 875 tests verdes, lint igual que HEAD |
 | 1 | `applyRx` + `templateChainIds` + `addStageToProgram({rx})` (§4) | 🟡 | ✅ **IMPLEMENTADA** — 911 tests. `applyRx` no tiene llamante en producción hasta la fase 4: lo que aporta valor hoy es la cadena (§4.1) |
 | 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | ✅ **IMPLEMENTADA** — la pill reutiliza el hueco de la pill de bloque; `isKey` NO viaja en `LINKED_CONFIG_KEYS` |
-| 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | Sonnet |
+| 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | ✅ **IMPLEMENTADA** — no se puede ver en el móvil hasta la fase 4: nada escribe `hold` hasta que el planificador cree un peldaño de descarga |
 | 4 | Pantalla de planificador (§7) | 🔴 | Opus/Fable el diseño de las escaleras; Sonnet la UI |
 | 5 | *(futuro)* Grupo B: recap consciente de la descarga (§4.2) | 🟡 | — |
 

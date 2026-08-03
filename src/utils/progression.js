@@ -33,6 +33,13 @@
  *     ]
  *   }
  *
+ *   hold: null | 'deload'
+ *     Suspende la progresión durante una etapa de descarga. NO oculta el chip:
+ *     lo sustituye por uno que dice explícitamente que hay que mantener el
+ *     peso. Sin chip, el cliente lee "esto no tiene progresión" y sube el peso
+ *     igual — y la descarga no ocurre. Lo escribe `applyRx` al materializar una
+ *     etapa (`stageRx.js`); no hay UI por ejercicio.
+ *
  *   seed: {                  // Trainer-set baseline shown when no history exists
  *     weight: null | number  // kg
  *     reps:   null | number
@@ -106,6 +113,7 @@ export function resolveProgressionConfig(exConfig, def) {
         reps:   p.seed?.reps   ?? null,
         time:   p.seed?.time   ?? null,
       },
+      hold: p.hold ?? null,
     };
   }
 
@@ -128,6 +136,7 @@ export function resolveProgressionConfig(exConfig, def) {
       minIncrement: null,
     },
     seed: { weight: null, reps: null, time: null },
+    hold: null,
   };
 }
 
@@ -410,6 +419,20 @@ export function getProgression(exConfig, def, lastSets, t) {
   const minTime   = exConfig?.minTime  ?? def?.minTime  ?? 20;
   const maxTime   = exConfig?.maxTime  ?? def?.maxTime  ?? 40;
   const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length;
+
+  // Descarga: la progresión se suspende ANTES de mirar el rendimiento. Da igual
+  // lo bien que saliera la sesión — el bloque pide mantener. `reason` deja el
+  // `type` intacto ('hold') para todo el que ya consuma el chip, y permite a la
+  // tarjeta pintarlo distinto de un mantenimiento normal.
+  if (prog.hold === 'deload') {
+    const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
+    const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
+    return {
+      type: 'hold', reason: 'deload', icon: '→',
+      msg: t('progression.deload_hold', { weightStr }),
+      suggestedWeight: maxW || null, suggestedTime: null,
+    };
+  }
 
   if (prog.type === 'time') {
     return chipTime(prog, doneSets, totalSets, minTime, maxTime, t);

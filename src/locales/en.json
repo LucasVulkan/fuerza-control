@@ -700,7 +700,7 @@
     "coachTarget": "Your trainer's target",
     "thisSession": "this session",
     "setsSectionLabel": "Sets",
-    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce" },
+    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce", "deload": "Deload" },
     "warmup": {
       "blockLabel": "Warmup",
       "metaSuffix": " · C×{{count}}",
@@ -1887,6 +1887,7 @@
     "normal_mostHit": "Well done. Keep {{weightStr}} and aim for more reps in range.",
     "normal_struggling": "Did not hit the minimum reps. Try {{next}}kg to consolidate technique.",
     "normal_hold": "Keep going with {{weightStr}} and focus on technique.",
+    "deload_hold": "Deload week: keep {{weightStr}} and leave 3-4 reps in the tank.",
     "withAssist": "{{kg}}kg assistance",
     "noAssist": "no assistance",
     "withWeight": "{{kg}}kg",
