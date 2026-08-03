@@ -89,22 +89,23 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
         <Text style={styles.rowRx} numberOfLines={2}>{rxParts.join(' · ')}</Text>
       )}
 
-      <View style={styles.rowBottom}>
-        {stage.durationWeeks == null ? (
-          <TouchableOpacity style={styles.noLimitBtn} onPress={() => onCycles(4)} activeOpacity={0.7}>
-            <Text style={styles.noLimitText}>{t('editor.cyclesOpen')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <StepField
-            horizontal dark
-            label={t('editor.stageWeeksUnit')}
-            value={stage.durationWeeks}
-            onChange={onCycles}
-            min={1}
-            max={52}
-          />
-        )}
-      </View>
+      {/* Sin envoltorio de fila: dentro de la columna, el control estira al
+          ancho completo — `cardHorizontal` ya reparte label a la izquierda y
+          controles a la derecha con `space-between`. */}
+      {stage.durationWeeks == null ? (
+        <TouchableOpacity style={styles.noLimitBtn} onPress={() => onCycles(4)} activeOpacity={0.7}>
+          <Text style={styles.noLimitText}>{t('editor.cyclesOpen')}</Text>
+        </TouchableOpacity>
+      ) : (
+        <StepField
+          horizontal dark
+          label={t('editor.stageWeeksUnit')}
+          value={stage.durationWeeks}
+          onChange={onCycles}
+          min={1}
+          max={52}
+        />
+      )}
     </View>
   );
 }
@@ -362,11 +363,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   rowActive: { backgroundColor: th.tint.accent10 },
   rowTop:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rowNum:    { ...textStyles.spacingTag, color: th.colors.mutedLight, width: 14 },
+  // Mismo criterio que la letra de sesión del editor de programa (`sesLetter`):
+  // es el ancla visual de la fila, no una etiqueta.
+  rowNum:    { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
   rowName:   { ...textStyles.cardType, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
   activeBadge: { ...textStyles.tag, color: th.colors.accent },
   rowRx:     { ...textStyles.subtitle, color: th.colors.accent },
-  rowBottom: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 
   noLimitBtn: {
     paddingVertical:   spacing.sm,
