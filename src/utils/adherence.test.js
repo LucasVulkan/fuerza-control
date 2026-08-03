@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { computeAdherence, requiresAttention, STATUS } from './adherence';
+import { computeAdherence, requiresAttention, adherencePct, STATUS } from './adherence';
 
 const DAY = 86400000;
 // Wednesday 14 Jan 2026, midday local — gives room inside the week.
@@ -107,6 +107,38 @@ describe('computeAdherence — recentPerWeek (real pace)', () => {
   test('no history → zero pace', () => {
     const r = computeAdherence({ sessions: [], sessionsPerCycle: 2, now: NOW });
     expect(r.recentPerWeek).toBe(0);
+  });
+});
+
+describe('adherencePct', () => {
+  // La ventana son 28 días; con 3/sem se esperan 12. `n` sesiones repartidas
+  // por toda la ventana (la más vieja a 27 días) para que el span sea completo.
+  const spread = (n) => Array.from({ length: n }, (_, i) => s(Math.round(28 - (i * 28) / (n - 1))));
+
+  test('cumple justo el objetivo → 100%', () => {
+    expect(adherencePct({ sessions: spread(12), sessionsPerCycle: 3, now: NOW })).toBe(100);
+  });
+
+  test('la mitad de lo esperado → ~50%', () => {
+    expect(adherencePct({ sessions: spread(6), sessionsPerCycle: 3, now: NOW })).toBe(50);
+  });
+
+  test('entrenar de más se capa al 100%', () => {
+    expect(adherencePct({ sessions: spread(20), sessionsPerCycle: 3, now: NOW })).toBe(100);
+  });
+
+  test('sesiones fuera de la ventana no cuentan', () => {
+    expect(adherencePct({ sessions: [s(1), s(40), s(60)], sessionsPerCycle: 3, now: NOW })).toBe(8);
+  });
+
+  test('cliente nuevo se mide contra lo que lleva, no contra 4 semanas', () => {
+    // Una sola semana de historia, 3/sem: 3 hechas de 3 esperadas.
+    const r = adherencePct({ sessions: [s(6), s(4), s(2)], sessionsPerCycle: 3, now: NOW });
+    expect(r).toBe(100);
+  });
+
+  test('sin sesiones → null (no es un 0%)', () => {
+    expect(adherencePct({ sessions: [], sessionsPerCycle: 3, now: NOW })).toBe(null);
   });
 });
 

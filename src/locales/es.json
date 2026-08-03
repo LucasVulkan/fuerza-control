@@ -1717,11 +1717,32 @@
     "deleteTagTitle": "Eliminar etiqueta",
     "deleteTagConfirm": "«{{name}}» está asignada a {{count}} cliente(s). ¿Eliminarla de todos?",
     "tabs": {
-      "programs": "Programas",
+      "programs": "Programa",
       "history": "Historial",
-      "progress": "Progresión",
-      "info": "Info",
-      "key": "Clave"
+      "progress": "Progreso",
+      "info": "Info"
+    },
+    "assignedProgram": "Programa asignado",
+    "statAdherence": "Adherencia",
+    "statPace": "Ritmo",
+    "statLoad": "Carga",
+    "editProgram": "Editar programa",
+    "viewProgram": "Ver programa",
+    "nextSectionLabel": "Próxima sesión",
+    "nextSessionHint": "Ajusta solo esta sesión: pesos, series o ejercicios sueltos. El programa no cambia.",
+    "sessionMeta": "{{count}} ejercicios · {{minutes}} min aprox",
+    "programMenuTitle": "Programa",
+    "menuNewProgram": "Nuevo programa",
+    "menuImport": "Importar programa",
+    "menuShare": "Compartir",
+    "menuArchived": "Programas anteriores",
+    "noArchivedPrograms": "Este cliente no tiene programas anteriores.",
+    "changesPendingTag": "CAMBIOS SIN ENVIAR",
+    "changesPendingText": "Has editado el programa y el cliente todavía tiene la versión anterior.",
+    "codeCard": {
+      "title": "CÓDIGO DE CONEXIÓN",
+      "explain": "Dáselo a {{name}}: lo introduce en su app y a partir de ahí recibirá sus programas y tú verás su historial.",
+      "dismiss": "Entendido"
     },
     "keyTab": {
       "title": "CLAVE DE CLIENTE",
@@ -1729,7 +1750,8 @@
       "copy": "Copiar código",
       "copied": "Código copiado",
       "noSlot": "Este cliente aún no está conectado a la nube.",
-      "connect": "☁️ Conectar a la nube",
+      "connect": "Conectar a la nube",
+      "connectError": "No se pudo conectar.",
       "connecting": "Conectando…",
       "connectedNoCode": "Conectado · sin código local"
     },

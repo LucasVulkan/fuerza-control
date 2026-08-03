@@ -3052,6 +3052,14 @@ export const useStore = create(
         const countBySlot = {};
         slots.forEach((slot) => { countBySlot[slot.id] = slot.sessions_count ?? 0; });
 
+        // slotId → ¿el cliente ha canjeado ya el código? `client_id` se rellena
+        // cuando el cliente se vincula, así que es la única señal real de
+        // "conexión establecida" que tiene el entrenador: tener slot solo
+        // significa que TÚ lo creaste. La usa la ficha para retirar la tarjeta
+        // del código una vez el cliente ya está dentro.
+        const linkedBySlot = {};
+        slots.forEach((slot) => { linkedBySlot[slot.id] = !!slot.client_id; });
+
         // Restore server slots that are missing from local state (e.g. after reinstall).
         // Only active slots (disconnected_at = null) are restored.
         const knownSlotIds = new Set(
@@ -3087,7 +3095,11 @@ export const useStore = create(
           Object.keys(updated).forEach((clientId) => {
             const slotId = updated[clientId].syncSlotId;
             if (slotId && countBySlot[slotId] !== undefined) {
-              updated[clientId] = { ...updated[clientId], remoteSessionsCount: countBySlot[slotId] };
+              updated[clientId] = {
+                ...updated[clientId],
+                remoteSessionsCount: countBySlot[slotId],
+                syncLinked:          linkedBySlot[slotId],
+              };
             }
           });
           return { clients: updated };

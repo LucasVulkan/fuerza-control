@@ -90,6 +90,41 @@ export function requiresAttention(status) {
 }
 
 /**
+ * Adherencia como porcentaje: sesiones registradas frente a las esperadas en
+ * una ventana móvil de `weeks` semanas.
+ *
+ * Ventana de DÍAS y no de semanas de calendario a propósito: con semanas, un
+ * lunes por la mañana la semana en curso vale 0 y el número se hunde sin que
+ * haya pasado nada.
+ *
+ * Un cliente con menos historia que la ventana se mide contra lo que lleva
+ * conectado (desde su primera sesión), no contra 4 semanas que no ha vivido —
+ * si no, todo el mundo empieza con un 25%.
+ *
+ * @returns {number|null} 0–100, o null si no hay ninguna sesión que medir.
+ */
+export function adherencePct({
+  sessions = [],
+  sessionsPerCycle = 0,
+  weeks = 4,
+  now = Date.now(),
+} = {}) {
+  const target = Math.max(1, sessionsPerCycle);
+  const stamps = sessions
+    .map((s) => s?.timestamp)
+    .filter((ts) => typeof ts === 'number' && ts <= now);
+  if (!stamps.length) return null;
+
+  const first    = stamps.reduce((a, b) => (b < a ? b : a));
+  const spanDays = Math.min(weeks * 7, Math.max(1, Math.ceil((now - first) / DAY)));
+  const done     = stamps.filter((ts) => ts >= now - spanDays * DAY).length;
+  const expected = (spanDays / 7) * target;
+  // Se capa al 100%: entrenar de más no es "más adherencia", y un 180% en la
+  // tarjeta se lee como un error de cálculo.
+  return Math.min(100, Math.round((done / expected) * 100));
+}
+
+/**
  * Scores a client's adherence.
  *
  * The risk thresholds scale with the program's frequency, so they are fair

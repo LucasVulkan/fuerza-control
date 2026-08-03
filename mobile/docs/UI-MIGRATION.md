@@ -26,6 +26,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Copia en Drive** | ✅ | `src/screens/DriveBackupScreen.jsx` |
 | **Modales de conexión** (código / Google / modo sync) | ✅ | `ClientCodeModal.jsx`, `ClientGoogleLinkModal.jsx`, `TrainerSyncModal.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ (tarjeta **rehecha**, ver desglose) | `src/screens/ClientsScreen.jsx` |
+| **Ficha de cliente** (header + tabs + tab de Programa) | ✅ (Historial/Progreso/Info **sin migrar**, ver desglose) | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
@@ -191,6 +192,95 @@ Divergencias conscientes respecto al mock:
 | Naranja de aviso | El `orange` del tema (`#fb923c`), **no** el `#ff9900` del mock — decisión explícita del usuario: el naranja de aviso ya existe en la app y no se duplica |
 | Icono del CTA | Figma dibuja el icono de barras (Progreso) en un botón que es placeholder; nuestros CTA usan el prefijo `↑` / `+` que ya tenía la app |
 | CTA centrado | Figma lo ancla arriba dentro de un bloque de 40px; aquí el bloque crece cuando hay 2 avisos, así que va centrado contra el alto real |
+
+### Ficha de cliente — desglose (header, tabs y tab de Programa)
+
+**No hay frame de Figma**: la referencia es un HTML que mandó el usuario
+(`formfit-v21-Clienteficha.html`) más su lista de 8 puntos. Solo entran la vista
+general y el **tab de Programa** — Historial, Progreso e Info se quedan como
+estaban (Info se rehará entero después, y ahí es donde vive ya el código).
+
+- **Cabecera, en UNA línea**: `‹` en caja 34×34 `surface2` + nombre a
+  `text/hero` + la última actividad (`hace 2 días`, `text/subtitle` `muted`) a la
+  derecha del todo. Fuera el botón "Importar" y el `＋` (ambos pasan al `⋯` del
+  programa), y fuera también el `2/4 esta semana` y los puntos del HTML: ese dato
+  ya lo dan la adherencia y los puntos de ciclo de la tarjeta. El día sale de
+  `adherence.daysSince`, que ya está memoizado (no `Date.now()` en render).
+- **Tabs** = `SegmentedControl` sin tocar (la píldora `radius/full` de Figma, no
+  el rectángulo del HTML). Pasan de 5 a **4** con etiquetas cortas: el tab
+  **Clave desaparece** y `Progresión` → `Progreso`, para que quepan a 12px.
+- **Tarjeta de programa asignado** — dos colores, como la tarjeta de ejercicio
+  del workout: cabecera `surface2` (padding 14/16, los del spec v6 de
+  `ExerciseCard`, sin token) y cuerpo `surface`, todo en `radius/lg`.
+  - **Misma tipografía que el banner de Home**, que es el mismo bloque de
+    información sobre otro fondo: eyebrows `text/spacing-tag` en `mutedLight` y
+    uppercase (`bnEyebrow`), nombre y nº de ciclo a `text/hero` con el
+    `marginTop: -space/xs` que los pega a su etiqueta.
+  - **Sin puntos de sesión** (el HTML los dibuja bajo el número): apilados
+    añadían una fila entera de alto a la cabecera para muy poca tinta, y el
+    segmento en curso de la barra de etapas ya se rellena con esa fracción.
+  - El eyebrow de la derecha necesita `paddingRight` + `marginRight` negativo:
+    el tracking de `spacing-tag` deja hueco DETRÁS de la última letra que RN no
+    mete en el ancho medido, y alineado a la derecha se comía la "O" de CICLO.
+  - Barra de etapas: **`StageSegBar` extraída de `HomeScreen` a
+    `ui/StageSegBar.jsx`** y compartida. Aquí sobre oscuro (fill `accent`, track
+    **`#545454` literal**, `STAGE_TRACK` — `surface2` no se veía y `mutedLight`
+    competía con el relleno, así que es el punto medio entre los dos; mismo caso
+    de "color sin token" que el `#b8ff00`/`#81a71e` del banner). En el banner el
+    track sigue en `onAccent` al 16%. Solo se pinta con **más de
+    una etapa y con techo de ciclos** — con una sola etapa mediría el programa
+    contra sí mismo. Su línea de etiquetas sigue a `bnStageLabels` pero con dos
+    ajustes de QA: `ETAPA 1` se queda en `mutedLight` y el **nombre propio de la
+    etapa pasa a `color/text`** (es el dato, no la etiqueta), y la posición de la
+    derecha sube de `small-bold` a `text/subtitle`, que a 8px no se leía.
+  - 3 datos en cajas `bg` / `radius/md`: **Adherencia · Ritmo · Carga**. Se
+    reparten el ancho a tercios, así que en un móvil estrecho quedan ~86px de
+    contenido: valor y etiqueta llevan `adjustsFontSizeToFit` (mismo recurso que
+    las Progress cards) para que ninguna se parta ni se trunque.
+- **Los 3 datos** (decisiones del usuario, no había número para dos de ellos):
+  - `adherencePct()` **nuevo** en `src/utils/adherence.js` (con test): sesiones
+    hechas vs esperadas en una ventana móvil de **28 días**. Ventana de días y
+    no de semanas de calendario para que un lunes no hunda el número; un cliente
+    con menos historia que la ventana se mide contra lo que lleva, no contra 4
+    semanas que no ha vivido. Capado al 100%. Es el único de los tres que se
+    colorea cuando pide atención — los otros dos describen, no juzgan.
+  - Ritmo: el `recentPerWeek` que ya existía.
+  - Carga media: media de carga externa de **7d vs 28d** en %, el mismo par de
+    medias del que sale `loadState` en el panel de Carga. Necesita ≥14 días.
+- **Los avisos van ENCIMA de la tarjeta** (etapa bloqueada, bloque terminado y,
+  nuevo aquí, **cambios sin enviar** — que antes era un botón naranja en la fila
+  de acciones). Así la tarjeta tiene siempre la misma forma. El aviso suave de
+  "terminó la etapa y sigue en ella" se queda dentro, bajo la barra.
+- **Acciones**: `[Editar programa] [Ver programa] [⋯]` con la variante Secondary
+  real (`surface2` sólido, sin borde, `radius/md`, h44). **Todo lo demás está en
+  el `⋯`**, que ahora es un `DragSheet` (antes un `Modal` propio con menú
+  contextual): nuevo programa · subir a cliente · importar · compartir ·
+  exportar · programas anteriores · quitar asignación · eliminar.
+  - **Programas anteriores dejan de ser un acordeón** en la pantalla y pasan a
+    su propia hoja. Se abre con 250 ms de retardo: dos `Modal` de RN no se
+    relevan bien en el mismo tick y el segundo se queda sin presentar.
+- **Próxima sesión** en sección propia (etiqueta con el tratamiento de
+  `SectionHeader` de HomeView — `text/spacing-tag` `mutedLight` **en mayúsculas**
+  — y tarjeta `surface` con letra accent, nombre y `6 ejercicios · 55 min aprox`
+  de `sessionStats`; el botón `Preparar` conserva la **diana** que ya tenía y va
+  en `tint/accent-10` + texto accent, porque el `surface2` del Secondary no se
+  separaba del `surface` de la tarjeta) y
+  **una línea de explicación debajo, fuera de la tarjeta**: es un ajuste puntual,
+  el programa no cambia. Sustituye a la caja azul `heroNext`.
+- **Tarjeta de código de conexión** (`ClientCodeBlock`, un componente, dos sitios):
+  en el tab de Programa **mientras el cliente no ha canjeado el código**, y
+  siempre en Info. La señal de "conectado" es nueva: `slot.client_id` ya venía en
+  `getTrainerSlots` y ahora `refreshTrainerSlots` lo vuelca a `client.syncLinked`
+  — tener slot solo significa que lo creaste tú, no que el cliente esté dentro.
+  Además lleva un **`Entendido`** terciario (solo texto) que la retira del tab de
+  Programa para siempre (`client.codeHintDismissed`): si a ese cliente no vas a
+  conectarlo, la tarjeta se quedaría ahí sin nada que hacer. En Info sigue.
+- De paso: 137 claves de estilo muertas fuera del `makeStyles` (49 las dejó sin
+  uso este cambio, 88 ya lo estaban), y `allExercises` memoizado porque ahora
+  alimenta el cálculo de carga.
+
+Pendiente: el `⋯` de la cabecera que dibuja el HTML se ha dejado **fuera** —
+todas sus acciones son ya pestañas o están en el `⋯` del programa.
 
 ### Progreso › pestaña Carga — desglose
 
