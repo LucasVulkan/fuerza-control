@@ -9,6 +9,12 @@
 
 /** Config fields that travel with a link group (identity/order excluded). */
 export const LINKED_CONFIG_KEYS = [
+  // `isKey` viaja con el grupo: estar vinculado significa compartir la
+  // estructura ENTERA, sin excepciones. Si una sentadilla es la principal de un
+  // día y accesoria de otro, su programación ya difiere y no deberían estar en
+  // el mismo grupo — la salida es desvincular, no una excepción que el usuario
+  // no puede adivinar.
+  'isKey',
   'sets', 'restSec', 'inputType',
   'minReps', 'maxReps', 'minTime', 'maxTime',
   'isUnilateral', 'tempo', 'trainerNote', 'trackRpe',

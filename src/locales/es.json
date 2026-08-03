@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancelar",
+    "keyExercise": "Principal",
     "back": "‹ Atrás",
     "next": "Siguiente",
     "save": "Guardar",
@@ -696,7 +697,6 @@
     "supersetHeader": "Superserie · {{count}} rondas · alternando",
     "supersetFooterPrefix": "Descanso ",
     "supersetFooterSuffix": " tras cada ronda",
-    "keyBadge": "CLAVE",
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
     "setsSectionLabel": "Series",
@@ -1233,7 +1233,6 @@
     "sessionMetaNoTime": "{{ex}} ejercicios · {{sets}} series",
     "programSummary": "{{stages}} etapas · {{weeks}} ciclos · {{sessions}} sesiones",
     "programSummarySimple": "{{sessions}} sesiones · {{sets}} series",
-    "keyPill": "CLAVE",
     "programSummaryOpen": "{{stages}} etapas · {{weeks}}+ ciclos · {{sessions}}+ sesiones",
     "cyclesOpen": "Sin límite",
     "addStage": "Añadir etapa",

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   programTemplateIds, linkGroupTemplateIds, lastLinkedExercise,
   exerciseLinkGroups, exerciseInstanceCount, pickLinkedConfig,
-  templateChainIds, lastExerciseRef,
+  templateChainIds, lastExerciseRef, LINKED_CONFIG_KEYS,
 } from './exerciseLinks';
 
 const TPLS = {
@@ -93,6 +93,14 @@ describe('pickLinkedConfig', () => {
     });
     expect(cfg.exerciseId).toBeUndefined();
     expect(cfg.linkGroup).toBeUndefined();
+  });
+
+  it('carries isKey — estar vinculado es compartir la estructura ENTERA', () => {
+    // Si una sentadilla es la principal de un día y accesoria de otro, su
+    // programación ya difiere y no deberían compartir grupo. La salida es
+    // desvincular, no una excepción que el usuario no puede adivinar.
+    expect(pickLinkedConfig({ exerciseId: 'squat', isKey: true, sets: 4 })).toEqual({ isKey: true, sets: 4 });
+    expect(LINKED_CONFIG_KEYS).toContain('isKey');
   });
 });
 

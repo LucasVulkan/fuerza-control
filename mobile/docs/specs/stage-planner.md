@@ -439,14 +439,27 @@ lo generado.
 Feature útil por sí sola (el entrenador ve de un vistazo cuál es el básico del
 día) y es la única dependencia de `scope`.
 
-**Decisión tomada al implementar: `isKey` NO entra en `LINKED_CONFIG_KEYS`.**
-Ser el básico es un papel dentro de ESA sesión, no una propiedad del ejercicio:
-la misma sentadilla puede ser la principal del día de pierna y un accesorio del
-día de full body. Si viajara con el grupo vinculado, marcarla en un sitio la
-marcaría en todos.
+**`isKey` SÍ entra en `LINKED_CONFIG_KEYS`** (corregido en el QA de la fase 2).
+Se implementó primero al revés, razonando que ser el básico es un papel de ESA
+sesión. El usuario lo rechazó y tiene razón: estar vinculado significa compartir
+la estructura ENTERA, sin excepciones —decisión ya cerrada del proyecto—, y si
+una sentadilla es la principal de un día y accesoria de otro, su programación ya
+difiere y no deberían estar en el mismo grupo. La salida es desvincular. Una
+excepción silenciosa aquí es además imposible de adivinar para quien la usa.
 
-La pill reutiliza el hueco de la pill de formato de bloque en `EditorRow` — no
-pueden coincidir nunca, porque un bloque no es un ejercicio.
+**"Principal" es metadato, no badge** (misma ronda de QA). Como pastilla junto
+al nombre se llevaba una fila entera en cuanto el nombre era largo, y la palabra
+en español no cabe en una pill. Va como primer término de la línea de subtítulo,
+separado por punto medio, en los tres sitios donde aparece:
+`ExerciseCard` del workout (que ya tenía un `keyBadge` sin estrenar, invisible
+hasta que existió el switch), la fila del editor de sesión y `ProgramDetailScreen`.
+Es además lo que ya decía el comentario de cabecera de `SessionEditorScreen`:
+"todo lo que antes eran badges pasa a metadato del subtítulo; la única pill que
+queda es la del formato de bloque".
+
+Una sola cadena para los tres: `common.keyExercise` ("Principal" / "Key").
+Sustituye a `workout.keyBadge` y al `' · CLAVE'` hardcodeado de
+`ProgramDetailScreen`.
 
 ---
 

@@ -429,10 +429,14 @@ export default function ExerciseCard({
     <>
       <View style={styles.nameRow}>
         <Text style={styles.name} numberOfLines={2}>{name}</Text>
-        {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
       </View>
-      {(targetLabel || exConfig.tempo) ? (
+      {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
+          llevaba una fila entera en cuanto el nombre era largo. Va delante del
+          objetivo, en la misma línea, separado por punto medio. */}
+      {(targetLabel || exConfig.tempo || exConfig.isKey) ? (
         <Text style={styles.target} numberOfLines={2}>
+          {exConfig.isKey ? <Text style={styles.keyInline}>{t('common.keyExercise')}</Text> : null}
+          {exConfig.isKey && (targetLabel || exConfig.tempo) ? ' · ' : ''}
           {targetLabel}
           {targetLabel && exConfig.tempo
             ? <Text style={styles.tempoInline}>{` · ${exConfig.tempo}`}</Text>
@@ -982,16 +986,9 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.text,
     flexShrink:    1,
   },
-  keyBadge: {
-    fontSize:          typography.xs,
-    fontWeight:        typography.bold,
-    color:             th.colors.accent,
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      R_SMALL,
-    paddingHorizontal: spacing.xs,
-    paddingVertical:   2,
-    overflow:          'hidden',
-    letterSpacing:     0.5,
+  keyInline: {
+    color:      th.colors.accent,
+    fontWeight: typography.bold,
   },
   target: {
     fontFamily:  'Inter_600SemiBold',

@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancel",
+    "keyExercise": "Key",
     "back": "‹ Back",
     "next": "Next",
     "save": "Save",
@@ -696,7 +697,6 @@
     "supersetHeader": "Superset · {{count}} rounds · alternating",
     "supersetFooterPrefix": "",
     "supersetFooterSuffix": " rest after each round",
-    "keyBadge": "KEY",
     "coachTarget": "Your trainer's target",
     "thisSession": "this session",
     "setsSectionLabel": "Sets",
@@ -1233,7 +1233,6 @@
     "sessionMetaNoTime": "{{ex}} exercises · {{sets}} sets",
     "programSummary": "{{stages}} stages · {{weeks}} cycles · {{sessions}} sessions",
     "programSummarySimple": "{{sessions}} sessions · {{sets}} sets",
-    "keyPill": "KEY",
     "programSummaryOpen": "{{stages}} stages · {{weeks}}+ cycles · {{sessions}}+ sessions",
     "cyclesOpen": "No limit",
     "addStage": "Add stage",
