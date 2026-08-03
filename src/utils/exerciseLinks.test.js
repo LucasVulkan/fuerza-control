@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   programTemplateIds, linkGroupTemplateIds, lastLinkedExercise,
   exerciseLinkGroups, exerciseInstanceCount, pickLinkedConfig,
+  templateChainIds, lastExerciseRef, LINKED_CONFIG_KEYS,
 } from './exerciseLinks';
 
 const TPLS = {
@@ -92,5 +93,94 @@ describe('pickLinkedConfig', () => {
     });
     expect(cfg.exerciseId).toBeUndefined();
     expect(cfg.linkGroup).toBeUndefined();
+  });
+
+  it('carries isKey — estar vinculado es compartir la estructura ENTERA', () => {
+    // Si una sentadilla es la principal de un día y accesoria de otro, su
+    // programación ya difiere y no deberían compartir grupo. La salida es
+    // desvincular, no una excepción que el usuario no puede adivinar.
+    expect(pickLinkedConfig({ exerciseId: 'squat', isKey: true, sets: 4 })).toEqual({ isKey: true, sets: 4 });
+    expect(LINKED_CONFIG_KEYS).toContain('isKey');
+  });
+});
+
+// ── Cadena de etapas (docs/specs/stage-planner.md §4.1) ─────────────────────
+
+describe('templateChainIds', () => {
+  // Etapa 3 → etapa 2 → etapa 1, mismo día de la semana.
+  const CHAIN = {
+    tpl3: { id: 'tpl3', derivedFrom: 'tpl2', exercises: [] },
+    tpl2: { id: 'tpl2', derivedFrom: 'tpl1', exercises: [] },
+    tpl1: { id: 'tpl1', exercises: [] },
+  };
+  const get = (id) => CHAIN[id];
+
+  it('walks back through every stage it descends from', () => {
+    expect(templateChainIds('tpl3', get)).toEqual(['tpl3', 'tpl2', 'tpl1']);
+  });
+
+  it('always includes the template itself, chain or not', () => {
+    expect(templateChainIds('tpl1', get)).toEqual(['tpl1']);
+    expect(templateChainIds('nope', get)).toEqual(['nope']);
+  });
+
+  it('stops at a deleted ancestor instead of throwing', () => {
+    const broken = { tplX: { id: 'tplX', derivedFrom: 'gone' } };
+    expect(templateChainIds('tplX', (id) => broken[id])).toEqual(['tplX', 'gone']);
+  });
+
+  it('cannot hang on a circular derivedFrom', () => {
+    const loop = { a: { derivedFrom: 'b' }, b: { derivedFrom: 'a' } };
+    expect(templateChainIds('a', (id) => loop[id])).toEqual(['a', 'b']);
+  });
+});
+
+describe('lastExerciseRef', () => {
+  const TPLS_CHAIN = {
+    tpl2: { id: 'tpl2', derivedFrom: 'tpl1', exercises: [{ exerciseId: 'squat' }] },
+    tpl1: { id: 'tpl1', exercises: [{ exerciseId: 'squat' }] },
+    tplLinkA: { id: 'tplLinkA', exercises: [{ exerciseId: 'squat', linkGroup: 'g1' }] },
+    tplLinkB: { id: 'tplLinkB', exercises: [{ exerciseId: 'squat', linkGroup: 'g1' }] },
+  };
+  const get = (id) => TPLS_CHAIN[id];
+  const program = {
+    stages: [
+      { days: [{ sessionTemplateId: 'tpl1' }, { sessionTemplateId: 'tplLinkA' }] },
+      { days: [{ sessionTemplateId: 'tpl2' }, { sessionTemplateId: 'tplLinkB' }] },
+    ],
+  };
+  const setsOf = (kg) => [{ weight: String(kg), reps: '5', done: true }];
+  const log = [
+    { sessionTemplateId: 'tpl1',     timestamp: 100, exercises: [{ exerciseId: 'squat', sets: setsOf(100) }] },
+    { sessionTemplateId: 'tplLinkA', timestamp: 200, exercises: [{ exerciseId: 'squat', sets: setsOf(80) }] },
+  ];
+
+  it('finds the reference through the stage chain — the bug this fixes', () => {
+    // tpl2 es la sesión de la etapa NUEVA: nunca se ha entrenado bajo ese id.
+    // Sin la cadena esto era null → ni chip de progresión ni pesos fantasma.
+    const ref = lastExerciseRef({
+      workoutLog: log, program, templateId: 'tpl2',
+      exConfig: { exerciseId: 'squat' }, getTemplate: get,
+    });
+    expect(ref?.sets[0].weight).toBe('100');
+  });
+
+  it('a link group wins over the chain — it is an explicit trainer decision', () => {
+    const ref = lastExerciseRef({
+      workoutLog: log, program, templateId: 'tplLinkB',
+      exConfig: { exerciseId: 'squat', linkGroup: 'g1' }, getTemplate: get,
+    });
+    expect(ref?.sets[0].weight).toBe('80');
+  });
+
+  it('returns null when the exercise has never been logged', () => {
+    expect(lastExerciseRef({
+      workoutLog: log, program, templateId: 'tpl2',
+      exConfig: { exerciseId: 'bench' }, getTemplate: get,
+    })).toBeNull();
+  });
+
+  it('is null-safe on a missing exConfig', () => {
+    expect(lastExerciseRef({ workoutLog: log, program, templateId: 'tpl2', exConfig: null, getTemplate: get })).toBeNull();
   });
 });

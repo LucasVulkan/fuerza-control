@@ -149,6 +149,7 @@ function computeInitial(exConfig, def) {
     minTime:        exConfig.minTime      ?? def?.minTime ?? 20,
     maxTime:        exConfig.maxTime      ?? def?.maxTime ?? 40,
     metric:         initMetric,
+    isKey:          exConfig.isKey        ?? false,
     isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
     tempo:          exConfig.tempo        ?? '',
     trainerNote:    exConfig.trainerNote  ?? '',
@@ -195,6 +196,7 @@ export default function ExerciseEditorInline({
   const [minTime,        setMinTime]        = useState(i.minTime);
   const [maxTime,        setMaxTime]        = useState(i.maxTime);
   const [metric,         setMetric]         = useState(i.metric);
+  const [isKey,          setIsKey]          = useState(i.isKey);
   const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
   const [tempo,          setTempo]          = useState(i.tempo);
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
@@ -225,7 +227,7 @@ export default function ExerciseEditorInline({
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
   stateRef.current = {
-    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, tempo, trainerNote,
     trackRpe, evalMaxRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
     dropset, supersetWithNext,
@@ -244,6 +246,7 @@ export default function ExerciseEditorInline({
 
     const updates = {
       sets: s.sets, restSec: s.restSec, inputType,
+      isKey:        s.isKey,
       isUnilateral: s.isUnilateral,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
@@ -295,7 +298,7 @@ export default function ExerciseEditorInline({
     timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isUnilateral, tempo, trainerNote,
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, tempo, trainerNote,
       trackRpe, evalMaxRpe,
       progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
       supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
@@ -319,6 +322,7 @@ export default function ExerciseEditorInline({
     setMinReps(v.minReps);     setMaxReps(v.maxReps);
     setMinTime(v.minTime);     setMaxTime(v.maxTime);
     setMetric(v.metric);       setIsUnilateral(v.isUnilateral); setTempo(v.tempo);
+    setIsKey(v.isKey);
     setTrainerNote(v.trainerNote);
     setTrackRpe(v.trackRpe);   setEvalMaxRpe(v.evalMaxRpe);
     setProgMode(v.progMode);   setProgType(v.progType);
@@ -499,6 +503,15 @@ export default function ExerciseEditorInline({
       <Text style={styles.secLabel}>{t('exerciseEditor.sectionOptions').toUpperCase()}</Text>
 
       <View style={styles.optGroup}>
+        {/* Marca el ejercicio como básico del día. Además de leerse de un
+            vistazo en la lista de la sesión, es lo que permite que una regla de
+            etapa distinga keys de accesorios (stage-planner.md §5). */}
+        <ToggleRow
+          label={t('exerciseEditor.isKeyLabel')}
+          hint={t('exerciseEditor.isKeyHint')}
+          value={isKey}
+          onChange={setIsKey}
+        />
         <ToggleRow
           label={t('exerciseEditor.unilateralLabel')}
           value={isUnilateral}

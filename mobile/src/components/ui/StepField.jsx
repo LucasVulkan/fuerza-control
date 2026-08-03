@@ -20,15 +20,30 @@ import { useThemedStyles } from '../../useTheme';
 //     los bordes): es una inconsistencia del mock, aquí van todas iguales.
 //   · `Horizontal` — label a la izquierda y los controles a la derecha. Es la
 //     que usan las hojas, donde el alto vertical es caro.
-// `dark` pinta la caja sobre `color/app` en vez de `surface`: dentro de una hoja
-// el fondo YA es `surface` y las cajas se perdían contra él.
+// ─── Tres reglas del stepper, cerradas en QA. No romperlas. ──────────────────
+//
+// 1. **El ± siempre lleva fondo propio** (`surface2`), distinto del de la caja.
+//    Nunca transparente: sin caja no se lee como botón.
+// 2. **La caja nunca se funde con lo que la rodea.** De ahí `dark`: la caja va
+//    sobre `surface` por defecto y sobre `bg` con `dark`. Se usa `dark` cuando
+//    el contenedor ya es `surface` (una tarjeta, el cuerpo de una hoja) y NO se
+//    usa cuando el contenedor es `bg`, o volvería a fundirse.
+// 3. **La caja llega hasta el título.** El label va SIEMPRE por la prop `label`,
+//    nunca pintado fuera por el llamante: el fondo tiene que cubrir el título y
+//    los controles, no solo los ±.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
-const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
+// Separación entre los ± y la zona del número, en la variante Horizontal.
+// 26 dejaba los botones a 120 px y el control parecía tres piezas sueltas; 10
+// se quedó corto. 14 es el punto medio del QA.
+const STEP_GAP  = 14;
 const GLYPH_W   = 13;   // largo de la barra del − / +
 const GLYPH_T   = 2;    // grosor
 // Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
-// o los botones ± bailan de una fila a otra (QA).
-const VALUE_W   = 68;
+// o los botones ± bailan de una fila a otra (QA). Subido de 68 a 76 y el input
+// de dentro de 44 a 52 porque un valor de 4 caracteres ("6.75") se cortaba por
+// la izquierda: el `width` del TextInput recorta, no crece.
+const VALUE_W   = 76;
+const VALUE_INPUT_W = 52;
 
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
   const sf = useThemedStyles(makeSf);
@@ -41,8 +56,13 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   const round  = (n) => Math.round(n * 100) / 100;
   const commit = (n) => onChange(round(Math.min(max, Math.max(min, n))));
 
+  // Los campos con mínimo negativo (los deltas del planificador: −3 reps,
+  // −1 serie) admiten el signo, y solo al principio. Sin esto el teclado dejaba
+  // escribir "3" en un campo cuyo máximo es 0 y el valor se clampaba a 0.
+  const signed = min < 0;
   function handleChangeText(v) {
-    setDraft(decimals ? v.replace(/[^0-9.]/g, '') : v.replace(/[^0-9]/g, ''));
+    const body = (decimals ? v.replace(/[^0-9.]/g, '') : v.replace(/[^0-9]/g, ''));
+    setDraft(signed && v.trim().startsWith('-') ? `-${body}` : body);
   }
   function handleBlur() {
     const n = decimals ? parseFloat(draft) : parseInt(draft, 10);
@@ -58,7 +78,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
       <View style={sf.valueWrap}>
         <TextInput
           style={sf.valueInput}
-          keyboardType={decimals ? 'decimal-pad' : 'numeric'}
+          keyboardType={decimals ? 'decimal-pad' : (signed ? 'numbers-and-punctuation' : 'numeric')}
           value={draft}
           onChangeText={handleChangeText}
           onBlur={handleBlur}
@@ -141,7 +161,7 @@ const makeSf = (th) => StyleSheet.create({
     gap:            spacing.xs2,
   },
   valueInput: {
-    width:              44,
+    width:              VALUE_INPUT_W,
     ...textStyles.cardTitle,
     color:              th.colors.text,
     textAlign:          'center',

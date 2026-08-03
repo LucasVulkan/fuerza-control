@@ -60,6 +60,23 @@ function checkInvariants(result, answers, normalizedEquipment) {
     violations.push(`sessions: got ${program.days.length}, expected ${expectedSessions}`);
   }
 
+  // Modelo unificado (docs/specs/stage-planner.md §3): todo programa nace con
+  // UNA etapa, sin límite de ciclos (el onboarding no pregunta duración), y
+  // `program.days` espeja los días de la etapa activa.
+  if ((program.stages?.length ?? 0) !== 1) {
+    violations.push(`stages: got ${program.stages?.length ?? 0}, expected 1`);
+  } else {
+    if (program.stages[0].durationWeeks !== null) {
+      violations.push(`stage durationWeeks: got ${program.stages[0].durationWeeks}, expected null`);
+    }
+    if (program.currentStageIndex !== 0) {
+      violations.push(`currentStageIndex: got ${program.currentStageIndex}, expected 0`);
+    }
+    const mirrored = program.stages[0].days.map((d) => d.sessionTemplateId).join(',');
+    const days     = program.days.map((d) => d.sessionTemplateId).join(',');
+    if (mirrored !== days) violations.push(`days mirror: [${days}] vs stage [${mirrored}]`);
+  }
+
   program.days.forEach((d) => {
     const tpl = sessionTemplates[d.sessionTemplateId];
     if (!tpl) { violations.push(`missing template for day ${d.label}`); return; }

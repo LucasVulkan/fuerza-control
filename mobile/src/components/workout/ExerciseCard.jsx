@@ -429,10 +429,14 @@ export default function ExerciseCard({
     <>
       <View style={styles.nameRow}>
         <Text style={styles.name} numberOfLines={2}>{name}</Text>
-        {exConfig.isKey && <Text style={styles.keyBadge}>{t('workout.keyBadge')}</Text>}
       </View>
-      {(targetLabel || exConfig.tempo) ? (
+      {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
+          llevaba una fila entera en cuanto el nombre era largo. Va delante del
+          objetivo, en la misma línea, separado por punto medio. */}
+      {(targetLabel || exConfig.tempo || exConfig.isKey) ? (
         <Text style={styles.target} numberOfLines={2}>
+          {exConfig.isKey ? <Text style={styles.keyInline}>{t('common.keyExercise')}</Text> : null}
+          {exConfig.isKey && (targetLabel || exConfig.tempo) ? ' · ' : ''}
           {targetLabel}
           {targetLabel && exConfig.tempo
             ? <Text style={styles.tempoInline}>{` · ${exConfig.tempo}`}</Text>
@@ -602,8 +606,15 @@ export default function ExerciseCard({
           {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
           {!hasCoachTarget && progression ? (
             <View style={styles.progLine}>
-              <Text style={[styles.progDir, progression.type === 'hold' && styles.progDirHold]}>
-                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.type}`, '')}`}
+              <Text style={[
+                styles.progDir,
+                progression.type === 'hold' && styles.progDirHold,
+                // La descarga no es un mantenimiento más: es una instrucción
+                // del bloque, y se lee antes si no comparte color con el gris
+                // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
+                progression.reason === 'deload' && styles.progDirDeload,
+              ]}>
+                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.reason === 'deload' ? 'deload' : progression.type}`, '')}`}
               </Text>
               {progDetail ? <Text style={styles.progDetail}>{progDetail}</Text> : null}
             </View>
@@ -982,16 +993,9 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.text,
     flexShrink:    1,
   },
-  keyBadge: {
-    fontSize:          typography.xs,
-    fontWeight:        typography.bold,
-    color:             th.colors.accent,
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      R_SMALL,
-    paddingHorizontal: spacing.xs,
-    paddingVertical:   2,
-    overflow:          'hidden',
-    letterSpacing:     0.5,
+  keyInline: {
+    color:      th.colors.accent,
+    fontWeight: typography.bold,
   },
   target: {
     fontFamily:  'Inter_600SemiBold',
@@ -1046,6 +1050,9 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.1,
     color:         th.colors.accent,
     textTransform: 'uppercase',
+  },
+  progDirDeload: {
+    color: th.colors.blue,
   },
   progDirHold: {
     color: th.colors.mutedLight,

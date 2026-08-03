@@ -48,8 +48,10 @@ function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
   const styles     = useThemedStyles(makeStyles);
   const dayCount   = getAllProgramDays(program).length;
   const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
+  // Una etapa sin límite de ciclos hace el total indeterminado → variante "+".
+  const hasOpenStage = (program.stages ?? []).some((s) => s.durationWeeks == null);
   const structureStr = stageCount
-    ? t('editor.programSummary', {
+    ? t(hasOpenStage ? 'editor.programSummaryOpen' : 'editor.programSummary', {
         stages:   stageCount,
         weeks:    program.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
         sessions: program.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
@@ -103,12 +105,15 @@ function CreateModal({ visible, onClose, onCreate }) {
   const styles         = useThemedStyles(makeStyles);
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
+  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
+  const [durationWeeks, setDurationWeeks] = useState(4);
 
   function handleCreate() {
     if (!name.trim()) return;
-    onCreate(name.trim(), sessions);
+    onCreate(name.trim(), sessions, durationWeeks);
     setName('');
     setSessions(3);
+    setDurationWeeks(4);
     onClose();
   }
 
@@ -147,6 +152,31 @@ function CreateModal({ visible, onClose, onCreate }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          <Text style={styles.fieldLabel}>{t('editor.cyclesQuestion').toUpperCase()}</Text>
+          <Text style={styles.fieldHint}>{t('editor.cyclesExplain')}</Text>
+          <View style={styles.sessionPicker}>
+            {[4, 6, 8, 12].map((n) => (
+              <TouchableOpacity
+                key={n}
+                style={[styles.sessionBtn, durationWeeks === n && styles.sessionBtnActive]}
+                onPress={() => setDurationWeeks(n)}
+              >
+                <Text style={[styles.sessionBtnText, durationWeeks === n && styles.sessionBtnTextActive]}>
+                  {n}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.noLimitRow, durationWeeks === null && styles.sessionBtnActive]}
+            onPress={() => setDurationWeeks(durationWeeks === null ? 4 : null)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.noLimitText, durationWeeks === null && styles.sessionBtnTextActive]}>
+              {t('editor.cyclesNoLimit')}
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
@@ -329,8 +359,8 @@ export default function ProgramScreen() {
     }, 0);
   }
 
-  function handleCreate(name, numSessions) {
-    const newId = createEmptyProgram(numSessions, name, 'template');
+  function handleCreate(name, numSessions, durationWeeks) {
+    const newId = createEmptyProgram(numSessions, name, 'template', durationWeeks);
     showToast(t('templates.toastCreated'), 2200, 'success');
     setEditingProgram(newId);
   }
@@ -742,6 +772,23 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row',
     gap:           spacing.xs,
   },
+  fieldHint: {
+    fontSize:  typography.xs,
+    color:     th.colors.muted,
+    marginTop: 4,
+  },
+  // "Sin límite" — misma anatomía que sessionBtn pero a ancho completo, porque
+  // es una opción de texto y no una cifra más de la fila.
+  noLimitRow: {
+    marginTop:         spacing.xs,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    borderWidth:       borders.thin,
+    borderColor:       th.colors.border,
+    backgroundColor:   th.colors.surface2,
+  },
+  noLimitText: { fontSize: typography.sm, color: th.colors.muted },
   sessionBtn: {
     flex:            1,
     height:          44,

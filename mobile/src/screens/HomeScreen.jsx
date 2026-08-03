@@ -99,23 +99,39 @@ function computeCycleProgress(program) {
 }
 
 /**
- * Data for the stage card (null when there are no stages).
+ * Data for the stage card (null when there is nothing worth showing).
+ *
+ * `totalWeeks` is null when the stage has no cycle limit
+ * (`durationWeeks: null`), and the caller must not try to count towards it.
  */
 function computeStageInfo(program, t) {
-  if ((program.stages?.length ?? 0) === 0) return null;
+  const stages = program.stages ?? [];
+  if (stages.length === 0) return null;
   const stageIdx         = program.currentStageIndex ?? 0;
-  const stage            = program.stages[stageIdx];
+  const stage            = stages[stageIdx];
   if (!stage) return null;
-  const totalWeeks       = stage.durationWeeks ?? 4;
+  const totalWeeks       = stage.durationWeeks ?? null;
+  // Una sola etapa y sin límite = programa sin periodizar. No hay nada que
+  // contar ni total para la tira de ciclos, así que el bloque no se pinta —
+  // que es lo que se veía antes de unificar el modelo, cuando un programa así
+  // simplemente no tenía etapas.
+  if (stages.length === 1 && totalWeeks == null) return null;
   // A week is a closed rotation, not a session count — repeating a session must
   // not move this. See `docs/specs/stage-locks.md` §3.
-  const weekInStage      = Math.min((program.stageWeeksCompleted ?? 0) + 1, totalWeeks);
+  const cyclesDone       = program.stageWeeksCompleted ?? 0;
+  const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
+  // "Estoy en el ciclo N" y "he terminado los N" caen los dos en el mismo
+  // `weekInStage` por el clamp, y se pintan distinto: terminada, la tira va
+  // llena entera. Sin esto, cerrar una etapa en los ciclos ya hechos (al añadir
+  // la siguiente) dejaba el último segmento vacío y parecía faltar un ciclo.
+  const stageComplete    = totalWeeks != null && cyclesDone >= totalWeeks;
   const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:    defaultLabel,
     stageName:     stage.name ?? defaultLabel,
     weekInStage,
     totalWeeks,
+    stageComplete,
   };
 }
 
@@ -237,20 +253,26 @@ function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, se
           <View style={styles.bnStageLabels}>
             <Text style={styles.bnStageName} numberOfLines={1}>{stageTitle}</Text>
             <Text style={styles.bnStagePos}>
-              {t('home.cycleProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
+              {stageInfo.totalWeeks == null
+                ? t('home.cycleProgressOpen', { current: stageInfo.weekInStage })
+                : t('home.cycleProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
             </Text>
           </View>
           {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a la
-              fracción de sesiones hechas, los futuros vacíos. */}
-          <StageSegBar
-            ratios={Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
-              i < stageInfo.weekInStage - 1 ? 1
-                : i === stageInfo.weekInStage - 1 ? doneInCycle / sessionsPerCycle
-                : 0
-            ))}
-            trackColor={withOpacity(th.colors.onAccent, 0.16)}
-            fillColor={th.colors.onAccent}
-          />
+              fracción de sesiones hechas, los futuros vacíos. Sin límite de
+              ciclos no hay total, así que no hay tira que dibujar. */}
+          {stageInfo.totalWeeks != null && (
+            <StageSegBar
+              ratios={Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
+                stageInfo.stageComplete ? 1
+                  : i < stageInfo.weekInStage - 1 ? 1
+                  : i === stageInfo.weekInStage - 1 ? doneInCycle / sessionsPerCycle
+                  : 0
+              ))}
+              trackColor={withOpacity(th.colors.onAccent, 0.16)}
+              fillColor={th.colors.onAccent}
+            />
+          )}
         </View>
       )}
     </TouchableOpacity>
@@ -580,7 +602,9 @@ function StagePickerModal({ program, onSelect, onClose }) {
                 <Text style={styles.stageOptionDesc}>
                   {locked
                     ? t('home.stageLockedShort')
-                    : `${stage.durationWeeks ?? 4} sem · ${stage.days?.length ?? 0} sesiones/ciclo`}
+                    : stage.durationWeeks == null
+                      ? t('home.stageMetaOpen',  { sessions: stage.days?.length ?? 0 })
+                      : t('home.stageMeta',      { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
                 </Text>
               </TouchableOpacity>
             );

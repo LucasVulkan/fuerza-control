@@ -1,5 +1,5 @@
-import { describe, test, expect } from 'vitest';
-import { getProgression } from './progression';
+import { describe, it, test, expect } from 'vitest';
+import { getProgression, resolveProgressionConfig } from './progression';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
 // which is independent of the translated text, so a no-op stub is enough.
@@ -58,5 +58,68 @@ describe('getProgression — RPE does not leak into other modes', () => {
 describe('getProgression — guards', () => {
   test('returns null with no sets', () => {
     expect(getProgression(rpeConfig(8), def, [], t)).toBeNull();
+  });
+});
+
+// ── Descarga (docs/specs/stage-planner.md §6) ───────────────────────────────
+
+describe('progression.hold = "deload"', () => {
+  const t = (k, o) => (o ? `${k}:${JSON.stringify(o)}` : k);
+  const deload = (extra = {}) => ({
+    sets: 3, minReps: 8, maxReps: 12,
+    progression: { type: 'double', hold: 'deload', increment: { type: 'fixed', value: 2.5 } },
+    ...extra,
+  });
+  const perfect = [
+    { weight: '60', reps: '12', done: true },
+    { weight: '60', reps: '12', done: true },
+    { weight: '60', reps: '12', done: true },
+  ];
+  const awful = [{ weight: '60', reps: '4', done: true }];
+
+  it('never suggests going up, however perfect the session', () => {
+    const chip = getProgression(deload(), null, perfect, t);
+    expect(chip.type).toBe('hold');
+    expect(chip.reason).toBe('deload');
+  });
+
+  it('never suggests going down either — the block asked for this', () => {
+    expect(getProgression(deload(), null, awful, t).type).toBe('hold');
+  });
+
+  it('does NOT hide the chip: silence reads as "no progression" and the client adds weight', () => {
+    const chip = getProgression(deload(), null, perfect, t);
+    expect(chip).not.toBeNull();
+    expect(chip.msg).toContain('progression.deload_hold');
+  });
+
+  it('keeps prefilling the working weight', () => {
+    expect(getProgression(deload(), null, perfect, t).suggestedWeight).toBe(60);
+  });
+
+  it('applies to every progression type, not just double', () => {
+    for (const type of ['double', 'weight', 'reps', 'time']) {
+      const cfg = deload({ progression: { type, hold: 'deload', increment: { type: 'fixed', value: 2.5 } } });
+      const chip = getProgression(cfg, null, perfect, t);
+      expect(chip.reason, type).toBe('deload');
+      expect(chip.type, type).toBe('hold');
+    }
+  });
+
+  it('type "none" still wins — that exercise has no chip at all', () => {
+    const cfg = deload({ progression: { type: 'none', hold: 'deload' } });
+    expect(getProgression(cfg, null, perfect, t)).toBeNull();
+  });
+
+  it('leaves normal exercises untouched', () => {
+    const normal = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
+    const chip = getProgression(normal, null, perfect, t);
+    expect(chip.type).toBe('up');
+    expect(chip.reason).toBeUndefined();
+  });
+
+  it('resolveProgressionConfig normalizes hold to null when absent', () => {
+    expect(resolveProgressionConfig({}, null).hold).toBeNull();
+    expect(resolveProgressionConfig({ progression: { type: 'double', hold: 'deload' } }, null).hold).toBe('deload');
   });
 });

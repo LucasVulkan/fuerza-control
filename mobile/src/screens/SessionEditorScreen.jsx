@@ -71,6 +71,7 @@ function rowMeta(exConfig, t) {
       ? `${exConfig.minReps}–${exConfig.maxReps}`
       : t('workout.submax', 'submáx');
   const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
+  if (exConfig.isKey) parts.unshift(t('common.keyExercise'));
   return parts.join(' · ');
 }
 
@@ -877,6 +878,8 @@ function Slot({
         number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
         meta:   metaFor(ex),
+        // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
+        // pill que queda es la de formato de bloque, y "Principal" no cabe.
         pill:   null,
         onPress:      () => onOpenExercise(ex.exerciseId),
         onDelete:     () => onRemoveExercise(ex.exerciseId),

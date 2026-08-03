@@ -18,7 +18,7 @@ import NotesModal from '../components/workout/NotesModal';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../../../src/utils/formatters';
-import { linkGroupTemplateIds, lastLinkedExercise } from '../../../src/utils/exerciseLinks';
+import { lastExerciseRef } from '../../../src/utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
 
@@ -363,11 +363,6 @@ export default function WorkoutScreen() {
     syncSessionSets();
   }, [template?.exercises]);
 
-  // Last session for progression recommendations
-  const lastSession = workoutLog
-    .filter((e) => e.sessionTemplateId === activeSession.templateId)
-    .sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
-
   // Trainer's one-off prescription for this session (if any), keyed by exercise.
   const sessionOverride = clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
 
@@ -380,13 +375,16 @@ export default function WorkoutScreen() {
     exConfig,
     def:         allExercises[exConfig.exerciseId],
     setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
-    lastExercise: exConfig.linkGroup
-      ? lastLinkedExercise(
-          workoutLog,
-          linkGroupTemplateIds(ownerProgram, exConfig.exerciseId, exConfig.linkGroup, getEffectiveTemplate),
-          exConfig.exerciseId,
-        )
-      : lastSession?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId) ?? null,
+    // Vinculado → el histórico del grupo; si no, el de esta sesión Y el de las
+    // etapas de las que desciende: entrar en una etapa nueva no puede dejar al
+    // cliente sin chip ni sin pesos de referencia (spec stage-planner §4.1).
+    lastExercise: lastExerciseRef({
+      workoutLog,
+      program:    ownerProgram,
+      templateId: activeSession.templateId,
+      exConfig,
+      getTemplate: getEffectiveTemplate,
+    }),
     overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
   }));
 

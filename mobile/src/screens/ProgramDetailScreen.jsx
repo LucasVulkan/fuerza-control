@@ -15,7 +15,7 @@ import { resolveColor } from '../themes';
 // ── Exercise row ───────────────────────────────────────────────────────────────
 
 function ExerciseRow({ exConfig, def, isLast }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
@@ -37,7 +37,7 @@ function ExerciseRow({ exConfig, def, isLast }) {
           {exConfig.sets} series
           {repsLabel ? ` · ${repsLabel}` : ''}
           {exConfig.restSec ? ` · ${exConfig.restSec}s descanso` : ''}
-          {exConfig.isKey ? ' · CLAVE' : ''}
+          {exConfig.isKey ? ` · ${t('common.keyExercise')}` : ''}
         </Text>
       </View>
     </View>
