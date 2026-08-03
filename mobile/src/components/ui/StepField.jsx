@@ -20,23 +20,24 @@ import { useThemedStyles } from '../../useTheme';
 //     los bordes): es una inconsistencia del mock, aquí van todas iguales.
 //   · `Horizontal` — label a la izquierda y los controles a la derecha. Es la
 //     que usan las hojas, donde el alto vertical es caro.
-// `dark` pinta la caja sobre `bg` en vez de `surface`. Es SOLO para cuando el
-// campo cuelga directo del fondo de una hoja (que ya es `surface`) y si no se
-// perdería contra él. **Dentro de una tarjeta, NO se usa**: la caja tiene que
-// compartir fondo con la tarjeta que envuelve su título, y lo único que
-// destaca son los botones ± (`surface2`). Es la lógica de toda la app.
+// `dark` pinta el stepper ENTERO sobre `bg`: la caja y los botones ±, que
+// pierden su `surface2` para no leerse como dos piezas pegadas a una tercera.
+// Es la variante para cuando el stepper vive dentro de algo más claro — el
+// fondo de una hoja (`surface`) o una tarjeta (`surface`) — y tiene que
+// distinguirse como un bloque propio. El ± se reconoce por el glifo, en accent.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
 // Separación entre los ± y la zona del número, en la variante Horizontal.
-// Bajado de 26 a 10 en QA: con `VALUE_W` de por medio, 26 dejaba los dos
-// botones a 120 px uno de otro y el control parecía tres piezas sueltas en
-// vez de un contador. El ancho de la zona del número es FIJO (ver abajo), así
-// que esta distancia no cambia al pasar de 1 a 3 dígitos.
-const STEP_GAP  = 10;
+// 26 dejaba los botones a 120 px y el control parecía tres piezas sueltas; 10
+// se quedó corto. 14 es el punto medio del QA.
+const STEP_GAP  = 14;
 const GLYPH_W   = 13;   // largo de la barra del − / +
 const GLYPH_T   = 2;    // grosor
 // Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
-// o los botones ± bailan de una fila a otra (QA).
-const VALUE_W   = 68;
+// o los botones ± bailan de una fila a otra (QA). Subido de 68 a 76 y el input
+// de dentro de 44 a 52 porque un valor de 4 caracteres ("6.75") se cortaba por
+// la izquierda: el `width` del TextInput recorta, no crece.
+const VALUE_W   = 76;
+const VALUE_INPUT_W = 52;
 
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
   const sf = useThemedStyles(makeSf);
@@ -65,7 +66,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
 
   const controls = (
     <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
+      <TouchableOpacity style={[sf.stepBtn, dark && sf.stepBtnDark]} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
       </TouchableOpacity>
       <View style={sf.valueWrap}>
@@ -79,7 +80,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
       </View>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
+      <TouchableOpacity style={[sf.stepBtn, dark && sf.stepBtnDark]} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
         <View style={[sf.glyphBar, sf.glyphBarV]} />
       </TouchableOpacity>
@@ -131,6 +132,10 @@ const makeSf = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
+  // En la variante oscura el stepper tiene que leerse como UN bloque oscuro
+  // dentro de la tarjeta que lo envuelve, no como una caja con dos botones más
+  // claros pegados. El ± se distingue por el glifo, que va en accent.
+  stepBtnDark: { backgroundColor: 'transparent' },
   // El − y el + van dibujados con Views y con las coordenadas puestas a mano
   // (no con glifos ni con centrado automático): así quedan clavados en el
   // centro de la caja sin depender de las métricas de la fuente. El + son dos
@@ -154,7 +159,7 @@ const makeSf = (th) => StyleSheet.create({
     gap:            spacing.xs2,
   },
   valueInput: {
-    width:              44,
+    width:              VALUE_INPUT_W,
     ...textStyles.cardTitle,
     color:              th.colors.text,
     textAlign:          'center',

@@ -98,7 +98,7 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
         </TouchableOpacity>
       ) : (
         <StepField
-          horizontal
+          horizontal dark
           label={t('editor.stageWeeksUnit')}
           value={stage.durationWeeks}
           onChange={onCycles}
@@ -163,10 +163,12 @@ export default function StagePlannerScreen({ navigation }) {
   const anyOpen    = stages.some((s) => s.durationWeeks == null);
   const totalCycles = stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0);
 
+  // Las etapas del bloque se numeran desde 1: el +2 daba por hecho que la base
+  // se llama "…1", y la base tiene su propio nombre, puesto a mano.
   function rungName(rung, i) {
     return rung.kind === 'deload'
       ? t('planner.rungs.deload')
-      : t(`planner.rungNames.${ladderId}`, { n: i + 2 });
+      : t(`planner.rungNames.${ladderId}`, { n: i + 1 });
   }
 
   function handleApply() {
@@ -266,7 +268,7 @@ export default function StagePlannerScreen({ navigation }) {
           <View style={styles.countRow}>
             <Text style={styles.fieldLabel}>{t('planner.rungCount')}</Text>
             <StepField
-              horizontal
+              horizontal dark
               value={workCount}
               onChange={(v) => regenerate(ladderId, v, withDeload)}
               min={1}
@@ -287,7 +289,7 @@ export default function StagePlannerScreen({ navigation }) {
               <View style={styles.rungField}>
                 <Text style={styles.fieldLabel}>{t('editor.stageWeeksUnit')}</Text>
                 <StepField
-                  horizontal
+                  horizontal dark
                   value={rung.durationWeeks}
                   onChange={(v) => patchRung(i, { durationWeeks: v })}
                   min={1}
@@ -298,7 +300,7 @@ export default function StagePlannerScreen({ navigation }) {
                 <View key={f.key} style={styles.rungField}>
                   <Text style={styles.fieldLabel}>{t(fieldLabelKey(f, rung.rx.scope))}</Text>
                   <StepField
-                    horizontal
+                    horizontal dark
                     value={rung.rx[f.key] ?? 0}
                     onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
                     min={f.min}
