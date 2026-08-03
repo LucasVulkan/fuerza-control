@@ -39,7 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, mergeProgressOnImport, withStages, ensureStages } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage } from '../../src/utils/stageProgress';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
@@ -1141,7 +1141,7 @@ export const useStore = create(
       },
 
       addStageToProgram: (programId) => {
-        const { programs, sessionTemplates, userPrograms } = get();
+        const { programs, sessionTemplates, userPrograms, clients } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
         const existingStages = program.stages;
@@ -1167,23 +1167,36 @@ export const useStore = create(
           days: cloneDays(lastStage.days ?? []),
         };
 
-        // Una etapa sin límite NUNCA termina, así que dejar una abierta delante
-        // de otra deja al cliente encerrado en ella para siempre: el umbral de
-        // fin de etapa no puede dispararse (`advanceCycle`) y el banner de
-        // "avanzar" no aparece jamás. Al añadir la siguiente se cierra la etapa
-        // en curso por donde de hecho va — "duró lo que duró" — que es además
-        // lo que hace que el cliente pase a la nueva en su próxima sesión.
-        const curIdx = program.currentStageIndex ?? 0;
-        const closed = existingStages.map((st, i) => (
-          i === curIdx && st.durationWeeks == null
-            ? { ...st, durationWeeks: Math.max(1, program.stageWeeksCompleted ?? 0) }
-            : st
-        ));
+        // Al añadir una etapa detrás, la que está en curso se cierra por donde
+        // de hecho va el ATLETA — ver `closeOpenStage`, que explica por qué no
+        // es opcional y por qué devuelve `advancePending`.
+        //
+        // El progreso hay que leerlo de quien lo tiene. En el móvil del
+        // entrenador, `program.stageWeeksCompleted` es de SU copia y no se
+        // mueve nunca (él no entrena el programa del cliente): cerraría la
+        // etapa en 1 ciclo por muchos que lleve hecho el cliente. El contador
+        // bueno viaja en el blob de progreso — misma lección que
+        // `clientStageIndex` (stage-locks.md §9).
+        const owner    = program.clientId ? clients?.[program.clientId] : null;
+        const progress = progressFromBlob(owner?.progress, program.id);
+        const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
+        const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
+
+        const { stages: closed, advancePending } = closeOpenStage(existingStages, curIdx, cycles);
         const updatedStages = [...closed, newStage];
 
         set((s) => ({
           sessionTemplates: updatedSessionTemplates,
-          programs: { ...s.programs, [programId]: withStages(program, updatedStages) },
+          programs: {
+            ...s.programs,
+            [programId]: {
+              ...withStages(program, updatedStages),
+              // En el móvil del cliente esto enciende el banner de "avanzar"
+              // ya; en el del entrenador viaja en el program_json y el cliente
+              // lo recalcula igualmente en `mergeProgressOnImport`.
+              ...(advancePending ? { stageAdvancePending: true } : {}),
+            },
+          },
         }));
       },
 

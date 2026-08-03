@@ -55,6 +55,37 @@ export function withStages(program, stages, currentStageIndex) {
  * asked for, and start showing "week 4 of 4" on a program that had been running
  * for fifteen cycles.
  */
+/**
+ * Closes an open-ended stage (`durationWeeks: null`) at the number of cycles
+ * already completed, which is what "the stage lasted as long as it lasted"
+ * means. Called when a stage is appended after it.
+ *
+ * It has to happen: an unlimited stage NEVER ends, so leaving one in front of
+ * another locks the athlete inside it forever — `advanceCycle` cannot reach a
+ * threshold that does not exist, and the "move on" banner never appears.
+ *
+ * `advancePending` is returned rather than assumed: closing a stage at the
+ * cycles done makes it finished *right now*, and nothing else recomputes that
+ * flag until the next saved session — which would cost the athlete a whole
+ * extra rotation before being allowed to move on. It stays false when no cycle
+ * has closed yet (a brand-new program), because then the stage really is still
+ * ahead of them.
+ *
+ * @param {array}  stages
+ * @param {number} stageIndex   the stage the ATHLETE is in (not the trainer's)
+ * @param {number} cyclesDone   their `stageWeeksCompleted`
+ * @returns {{ stages: array, advancePending: boolean }}
+ */
+export function closeOpenStage(stages, stageIndex, cyclesDone = 0) {
+  const stage = stages?.[stageIndex];
+  if (!stage || stage.durationWeeks != null) return { stages, advancePending: false };
+  const durationWeeks = Math.max(1, cyclesDone);
+  return {
+    stages: stages.map((s, i) => (i === stageIndex ? { ...s, durationWeeks } : s)),
+    advancePending: cyclesDone >= durationWeeks,
+  };
+}
+
 export function ensureStages(program, stageName = 'Etapa 1') {
   if (!program || program.stages?.length > 0) return program;
   const days = program.days ?? [];

@@ -165,18 +165,32 @@ una tira de 15 segmentos llenos donde antes no había nada. La migración usa
 hace que la fase 0 no cambie el comportamiento de nadie.
 
 La regla "la etapa duró lo que de hecho duró" **no se pierde: se mueve al
-momento en que significa algo**, que es `addStageToProgram` (§3.2.c). Una etapa
-sin límite delante de otra deja al cliente encerrado para siempre —
-`advanceCycle` no puede alcanzar un umbral que no existe, así que el banner de
-avanzar no aparece nunca. Al añadir la etapa siguiente, la etapa en curso se
-cierra por donde va el cliente:
+momento en que significa algo**, que es `addStageToProgram` (§3.2.c), en el util
+puro `closeOpenStage`. Una etapa sin límite delante de otra deja al cliente
+encerrado para siempre — `advanceCycle` no puede alcanzar un umbral que no
+existe, así que el banner de avanzar no aparece nunca.
 
-```js
-durationWeeks: Math.max(1, program.stageWeeksCompleted ?? 0)
-```
+**Dos trampas encontradas en el QA de la fase 0** (ronda 1, ago 2026), las dos
+con el mismo síntoma: cerrar la etapa en 2 ciclos y que el cliente siguiera
+debiendo uno más.
 
-Con eso, añadir una segunda etapa a un programa de 15 ciclos hace justo lo que
-el entrenador quiere: el cliente pasa a la nueva en su siguiente sesión.
+1. **`stageAdvancePending` no lo recalculaba nadie.** Cerrar la etapa por los
+   ciclos ya hechos la deja terminada *en ese instante*, pero la bandera solo
+   se evalúa dentro de `advanceCycle`, es decir en el siguiente guardado que
+   cierre ciclo — una rotación entera de peaje. `closeOpenStage` devuelve
+   `advancePending` y la acción la escribe. Es `false` cuando no hay ningún
+   ciclo cerrado (programa recién creado): ahí la etapa sí está por delante.
+2. **El contador se leía del sitio equivocado.** En el móvil del entrenador,
+   `program.stageWeeksCompleted` es de SU copia y no se mueve nunca — él no
+   entrena el programa del cliente — así que cerraba la etapa en 1 ciclo por
+   muchos que llevara el cliente. Se lee del blob de progreso
+   (`progressFromBlob`), misma lección que `clientStageIndex` en
+   [stage-locks.md](stage-locks.md) §9.
+
+Y un tercero, de pintura, en `computeStageInfo`: `weekInStage` usa
+`min(hechos + 1, total)`, así que "voy por el ciclo 2 de 2" y "he terminado los
+2" son el mismo número y la tira dejaba el último segmento vacío. `stageComplete`
+los distingue y la llena entera.
 
 **h) El paso de ciclos en la creación de programa.** Es la única UI de la fase
 0, y va aquí y no en la 4: sin ella, un programa nuevo nace con una duración

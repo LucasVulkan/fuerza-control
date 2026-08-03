@@ -120,12 +120,18 @@ function computeStageInfo(program, t) {
   // not move this. See `docs/specs/stage-locks.md` §3.
   const cyclesDone       = program.stageWeeksCompleted ?? 0;
   const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
+  // "Estoy en el ciclo N" y "he terminado los N" caen los dos en el mismo
+  // `weekInStage` por el clamp, y se pintan distinto: terminada, la tira va
+  // llena entera. Sin esto, cerrar una etapa en los ciclos ya hechos (al añadir
+  // la siguiente) dejaba el último segmento vacío y parecía faltar un ciclo.
+  const stageComplete    = totalWeeks != null && cyclesDone >= totalWeeks;
   const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:    defaultLabel,
     stageName:     stage.name ?? defaultLabel,
     weekInStage,
     totalWeeks,
+    stageComplete,
   };
 }
 
@@ -258,7 +264,8 @@ function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, se
           {stageInfo.totalWeeks != null && (
             <StageSegBar
               ratios={Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
-                i < stageInfo.weekInStage - 1 ? 1
+                stageInfo.stageComplete ? 1
+                  : i < stageInfo.weekInStage - 1 ? 1
                   : i === stageInfo.weekInStage - 1 ? doneInCycle / sessionsPerCycle
                   : 0
               ))}
