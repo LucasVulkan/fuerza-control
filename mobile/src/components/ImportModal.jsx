@@ -366,7 +366,7 @@ const makeS = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   sheet: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg,
     borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
     borderColor:     th.colors.borderCard,

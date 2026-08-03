@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, StyleSheet, Alert,
+  StyleSheet, Alert,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, interpolateColor } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
+import DragSheet from '../components/DragSheet';
+import { MenuRow } from '../components/ui/MenuList';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../../../src/utils/formatters';
@@ -477,113 +479,88 @@ function SessionCard({ template, lastSession, status, onPress, hasOverride, done
   );
 }
 
-// ── ArchiveModal ───────────────────────────────────────────────────────────────
+// ── Hojas del programa (archivar / elegir etapa) ───────────────────────────────
+//
+// Las dos eran `Modal` propios con su backdrop, su título y su "Cancelar".
+// Pasan a `DragSheet` + las filas de `ui/MenuList`, que es lo que manda §9 de
+// docs/UI-MIGRATION.md: un solo bottom-sheet en toda la app y un solo tipo de
+// fila. `background` en `bg` porque las filas van en `surface` y sobre la hoja
+// (también `surface`) se fundirían. La salida es la propia cabecera de la hoja,
+// así que no hay botón de cancelar.
 
-function ArchiveModal({ programName, onConfirm, onClose }) {
-  const { t }    = useTranslation();
-  const th       = useTheme();
-  const styles   = useThemedStyles(makeStyles);
-  const insets   = useSafeAreaInsets();
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.bottomSheet, { paddingBottom: Math.max(spacing.xxl, insets.bottom + spacing.lg) }]}>
-        <Text style={styles.sheetTitle}>{t('home.archiveModal.title')}</Text>
-        <Text style={styles.archiveDesc}>
-          <Text style={{ color: th.colors.text, fontWeight: typography.semibold }}>{programName}</Text>
-          {'\n'}{t('home.archiveModal.desc')}
-        </Text>
-        <ArchiveOption
-          label={t('home.archiveModal.keepHistory')}
-          desc={t('home.archiveModal.keepHistoryDesc')}
-          onPress={() => onConfirm(false)}
-        />
-        <ArchiveOption
-          label={t('home.archiveModal.clearHistory')}
-          desc={t('home.archiveModal.clearHistoryDesc')}
-          onPress={() => onConfirm(true)}
-          danger
-        />
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
-}
-
-function ArchiveOption({ label, desc, onPress, danger }) {
+function ArchiveSheet({ programName, onConfirm, onClose }) {
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <TouchableOpacity
-      style={[styles.archiveOption, danger && styles.archiveOptionDanger]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={[styles.archiveOptionLabel, danger && { color: th.colors.red }]}>{label}</Text>
-      <Text style={styles.archiveOptionDesc}>{desc}</Text>
-    </TouchableOpacity>
+    <DragSheet visible onClose={onClose} title={t('home.archiveModal.title')}>
+      <Text style={styles.sheetIntro}>
+        <Text style={styles.sheetIntroName}>{programName}</Text>
+        {'\n'}{t('home.archiveModal.desc')}
+      </Text>
+      <View style={styles.sheetGroup}>
+        <MenuRow
+          isFirst
+          label={t('home.archiveModal.keepHistory')}
+          sub={t('home.archiveModal.keepHistoryDesc')}
+          subLines={0}
+          minHeight={62}
+          onPress={() => onConfirm(false)}
+        />
+        <MenuRow
+          isLast
+          label={t('home.archiveModal.clearHistory')}
+          labelColor={th.tint.red50}
+          sub={t('home.archiveModal.clearHistoryDesc')}
+          subLines={0}
+          minHeight={62}
+          onPress={() => onConfirm(true)}
+        />
+      </View>
+    </DragSheet>
   );
 }
 
-// ── StagePickerModal ───────────────────────────────────────────────────────────
-
-function StagePickerModal({ program, onSelect, onClose }) {
+function StagePickerSheet({ program, onSelect, onClose }) {
   const { t }      = useTranslation();
   const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
-  const insets     = useSafeAreaInsets();
   const clientSync = useStore((s) => s.clientSync);
   const currentIdx = program.currentStageIndex ?? 0;
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.bottomSheet, { paddingBottom: Math.max(spacing.xxl, insets.bottom + spacing.lg) }]}>
-        <Text style={styles.sheetTitle}>{t('home.selectStage')}</Text>
-        <View style={styles.stageList}>
-          {program.stages.map((stage, idx) => {
-            const isActive = idx === currentIdx;
-            const locked   = isStageLocked(program, idx, clientSync);
-            return (
-              <TouchableOpacity
-                key={stage.id ?? idx}
-                style={[
-                  styles.stageOption,
-                  isActive && styles.stageOptionActive,
-                  locked   && styles.stageOptionLocked,
-                ]}
-                onPress={() => onSelect(idx)}
-                disabled={locked}
-                activeOpacity={isActive ? 1 : 0.7}
-              >
-                <View style={styles.stageOptionHeader}>
-                  {locked && <LockIcon size={13} color={th.colors.muted} />}
-                  <Text style={[
-                    styles.stageOptionName,
-                    isActive && styles.stageOptionNameActive,
-                    locked   && styles.stageOptionNameLocked,
-                  ]}>
-                    {stage.name}
-                  </Text>
-                  {isActive && <Text style={styles.stageActiveLabel}>ACTIVA</Text>}
-                </View>
-                <Text style={styles.stageOptionDesc}>
-                  {locked
-                    ? t('home.stageLockedShort')
-                    : stage.durationWeeks == null
-                      ? t('home.stageMetaOpen',  { sessions: stage.days?.length ?? 0 })
-                      : t('home.stageMeta',      { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-        </TouchableOpacity>
+    <DragSheet visible onClose={onClose} title={t('home.selectStage')}>
+      <View style={styles.sheetGroup}>
+        {program.stages.map((stage, idx) => {
+          const isActive = idx === currentIdx;
+          const locked   = isStageLocked(program, idx, clientSync);
+          return (
+            <MenuRow
+              key={stage.id ?? idx}
+              isFirst={idx === 0}
+              isLast={idx === program.stages.length - 1}
+              label={stage.name}
+              labelColor={isActive ? th.colors.accent : undefined}
+              sub={locked
+                ? t('home.stageLockedShort')
+                : stage.durationWeeks == null
+                  ? t('home.stageMetaOpen', { sessions: stage.days?.length ?? 0 })
+                  : t('home.stageMeta',     { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
+              minHeight={62}
+              disabled={locked}
+              onPress={() => onSelect(idx)}
+              // La etapa en curso lleva el mismo check lima que las frecuencias
+              // de Drive. El hueco vacío de las demás mata el chevron de
+              // `MenuRow`: aquí se elige, no se navega.
+              control={isActive
+                ? <CheckIcon size={16} color={th.colors.accent} />
+                : locked
+                  ? <LockIcon size={13} color={th.colors.muted} />
+                  : <View style={styles.rowControlSpacer} />}
+            />
+          );
+        })}
       </View>
-    </Modal>
+    </DragSheet>
   );
 }
 
@@ -1000,14 +977,14 @@ export default function HomeScreen() {
 
       {/* Modals */}
       {archiveOpen && (
-        <ArchiveModal
+        <ArchiveSheet
           programName={activeProgram?.name}
           onConfirm={handleArchiveConfirm}
           onClose={() => setArchiveOpen(false)}
         />
       )}
       {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
-        <StagePickerModal
+        <StagePickerSheet
           program={activeProgram}
           onSelect={(idx) => {
             if (idx !== (activeProgram.currentStageIndex ?? 0)) {
@@ -1525,68 +1502,18 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // ── Modals ────────────────────────────────────────────────────────────────────
-  backdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+  // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
+  sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
+  // Ancho de un check: reserva el hueco de la derecha para que los nombres de
+  // etapa terminen todos en la misma vertical, con o sin icono.
+  rowControlSpacer: { width: 16 },
+  sheetIntro: {
+    ...textStyles.subtitle,
+    color:        th.colors.mutedLight,
+    lineHeight:   18,
+    paddingBottom: spacing.md,
   },
-  bottomSheet: {
-    backgroundColor:      th.colors.surface,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    borderTopWidth:       borders.thin,
-    borderTopColor:       th.colors.border,
-    padding:              spacing.xl,
-    paddingBottom:        spacing.xxl,
-    gap:                  spacing.sm,
-  },
-  sheetTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-    marginBottom:  spacing.xs,
-  },
-  archiveDesc: {
-    fontSize:     typography.sm,
-    color:        th.colors.muted,
-    lineHeight:   typography.sm * 1.6,
-    marginBottom: spacing.xs,
-  },
-  archiveOption: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  archiveOptionDanger: {
-    borderColor:     withOpacity(th.colors.red, 0.3),
-    backgroundColor: withOpacity(th.colors.red, 0.05),
-  },
-  archiveOptionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  archiveOptionDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 3,
-  },
-  cancelBtn: {
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-    marginTop:       spacing.xs,
-  },
-  cancelBtnText: {
-    fontSize:   typography.base,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  sheetIntroName: { color: th.colors.text },
 
   // ── Conexiones (Drive + Entrenador) ──────────────────────────────────────────
   statusCards: {
@@ -1632,53 +1559,4 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.tint.accent50,
   },
 
-  // Stage picker
-  stageList: {
-    gap: spacing.sm,
-  },
-  stageOption: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  stageOptionActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-  },
-  // Bloqueada: sin fondo propio, solo apagada — que se lea como "no disponible",
-  // no como un estado más (que es lo que sugeriría un color).
-  stageOptionLocked: {
-    backgroundColor: 'transparent',
-  },
-  stageOptionHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.xs,
-    marginBottom:   3,
-  },
-  stageOptionName: {
-    flex:       1,
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  stageOptionNameActive: {
-    color: th.colors.accent,
-  },
-  stageOptionNameLocked: {
-    color: th.colors.muted,
-  },
-  stageActiveLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1,
-  },
-  stageOptionDesc: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
 });

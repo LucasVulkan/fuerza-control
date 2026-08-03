@@ -530,7 +530,7 @@ export default function ProgramEditorScreen({ navigation }) {
               ) : (
                 <>
                   <StepField
-                    horizontal dark
+                    horizontal
                     label={t('editor.stageWeeksUnit')}
                     value={selectedStage.durationWeeks}
                     onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
@@ -806,13 +806,13 @@ const makeStyles = (th) => StyleSheet.create({
   noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
   noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
   noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
-  // Dentro de una hoja el fondo YA es `surface`, así que los campos van sobre
-  // `color/app` para que se lean — mismo criterio que las hojas del editor de
+  // Dentro de una hoja el fondo YA es `bg`, así que los campos van sobre
+  // `surface` para que se lean — mismo criterio que las hojas del editor de
   // ejercicio.
   sheetInput: {
     ...textStyles.cardType,
     color:             th.colors.text,
-    backgroundColor:   th.colors.bg,
+    backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,

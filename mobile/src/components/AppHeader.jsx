@@ -272,7 +272,6 @@ function ArchivedProgramsModal({ onClose }) {
 // de decidir.
 
 function ExportSheet({ visible, onClose }) {
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
   const exportFullBackup     = useStore((s) => s.exportFullBackup);
@@ -291,7 +290,7 @@ function ExportSheet({ visible, onClose }) {
   }
 
   return (
-    <DragSheet visible={visible} onClose={onClose} title={t('header.exportSheetTitle')} background={th.colors.bg}>
+    <DragSheet visible={visible} onClose={onClose} title={t('header.exportSheetTitle')}>
       <View style={styles.group}>
         <MenuRow
           isFirst
@@ -319,7 +318,6 @@ function ExportSheet({ visible, onClose }) {
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode }) {
-  const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
   const navigation = useNavigation();
@@ -364,7 +362,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
     :                          t('header.syncSubNone');
 
   return (
-    <DragSheet visible={visible} onClose={onClose} background={th.colors.bg}>
+    <DragSheet visible={visible} onClose={onClose}>
       {/* El bloque de identidad es la cabecera del menú y solo existe en PRO;
           una cuenta free entra directa a los ajustes. */}
       {isPro && <IdentityBlock />}
@@ -820,7 +818,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   archivedModal: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg,
     borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
     borderColor:     th.colors.borderCard,

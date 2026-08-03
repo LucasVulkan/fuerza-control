@@ -251,10 +251,6 @@ export default function StagePlannerScreen({ navigation, route }) {
         onClose={() => setLadderOpen(false)}
         title={t('planner.ladderTitle')}
         action={{ label: t('planner.applyBtn'), onPress: handleApply }}
-        // Sobre `surface` (el fondo por defecto de la hoja) las tarjetas de
-        // peldaño no se despegaban del fondo. Mismo patrón que las hojas de
-        // AppHeader / ClientCodeModal / TrainerSyncModal.
-        background={th.colors.bg}
       >
         <View style={styles.sheetBody}>
           <SegmentedControl

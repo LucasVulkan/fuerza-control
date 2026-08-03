@@ -26,8 +26,9 @@ import { useThemedStyles } from '../../useTheme';
 //    Nunca transparente: sin caja no se lee como botón.
 // 2. **La caja nunca se funde con lo que la rodea.** De ahí `dark`: la caja va
 //    sobre `surface` por defecto y sobre `bg` con `dark`. Se usa `dark` cuando
-//    el contenedor ya es `surface` (una tarjeta, el cuerpo de una hoja) y NO se
-//    usa cuando el contenedor es `bg`, o volvería a fundirse.
+//    el contenedor ya es `surface` (una tarjeta) y NO se usa cuando el
+//    contenedor es `bg`, o volvería a fundirse. El cuerpo de una hoja es `bg`
+//    desde que `DragSheet` unificó el fondo de los modales: ahí va SIN `dark`.
 // 3. **La caja llega hasta el título.** El label va SIEMPRE por la prop `label`,
 //    nunca pintado fuera por el llamante: el fondo tiene que cubrir el título y
 //    los controles, no solo los ±.

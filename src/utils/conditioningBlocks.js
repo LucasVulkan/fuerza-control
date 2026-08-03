@@ -5,6 +5,22 @@
  * argument instead of accumulating internally, so the caller can re-derive
  * the real state after the app was killed/minimized (see spec §4).
  */
+import { generateId } from './formatters';
+
+/** Bloque en blanco — el que crea "añadir bloque" antes de abrir su editor. */
+export function defaultBlock() {
+  return {
+    id: generateId('blk'),
+    format: 'amrap',
+    capSec: 600,
+    intervalSec: null,
+    rounds: null,
+    emomMode: 'rotate',
+    movements: [],
+    name: null,
+    notes: null,
+  };
+}
 
 /** Seconds left in an AMRAP's time cap, clamped to 0. */
 export function amrapRemaining(block, startedAt, now) {
@@ -103,6 +119,28 @@ export function buildBlockResult(block, blockState, now) {
   // already have set timeSec).
   const { elapsedSec } = forTimeElapsed(block, startedAt, now);
   return { timeSec: elapsedSec, capped: false };
+}
+
+/**
+ * `entry.blocks` de una sesión guardada: config + resultado de cada bloque que
+ * se llegó a EMPEZAR (los que no, no dejan rastro — spec §2.4). La config se
+ * copia, no se referencia, para que el log siga siendo fiel a lo que se hizo
+ * aunque el bloque se edite después.
+ */
+export function blocksLogFrom(blocks, blockState, now) {
+  return (blocks ?? [])
+    .filter((block) => blockState[block.id]?.startedAt)
+    .map((block) => ({
+      blockId:     block.id,
+      format:      block.format,
+      name:        block.name,
+      capSec:      block.capSec,
+      intervalSec: block.intervalSec,
+      rounds:      block.rounds,
+      emomMode:    block.emomMode,
+      movements:   block.movements,
+      result:      buildBlockResult(block, blockState[block.id], now),
+    }));
 }
 
 /** UI score string — no i18n, just universal numbers/separators. */

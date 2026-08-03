@@ -28,7 +28,7 @@ import { useThemedStyles } from '../useTheme';
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
  */
-export default function DragSheet({ visible, onClose, title, action, background, children }) {
+export default function DragSheet({ visible, onClose, title, action, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
@@ -99,9 +99,6 @@ export default function DragSheet({ visible, onClose, title, action, background,
         <Animated.View
           style={[
             styles.card,
-            // `background` solo lo usa el menú principal: sobre `bg` se ve la
-            // tarjeta de cada sección, que en `surface` se fundiría con la hoja.
-            background ? { backgroundColor: background } : null,
             { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
           ]}
         >
@@ -135,9 +132,14 @@ const makeStyles = (th) => StyleSheet.create({
   // La carcasa empuja la hoja contra el borde inferior; el `maxHeight` se mide
   // contra ella, así que al abrirse el teclado la hoja también se encoge.
   kavShell: { flex: 1, justifyContent: 'flex-end' },
+  // La hoja va en `bg`, no en `surface`: así las tarjetas y filas que lleva
+  // dentro (que SON `surface`) se leen como piezas sobre ella en vez de
+  // fundirse. Lo que va sobre la hoja sigue las reglas de la app —
+  // tarjetas/filas en `surface`, campos y botones secundarios en `surface2` —
+  // y nada dentro de una hoja puede ir pintado en `bg`.
   card: {
     maxHeight:            '85%',
-    backgroundColor:      th.colors.surface,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.lg,
     borderTopRightRadius: th.radius.lg,
     borderWidth:          borders.thin,

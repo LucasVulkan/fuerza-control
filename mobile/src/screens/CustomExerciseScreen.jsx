@@ -351,7 +351,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
                   <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepIncr')}
                 </Text>
                 <StepField
-                  horizontal dark
+                  horizontal
                   label={showRepsIncr ? t('exerciseEditor.incrFixedRepsLabel') : t('exerciseEditor.incrValueLabel')}
                   unit={showRepsIncr ? undefined : (showTimeIncr ? 's' : weightLabel)}
                   value={incrFixedValue}

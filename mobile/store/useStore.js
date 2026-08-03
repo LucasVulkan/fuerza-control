@@ -38,7 +38,7 @@ import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../../src/utils/exerciseLinks';
-import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
+import { forTimeElapsed, blocksLogFrom } from '../../src/utils/conditioningBlocks';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage } from '../../src/utils/stageProgress';
 import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
@@ -114,8 +114,21 @@ const INITIAL_ACTIVE_SESSION = {
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
+  freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
 };
+
+/**
+ * Bloques de acondicionamiento de la sesión en curso. La sesión libre no tiene
+ * plantilla: los suyos viven en el propio `activeSession`.
+ */
+function activeSessionBlocks(state) {
+  const { activeSession } = state;
+  if (!activeSession.templateId) return [];
+  if (activeSession.templateId === '__free__') return activeSession.freeBlocks ?? [];
+  return state.getEffectiveTemplate(activeSession.templateId)?.blocks ?? [];
+}
+
 
 const INITIAL_UI = {
   view: 'home',
@@ -860,8 +873,20 @@ export const useStore = create(
       // ── Conditioning blocks (AMRAP/EMOM/for time) — editor actions ──────────
       // Same immutable pattern as updateExerciseParams/reorderExercise: read
       // the effective template, write the copy to userPrograms.
+      //
+      // `templateId === '__free__'` no es una plantilla: es la sesión libre en
+      // curso, que se edita durante el propio entreno. Las 3 acciones aceptan ese
+      // id y escriben en `activeSession.freeBlocks`, así BlockEditorInline vale
+      // igual en el editor de sesión que en WorkoutScreen.
+
+      editFreeBlocks: (fn) => {
+        set((s) => ({
+          activeSession: { ...s.activeSession, freeBlocks: fn(s.activeSession.freeBlocks ?? []) },
+        }));
+      },
 
       addBlockToSession: (templateId, block) => {
+        if (templateId === '__free__') { get().editFreeBlocks((bs) => [...bs, block]); return; }
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const blocks = [...(template.blocks ?? []), block];
@@ -871,6 +896,10 @@ export const useStore = create(
       },
 
       updateBlock: (templateId, blockId, updates) => {
+        if (templateId === '__free__') {
+          get().editFreeBlocks((bs) => bs.map((b) => b.id === blockId ? { ...b, ...updates } : b));
+          return;
+        }
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const blocks = (template.blocks ?? []).map((b) => b.id === blockId ? { ...b, ...updates } : b);
@@ -891,6 +920,10 @@ export const useStore = create(
       },
 
       removeBlockFromSession: (templateId, blockId) => {
+        if (templateId === '__free__') {
+          get().editFreeBlocks((bs) => bs.filter((b) => b.id !== blockId));
+          return;
+        }
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const blocks = (template.blocks ?? []).filter((b) => b.id !== blockId);
@@ -1536,6 +1569,7 @@ export const useStore = create(
             exerciseNotes: {},
             adHocExercises: [],
             freeSessionName: '',
+            freeBlocks: [],
             blockState: {},
           },
           ui: { ...get().ui, view: 'workout' },
@@ -1777,10 +1811,7 @@ export const useStore = create(
       // derives everything else per render via src/utils/conditioningBlocks.
 
       startBlock: (blockId) => {
-        const { activeSession } = get();
-        const template = activeSession.templateId
-          ? get().getEffectiveTemplate(activeSession.templateId) : null;
-        const block = template?.blocks?.find((b) => b.id === blockId);
+        const block = activeSessionBlocks(get()).find((b) => b.id === blockId);
         if (!block) return;
 
         const startedAt = Date.now();
@@ -1826,9 +1857,7 @@ export const useStore = create(
         const { activeSession } = get();
         const st = activeSession.blockState?.[blockId];
         if (!st || st.finishedAt) return;
-        const template = activeSession.templateId
-          ? get().getEffectiveTemplate(activeSession.templateId) : null;
-        const block = template?.blocks?.find((b) => b.id === blockId);
+        const block = activeSessionBlocks(get()).find((b) => b.id === blockId);
 
         const patch = { finishedAt: Date.now() };
         // for_time: freeze the score at the moment of finishing (unless the
@@ -1883,7 +1912,11 @@ export const useStore = create(
           const hasData = adHoc.some((a) =>
             a.setsState.some((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done)
           );
-          if (!hasData) return { ok: false, error: 'Sin datos registrados' };
+          // Un bloque empezado ES sesión, aunque no se registrara ninguna serie.
+          const freeBlocksLog = blocksLogFrom(
+            activeSession.freeBlocks, activeSession.blockState ?? {}, Date.now(),
+          );
+          if (!hasData && freeBlocksLog.length === 0) return { ok: false, error: 'Sin datos registrados' };
           const freeNotes = activeSession.exerciseNotes ?? {};
           const logEntry = {
             id:                generateId('log'),
@@ -1893,6 +1926,7 @@ export const useStore = create(
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',
             bodyWeight:        null,
+            ...(freeBlocksLog.length > 0 ? { blocks: freeBlocksLog } : {}),
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
               ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
@@ -1949,24 +1983,7 @@ export const useStore = create(
           })
           .filter(Boolean);
 
-        // Conditioning blocks — snapshot config + result for every block that
-        // was actually started (unstarted blocks leave no trace, per spec §2.4).
-        // The config is copied here (not referenced) so the log stays true to
-        // what was actually run even if the trainer edits the block afterwards.
-        const blockState = activeSession.blockState ?? {};
-        const blocksLog = (template.blocks ?? [])
-          .filter((block) => blockState[block.id]?.startedAt)
-          .map((block) => ({
-            blockId: block.id,
-            format: block.format,
-            name: block.name,
-            capSec: block.capSec,
-            intervalSec: block.intervalSec,
-            rounds: block.rounds,
-            emomMode: block.emomMode,
-            movements: block.movements,
-            result: buildBlockResult(block, blockState[block.id], Date.now()),
-          }));
+        const blocksLog = blocksLogFrom(template.blocks, activeSession.blockState ?? {}, Date.now());
 
         // A block-only session (metcon day, no strength data) is still a session.
         if (exercises.length === 0 && blocksLog.length === 0) {
@@ -3681,7 +3698,7 @@ export const useStore = create(
         if (state.activeSession?.templateId) {
           const age = Date.now() - (state.activeSession.startedAt ?? 0);
           if (age > 12 * 60 * 60 * 1000) {
-            state.activeSession = { templateId: null, setsState: {}, startedAt: null, notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '', blockState: {} };
+            state.activeSession = INITIAL_ACTIVE_SESSION;
           }
         }
 

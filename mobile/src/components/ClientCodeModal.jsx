@@ -187,7 +187,6 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     <DragSheet
       visible={visible}
       onClose={handleClose}
-      background={th.colors.bg}
       title={title}
       // El hueco de la derecha de la hoja hace de salida: atrás en el paso de
       // confirmación, cancelar en los demás. Así no hay dos botones abajo.

@@ -425,7 +425,6 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     <DragSheet
       visible={visible}
       onClose={onClose}
-      background={th.colors.bg}
       title={titles[screen]}
       action={action}
     >

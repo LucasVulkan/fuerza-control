@@ -40,6 +40,7 @@ import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
 import { generateId } from '../../../src/utils/formatters';
+import { defaultBlock } from '../../../src/utils/conditioningBlocks';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -107,20 +108,6 @@ function volumeLine(patternSets, blockCount, t) {
   if (blockCount > 0) parts.push(t('editor.volumeBlocks', { count: blockCount }));
   if (parts.length === 0) return null;
   return t('editor.volumeLine', { parts: parts.join(', ') });
-}
-
-function defaultBlock() {
-  return {
-    id: generateId('blk'),
-    format: 'amrap',
-    capSec: 600,
-    intervalSec: null,
-    rounds: null,
-    emomMode: 'rotate',
-    movements: [],
-    name: null,
-    notes: null,
-  };
 }
 
 // ─── Fila ─────────────────────────────────────────────────────────────────────

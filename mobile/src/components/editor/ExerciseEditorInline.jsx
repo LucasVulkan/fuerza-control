@@ -630,7 +630,7 @@ export default function ExerciseEditorInline({
           {warmupMode === 'auto' && (
             <View style={{ gap: spacing.sm }}>
               <StepField
-                horizontal dark
+                horizontal
                 label={t('exerciseEditor.warmup.setsLabel')}
                 value={warmupSets}
                 onChange={setWarmupSets}
@@ -667,7 +667,7 @@ export default function ExerciseEditorInline({
           {warmupMode !== 'none' && (
             <View style={{ gap: spacing.sm }}>
               <StepField
-                horizontal dark unit="s"
+                horizontal unit="s"
                 label={t('exerciseEditor.warmup.restLabel')}
                 value={warmupRestSec}
                 onChange={setWarmupRestSec}
@@ -741,7 +741,7 @@ export default function ExerciseEditorInline({
                 {evalMode === 'pct' && (
                   <View style={{ marginTop: spacing.md }}>
                     <StepField
-                      horizontal dark unit="%"
+                      horizontal unit="%"
                       label={t('exerciseEditor.evalPctLabel')}
                       value={evalPct}
                       onChange={setEvalPct}
@@ -753,7 +753,7 @@ export default function ExerciseEditorInline({
                 {evalMode === 'rpe' && trackRpe && (
                   <View style={{ marginTop: spacing.md }}>
                     <StepField
-                      horizontal dark
+                      horizontal
                       label={t('exerciseEditor.maxRpeLabel')}
                       value={evalMaxRpe}
                       onChange={setEvalMaxRpe}
@@ -771,7 +771,7 @@ export default function ExerciseEditorInline({
                 </Text>
                 {showRepsIncr ? (
                   <StepField
-                    horizontal dark
+                    horizontal
                     label={t('exerciseEditor.incrFixedRepsLabel')}
                     value={incrFixedValue}
                     onChange={setIncrFixedValue}
@@ -785,7 +785,7 @@ export default function ExerciseEditorInline({
                     <View style={{ marginTop: spacing.md }}>
                       {incrType === 'pct' ? (
                         <StepField
-                          horizontal dark unit="%"
+                          horizontal unit="%"
                           label={t('exerciseEditor.incrValueLabel')}
                           value={incrPctValue}
                           onChange={setIncrPctValue}
@@ -797,7 +797,7 @@ export default function ExerciseEditorInline({
                         // por lado, así que las subidas útiles son múltiplos de
                         // 0.25 y no de 1.
                         <StepField
-                          horizontal dark
+                          horizontal
                           label={t('exerciseEditor.incrValueLabel')}
                           unit={showTimeIncr ? 's' : weightLabel}
                           value={incrFixedValue}
@@ -943,10 +943,12 @@ const makeStyles = (th) => StyleSheet.create({
   warmupStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: GRID.LABEL_W },
   // El "%" va DENTRO de la celda, no suelto al lado (QA).
+  // La celda va en `surface` (en el workout es `bg`): la hoja ya es `bg` y una
+  // celda del mismo color desaparecería.
   warmupField: {
     flex:            1,
     height:          GRID.CELL_H,
-    backgroundColor: th.colors.bg,
+    backgroundColor: th.colors.surface,
     borderRadius:    GRID.RADIUS,
     flexDirection:   'row',
     alignItems:      'center',
@@ -978,12 +980,12 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Incremento (hoja) ─────────────────────────────────────────────────────
   incrInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  // Sin ± (QA): es un dato que se teclea, no que se ajusta. Va sobre
-  // `color/app` para no competir con el fondo `surface` de la hoja.
+  // Sin ± (QA): es un dato que se teclea, no que se ajusta. En `surface`, que
+  // es lo que se despega del `bg` de la hoja.
   incrInput: {
     minWidth:           80,
     height:             STEP_BTN,
-    backgroundColor:    th.colors.bg,
+    backgroundColor:    th.colors.surface,
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.md,
     ...textStyles.cardTitle,

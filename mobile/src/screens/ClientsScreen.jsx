@@ -30,10 +30,11 @@ import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ProgressPanel from '../components/stats/ProgressPanel';
+import SessionCard from '../components/SessionCard';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
+import { volumeDeltas } from '../../../src/utils/sessionRecap';
 import { computeAdherence, requiresAttention, adherencePct, STATUS } from '../../../src/utils/adherence';
 import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
 import { sessionLoads, dailySeries } from '../../../src/utils/trainingLoad';
@@ -149,155 +150,6 @@ function Accordion({ label, open, onToggle, children }) {
         <Text style={[styles.accordionArrow, open && { transform: [{ rotate: '180deg' }] }]}>▾</Text>
       </TouchableOpacity>
       {open && <View style={styles.accordionBody}>{children}</View>}
-    </View>
-  );
-}
-
-// ── Session card (history tab) ─────────────────────────────────────────────────
-
-// ── Session card helpers (mirror of HistoryScreen) ────────────────────────────
-
-function buildSetLabel(s, i, fmtW) {
-  const hasW = s.weight && Number(s.weight) > 0;
-  const hasR = s.reps   && Number(s.reps)   > 0;
-  const hasT = s.time   && Number(s.time)   > 0;
-  const rpe  = s.rpe && Number(s.rpe) > 0 ? ` @${s.rpe}` : '';
-  if (hasW && hasR) return `${fmtW(s.weight)}×${s.reps}${rpe}`;
-  if (hasW && hasT) return `${fmtW(s.weight)}×${s.time}s${rpe}`;
-  if (hasR)         return `${s.reps} reps${rpe}`;
-  if (hasT)         return `${s.time}s${rpe}`;
-  if (hasW)         return `${fmtW(s.weight)}${rpe}`;
-  return `S${i + 1}`;
-}
-
-function getPillVariant(s, exConfig) {
-  const hasData = (s.weight && Number(s.weight) > 0)
-               || (s.reps   && Number(s.reps)   > 0)
-               || (s.time   && Number(s.time)   > 0);
-  if (!hasData)         return 'empty';
-  if (s.done === false) return 'partial';
-  if (exConfig) {
-    const isTimeBased = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
-    if (isTimeBased  && exConfig.minTime && Number(s.time) < Number(exConfig.minTime)) return 'partial';
-    if (!isTimeBased && exConfig.minReps && Number(s.reps) < Number(exConfig.minReps)) return 'partial';
-  }
-  return 'done';
-}
-
-function ClientSessionCard({ session, onDelete }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { i18n, t }   = useTranslation();
-  const { fmt: fmtW } = useWeightUnit();
-  const [open, setOpen] = useState(false);
-
-  const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
-  const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
-  const customExercises      = useStore((s) => s.customExercises);
-  const allExercises = { ...exerciseLibrary, ...customExercises };
-
-  const isFree     = session.sessionTemplateId === '__free__';
-  const template   = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
-  const label      = isFree ? '★' : (template?.label ?? '?');
-  const name       = isFree
-    ? (session.sessionName || t('freeSession.historyLabel'))
-    : (template?.name ?? t('clients.sessionFallback'));
-  const accent     = resolveColor(th, template?.color ?? 'var(--accent)');
-  const durMin     = session.duration ? Math.round(session.duration / 60000) : null;
-  const hasNotes   = !!session.notes?.trim()
-                  || (session.exercises ?? []).some((e) => !!e.note);
-
-  const date = new Date(session.timestamp).toLocaleDateString('es-ES', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  });
-
-  const exConfigs = {};
-  (template?.exercises ?? []).forEach((ec) => { exConfigs[ec.exerciseId] = ec; });
-
-  return (
-    <View style={styles.sesCard}>
-      <TouchableOpacity
-        style={[styles.sesCardHeader, { borderLeftColor: accent }]}
-        onPress={() => setOpen((v) => !v)}
-        activeOpacity={0.75}
-      >
-        <View style={styles.sesCardLeft}>
-          <Text style={[styles.sesTag, { color: accent }]} numberOfLines={1}>
-            {t('workout.sessionLabel', { label })}
-          </Text>
-          <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
-          <View style={styles.sesMeta}>
-            <Text style={styles.sesDate}>{date}</Text>
-            {durMin ? <Text style={styles.sesMetaSep}>·</Text> : null}
-            {durMin ? <Text style={styles.sesDate}>{durMin} min</Text> : null}
-            {hasNotes && (
-              <View style={styles.sesNoteTag}>
-                <Text style={styles.sesNoteTagText}>NOTA</Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <View style={styles.sesCardRight}>
-          <TouchableOpacity
-            onPress={() => Alert.alert(t('history.deleteTitle'), t('history.deleteConfirm'), [
-              { text: t('common.cancel'), style: 'cancel' },
-              { text: t('common.delete'), style: 'destructive', onPress: () => onDelete(session.id) },
-            ])}
-            hitSlop={8}
-            style={{ padding: spacing.xs }}
-          >
-            <Text style={styles.sesDelete}>✕</Text>
-          </TouchableOpacity>
-          <Text style={[styles.sesChevron, open && styles.sesChevronOpen]}>▾</Text>
-        </View>
-      </TouchableOpacity>
-
-      {open && (
-        <View style={styles.sesDetail}>
-          {!!session.notes?.trim() && (
-            <View style={styles.sesNoteSection}>
-              <Text style={styles.sesNoteSectionText}>{session.notes}</Text>
-            </View>
-          )}
-          {(session.exercises ?? []).map((ex) => {
-            const def    = allExercises[ex.exerciseId];
-            const exName = def
-              ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
-              : ex.exerciseId;
-            const hasSets = (ex.sets ?? []).some((s) => s.done || s.weight || s.reps || s.time);
-            if (!hasSets && !ex.note) return null;
-            const exCfg = exConfigs[ex.exerciseId];
-            return (
-              <View key={ex.exerciseId} style={styles.sesExSection}>
-                <Text style={styles.sesExName}>{exName}</Text>
-                <View style={styles.sesPills}>
-                  {(ex.sets ?? []).map((s, i) => {
-                    const variant = getPillVariant(s, exCfg);
-                    return (
-                      <View key={i} style={[
-                        styles.sesPill,
-                        variant === 'done'    && styles.sesPillDone,
-                        variant === 'partial' && styles.sesPillPartial,
-                      ]}>
-                        <Text style={[
-                          styles.sesPillText,
-                          variant === 'done'    && styles.sesPillTextDone,
-                          variant === 'partial' && styles.sesPillTextPartial,
-                        ]}>
-                          {buildSetLabel(s, i, fmtW)}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-                {!!ex.note && (
-                  <Text style={styles.sesExNote}>📝 {ex.note}</Text>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }
@@ -2172,6 +2024,10 @@ export default function ClientsScreen() {
     return [...log].sort((a, b) => b.timestamp - a.timestamp);
   }, [clientBaseLog, scopeFilter, periodFilter, activeClientTemplateIds]);
 
+  // Delta de tonelaje por sesión — sobre el log completo del cliente, no sobre
+  // `filteredLog`: el filtro de periodo no debe cambiar contra qué se compara.
+  const clientDeltas = useMemo(() => volumeDeltas(clientBaseLog), [clientBaseLog]);
+
   const exercisesWithLogs = useMemo(() => {
     return [...new Set(
       filteredLog.flatMap((log) =>
@@ -2670,37 +2526,29 @@ export default function ClientsScreen() {
               />
             ) : undefined}
           >
-            {/* Filters */}
+            {/* Filtros — mismo control que el historial propio. Apilados y no en
+                una fila: "Todos los programas" y "30 días" no caben a media
+                anchura sin truncarse. */}
             <View style={styles.histFilterRow}>
-              {PERIOD_OPTIONS.map(({ id, label }) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.histFilterBtn, periodFilter === id && styles.histFilterBtnActive]}
-                  onPress={() => setPeriodFilter(id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.histFilterBtnText, periodFilter === id && styles.histFilterBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity
-                style={[styles.histFilterBtn, scopeFilter === 'active' && styles.histFilterBtnActive]}
-                onPress={() => setScopeFilter((s) => s === 'active' ? 'all' : 'active')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.histFilterBtnText, scopeFilter === 'active' && styles.histFilterBtnTextActive]}>
-                  {t('clients.scope.active')}
-                </Text>
-              </TouchableOpacity>
+              <SegmentedControl
+                options={[
+                  { id: 'active', label: t('clients.scope.active') },
+                  { id: 'all',    label: t('clients.scope.all')    },
+                ]}
+                value={scopeFilter}
+                onChange={setScopeFilter}
+              />
+              <SegmentedControl options={PERIOD_OPTIONS} value={periodFilter} onChange={setPeriodFilter} />
             </View>
 
             {filteredLog.length === 0 ? (
-              <Text style={styles.emptyText}>Sin sesiones para este filtro</Text>
+              <Text style={styles.emptyText}>{t('clients.noSessionsFilter')}</Text>
             ) : filteredLog.map((session) => (
-              <ClientSessionCard
+              <SessionCard
                 key={session.id}
                 session={session}
                 onDelete={(id) => deleteClientLogEntry(selectedClientId, id)}
+                volumeDelta={clientDeltas.get(session.id) ?? null}
               />
             ))}
           </ScrollView>
@@ -3910,7 +3758,7 @@ const makeStyles = (th) => StyleSheet.create({
     bottom:               0,
     left:                 0,
     right:                0,
-    backgroundColor:      th.colors.surface,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.xl,
     borderTopRightRadius: th.radius.xl,
     borderTopWidth:       borders.thin,
@@ -4263,39 +4111,25 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted,
     flexShrink: 0,
   },
+  // El aire bajo las pestañas lo pone el contenido de cada tab, no esta fila:
+  // así el tab no arranca a dos dedos del control.
   detailTabs: {
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.md,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.sm,
   },
 
   // ── Tab content ──
   histFilterRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginTop:     spacing.xs,
-    marginBottom:  spacing.sm,
+    gap:          spacing.sm,
+    marginBottom: spacing.sm,
   },
-  histFilterBtn: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius:      5,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-  },
-  histFilterBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-  },
-  histFilterBtnText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
-  histFilterBtnTextActive: { color: th.colors.accent },
 
   tabContent: {
     paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.xl,
-    gap:               spacing.sm,
+    paddingTop:        spacing.sm,
+    // Mismo aire entre tarjetas que la lista del historial principal.
+    gap:               spacing.md,
   },
 
   // ── Program card ──
@@ -4657,122 +4491,6 @@ const makeStyles = (th) => StyleSheet.create({
     width:     18,
     textAlign: 'center',
   },
-
-  // ── Session card ──
-
-  // ── Client SessionCard (same format as HistoryScreen) ──────────────────────
-  sesCard: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    overflow:        'hidden',
-  },
-  sesCardHeader: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    padding:         spacing.md,
-    borderLeftWidth: 3,
-    gap:             spacing.sm,
-  },
-  sesCardLeft: {
-    flex: 1,
-    gap:  2,
-  },
-  sesTag: {
-    fontSize:      10,
-    fontWeight:    typography.bold,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  2,
-  },
-  sesName: {
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  sesMeta: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-    marginTop:     3,
-  },
-  sesDate:    { fontSize: typography.xs, color: th.colors.muted },
-  sesMetaSep: { fontSize: typography.xs, color: th.colors.muted2 },
-  sesNoteTag: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    3,
-    paddingHorizontal: 5,
-    paddingVertical:   1,
-  },
-  sesNoteTagText: {
-    fontSize:      8,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 0.5,
-  },
-  sesCardRight: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexShrink:    0,
-  },
-  sesDelete:      { fontSize: typography.base, color: th.colors.muted2 },
-  sesChevron:     { fontSize: typography.base, color: th.colors.muted },
-  sesChevronOpen: { transform: [{ rotate: '180deg' }] },
-  sesDetail: {
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
-  },
-  sesNoteSection: {
-    padding:         spacing.md,
-    backgroundColor: withOpacity(th.colors.accent, 0.04),
-    borderLeftWidth: 2,
-    borderLeftColor: withOpacity(th.colors.accent, 0.3),
-  },
-  sesNoteSectionText: {
-    fontSize:   typography.sm,
-    color:      th.colors.text,
-    lineHeight: typography.sm * 1.6,
-  },
-  sesExSection: {
-    padding:        spacing.md,
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
-    gap:            spacing.xs,
-  },
-  sesExName: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  sesExNote: {
-    fontSize:   typography.xs,
-    color:      th.colors.accent,
-    fontStyle:  'italic',
-    lineHeight: 16,
-  },
-  sesPills: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  sesPill: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   2,
-  },
-  sesPillDone:        { backgroundColor: withOpacity(th.colors.green, 0.08), borderColor: withOpacity(th.colors.green, 0.3) },
-  sesPillPartial:     { backgroundColor: withOpacity(th.colors.orange, 0.10), borderColor: withOpacity(th.colors.orange, 0.35) },
-  sesPillText:        { fontSize: typography.xs, color: th.colors.muted },
-  sesPillTextDone:    { color: th.colors.green },
-  sesPillTextPartial: { color: th.colors.orange },
 
   // ── Exercise mini card ──
   exMiniCard: {
@@ -5270,7 +4988,7 @@ const makeStyles = (th) => StyleSheet.create({
     pointerEvents:  'box-none',
   },
   modalCard: {
-    backgroundColor:   th.colors.surface,
+    backgroundColor:   th.colors.bg,
     borderWidth:       borders.thin,
     borderColor:       th.colors.borderCard,
     borderRadius:      th.radius.lg,
@@ -5395,7 +5113,7 @@ const makeStyles = (th) => StyleSheet.create({
     bottom:          spacing.xxl * 2,
     left:            spacing.xl,
     right:           spacing.xl,
-    backgroundColor: th.colors.surface2,
+    backgroundColor: th.colors.bg,
     borderWidth:     borders.thin,
     borderColor:     th.colors.border,
     borderRadius:    th.radius.md,

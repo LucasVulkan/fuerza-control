@@ -127,7 +127,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor:      th.colors.surface,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.lg,
     borderTopRightRadius: th.radius.lg,
     borderTopWidth:  borders.thin,

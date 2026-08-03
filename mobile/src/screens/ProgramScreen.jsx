@@ -741,7 +741,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Create modal — centered card (full border radius)
   centerModal: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg,
     borderRadius:    th.radius.lg,
     padding:         spacing.xl,
     paddingBottom:   spacing.xxl,
@@ -850,7 +850,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Context menu
   contextMenu: {
-    backgroundColor:      th.colors.surface2,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.lg,
     borderTopRightRadius: th.radius.lg,
     borderTopWidth:       borders.thin,
@@ -877,7 +877,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   assignModal: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg,
     borderWidth:     borders.thin,
     borderColor:     th.colors.borderCard,
     borderRadius:    th.radius.lg,

@@ -96,7 +96,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   card: {
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.bg,
     borderRadius:    th.radius.lg,
     borderWidth:     borders.thin,
     borderColor:     th.colors.borderCard,

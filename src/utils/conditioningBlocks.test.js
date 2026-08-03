@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   amrapRemaining, amrapFinished, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
   buildBlockResult, formatBlockScore, compareBlockResults, blockEstimatedSec,
+  blocksLogFrom, defaultBlock,
 } from './conditioningBlocks';
 
 const T0 = 1_000_000_000; // arbitrary epoch ms, startedAt
@@ -213,5 +214,24 @@ describe('blockEstimatedSec', () => {
   it('for_time falls back to 600 with no cap', () => {
     expect(blockEstimatedSec({ format: 'for_time', capSec: null })).toBe(600);
     expect(blockEstimatedSec({ format: 'for_time', capSec: 480 })).toBe(480);
+  });
+});
+
+describe('blocksLogFrom', () => {
+  const started = { format: 'amrap', capSec: 600, id: 'b1', name: 'Finisher', movements: [] };
+  const idle    = { format: 'amrap', capSec: 600, id: 'b2', name: 'Sin empezar', movements: [] };
+  const state   = { b1: { startedAt: T0, rounds: 5, extraReps: 3, failed: [], timeSec: null } };
+
+  it('only logs blocks that were started, with a copy of their config', () => {
+    const log = blocksLogFrom([started, idle], state, T0 + 600_000);
+    expect(log).toHaveLength(1);
+    expect(log[0].blockId).toBe('b1');
+    expect(log[0].name).toBe('Finisher');
+    expect(log[0].result).toEqual({ rounds: 5, extraReps: 3 });
+  });
+
+  it('handles a session with no blocks at all (free session)', () => {
+    expect(blocksLogFrom(undefined, {}, T0)).toEqual([]);
+    expect(blocksLogFrom([defaultBlock()], {}, T0)).toEqual([]);
   });
 });

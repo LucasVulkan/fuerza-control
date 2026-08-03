@@ -1108,8 +1108,16 @@ estilar y desentona con todo lo demás.
 </DragSheet>
 ```
 
-- Props: `{ visible, onClose, title, children }`. El handle, el backdrop, el título y el
-  botón de cerrar los pone él; tú solo pintas el contenido.
+- Props: `{ visible, onClose, title, action, children }`. El handle, el backdrop, el
+  título y el botón de cerrar los pone él; tú solo pintas el contenido.
+- **La hoja va en `color/app` (`bg`), no en `surface`** — y con ella TODOS los modales de
+  la app (tarjetas centradas, menús contextuales a ancho completo, el detalle de
+  ejercicio de Progreso). Era una prop opcional (`background`) que usaban la mitad de las
+  hojas; ahora es el fondo único y la prop ya no existe. Lo que va DENTRO sigue las reglas
+  de siempre: tarjetas y filas en `surface`, campos / botones secundarios / segmented en
+  `surface2`. **Nada dentro de un modal puede ir pintado en `bg`**: se funde. Por eso el
+  `dark` de `StepField` (que pinta la caja en `bg`) solo se usa cuando el contenedor
+  inmediato es una tarjeta `surface`, nunca directamente sobre el cuerpo de una hoja.
 - **Se cierra arrastrando hacia abajo desde el handle Y desde el fondo** (>120 px o gesto
   rápido), o tocando el fondo. El *mismo* `PanResponder` se reparte entre las dos zonas:
   si cada una tuviera el suyo, el `gestureState` (el dy acumulado) sería distinto en cada

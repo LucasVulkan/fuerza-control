@@ -1,23 +1,29 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView,
+  TextInput, KeyboardAvoidingView, Modal,
   Platform, StyleSheet, Animated, PanResponder,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
-import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing, useAnimatedRef,
+} from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
+import BlockEditorInline from '../components/editor/BlockEditorInline';
+import DragSheet from '../components/DragSheet';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../../../src/utils/formatters';
+import { defaultBlock } from '../../../src/utils/conditioningBlocks';
 import { lastExerciseRef } from '../../../src/utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
@@ -293,6 +299,10 @@ export default function WorkoutScreen() {
   const styles     = useThemedStyles(makeStyles);
 
   const [notesOpen, setNotesOpen] = useState(false);
+  // Sesión libre: añadir/editar bloques sin pasar por el editor de sesión.
+  const [addSheetOpen, setAddSheetOpen]   = useState(false);
+  const [editingBlockId, setEditingBlockId] = useState(null);
+  const blockScrollRef = useAnimatedRef();
 
   // Cabecera sticky — 2 estados con histéresis (§4.2 de la guía): compacta a
   // partir de HEADER_COMPACT_ON, vuelve a grande por debajo de HEADER_COMPACT_OFF.
@@ -349,14 +359,23 @@ export default function WorkoutScreen() {
   const addAdHocSet           = useStore((s) => s.addAdHocSet);
   const updateFreeSessionName = useStore((s) => s.updateFreeSessionName);
   const setExerciseNote       = useStore((s) => s.setExerciseNote);
+  const addBlockToSession     = useStore((s) => s.addBlockToSession);
   const startBlock            = useStore((s) => s.startBlock);
   const updateBlockState      = useStore((s) => s.updateBlockState);
   const finishBlock           = useStore((s) => s.finishBlock);
   const resetBlock            = useStore((s) => s.resetBlock);
 
+  // Free session flag
+  const isFree = activeSession.templateId === '__free__';
+
   // Derive template + exercises
   const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
   const allExercises = { ...exerciseLibrary, ...customExercises };
+
+  // Bloques de la sesión libre: no hay plantilla donde guardarlos, viven en la
+  // propia sesión y se pintan al final, en el orden en que se añadieron.
+  const freeBlocks = isFree ? (activeSession.freeBlocks ?? []) : [];
+  const editingBlock = editingBlockId ? freeBlocks.find((b) => b.id === editingBlockId) ?? null : null;
 
   // Sync setsState when template exercises change (e.g. after editing the program)
   useEffect(() => {
@@ -417,7 +436,45 @@ export default function WorkoutScreen() {
       id:   a.exerciseId,
       done: a.setsState.length > 0 && a.setsState.every((s) => s.done),
     })),
+    ...freeBlocks.map((b) => ({
+      id:   b.id,
+      done: activeSession.blockState?.[b.id]?.finishedAt != null,
+    })),
   ];
+
+  // Misma tarjeta para los bloques de plantilla y los de la sesión libre; sólo
+  // estos últimos son editables desde aquí (los otros se editan en su editor).
+  function renderBlock(block, orderNumber) {
+    return (
+      <ConditioningBlockCard
+        key={block.id}
+        block={block}
+        state={activeSession.blockState?.[block.id] ?? null}
+        allExercises={allExercises}
+        orderNumber={orderNumber}
+        onStart={() => startBlock(block.id)}
+        onUpdate={(patch) => updateBlockState(block.id, patch)}
+        onFinish={() => finishBlock(block.id)}
+        onReset={() => resetBlock(block.id)}
+        onEdit={isFree ? () => setEditingBlockId(block.id) : undefined}
+      />
+    );
+  }
+
+  function handleAddExercise() {
+    navigation.navigate('ExerciseSelector', {
+      sessionMode: true,
+      existingPatterns: (template?.exercises ?? [])
+        .map((e) => allExercises[e.exerciseId]?.pattern)
+        .filter(Boolean),
+    });
+  }
+
+  function handleAddBlock() {
+    const block = defaultBlock();
+    addBlockToSession('__free__', block);
+    setEditingBlockId(block.id);
+  }
 
   // Global active-set pointer (highlight) — recalculated when the "shape" of
   // the session changes (sets/exercises added or removed), preserved otherwise.
@@ -472,9 +529,6 @@ export default function WorkoutScreen() {
     const wasDone = unit?.setsState[setIdx]?.done;
     if (!wasDone) setActivePointer({ exerciseId, setIndex: setIdx });
   }
-
-  // Free session flag
-  const isFree = activeSession.templateId === '__free__';
 
   // Header content — sessionLabel/titleText cubren ambos modos (plantilla y
   // sesión libre); el reloj se concatena dentro de HeaderEyebrow/HeaderCompactSummary.
@@ -591,33 +645,15 @@ export default function WorkoutScreen() {
           onScroll={handleHeaderScroll}
           scrollEventThrottle={16}
         >
-          {/* Free session info banner */}
-          {isFree && (
-            <View style={styles.freeBanner}>
-              <Text style={styles.freeBannerText}>{t('freeSession.infoText')}</Text>
-            </View>
-          )}
+          {/* Free session info text */}
+          {isFree && <Text style={styles.freeInfoText}>{t('freeSession.infoText')}</Text>}
 
           {workSlots.map((slot, slotIdx) => {
             // Numeración por hueco, igual que en el editor de sesión: un bloque
             // de acondicionamiento ocupa su número y lo pinta, así los números
             // coinciden entre las dos pantallas.
             const orderNumber = String(slotIdx + 1).padStart(2, '0');
-            if (slot.kind === 'block') {
-              return (
-                <ConditioningBlockCard
-                  key={slot.block.id}
-                  block={slot.block}
-                  state={activeSession.blockState?.[slot.block.id] ?? null}
-                  allExercises={allExercises}
-                  orderNumber={orderNumber}
-                  onStart={() => startBlock(slot.block.id)}
-                  onUpdate={(patch) => updateBlockState(slot.block.id, patch)}
-                  onFinish={() => finishBlock(slot.block.id)}
-                  onReset={() => resetBlock(slot.block.id)}
-                />
-              );
-            }
+            if (slot.kind === 'block') return renderBlock(slot.block, orderNumber);
             const group = slot.items;
             const isSuperset = group.length > 1;
             const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
@@ -701,18 +737,24 @@ export default function WorkoutScreen() {
             );
           })}
 
-          {/* Add exercise to session (ad-hoc) */}
+          {/* Bloques creados durante la sesión libre — continúan la numeración */}
+          {freeBlocks.map((block, i) => renderBlock(
+            block,
+            String(workSlots.length + (activeSession.adHocExercises?.length ?? 0) + i + 1).padStart(2, '0'),
+          ))}
+
+          {/* Añadir — en la libre abre la hoja (ejercicio o bloque), porque no
+              pasa por el editor de sesión; en una de plantilla va directa al
+              selector, que es lo único que se puede añadir sobre la marcha. */}
           <TouchableOpacity
-            style={styles.addExBtn}
-            onPress={() => navigation.navigate('ExerciseSelector', {
-              sessionMode: true,
-              existingPatterns: (template?.exercises ?? [])
-                .map((e) => allExercises[e.exerciseId]?.pattern)
-                .filter(Boolean),
-            })}
-            activeOpacity={0.75}
+            style={styles.addBtn}
+            onPress={() => (isFree ? setAddSheetOpen(true) : handleAddExercise())}
+            activeOpacity={0.7}
           >
-            <Text style={styles.addExBtnText}>+ {t('workout.addExercise')}</Text>
+            <Text style={styles.addBtnText}>
+              <Text style={styles.addBtnPlus}>+</Text>
+              {` ${isFree ? t('editor.addSheetTitle') : t('workout.addExercise')}`}
+            </Text>
           </TouchableOpacity>
 
           {/* Save button */}
@@ -757,6 +799,76 @@ export default function WorkoutScreen() {
         placeholder={t('workout.notesPlaceholder')}
         hint={t('workout.notesSavedWith')}
       />
+
+      {/* Hoja de "añadir" de la sesión libre — mismas opciones que el editor */}
+      <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
+        <View style={styles.sheetBody}>
+          <TouchableOpacity
+            style={styles.sheetRow}
+            onPress={() => { setAddSheetOpen(false); handleAddExercise(); }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sheetRowText}>{t('editor.addExerciseOption')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.sheetRow}
+            onPress={() => { setAddSheetOpen(false); handleAddBlock(); }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sheetRowText}>{t('editor.addBlockOption')}</Text>
+          </TouchableOpacity>
+        </View>
+      </DragSheet>
+
+      {/* Editor del bloque de la sesión libre — el mismo inline que el editor de
+          sesión. `GestureHandlerRootView` propio: un Modal de RN monta en otra
+          jerarquía nativa y sin él no llegan los gestos de arrastre. */}
+      {editingBlock && (
+        <Modal
+          visible
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setEditingBlockId(null)}
+        >
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
+              <View style={styles.blockHeader}>
+                <View style={styles.blockHeaderBar}>
+                  <Text style={styles.blockHeaderTitle} numberOfLines={1}>
+                    {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.blockHeaderAccept}
+                  onPress={() => setEditingBlockId(null)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.blockHeaderAcceptTxt}>{t('common.accept')}</Text>
+                </TouchableOpacity>
+              </View>
+              <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              >
+                <Reanimated.ScrollView
+                  ref={blockScrollRef}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <BlockEditorInline
+                    templateId="__free__"
+                    block={editingBlock}
+                    allExercises={allExercises}
+                    onClose={() => setEditingBlockId(null)}
+                    navigation={navigation}
+                    scrollableRef={blockScrollRef}
+                  />
+                </Reanimated.ScrollView>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </GestureHandlerRootView>
+        </Modal>
+      )}
 
       {/* Floating rest timer — sits above everything, swipe right to dismiss */}
       <RestTimerFloat
@@ -914,19 +1026,12 @@ const makeStyles = (th) => StyleSheet.create({
     top: 0, left: 0, right: 0,
     height:   SCROLL_FADE_H,
   },
-  freeBanner: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     1,
-    borderColor:     withOpacity(th.colors.accent, 0.18),
-    borderRadius:    th.radius.sm,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom:    spacing.xs,
-  },
-  freeBannerText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    lineHeight: typography.xs * 1.6,
+  // Texto explicativo de la sesión libre: sin caja, tipografía de la app
+  // (text/subtitle) y en mutedLight — es contexto, no un aviso.
+  freeInfoText: {
+    ...textStyles.subtitle,
+    color:      th.colors.mutedLight,
+    lineHeight: 18,
     textAlign:  'center',
   },
   // Content — margen lateral = página (spacing.lg, igual que headerWrap);
@@ -937,23 +1042,50 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.md,
   },
 
-  // Add exercise (ad-hoc)
-  addExBtn: {
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-    borderStyle:     'dashed',
+  // Añadir — mismo botón que el editor de sesión (210:2784)
+  addBtn:     { alignItems: 'center', paddingVertical: spacing.md },
+  addBtnText: { ...textStyles.cardType, color: th.tint.accent50 },
+  addBtnPlus: { color: th.colors.accent },
+
+  // Hoja de "añadir" + editor de bloque de la sesión libre
+  sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
+  sheetRow: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+  },
+  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
+  blockHeader: {
+    flexDirection:     'row',
+    alignItems:        'stretch',
+    gap:               spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    paddingBottom:     spacing.md,
+  },
+  blockHeaderBar: {
+    flex:              1,
+    minWidth:          0,
+    justifyContent:    'center',
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+  },
+  blockHeaderTitle: {
+    ...textStyles.spacingTag,
+    color:         th.colors.onAccent,
+    textTransform: 'uppercase',
+  },
+  blockHeaderAccept: {
+    backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
-    paddingVertical: spacing.md,
+    padding:         spacing.md,
     alignItems:      'center',
-    backgroundColor: withOpacity(th.colors.accent, 0.04),
-    marginTop:       spacing.xs,
+    justifyContent:  'center',
   },
-  addExBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.medium,
-    color:         th.colors.accent,
-    letterSpacing: 0.5,
-  },
+  blockHeaderAcceptTxt: { ...textStyles.cardType, color: th.colors.text },
 
   // Save / discard
   saveBtn: {

@@ -205,7 +205,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    backgroundColor:      th.colors.surface,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.lg,
     borderTopRightRadius: th.radius.lg,
     paddingHorizontal:    spacing.xl,

@@ -85,7 +85,6 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
     <DragSheet
       visible={visible}
       onClose={onClose}
-      background={th.colors.bg}
       title={t('trainer.linkTitle')}
       action={{ label: t('common.cancel'), onPress: onClose }}
     >
