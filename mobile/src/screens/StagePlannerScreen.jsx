@@ -98,7 +98,7 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
         </TouchableOpacity>
       ) : (
         <StepField
-          horizontal dark
+          horizontal
           label={t('editor.stageWeeksUnit')}
           value={stage.durationWeeks}
           onChange={onCycles}
@@ -266,7 +266,7 @@ export default function StagePlannerScreen({ navigation }) {
           <View style={styles.countRow}>
             <Text style={styles.fieldLabel}>{t('planner.rungCount')}</Text>
             <StepField
-              horizontal dark
+              horizontal
               value={workCount}
               onChange={(v) => regenerate(ladderId, v, withDeload)}
               min={1}
@@ -287,7 +287,7 @@ export default function StagePlannerScreen({ navigation }) {
               <View style={styles.rungField}>
                 <Text style={styles.fieldLabel}>{t('editor.stageWeeksUnit')}</Text>
                 <StepField
-                  horizontal dark
+                  horizontal
                   value={rung.durationWeeks}
                   onChange={(v) => patchRung(i, { durationWeeks: v })}
                   min={1}
@@ -298,7 +298,7 @@ export default function StagePlannerScreen({ navigation }) {
                 <View key={f.key} style={styles.rungField}>
                   <Text style={styles.fieldLabel}>{t(fieldLabelKey(f, rung.rx.scope))}</Text>
                   <StepField
-                    horizontal dark
+                    horizontal
                     value={rung.rx[f.key] ?? 0}
                     onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
                     min={f.min}

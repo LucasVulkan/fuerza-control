@@ -20,8 +20,11 @@ import { useThemedStyles } from '../../useTheme';
 //     los bordes): es una inconsistencia del mock, aquí van todas iguales.
 //   · `Horizontal` — label a la izquierda y los controles a la derecha. Es la
 //     que usan las hojas, donde el alto vertical es caro.
-// `dark` pinta la caja sobre `color/app` en vez de `surface`: dentro de una hoja
-// el fondo YA es `surface` y las cajas se perdían contra él.
+// `dark` pinta la caja sobre `bg` en vez de `surface`. Es SOLO para cuando el
+// campo cuelga directo del fondo de una hoja (que ya es `surface`) y si no se
+// perdería contra él. **Dentro de una tarjeta, NO se usa**: la caja tiene que
+// compartir fondo con la tarjeta que envuelve su título, y lo único que
+// destaca son los botones ± (`surface2`). Es la lógica de toda la app.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
 const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
 const GLYPH_W   = 13;   // largo de la barra del − / +
