@@ -226,8 +226,19 @@ hero + su botón. En `src/locales/es.json` Y `en.json`.
 
 | # | Alcance | Coste |
 |---|---|---|
-| 1 | `clientAttention.js` + `blockFinished` + pill + cuarto estado del hero con botón al planificador | 🟢 |
+| 1a | ✅ Cuarto estado del hero (aviso + botón al planificador) — ago 2026 | 🟢 |
+| 1b | `clientAttention.js` + `blockFinished` + pill con contador en el listado | 🟢 |
 | 2 | `isStalled` + memo por cliente + pill, con calibración de `flat` contra la semilla | 🟡 |
 
 La fase 1 no depende de la 2 y cierra el bucle con el planificador, así que va
 primero.
+
+**1a hecha, 1b no.** Decisión del usuario: primero el aviso en la ficha, que es
+lo que cierra el bucle con el planificador. El aviso vive dentro de
+`ActiveProgramHero` ([ClientsScreen.jsx](../../src/screens/ClientsScreen.jsx),
+`blockDone`) reutilizando la caja del aviso de etapa bloqueada; no hay
+`clientAttention.js` todavía porque no hace falta función pura hasta que la
+condición se evalúe para los 20 clientes a la vez. La 1b es la que la pide: ahí
+sí se extrae `blockFinished(client, program)` con sus tests y las reglas de §2.2
+(estado manual `paused`/`inactive` silencia), que hoy no aplican porque el hero
+solo mira al cliente que ya has abierto.

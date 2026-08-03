@@ -112,7 +112,7 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
 
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
-export default function StagePlannerScreen({ navigation }) {
+export default function StagePlannerScreen({ navigation, route }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -147,7 +147,10 @@ export default function StagePlannerScreen({ navigation }) {
     setRungs((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch, rx: { ...r.rx, ...(patch.rx ?? {}) } } : r)));
   }
 
-  const programId = ui._editingProgramId ?? profile.activeProgramId;
+  // Por ruta cuando se entra desde el cliente (ficha de Clientes): ahí nadie
+  // abre ni cierra el editor, y dejar `_editingProgramId` puesto al volver haría
+  // que el siguiente "Editar programa" abriera el del cliente.
+  const programId = route?.params?.programId ?? ui._editingProgramId ?? profile.activeProgramId;
   const program   = programs[programId];
   const stages    = program?.stages ?? [];
 
