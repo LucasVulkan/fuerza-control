@@ -631,6 +631,37 @@ admite el signo cuando `min < 0`.
 Pendiente y apuntado por el usuario: un **bloque a medida** donde se elija qué
 parámetros tocar, para lo que no encaje en los tres tipos.
 
+**Ronda 2 de QA.** Cuatro cosas, una de ellas de fondo:
+
+- **`th.colors.app` no existe en ningún theme.** Es un nombre de token de Figma
+  que se coló como si fuera del theme; los 5 usos renderizaban sin fondo, que es
+  lo que hacía que la hoja y sus tarjetas parecieran competir. Fondo de pantalla
+  → `bg`, tarjetas dentro de una hoja → `surface`, y la hoja pasa a
+  `background={th.colors.bg}` (patrón ya usado por AppHeader, ClientCodeModal y
+  TrainerSyncModal — no era exclusivo del menú principal).
+- **`planner.fields.restPct_keys` no existía.** La etiqueta se componía
+  añadiendo el alcance a TODOS los campos, y el descanso no tiene variante por
+  alcance. Ahora los campos declaran `scoped: true` y `fieldLabelKey` decide.
+  Hay test que recorre cada peldaño de cada escalera y comprueba que la clave
+  resultante existe en los DOS locales.
+- **Los nombres de las escaleras describían la forma, no lo que hacen**, y
+  "Lineal 3+1" además mentía desde que el número de peldaños es editable. Pasan
+  a nombrar el objetivo: **Volumen total** (series a todo), **Intensidad**
+  (rango corto en los principales) y **Accesorios** (series solo en accesorios).
+  Las descripciones dicen qué toca cada una, sin mencionar la descarga —que es
+  opcional y tiene su propio interruptor.
+- La base ahora se dice **dentro de la hoja**, no solo en la pantalla.
+
+**Verificado, sobre la duda del usuario:** añadir un segundo bloque NO parte de
+la descarga del primero. `baseStageIdx` devuelve la última etapa **sin `rx`**, y
+todos los peldaños generados llevan `rx`, así que la base sigue siendo la última
+construida a mano. Es lo correcto: derivar de una descarga (−1 serie) haría que
+el "+1" del bloque siguiente saliera por debajo del primero. La consecuencia
+asumida es que dos bloques seguidos tienen la MISMA estructura de series y
+rangos; el progreso entre bloques lo lleva el motor de progresión por ejercicio,
+que es donde vive. Si algún día se quiere elegir otra base, el sitio es un
+selector en esta hoja.
+
 ### 7.5 Nota
 
 El paso de ciclos de la creación de programa **está en la fase 0** (§3.2.h),

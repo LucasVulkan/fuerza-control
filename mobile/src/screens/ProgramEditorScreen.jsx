@@ -799,7 +799,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.app,
+    // Dentro de una hoja el fondo ya es `surface`: los campos van sobre `bg`
+    // para que se lean, mismo criterio que las hojas del editor de ejercicio.
+    backgroundColor:   th.colors.bg,
   },
   noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
   noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },

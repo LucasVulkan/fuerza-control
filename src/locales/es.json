@@ -1914,9 +1914,9 @@
     "deleteTitle": "¿Eliminar etapa?",
     "deleteBody": "Se perderán las sesiones de «{{name}}».",
     "ladders": {
-      "linear": "Lineal 3+1",
-      "intensification": "Intensificación",
-      "volume": "Volumen"
+      "linear": "Volumen total",
+      "intensification": "Intensidad",
+      "volume": "Accesorios"
     },
     "rungs": {
       "deload": "Descarga"
@@ -1958,9 +1958,10 @@
       "restPct": "Descanso (%)"
     },
     "ladderDesc": {
-      "linear": "Sube volumen y termina descargando.",
-      "intensification": "Acorta el rango de los básicos y alarga el descanso.",
-      "volume": "Añade series a los accesorios, sin tocar los básicos."
-    }
+      "linear": "Sube series en todos los ejercicios de la etapa para aumentar el volumen de trabajo.",
+      "intensification": "Acorta el rango de repeticiones de los ejercicios principales y alarga el descanso.",
+      "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
+    },
+    "baseLine": "Todos los peldaños parten de «{{name}}»"
   }
 }

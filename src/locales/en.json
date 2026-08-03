@@ -1914,9 +1914,9 @@
     "deleteTitle": "Delete stage?",
     "deleteBody": "The sessions in “{{name}}” will be lost.",
     "ladders": {
-      "linear": "Linear 3+1",
-      "intensification": "Intensification",
-      "volume": "Volume"
+      "linear": "Overall volume",
+      "intensification": "Intensity",
+      "volume": "Accessories"
     },
     "rungs": {
       "deload": "Deload"
@@ -1958,9 +1958,10 @@
       "restPct": "Rest (%)"
     },
     "ladderDesc": {
-      "linear": "Rising volume, then a deload.",
-      "intensification": "Shortens the key lifts' rep range and lengthens rest.",
-      "volume": "Adds sets to the accessories, leaving the key lifts alone."
-    }
+      "linear": "Adds sets across every exercise in the stage to raise total work volume.",
+      "intensification": "Shortens the key lifts’ rep range and lengthens the rest.",
+      "volume": "Adds sets to the accessories only; the key lifts are left alone."
+    },
+    "baseLine": "Every rung derives from “{{name}}”"
   }
 }

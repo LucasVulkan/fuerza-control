@@ -35,7 +35,7 @@ import StepField from '../components/ui/StepField';
 import { ArrowIcon } from '../components/ui/EditorIcons';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ToggleRow } from '../components/ui/EditorRows';
-import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx } from '../../../src/utils/stageRx';
+import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../../../src/utils/stageRx';
 import { clientStageIndex } from '../../../src/utils/stageProgress';
 
 const HEADER_H = 64;
@@ -241,6 +241,10 @@ export default function StagePlannerScreen({ navigation }) {
         onClose={() => setLadderOpen(false)}
         title={t('planner.ladderTitle')}
         action={{ label: t('planner.applyBtn'), onPress: handleApply }}
+        // Sobre `surface` (el fondo por defecto de la hoja) las tarjetas de
+        // peldaño no se despegaban del fondo. Mismo patrón que las hojas de
+        // AppHeader / ClientCodeModal / TrainerSyncModal.
+        background={th.colors.bg}
       >
         <View style={styles.sheetBody}>
           <SegmentedControl
@@ -249,6 +253,10 @@ export default function StagePlannerScreen({ navigation }) {
             onChange={(id) => regenerate(id, workCount, withDeload)}
           />
           <Text style={styles.ladderDesc}>{t(`planner.ladderDesc.${ladderId}`)}</Text>
+          {/* La base es siempre la última etapa SIN regla, así que añadir un
+              segundo bloque NO parte de la descarga del primero. Decirlo aquí
+              es la diferencia entre una regla y una sorpresa. */}
+          <Text style={styles.baseLine}>{t('planner.baseLine', { name: baseStage?.name ?? '' })}</Text>
 
           <View style={styles.countRow}>
             <Text style={styles.fieldLabel}>{t('planner.rungCount')}</Text>
@@ -283,9 +291,7 @@ export default function StagePlannerScreen({ navigation }) {
               </View>
               {(rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[ladderId]).map((f) => (
                 <View key={f.key} style={styles.rungField}>
-                  <Text style={styles.fieldLabel}>
-                    {t(`planner.fields.${f.key}${rung.rx.scope && rung.rx.scope !== 'all' ? `_${rung.rx.scope}` : ''}`)}
-                  </Text>
+                  <Text style={styles.fieldLabel}>{t(fieldLabelKey(f, rung.rx.scope))}</Text>
                   <StepField
                     horizontal dark
                     value={rung.rx[f.key] ?? 0}
@@ -306,7 +312,7 @@ export default function StagePlannerScreen({ navigation }) {
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: th.colors.app },
+  screen: { flex: 1, backgroundColor: th.colors.bg },
 
   header: {
     flexDirection:     'row',
@@ -363,7 +369,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.app,
+    backgroundColor:   th.colors.surface2,
   },
   noLimitText: { ...textStyles.cardType, color: th.colors.mutedLight },
 
@@ -379,16 +385,17 @@ const makeStyles = (th) => StyleSheet.create({
 
   sheetBody:  { gap: spacing.sm, paddingBottom: spacing.md },
   ladderCard: {
-    backgroundColor: th.colors.app,
+    backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.xs2,
   },
-  ladderDesc: { ...textStyles.subtitle, color: th.colors.muted },
+  ladderDesc: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  baseLine:   { ...textStyles.subtitle, color: th.colors.accent },
   countRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   fieldLabel: { ...textStyles.cardType, color: th.colors.mutedLight, flexShrink: 1 },
   rungCard: {
-    backgroundColor: th.colors.app,
+    backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.sm,

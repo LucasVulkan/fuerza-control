@@ -61,14 +61,27 @@ export const LADDER_IDS = ['linear', 'intensification', 'volume'];
  * `planner.fields.<key>`.
  */
 export const LADDER_FIELDS = {
-  linear:          [{ key: 'setsDelta', min: -2, max: 3,   step: 1 }],
-  intensification: [{ key: 'repsShift', min: -6, max: 0,   step: 1 },
+  linear:          [{ key: 'setsDelta', min: -2, max: 3,   step: 1, scoped: true }],
+  intensification: [{ key: 'repsShift', min: -6, max: 0,   step: 1, scoped: true },
+                    // El descanso no tiene variante por alcance: "Descanso en
+                    // básicos" no es una etiqueta que exista, y pedirla daba
+                    // `planner.fields.restPct_keys`, que no está en los locales.
                     { key: 'restPct',   min: 0,  max: 100, step: 5 }],
-  volume:          [{ key: 'setsDelta', min: 0,  max: 3,   step: 1 }],
+  volume:          [{ key: 'setsDelta', min: 0,  max: 3,   step: 1, scoped: true }],
 };
 
 /** Campos editables del peldaño de descarga, sea cual sea la escalera. */
-export const DELOAD_FIELDS = [{ key: 'setsDelta', min: -3, max: 0, step: 1 }];
+export const DELOAD_FIELDS = [{ key: 'setsDelta', min: -3, max: 0, step: 1, scoped: true }];
+
+/**
+ * Clave i18n de la etiqueta de un campo. Solo los campos marcados `scoped`
+ * tienen variante por alcance ("Series en accesorios"); el resto usan la suya
+ * a secas.
+ */
+export function fieldLabelKey(field, scope) {
+  const suffix = field.scoped && scope && scope !== 'all' ? `_${scope}` : '';
+  return `planner.fields.${field.key}${suffix}`;
+}
 
 const DELOAD_RUNG = { kind: 'deload', durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } };
 

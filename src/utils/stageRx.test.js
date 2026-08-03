@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyRx, isNoopRx, DEFAULT_RX, LADDER_IDS, LADDER_FIELDS, buildRungs, describeRx } from './stageRx';
+import { readFileSync } from 'node:fs';
+import { applyRx, isNoopRx, DEFAULT_RX, LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from './stageRx';
 
 // Ejercicios como los escribe `buildExConfig` / el editor.
 const squat  = { exerciseId: 'squat_barbell', isKey: true,  sets: 4, restSec: 120, minReps: 5, maxReps: 8, order: 1 };
@@ -245,6 +246,28 @@ describe('buildRungs', () => {
     for (const id of LADDER_IDS) {
       const rung = buildRungs(id, 1, false)[0];
       for (const f of LADDER_FIELDS[id]) expect(rung.rx, `${id}.${f.key}`).toHaveProperty(f.key);
+    }
+  });
+
+  it('never asks for a label that does not exist', () => {
+    // El descanso NO tiene variante por alcance: pedir `restPct_keys` pintaba
+    // la clave en crudo en la hoja de intensificación.
+    const ES = JSON.parse(readFileSync(new URL('../locales/es.json', import.meta.url), 'utf8'));
+    const EN = JSON.parse(readFileSync(new URL('../locales/en.json', import.meta.url), 'utf8'));
+    const seen = new Set();
+    for (const id of LADDER_IDS) {
+      for (const rung of buildRungs(id, 3, true)) {
+        const fields = rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[id];
+        for (const f of fields) seen.add(fieldLabelKey(f, rung.rx.scope));
+      }
+    }
+    expect(seen.size).toBeGreaterThan(0);
+    for (const key of seen) {
+      const path = key.split('.');
+      for (const dict of [ES, EN]) {
+        const value = path.reduce((acc, k) => (acc == null ? acc : acc[k]), dict);
+        expect(value, key).toBeTruthy();
+      }
     }
   });
 
