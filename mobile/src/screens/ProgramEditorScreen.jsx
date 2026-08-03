@@ -15,9 +15,10 @@ import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked } from '../../../src/utils/stageLocks';
+import { describeRx } from '../../../src/utils/stageRx';
 import { clientStageIndex } from '../../../src/utils/stageProgress';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
@@ -99,7 +100,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
-  const [menuOpen, setMenuOpen]                 = useState(false);
+  const [addOpen, setAddOpen]                   = useState(false);
 
   const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
@@ -345,9 +346,10 @@ export default function ProgramEditorScreen({ navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
-          <MenuIcon size={26} color={th.colors.onAccent} />
-        </TouchableOpacity>
+        {/* Hueco: el "···" tenía una sola acción ("añadir etapa") y ahora vive
+            en la hoja del "+", junto al selector de etapas. El espaciador
+            mantiene el título centrado. */}
+        <View style={styles.headerSide} />
       </View>
 
       {/* Scrollable content */}
@@ -385,7 +387,7 @@ export default function ProgramEditorScreen({ navigation }) {
               if (idx === selectedStageIdx) setStageSheetOpen(true);
               else setSelectedStageIdx(idx);
             }}
-            onAdd={handleAddStage}
+            onAdd={() => setAddOpen(true)}
           />
           <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
         </View>
@@ -448,13 +450,30 @@ export default function ProgramEditorScreen({ navigation }) {
       </Reanimated.ScrollView>
 
       {/* ── Menú "···" del header ── */}
-      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.menuTitle')}>
+      {/* ── Hoja del "+" del selector de etapas ── */}
+      <DragSheet visible={addOpen} onClose={() => setAddOpen(false)} title={t('editor.addSheetTitle')}>
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => { setMenuOpen(false); handleAddStage(); }}
+          onPress={() => { setAddOpen(false); handleAddStage(); }}
           activeOpacity={0.7}
         >
-          <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
+          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+            <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
+            <Text style={styles.menuRowHint}>
+              {t('editor.addStageHint', { name: activeProgram.stages[activeProgram.stages.length - 1]?.name ?? '' })}
+            </Text>
+          </View>
+          <ArrowIcon size={14} color={th.colors.mutedLight} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => { setAddOpen(false); navigation.navigate('StagePlanner'); }}
+          activeOpacity={0.7}
+        >
+          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+            <Text style={styles.menuRowText}>{t('editor.planBlock')}</Text>
+            <Text style={styles.menuRowHint}>{t('editor.planBlockHint')}</Text>
+          </View>
           <ArrowIcon size={14} color={th.colors.mutedLight} />
         </TouchableOpacity>
       </DragSheet>
@@ -481,6 +500,19 @@ export default function ProgramEditorScreen({ navigation }) {
                 returnKeyType="done"
               />
             </View>
+
+            {/* Procedencia. Es una etiqueta, no una regla viva: `applyRx` se
+                materializó al crear la etapa y editarla a mano manda sobre
+                esto. Sin ella, a las tres semanas nadie recuerda qué escalera
+                montó. */}
+            {selectedStage.rx && describeRx(selectedStage.rx, t).length > 0 && (
+              <View>
+                <Text style={styles.sheetLabel}>{t('editor.stageFromLabel')}</Text>
+                <Text style={styles.stageRxLine}>
+                  {describeRx(selectedStage.rx, t).join(' · ')}
+                </Text>
+              </View>
+            )}
 
             <View>
               <Text style={styles.sheetLabel}>{t('editor.stageDurationLabel')}</Text>
@@ -744,6 +776,8 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      spacing.md,
   },
   menuRowText: { ...textStyles.cardType, color: th.colors.text },
+  menuRowHint: { ...textStyles.subtitle, color: th.colors.muted },
+  stageRxLine: { ...textStyles.cardType, color: th.colors.accent },
 
   // Stage sheet
   sheetBody: {

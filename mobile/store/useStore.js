@@ -1221,6 +1221,62 @@ export const useStore = create(
         }));
       },
 
+      // Añade VARIOS peldaños de golpe detrás de una etapa base, en una sola
+      // escritura. Todos derivan de la base (no en cadena), así que los deltas
+      // son absolutos y editar un peldaño no descoloca los siguientes.
+      //
+      // `rungs`: [{ name, durationWeeks, rx }]. Devuelve el índice del primer
+      // peldaño creado para que la pantalla pueda saltar ahí.
+      addStageLadder: (programId, { sourceStageIdx, rungs }) => {
+        const { programs, sessionTemplates, userPrograms, clients, exerciseLibrary, customExercises } = get();
+        const program = ensureStages(programs[programId]);
+        if (!program || !rungs?.length) return null;
+        const existingStages = program.stages;
+        const source = existingStages[sourceStageIdx] ?? existingStages[existingStages.length - 1];
+        if (!source) return null;
+
+        const updatedSessionTemplates = { ...sessionTemplates };
+        const allExercises = { ...exerciseLibrary, ...customExercises };
+
+        const newStages = rungs.map(({ name, durationWeeks, rx }) => ({
+          id: generateId('stage'),
+          name,
+          durationWeeks: durationWeeks ?? 4,
+          days: (source.days ?? []).map(({ sessionTemplateId, label }) => {
+            const src = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const newTplId = generateId('tpl');
+            updatedSessionTemplates[newTplId] = {
+              ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
+              id: newTplId, programId,
+              derivedFrom: sessionTemplateId,
+              exercises: applyRx(src?.exercises ?? [], rx, allExercises),
+            };
+            return { sessionTemplateId: newTplId, label };
+          }),
+          ...(rx ? { rx, derivedFromStageId: source.id ?? null } : {}),
+        }));
+
+        // Misma razón que en `addStageToProgram`: con una etapa abierta delante
+        // el cliente no puede salir de ella nunca.
+        const owner    = program.clientId ? clients?.[program.clientId] : null;
+        const progress = progressFromBlob(owner?.progress, program.id);
+        const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
+        const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
+        const { stages: closed, advancePending } = closeOpenStage(existingStages, curIdx, cycles);
+
+        set((s) => ({
+          sessionTemplates: updatedSessionTemplates,
+          programs: {
+            ...s.programs,
+            [programId]: {
+              ...withStages(program, [...closed, ...newStages]),
+              ...(advancePending ? { stageAdvancePending: true } : {}),
+            },
+          },
+        }));
+        return existingStages.length;
+      },
+
       updateStage: (programId, stageIndex, updates) => {
         const { programs } = get();
         const program = ensureStages(programs[programId]);

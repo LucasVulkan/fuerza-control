@@ -37,6 +37,71 @@ export const DEFAULT_RX = {
   progressionHold:  null,   // null | 'deload'
 };
 
+/**
+ * Escaleras predefinidas: los peldaños que se añaden DETRÁS de la etapa base.
+ * Todos derivan de la base, nunca del anterior (ver cabecera).
+ *
+ * Por qué dos de las tres llevan `scope`: sin alcance, un peldaño de
+ * intensificación empujaría los curls a 5-9 repeticiones, y eso contradice una
+ * regla que el propio generador ya aplica — "uniarticulares siempre con
+ * parámetros de hipertrofia" (`programGenerator.js`). El rango corto es de los
+ * básicos; los accesorios viven en 8-15 haga el bloque lo que haga. Y al revés
+ * en volumen: las series extra van a los accesorios, no a la sentadilla pesada.
+ *
+ * La descarga y la acumulación lineal sí van a `all`: bajar el volumen o añadir
+ * una serie a todo es exactamente lo que se quiere ahí.
+ *
+ * `nameKey` se traduce en la pantalla; aquí no entra i18n.
+ */
+export const LADDERS = [
+  {
+    id: 'linear',
+    rungs: [
+      { nameKey: 'accumulation2', durationWeeks: 4, rx: { setsDelta: 1 } },
+      { nameKey: 'accumulation3', durationWeeks: 3, rx: { setsDelta: 2 } },
+      { nameKey: 'deload',        durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
+    ],
+  },
+  {
+    id: 'intensification',
+    rungs: [
+      { nameKey: 'intensify1', durationWeeks: 4, rx: { scope: 'keys', repsShift: -3, restPct: 25 } },
+      { nameKey: 'intensify2', durationWeeks: 3, rx: { scope: 'keys', repsShift: -5, restPct: 50, incrementScale: 0.5 } },
+      { nameKey: 'deload',     durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
+    ],
+  },
+  {
+    id: 'volume',
+    rungs: [
+      { nameKey: 'volume2', durationWeeks: 4, rx: { scope: 'accessories', setsDelta: 1 } },
+      { nameKey: 'volume3', durationWeeks: 4, rx: { scope: 'accessories', setsDelta: 2 } },
+      { nameKey: 'deload',  durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } },
+    ],
+  },
+];
+
+/**
+ * Resumen legible de una regla, para la fila de procedencia ("+1 serie ·
+ * −3 reps"). Devuelve [] si la regla no cambia nada.
+ *
+ * `t` es la función de i18next; las cadenas viven en `planner.rxParts.*`.
+ */
+export function describeRx(rx, t) {
+  if (isNoopRx(rx)) return [];
+  const r = { ...DEFAULT_RX, ...rx };
+  const scoped = (key, opts) => t(
+    r.scope === 'all' ? `planner.rxParts.${key}` : `planner.rxParts.${key}_${r.scope}`,
+    opts,
+  );
+  const parts = [];
+  if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDelta) }));
+  if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsShift) }));
+  if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Math.abs(r.restPct) }));
+  if (r.incrementScale !== 1)  parts.push(t('planner.rxParts.incrementHalf'));
+  if (r.progressionHold)       parts.push(t('planner.rxParts.deload'));
+  return parts;
+}
+
 // Suelos duros. Ninguna regla puede producir una serie de 0 repeticiones ni un
 // descanso de 3 segundos por mucho que se acumulen los deltas.
 const MIN_SETS = 1;

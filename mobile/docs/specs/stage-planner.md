@@ -1,6 +1,6 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
-> Estado: **fases 0-3 implementadas; fase 4 sin implementar** (ago 2026). 5 fases, cada una un
+> Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -510,7 +510,7 @@ mantener; pero un ejercicio sin progresión sigue sin chip.
 
 ---
 
-## 7. FASE 4 — La pantalla de planificador 🔴
+## 7. FASE 4 — La pantalla de planificador 🔴 ✅ IMPLEMENTADA
 
 ### 7.1 Por qué pantalla propia y no el `StageSelector`
 
@@ -577,7 +577,40 @@ Duraciones por defecto 4/4/3/1. **Tres peldaños es el objetivo, no seis**: si
 el entrenador planifica 6 etapas el día 1, la propuesta al cerrar bloque (P4)
 no tiene nada que decir en medio año.
 
-### 7.4 Nota
+### 7.4 Cómo quedó al implementar
+
+**Entrada: la hoja del `+`** (decidida con el usuario, mejor que la cabecera que
+proponía esta spec — era otro sitio donde esconderlo). El `+` del
+`StageSelector` abre un `DragSheet` con dos filas: *Etapa nueva* (copia de la
+última, un toque, lo de siempre) y *Planificar bloque*. **El menú "···" del
+editor de programa desaparece**: su única acción era "añadir etapa" y ahora vive
+en el `+`, junto a las etapas.
+
+Como el planificador es también el editor de reglas, no hace falta un selector
+de regla aparte para el `+`: "una etapa con regla" es el planificador con un
+peldaño.
+
+**La escalera se aplica al momento, sin borrador.** Las etapas se crean y se
+editan ahí mismo (nombre, ciclos, borrar), que es lo que el store ya sabe hacer.
+Un estado intermedio de "plan pendiente de confirmar" sería una máquina de
+estados entera para ahorrar un toque de deshacer.
+
+**La base es la última etapa SIN regla**, o sea la última construida a mano — "la
+base del plan". Derivar del último peldaño montaría el bloque nuevo encima de
+una descarga. La pantalla lo dice explícitamente para que no sea una sorpresa.
+
+**Añadir, nunca reemplazar**: planificar sobre un programa con etapas las
+conserva y añade detrás. Borrar sigue siendo explícito.
+
+Fila de procedencia en la hoja de etapa: `describeRx` traduce la regla a
+"+1 serie en accesorios · −3 reps en básicos". Es una etiqueta, no una regla
+viva — editar la etapa a mano manda sobre ella.
+
+Bug preexistente encontrado de camino: `editor.cyclesShort` no existía en
+ninguno de los dos locales, así que el meta del `StageSelector` pintaba la clave
+en crudo. Añadida con formas de plural.
+
+### 7.5 Nota
 
 El paso de ciclos de la creación de programa **está en la fase 0** (§3.2.h),
 no aquí: sin él no existe el momento "se acabó la etapa" y nada de esto tiene
@@ -634,7 +667,7 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 | 1 | `applyRx` + `templateChainIds` + `addStageToProgram({rx})` (§4) | 🟡 | ✅ **IMPLEMENTADA** — 911 tests. `applyRx` no tiene llamante en producción hasta la fase 4: lo que aporta valor hoy es la cadena (§4.1) |
 | 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | ✅ **IMPLEMENTADA** — la pill reutiliza el hueco de la pill de bloque; `isKey` NO viaja en `LINKED_CONFIG_KEYS` |
 | 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | ✅ **IMPLEMENTADA** — no se puede ver en el móvil hasta la fase 4: nada escribe `hold` hasta que el planificador cree un peldaño de descarga |
-| 4 | Pantalla de planificador (§7) | 🔴 | Opus/Fable el diseño de las escaleras; Sonnet la UI |
+| 4 | Pantalla de planificador (§7) | 🔴 | ✅ **IMPLEMENTADA** — `StagePlannerScreen`, entrada por la hoja del `+`; la escalera se aplica al momento, sin borrador |
 | 5 | *(futuro)* Grupo B: recap consciente de la descarga (§4.2) | 🟡 | — |
 
 Las fases 0-3 aportan valor solas y son entregables por separado. La 4 es la

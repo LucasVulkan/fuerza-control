@@ -1233,8 +1233,14 @@
     "sessionMetaNoTime": "{{ex}} exercises · {{sets}} sets",
     "programSummary": "{{stages}} stages · {{weeks}} cycles · {{sessions}} sessions",
     "programSummarySimple": "{{sessions}} sessions · {{sets}} sets",
+    "addSheetTitle": "Add",
+    "addStageHint": "A copy of “{{name}}”, to tweak by hand",
+    "planBlock": "Plan a block",
+    "planBlockHint": "Several stages at once, progressing between them",
     "programSummaryOpen": "{{stages}} stages · {{weeks}}+ cycles · {{sessions}}+ sessions",
     "cyclesOpen": "No limit",
+    "cyclesShort_one": "{{count}} cycle",
+    "cyclesShort_other": "{{count}} cycles",
     "addStage": "Add stage",
     "cyclesQuestion": "How many cycles does this stage last?",
     "cyclesExplain": "A cycle is every distinct session of the program (A, B and C), in any order. Completing them all counts as one.",
@@ -1268,6 +1274,7 @@
     "stageSheetTitle": "Stage",
     "stageNameLabel": "Name",
     "stageDurationLabel": "Duration",
+    "stageFromLabel": "Derived from",
     "stageWeeksUnit": "Cycles",
     "stageStateLabel": "State",
     "stageActiveBadge": "ACTIVE",
@@ -1892,5 +1899,56 @@
     "noAssist": "no assistance",
     "withWeight": "{{kg}}kg",
     "sameWeight": "same weight"
+  },
+  "planner": {
+    "eyebrow": "Plan",
+    "summaryTag": "PLAN",
+    "summary": "{{stages}} stages · {{cycles}} cycles",
+    "summaryOpen": "{{stages}} stages · {{cycles}}+ cycles",
+    "summaryPerCycle": "{{count}} sessions per cycle",
+    "stagePlaceholder": "Stage name",
+    "addBlock": "Add a block",
+    "baseHint": "Rungs derive from “{{name}}”, the last hand-built stage.",
+    "ladderTitle": "Pick a ladder",
+    "toastAdded": "+{{count}} stages",
+    "deleteTitle": "Delete stage?",
+    "deleteBody": "The sessions in “{{name}}” will be lost.",
+    "ladders": {
+      "linear": "Linear 3+1",
+      "intensification": "Intensification",
+      "volume": "Volume"
+    },
+    "ladderDesc": {
+      "linear": "Two blocks of rising volume, then a deload.",
+      "intensification": "Shortens the key lifts' rep range and lengthens rest.",
+      "volume": "Adds sets to the accessories, leaving the key lifts alone."
+    },
+    "rungs": {
+      "accumulation2": "Accumulation 2",
+      "accumulation3": "Accumulation 3",
+      "intensify1": "Intensification",
+      "intensify2": "Intensification 2",
+      "volume2": "Volume 2",
+      "volume3": "Volume 3",
+      "deload": "Deload"
+    },
+    "rxParts": {
+      "setsUp": "+{{n}} set",
+      "setsDown": "−{{n}} set",
+      "setsUp_keys": "+{{n}} set on key lifts",
+      "setsDown_keys": "−{{n}} set on key lifts",
+      "setsUp_accessories": "+{{n}} set on accessories",
+      "setsDown_accessories": "−{{n}} set on accessories",
+      "repsUp": "+{{n}} reps",
+      "repsDown": "−{{n}} reps",
+      "repsUp_keys": "+{{n}} reps on key lifts",
+      "repsDown_keys": "−{{n}} reps on key lifts",
+      "repsUp_accessories": "+{{n}} reps on accessories",
+      "repsDown_accessories": "−{{n}} reps on accessories",
+      "restUp": "+{{n}}% rest",
+      "restDown": "−{{n}}% rest",
+      "incrementHalf": "half increment",
+      "deload": "no progression"
+    }
   }
 }

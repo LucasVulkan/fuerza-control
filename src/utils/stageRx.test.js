@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyRx, isNoopRx, DEFAULT_RX } from './stageRx';
+import { applyRx, isNoopRx, DEFAULT_RX, LADDERS, describeRx } from './stageRx';
 
 // Ejercicios como los escribe `buildExConfig` / el editor.
 const squat  = { exerciseId: 'squat_barbell', isKey: true,  sets: 4, restSec: 120, minReps: 5, maxReps: 8, order: 1 };
@@ -166,5 +166,88 @@ describe('applyRx — los peldaños derivan de la BASE, no del anterior', () => 
     const deload  = applyRx(SESSION, { setsDelta: -1, progressionHold: 'deload' }, LIB);
     expect(intense[0].progression.increment.value).toBe(2.5);
     expect(deload[0].progression.increment.value).toBe(5);   // desde la base
+  });
+});
+
+describe('LADDERS', () => {
+  const ids = LADDERS.map((l) => l.id);
+
+  it('every rung is a real rule with a duration and a name key', () => {
+    for (const l of LADDERS) {
+      expect(l.rungs.length, l.id).toBeGreaterThan(0);
+      for (const r of l.rungs) {
+        expect(r.nameKey, l.id).toBeTruthy();
+        expect(r.durationWeeks, l.id).toBeGreaterThan(0);
+        expect(isNoopRx(r.rx), `${l.id}/${r.nameKey}`).toBe(false);
+      }
+    }
+  });
+
+  it('every ladder ends in a deload that stops the progression', () => {
+    // Sin `progressionHold` la app seguiría sugiriendo subir peso durante la
+    // descarga, y la descarga no ocurriría.
+    for (const l of LADDERS) {
+      const last = l.rungs[l.rungs.length - 1];
+      expect(last.rx.progressionHold, l.id).toBe('deload');
+    }
+  });
+
+  it('intensification only shortens the rep range of the KEY lifts', () => {
+    // Los accesorios viven en rango de hipertrofia haga el bloque lo que haga:
+    // es la misma regla que ya aplica el generador (uniarticulares siempre con
+    // parámetros de hipertrofia).
+    const l = LADDERS.find((x) => x.id === 'intensification');
+    for (const r of l.rungs) {
+      if (r.rx.repsShift) expect(r.rx.scope).toBe('keys');
+    }
+  });
+
+  it('volume adds its sets to the accessories, not to the heavy basics', () => {
+    const l = LADDERS.find((x) => x.id === 'volume');
+    for (const r of l.rungs) {
+      if ((r.rx.setsDelta ?? 0) > 0) expect(r.rx.scope).toBe('accessories');
+    }
+  });
+
+  it('has unique ids', () => {
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('applied to a real session, every rung produces a valid one', () => {
+    for (const l of LADDERS) {
+      for (const r of l.rungs) {
+        const out = applyRx(SESSION, r.rx, LIB);
+        expect(out.length).toBe(SESSION.length);
+        for (const ex of out) {
+          expect(ex.sets, `${l.id}/${r.nameKey}`).toBeGreaterThanOrEqual(1);
+          if (ex.minReps != null) expect(ex.minReps).toBeGreaterThanOrEqual(1);
+          expect(ex.restSec).toBeGreaterThanOrEqual(15);
+        }
+      }
+    }
+  });
+});
+
+describe('describeRx', () => {
+  const t = (k, o) => (o ? `${k}(${JSON.stringify(o)})` : k);
+
+  it('says nothing about a rule that changes nothing', () => {
+    expect(describeRx(null, t)).toEqual([]);
+    expect(describeRx(DEFAULT_RX, t)).toEqual([]);
+  });
+
+  it('names the scope so "+1 serie" is never ambiguous', () => {
+    expect(describeRx({ setsDelta: 1 }, t)[0]).toContain('rxParts.setsUp');
+    expect(describeRx({ scope: 'accessories', setsDelta: 1 }, t)[0]).toContain('rxParts.setsUp_accessories');
+    expect(describeRx({ scope: 'keys', repsShift: -3 }, t)[0]).toContain('rxParts.repsDown_keys');
+  });
+
+  it('lists every part of a compound rule', () => {
+    const parts = describeRx({ scope: 'keys', repsShift: -5, restPct: 50, incrementScale: 0.5 }, t);
+    expect(parts).toHaveLength(3);
+  });
+
+  it('reports the deload', () => {
+    expect(describeRx({ progressionHold: 'deload' }, t)).toEqual(['planner.rxParts.deload']);
   });
 });

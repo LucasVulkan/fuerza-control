@@ -1233,8 +1233,14 @@
     "sessionMetaNoTime": "{{ex}} ejercicios · {{sets}} series",
     "programSummary": "{{stages}} etapas · {{weeks}} ciclos · {{sessions}} sesiones",
     "programSummarySimple": "{{sessions}} sesiones · {{sets}} series",
+    "addSheetTitle": "Añadir",
+    "addStageHint": "Copia de «{{name}}», para retocar a mano",
+    "planBlock": "Planificar bloque",
+    "planBlockHint": "Varias etapas de una vez, con progresión entre ellas",
     "programSummaryOpen": "{{stages}} etapas · {{weeks}}+ ciclos · {{sessions}}+ sesiones",
     "cyclesOpen": "Sin límite",
+    "cyclesShort_one": "{{count}} ciclo",
+    "cyclesShort_other": "{{count}} ciclos",
     "addStage": "Añadir etapa",
     "cyclesQuestion": "¿Cuántos ciclos dura esta etapa?",
     "cyclesExplain": "Un ciclo son todas las sesiones distintas del programa (A, B y C), en el orden que sea. Cuando se completa, cuenta uno.",
@@ -1268,6 +1274,7 @@
     "stageSheetTitle": "Etapa",
     "stageNameLabel": "Nombre",
     "stageDurationLabel": "Duración",
+    "stageFromLabel": "Derivada de",
     "stageWeeksUnit": "Ciclos",
     "stageStateLabel": "Estado",
     "stageActiveBadge": "ACTIVA",
@@ -1892,5 +1899,56 @@
     "noAssist": "sin asistencia",
     "withWeight": "{{kg}}kg",
     "sameWeight": "el mismo peso"
+  },
+  "planner": {
+    "eyebrow": "Planificar",
+    "summaryTag": "PLAN",
+    "summary": "{{stages}} etapas · {{cycles}} ciclos",
+    "summaryOpen": "{{stages}} etapas · {{cycles}}+ ciclos",
+    "summaryPerCycle": "{{count}} sesiones por ciclo",
+    "stagePlaceholder": "Nombre de la etapa",
+    "addBlock": "Añadir bloque",
+    "baseHint": "Los peldaños se derivan de «{{name}}», la última etapa hecha a mano.",
+    "ladderTitle": "Elige una escalera",
+    "toastAdded": "+{{count}} etapas",
+    "deleteTitle": "¿Eliminar etapa?",
+    "deleteBody": "Se perderán las sesiones de «{{name}}».",
+    "ladders": {
+      "linear": "Lineal 3+1",
+      "intensification": "Intensificación",
+      "volume": "Volumen"
+    },
+    "ladderDesc": {
+      "linear": "Sube volumen dos bloques y descarga.",
+      "intensification": "Acorta el rango de los básicos y alarga el descanso.",
+      "volume": "Añade series a los accesorios, sin tocar los básicos."
+    },
+    "rungs": {
+      "accumulation2": "Acumulación 2",
+      "accumulation3": "Acumulación 3",
+      "intensify1": "Intensificación",
+      "intensify2": "Intensificación 2",
+      "volume2": "Volumen 2",
+      "volume3": "Volumen 3",
+      "deload": "Descarga"
+    },
+    "rxParts": {
+      "setsUp": "+{{n}} serie",
+      "setsDown": "−{{n}} serie",
+      "setsUp_keys": "+{{n}} serie en básicos",
+      "setsDown_keys": "−{{n}} serie en básicos",
+      "setsUp_accessories": "+{{n}} serie en accesorios",
+      "setsDown_accessories": "−{{n}} serie en accesorios",
+      "repsUp": "+{{n}} reps",
+      "repsDown": "−{{n}} reps",
+      "repsUp_keys": "+{{n}} reps en básicos",
+      "repsDown_keys": "−{{n}} reps en básicos",
+      "repsUp_accessories": "+{{n}} reps en accesorios",
+      "repsDown_accessories": "−{{n}} reps en accesorios",
+      "restUp": "+{{n}}% descanso",
+      "restDown": "−{{n}}% descanso",
+      "incrementHalf": "incremento a la mitad",
+      "deload": "sin progresión"
+    }
   }
 }
