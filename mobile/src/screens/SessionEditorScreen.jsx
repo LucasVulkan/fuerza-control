@@ -877,7 +877,9 @@ function Slot({
         number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
         meta:   metaFor(ex),
-        pill:   null,
+        // La pill de bloque y la de "principal" ocupan el mismo hueco y no
+        // pueden coincidir: un bloque no es un ejercicio.
+        pill:   ex.isKey ? t('editor.keyPill') : null,
         onPress:      () => onOpenExercise(ex.exerciseId),
         onDelete:     () => onRemoveExercise(ex.exerciseId),
         onSubstitute: () => onSubstitute(ex.exerciseId),

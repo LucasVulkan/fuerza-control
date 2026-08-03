@@ -1,6 +1,6 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
-> Estado: **fases 0 y 1 implementadas; fases 2-4 sin implementar** (ago 2026). 5 fases, cada una un
+> Estado: **fases 0, 1 y 2 implementadas; fases 3-4 sin implementar** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -421,7 +421,7 @@ addStageLadder(programId, { sourceStageIdx, rungs: [{ name, durationWeeks, rx }]
 
 ---
 
-## 5. FASE 2 — Ejercicio principal (`isKey`) y `scope` 🟢
+## 5. FASE 2 — Ejercicio principal (`isKey`) y `scope` 🟢 ✅ IMPLEMENTADA
 
 Los ejercicios añadidos a mano nacen con `isKey: false`
 ([useStore.js:922](../../store/useStore.js)) y **no hay UI para cambiarlo**, así
@@ -437,7 +437,16 @@ lo generado.
 - Con esto `rx.scope` (`'all' | 'keys' | 'accessories'`) pasa a ser real.
 
 Feature útil por sí sola (el entrenador ve de un vistazo cuál es el básico del
-día) y es la única dependencia de `scope`.
+día) y es la única dependencia de `scope`.
+
+**Decisión tomada al implementar: `isKey` NO entra en `LINKED_CONFIG_KEYS`.**
+Ser el básico es un papel dentro de ESA sesión, no una propiedad del ejercicio:
+la misma sentadilla puede ser la principal del día de pierna y un accesorio del
+día de full body. Si viajara con el grupo vinculado, marcarla en un sitio la
+marcaría en todos.
+
+La pill reutiliza el hueco de la pill de formato de bloque en `EditorRow` — no
+pueden coincidir nunca, porque un bloque no es un ejercicio.
 
 ---
 
@@ -529,8 +538,21 @@ Base: Acumulación · 3 sesiones/ciclo
 | Escalera | Peldaños (deltas contra la BASE) |
 |---|---|
 | Lineal 3+1 | base · `setsDelta:+1` · `setsDelta:+2` · `setsDelta:-1, progressionHold:'deload'` |
-| Intensificación | base · `repsShift:-3, restPct:+25` · `repsShift:-5, restPct:+50, incrementScale:0.5` · descarga |
-| Volumen | base · `setsDelta:+1` · `setsDelta:+2` · `setsDelta:+3` |
+| Intensificación | base · `scope:'keys', repsShift:-3, restPct:+25` · `scope:'keys', repsShift:-5, restPct:+50, incrementScale:0.5` · descarga |
+| Volumen | base · `scope:'accessories', setsDelta:+1` · `scope:'accessories', setsDelta:+2` · `scope:'accessories', setsDelta:+3` |
+
+**Por qué dos de las tres llevan `scope`, y por qué la fase 2 es su requisito.**
+No es cosmética: sin alcance, un peldaño de intensificación empuja los curls a
+5-9 repeticiones, y eso **contradice una regla que el propio generador ya
+aplica** — "uniarticulares siempre con parámetros de hipertrofia"
+([programGenerator.js](../../../src/utils/programGenerator.js), rama
+`ex.isCompound ? goalParams : GOAL_PARAMS.hypertrophy`). El rango corto es de
+los básicos; los accesorios viven en 8-15 haga el bloque lo que haga. Y al
+revés en Volumen: las series extra van a los accesorios, no a la sentadilla
+pesada.
+
+La descarga y la acumulación lineal sí van a `scope:'all'`: bajar el volumen o
+añadir una serie a todo es exactamente lo que se quiere en esos dos casos.
 
 Duraciones por defecto 4/4/3/1. **Tres peldaños es el objetivo, no seis**: si
 el entrenador planifica 6 etapas el día 1, la propuesta al cerrar bloque (P4)
@@ -591,7 +613,7 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 |---|---|---|---|
 | 0 | Unificación del modelo + paso de ciclos en los 2 modales de creación (§3) | 🟢 | ✅ **IMPLEMENTADA** — 875 tests verdes, lint igual que HEAD |
 | 1 | `applyRx` + `templateChainIds` + `addStageToProgram({rx})` (§4) | 🟡 | ✅ **IMPLEMENTADA** — 911 tests. `applyRx` no tiene llamante en producción hasta la fase 4: lo que aporta valor hoy es la cadena (§4.1) |
-| 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | Sonnet |
+| 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | ✅ **IMPLEMENTADA** — la pill reutiliza el hueco de la pill de bloque; `isKey` NO viaja en `LINKED_CONFIG_KEYS` |
 | 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | Sonnet |
 | 4 | Pantalla de planificador (§7) | 🔴 | Opus/Fable el diseño de las escaleras; Sonnet la UI |
 | 5 | *(futuro)* Grupo B: recap consciente de la descarga (§4.2) | 🟡 | — |
