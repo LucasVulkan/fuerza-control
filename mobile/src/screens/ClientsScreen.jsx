@@ -36,7 +36,7 @@ import { resolveColor } from '../themes';
 import { summarizeSets } from '../../../src/utils/progression';
 import { computeAdherence, requiresAttention, STATUS } from '../../../src/utils/adherence';
 import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
-import { LockIcon, ChevronDown } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -435,6 +435,7 @@ function UploadIcon({ size = 12, color }) {
 function ActiveProgramHero({
   program, getEffectiveTemplate, adherence, dirty, lastActivity, sessionCount, progress,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onDeassign, onDelete, onUnlock,
+  onPlanStages,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -477,8 +478,14 @@ function ActiveProgramHero({
   // the trainer has no slot. The question is about the client, so it's the raw
   // flag on the stage that follows theirs.
   const nextStage    = stages[stageIdx + 1] ?? null;
-  const stageDone    = stageWeeks != null && weeksDone >= stageWeeks && !!nextStage;
+  const stageEnded   = stageWeeks != null && weeksDone >= stageWeeks;
+  const stageDone    = stageEnded && !!nextStage;
   const nextLocked   = stageDone && !!nextStage.locked;
+  // Terminó la ÚLTIMA etapa: repetirá el bloque para siempre y en silencio, que
+  // es lo que hace falta para dejar de planificar todo por adelantado
+  // (`client-triage.md` §2). Mismo aviso que la etapa bloqueada — también está
+  // parado esperándote, solo que aquí el trabajo pendiente es montar el bloque.
+  const blockDone    = stageEnded && !nextStage;
 
   // ── Real pace ──
   const paceTarget  = adherence?.weekTarget ?? sessPerCycle;
@@ -554,6 +561,23 @@ function ActiveProgramHero({
           </Text>
           <TouchableOpacity style={styles.lockBtn} onPress={() => onUnlock(stageIdx + 1)} activeOpacity={0.85}>
             <Text style={styles.lockBtnText}>{t('clients.stageUnlockBtn')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Bloque terminado y sin siguiente: avisar sin dar el siguiente paso
+          deja el trabajo a medias, así que el botón va al planificador. */}
+      {blockDone && (
+        <View style={styles.lockBox}>
+          <View style={styles.lockHeader}>
+            <CheckIcon size={13} color={th.colors.orange} />
+            <Text style={styles.lockTag}>{t('clients.blockDoneTag')}</Text>
+          </View>
+          <Text style={styles.lockText}>
+            {t('clients.blockDoneText', { current: currentStage?.name ?? '' })}
+          </Text>
+          <TouchableOpacity style={styles.lockBtn} onPress={onPlanStages} activeOpacity={0.85}>
+            <Text style={styles.lockBtnText}>{t('clients.blockDoneBtn')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1467,7 +1491,7 @@ function AttentionPill({ label, count, color, active, onPress }) {
 function ClientListCard({
   client, activeProgram, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions,
-  onSendOverrides, onUnlockStage, newSessionsCount = 0,
+  onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1498,11 +1522,13 @@ function ClientListCard({
     : (activeProgram?.days ?? []);
   const sessPerCycle   = Math.max(1, currentDays.length);
   const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
-  // Parado esperando a que le abras la etapa siguiente — mismo cálculo que el
-  // hero, aquí solo para encender el aviso en la fila.
-  const stageStuck     = hasStages
-    && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity)
-    && !!activeProgram.stages[stageIdx + 1]?.locked;
+  // Parado, en cualquiera de sus dos formas — mismo cálculo que el hero, aquí
+  // solo para encender el aviso en la fila. Esperando a que le abras la etapa
+  // siguiente, o a que la montes porque no hay ninguna detrás.
+  const stageEnded     = hasStages
+    && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity);
+  const stageStuck     = stageEnded && !!activeProgram.stages[stageIdx + 1]?.locked;
+  const blockStuck     = stageEnded && !activeProgram.stages[stageIdx + 1];
   const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   // "Ciclo NN" = vueltas COMPLETAS al ciclo + 1, el mismo contador que el banner
   // de Home (`totalWeeksCompleted`), espejado del blob del cliente. Antes aquí se
@@ -1533,9 +1559,11 @@ function ClientListCard({
       ? { label: t('clients.btnUploadChanges'), upload: true, bg: th.colors.orange, onPress: onUploadProgram }
       : stageStuck
         ? { label: t('clients.stageUnlockShort'), bg: th.colors.orange, onPress: () => onUnlockStage(stageIdx + 1) }
-        : showOverrideDirty
-          ? { label: t('clients.btnSendOverride'), upload: true, bg: th.colors.blue, onPress: onSendOverrides }
-          : null;
+        : blockStuck
+          ? { label: t('clients.blockPlanShort'), bg: th.colors.orange, onPress: onPlanStages }
+          : showOverrideDirty
+            ? { label: t('clients.btnSendOverride'), upload: true, bg: th.colors.blue, onPress: onSendOverrides }
+            : null;
 
   // Un cliente en pausa o inactivo ocupa el hueco de la última actividad: su
   // adherencia está silenciada, así que la fecha ahí no dice nada.
@@ -1579,7 +1607,7 @@ function ClientListCard({
             <>
               {/* El aviso ocupa el sitio de la línea de programa; cuando además
                   hay cambios sin enviar se pintan las dos. */}
-              {(!stageStuck || showDirty) && (
+              {(!(stageStuck || blockStuck) || showDirty) && (
                 <Text
                   style={[styles.cProgLine, showDirty && { color: th.colors.orange }]}
                   numberOfLines={1}
@@ -1593,10 +1621,12 @@ function ClientListCard({
                 </Text>
               )}
 
-              {stageStuck && (
+              {(stageStuck || blockStuck) && (
                 <View style={styles.cAvisoRow}>
                   <View style={styles.cAvisoDot} />
-                  <Text style={styles.cAvisoText}>{t('clients.stageLockedShort')}</Text>
+                  <Text style={styles.cAvisoText}>
+                    {t(stageStuck ? 'clients.stageLockedShort' : 'clients.blockDoneShort')}
+                  </Text>
                 </View>
               )}
 
@@ -2392,6 +2422,7 @@ export default function ClientsScreen() {
                       onDeassign={() => setClientActiveProgram(selectedClientId, null)}
                       onDelete={() => confirmDelete(activeProgram)}
                       onUnlock={unlockStage}
+                      onPlanStages={() => navigation.navigate('StagePlanner', { programId: activeProgram.id })}
                     />
                   ) : (
                     <View style={styles.noActiveBox}>
@@ -3116,6 +3147,7 @@ export default function ClientsScreen() {
                     }
                   }}
                   onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}
+                  onPlanStages={() => navigation.navigate('StagePlanner', { programId: client.activeProgramId })}
                 />
                 {infoSheetClientId === client.id && (
                   <ClientInfoSheet
