@@ -265,16 +265,14 @@ export default function StagePlannerScreen({ navigation }) {
               es la diferencia entre una regla y una sorpresa. */}
           <Text style={styles.baseLine}>{t('planner.baseLine', { name: baseStage?.name ?? '' })}</Text>
 
-          <View style={styles.countRow}>
-            <Text style={styles.fieldLabel}>{t('planner.rungCount')}</Text>
-            <StepField
-              horizontal dark
-              value={workCount}
-              onChange={(v) => regenerate(ladderId, v, withDeload)}
-              min={1}
-              max={4}
-            />
-          </View>
+          <StepField
+            horizontal
+            label={t('planner.rungCount')}
+            value={workCount}
+            onChange={(v) => regenerate(ladderId, v, withDeload)}
+            min={1}
+            max={4}
+          />
 
           <ToggleRow
             label={t('planner.withDeload')}
@@ -286,28 +284,25 @@ export default function StagePlannerScreen({ navigation }) {
           {rungs.map((rung, i) => (
             <View key={i} style={styles.rungCard}>
               <Text style={styles.rungName}>{rungName(rung, i)}</Text>
-              <View style={styles.rungField}>
-                <Text style={styles.fieldLabel}>{t('editor.stageWeeksUnit')}</Text>
-                <StepField
-                  horizontal dark
-                  value={rung.durationWeeks}
-                  onChange={(v) => patchRung(i, { durationWeeks: v })}
-                  min={1}
-                  max={12}
-                />
-              </View>
+              <StepField
+                horizontal dark
+                label={t('editor.stageWeeksUnit')}
+                value={rung.durationWeeks}
+                onChange={(v) => patchRung(i, { durationWeeks: v })}
+                min={1}
+                max={12}
+              />
               {(rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[ladderId]).map((f) => (
-                <View key={f.key} style={styles.rungField}>
-                  <Text style={styles.fieldLabel}>{t(fieldLabelKey(f, rung.rx.scope))}</Text>
-                  <StepField
-                    horizontal dark
-                    value={rung.rx[f.key] ?? 0}
-                    onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
-                    min={f.min}
-                    max={f.max}
-                    step={f.step}
-                  />
-                </View>
+                <StepField
+                  key={f.key}
+                  horizontal dark
+                  label={t(fieldLabelKey(f, rung.rx.scope))}
+                  value={rung.rx[f.key] ?? 0}
+                  onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
+                  min={f.min}
+                  max={f.max}
+                  step={f.step}
+                />
               ))}
             </View>
           ))}
@@ -399,8 +394,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   ladderDesc: { ...textStyles.subtitle, color: th.colors.mutedLight },
   baseLine:   { ...textStyles.subtitle, color: th.colors.accent },
-  countRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  fieldLabel: { ...textStyles.cardType, color: th.colors.mutedLight, flexShrink: 1 },
   rungCard: {
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
@@ -408,5 +401,4 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   rungName:   { ...textStyles.cardType, color: th.colors.accent },
-  rungField:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
 });

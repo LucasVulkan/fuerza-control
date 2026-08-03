@@ -20,11 +20,17 @@ import { useThemedStyles } from '../../useTheme';
 //     los bordes): es una inconsistencia del mock, aquí van todas iguales.
 //   · `Horizontal` — label a la izquierda y los controles a la derecha. Es la
 //     que usan las hojas, donde el alto vertical es caro.
-// `dark` pinta el stepper ENTERO sobre `bg`: la caja y los botones ±, que
-// pierden su `surface2` para no leerse como dos piezas pegadas a una tercera.
-// Es la variante para cuando el stepper vive dentro de algo más claro — el
-// fondo de una hoja (`surface`) o una tarjeta (`surface`) — y tiene que
-// distinguirse como un bloque propio. El ± se reconoce por el glifo, en accent.
+// ─── Tres reglas del stepper, cerradas en QA. No romperlas. ──────────────────
+//
+// 1. **El ± siempre lleva fondo propio** (`surface2`), distinto del de la caja.
+//    Nunca transparente: sin caja no se lee como botón.
+// 2. **La caja nunca se funde con lo que la rodea.** De ahí `dark`: la caja va
+//    sobre `surface` por defecto y sobre `bg` con `dark`. Se usa `dark` cuando
+//    el contenedor ya es `surface` (una tarjeta, el cuerpo de una hoja) y NO se
+//    usa cuando el contenedor es `bg`, o volvería a fundirse.
+// 3. **La caja llega hasta el título.** El label va SIEMPRE por la prop `label`,
+//    nunca pintado fuera por el llamante: el fondo tiene que cubrir el título y
+//    los controles, no solo los ±.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
 // Separación entre los ± y la zona del número, en la variante Horizontal.
 // 26 dejaba los botones a 120 px y el control parecía tres piezas sueltas; 10
@@ -66,7 +72,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
 
   const controls = (
     <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
-      <TouchableOpacity style={[sf.stepBtn, dark && sf.stepBtnDark]} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
+      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
       </TouchableOpacity>
       <View style={sf.valueWrap}>
@@ -80,7 +86,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
       </View>
-      <TouchableOpacity style={[sf.stepBtn, dark && sf.stepBtnDark]} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
+      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
         <View style={[sf.glyphBar, sf.glyphBarV]} />
       </TouchableOpacity>
@@ -132,10 +138,6 @@ const makeSf = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  // En la variante oscura el stepper tiene que leerse como UN bloque oscuro
-  // dentro de la tarjeta que lo envuelve, no como una caja con dos botones más
-  // claros pegados. El ± se distingue por el glifo, que va en accent.
-  stepBtnDark: { backgroundColor: 'transparent' },
   // El − y el + van dibujados con Views y con las coordenadas puestas a mano
   // (no con glifos ni con centrado automático): así quedan clavados en el
   // centro de la caja sin depender de las métricas de la fuente. El + son dos
