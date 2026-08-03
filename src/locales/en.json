@@ -1717,11 +1717,32 @@
     "deleteTagTitle": "Delete tag",
     "deleteTagConfirm": "«{{name}}» is assigned to {{count}} client(s). Remove it from all?",
     "tabs": {
-      "programs": "Programs",
+      "programs": "Program",
       "history": "History",
       "progress": "Progress",
-      "info": "Info",
-      "key": "Key"
+      "info": "Info"
+    },
+    "assignedProgram": "Assigned program",
+    "statAdherence": "Adherence",
+    "statPace": "Pace",
+    "statLoad": "Load",
+    "editProgram": "Edit program",
+    "viewProgram": "View program",
+    "nextSectionLabel": "Next session",
+    "nextSessionHint": "Tweak just this session: weights, sets or single exercises. The program stays as it is.",
+    "sessionMeta": "{{count}} exercises · ~{{minutes}} min",
+    "programMenuTitle": "Program",
+    "menuNewProgram": "New program",
+    "menuImport": "Import program",
+    "menuShare": "Share",
+    "menuArchived": "Previous programs",
+    "noArchivedPrograms": "This client has no previous programs.",
+    "changesPendingTag": "UNSENT CHANGES",
+    "changesPendingText": "You edited the program and the client still has the previous version.",
+    "codeCard": {
+      "title": "CONNECTION CODE",
+      "explain": "Give it to {{name}}: they enter it in their app and from then on they get their programs and you see their history.",
+      "dismiss": "Got it"
     },
     "keyTab": {
       "title": "CLIENT KEY",
@@ -1729,7 +1750,8 @@
       "copy": "Copy code",
       "copied": "Code copied",
       "noSlot": "This client is not connected to the cloud yet.",
-      "connect": "☁️ Connect to cloud",
+      "connect": "Connect to the cloud",
+      "connectError": "Could not connect.",
       "connecting": "Connecting…",
       "connectedNoCode": "Connected · no local code"
     },
