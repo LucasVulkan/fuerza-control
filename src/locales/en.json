@@ -1908,7 +1908,7 @@
     "summaryPerCycle": "{{count}} sessions per cycle",
     "stagePlaceholder": "Stage name",
     "addBlock": "Add a block",
-    "baseHint": "Rungs derive from “{{name}}”, the last hand-built stage.",
+    "baseHint": "The stages of a block derive from “{{name}}”, the last hand-built stage.",
     "ladderTitle": "Pick a ladder",
     "toastAdded": "+{{count}} stages",
     "deleteTitle": "Delete stage?",
@@ -1962,6 +1962,6 @@
       "intensification": "Shortens the key lifts’ rep range and lengthens the rest.",
       "volume": "Adds sets to the accessories only; the key lifts are left alone."
     },
-    "baseLine": "Every rung derives from “{{name}}”"
+    "baseLine": "The stages of the block derive from “{{name}}”"
   }
 }

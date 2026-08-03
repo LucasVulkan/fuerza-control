@@ -32,7 +32,7 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, CloseIcon } from '../components/ui/EditorIcons';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ToggleRow } from '../components/ui/EditorRows';
 import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../../../src/utils/stageRx';
@@ -52,6 +52,7 @@ function baseStageIdx(stages) {
 
 function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDelete }) {
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [name, setName] = useState(stage.name ?? '');
 
@@ -74,6 +75,14 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
           returnKeyType="done"
         />
         {isActive && <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>}
+        {/* Borrar es una X en la esquina, no un botón de texto: "Eliminar" se
+            comía media fila y competía con el stepper de ciclos, que es el
+            control que de verdad se toca aquí. */}
+        {canDelete && (
+          <TouchableOpacity onPress={onDelete} hitSlop={10} activeOpacity={0.7}>
+            <CloseIcon size={14} color={th.colors.mutedLight} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {rxParts.length > 0 && (
@@ -94,11 +103,6 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
             min={1}
             max={52}
           />
-        )}
-        {canDelete && (
-          <TouchableOpacity onPress={onDelete} hitSlop={8} activeOpacity={0.7}>
-            <Text style={styles.deleteText}>{t('common.delete')}</Text>
-          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -346,7 +350,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
   summaryMain: { ...textStyles.cardType, color: th.colors.text },
-  summaryHint: { ...textStyles.subtitle, color: th.colors.muted },
+  summaryHint: { ...textStyles.subtitle, color: th.colors.mutedLight },
 
   secTitle: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
 
@@ -362,8 +366,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowName:   { ...textStyles.cardType, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
   activeBadge: { ...textStyles.tag, color: th.colors.accent },
   rowRx:     { ...textStyles.subtitle, color: th.colors.accent },
-  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  deleteText: { ...textStyles.subtitle, color: th.colors.muted },
+  rowBottom: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 
   noLimitBtn: {
     paddingVertical:   spacing.sm,
@@ -381,7 +384,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
   },
   addBtnText: { ...textStyles.btnAction, color: th.colors.onAccent, textTransform: 'uppercase' },
-  baseHint:   { ...textStyles.subtitle, color: th.colors.muted, paddingTop: spacing.xs },
+  baseHint:   { ...textStyles.subtitle, color: th.colors.mutedLight, paddingTop: spacing.xs },
 
   sheetBody:  { gap: spacing.sm, paddingBottom: spacing.md },
   ladderCard: {

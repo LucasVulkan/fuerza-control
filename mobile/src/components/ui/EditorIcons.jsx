@@ -87,6 +87,16 @@ export function CheckIcon({ size = 16, color }) {
   );
 }
 
+// Cerrar / eliminar en una fila. Tampoco sale de Figma. Trazo 2 como el resto
+// de iconos dibujados a mano del proyecto.
+export function CloseIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 6l12 12M18 6L6 18" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // Candado de etapa bloqueada. NO sale de Figma: el componente `Icons` (98:138)
 // tiene 28 variantes y ninguna es un candado — la feature es posterior al
 // diseño. Trazo 2 como el resto de iconos dibujados a mano del proyecto.

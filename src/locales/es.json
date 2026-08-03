@@ -1908,7 +1908,7 @@
     "summaryPerCycle": "{{count}} sesiones por ciclo",
     "stagePlaceholder": "Nombre de la etapa",
     "addBlock": "Añadir bloque",
-    "baseHint": "Los peldaños se derivan de «{{name}}», la última etapa hecha a mano.",
+    "baseHint": "Las etapas del bloque se derivan de «{{name}}», la última etapa hecha a mano.",
     "ladderTitle": "Elige una escalera",
     "toastAdded": "+{{count}} etapas",
     "deleteTitle": "¿Eliminar etapa?",
@@ -1962,6 +1962,6 @@
       "intensification": "Acorta el rango de repeticiones de los ejercicios principales y alarga el descanso.",
       "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
     },
-    "baseLine": "Todos los peldaños parten de «{{name}}»"
+    "baseLine": "Las etapas del bloque se derivan de «{{name}}»"
   }
 }

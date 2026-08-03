@@ -662,6 +662,20 @@ rangos; el progreso entre bloques lo lleva el motor de progresión por ejercicio
 que es donde vive. Si algún día se quiere elegir otra base, el sitio es un
 selector en esta hoja.
 
+**Ronda 3 de QA.**
+
+- **"Peldaño" desaparece de la UI.** En código el término se queda (`rung`,
+  `buildRungs`) porque distingue bien la pieza de una escalera de la etapa ya
+  creada, pero de cara al usuario todo es *etapa*: "Las etapas del bloque se
+  derivan de «X»".
+- **Borrar pasa a una X en la esquina de la fila.** Como botón de texto se comía
+  media fila y competía con el stepper de ciclos, que es el control que de
+  verdad se toca ahí. `CloseIcon` es nuevo en `EditorIcons` y queda disponible
+  para el resto de la app.
+- **`muted` (#4d4d4d) es casi invisible sobre `bg` (#151515).** Los subtítulos
+  del planificador pasan a `mutedLight` (#818181). `muted` se queda solo donde
+  Figma lo pide de verdad: el eyebrow sobre el relleno lima de la cabecera.
+
 ### 7.5 Nota
 
 El paso de ciclos de la creación de programa **está en la fase 0** (§3.2.h),
