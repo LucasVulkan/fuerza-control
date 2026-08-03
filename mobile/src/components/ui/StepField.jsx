@@ -26,7 +26,12 @@ import { useThemedStyles } from '../../useTheme';
 // compartir fondo con la tarjeta que envuelve su título, y lo único que
 // destaca son los botones ± (`surface2`). Es la lógica de toda la app.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
-const STEP_GAP  = 26;   // separación entre controles en la variante Horizontal
+// Separación entre los ± y la zona del número, en la variante Horizontal.
+// Bajado de 26 a 10 en QA: con `VALUE_W` de por medio, 26 dejaba los dos
+// botones a 120 px uno de otro y el control parecía tres piezas sueltas en
+// vez de un contador. El ancho de la zona del número es FIJO (ver abajo), así
+// que esta distancia no cambia al pasar de 1 a 3 dígitos.
+const STEP_GAP  = 10;
 const GLYPH_W   = 13;   // largo de la barra del − / +
 const GLYPH_T   = 2;    // grosor
 // Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
