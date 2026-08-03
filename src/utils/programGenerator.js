@@ -5,6 +5,7 @@
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
+import { withStages } from './stageProgress';
 
 // ─── Parámetros por objetivo ──────────────────────────────────────────────────
 
@@ -491,16 +492,23 @@ export function generateProgram(answers) {
     programDays.push({ sessionTemplateId: templateId, label: dayDef.label, emphasis: dayDef.emphasis });
   });
 
-  const program = {
-    id: programId,
-    name: buildProgramName(discipline, distribution, goal),
-    type: 'primary',
-    status: 'active',
-    createdAt: new Date().toISOString().split('T')[0],
-    currentWeek: 1,
-    onboardingSnapshot: answers,
-    days: programDays,
-  };
+  // Una etapa, sin límite de ciclos (`durationWeeks: null`): es el
+  // comportamiento que tenía un programa generado antes de unificar el modelo,
+  // y el onboarding no pregunta duración (ver `docs/specs/stage-planner.md`
+  // §3.2.h). El usuario se la pone desde el editor cuando quiera.
+  const program = withStages(
+    {
+      id: programId,
+      name: buildProgramName(discipline, distribution, goal),
+      type: 'primary',
+      status: 'active',
+      createdAt: new Date().toISOString().split('T')[0],
+      currentWeek: 1,
+      onboardingSnapshot: answers,
+    },
+    [{ id: generateId('stage'), name: 'Etapa 1', durationWeeks: null, days: programDays }],
+    0,
+  );
 
   return { program, sessionTemplates };
 }

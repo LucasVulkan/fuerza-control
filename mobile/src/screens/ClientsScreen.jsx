@@ -696,6 +696,8 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
   const [tab,              setTab]              = useState(templatePrograms.length > 0 ? 'blank' : 'blank');
   const [name,             setName]             = useState('');
   const [numSessions,      setNumSessions]      = useState(3);
+  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
+  const [durationWeeks,    setDurationWeeks]    = useState(4);
   const [fromTemplateId,   setFromTemplateId]   = useState('');
   const [fromTemplateName, setFromTemplateName] = useState('');
 
@@ -743,6 +745,29 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
                   </TouchableOpacity>
                 ))}
               </View>
+
+              <Text style={styles.fieldLabel}>{t('editor.cyclesQuestion').toUpperCase()}</Text>
+              <Text style={styles.fieldHint}>{t('editor.cyclesExplain')}</Text>
+              <View style={styles.numRow}>
+                {[4, 6, 8, 12].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[styles.numBtn, durationWeeks === n && styles.numBtnActive]}
+                    onPress={() => setDurationWeeks(n)}
+                  >
+                    <Text style={[styles.numBtnText, durationWeeks === n && styles.numBtnTextActive]}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={[styles.noLimitRow, durationWeeks === null && styles.noLimitRowActive]}
+                onPress={() => setDurationWeeks(durationWeeks === null ? 4 : null)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.noLimitText, durationWeeks === null && styles.noLimitTextActive]}>
+                  {t('editor.cyclesNoLimit')}
+                </Text>
+              </TouchableOpacity>
             </>
           )}
 
@@ -776,7 +801,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
           <View style={styles.modalActions}>
             <GhostBtn label="Cancelar" onPress={onClose} />
             {tab === 'blank' ? (
-              <AccentBtn label="CREAR" disabled={!name.trim()} onPress={() => name.trim() && onCreateBlank(name, numSessions)} />
+              <AccentBtn label="CREAR" disabled={!name.trim()} onPress={() => name.trim() && onCreateBlank(name, numSessions, durationWeeks)} />
             ) : (
               <AccentBtn label="ASIGNAR" disabled={!fromTemplateId} onPress={() => fromTemplateId && onCreateFromTemplate(fromTemplateId, fromTemplateName)} />
             )}
@@ -2101,11 +2126,11 @@ export default function ClientsScreen() {
     );
   }
 
-  function handleCreateProgram(programName, numSessions) {
+  function handleCreateProgram(programName, numSessions, durationWeeks) {
     if (!selectedClientId) return;
     setShowNewProgram(false);
     confirmReplaceActive(() => {
-      const newId = createProgramForClient(selectedClientId, numSessions, programName);
+      const newId = createProgramForClient(selectedClientId, numSessions, programName, durationWeeks);
       if (newId) setClientActiveProgram(selectedClientId, newId);
     });
   }
@@ -5501,6 +5526,24 @@ const makeStyles = (th) => StyleSheet.create({
   },
   numBtnText: { fontSize: typography.xl, color: th.colors.text, fontWeight: typography.heavy },
   numBtnTextActive: { color: th.colors.accent },
+
+  // "Sin límite" — misma anatomía que numBtn pero a ancho completo, porque es
+  // una opción de texto, no una cifra más de la fila.
+  noLimitRow: {
+    marginTop:       spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:    th.radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     th.colors.border,
+    backgroundColor: th.colors.surface2,
+  },
+  noLimitRowActive: {
+    borderColor:     `${th.colors.accent}50`,
+    backgroundColor: `${th.colors.accent}12`,
+  },
+  noLimitText:       { fontSize: typography.sm, color: th.colors.muted },
+  noLimitTextActive: { color: th.colors.accent },
 
   templateOption: {
     padding:         spacing.md,

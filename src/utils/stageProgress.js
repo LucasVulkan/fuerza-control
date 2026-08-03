@@ -22,6 +22,49 @@
  * to a program mints a fresh `tpl_*` id — so `size` comparisons are exact.
  */
 
+import { generateId } from './formatters';
+
+/**
+ * EVERY program owns at least one stage (see `docs/specs/stage-planner.md` §3),
+ * and `program.days` is a denormalized MIRROR of the ACTIVE stage's days that a
+ * lot of screens read directly.
+ *
+ * Use this for every write that touches `stages`, so the mirror cannot drift.
+ * Six writes used to skip it; the drift stayed hidden only because every reader
+ * still branched on `hasStages`.
+ *
+ * @param {object}  program
+ * @param {array}   stages              the new stage list
+ * @param {number} [currentStageIndex]  defaults to the program's own, clamped
+ */
+export function withStages(program, stages, currentStageIndex) {
+  const raw = currentStageIndex ?? program?.currentStageIndex ?? 0;
+  const idx = Math.max(0, Math.min(raw, stages.length - 1));
+  return { ...program, stages, currentStageIndex: idx, days: stages[idx]?.days ?? [] };
+}
+
+/**
+ * Wraps a program created before the model was unified (no `stages`) into the
+ * one-stage shape. Idempotent: a program that already has stages comes back
+ * untouched.
+ *
+ * `durationWeeks: null` — "no limit" — is deliberate, and it is what makes the
+ * migration behaviour-preserving: a program without stages never had an
+ * end-of-stage threshold, because `advanceCycle` only sets one when it is given
+ * a duration. Handing the migrated stage a number would invent an ending nobody
+ * asked for, and start showing "week 4 of 4" on a program that had been running
+ * for fifteen cycles.
+ */
+export function ensureStages(program, stageName = 'Etapa 1') {
+  if (!program || program.stages?.length > 0) return program;
+  const days = program.days ?? [];
+  return withStages(
+    program,
+    [{ id: generateId('stage'), name: stageName, durationWeeks: null, days }],
+    0,
+  );
+}
+
 /**
  * The client's progress, as it travels to the trainer alongside their history
  * and comes back on a reinstall. `programId` lets the receiver reject a blob

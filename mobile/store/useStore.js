@@ -39,7 +39,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
 import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, mergeProgressOnImport } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, mergeProgressOnImport, withStages, ensureStages } from '../../src/utils/stageProgress';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
@@ -657,7 +657,7 @@ export const useStore = create(
         }
       },
 
-      createProgramForClient: (clientId, numSessions, programName) => {
+      createProgramForClient: (clientId, numSessions, programName, durationWeeks = null) => {
         const programId = generateId('prog');
         const labels    = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colorList = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
@@ -676,12 +676,16 @@ export const useStore = create(
           programDays.push({ sessionTemplateId: templateId, label });
         }
 
-        const program = {
-          id: programId, name: programName.trim(), mode: 'managed', clientId,
-          type: 'primary', status: 'active',
-          createdAt: new Date().toISOString().split('T')[0],
-          currentWeek: 1, days: programDays,
-        };
+        const program = withStages(
+          {
+            id: programId, name: programName.trim(), mode: 'managed', clientId,
+            type: 'primary', status: 'active',
+            createdAt: new Date().toISOString().split('T')[0],
+            currentWeek: 1,
+          },
+          [{ id: generateId('stage'), name: 'Etapa 1', durationWeeks, days: programDays }],
+          0,
+        );
 
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
@@ -968,7 +972,7 @@ export const useStore = create(
         }));
       },
 
-      createEmptyProgram: (numSessions, programName = 'Mi programa', mode = 'personal') => {
+      createEmptyProgram: (numSessions, programName = 'Mi programa', mode = 'personal', durationWeeks = null) => {
         const programId = generateId('prog');
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
@@ -984,13 +988,16 @@ export const useStore = create(
           };
           programDays.push({ sessionTemplateId: templateId, label });
         }
-        const program = {
-          id: programId, name: programName, mode,
-          type: 'primary', status: 'active',
-          createdAt: new Date().toISOString().split('T')[0],
-          currentWeek: 1, onboardingSnapshot: { mode: 'manual' },
-          days: programDays,
-        };
+        const program = withStages(
+          {
+            id: programId, name: programName, mode,
+            type: 'primary', status: 'active',
+            createdAt: new Date().toISOString().split('T')[0],
+            currentWeek: 1, onboardingSnapshot: { mode: 'manual' },
+          },
+          [{ id: generateId('stage'), name: 'Etapa 1', durationWeeks, days: programDays }],
+          0,
+        );
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
@@ -1003,17 +1010,12 @@ export const useStore = create(
 
       addSessionToProgram: (programId, stageIndex = null) => {
         const { programs } = get();
-        const program = programs[programId];
+        const program = ensureStages(programs[programId]);
         if (!program) return;
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
         const dayColors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
-        const hasStages = program.stages?.length > 0;
-        const targetStageIdx = hasStages
-          ? (stageIndex !== null ? stageIndex : (program.currentStageIndex ?? 0))
-          : null;
-        const targetDays = hasStages
-          ? (program.stages[targetStageIdx]?.days ?? [])
-          : program.days;
+        const targetStageIdx = stageIndex !== null ? stageIndex : (program.currentStageIndex ?? 0);
+        const targetDays = program.stages[targetStageIdx]?.days ?? [];
         const i = targetDays.length;
         const label = labels[i] ?? String(i + 1);
         const tplId = generateId('tpl');
@@ -1021,46 +1023,28 @@ export const useStore = create(
           id: tplId, programId, label, name: `Sesión ${label}`,
           emphasis: '', color: dayColors[i % dayColors.length], exercises: [],
         };
-        if (hasStages) {
-          const newDays = [...targetDays, { sessionTemplateId: tplId, label }];
-          const newStages = program.stages.map((st, idx) =>
-            idx === targetStageIdx ? { ...st, days: newDays } : st
-          );
-          set((s) => ({
-            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
-            programs: { ...s.programs, [programId]: { ...program, stages: newStages } },
-          }));
-        } else {
-          set((s) => ({
-            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
-            programs: {
-              ...s.programs,
-              [programId]: { ...program, days: [...program.days, { sessionTemplateId: tplId, label }] },
-            },
-          }));
-        }
+        const newDays = [...targetDays, { sessionTemplateId: tplId, label }];
+        const newStages = program.stages.map((st, idx) =>
+          idx === targetStageIdx ? { ...st, days: newDays } : st
+        );
+        set((s) => ({
+          sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+          programs: { ...s.programs, [programId]: withStages(program, newStages) },
+        }));
       },
 
       // Clones a session (edited version wins) into the same stage/program.
       // Returns the new template id so the caller can jump to the copy.
       duplicateSessionInProgram: (programId, templateId) => {
         const { programs, sessionTemplates, userPrograms } = get();
-        const program = programs[programId];
+        const program = ensureStages(programs[programId]);
         if (!program) return null;
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
         const dayColors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
-        const hasStages = program.stages?.length > 0;
 
-        let stageIdx = null;
-        let days;
-        if (hasStages) {
-          stageIdx = program.stages.findIndex((st) => st.days.some((d) => d.sessionTemplateId === templateId));
-          if (stageIdx < 0) return null;
-          days = program.stages[stageIdx].days;
-        } else {
-          days = program.days ?? [];
-          if (!days.some((d) => d.sessionTemplateId === templateId)) return null;
-        }
+        const stageIdx = program.stages.findIndex((st) => st.days.some((d) => d.sessionTemplateId === templateId));
+        if (stageIdx < 0) return null;
+        const days = program.stages[stageIdx].days;
 
         const src = userPrograms[templateId] ?? sessionTemplates[templateId];
         if (!src) return null;
@@ -1082,72 +1066,51 @@ export const useStore = create(
         };
         const newDays = [...days, { sessionTemplateId: tplId, label }];
 
-        if (hasStages) {
-          const newStages = program.stages.map((st, idx) =>
-            idx === stageIdx ? { ...st, days: newDays } : st
-          );
-          set((s) => ({
-            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
-            programs: { ...s.programs, [programId]: { ...program, stages: newStages } },
-          }));
-        } else {
-          set((s) => ({
-            sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
-            programs: { ...s.programs, [programId]: { ...program, days: newDays } },
-          }));
-        }
+        const newStages = program.stages.map((st, idx) =>
+          idx === stageIdx ? { ...st, days: newDays } : st
+        );
+        set((s) => ({
+          sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
+          programs: { ...s.programs, [programId]: withStages(program, newStages) },
+        }));
         return tplId;
       },
 
       removeSessionFromProgram: (programId, templateId) => {
         const { programs } = get();
-        const program = programs[programId];
+        const program = ensureStages(programs[programId]);
         if (!program) return;
-        const hasStages = program.stages?.length > 0;
 
-        if (hasStages) {
-          const newStages = program.stages.map((st) => ({
-            ...st,
-            days: st.days.filter((d) => d.sessionTemplateId !== templateId),
-          }));
-          set((s) => {
-            const nextSessionTemplates = { ...s.sessionTemplates };
-            delete nextSessionTemplates[templateId];
-            const nextUserPrograms = { ...s.userPrograms };
-            delete nextUserPrograms[templateId];
-            return {
-              programs: { ...s.programs, [programId]: { ...program, stages: newStages } },
-              sessionTemplates: nextSessionTemplates,
-              userPrograms: nextUserPrograms,
-            };
-          });
-        } else {
-          const newDays = program.days.filter((d) => d.sessionTemplateId !== templateId);
-          set((s) => {
-            const nextSessionTemplates = { ...s.sessionTemplates };
-            delete nextSessionTemplates[templateId];
-            const nextUserPrograms = { ...s.userPrograms };
-            delete nextUserPrograms[templateId];
-            return {
-              programs: { ...s.programs, [programId]: { ...program, days: newDays } },
-              sessionTemplates: nextSessionTemplates,
-              userPrograms: nextUserPrograms,
-            };
-          });
-        }
+        const newStages = program.stages.map((st) => ({
+          ...st,
+          days: st.days.filter((d) => d.sessionTemplateId !== templateId),
+        }));
+        set((s) => {
+          const nextSessionTemplates = { ...s.sessionTemplates };
+          delete nextSessionTemplates[templateId];
+          const nextUserPrograms = { ...s.userPrograms };
+          delete nextUserPrograms[templateId];
+          return {
+            programs: { ...s.programs, [programId]: withStages(program, newStages) },
+            sessionTemplates: nextSessionTemplates,
+            userPrograms: nextUserPrograms,
+          };
+        });
       },
 
-      // Reorders the sessions of a stage (or of a stage-less program) to match
-      // `orderedTemplateIds`. The A/B/C… label means "position in the cycle",
-      // not an identity — same convention as addSessionToProgram — so labels are
-      // reassigned by position. The session NAME is left alone: a session called
-      // "Sesión A" that moves to slot B keeps its name until the user renames it.
+      // Reorders the sessions of a stage to match `orderedTemplateIds`. The
+      // A/B/C… label means "position in the cycle", not an identity — same
+      // convention as addSessionToProgram — so labels are reassigned by
+      // position. The session NAME is left alone: a session called "Sesión A"
+      // that moves to slot B keeps its name until the user renames it.
+      // `stageIndex` null means "the active stage" (callers that predate the
+      // unified model still pass null for what used to be a stage-less program).
       reorderSessionsInStage: (programId, stageIndex, orderedTemplateIds) => {
         const { programs } = get();
-        const program = programs[programId];
+        const program = ensureStages(programs[programId]);
         if (!program) return;
-        const hasStages = program.stages?.length > 0;
-        const days = hasStages ? (program.stages[stageIndex]?.days ?? []) : (program.days ?? []);
+        const idx  = stageIndex ?? program.currentStageIndex ?? 0;
+        const days = program.stages[idx]?.days ?? [];
         if (orderedTemplateIds.length !== days.length) return;
 
         const labels  = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -1165,9 +1128,10 @@ export const useStore = create(
             });
             return next;
           };
-          const nextProgram = hasStages
-            ? { ...program, stages: program.stages.map((st, i) => (i === stageIndex ? { ...st, days: newDays } : st)) }
-            : { ...program, days: newDays };
+          const nextProgram = withStages(
+            program,
+            program.stages.map((st, i) => (i === idx ? { ...st, days: newDays } : st)),
+          );
           return {
             programs:         { ...s.programs, [programId]: nextProgram },
             sessionTemplates: relabel(s.sessionTemplates),
@@ -1178,10 +1142,9 @@ export const useStore = create(
 
       addStageToProgram: (programId) => {
         const { programs, sessionTemplates, userPrograms } = get();
-        const program = programs[programId];
+        const program = ensureStages(programs[programId]);
         if (!program) return;
-        const hasStages = program.stages?.length > 0;
-        const existingStages = program.stages ?? [];
+        const existingStages = program.stages;
         const updatedSessionTemplates = { ...sessionTemplates };
 
         function cloneDays(sourceDays) {
@@ -1196,32 +1159,40 @@ export const useStore = create(
           });
         }
 
-        let updatedStages;
-        if (!hasStages) {
-          const stage1 = { id: generateId('stage'), name: 'Etapa 1', durationWeeks: 4, days: program.days };
-          const newStage = { id: generateId('stage'), name: 'Etapa 2', durationWeeks: 4, days: cloneDays(program.days) };
-          updatedStages = [stage1, newStage];
-        } else {
-          const lastStage = existingStages[existingStages.length - 1];
-          const newStage = { id: generateId('stage'), name: `Etapa ${existingStages.length + 1}`, durationWeeks: 4, days: cloneDays(lastStage.days) };
-          updatedStages = [...existingStages, newStage];
-        }
+        const lastStage = existingStages[existingStages.length - 1];
+        const newStage = {
+          id: generateId('stage'),
+          name: `Etapa ${existingStages.length + 1}`,
+          durationWeeks: 4,
+          days: cloneDays(lastStage.days ?? []),
+        };
+
+        // Una etapa sin límite NUNCA termina, así que dejar una abierta delante
+        // de otra deja al cliente encerrado en ella para siempre: el umbral de
+        // fin de etapa no puede dispararse (`advanceCycle`) y el banner de
+        // "avanzar" no aparece jamás. Al añadir la siguiente se cierra la etapa
+        // en curso por donde de hecho va — "duró lo que duró" — que es además
+        // lo que hace que el cliente pase a la nueva en su próxima sesión.
+        const curIdx = program.currentStageIndex ?? 0;
+        const closed = existingStages.map((st, i) => (
+          i === curIdx && st.durationWeeks == null
+            ? { ...st, durationWeeks: Math.max(1, program.stageWeeksCompleted ?? 0) }
+            : st
+        ));
+        const updatedStages = [...closed, newStage];
 
         set((s) => ({
           sessionTemplates: updatedSessionTemplates,
-          programs: {
-            ...s.programs,
-            [programId]: { ...program, stages: updatedStages, currentStageIndex: program.currentStageIndex ?? 0 },
-          },
+          programs: { ...s.programs, [programId]: withStages(program, updatedStages) },
         }));
       },
 
       updateStage: (programId, stageIndex, updates) => {
         const { programs } = get();
-        const program = programs[programId];
-        if (!program?.stages) return;
+        const program = ensureStages(programs[programId]);
+        if (!program) return;
         const newStages = program.stages.map((st, i) => i === stageIndex ? { ...st, ...updates } : st);
-        set((s) => ({ programs: { ...s.programs, [programId]: { ...program, stages: newStages } } }));
+        set((s) => ({ programs: { ...s.programs, [programId]: withStages(program, newStages) } }));
       },
 
       // Clones a stage (sessions included, edited versions win) right after the
@@ -1272,32 +1243,24 @@ export const useStore = create(
 
         set((s) => ({
           sessionTemplates: updatedSessionTemplates,
-          programs: {
-            ...s.programs,
-            [programId]: { ...program, stages: newStages, currentStageIndex: newCur },
-          },
+          programs: { ...s.programs, [programId]: withStages(program, newStages, newCur) },
         }));
         return stageIndex + 1;
       },
 
+      // Every program keeps at least one stage (`docs/specs/stage-planner.md`
+      // §3): removing the last one is a no-op, and there is no longer a
+      // "collapse back to a stage-less program" branch.
       removeStageFromProgram: (programId, stageIndex) => {
         const { programs } = get();
-        const program = programs[programId];
-        if (!program?.stages || program.stages.length <= 1) return;
+        const program = ensureStages(programs[programId]);
+        if (!program || program.stages.length <= 1) return;
         const newStages = program.stages.filter((_, i) => i !== stageIndex);
         const currentIdx = program.currentStageIndex ?? 0;
         const newCurrentIdx = stageIndex <= currentIdx ? Math.max(0, currentIdx - 1) : currentIdx;
-        if (newStages.length === 1) {
-          const { stages: _s, currentStageIndex: _csi, ...rest } = program;
-          set((s) => ({ programs: { ...s.programs, [programId]: { ...rest, days: newStages[0].days } } }));
-        } else {
-          set((s) => ({
-            programs: {
-              ...s.programs,
-              [programId]: { ...program, stages: newStages, currentStageIndex: newCurrentIdx, days: newStages[newCurrentIdx].days },
-            },
-          }));
-        }
+        set((s) => ({
+          programs: { ...s.programs, [programId]: withStages(program, newStages, newCurrentIdx) },
+        }));
       },
 
       setCurrentStage: (programId, stageIndex) => {
@@ -1325,10 +1288,7 @@ export const useStore = create(
           programs: {
             ...s.programs,
             [programId]: {
-              ...program,
-              currentStageIndex: stageIndex,
-              days: newStages[stageIndex].days,
-              stages: newStages,
+              ...withStages(program, newStages, stageIndex),
               ...(isAuthor ? { stageActivatedAt: new Date().toISOString() } : {}),
               stageWeeksCompleted: 0,
               cycleCompletedIds: [],
@@ -1346,14 +1306,11 @@ export const useStore = create(
         const nextIdx = currentIdx + 1;
         if (nextIdx >= program.stages.length) return;
         if (isStageLocked(program, nextIdx, clientSync)) return;
-        const nextStage = program.stages[nextIdx];
         set((s) => ({
           programs: {
             ...s.programs,
             [programId]: {
-              ...program,
-              currentStageIndex: nextIdx,
-              days: nextStage.days,
+              ...withStages(program, program.stages, nextIdx),
               stageWeeksCompleted: 0,
               cycleCompletedIds: [],
               stageAdvancePending: false,
@@ -1404,26 +1361,23 @@ export const useStore = create(
           });
         }
 
-        // Support staged programs (same as web store)
-        let newDays, newStages;
-        if (srcProgram.stages?.length > 0) {
-          newStages = srcProgram.stages.map((stage) => ({
-            ...stage,
-            days: cloneDays(stage.days),
-          }));
-          const currentIdx = srcProgram.currentStageIndex ?? 0;
-          newDays = newStages[currentIdx]?.days ?? cloneDays(srcProgram.days);
-        } else {
-          newDays = cloneDays(srcProgram.days);
-        }
+        // `ensureStages` cubre las copias de programas guardados antes de
+        // unificar el modelo; a partir de ahí siempre hay al menos una etapa.
+        const stagedSrc = ensureStages(srcProgram);
+        const newStages = stagedSrc.stages.map((stage) => ({
+          ...stage,
+          days: cloneDays(stage.days ?? []),
+        }));
 
-        const newProgram = {
-          ...srcProgram, id: newProgramId, name: name ?? srcProgram.name,
-          mode, status: 'active', archivedAt: null,
-          createdAt: new Date().toISOString().split('T')[0],
-          days: newDays,
-          ...(newStages ? { stages: newStages } : {}),
-        };
+        const newProgram = withStages(
+          {
+            ...stagedSrc, id: newProgramId, name: name ?? stagedSrc.name,
+            mode, status: 'active', archivedAt: null,
+            createdAt: new Date().toISOString().split('T')[0],
+          },
+          newStages,
+          stagedSrc.currentStageIndex ?? 0,
+        );
         if (clientId) newProgram.clientId = clientId;
         else delete newProgram.clientId;
 
@@ -2481,10 +2435,15 @@ export const useStore = create(
       // ── Import ────────────────────────────────────────────────────────────────
 
       importData: (data, sections, { silent = false } = {}) => {
-        const allFilePrograms = {
-          ...(data.programs ?? {}),
-          ...(data.program ? { [data.program.id]: data.program } : {}),
-        };
+        // Un backup puede traer programas guardados antes de unificar el modelo
+        // (sin `stages`). Se normalizan aquí, que es el único sitio por el que
+        // entran, y así ninguna de las tres ramas de abajo tiene que saberlo.
+        const allFilePrograms = Object.fromEntries(
+          Object.entries({
+            ...(data.programs ?? {}),
+            ...(data.program ? { [data.program.id]: data.program } : {}),
+          }).map(([id, p]) => [id, ensureStages(p)]),
+        );
 
         set((s) => {
           const updates = {};
@@ -3637,6 +3596,18 @@ export const useStore = create(
 
         // Default the next-session overrides map on older persisted state.
         if (state.clientSync && !state.clientSync.pendingOverrides) state.clientSync.pendingOverrides = {};
+
+        // Migrate: every program owns at least one stage
+        // (`docs/specs/stage-planner.md` §3). The migrated stage gets
+        // `durationWeeks: null` — "no limit" — which is exactly how a
+        // stage-less program behaved, so nobody's running program suddenly
+        // grows an ending. Idempotent, so it costs nothing on later launches.
+        if (state.programs) {
+          Object.entries(state.programs).forEach(([id, p]) => {
+            const staged = ensureStages(p);
+            if (staged !== p) state.programs[id] = staged;
+          });
+        }
 
         // Migrate string tags → tagRegistry IDs
         if (!state.tagRegistry) state.tagRegistry = [];

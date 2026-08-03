@@ -18,6 +18,7 @@
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
 import { GOAL_PARAMS } from './programGenerator';
+import { withStages } from './stageProgress';
 
 const LIMITATION_GROUPS = {
   shoulder:   ['shoulders', 'chest'],
@@ -365,16 +366,20 @@ export function adaptArchetype(archetype, answers) {
     });
   });
 
-  const program = {
-    id: programId,
-    name: archetype.name,
-    type: 'primary',
-    status: 'active',
-    createdAt: new Date().toISOString().split('T')[0],
-    currentWeek: 1,
-    onboardingSnapshot: answers,
-    days: programDays,
-  };
+  // Una etapa sin límite de ciclos — misma razón que en `programGenerator`.
+  const program = withStages(
+    {
+      id: programId,
+      name: archetype.name,
+      type: 'primary',
+      status: 'active',
+      createdAt: new Date().toISOString().split('T')[0],
+      currentWeek: 1,
+      onboardingSnapshot: answers,
+    },
+    [{ id: generateId('stage'), name: 'Etapa 1', durationWeeks: null, days: programDays }],
+    0,
+  );
 
   return { program, sessionTemplates };
 }

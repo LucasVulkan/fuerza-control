@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, clientStageIndex,
+  withStages, ensureStages,
 } from './stageProgress';
 
 const CYCLE = ['tpl_a', 'tpl_b', 'tpl_c'];
@@ -198,5 +199,92 @@ describe('clientStageIndex — dónde está el cliente visto desde el entrenador
     const conEtapas = { id: 'prog_1', currentStageIndex: 0, stages: [{}, {}] };
     const client    = { progress: { programId: 'prog_1', currentStageIndex: 5 } };
     expect(clientStageIndex(client, conEtapas)).toBe(1);
+  });
+});
+
+
+// ── Modelo unificado (docs/specs/stage-planner.md §3) ────────────────────────
+
+describe('withStages', () => {
+  const stageA = { id: 'st_a', name: 'A', days: [{ sessionTemplateId: 'tpl_a' }] };
+  const stageB = { id: 'st_b', name: 'B', days: [{ sessionTemplateId: 'tpl_b' }] };
+
+  it('mirrors `days` onto the active stage', () => {
+    const p = withStages({ id: 'p1' }, [stageA, stageB], 1);
+    expect(p.stages).toHaveLength(2);
+    expect(p.currentStageIndex).toBe(1);
+    expect(p.days).toEqual(stageB.days);
+  });
+
+  it('keeps the index the program already had when none is given', () => {
+    const p = withStages({ id: 'p1', currentStageIndex: 1 }, [stageA, stageB]);
+    expect(p.currentStageIndex).toBe(1);
+    expect(p.days).toEqual(stageB.days);
+  });
+
+  it('clamps an index past the end — the trainer may have deleted stages', () => {
+    const p = withStages({ id: 'p1', currentStageIndex: 5 }, [stageA]);
+    expect(p.currentStageIndex).toBe(0);
+    expect(p.days).toEqual(stageA.days);
+  });
+
+  it('never leaves `days` stale after a write to a non-active stage', () => {
+    const edited = { ...stageB, days: [{ sessionTemplateId: 'tpl_new' }] };
+    const p = withStages({ id: 'p1', currentStageIndex: 0, days: stageA.days }, [stageA, edited]);
+    expect(p.days).toEqual(stageA.days);      // sigue espejando la activa
+  });
+});
+
+describe('ensureStages', () => {
+  it('wraps a legacy program into a single stage', () => {
+    const legacy = { id: 'p1', days: [{ sessionTemplateId: 'tpl_a' }] };
+    const p = ensureStages(legacy);
+    expect(p.stages).toHaveLength(1);
+    expect(p.stages[0].days).toEqual(legacy.days);
+    expect(p.days).toEqual(legacy.days);
+    expect(p.currentStageIndex).toBe(0);
+  });
+
+  it('migrates with NO cycle limit, so a running program does not grow an ending', () => {
+    const p = ensureStages({ id: 'p1', days: [], stageWeeksCompleted: 15 });
+    expect(p.stages[0].durationWeeks).toBeNull();
+  });
+
+  it('is idempotent — a staged program comes back untouched', () => {
+    const staged = withStages({ id: 'p1' }, [{ id: 'st_a', days: [] }], 0);
+    expect(ensureStages(staged)).toBe(staged);
+  });
+
+  it('tolerates a program with no days at all', () => {
+    expect(ensureStages({ id: 'p1' }).stages[0].days).toEqual([]);
+  });
+});
+
+describe('durationWeeks: null — sin límite de ciclos', () => {
+  it('never flags the stage as finished, however many cycles close', () => {
+    const p = replay(
+      ['tpl_a', 'tpl_b', 'tpl_c', 'tpl_a', 'tpl_b', 'tpl_c'],
+      { durationWeeks: null, isLastStage: false },
+    );
+    expect(p.stageWeeksCompleted).toBe(2);
+    expect(p.stageAdvancePending).toBe(false);
+  });
+
+  it('behaves exactly like a stage-less program (durationWeeks omitted)', () => {
+    const withNull    = replay(['tpl_a', 'tpl_b', 'tpl_c'], { durationWeeks: null, isLastStage: false });
+    const withoutStage = replay(['tpl_a', 'tpl_b', 'tpl_c'], {});
+    expect(withNull.stageAdvancePending).toBe(withoutStage.stageAdvancePending);
+    expect(withNull.stageWeeksCompleted).toBe(withoutStage.stageWeeksCompleted);
+  });
+
+  it('mergeProgressOnImport does not mark an unlimited stage as pending', () => {
+    const program = {
+      id: 'p1',
+      stages: [{ id: 'st_a', durationWeeks: null, days: [] }, { id: 'st_b', durationWeeks: 4, days: [] }],
+      currentStageIndex: 0,
+    };
+    const blob = { programId: 'p1', currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 20, totalWeeksCompleted: 20 };
+    const merged = mergeProgressOnImport({ blob, program });
+    expect(merged.stageAdvancePending).toBe(false);
   });
 });

@@ -89,7 +89,6 @@ export default function ProgramEditorScreen({ navigation }) {
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
   const activeProgram = programs[editingId];
   const isFromClients = !!ui._editingProgramId;
-  const hasStages     = (activeProgram?.stages?.length ?? 0) > 0;
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -102,7 +101,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
   const [menuOpen, setMenuOpen]                 = useState(false);
 
-  const selectedStage = hasStages ? (activeProgram?.stages?.[selectedStageIdx] ?? null) : null;
+  const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
 
   // Ref del ScrollView para el autoscroll de la lista reordenable.
@@ -117,10 +116,8 @@ export default function ProgramEditorScreen({ navigation }) {
   }, [selectedStageIdx, activeProgram?.stages?.length]);
 
   useEffect(() => {
-    if (hasStages) {
-      const max = (activeProgram?.stages?.length ?? 1) - 1;
-      if (selectedStageIdx > max) setSelectedStageIdx(max);
-    }
+    const max = (activeProgram?.stages?.length ?? 1) - 1;
+    if (selectedStageIdx > max) setSelectedStageIdx(max);
   }, [activeProgram?.stages?.length]);
 
   const leavingRef = useRef(false);
@@ -186,13 +183,18 @@ export default function ProgramEditorScreen({ navigation }) {
 
   if (!activeProgram) return null;
 
-  const editorDays = hasStages
-    ? (activeProgram.stages[selectedStageIdx]?.days ?? [])
-    : (activeProgram.days ?? []);
+  const editorDays = activeProgram.stages?.[selectedStageIdx]?.days ?? activeProgram.days ?? [];
 
   // ── Program summary ─────────────────────────────────────────────────────────
-  const summaryLine = hasStages
-    ? t('editor.programSummary', {
+  // Todo programa tiene etapas, así que "periodizado" ya no es "¿tiene etapas?"
+  // sino "¿tiene más de una?". Con una sola, el resumen sigue siendo el simple
+  // de siempre: contar "1 etapa · 0 ciclos" no le dice nada a nadie.
+  const isPeriodized = (activeProgram.stages?.length ?? 0) > 1;
+  // Una etapa sin límite hace el total indeterminado: se suman las que sí lo
+  // tienen y se marca con "+".
+  const hasOpenStage = (activeProgram.stages ?? []).some((s) => s.durationWeeks == null);
+  const summaryLine = isPeriodized
+    ? t(hasOpenStage ? 'editor.programSummaryOpen' : 'editor.programSummary', {
         stages:   activeProgram.stages.length,
         weeks:    activeProgram.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
         sessions: activeProgram.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
@@ -217,7 +219,7 @@ export default function ProgramEditorScreen({ navigation }) {
   function handleReorder({ data }) {
     reorderSessionsInStage(
       editingId,
-      hasStages ? selectedStageIdx : null,
+      selectedStageIdx,
       data.map((s) => s.id),
     );
   }
@@ -236,10 +238,9 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleAddStage() {
-    const wasStaged = hasStages;
     addStageToProgram(editingId);
-    const newIdx = wasStaged ? (activeProgram?.stages?.length ?? 1) : 1;
-    setSelectedStageIdx(newIdx);
+    // La etapa nueva va al final: su índice es el tamaño de antes de añadirla.
+    setSelectedStageIdx(activeProgram?.stages?.length ?? 1);
     showToast(t('editor.toastStageAdded'), 2200, 'success');
   }
 
@@ -344,15 +345,9 @@ export default function ProgramEditorScreen({ navigation }) {
           </View>
         </View>
 
-        {/* El ⋮ solo tiene sentido sin etapas (única acción: convertir a etapas);
-            con etapas se deja el hueco para que el título siga centrado. */}
-        {hasStages ? (
-          <View style={styles.headerSide} />
-        ) : (
-          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
-            <MenuIcon size={26} color={th.colors.onAccent} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
+          <MenuIcon size={26} color={th.colors.onAccent} />
+        </TouchableOpacity>
       </View>
 
       {/* Scrollable content */}
@@ -369,40 +364,36 @@ export default function ProgramEditorScreen({ navigation }) {
         </View>
 
         {/* ── Etapas ── */}
-        {hasStages && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>{t('editor.sectionStages').toUpperCase()}</Text>
-            <StageSelector
-              stages={activeProgram.stages.map((stage, idx) => ({
-                id:     stage.id ?? String(idx),
-                name:   stage.name,
-                // El candado solo se pinta en el móvil del cliente: para el
-                // entrenador `isStageLocked` siempre es false (no tiene slot).
-                locked: isStageLocked(activeProgram, idx, clientSync),
-                meta:   t('editor.cyclesShort', { count: stage.durationWeeks ?? 0 }),
-              }))}
-              value={activeProgram.stages[selectedStageIdx]?.id ?? String(selectedStageIdx)}
-              onChange={(id) => {
-                const idx = activeProgram.stages.findIndex((s, i) => (s.id ?? String(i)) === id);
-                if (idx < 0) return;
-                // Segunda pulsación sobre la etapa ya activa → abre el modal.
-                if (idx === selectedStageIdx) setStageSheetOpen(true);
-                else setSelectedStageIdx(idx);
-              }}
-              onAdd={handleAddStage}
-            />
-            <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
-          </View>
-        )}
-
-        {!hasStages && (
-          <Text style={styles.stageHint}>{t('editor.changesHint')}</Text>
-        )}
+        <View style={styles.section}>
+          <Text style={styles.secTitle}>{t('editor.sectionStages').toUpperCase()}</Text>
+          <StageSelector
+            stages={activeProgram.stages.map((stage, idx) => ({
+              id:     stage.id ?? String(idx),
+              name:   stage.name,
+              // El candado solo se pinta en el móvil del cliente: para el
+              // entrenador `isStageLocked` siempre es false (no tiene slot).
+              locked: isStageLocked(activeProgram, idx, clientSync),
+              meta:   stage.durationWeeks == null
+                ? t('editor.cyclesOpen')
+                : t('editor.cyclesShort', { count: stage.durationWeeks }),
+            }))}
+            value={activeProgram.stages[selectedStageIdx]?.id ?? String(selectedStageIdx)}
+            onChange={(id) => {
+              const idx = activeProgram.stages.findIndex((s, i) => (s.id ?? String(i)) === id);
+              if (idx < 0) return;
+              // Segunda pulsación sobre la etapa ya activa → abre el modal.
+              if (idx === selectedStageIdx) setStageSheetOpen(true);
+              else setSelectedStageIdx(idx);
+            }}
+            onAdd={handleAddStage}
+          />
+          <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
+        </View>
 
         {/* ── Sesiones de la etapa seleccionada ── */}
         <View style={styles.section}>
           <Text style={styles.secTitle}>
-            {(hasStages && selectedStage
+            {(selectedStage
               ? t('editor.sessionsOf', { stage: selectedStage.name })
               : t('editor.sectionSessions')).toUpperCase()}
           </Text>
@@ -426,7 +417,7 @@ export default function ProgramEditorScreen({ navigation }) {
                   onPress={() => navigation.navigate('SessionEditor', {
                     templateId: id,
                     programId:  editingId,
-                    stageIdx:   hasStages ? selectedStageIdx : null,
+                    stageIdx:   selectedStageIdx,
                   })}
                 />
               );
@@ -435,11 +426,11 @@ export default function ProgramEditorScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.addSessionBtn}
-            onPress={() => addSessionToProgram(editingId, hasStages ? selectedStageIdx : null)}
+            onPress={() => addSessionToProgram(editingId, selectedStageIdx)}
             activeOpacity={0.7}
           >
             <Text style={styles.addSessionBtnText}>
-              {hasStages && selectedStage
+              {selectedStage
                 ? <>
                     {t('editor.addSessionPrefix')}
                     <Text style={styles.addSessionBtnStage}>{selectedStage.name}</Text>
@@ -463,7 +454,7 @@ export default function ProgramEditorScreen({ navigation }) {
           onPress={() => { setMenuOpen(false); handleAddStage(); }}
           activeOpacity={0.7}
         >
-          <Text style={styles.menuRowText}>{t('editor.convertToStages')}</Text>
+          <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
           <ArrowIcon size={14} color={th.colors.mutedLight} />
         </TouchableOpacity>
       </DragSheet>
@@ -493,14 +484,36 @@ export default function ProgramEditorScreen({ navigation }) {
 
             <View>
               <Text style={styles.sheetLabel}>{t('editor.stageDurationLabel')}</Text>
-              <StepField
-                horizontal dark
-                label={t('editor.stageWeeksUnit')}
-                value={selectedStage.durationWeeks ?? 4}
-                onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
-                min={1}
-                max={52}
-              />
+              {/* `durationWeeks: null` = sin límite de ciclos: la etapa no
+                  termina sola. El stepper no puede representarlo, así que la
+                  opción vive en su propia fila y lo sustituye. */}
+              {selectedStage.durationWeeks == null ? (
+                <TouchableOpacity
+                  style={[styles.noLimitRow, styles.noLimitRowActive]}
+                  onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: 4 })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.noLimitTextActive}>{t('editor.cyclesNoLimit')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <StepField
+                    horizontal dark
+                    label={t('editor.stageWeeksUnit')}
+                    value={selectedStage.durationWeeks}
+                    onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
+                    min={1}
+                    max={52}
+                  />
+                  <TouchableOpacity
+                    style={styles.noLimitRow}
+                    onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: null })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.noLimitText}>{t('editor.cyclesNoLimit')}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
             <View>
@@ -745,6 +758,18 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
+  // "Sin límite de ciclos" — fila propia porque el stepper no puede
+  // representar la ausencia de número.
+  noLimitRow: {
+    marginTop:         spacing.sm,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.app,
+  },
+  noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
+  noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
+  noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
   // Dentro de una hoja el fondo YA es `surface`, así que los campos van sobre
   // `color/app` para que se lean — mismo criterio que las hojas del editor de
   // ejercicio.
