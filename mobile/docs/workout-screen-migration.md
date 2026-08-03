@@ -445,6 +445,85 @@ Contenido confirmado en los screenshots (mapea 1:1 con el código actual):
 o si todos van en accent; ajusta pero conserva la lógica de derivación de reloj/haptics/keep-awake
 intacta. `for_time` no tiene mock → restyle por analogía con AMRAP y anótalo.
 
+### 6.1 Implementación real (cierra la Parte 4) — HECHA, en testeo
+
+> La referencia final NO son las variantes de Figma de arriba sino un HTML posterior del
+> usuario, `formfit-workout-v12-amrap-emom.html` (AMRAP y EMOM en runtime). Coincide con
+> los screenshots de Figma en contenido, pero reorganiza el layout: reloj y contador en
+> una fila, lista de movimientos a 3 columnas, y rejilla de intervalos en vez de dots.
+> **Manda el HTML.** Si algo no cuadra, re-léelo antes que los nodos `260:*`.
+
+Mapeo de la referencia a tokens = el MISMO que ya usaba `ExerciseCard` (spec v6):
+`#161616`→`surface`, `#1f1f1f`→`surface2`, `#0e0e0e` (celda) y `#1e1e1e` (btn-fill)→`bg`/
+`surface2`, lima→`accent`, lime-dim→`tint.accent10`, muted→`mutedLight`, muted-2→`muted`.
+La tarjeta adopta la **anatomía de `ExerciseCard`**: cabecera `surface2` (padding
+14/12/14/16, gap 10) con el número accent en el mismo hueco, cuerpo `surface` con padding
+12/16/14, radio 16 y el **borde transparente permanente** obligatorio de Android (§5.5).
+
+Decisiones del usuario tomadas antes de implementar (mandan sobre el mock y sobre §6):
+
+| Punto | Decisión |
+|---|---|
+| Color por formato | **Todo lima.** Se pierde azul=EMOM / naranja=for_time y el borde izquierdo de color; el formato se lee en el meta (`AMRAP · 12 min · 5 movimientos`) y por eso **desaparece la pill de badge**: el título es el nombre del bloque (o el formato si no tiene nombre) |
+| Play/pausa de la referencia | **No se implementa.** Pausar obligaría a acumular tiempo en el estado y romper el modelo wall-clock del spec §4 (recuperación tras matar la app). Para reempezar ya está CANCELAR BLOQUE |
+| AMRAP: reps parciales | Sólo aparecen **al agotarse el tiempo** (con los dos steppers y el botón de finalizar). Durante el bloque manda el área grande de ronda |
+| for time | **Gana contador de rondas** (`state.rounds`, sólo visual: `buildBlockResult` sigue guardando el tiempo). Con rondas configuradas, el botón primario es el área de ronda + `FINALIZAR` terciario, y al llegar al objetivo el primario pasa a ser `FINALIZAR · mm:ss` |
+| EMOM: marcar fallo | **Sólo la rejilla** — fuera el botón `Fallo`. Se toca cualquier intervalo pasado o el actual |
+
+Piezas nuevas respecto al estado anterior:
+
+- **Área grande de ronda + botón `−`** (pedido explícito): botón lima h56 `flex:1` con
+  `✓ Ronda completada` y un cuadrado 56×56 `surface2` al lado para restar. Lo usan AMRAP
+  y for time.
+- **Rejilla de intervalos** (`.minutes`) en vez de los dots de 28px: casillas 54×40
+  `radius/10`, hecho = relleno `accent` + `✓` en `onAccent`, fallado = `surface2` + `✕`,
+  actual = `tint/accent-10` + número accent, pendiente = `bg` + número `muted`. Ancho fijo
+  (no 5 columnas calculadas): a 54+gap 8 entran 5 por fila en un móvil normal y 4 en uno
+  estrecho, sin medir el contenedor.
+- **Panel protagonista del EMOM** (`.now`): reloj lima 32 + `k / n INTERVALO` a la derecha,
+  trabajo actual a 24px (`12 × Wall ball` con el `×` en `muted`), carga debajo y
+  `SIGUIENTE` con el próximo movimiento. La etiqueta es **INTERVALO/INTERVALOS**, no
+  MINUTO como la referencia: el intervalo puede no ser de 60s.
+- **Animación de avance** (punto 3 del usuario): el bloque de trabajo del intervalo entra
+  **desde abajo** (`Reanimated` `FadeInDown` 220ms) con `key={pos.interval}` — es el
+  remontaje lo que dispara `entering`. Sin `exiting`: dos elementos vivos a la vez darían
+  un salto de altura. El contador de rondas hace el mismo truco con `ZoomIn` 170ms.
+  - **No se usa `useSharedValue` para el bump**: el `eslint-plugin-react-hooks` v7 marca
+    `sharedValue.value = …` como violación de inmutabilidad **aunque el flag
+    `enableCustomTypeDefinitionForReanimated` esté activo** en `eslint.config.js`
+    (comprobado con un fichero mínimo). `entering` + `key` da el mismo efecto sin error.
+- **Háptica** (punto 2): confirmación ligera al sumar/restar ronda y al marcar un fallo,
+  cuenta atrás **3-2-1** al final de cada intervalo EMOM (un toque ligero por segundo),
+  cambio de intervalo subido de `Warning` a **impacto Heavy**, y aviso de "tiempo" también
+  cuando un for time con tope se autofinaliza (antes lo hacía en silencio).
+- **Estado terminado**: misma cabecera con `✓` en el hueco del número + score pill accent
+  (ya no verde: en este tema no hay verde semántico), borde `tint/accent-50` como la card
+  de ejercicio completada, y el detalle expandible con la lista de movimientos + `Reabrir`.
+
+**Correcciones de la 1ª ronda de QA:**
+
+- **Ningún formato se autofinaliza ya.** El EMOM llamaba a `onFinish()` en cuanto
+  `emomPosition().finished` era true, con dos consecuencias: no daba tiempo a marcar el
+  **último** intervalo como fallado, y `Reabrir` era imposible (volver a `running` con el
+  tiempo agotado disparaba el mismo efecto en el siguiente tick y lo cerraba otra vez).
+  Ahora hay un `over` derivado (AMRAP `remaining===0` · EMOM `pos.finished` · for time
+  `ft.capped`) que sólo cambia la UI: el bloque espera confirmación explícita del atleta.
+  Al agotarse el tiempo, el EMOM oculta el panel de trabajo (ya no hay nada que hacer),
+  **la última casilla pasa a contar como pasada** (marcable) y aparecen el aviso de tiempo
+  y `Finalizar · 18/20`. Mismo tratamiento en for time con tope, que también se cerraba
+  solo. El aviso háptico de "tiempo" pasa a ser común a los tres formatos.
+- **Reloj a 44px** (la referencia lo pinta a 32): es el dato que se mira de reojo desde el
+  suelo. Mismo tamaño en la fila de AMRAP/for time y en el panel del EMOM.
+- **`Reabrir` recoge el detalle.** La tarjeta terminada ya nacía colapsada, pero `expanded`
+  sobrevivía al ciclo terminado → reabierto → terminado (hay que desplegarla para poder
+  pulsar `Reabrir`), así que la segunda vez se quedaba a medio colapsar con la lista de
+  movimientos a la vista. Se resetea en `handleReopen`, no en un efecto sobre `status`:
+  reabrir es el único camino de salida del estado terminado y el linter (regla
+  `react-hooks/set-state-in-effect`) tiene razón en que ahí no hace falta efecto.
+
+Claves i18n nuevas (es+en): `blocks.roundDone`, `removeRound`, `partialHint`,
+`intervalsLabel`, `failHint`, `timeUpEmom`. `blocks.fail` se queda sin uso en la app móvil.
+
 ---
 
 ## 7. Timer de descanso flotante (`RestTimerFloat` en `WorkoutScreen.jsx`)
@@ -515,8 +594,9 @@ Orden real (se optó por la alternativa: calentar con la Parte 2 antes que la ca
 3. ✅ **Parte 3 — Exercise Card colapsada/completada** (commit `edf2086` + siguiente, EN
    TESTEO) — resumen 2-colores (§5.5), colapso fluido, borde de completado en superseries. Detalle
    completo en §5.5 (varios puntos corrigen esta guía, léela entera antes de tocar la card).
-4. ⬜ **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`) contra las variantes
-   `Exercice Card`. **SIGUIENTE al retomar.**
+4. ✅ **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`, EN TESTEO) — contra
+   el HTML `formfit-workout-v12-amrap-emom.html`, no contra las variantes `Exercice Card`.
+   Detalle completo y decisiones del usuario en §6.1 (léela antes de retocar la tarjeta).
 5. ⬜ **Parte 5 — Timer flotante, modal de notas (drag-from-body), footer, sesión libre, ad-hoc.**
 
 ---
@@ -549,7 +629,8 @@ npx vitest run                                              # lógica; un restyl
 - Fondo real de la Exercice Card: `color/workout-card` (#141414) vs `surface` — verificar por
   componente y decidir si se añade el token a `themes.js`.
 - `text/card-title` (tracking 4) vs `text/Exercice` (tracking 0) para el nombre de ejercicio.
-- `for_time`: confirmar restyle por analogía con AMRAP (no hay mock propio).
+- ~~`for_time`: confirmar restyle por analogía con AMRAP~~ **RESUELTO (Parte 4, §6.1):** sí,
+  y además gana contador de rondas visual.
 - Badge `isKey` ("clave"): ¿se mantiene como pill accent o se elimina? No está claro en Figma.
 - **Idea aplazada (jul 2026, no implementada):** que todas las cards nazcan colapsadas al abrir
   la sesión salvo la primera — "colapsado pendiente" (sin datos, sin check, sin borde, sin
