@@ -1,6 +1,6 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
-> Estado: **fase 0 implementada; fases 1-4 sin implementar** (ago 2026). 5 fases, cada una un
+> Estado: **fases 0 y 1 implementadas; fases 2-4 sin implementar** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -245,7 +245,7 @@ onboarding, añadir el paso allí es una línea.
 
 ---
 
-## 4. FASE 1 — `applyRx` + cadena de plantillas 🟡
+## 4. FASE 1 — `applyRx` + cadena de plantillas 🟡 ✅ IMPLEMENTADA
 
 ### 4.1 ⚠️ La cadena `derivedFrom` — requisito, no extra
 
@@ -293,7 +293,22 @@ Consumidores (**grupo A**, y solo estos):
 ([exerciseLinks.js:50](../../../src/utils/exerciseLinks.js)) ya hace
 exactamente lo que hace falta. Prioridad si un ejercicio está además vinculado:
 **gana el `linkGroup`** (es una decisión explícita del entrenador; la cadena es
-automática).
+automática).
+
+**Cómo quedó al implementar.** Los tres llamantes resolvían la referencia por su
+cuenta y solo el caso vinculado miraba más allá de la plantilla actual, así que
+en vez de parchear cada uno se unificaron en `lastExerciseRef({ workoutLog,
+program, templateId, exConfig, getTemplate })`, que decide entre grupo
+vinculado y cadena. Llamantes: `WorkoutScreen` (chip + fantasmas),
+`getProgressionRecommendation` y el `resolveSet` de `saveSession` — este último
+no estaba en la lista de la spec y sufría lo mismo.
+
+**`duplicateStageInProgram` también sella `derivedFrom`.** La spec lo dejaba
+fuera por ser "copia literal", pero acuña `tpl_*` nuevos igual que
+`addStageToProgram`, así que perdía los pesos de referencia exactamente igual.
+Donde NO se sella es en `duplicateSessionInProgram`: ahí la copia y el original
+conviven en el mismo ciclo, así que es una sesión nueva, no la evolución de
+otra.
 
 ### 4.2 Lo que NO entra: el grupo B (decisión cerrada, §2.6)
 
@@ -575,7 +590,7 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 | # | Alcance | Coste | Modelo |
 |---|---|---|---|
 | 0 | Unificación del modelo + paso de ciclos en los 2 modales de creación (§3) | 🟢 | ✅ **IMPLEMENTADA** — 875 tests verdes, lint igual que HEAD |
-| 1 | `applyRx` + `templateChainIds` + `addStageToProgram({rx})` (§4) | 🟡 | Sonnet; **revisar §4.1 en dispositivo** |
+| 1 | `applyRx` + `templateChainIds` + `addStageToProgram({rx})` (§4) | 🟡 | ✅ **IMPLEMENTADA** — 911 tests. `applyRx` no tiene llamante en producción hasta la fase 4: lo que aporta valor hoy es la cadena (§4.1) |
 | 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | Sonnet |
 | 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | Sonnet |
 | 4 | Pantalla de planificador (§7) | 🔴 | Opus/Fable el diseño de las escaleras; Sonnet la UI |

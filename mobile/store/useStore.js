@@ -37,9 +37,10 @@ import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
-import { linkGroupTemplateIds, lastLinkedExercise, pickLinkedConfig } from '../../src/utils/exerciseLinks';
+import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, buildBlockResult } from '../../src/utils/conditioningBlocks';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage } from '../../src/utils/stageProgress';
+import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
@@ -1140,12 +1141,23 @@ export const useStore = create(
         });
       },
 
-      addStageToProgram: (programId) => {
-        const { programs, sessionTemplates, userPrograms, clients } = get();
+      // Añade una etapa al final, derivada de otra.
+      //
+      // `rx` es la REGLA de etapa (`stageRx.js`): la transformación que
+      // convierte los ejercicios de la etapa de origen en los de la nueva
+      // (+1 serie, rango más corto, descarga…). Sin `rx` la etapa es una copia
+      // literal, que es el comportamiento de siempre.
+      //
+      // `sourceStageIdx` por defecto es la última etapa. Al montar una escalera
+      // hay que pasar SIEMPRE el índice de la etapa base: los peldaños derivan
+      // de la base, no del anterior (spec §2.4).
+      addStageToProgram: (programId, { rx = null, sourceStageIdx = null, name = null, durationWeeks = 4 } = {}) => {
+        const { programs, sessionTemplates, userPrograms, clients, exerciseLibrary, customExercises } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
         const existingStages = program.stages;
         const updatedSessionTemplates = { ...sessionTemplates };
+        const allExercises = { ...exerciseLibrary, ...customExercises };
 
         function cloneDays(sourceDays) {
           return sourceDays.map(({ sessionTemplateId, label }) => {
@@ -1154,17 +1166,26 @@ export const useStore = create(
             updatedSessionTemplates[newTplId] = {
               ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
               id: newTplId, programId,
+              // La copia es la evolución de la de origen: sin esta cadena, la
+              // primera sesión de cada etapa nueva deja al cliente sin chip de
+              // progresión y sin pesos de referencia (spec §4.1).
+              derivedFrom: sessionTemplateId,
+              exercises: applyRx(src?.exercises ?? [], rx, allExercises),
             };
             return { sessionTemplateId: newTplId, label };
           });
         }
 
-        const lastStage = existingStages[existingStages.length - 1];
+        const srcIdx = sourceStageIdx ?? existingStages.length - 1;
+        const source = existingStages[srcIdx] ?? existingStages[existingStages.length - 1];
         const newStage = {
           id: generateId('stage'),
-          name: `Etapa ${existingStages.length + 1}`,
-          durationWeeks: 4,
-          days: cloneDays(lastStage.days ?? []),
+          name: name ?? `Etapa ${existingStages.length + 1}`,
+          durationWeeks,
+          days: cloneDays(source.days ?? []),
+          // Procedencia, para que la hoja de etapa pueda decir "derivada de
+          // Acumulación · +1 serie". NADA en runtime la lee.
+          ...(rx ? { rx, derivedFromStageId: source.id ?? null } : {}),
         };
 
         // Al añadir una etapa detrás, la que está en curso se cierra por donde
@@ -1232,6 +1253,10 @@ export const useStore = create(
             ...(tpl ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
             id: newTplId,
             programId,
+            // Misma cadena que en `addStageToProgram`: una etapa duplicada
+            // también acuña `tpl_*` nuevos, así que sin esto el cliente pierde
+            // igualmente sus pesos de referencia al entrar en ella (spec §4.1).
+            derivedFrom: sessionTemplateId,
             exercises: (tpl?.exercises ?? []).map((ex) => ({ ...ex, linkGroup: remapGroup(ex.linkGroup) })),
             blocks: (tpl?.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
           };
@@ -1772,7 +1797,7 @@ export const useStore = create(
       },
 
       getProgressionRecommendation: (templateId, exerciseId) => {
-        const { getEffectiveTemplate, exerciseLibrary, customExercises, getLastSession } = get();
+        const { getEffectiveTemplate, exerciseLibrary, customExercises } = get();
         const template = getEffectiveTemplate(templateId);
         if (!template) return null;
         const exConfig = template.exercises.find((e) => e.exerciseId === exerciseId);
@@ -1781,9 +1806,13 @@ export const useStore = create(
         if (!baseDef) return null;
         const effectiveDef = exConfig.progressionModel
           ? { ...baseDef, progressionModel: exConfig.progressionModel } : baseDef;
-        const lastSession = getLastSession(templateId);
-        if (!lastSession) return null;
-        const lastExercise = lastSession.exercises?.find((e) => e.exerciseId === exerciseId);
+        const lastExercise = lastExerciseRef({
+          workoutLog: get().workoutLog,
+          program:    get().programs[template.programId],
+          templateId,
+          exConfig,
+          getTemplate: getEffectiveTemplate,
+        });
         if (!lastExercise) return null;
         return getProgression(effectiveDef, lastExercise.sets, exConfig.sets);
       },
@@ -1825,10 +1854,6 @@ export const useStore = create(
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        const lastSession = [...workoutLog]
-          .filter((e) => e.sessionTemplateId === activeSession.templateId)
-          .sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
-
         function resolveSet(s, lastSet) {
           // Cualquier dato → registrado como hecho (sin necesidad de pulsar ✓)
           if (s.weight !== '' || s.reps !== '' || s.time !== '') {
@@ -1853,13 +1878,13 @@ export const useStore = create(
             const setsData = activeSession.setsState[exerciseId] ?? [];
             // Linked exercises autofill from the group's latest performance
             // (any session of the group), not just this template's.
-            const lastExData = linkGroup
-              ? lastLinkedExercise(
-                  workoutLog,
-                  linkGroupTemplateIds(ownerProgramForLinks, exerciseId, linkGroup, get().getEffectiveTemplate),
-                  exerciseId,
-                )
-              : lastSession?.exercises.find((e) => e.exerciseId === exerciseId);
+            const lastExData = lastExerciseRef({
+              workoutLog,
+              program:     ownerProgramForLinks,
+              templateId:  activeSession.templateId,
+              exConfig:    { exerciseId, linkGroup },
+              getTemplate: get().getEffectiveTemplate,
+            });
             const lastSets = lastExData?.sets ?? [];
             const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
