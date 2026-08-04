@@ -6,6 +6,7 @@
  *                (email = trainer-{code}@fc.app, password = code)
  *                Recovery: user re-enters code → signInWithPassword
  *  - 'google'  → standard Google OAuth via Supabase
+ *  - 'apple'   → Sign in with Apple (solo iOS), mismo id_token flow que Google
  *  - 'offline' → no Supabase auth at all
  *
  * Client mode: always anonymous (signInAnonymously), invisible to the user.
@@ -70,15 +71,16 @@ export async function setupTrainerCodeAccount() {
 }
 
 /**
- * Signs a trainer in with a Google id_token obtained from expo-auth-session.
- * Call this after completing the Google OAuth code-exchange flow.
+ * Signs a trainer in with an id_token from a social provider.
+ *  - google → id_token del intercambio de código de expo-auth-session
+ *  - apple  → identityToken de la hoja nativa (sin access_token, no lo hay)
  *
- * @param {{ idToken: string, accessToken: string }} tokens
+ * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string }} tokens
  * @returns {{ session, userId, email }}
  */
-export async function loginWithGoogleTrainer({ idToken, accessToken }) {
+export async function loginTrainerWithIdToken({ provider = 'google', idToken, accessToken }) {
   const { data, error } = await supabase.auth.signInWithIdToken({
-    provider:     'google',
+    provider,
     token:        idToken,
     access_token: accessToken,
   });
@@ -117,16 +119,16 @@ export async function recoverWithTrainerCode(code) {
 }
 
 /**
- * Signs a client in with a Google id_token.
- * Unlike loginWithGoogleTrainer, this does NOT upsert a trainer profile row.
- * Used for client Google linking and auto-reconnect on new devices.
+ * Signs a client in with a social id_token (google | apple).
+ * Unlike loginTrainerWithIdToken, this does NOT upsert a trainer profile row.
+ * Used for client account linking and auto-reconnect on new devices.
  *
- * @param {{ idToken: string, accessToken: string }} tokens
+ * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string }} tokens
  * @returns {{ session, userId }}
  */
-export async function loginWithGoogleClient({ idToken, accessToken }) {
+export async function loginClientWithIdToken({ provider = 'google', idToken, accessToken }) {
   const { data, error } = await supabase.auth.signInWithIdToken({
-    provider:     'google',
+    provider,
     token:        idToken,
     access_token: accessToken,
   });

@@ -27,12 +27,14 @@ import { Path, G, Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
-import { setupTrainerCodeAccount, recoverWithTrainerCode, loginWithGoogleTrainer, signOut as supabaseSignOut } from '../services/supabaseAuth';
+import { setupTrainerCodeAccount, recoverWithTrainerCode, loginTrainerWithIdToken, signOut as supabaseSignOut } from '../services/supabaseAuth';
 import { claimTrainerSlots, getTrainerSlots } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
-import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
+import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
+import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
 import DragSheet from './DragSheet';
 import CodeField from './ui/CodeField';
+import AppleSignInButton from './ui/AppleSignInButton';
 import { CheckIcon } from './ui/EditorIcons';
 import { SectionLabel, RowIcon } from './ui/MenuList';
 import { spacing, textStyles, getCardRadii } from '../theme';
@@ -46,17 +48,26 @@ const GOOGLE_DISCOVERY = {
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-// Los iconos dicen de qué va cada modo: cuenta en la nube, llave, archivos.
+// Los iconos dicen de qué va cada modo: cuenta en la nube, manzana, llave,
+// archivos.
 const ICON_CLOUD  = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
+const ICON_APPLE  = <G><Path d="M16 13c0-2 1.6-3 1.7-3-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7s-1.6-.7-2.6-.7c-1.3 0-2.6.8-3.2 2-1.4 2.4-.4 6 1 8 .7 1 1.5 2 2.5 2s1.3-.6 2.5-.6 1.5.6 2.6.6 1.7-1 2.4-1.9c.7-1.1 1-2.2 1-2.2s-2-.8-2-3.3z" /><Path d="M14 6.5c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.6-.8 2.5.9.1 1.8-.4 2.4-1.2z" /></G>;
 const ICON_KEY    = <G><Circle cx="8" cy="12" r="3.5" /><Path d="M11.5 12H21M17 12v3.5" /></G>;
 const ICON_FOLDER = <Path d="M3 7h6l2 2h10v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />;
 
+// Apple va la primera en iOS: su guía pide que Sign in with Apple esté al menos
+// tan a la vista como el resto de logins sociales (§4.8). En Android no existe
+// el módulo nativo, así que la fila ni se monta.
 const MODES = [
+  ...(APPLE_AUTH_AVAILABLE ? [{ id: 'apple', icon: ICON_APPLE, expoOnly: true }] : []),
   { id: 'google',  icon: ICON_CLOUD,  expoOnly: true },
   { id: 'code',    icon: ICON_KEY                    },
   { id: 'offline', icon: ICON_FOLDER                 },
 ];
-const MODE_KEY = { google: 'Google', code: 'Code', offline: 'Offline' };
+const MODE_KEY = { google: 'Google', apple: 'Apple', code: 'Code', offline: 'Offline' };
+
+/** Los dos modos que entran con una cuenta de terceros. */
+const SOCIAL_MODES = ['google', 'apple'];
 
 // ── Caja del código (verlo y copiarlo) ────────────────────────────────────────
 
@@ -188,12 +199,12 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   //
   // expo-auth-session v7: useProxy removed. In Expo Go the redirect URI is always
   // exp://127.0.0.1:8081 (can't be registered in GCC → OAuth disabled in dev).
-  // In standalone builds, native: 'forma://oauth2redirect' is used directly.
+  // In standalone builds, the reverse-client-ID redirect from config/google is
+  // used directly (el cliente de Android o el de iOS según la plataforma).
   //
   const isExpoGo           = Constants.executionEnvironment === 'storeClient';
-  const googleClientId     = GOOGLE_ANDROID_CLIENT_ID;
-  const androidRedirectUri = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
-  const googleRedirectUri  = AuthSession.makeRedirectUri({ native: androidRedirectUri });
+  const googleClientId     = GOOGLE_CLIENT_ID;
+  const googleRedirectUri  = AuthSession.makeRedirectUri({ native: GOOGLE_REDIRECT_URI });
 
   const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
     {
@@ -211,17 +222,70 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   const googleRequestRef = useRef(googleRequest);
   useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
 
+  /**
+   * Cierra el login social: entra en Supabase con el id_token y arrastra los
+   * slots de clientes a la cuenta nueva.
+   *
+   * Google y Apple solo se diferencian en cómo se consigue ese id_token (OAuth
+   * con navegador vs hoja nativa), así que a partir de aquí el camino es el
+   * mismo y no se duplica: los slots, el fallback por código y el refresco son
+   * idénticos para los dos.
+   *
+   * `existingSlotIds` se captura FUERA, antes de tocar la sesión: una vez hecho
+   * el login la sesión anterior ya no existe.
+   */
+  async function finishSocialLogin({ provider, idToken, accessToken, existingSlotIds }) {
+    const { userId } = await loginTrainerWithIdToken({ provider, idToken, accessToken });
+    setTrainerSyncMode(provider, { userId });
+
+    // Collect all slot IDs to claim under the new user.
+    // Start with locally-known slots (captures same-device switch to this mode).
+    let allSlotIds = [...existingSlotIds];
+
+    // Fallback: if no local slots, try the stored trainer code to find old slots
+    // that still belong to the code-based account (e.g. fresh install).
+    if (allSlotIds.length === 0) {
+      const storedCode = useStore.getState().trainerSync.code;
+      if (storedCode) {
+        try {
+          const { userId: codeUserId } = await recoverWithTrainerCode(storedCode);
+          const codeSlots = await getTrainerSlots(codeUserId);
+          allSlotIds = codeSlots.map((s) => s.id).filter(Boolean);
+        } catch (err) {
+          console.error('[TrainerSync] code fallback for slot discovery failed:', err.message);
+        }
+        // Restore the social session regardless of whether code recovery found slots.
+        await loginTrainerWithIdToken({ provider, idToken, accessToken }).catch(() => {});
+      }
+    }
+
+    // Transfer all found slots to the new user ID.
+    if (allSlotIds.length > 0) {
+      await claimTrainerSlots(allSlotIds).catch((err) => {
+        console.error('[TrainerSync] claimTrainerSlots failed:', err.message);
+      });
+    }
+
+    // Restore any server slots missing from local state (e.g. fresh install).
+    await useStore.getState().refreshTrainerSlots().catch(() => {});
+
+    onClose();
+  }
+
+  /** IDs de slot conocidos ahora mismo, antes de que el login cambie la sesión. */
+  function currentSlotIds() {
+    return Object.values(useStore.getState().clients ?? {})
+      .map((c) => c.syncSlotId)
+      .filter(Boolean);
+  }
+
   // Handle OAuth redirect response
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (googleResponse?.type !== 'success') return;
     (async () => {
       setLoading(true);
       try {
-        // Capture existing slot IDs BEFORE the Google login changes the session.
-        // claimTrainerSlots (called after) will reassign them to the new Google user ID.
-        const existingSlotIds = Object.values(
-          useStore.getState().clients ?? {}
-        ).map((c) => c.syncSlotId).filter(Boolean);
+        const existingSlotIds = currentSlotIds();
 
         const tokens = await exchangeCodeForTokens({
           code:         googleResponse.params.code,
@@ -230,45 +294,13 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           clientId:     googleClientId,
         });
         if (!tokens.id_token) throw new Error(t('sync.errNoIdToken'));
-        const { userId } = await loginWithGoogleTrainer({
+
+        await finishSocialLogin({
+          provider:    'google',
           idToken:     tokens.id_token,
           accessToken: tokens.access_token,
+          existingSlotIds,
         });
-        setTrainerSyncMode('google', { userId });
-
-        // Collect all slot IDs to claim under the Google user.
-        // Start with locally-known slots (captures same-device switch to Google mode).
-        let allSlotIds = [...existingSlotIds];
-
-        // Fallback: if no local slots, try the stored trainer code to find old slots
-        // that still belong to the code-based account (e.g. fresh install with Google).
-        if (allSlotIds.length === 0) {
-          const storedCode = useStore.getState().trainerSync.code;
-          if (storedCode) {
-            try {
-              const { userId: codeUserId } = await recoverWithTrainerCode(storedCode);
-              const codeSlots = await getTrainerSlots(codeUserId);
-              allSlotIds = codeSlots.map((s) => s.id).filter(Boolean);
-            } catch (err) {
-              console.error('[TrainerSync] code fallback for slot discovery failed:', err.message);
-            }
-            // Restore the Google session regardless of whether code recovery found slots.
-            await loginWithGoogleTrainer({ idToken: tokens.id_token, accessToken: tokens.access_token })
-              .catch(() => {});
-          }
-        }
-
-        // Transfer all found slots to the Google user ID.
-        if (allSlotIds.length > 0) {
-          await claimTrainerSlots(allSlotIds).catch((err) => {
-            console.error('[TrainerSync] claimTrainerSlots failed:', err.message);
-          });
-        }
-
-        // Restore any server slots missing from local state (e.g. fresh install).
-        await useStore.getState().refreshTrainerSlots().catch(() => {});
-
-        onClose();
       } catch (err) {
         Alert.alert(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
       } finally {
@@ -276,6 +308,39 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       }
     })();
   }, [googleResponse]); // eslint-disable-line
+
+  /**
+   * Apple no necesita el ida y vuelta del navegador: la hoja nativa devuelve el
+   * id_token en la misma llamada, así que no hay `response` que observar ni
+   * efecto que montar.
+   */
+  async function handleApple() {
+    const existingSlotIds = currentSlotIds();
+    setLoading(true);
+    try {
+      const credential = await signInWithApple();
+      if (!credential) return;               // cancelado: ni error ni aviso
+      if (!credential.idToken) throw new Error(t('sync.errNoIdToken'));
+
+      // El nombre solo llega la primera vez que este usuario entra con Apple.
+      // Si el entrenador aún no puso el suyo, se aprovecha; si ya lo tiene
+      // escrito, mandan sus letras.
+      if (credential.fullName && !useStore.getState().trainerSync.trainerName) {
+        setTrainerName(credential.fullName);
+        setNameInput(credential.fullName);
+      }
+
+      await finishSocialLogin({
+        provider: 'apple',
+        idToken:  credential.idToken,
+        existingSlotIds,
+      });
+    } catch (err) {
+      Alert.alert(t('sync.errAppleTitle'), err.message ?? t('sync.errGoogleBody'));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -341,6 +406,11 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       return;
     }
 
+    if (selected === 'apple') {
+      handleApple();
+      return;
+    }
+
     if (selected === 'code') {
       setLoading(true);
       try {
@@ -375,7 +445,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     const existingMode = trainerSync.mode;
     // Warn when switching away from an already-configured mode
     if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
-      const isUpgrade = existingMode === 'code' && selected === 'google';
+      const isUpgrade = existingMode === 'code' && SOCIAL_MODES.includes(selected);
       Alert.alert(
         t(isUpgrade ? 'sync.switchUpgradeTitle' : 'sync.switchTitle'),
         t(isUpgrade ? 'sync.switchUpgradeBody'  : 'sync.switchBody'),
@@ -394,17 +464,17 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   }
 
   const currentMode = trainerSync.mode;
-  // Ya está la cuenta de Google puesta y es la opción elegida: no hay nada que
+  // Ya está esa cuenta puesta y es la opción elegida: no hay nada que
   // confirmar, solo cambiar de cuenta (enlace aparte).
-  const alreadyGoogle = currentMode === 'google' && selected === 'google';
+  const alreadyLinked = SOCIAL_MODES.includes(selected) && currentMode === selected;
 
   // Aviso por modo: el genérico del código, el de "ya tienes uno" y el de que
-  // pasar a Google migra los clientes solo (esto último es buena noticia, va en
-  // lima; el resto en naranja).
+  // pasar a una cuenta migra los clientes solo (esto último es buena noticia,
+  // va en lima; el resto en naranja).
   function warnFor(modeId) {
-    if (modeId === 'code'   && trainerSync.code) return { text: t('sync.warnCodeExists'), tone: 'warn' };
-    if (modeId === 'code')                       return { text: t('sync.modeCodeWarn'),   tone: 'warn' };
-    if (modeId === 'google' && trainerSync.code) return { text: t('sync.warnUpgrade'),    tone: 'good' };
+    if (modeId === 'code' && trainerSync.code)               return { text: t('sync.warnCodeExists'), tone: 'warn' };
+    if (modeId === 'code')                                   return { text: t('sync.modeCodeWarn'),   tone: 'warn' };
+    if (SOCIAL_MODES.includes(modeId) && trainerSync.code)   return { text: t('sync.warnUpgrade'),    tone: 'good' };
     return { text: null, tone: 'warn' };
   }
 
@@ -538,37 +608,45 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
           <NameField value={nameInput} onChange={handleName} />
 
-          {/* Ya conectado con Google: el CTA decía "CONTINUAR CON GOOGLE" y
-              volvía a abrir el selector de cuenta. Ahora informa del estado y no
-              hace nada; para cambiar de cuenta está el enlace de abajo. */}
-          <TouchableOpacity
-            style={[
-              styles.primaryBtn,
-              (loading || alreadyGoogle || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
-            ]}
-            onPress={handleConfirm}
-            disabled={loading || alreadyGoogle || (selected === 'google' && isExpoGo)}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <ActivityIndicator color={th.colors.onAccent} />
-              : (
-                <Text style={styles.primaryBtnText}>
-                  {t(alreadyGoogle          ? 'sync.ctaGoogleConnected'
-                    : selected === 'offline' ? 'sync.ctaOffline'
-                    : selected === 'google'  ? 'sync.ctaGoogle'
-                    : 'sync.ctaCode')}
-                </Text>
-              )}
-          </TouchableOpacity>
+          {/* Apple prohíbe arrancar su login desde un botón propio: tiene que
+              ser el nativo. Por eso el CTA cambia de forma con el modo elegido
+              en vez de repintarse de lima con otro texto.
+
+              Y a diferencia de Google, aquí el botón sigue activo estando ya
+              conectado: volver a pulsarlo es justo lo que permite cambiar de
+              cuenta, que en Google es el enlace de abajo. */}
+          {selected === 'apple' ? (
+            <AppleSignInButton onPress={handleConfirm} disabled={loading || isExpoGo} />
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.primaryBtn,
+                (loading || alreadyLinked || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
+              ]}
+              onPress={handleConfirm}
+              disabled={loading || alreadyLinked || (selected === 'google' && isExpoGo)}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color={th.colors.onAccent} />
+                : (
+                  <Text style={styles.primaryBtnText}>
+                    {t(alreadyLinked          ? 'sync.ctaConnected'
+                      : selected === 'offline' ? 'sync.ctaOffline'
+                      : selected === 'google'  ? 'sync.ctaGoogle'
+                      : 'sync.ctaCode')}
+                  </Text>
+                )}
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
-            onPress={() => alreadyGoogle ? googlePromptAsync() : setScreen('recovery')}
+            onPress={() => alreadyLinked && selected === 'google' ? googlePromptAsync() : setScreen('recovery')}
             activeOpacity={0.7}
           >
             <Text style={styles.link}>
-              {alreadyGoogle             ? t('sync.reauthGoogleLink')
-                : currentMode === 'code' ? t('sync.reauthLink')
+              {alreadyLinked && selected === 'google' ? t('sync.reauthGoogleLink')
+                : currentMode === 'code'              ? t('sync.reauthLink')
                 : t('sync.recoveryLink')}
             </Text>
           </TouchableOpacity>

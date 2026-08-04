@@ -4,7 +4,8 @@
     "slug": "forma",
     "scheme": [
       "forma",
-      "com.googleusercontent.apps.75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1"
+      "com.googleusercontent.apps.75583717433-ukh9snjjdcq2mm8bls4sro3e1p5gs6h1",
+      "com.googleusercontent.apps.75583717433-6t43iurn6akcuppfuffjob50ofup3r5k"
     ],
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,6 +20,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.formastudio.formafit",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -59,7 +61,8 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

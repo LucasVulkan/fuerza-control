@@ -30,7 +30,7 @@ import Constants        from 'expo-constants';
 
 import { useStore }                                                         from '../../store/useStore';
 import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
-import { GOOGLE_ANDROID_CLIENT_ID }                                         from '../config/google';
+import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI }                            from '../config/google';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { Section, SectionLabel, MenuRow, RowIcon } from '../components/ui/MenuList';
@@ -97,12 +97,11 @@ export default function DriveBackupScreen() {
 
   // ── OAuth setup ──────────────────────────────────────────────────────────────
   const isExpoGo        = Constants.executionEnvironment === 'storeClient';
-  const androidRedirect = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
-  const redirectUri     = AuthSession.makeRedirectUri({ native: androidRedirect });
+  const redirectUri     = AuthSession.makeRedirectUri({ native: GOOGLE_REDIRECT_URI });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId:     GOOGLE_ANDROID_CLIENT_ID,
+      clientId:     GOOGLE_CLIENT_ID,
       scopes:       SCOPES,
       responseType: AuthSession.ResponseType.Code,
       usePKCE:      true,
@@ -125,7 +124,7 @@ export default function DriveBackupScreen() {
           code:         response.params.code,
           codeVerifier: requestRef.current?.codeVerifier,
           redirectUri,
-          clientId:     GOOGLE_ANDROID_CLIENT_ID,
+          clientId:     GOOGLE_CLIENT_ID,
         });
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);

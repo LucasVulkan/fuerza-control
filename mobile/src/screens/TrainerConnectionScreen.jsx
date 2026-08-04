@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Path, G, Circle } from 'react-native-svg';
 
 import { useStore }               from '../../store/useStore';
+import { APPLE_AUTH_AVAILABLE }   from '../services/appleAuth';
 import ClientCodeModal            from '../components/ClientCodeModal';
 import ClientGoogleLinkModal      from '../components/ClientGoogleLinkModal';
 import { Section, MenuRow, RowIcon } from '../components/ui/MenuList';
@@ -159,9 +160,13 @@ export default function TrainerConnectionScreen() {
                 valueBelow
                 minHeight={62}
               />
+              {/* `linkedProvider` no existe en los clientes vinculados antes de
+                  que hubiera Apple: entonces solo se podía con Google. */}
               <MenuRow
                 icon={<RowIcon>{clientSync.googleLinked ? ICON_GOOGLE : ICON_KEY}</RowIcon>}
-                label={clientSync.googleLinked ? t('trainer.rowAccessGoogle') : t('trainer.rowAccessCode')}
+                label={clientSync.googleLinked
+                  ? t(clientSync.linkedProvider === 'apple' ? 'trainer.rowAccessApple' : 'trainer.rowAccessGoogle')
+                  : t('trainer.rowAccessCode')}
                 sub={clientSync.googleLinked ? t('trainer.rowAccessGoogleSub') : t('trainer.rowAccessCodeSub')}
                 subLines={0}
                 minHeight={62}
@@ -201,7 +206,7 @@ export default function TrainerConnectionScreen() {
               {!clientSync.googleLinked && (
                 <MenuRow
                   icon={<RowIcon>{ICON_GOOGLE}</RowIcon>}
-                  label={t('trainer.linkGoogleLabel')}
+                  label={t(APPLE_AUTH_AVAILABLE ? 'trainer.linkAccountLabel' : 'trainer.linkGoogleLabel')}
                   sub={t('trainer.linkGoogleSub')}
                   subLines={0}
                   minHeight={62}
@@ -267,16 +272,18 @@ export default function TrainerConnectionScreen() {
               onPress={() => { setGoogleAutoStart(true); setShowCodeModal(true); }}
               activeOpacity={0.8}
             >
-              <Text style={styles.secondaryBtnText}>{t('trainer.googleCta')}</Text>
+              <Text style={styles.secondaryBtnText}>
+                {t(APPLE_AUTH_AVAILABLE ? 'trainer.socialCta' : 'trainer.googleCta')}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.hint}>{t('trainer.googleCtaHint')}</Text>
+            <Text style={styles.hint}>{t('trainer.socialCtaHint')}</Text>
           </>
         )}
       </ScrollView>
 
       <ClientCodeModal
         visible={showCodeModal}
-        startWithGoogle={googleAutoStart}
+        startWithSocial={googleAutoStart}
         onClose={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
         onSuccess={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
       />

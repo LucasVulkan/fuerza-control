@@ -357,6 +357,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const syncMode   = trainerSync?.mode ?? null;
   const syncActive = !!syncMode && syncMode !== 'offline';
   const syncSub    = syncMode === 'google'  ? t('header.syncSubGoogle')
+    : syncMode === 'apple'   ? t('header.syncSubApple')
     : syncMode === 'code'    ? t('header.syncSubCode')
     : syncMode === 'offline' ? t('header.syncSubOffline')
     :                          t('header.syncSubNone');

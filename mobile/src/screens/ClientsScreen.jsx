@@ -2922,7 +2922,7 @@ export default function ClientsScreen() {
                   styles.syncStatusDot,
                   {
                     backgroundColor:
-                      trainerSync.mode === 'google' || trainerSync.mode === 'code' ? th.colors.green
+                      trainerSync.mode === 'google' || trainerSync.mode === 'apple' || trainerSync.mode === 'code' ? th.colors.green
                       : trainerSync.mode === 'offline' ? th.colors.muted2
                       : th.colors.orange,
                   },

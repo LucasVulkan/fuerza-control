@@ -3,7 +3,8 @@
  *
  * Tres pantallas dentro de la misma hoja:
  *   • código      → teclea el XXXX-XXXX que le dio su entrenador
- *   • Google      → (abierta con `startWithGoogle`) busca su cuenta ya vinculada
+ *   • cuenta      → (abierta con `startWithSocial`) busca su cuenta ya vinculada,
+ *                   con Google o con Apple
  *   • confirmar   → qué programa ha encontrado y qué implica conectarse
  *
  * Pasa a `DragSheet` como el resto de los modales de la app (§9 de
@@ -20,8 +21,10 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
-import { GOOGLE_ANDROID_CLIENT_ID } from '../config/google';
+import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
+import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
 import DragSheet from './DragSheet';
+import AppleSignInButton from './ui/AppleSignInButton';
 import CodeField from './ui/CodeField';
 import { CheckIcon } from './ui/EditorIcons';
 import { Section, SectionLabel, MenuRow } from './ui/MenuList';
@@ -35,7 +38,7 @@ const GOOGLE_DISCOVERY = {
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-export default function ClientCodeModal({ visible, onClose, onSuccess, startWithGoogle = false }) {
+export default function ClientCodeModal({ visible, onClose, onSuccess, startWithSocial = false }) {
   const th        = useTheme();
   const styles    = useThemedStyles(makeStyles);
   const { t }     = useTranslation();
@@ -49,20 +52,20 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   const [code,         setCode]         = useState('');
   const [slotInfo,     setSlotInfo]     = useState(null); // { slotId, programName, alreadyLinked, hasRemoteHistory }
   const [historyMode,  setHistoryMode]  = useState('program'); // 'program' | 'merge'
-  const [googleUserId, setGoogleUserId] = useState(null);  // set when Google reconnect finds a slot
+  const [googleUserId, setGoogleUserId] = useState(null);  // set when the social reconnect finds a slot
+  const [socialProvider, setSocialProvider] = useState('google'); // con cuál se encontró
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleNoSlot,  setGoogleNoSlot]  = useState(false);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialNoSlot,  setSocialNoSlot]  = useState(false);
 
-  // ── Google OAuth for auto-reconnect ────────────────────────────────────────
+  // ── Login social para reconectar (Google / Apple) ──────────────────────────
   const isExpoGo         = Constants.executionEnvironment === 'storeClient';
-  const androidRedirect  = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
-  const googleRedirectUri = AuthSession.makeRedirectUri({ native: androidRedirect });
+  const googleRedirectUri = AuthSession.makeRedirectUri({ native: GOOGLE_REDIRECT_URI });
 
   const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
     {
-      clientId:     GOOGLE_ANDROID_CLIENT_ID,
+      clientId:     GOOGLE_CLIENT_ID,
       scopes:       ['openid', 'email', 'profile'],
       responseType: AuthSession.ResponseType.Code,
       usePKCE:      true,
@@ -76,55 +79,86 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   const hasAutoTriggered = useRef(false);
   useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
 
-  // Auto-trigger Google OAuth when opened via the "reconnect with Google" button
+  // Con un solo proveedor no hay nada que elegir, así que abrir la pantalla ya
+  // lanza Google directamente — que es como se comportaba antes de existir
+  // Apple. En iOS hay dos y la pantalla enseña los dos botones: elegir por el
+  // usuario sería justo lo que la guía 4.8 no quiere.
+  const showChooser = APPLE_AUTH_AVAILABLE;
+
   useEffect(() => {
-    if (!startWithGoogle || !visible) {
+    if (!startWithSocial || !visible || showChooser) {
       hasAutoTriggered.current = false;
       return;
     }
     if (googleRequest && !hasAutoTriggered.current) {
       hasAutoTriggered.current = true;
-      setGoogleNoSlot(false);
+      setSocialNoSlot(false);
       setError(null);
       googlePromptAsync();
     }
-  }, [startWithGoogle, visible, googleRequest]); // eslint-disable-line
+  }, [startWithSocial, visible, googleRequest]); // eslint-disable-line
+
+  /** Busca el hueco del cliente con la identidad recién obtenida. */
+  async function validateSocial({ provider, idToken, accessToken }) {
+    const result = await validateGoogleClient({ provider, idToken, accessToken });
+    if (!result.found) {
+      setSocialNoSlot(true);
+      return;
+    }
+    setGoogleUserId(result.userId);
+    setSocialProvider(provider);
+    setSlotInfo({
+      slotId:           result.slotId,
+      programName:      result.programName,
+      hasRemoteHistory: result.hasRemoteHistory,
+      alreadyLinked:    false,
+    });
+    setHistoryMode('program');
+    setStep('confirm');
+  }
 
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (googleResponse?.type !== 'success') return;
     (async () => {
-      setGoogleLoading(true);
+      setSocialLoading(true);
       setError(null);
-      setGoogleNoSlot(false);
+      setSocialNoSlot(false);
       try {
         const tokens = await exchangeCodeForTokens({
           code:         googleResponse.params.code,
           codeVerifier: googleRequestRef.current?.codeVerifier,
           redirectUri:  googleRedirectUri,
-          clientId:     GOOGLE_ANDROID_CLIENT_ID,
+          clientId:     GOOGLE_CLIENT_ID,
         });
         if (!tokens.id_token) throw new Error(t('trainer.errNoIdToken'));
-        const result = await validateGoogleClient({ idToken: tokens.id_token, accessToken: tokens.access_token });
-        if (result.found) {
-          setGoogleUserId(result.userId);
-          setSlotInfo({
-            slotId:           result.slotId,
-            programName:      result.programName,
-            hasRemoteHistory: result.hasRemoteHistory,
-            alreadyLinked:    false,
-          });
-          setHistoryMode('program');
-          setStep('confirm');
-        } else {
-          setGoogleNoSlot(true);
-        }
+        await validateSocial({
+          provider:    'google',
+          idToken:     tokens.id_token,
+          accessToken: tokens.access_token,
+        });
       } catch (err) {
         setError(err.message ?? t('trainer.errGoogle'));
       } finally {
-        setGoogleLoading(false);
+        setSocialLoading(false);
       }
     })();
   }, [googleResponse]); // eslint-disable-line
+
+  async function handleApple() {
+    setSocialLoading(true);
+    setError(null);
+    setSocialNoSlot(false);
+    try {
+      const credential = await signInWithApple();
+      if (!credential) return;               // cancelado
+      if (!credential.idToken) throw new Error(t('trainer.errNoIdToken'));
+      await validateSocial({ provider: 'apple', idToken: credential.idToken });
+    } catch (err) {
+      setError(err.message ?? t('trainer.errApple'));
+    } finally {
+      setSocialLoading(false);
+    }
+  }
 
   function handleClose() {
     setStep('enter');
@@ -132,7 +166,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     setSlotInfo(null);
     setHistoryMode('program');
     setGoogleUserId(null);
-    setGoogleNoSlot(false);
+    setSocialNoSlot(false);
     setError(null);
     onClose();
   }
@@ -160,6 +194,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
         await confirmGoogleReconnect({
           slotId:       slotInfo.slotId,
           googleUserId,
+          provider:     socialProvider,
           mergeHistory: historyMode === 'merge',
         });
       } else {
@@ -175,13 +210,15 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   }
 
   const isAlreadyLinked = !!clientSync.slotId;
-  const isGoogleScreen  = step === 'enter' && startWithGoogle;
+  const isSocialScreen  = step === 'enter' && startWithSocial;
 
   // Los títulos de hoja de la app van en caso normal y cortos ("Añadir",
   // "Tempo"), no en mayúsculas como los botones.
   const title = step === 'confirm'
     ? t(googleUserId ? 'trainer.codeFoundAccount' : 'trainer.codeFoundProgram')
-    : t(isGoogleScreen ? 'trainer.googleTitle' : 'trainer.codeTitle');
+    : t(isSocialScreen
+      ? (showChooser ? 'trainer.socialTitle' : 'trainer.googleTitle')
+      : 'trainer.codeTitle');
 
   return (
     <DragSheet
@@ -194,37 +231,47 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
         ? { label: t('trainer.codeBack'), onPress: () => setStep('enter') }
         : { label: t('common.cancel'),    onPress: handleClose }}
     >
-      {/* ── Buscando la cuenta de Google ── */}
-      {isGoogleScreen && (
+      {/* ── Buscando la cuenta vinculada ── */}
+      {isSocialScreen && (
         <View style={styles.block}>
           <Text style={styles.lead}>
-            {googleNoSlot ? t('trainer.googleNoSlot') : t('trainer.googleSearching')}
+            {socialNoSlot                       ? t('trainer.socialNoSlot')
+              : showChooser && !socialLoading   ? t('trainer.socialLead')
+                :                                 t('trainer.socialSearching')}
           </Text>
 
-          {googleLoading && <ActivityIndicator color={th.colors.accent} />}
+          {socialLoading && <ActivityIndicator color={th.colors.accent} />}
           {!!error && <Text style={styles.error}>{error}</Text>}
           {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
 
-          {(googleNoSlot || error) && !googleLoading && (
-            <TouchableOpacity
-              style={[styles.primaryBtn, isExpoGo && styles.btnDisabled]}
-              onPress={() => {
-                setGoogleNoSlot(false);
-                setError(null);
-                hasAutoTriggered.current = false;
-                googlePromptAsync();
-              }}
-              disabled={isExpoGo}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>{t('trainer.retryCta')}</Text>
-            </TouchableOpacity>
+          {/* Con selector los botones están desde el principio; sin él (Android)
+              solo aparecen para reintentar, porque Google ya se lanzó solo. */}
+          {(showChooser || socialNoSlot || error) && !socialLoading && (
+            <View style={styles.ctaGroup}>
+              <TouchableOpacity
+                style={[styles.primaryBtn, isExpoGo && styles.btnDisabled]}
+                onPress={() => {
+                  setSocialNoSlot(false);
+                  setError(null);
+                  hasAutoTriggered.current = false;
+                  googlePromptAsync();
+                }}
+                disabled={isExpoGo}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {t(showChooser ? 'trainer.googleCta' : 'trainer.retryCta')}
+                </Text>
+              </TouchableOpacity>
+
+              <AppleSignInButton onPress={handleApple} disabled={isExpoGo} />
+            </View>
           )}
         </View>
       )}
 
       {/* ── Teclear el código ── */}
-      {step === 'enter' && !startWithGoogle && (
+      {step === 'enter' && !startWithSocial && (
         <View style={styles.block}>
           <Text style={styles.lead}>{t('trainer.codeLead')}</Text>
 
@@ -254,18 +301,22 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
             <View style={styles.dividerLine} />
           </View>
 
-          <TouchableOpacity
-            style={[styles.secondaryBtn, (googleLoading || isExpoGo) && styles.btnDisabled]}
-            onPress={() => { setGoogleNoSlot(false); setError(null); googlePromptAsync(); }}
-            disabled={googleLoading || isExpoGo}
-            activeOpacity={0.8}
-          >
-            {googleLoading
-              ? <ActivityIndicator color={th.colors.text} size="small" />
-              : <Text style={styles.secondaryBtnText}>{t('trainer.googleCta')}</Text>}
-          </TouchableOpacity>
+          <View style={styles.ctaGroup}>
+            <TouchableOpacity
+              style={[styles.secondaryBtn, (socialLoading || isExpoGo) && styles.btnDisabled]}
+              onPress={() => { setSocialNoSlot(false); setError(null); googlePromptAsync(); }}
+              disabled={socialLoading || isExpoGo}
+              activeOpacity={0.8}
+            >
+              {socialLoading
+                ? <ActivityIndicator color={th.colors.text} size="small" />
+                : <Text style={styles.secondaryBtnText}>{t('trainer.googleCta')}</Text>}
+            </TouchableOpacity>
+
+            <AppleSignInButton onPress={handleApple} disabled={socialLoading || isExpoGo} />
+          </View>
           <Text style={styles.hint}>
-            {googleNoSlot ? t('trainer.googleNoSlot') : t('trainer.googleCtaHint')}
+            {socialNoSlot ? t('trainer.socialNoSlot') : t('trainer.socialCtaHint')}
           </Text>
           {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
         </View>
@@ -363,6 +414,8 @@ const makeStyles = (th) => StyleSheet.create({
   bulletRow:  { flexDirection: 'row', gap: spacing.sm },
   bulletDot:  { ...textStyles.tag, color: th.colors.accent, lineHeight: 15 },
   bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+
+  ctaGroup: { gap: spacing.sm },
 
   primaryBtn: {
     height:          44,

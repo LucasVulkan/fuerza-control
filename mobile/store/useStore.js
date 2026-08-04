@@ -19,7 +19,7 @@ import * as FileSystem from 'expo-file-system/legacy'; // v19: legacy = readAsSt
 import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken } from '../src/services/driveService';
-import { GOOGLE_ANDROID_CLIENT_ID } from '../src/config/google';
+import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
@@ -73,8 +73,10 @@ async function _ensureTrainerSession(trainerSync) {
   if (trainerSync.mode === 'code' && trainerSync.code) {
     const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
     await recoverWithTrainerCode(trainerSync.code);
-  } else if (trainerSync.mode === 'google') {
-    throw new Error('Sesión de Google expirada. Ve a Sincronización y vuelve a iniciar sesión con Google.');
+  } else if (trainerSync.mode === 'google' || trainerSync.mode === 'apple') {
+    // Ni Google ni Apple se pueden renovar en silencio: los dos exigen que el
+    // usuario vuelva a pasar por la hoja de login.
+    throw new Error('Sesión expirada. Ve a Sincronización y vuelve a iniciar sesión.');
   }
 }
 
@@ -244,7 +246,7 @@ export const useStore = create(
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
       trainerSync: {
-        mode:                  null,   // null | 'offline' | 'code' | 'google'
+        mode:                  null,   // null | 'offline' | 'code' | 'google' | 'apple'
         code:                  null,   // string — trainer recovery code (only when mode === 'code')
         userId:                null,   // Supabase user.id once authenticated
         trainerName:           null,   // string — display name shown to clients on their programs
@@ -255,8 +257,9 @@ export const useStore = create(
       clientSync: {
         slotId:                null,  // trainer_clients row id
         clientCode:            null,  // the code the client entered
-        supabaseUserId:        null,  // anonymous Supabase user id (or Google user id if linked)
-        googleLinked:          false, // true once the client has linked a Google account
+        supabaseUserId:        null,  // anonymous Supabase user id (or social user id if linked)
+        googleLinked:          false, // true once the client has linked a social account
+        linkedProvider:        null,  // 'google' | 'apple' — cuál. null en los vinculados antes de que hubiera Apple (siempre Google)
         trainerName:           null,  // trainer's display name (read from trainer_name column)
         pendingUpload:         false, // true when last sessions upload failed
         lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
@@ -2728,7 +2731,7 @@ export const useStore = create(
             throw new Error('Token expirado');
           }
           try {
-            const { access_token } = await refreshAccessToken(refreshToken, GOOGLE_ANDROID_CLIENT_ID);
+            const { access_token } = await refreshAccessToken(refreshToken, GOOGLE_CLIENT_ID);
             await SecureStore.setItemAsync('drive_access_token', access_token);
             return await fn(access_token); // retry with new token
           } catch {
@@ -2804,7 +2807,7 @@ export const useStore = create(
 
       /**
        * Sets the trainer sync mode and persists auth state.
-       * mode: 'offline' | 'code' | 'google'
+       * mode: 'offline' | 'code' | 'google' | 'apple'
        * Payload: { code?, userId? }
        * code/userId always reset to null unless explicitly provided so that
        * switching modes never leaks stale credentials from the old mode.
@@ -3437,7 +3440,7 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastAppliedStageActivation: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
+          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, linkedProvider: null, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastAppliedStageActivation: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
         }));
 
         // Restore trainer session automatically if we have the code
@@ -3450,20 +3453,25 @@ export const useStore = create(
       },
 
       // ══════════════════════════════════════════════════════════════════════
-      // CLIENT GOOGLE AUTH
+      // CLIENT SOCIAL AUTH (google | apple)
+      //
+      // Los nombres siguen diciendo "Google" porque el flujo nació con él y
+      // `clientSync.googleLinked` está persistido en disco; el `provider` es lo
+      // que decide de verdad con quién se entra. Renombrarlo obligaría a migrar
+      // el estado guardado de todos los clientes ya conectados.
       // ══════════════════════════════════════════════════════════════════════
 
       /**
-       * Validates a Google login and finds the client's slot for auto-reconnect.
-       * Signs in with Google → gets userId → queries trainer_clients by client_id.
+       * Validates a social login and finds the client's slot for auto-reconnect.
+       * Signs in (google|apple) → gets userId → queries trainer_clients by client_id.
        * Requires the RLS policy "client_can_read_own_slot" in Supabase.
        *
        * Returns { found: false } if no slot, or:
        * { found: true, slotId, userId, programName, hasRemoteHistory }
        */
-      validateGoogleClient: async ({ idToken, accessToken }) => {
-        const { loginWithGoogleClient } = require('../src/services/supabaseAuth');
-        const { userId } = await loginWithGoogleClient({ idToken, accessToken });
+      validateGoogleClient: async ({ provider = 'google', idToken, accessToken }) => {
+        const { loginClientWithIdToken } = require('../src/services/supabaseAuth');
+        const { userId } = await loginClientWithIdToken({ provider, idToken, accessToken });
 
         const slot = await getClientSlotByUserId(userId);
         if (!slot) return { found: false };
@@ -3483,7 +3491,7 @@ export const useStore = create(
        * Downloads the program from the slot and optionally merges remote history.
        * Called after the user confirms in the modal (confirm step).
        */
-      confirmGoogleReconnect: async ({ slotId, googleUserId, mergeHistory = false }) => {
+      confirmGoogleReconnect: async ({ slotId, googleUserId, provider = 'google', mergeHistory = false }) => {
         // 1. Download program (also fetches trainer_name)
         const { programJson, trainerName } = await downloadProgram(slotId);
         if (!programJson) throw new Error('No se pudo descargar el programa.');
@@ -3501,9 +3509,10 @@ export const useStore = create(
         set(() => ({
           clientSync: {
             slotId,
-            clientCode:             null,   // not known in Google reconnect flow
+            clientCode:             null,   // not known in the social reconnect flow
             supabaseUserId:         googleUserId,
             googleLinked:           true,
+            linkedProvider:         provider,
             trainerName:            trainerName ?? null,
             pendingUpload:          false,
             lastSyncedAt:           null,
@@ -3518,14 +3527,14 @@ export const useStore = create(
       },
 
       /**
-       * Links the current anonymous client session to a Google account.
-       * Flow: Google OAuth → loginWithGoogleClient → transferClientSlot (RPC) → update state.
+       * Links the current anonymous client session to a social account (google|apple).
+       * Flow: login → loginClientWithIdToken → transferClientSlot (RPC) → update state.
        *
        * Must be called while the OLD anonymous session is still in memory
        * (clientSync.supabaseUserId holds the old anonymous user ID).
        * The RPC is called AS the new Google user, providing the old ID for verification.
        */
-      linkGoogleForClient: async ({ idToken, accessToken }) => {
+      linkGoogleForClient: async ({ provider = 'google', idToken, accessToken }) => {
         const { clientSync } = get();
         if (!clientSync.slotId) throw new Error('No estás conectado a ningún entrenador.');
 
@@ -3549,8 +3558,8 @@ export const useStore = create(
         //    Depending on the Supabase project config, this may either create a new
         //    Google user OR link the Google identity to the existing anonymous account
         //    (same user ID). We handle both cases below.
-        const { loginWithGoogleClient } = require('../src/services/supabaseAuth');
-        const { userId: newUserId } = await loginWithGoogleClient({ idToken, accessToken });
+        const { loginClientWithIdToken } = require('../src/services/supabaseAuth');
+        const { userId: newUserId } = await loginClientWithIdToken({ provider, idToken, accessToken });
 
         // 2. Transfer the slot only if Supabase issued a distinct Google user ID.
         //    If account-linking is enabled, newUserId === oldUserId and the slot
@@ -3566,6 +3575,7 @@ export const useStore = create(
             ...s.clientSync,
             supabaseUserId: newUserId,
             googleLinked:   true,
+            linkedProvider: provider,
           },
         }));
       },
