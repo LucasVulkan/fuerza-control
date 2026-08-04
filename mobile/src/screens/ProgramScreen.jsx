@@ -1,315 +1,327 @@
 /**
- * ProgramScreen — Mobile port of TemplatesView (web tab "Plantillas").
+ * ProgramScreen — pantalla "Plantillas" del entrenador.
  *
- * Shows programs with mode='template'. Lets the user:
- *  - Create a new template (name + number of sessions)
- *  - View, edit, duplicate, export, delete templates
- *  - Assign a template to a client (PRO)
+ * Nodo de Figma: `235:4471`. La capa se llama "Clients" porque se duplicó de la
+ * pantalla de clientes y nadie la renombró: el contenido ES la lista de
+ * plantillas (ver `docs/figma-extraction/pages/clients-2.md`).
+ *
+ * Divergencias respecto al mock, todas pedidas por el usuario:
+ *  · Fuera el eyebrow "PLANTILLA" de la tarjeta — en esta pantalla todo es una
+ *    plantilla, la etiqueta no informa de nada.
+ *  · De 4 botones + icono de compartir a DOS controles: `Asignar` y `···`. Todo
+ *    lo demás (ver, editar, duplicar, compartir, exportar, eliminar) vive en la
+ *    hoja del `···`. El cuerpo de la tarjeta es pulsable y abre la vista de la
+ *    plantilla, así que "Ver" no necesita botón.
+ *  · El stat del medio dice CICLOS, no "SEMANAS" como el mock: `durationWeeks`
+ *    tiene nombre legado pero cuenta vueltas al ciclo (misma decisión ya cerrada
+ *    en el editor de programa y en el banner de Home).
+ *  · Cabecera calcada de Clientes (`PLANTILLAS · N` + `+ Plantilla` a 42), sin
+ *    buscador: Figma no lo dibuja aquí y con pocas plantillas sería ruido.
+ *
+ * Los tres modales propios (crear, menú contextual, asignar) y los dos
+ * `Alert.alert` pasan a `DragSheet`, que es el único bottom-sheet de la app.
+ * El aviso de "este cliente ya tiene programa activo" era un Alert DESPUÉS de
+ * pulsar Asignar; ahora se lee en la propia fila del cliente, antes de elegir.
  */
 import { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, StyleSheet,
-  KeyboardAvoidingView, Platform,
+  TextInput, StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import DragSheet from '../components/DragSheet';
+import StepField from '../components/ui/StepField';
+import { ArrowIcon, MenuIcon } from '../components/ui/EditorIcons';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-
-function ShareIcon({ size = 18, color }) {
-  const th = useTheme();
-  return (
-    <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
-      <Path
-        d="M12 36V60C12 61.5913 12.6321 63.1174 13.7574 64.2426C14.8826 65.3679 16.4087 66 18 66H54C55.5913 66 57.1174 65.3679 58.2426 64.2426C59.3679 63.1174 60 61.5913 60 60V36M24 18L36 6L48 18M36 6L36 45"
-        stroke={color ?? th.colors.muted} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getAllProgramDays(program) {
-  if (program.stages?.length > 0) return program.stages.flatMap((s) => s.days ?? []);
-  return program.days ?? [];
+/**
+ * Los 3 stats de la tarjeta. `open` = alguna etapa sin límite de ciclos, lo que
+ * deja ciclos y sesiones indeterminados → se pintan con "+" (mismo criterio que
+ * `editor.programSummaryOpen`).
+ */
+function templateStats(program) {
+  const stages = program.stages?.length
+    ? program.stages
+    : [{ days: program.days ?? [], durationWeeks: program.durationWeeks ?? null }];
+  return {
+    stages:   stages.length,
+    cycles:   stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
+    sessions: stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
+    open:     stages.some((s) => s.durationWeeks == null),
+  };
 }
 
-// ── Template card ──────────────────────────────────────────────────────────────
+// ── Template card (Sesion Card / variante Plantillas `204:1901`) ───────────────
 
-function TemplateCard({ program, onView, onEdit, onAssign, onShare, onMenu }) {
-  const { t }      = useTranslation();
-  const styles     = useThemedStyles(makeStyles);
-  const dayCount   = getAllProgramDays(program).length;
-  const stageCount = (program.stages?.length ?? 0) > 1 ? program.stages.length : null;
-  // Una etapa sin límite de ciclos hace el total indeterminado → variante "+".
-  const hasOpenStage = (program.stages ?? []).some((s) => s.durationWeeks == null);
-  const structureStr = stageCount
-    ? t(hasOpenStage ? 'editor.programSummaryOpen' : 'editor.programSummary', {
-        stages:   stageCount,
-        weeks:    program.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
-        sessions: program.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
-      })
-    : dayCount > 0 ? `${dayCount} días/ciclo` : null;
+function Stat({ value, label }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function TemplateCard({ program, onOpen, onAssign, onMenu }) {
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const s      = templateStats(program);
+  const more   = s.open ? '+' : '';
 
   return (
     <View style={styles.card}>
-      {/* Top: name + badge + share icon */}
-      <View style={styles.cardTop}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={styles.cardNameRow}>
-            <Text style={styles.cardName} numberOfLines={1}>{program.name}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>plantilla</Text>
-            </View>
-          </View>
-          {structureStr && (
-            <Text style={styles.cardMeta}>{structureStr}</Text>
-          )}
+      <TouchableOpacity style={styles.cardBody} onPress={onOpen} activeOpacity={0.75}>
+        <Text style={styles.cardName} numberOfLines={2}>{program.name}</Text>
+        <View style={styles.statsRow}>
+          <Stat value={String(s.stages)} label={t('templates.statStages',   { count: s.stages })} />
+          <Stat value={`${s.cycles}${more}`}   label={t('templates.statCycles',   { count: s.cycles })} />
+          <Stat value={`${s.sessions}${more}`} label={t('templates.statSessions', { count: s.sessions })} />
         </View>
-        <TouchableOpacity style={styles.cardIconBtn} onPress={onShare} hitSlop={8} activeOpacity={0.7}>
-          <ShareIcon />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
-      {/* Actions: Ver · Editar · Asignar · ⋯ */}
+      {/* Fila de acciones: los dos botones `color/muted` de Figma en
+          justify-between, con el `···` ocupando el sitio del segundo. */}
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onView} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>{t('templates.actionView')}</Text>
+        <TouchableOpacity style={styles.cardBtn} onPress={onAssign} activeOpacity={0.8}>
+          <Text style={styles.cardBtnText}>{t('templates.assignModal.assignBtn')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onEdit} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>{t('templates.actionEdit')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cardBtnSecondary} onPress={onAssign} activeOpacity={0.85}>
-          <Text style={styles.cardBtnText}>{t('clients.newProgramModal.assignBtn')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cardBtnIcon} onPress={onMenu} activeOpacity={0.7}>
-          <Text style={styles.cardBtnIconText}>⋯</Text>
+        <TouchableOpacity style={styles.cardMenuBtn} onPress={onMenu} activeOpacity={0.7}>
+          {/* Los 3 puntos van HORIZONTALES en esta tarjeta (en la cabecera del
+              editor de sesión van verticales) — es lo que dibuja el nodo. */}
+          <MenuIcon size={26} color={th.colors.text} horizontal />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ── Create modal ───────────────────────────────────────────────────────────────
+// ── Filas de hoja (patrón `SheetRow` de los editores) ──────────────────────────
 
-function CreateModal({ visible, onClose, onCreate }) {
-  const { t }          = useTranslation();
-  const th             = useTheme();
-  const styles         = useThemedStyles(makeStyles);
-  const [name,     setName]     = useState('');
-  const [sessions, setSessions] = useState(3);
-  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
-  const [durationWeeks, setDurationWeeks] = useState(4);
-
-  function handleCreate() {
-    if (!name.trim()) return;
-    onCreate(name.trim(), sessions, durationWeeks);
-    setName('');
-    setSessions(3);
-    setDurationWeeks(4);
-    onClose();
-  }
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, justifyContent: 'center' }}
-      >
-        <View style={styles.centerModal}>
-          <Text style={styles.modalTitle}>{t('templates.newModal.title')}</Text>
-
-          <TextInput
-            style={styles.nameInput}
-            value={name}
-            onChangeText={setName}
-            placeholder={t('templates.newModal.namePlaceholder')}
-            placeholderTextColor={th.colors.muted2}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleCreate}
-          />
-
-          <Text style={styles.fieldLabel}>{t('templates.newModal.sessionsLabel').toUpperCase()}</Text>
-          <View style={styles.sessionPicker}>
-            {[2, 3, 4, 5, 6].map((n) => (
-              <TouchableOpacity
-                key={n}
-                style={[styles.sessionBtn, sessions === n && styles.sessionBtnActive]}
-                onPress={() => setSessions(n)}
-              >
-                <Text style={[styles.sessionBtnText, sessions === n && styles.sessionBtnTextActive]}>
-                  {n}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.fieldLabel}>{t('editor.cyclesQuestion').toUpperCase()}</Text>
-          <Text style={styles.fieldHint}>{t('editor.cyclesExplain')}</Text>
-          <View style={styles.sessionPicker}>
-            {[4, 6, 8, 12].map((n) => (
-              <TouchableOpacity
-                key={n}
-                style={[styles.sessionBtn, durationWeeks === n && styles.sessionBtnActive]}
-                onPress={() => setDurationWeeks(n)}
-              >
-                <Text style={[styles.sessionBtnText, durationWeeks === n && styles.sessionBtnTextActive]}>
-                  {n}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={[styles.noLimitRow, durationWeeks === null && styles.sessionBtnActive]}
-            onPress={() => setDurationWeeks(durationWeeks === null ? 4 : null)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.noLimitText, durationWeeks === null && styles.sessionBtnTextActive]}>
-              {t('editor.cyclesNoLimit')}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.createBtn, !name.trim() && styles.createBtnDisabled]}
-              onPress={handleCreate}
-              disabled={!name.trim()}
-            >
-              <Text style={[styles.createBtnText, !name.trim() && styles.createBtnTextDisabled]}>
-                {t('templates.newModal.createBtn')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-// ── Context menu ───────────────────────────────────────────────────────────────
-
-function MenuOption({ label, onPress, danger }) {
+function SheetRow({ label, onPress, danger = false }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <TouchableOpacity
-      style={styles.menuOption}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.menuOptionText, danger && { color: th.colors.red }]}>{label}</Text>
+    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
+      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
     </TouchableOpacity>
   );
 }
 
-function ContextMenu({ visible, onClose, onDuplicate, onExport, onDelete }) {
+// ── Hoja de crear plantilla ────────────────────────────────────────────────────
+
+function CreateSheet({ visible, onClose, onCreate }) {
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
+  const [name,     setName]     = useState('');
+  const [sessions, setSessions] = useState(3);
+  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
+  const [cycles,   setCycles]   = useState(4);
+
+  function handleCreate() {
+    if (!name.trim()) return;
+    onCreate(name.trim(), sessions, cycles);
+    setName(''); setSessions(3); setCycles(4);
+    onClose();
+  }
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.contextMenu, { paddingBottom: insets.bottom }]}>
-        <MenuOption label={t('templates.contextDuplicate')} onPress={() => { onClose(); onDuplicate(); }} />
-        <MenuOption label={t('templates.contextExport')}    onPress={() => { onClose(); onExport(); }} />
-        <MenuOption label={t('templates.contextDelete')}    onPress={() => { onClose(); onDelete(); }} danger />
+    // La hoja tiene su propio CTA abajo, así que el botón de la derecha del
+    // encabezado pasa de "Aceptar" (que leería como un segundo submit) a
+    // "Cancelar" — mismo recurso que la hoja de filtros del buscador.
+    <DragSheet
+      visible={visible}
+      onClose={onClose}
+      title={t('templates.newModal.title')}
+      action={{ label: t('common.cancel'), onPress: onClose }}
+    >
+      <View style={styles.sheetBody}>
+        <TextInput
+          style={styles.sheetInput}
+          value={name}
+          onChangeText={setName}
+          placeholder={t('templates.newModal.namePlaceholder')}
+          placeholderTextColor={th.colors.mutedLight}
+          returnKeyType="done"
+        />
+
+        <View>
+          <Text style={styles.sheetLabel}>{t('templates.newModal.sessionsLabel')}</Text>
+          <StepField
+            horizontal
+            label={t('templates.newModal.sessionsUnit')}
+            value={sessions}
+            onChange={setSessions}
+            min={1}
+            max={6}
+          />
+        </View>
+
+        <View>
+          <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
+          <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
+          {cycles == null ? (
+            <TouchableOpacity
+              style={[styles.noLimitRow, styles.noLimitRowActive]}
+              onPress={() => setCycles(4)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.noLimitTextActive}>{t('editor.cyclesNoLimit')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <StepField
+                horizontal
+                label={t('editor.stageWeeksUnit')}
+                value={cycles}
+                onChange={setCycles}
+                min={1}
+                max={52}
+              />
+              <TouchableOpacity style={styles.noLimitRow} onPress={() => setCycles(null)} activeOpacity={0.7}>
+                <Text style={styles.noLimitText}>{t('editor.cyclesNoLimit')}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.cta, !name.trim() && styles.ctaDisabled]}
+          onPress={handleCreate}
+          disabled={!name.trim()}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.ctaText, !name.trim() && styles.ctaTextDisabled]}>
+            {t('templates.newModal.createBtn')}
+          </Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </DragSheet>
   );
 }
 
-// ── Assign to client modal ─────────────────────────────────────────────────────
+// ── Hoja de asignar a cliente ──────────────────────────────────────────────────
 
-function AssignToClientModal({ program, clients, onAssign, onClose }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
+function AssignSheet({ visible, program, clients, programs, onAssign, onClose }) {
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
   const clientList = useMemo(
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
   );
+  const [clientId,   setClientId]   = useState('');
+  const [customName, setCustomName] = useState('');
 
-  const [clientId,    setClientId]    = useState('');
-  const [customName,  setCustomName]  = useState('');
-
-  function handleAssign() {
-    if (!clientId) return;
-    onAssign(clientId, customName.trim() || program.name);
-  }
+  if (!program) return null;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalWrap}>
-        <View style={styles.assignModal}>
-          <Text style={styles.modalTitle}>{t('templates.assignModal.title')}</Text>
-          <Text style={styles.modalSub}>{program.name}</Text>
+    <DragSheet
+      visible={visible}
+      onClose={onClose}
+      title={t('templates.assignModal.title')}
+      action={{ label: t('common.cancel'), onPress: onClose }}
+    >
+      <View style={styles.sheetBody}>
+        <View>
+          <Text style={styles.assignName}>{program.name}</Text>
+          <Text style={styles.sheetHint}>{t('templates.assignModal.desc')}</Text>
+        </View>
 
-          {/* Client list */}
-          {clientList.length === 0 ? (
-            <Text style={styles.emptyText}>{t('templates.assignModal.noClients')}</Text>
-          ) : (
-            <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+        {clientList.length === 0 ? (
+          <Text style={styles.sheetEmpty}>{t('templates.assignModal.noClients')}</Text>
+        ) : (
+          <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.clientList}>
               {clientList.map((c) => {
-                const isSelected = clientId === c.id;
+                const active   = clientId === c.id;
+                const current  = c.activeProgramId ? programs[c.activeProgramId] : null;
                 return (
                   <TouchableOpacity
                     key={c.id}
-                    style={[styles.clientOption, isSelected && styles.clientOptionActive]}
+                    style={[styles.clientRow, active && styles.clientRowActive]}
                     onPress={() => setClientId(c.id)}
                     activeOpacity={0.75}
                   >
-                    <Text style={[styles.clientOptionText, isSelected && { color: th.colors.accent }]}>
-                      {c.name}
-                    </Text>
-                    {isSelected && (
-                      <Text style={styles.clientOptionCheck}>✓</Text>
-                    )}
+                    <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+                      <Text style={[styles.clientName, active && { color: th.colors.accent }]} numberOfLines={1}>
+                        {c.name}
+                      </Text>
+                      {/* El aviso de reemplazo se lee ANTES de asignar; por eso
+                          esta pantalla ya no necesita el Alert de confirmación. */}
+                      <Text style={current ? styles.clientReplaces : styles.clientSub} numberOfLines={1}>
+                        {current
+                          ? t('templates.assignModal.replaces', { name: current.name })
+                          : t('templates.assignModal.noProgram')}
+                      </Text>
+                    </View>
+                    {active && <Text style={styles.clientCheck}>✓</Text>}
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
-          )}
+            </View>
+          </ScrollView>
+        )}
 
-          {/* Optional custom name */}
-          <TextInput
-            style={styles.nameInput}
-            placeholder={t('templates.assignModal.programNamePlaceholder')}
-            placeholderTextColor={th.colors.muted2}
-            value={customName}
-            onChangeText={setCustomName}
-            returnKeyType="done"
-          />
+        <TextInput
+          style={styles.sheetInput}
+          placeholder={t('templates.assignModal.programNamePlaceholder')}
+          placeholderTextColor={th.colors.mutedLight}
+          value={customName}
+          onChangeText={setCustomName}
+          returnKeyType="done"
+        />
 
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.createBtn, !clientId && styles.createBtnDisabled]}
-              onPress={handleAssign}
-              disabled={!clientId}
-            >
-              <Text style={[styles.createBtnText, !clientId && styles.createBtnTextDisabled]}>
-                {t('templates.assignModal.assignBtn')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity
+          style={[styles.cta, !clientId && styles.ctaDisabled]}
+          onPress={() => clientId && onAssign(clientId, customName.trim() || program.name)}
+          disabled={!clientId}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.ctaText, !clientId && styles.ctaTextDisabled]}>
+            {t('templates.assignModal.assignBtn')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </DragSheet>
+  );
+}
+
+// ── Hoja de confirmación de borrado ────────────────────────────────────────────
+
+function ConfirmDeleteSheet({ visible, onClose, onConfirm }) {
+  const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <DragSheet visible={visible} onClose={onClose} title={t('templates.deleteTitle')}>
+      <View style={styles.sheetBody}>
+        <Text style={styles.sheetHint}>{t('templates.deleteConfirm')}</Text>
+        <View style={styles.confirmRow}>
+          <TouchableOpacity style={styles.confirmCancel} onPress={onClose} activeOpacity={0.8}>
+            <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.confirmDelete}
+            onPress={() => { onClose(); onConfirm(); }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.confirmDeleteText}>{t('common.delete')}</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </DragSheet>
   );
 }
 
@@ -321,19 +333,17 @@ export default function ProgramScreen() {
   const insets      = useSafeAreaInsets();
   const navigation  = useNavigation();
 
-  const [showCreate,    setShowCreate]    = useState(false);
-  const [contextTarget, setContextTarget] = useState(null); // programId or null
-  const [showAssign,    setShowAssign]    = useState(false);
-  const [assignTarget,  setAssignTarget]  = useState(null); // captures contextTarget before menu closes
-  const [showPaywall,   setShowPaywall]   = useState(false);
+  const [showCreate,   setShowCreate]   = useState(false);
+  const [menuTarget,   setMenuTarget]   = useState(null); // programId del "···"
+  const [assignTarget, setAssignTarget] = useState(null); // programId a asignar
+  const [deleteTarget, setDeleteTarget] = useState(null); // programId a borrar
+  const [showPaywall,  setShowPaywall]  = useState(false);
 
   const profile    = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
   const isPro      = profile?.isPro ?? true;
 
   const programs                 = useStore((s) => s.programs);
-  const sessionTemplates         = useStore((s) => s.sessionTemplates);
-  const userPrograms             = useStore((s) => s.userPrograms);
   const clients                  = useStore((s) => s.clients);
   const createEmptyProgram       = useStore((s) => s.createEmptyProgram);
   const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
@@ -352,13 +362,6 @@ export default function ProgramScreen() {
     [programs]
   );
 
-  function getExerciseCount(program) {
-    return (program.days ?? []).reduce((total, { sessionTemplateId }) => {
-      const tpl = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
-      return total + (tpl?.exercises?.length ?? 0);
-    }, 0);
-  }
-
   function handleCreate(name, numSessions, durationWeeks) {
     const newId = createEmptyProgram(numSessions, name, 'template', durationWeeks);
     showToast(t('templates.toastCreated'), 2200, 'success');
@@ -374,48 +377,22 @@ export default function ProgramScreen() {
 
   function handleAssignToClient(clientId, programName) {
     if (!assignTarget) return;
-    const doAssign = () => {
-      const newId = cloneProgramFromTemplate(assignTarget, {
-        mode: 'managed', clientId, name: programName,
-      });
-      if (newId) {
-        // Assigning replaces the client's active program (the previous one is
-        // archived automatically by staying in programIds but losing active).
-        setClientActiveProgram(clientId, newId);
-        setEditingProgram(newId);
-        showToast(t('templates.toastAssigned'), 2200, 'success');
-      }
-      setShowAssign(false);
-      setAssignTarget(null);
-    };
-    const targetClient = clients[clientId];
-    const hasActive = targetClient?.activeProgramId && programs[targetClient.activeProgramId];
-    if (hasActive) {
-      Alert.alert(
-        t('clients.replaceActiveTitle'),
-        t('clients.replaceActiveConfirm'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('clients.replaceActiveConfirmBtn'), onPress: doAssign },
-        ],
-      );
-    } else {
-      doAssign();
+    const newId = cloneProgramFromTemplate(assignTarget, {
+      mode: 'managed', clientId, name: programName,
+    });
+    if (newId) {
+      // Asignar reemplaza el programa activo del cliente; el anterior se archiva
+      // solo (sigue en programIds pero pierde el activo).
+      setClientActiveProgram(clientId, newId);
+      setEditingProgram(newId);
+      showToast(t('templates.toastAssigned'), 2200, 'success');
     }
+    setAssignTarget(null);
   }
 
   function handleDelete(programId) {
-    Alert.alert(
-      t('templates.deleteTitle'),
-      t('templates.deleteConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'), style: 'destructive',
-          onPress: () => { deleteProgram(programId, false); showToast(t('templates.toastDeleted'), 2200, 'neutral'); },
-        },
-      ]
-    );
+    deleteProgram(programId, false);
+    showToast(t('templates.toastDeleted'), 2200, 'neutral');
   }
 
   // ── PRO gate ───────────────────────────────────────────────────────────────
@@ -424,27 +401,17 @@ export default function ProgramScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📐</Text>
-          <Text style={styles.emptyTitle}>Plantillas de entrenamiento</Text>
-          <Text style={styles.emptyBody}>
-            Crea plantillas y asígnalas a tus clientes en segundos. Estandariza tus programas y ahorra tiempo.
-          </Text>
-          <TouchableOpacity
-            style={styles.proBtn}
-            onPress={() => setShowPaywall(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.proBtnText}>Ver planes PRO</Text>
+          <Text style={styles.emptyTitle}>{t('templates.proTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('templates.proBody')}</Text>
+          <TouchableOpacity style={styles.cta} onPress={() => setShowPaywall(true)} activeOpacity={0.85}>
+            <Text style={styles.ctaText}>{t('templates.proCta')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.hideTabBtn}
-            onPress={() => {
-              setProfile({ proTabsHidden: true });
-              navigation.navigate('Home');
-            }}
+            onPress={() => { setProfile({ proTabsHidden: true }); navigation.navigate('Home'); }}
             activeOpacity={0.7}
           >
-            <Text style={styles.hideTabBtnText}>Ocultar tab</Text>
+            <Text style={styles.hideTabBtnText}>{t('templates.hideTab')}</Text>
           </TouchableOpacity>
         </View>
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -452,82 +419,106 @@ export default function ProgramScreen() {
     );
   }
 
+  const menuProgram = menuTarget ? programs[menuTarget] : null;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
 
-      {/* Sub-header: title + action */}
-      <View style={styles.subHeader}>
-        <View style={styles.subHeaderRow}>
-          <Text style={styles.title}>{t('templates.title').toUpperCase()}</Text>
-          <TouchableOpacity
-            style={styles.newBtn}
-            onPress={() => setShowCreate(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.newBtnText}>{t('templates.newBtn')}</Text>
+      {/* ── Cabecera: "PLANTILLAS · N" + "+ Plantilla" (misma de Clientes) ── */}
+      <View style={styles.listHeader}>
+        <View style={styles.listTitleRow}>
+          <Text style={styles.listTitle} numberOfLines={1}>
+            {t('templates.title').toUpperCase()} <Text style={styles.listTitleDot}>·</Text>{' '}
+            <Text style={styles.listTitleCount}>{templateList.length}</Text>
+          </Text>
+          <TouchableOpacity style={styles.hdrNewBtn} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+            <Text style={styles.hdrNewBtnText}>{t('templates.newBtn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* List */}
       {templateList.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📐</Text>
           <Text style={styles.emptyTitle}>{t('templates.title')}</Text>
           <Text style={styles.emptyBody}>{t('templates.empty')}</Text>
-          <TouchableOpacity
-            style={styles.newBtnLarge}
-            onPress={() => setShowCreate(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.newBtnLargeText}>{t('templates.newModal.createBtn')}</Text>
+          <TouchableOpacity style={styles.cta} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+            <Text style={styles.ctaText}>{t('templates.newModal.createBtn')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {templateList.map((program) => (
             <TemplateCard
               key={program.id}
               program={program}
-              onView={() => setPrintingProgram(program.id)}
-              onEdit={() => setEditingProgram(program.id)}
-              onAssign={() => { setAssignTarget(program.id); setShowAssign(true); }}
-              onShare={() => shareSpecificProgram(program.id)}
-              onMenu={() => setContextTarget(program.id)}
+              onOpen={() => setPrintingProgram(program.id)}
+              onAssign={() => setAssignTarget(program.id)}
+              onMenu={() => setMenuTarget(program.id)}
             />
           ))}
         </ScrollView>
       )}
 
-      {/* Create modal */}
-      <CreateModal
+      <CreateSheet
         visible={showCreate}
         onClose={() => setShowCreate(false)}
         onCreate={handleCreate}
       />
 
-      {/* Context menu */}
-      <ContextMenu
-        visible={!!contextTarget && !showAssign}
-        onClose={() => setContextTarget(null)}
-        onDuplicate={() => handleDuplicate(contextTarget)}
-        onExport={() => exportSpecificProgram(contextTarget)}
-        onDelete={() => handleDelete(contextTarget)}
-      />
+      {/* ── Hoja del "···" ── */}
+      <DragSheet
+        visible={!!menuTarget}
+        onClose={() => setMenuTarget(null)}
+        title={menuProgram?.name ?? ''}
+      >
+        <View style={styles.sheetRows}>
+          <SheetRow
+            label={t('templates.actionView')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); setPrintingProgram(id); }}
+          />
+          <SheetRow
+            label={t('templates.actionEdit')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); setEditingProgram(id); }}
+          />
+          <SheetRow
+            label={t('templates.contextDuplicate')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); handleDuplicate(id); }}
+          />
+          <SheetRow
+            label={t('templates.actionShare')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); shareSpecificProgram(id); }}
+          />
+          <SheetRow
+            label={t('templates.contextExport')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); exportSpecificProgram(id); }}
+          />
+          <SheetRow
+            danger
+            label={t('templates.contextDelete')}
+            onPress={() => { const id = menuTarget; setMenuTarget(null); setDeleteTarget(id); }}
+          />
+        </View>
+      </DragSheet>
 
-      {/* Assign to client modal */}
-      {showAssign && assignTarget && (
-        <AssignToClientModal
+      {/* Montada solo mientras hay destino: así la selección de cliente y el
+          nombre de la copia arrancan en blanco en cada plantilla. */}
+      {assignTarget && (
+        <AssignSheet
+          visible
           program={programs[assignTarget]}
           clients={clients}
+          programs={programs}
           onAssign={handleAssignToClient}
-          onClose={() => { setShowAssign(false); setAssignTarget(null); }}
+          onClose={() => setAssignTarget(null)}
         />
       )}
+
+      <ConfirmDeleteSheet
+        visible={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => handleDelete(deleteTarget)}
+      />
     </View>
   );
 }
@@ -535,396 +526,185 @@ export default function ProgramScreen() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  container: {
-    flex:            1,
-    backgroundColor: th.colors.bg,
-  },
+  container: { flex: 1, backgroundColor: th.colors.bg },
 
-  // Sub-header (below AppHeader)
-  subHeader: {
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.lg,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
+  // ── Cabecera (calcada de la de Clientes) ──
+  listHeader: {
+    paddingTop: spacing.lg,
+    gap:        spacing.sm,
   },
-  subHeaderRow: {
+  listTitleRow: {
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
-  title: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-  },
-  newBtn: {
+  listTitle:      { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  listTitleDot:   { color: th.colors.mutedLight },
+  listTitleCount: { color: th.colors.accent },
+  hdrNewBtn: {
     backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-  },
-  newBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 0.5,
-  },
-
-  // List
-  list: {
-    padding:       spacing.xl,
-    paddingBottom: spacing.xxl,
-    gap:           spacing.sm,
-  },
-
-  // Template card
-  card: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.md,
-    gap:             spacing.sm,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           spacing.sm,
-  },
-  cardNameRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  cardName: {
-    fontSize:   typography.base,
-    fontWeight: typography.semibold,
-    color:      th.colors.mutedLight,
-  },
-  cardMeta: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  badge: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    th.radius.xs,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical:   2,
-  },
-  badgeText: {
-    fontSize:   typography.xs,
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
-  cardIconBtn: {
-    width:           36,
-    height:          36,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  cardShareIcon: {
-    fontSize:   18,
-    lineHeight: 22,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
-  cardBtnSecondary: {
-    flex:              1,
-    height:            36,
     borderRadius:      th.radius.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
+    paddingHorizontal: spacing.md,
+    height:            42,
     alignItems:        'center',
     justifyContent:    'center',
-    paddingHorizontal: spacing.sm,
   },
-  cardBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.semibold,
-    color:      th.colors.muted,
+  hdrNewBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+
+  // ── Lista ──
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.sm,
   },
-  cardBtnIcon: {
-    width:           36,
-    height:          36,
+
+  // ── Tarjeta de plantilla (`204:1901`) ──
+  card: {
+    backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    // El mock separa el bloque de info de los botones con 18 (usa el token de
+    // radius como gap — regla 3: vale el número, no el nombre).
+    gap: 18,
+  },
+  cardBody: { gap: spacing.xs },
+  cardName: { ...textStyles.cardTitle, color: th.colors.text },
+  statsRow: { flexDirection: 'row', gap: 9 },
+  stat:     { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
+  statValue: { ...textStyles.spacingTag, color: th.colors.accent },
+  statLabel: { ...textStyles.smallBold,  color: th.colors.mutedLight, textTransform: 'uppercase' },
+
+  cardActions: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
+  cardBtn: {
+    backgroundColor: th.colors.muted,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  cardBtnIconText: {
-    fontSize:   18,
-    color:      th.colors.muted,
-    lineHeight: 20,
+  cardBtnText: { ...textStyles.cardType, color: th.colors.text },
+  cardMenuBtn: {
+    backgroundColor: th.colors.muted,
+    borderRadius:    th.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.xs2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
 
-  // Empty state
+  // ── Hojas ──
+  sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
+  sheetRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    gap:             spacing.xl,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+  },
+  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+  sheetHint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14, marginBottom: spacing.sm },
+  sheetEmpty: { ...textStyles.subtitle, color: th.colors.mutedLight, textAlign: 'center', paddingVertical: spacing.md },
+  // Dentro de una hoja el fondo YA es `bg`: los campos van sobre `surface`.
+  sheetInput: {
+    ...textStyles.cardType,
+    color:             th.colors.text,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
+  },
+  noLimitRow: {
+    marginTop:         spacing.sm,
+    paddingVertical:   spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius:      th.radius.sm,
+    backgroundColor:   th.colors.surface,
+  },
+  noLimitRowActive:  { backgroundColor: th.tint.accent10 },
+  noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
+  noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
+
+  // Hoja de asignar
+  assignName: { ...textStyles.cardTitle, color: th.colors.text, marginBottom: spacing.xs },
+  clientList: { gap: spacing.sm },
+  clientRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.md,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+  },
+  clientRowActive: { backgroundColor: th.tint.accent10 },
+  clientName:      { ...textStyles.cardType, color: th.colors.text },
+  clientSub:       { ...textStyles.tag, color: th.colors.mutedLight },
+  clientReplaces:  { ...textStyles.tag, color: th.colors.orange },
+  clientCheck:     { ...textStyles.cardType, color: th.colors.accent },
+
+  // Confirmación de borrado — mismo par que cierra el editor de ejercicio.
+  confirmRow:    { flexDirection: 'row', gap: spacing.sm },
+  confirmCancel: {
+    flex:            1,
+    paddingVertical: spacing.md,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+  },
+  confirmCancelText: { ...textStyles.cardType, color: th.colors.text },
+  confirmDelete: {
+    flex:            1,
+    paddingVertical: spacing.md,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.tint.red30,
+    alignItems:      'center',
+  },
+  confirmDeleteText: { ...textStyles.cardType, color: th.tint.red50 },
+
+  // CTA de hoja / estado vacío (Buttons `388:2676`)
+  cta: {
+    height:          44,
+    borderRadius:    th.radius.md,
+    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: spacing.xl,
+  },
+  ctaDisabled:     { backgroundColor: th.colors.surface2 },
+  ctaText:         { ...textStyles.cardType, color: th.colors.onAccent },
+  ctaTextDisabled: { color: th.colors.mutedLight },
+
+  // ── Estado vacío / gate PRO ──
   emptyState: {
     flex:           1,
     alignItems:     'center',
     justifyContent: 'center',
-    padding:        spacing.xxl,
+    paddingHorizontal: spacing.xxl,
     gap:            spacing.md,
   },
-  emptyIcon: { fontSize: 36 },
-  emptyTitle: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.text,
-  },
+  emptyTitle: { ...textStyles.hero, color: th.colors.text },
   emptyBody: {
-    fontSize:   typography.base,
-    color:      th.colors.muted,
-    textAlign:  'center',
-    lineHeight: typography.base * 1.6,
-    maxWidth:   260,
+    ...textStyles.subtitle,
+    color:        th.colors.mutedLight,
+    textAlign:    'center',
+    lineHeight:   18,
+    marginBottom: spacing.sm,
   },
-  newBtnLarge: {
-    marginTop:         spacing.sm,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical:   spacing.lg,
-  },
-  newBtnLargeText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
-  proBtn: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.xl,
-    marginTop:         spacing.xs,
-  },
-  proBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
-  },
-  hideTabBtn: {
-    marginTop:         spacing.sm,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  hideTabBtnText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
-  },
-
-  // Modals — bottom-sheet backdrop (flex:1 pushes sheet to bottom)
-  backdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  // Centered-modal backdrop (absoluteFill so KAV/card can center properly)
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-
-  // Create modal — centered card (full border radius)
-  centerModal: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-    paddingBottom:   spacing.xxl,
-    gap:             spacing.md,
-  },
-  modalTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 1,
-  },
-  nameInput: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.35),
-    borderRadius:    th.radius.sm,
-    color:           th.colors.text,
-    fontSize:        typography.md,
-    padding:         spacing.md,
-  },
-  fieldLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 1.5,
-  },
-  sessionPicker: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  fieldHint: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 4,
-  },
-  // "Sin límite" — misma anatomía que sessionBtn pero a ancho completo, porque
-  // es una opción de texto y no una cifra más de la fila.
-  noLimitRow: {
-    marginTop:         spacing.xs,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-  },
-  noLimitText: { fontSize: typography.sm, color: th.colors.muted },
-  sessionBtn: {
-    flex:            1,
-    height:          44,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  sessionBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
-    borderColor:     withOpacity(th.colors.accent, 0.4),
-  },
-  sessionBtnText: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  sessionBtnTextActive: {
-    color: th.colors.accent,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
-  cancelBtn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-  },
-  cancelBtnText: {
-    fontSize:   typography.base,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  createBtn: {
-    flex:            2,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.accent,
-    alignItems:      'center',
-  },
-  createBtnDisabled: {
-    backgroundColor: th.colors.surface2,
-  },
-  createBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
-  createBtnTextDisabled: {
-    color: th.colors.muted,
-  },
-
-  // Context menu
-  contextMenu: {
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    borderTopWidth:       borders.thin,
-    borderTopColor:       th.colors.border,
-    overflow:             'hidden',
-  },
-  menuOption: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  menuOptionDanger: {},
-  menuOptionText: {
-    fontSize:   typography.base,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-
-  // Assign to client modal
-  modalWrap: {
-    flex:           1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  assignModal: {
-    backgroundColor: th.colors.bg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-  },
-  modalSub: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    marginTop: -spacing.xs,
-  },
-  clientOption: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-    marginBottom:      spacing.xs,
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-  },
-  clientOptionActive: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
-  },
-  clientOptionText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-    flex:       1,
-  },
-  clientOptionCheck: {
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.accent,
-    marginLeft: spacing.sm,
-  },
-  emptyText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-  },
+  hideTabBtn:     { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  hideTabBtnText: { ...textStyles.cardType, color: th.colors.mutedLight },
 });

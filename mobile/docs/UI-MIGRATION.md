@@ -31,7 +31,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
 | **Progreso › pestaña Carga** | ✅ (pantalla NUEVA, sin nodo en Figma — ver desglose) | `src/components/stats/LoadTab.jsx`, `ProgressPanel.jsx` |
-| Plantillas / ProgramScreen | ⬜ | `src/screens/ProgramScreen.jsx` |
+| **Plantillas / ProgramScreen** | ✅ | `src/screens/ProgramScreen.jsx` |
 | **Program Editor** | ✅ | `src/screens/ProgramEditorScreen.jsx`, `src/components/ui/StageSelector.jsx` |
 | **Sesion Editor** (+ modal "···" nuevo) | ✅ | `src/screens/SessionEditorScreen.jsx` |
 | **Exercice Editor** (+ botones eliminar/sustituir) | ✅ | `src/components/editor/ExerciseEditorInline.jsx` |
@@ -347,6 +347,65 @@ esta pantalla se re-verifica contra ese nodo como cualquier otra.
   160 ms) — ver `RpeButton` en el propio fichero.
 - **Sin bordes en ninguna card** (§4.6) y `typography` genérica retirada por completo:
   la pantalla usa sólo `textStyles`.
+
+### Plantillas — desglose
+
+Nodo de Figma: **`235:4471`**, que en el archivo se llama "Clients" — se duplicó
+de la pantalla de clientes y nadie la renombró. El contenido es la lista de
+plantillas (ya avisaba `figma-extraction/pages/clients-2.md`). La tarjeta es la
+variante *Plantillas* del set `Sesion Card` (`204:1901`).
+
+- **Cabecera calcada de Clientes**: `PLANTILLAS · N` a `text/hero` (contador en
+  accent) + `+ Plantilla` accent a 42 de alto, `radius/md`, `text/card-type` en
+  `onAccent`. Fuera la divisoria inferior y el título trackeado en `muted` que
+  tenía. **Sin buscador ni filtros** (decisión del usuario): Figma no los dibuja
+  aquí y con pocas plantillas serían ruido. Página a `space/lg` (antes `xl`),
+  lista con gap `space/sm`.
+- **Tarjeta de tres piezas** — `surface`, `radius/md`, px `space/lg`, py
+  `space/md`, y **gap 18** entre el bloque de info y la fila de acciones (el mock
+  usa el token `radius/lg` como gap: vale el número, no el nombre, §4.3):
+  1. nombre a `text/card-title`;
+  2. **3 stats** `N ETAPAS · N CICLOS · N SESIONES` — número en `accent` con
+     `text/spacing-tag`, etiqueta en `mutedLight` con `text/SmallBold`,
+     `space/xs` entre los dos y 9 entre stats. Sustituyen a la línea de texto
+     `editor.programSummary` que pintaba antes;
+  3. fila de acciones con los dos botones `color/muted` de Figma en
+     `justify-between`.
+- **Cambios de contenido pedidos por el usuario** (mandan sobre el mock, §10):
+  - **Fuera el eyebrow "PLANTILLA"**: en esta pantalla todo es una plantilla.
+  - **De 4 botones + icono de compartir a DOS controles**: `Asignar` y `···`.
+    El `···` ocupa el sitio del segundo botón de Figma (`Ver plantilla`) en la
+    fila de acciones, no el hueco que deja el eyebrow. El **cuerpo de la tarjeta
+    es pulsable** y abre el visor, así que "Ver" no necesita botón.
+  - Los 3 puntos van **horizontales** aquí (`204:1929`): `MenuIcon` de
+    `ui/EditorIcons` gana una prop `horizontal`; en la cabecera del editor de
+    sesión siguen verticales.
+- **CICLOS, no "SEMANAS"**: el mock dice semanas pero `durationWeeks` cuenta
+  vueltas al ciclo — misma decisión ya cerrada en el editor de programa y en el
+  banner de Home, y así lo dice ya `editor.programSummary`. Con alguna etapa sin
+  límite de ciclos, ciclos y sesiones se pintan con `+`.
+- **Los tres modales propios pasan a `DragSheet`** (§9), y con ellos los dos
+  `Alert.alert`:
+  - `···` → hoja con el patrón `SheetRow`: ver · editar · duplicar · compartir ·
+    exportar · eliminar (rojo).
+  - **Nueva plantilla** → hoja con `StepField` horizontales (sesiones y ciclos) +
+    la fila "sin límite" del editor de programa, en vez de los dos pickers de
+    cifras sueltas. CTA accent abajo, y el botón derecho del encabezado pasa de
+    "Aceptar" a "Cancelar" (`action`) para que no lea como un segundo submit.
+  - **Asignar a cliente** → hoja donde cada fila de cliente dice qué programa
+    tiene. **El Alert de "ya tiene programa activo" desaparece**: el aviso
+    (`Reemplaza: X`, en `orange`) se lee en la propia fila ANTES de elegir, que
+    es donde sirve de algo. Se monta solo mientras hay destino, para que la
+    selección arranque en blanco en cada plantilla.
+  - **Eliminar** → hoja de confirmación con el par `surface2` / `tint-red-30`
+    que ya cierra el editor de ejercicio.
+- **Estado vacío y gate PRO**: sus cadenas estaban **hardcodeadas en español**
+  dentro del JSX; ahora están en i18n (`templates.proTitle/proBody/proCta/
+  hideTab`) y usan `textStyles`. Fuera los emoji 📐 de cabecera.
+- Las claves i18n que sigue usando la app web legada (`templates.badge`,
+  `contextUseWithClient`, `assignModal.clientLabel`/`programNameLabel`) **no se
+  borran** aunque el móvil ya no las lea — mismo precedente que el buscador de
+  ejercicios.
 
 ### Program Editor — desglose
 
