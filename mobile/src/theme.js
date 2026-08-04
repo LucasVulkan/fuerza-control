@@ -195,6 +195,27 @@ export function getCardRadii(th, isFirst, isLast) {
   };
 }
 
+/**
+ * Fila de opción de una hoja (`DragSheet`): el patrón único de los menús "···"
+ * (§9 de docs/UI-MIGRATION.md). Vivía duplicado en seis pantallas, cada una con
+ * su copia; está aquí para que el alto se ajuste UNA vez para todas — que es lo
+ * que pidió el usuario en QA ("las filas son muy finas").
+ *
+ * `minHeight` en vez de más padding vertical: las filas de dos líneas (título +
+ * hint del editor de programa) ya lo superan y no se estiran.
+ */
+export function sheetRowBase(th) {
+  return {
+    flexDirection:     'row',
+    alignItems:        'center',
+    minHeight:         48,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+  };
+}
+
 // ─── Convenience re-export (backwards compat with old theme import) ───────────
 export const theme = { colors, spacing, radius, typography, borders, resolveColor, withOpacity };
 export default theme;

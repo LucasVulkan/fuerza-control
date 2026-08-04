@@ -31,7 +31,7 @@ import DragSheet from '../components/DragSheet';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../../../src/utils/progression';
 import { volumeDeltas } from '../../../src/utils/sessionRecap';
@@ -4324,13 +4324,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     paddingBottom: spacing.lg,
   },
-  sheetRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
+  sheetRow: sheetRowBase(th),
   sheetRowText: {
     ...textStyles.cardType,
     flex:  1,

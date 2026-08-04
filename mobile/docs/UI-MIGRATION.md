@@ -373,13 +373,14 @@ variante *Plantillas* del set `Sesion Card` (`204:1901`).
      `justify-between`.
 - **Cambios de contenido pedidos por el usuario** (mandan sobre el mock, §10):
   - **Fuera el eyebrow "PLANTILLA"**: en esta pantalla todo es una plantilla.
-  - **De 4 botones + icono de compartir a DOS controles**: `Asignar` y `···`.
-    El `···` ocupa el sitio del segundo botón de Figma (`Ver plantilla`) en la
-    fila de acciones, no el hueco que deja el eyebrow. El **cuerpo de la tarjeta
-    es pulsable** y abre el visor, así que "Ver" no necesita botón.
-  - Los 3 puntos van **horizontales** aquí (`204:1929`): `MenuIcon` de
-    `ui/EditorIcons` gana una prop `horizontal`; en la cabecera del editor de
-    sesión siguen verticales.
+  - **De 4 botones + icono de compartir a UNO**: `Asignar`, solo, en columna a
+    la derecha (en QA la fila inferior de Figma dejaba la tarjeta demasiado alta
+    para lo poco que dice). El botón de `···` **no existe**: pulsar la tarjeta
+    abre su hoja de opciones, que es un área de toque enorme comparada con la
+    caja de 26 px del icono.
+  - Etiquetas de los stats a **10 px** (Figma pide `text/SmallBold`, 8) y los
+    textos de apoyo de las hojas a `text/subtitle` (12, antes `text/tag`): a 8 y
+    10 px no se leían en dispositivo. Misma familia y tracking, solo el tamaño.
 - **CICLOS, no "SEMANAS"**: el mock dice semanas pero `durationWeeks` cuenta
   vueltas al ciclo — misma decisión ya cerrada en el editor de programa y en el
   banner de Home, y así lo dice ya `editor.programSummary`. Con alguna etapa sin
@@ -388,10 +389,13 @@ variante *Plantillas* del set `Sesion Card` (`204:1901`).
   `Alert.alert`:
   - `···` → hoja con el patrón `SheetRow`: ver · editar · duplicar · compartir ·
     exportar · eliminar (rojo).
-  - **Nueva plantilla** → hoja con `StepField` horizontales (sesiones y ciclos) +
-    la fila "sin límite" del editor de programa, en vez de los dos pickers de
-    cifras sueltas. CTA accent abajo, y el botón derecho del encabezado pasa de
-    "Aceptar" a "Cancelar" (`action`) para que no lea como un segundo submit.
+  - **Nueva plantilla** → hoja con `StepField` horizontales (sesiones y ciclos)
+    en vez de los dos pickers de cifras sueltas. "Sin límite de ciclos" es el
+    `Switch` compartido de `ui/EditorRows`, no una fila-botón: es un estado del
+    propio ajuste, y con él activo el stepper desaparece porque no hay número que
+    contar. La explicación del ciclo va DEBAJO del control, no entre el título y
+    él. CTA accent abajo, y el botón derecho del encabezado pasa de "Aceptar" a
+    "Cancelar" (`action`) para que no lea como un segundo submit.
   - **Asignar a cliente** → hoja donde cada fila de cliente dice qué programa
     tiene. **El Alert de "ya tiene programa activo" desaparece**: el aviso
     (`Reemplaza: X`, en `orange`) se lee en la propia fila ANTES de elegir, que
@@ -1151,6 +1155,15 @@ listas ni controles nuevos.
   la de 2 líneas ("Etapas") es exclusiva de selección de etapa.
 - **Modales "···"**: Figma unifica TODOS los menús contextuales de la app en un mismo
   patrón. Conforme se restylea cada pantalla, sus menús propios deben converger ahí.
+  La fila de opción vive en **`sheetRowBase(th)` (`src/theme.js`)**: `surface2`,
+  `radius/sm`, px `space/md`, py `space/sm2` y **`minHeight: 48`** (QA: "las filas
+  son muy finas"). Antes estaba copiada en seis pantallas, así que subir el alto
+  había que hacerlo seis veces; ahora se cambia en un sitio. `minHeight` y no más
+  padding vertical: las filas de dos líneas ya lo superan y no se estiran.
+- **`Switch` (`ui/EditorRows`)**: escalado ×1.7 sobre el 26×14.18 de Figma, en dos
+  rondas de QA. `OPT_ROW_H` dejó de derivarse del ancho del carril y es un 46
+  fijo, y la caja del switch mide el alto del carril y no un cuadrado: si no, el
+  switch más grande estiraba la fila, que es justo lo que el usuario NO quería.
 
 ### Modales — SIEMPRE `DragSheet`, nunca uno nuevo
 

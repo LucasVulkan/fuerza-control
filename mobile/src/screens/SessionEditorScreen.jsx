@@ -31,7 +31,7 @@ import { resolveProgressionConfig } from '../../../src/utils/progression';
 import { exerciseLinkGroups } from '../../../src/utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
@@ -1060,15 +1060,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas ──
   sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
-  sheetRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    justifyContent:  'space-between',
-    gap:             spacing.xl,
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
+  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
   sheetRowText: { ...textStyles.cardType, color: th.colors.text },
   presetRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

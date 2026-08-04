@@ -32,22 +32,13 @@ export function ChevronDown({ size = 12, color }) {
 
 // Icons / "More..." (`151:1467`): 3 puntos de 3px. El componente los dibuja en
 // horizontal, pero las instancias de la cabecera van rotadas -90° — o sea que en
-// pantalla se ven VERTICALES. Por defecto se dibuja ya rotado; `horizontal`
-// devuelve la disposición original del componente, que es la que usa la tarjeta
-// de plantilla (`204:1929`: puntos en x=6.5/12.5/18.5, y=12.5).
-export function MenuIcon({ size = 26, color, horizontal = false }) {
-  const pos = [6.5, 12.5, 18.5];
+// pantalla se ven VERTICALES. Se dibuja ya rotado.
+export function MenuIcon({ size = 26, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      {pos.map((p) => (
-        <Circle
-          key={p}
-          cx={horizontal ? p : 13}
-          cy={horizontal ? 12.5 : p}
-          r={1.5}
-          fill={color}
-        />
-      ))}
+      <Circle cx={13} cy={6.5}  r={1.5} fill={color} />
+      <Circle cx={13} cy={12.5} r={1.5} fill={color} />
+      <Circle cx={13} cy={18.5} r={1.5} fill={color} />
     </Svg>
   );
 }

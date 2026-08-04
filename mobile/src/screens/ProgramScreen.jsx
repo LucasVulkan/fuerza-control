@@ -8,10 +8,9 @@
  * Divergencias respecto al mock, todas pedidas por el usuario:
  *  · Fuera el eyebrow "PLANTILLA" de la tarjeta — en esta pantalla todo es una
  *    plantilla, la etiqueta no informa de nada.
- *  · De 4 botones + icono de compartir a DOS controles: `Asignar` y `···`. Todo
- *    lo demás (ver, editar, duplicar, compartir, exportar, eliminar) vive en la
- *    hoja del `···`. El cuerpo de la tarjeta es pulsable y abre la vista de la
- *    plantilla, así que "Ver" no necesita botón.
+ *  · De 4 botones + icono de compartir a UNO: `Asignar`. Todo lo demás (ver,
+ *    editar, duplicar, compartir, exportar, eliminar) vive en la hoja que abre
+ *    la propia tarjeta al pulsarla — el botón de `···` desapareció en QA.
  *  · El stat del medio dice CICLOS, no "SEMANAS" como el mock: `durationWeeks`
  *    tiene nombre legado pero cuenta vueltas al ciclo (misma decisión ya cerrada
  *    en el editor de programa y en el banner de Home).
@@ -36,9 +35,9 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, MenuIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon } from '../components/ui/EditorIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
-import { spacing, textStyles } from '../theme';
+import { spacing, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -72,16 +71,17 @@ function Stat({ value, label }) {
   );
 }
 
-function TemplateCard({ program, onOpen, onAssign, onMenu }) {
+function TemplateCard({ program, onAssign, onMenu }) {
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const s      = templateStats(program);
   const more   = s.open ? '+' : '';
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.cardBody} onPress={onOpen} activeOpacity={0.75}>
+      {/* Sin botón de `···`: pulsar la tarjeta ES el menú (QA). Un control menos
+          y un área de toque enorme para lo que antes era una caja de 26 px. */}
+      <TouchableOpacity style={styles.cardBody} onPress={onMenu} activeOpacity={0.75}>
         <Text style={styles.cardName} numberOfLines={2}>{program.name}</Text>
         <View style={styles.statsRow}>
           <Stat value={String(s.stages)} label={t('templates.statStages',   { count: s.stages })} />
@@ -90,15 +90,8 @@ function TemplateCard({ program, onOpen, onAssign, onMenu }) {
         </View>
       </TouchableOpacity>
 
-      {/* Acciones en COLUMNA a la derecha (QA): el `···` arriba y `Asignar`
-          abajo, en vez de la fila inferior que dibuja Figma. Con solo dos
-          controles la fila dejaba la tarjeta muy alta para lo poco que dice. */}
+      {/* Única acción explícita de la tarjeta, a la derecha. */}
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.cardMenuBtn} onPress={onMenu} activeOpacity={0.7}>
-          {/* Los 3 puntos van HORIZONTALES en esta tarjeta (en la cabecera del
-              editor de sesión van verticales) — es lo que dibuja el nodo. */}
-          <MenuIcon size={26} color={th.colors.text} horizontal />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.cardBtn} onPress={onAssign} activeOpacity={0.8}>
           <Text style={styles.cardBtnText}>{t('templates.assignModal.assignBtn')}</Text>
         </TouchableOpacity>
@@ -460,7 +453,6 @@ export default function ProgramScreen() {
             <TemplateCard
               key={program.id}
               program={program}
-              onOpen={() => setPrintingProgram(program.id)}
               onAssign={() => setAssignTarget(program.id)}
               onMenu={() => setMenuTarget(program.id)}
             />
@@ -587,12 +579,7 @@ const makeStyles = (th) => StyleSheet.create({
   // cambiar familia ni tracking — a 8 px no se leía en dispositivo.
   statLabel: { ...textStyles.smallBold, fontSize: 10, color: th.colors.mutedLight, textTransform: 'uppercase' },
 
-  // Columna derecha: `···` arriba, `Asignar` abajo.
-  cardActions: {
-    alignItems:     'flex-end',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
-  },
+  cardActions: { alignItems: 'flex-end', justifyContent: 'center' },
   cardBtn: {
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
@@ -601,27 +588,11 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   cardBtnText: { ...textStyles.cardType, color: th.colors.text },
-  cardMenuBtn: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
 
   // ── Hojas ──
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
-  sheetRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    justifyContent:  'space-between',
-    gap:             spacing.xl,
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
+  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
   sheetRowText: { ...textStyles.cardType, color: th.colors.text },
   sheetLabel: {
     ...textStyles.spacingTag,

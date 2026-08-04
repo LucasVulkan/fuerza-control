@@ -8,7 +8,7 @@ import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, textStyles, withOpacity } from '../theme';
+import { spacing, textStyles, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
@@ -765,16 +765,7 @@ const makeStyles = (th) => StyleSheet.create({
   saveBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
 
   // ── Menú "···" ──
-  menuRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    gap:               spacing.xl,
-    backgroundColor:   th.colors.surface2,
-    borderRadius:      th.radius.sm,
-    padding:           spacing.md,
-    marginBottom:      spacing.md,
-  },
+  menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
   menuRowText: { ...textStyles.cardType, color: th.colors.text },
   menuRowHint: { ...textStyles.subtitle, color: th.colors.muted },
   stageRxLine: { ...textStyles.cardType, color: th.colors.accent },

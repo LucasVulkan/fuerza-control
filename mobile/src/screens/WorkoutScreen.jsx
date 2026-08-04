@@ -20,7 +20,7 @@ import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../../../src/utils/formatters';
 import { defaultBlock } from '../../../src/utils/conditioningBlocks';
@@ -1049,11 +1049,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Hoja de "añadir" + editor de bloque de la sesión libre
   sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
-  sheetRow: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
+  sheetRow: sheetRowBase(th),
   sheetRowText: { ...textStyles.cardType, color: th.colors.text },
   modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
   blockHeader: {

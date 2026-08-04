@@ -21,20 +21,22 @@ const ROW_CHEVRON = 10.77;
 export const CHEVRON_GREY = '#d9d9d9';
 
 // ─── Switch (Icons / Switch, `176:1907`) ──────────────────────────────────────
-// Figma da 26×14.18 / pulgar 11.82; en QA se pidió más grande, así que se
-// escala el conjunto ×1.3 manteniendo las proporciones del mock. Figma solo
+// Figma da 26×14.18 / pulgar 11.82; en QA se pidió más grande dos veces, así
+// que se escala el conjunto manteniendo las proporciones del mock. Figma solo
 // dibuja el estado ON (carril accent, pulgar negro); el OFF es decisión
 // nuestra: surface2 + pulgar mutedLight, para que se lea apagado sin
 // introducir un color nuevo.
-const SW_SCALE = 1.3;
+const SW_SCALE = 1.7;
 const TRACK_W  = 26 * SW_SCALE;
 const TRACK_H  = 14.182 * SW_SCALE;
 const THUMB    = 11.818 * SW_SCALE;
 const SW_INSET = 1.18 * SW_SCALE;
 const THUMB_X  = [SW_INSET, TRACK_W - THUMB - SW_INSET];
-// Alto mínimo de las filas de opciones: el mismo para todas, lo marca la caja
-// del switch (QA: la fila de Tempo se veía más fina que las demás).
-export const OPT_ROW_H = TRACK_W + spacing.sm * 2;
+// Alto mínimo de las filas de opciones: el mismo para todas (QA: la fila de
+// Tempo se veía más fina que las demás). Es un número FIJO y ya no se deriva de
+// `TRACK_W`: la última ronda de QA pidió el switch más grande "sin hacer más
+// grande la caja en la que está", y atado al carril la fila crecía con él.
+export const OPT_ROW_H = 46;
 
 export function Switch({ value }) {
   const th = useTheme();
@@ -67,7 +69,10 @@ export function Switch({ value }) {
 }
 
 const swStyles = StyleSheet.create({
-  box:   { width: TRACK_W, height: TRACK_W, alignItems: 'center', justifyContent: 'center' },
+  // La caja mide lo que el carril, no un cuadrado de `TRACK_W`: con el switch ya
+  // grande, un cuadrado empujaba la fila por debajo de `OPT_ROW_H`. No se pierde
+  // área de toque — el pulsable es la fila entera, no el switch.
+  box:   { width: TRACK_W, height: TRACK_H, alignItems: 'center', justifyContent: 'center' },
   track: { width: TRACK_W, height: TRACK_H, borderRadius: TRACK_H / 2, justifyContent: 'center' },
   thumb: { width: THUMB, height: THUMB, borderRadius: THUMB / 2, position: 'absolute' },
 });

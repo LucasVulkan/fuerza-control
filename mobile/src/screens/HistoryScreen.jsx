@@ -21,7 +21,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import DragSheet from '../components/DragSheet';
 import SessionCard from '../components/SessionCard';
 import { ArrowIcon } from '../components/ui/EditorIcons';
-import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
+import { spacing, typography, borders, withOpacity, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { volumeDeltas } from '../../../src/utils/sessionRecap';
 import { internalLoad } from '../../../src/utils/trainingLoad';
@@ -596,12 +596,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
-  sheetRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: th.colors.surface2,
-    borderRadius: th.radius.sm,
-    padding: spacing.md,
-  },
+  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between' },
   sheetRowText: { ...textStyles.cardType, color: th.colors.text },
   sheetHint: {
     ...textStyles.tag, color: th.colors.mutedLight,
