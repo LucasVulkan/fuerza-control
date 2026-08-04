@@ -1884,6 +1884,7 @@
       "namePlaceholder": "Template name",
       "sessionsLabel": "Sessions per cycle",
       "sessionsUnit": "sessions",
+      "noLimitLabel": "No cycle limit",
       "createBtn": "CREATE AND EDIT"
     },
     "assignModal": {

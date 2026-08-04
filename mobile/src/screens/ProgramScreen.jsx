@@ -37,6 +37,7 @@ import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, MenuIcon } from '../components/ui/EditorIcons';
+import { ToggleRow } from '../components/ui/EditorRows';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -89,16 +90,17 @@ function TemplateCard({ program, onOpen, onAssign, onMenu }) {
         </View>
       </TouchableOpacity>
 
-      {/* Fila de acciones: los dos botones `color/muted` de Figma en
-          justify-between, con el `···` ocupando el sitio del segundo. */}
+      {/* Acciones en COLUMNA a la derecha (QA): el `···` arriba y `Asignar`
+          abajo, en vez de la fila inferior que dibuja Figma. Con solo dos
+          controles la fila dejaba la tarjeta muy alta para lo poco que dice. */}
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.cardBtn} onPress={onAssign} activeOpacity={0.8}>
-          <Text style={styles.cardBtnText}>{t('templates.assignModal.assignBtn')}</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.cardMenuBtn} onPress={onMenu} activeOpacity={0.7}>
           {/* Los 3 puntos van HORIZONTALES en esta tarjeta (en la cabecera del
               editor de sesión van verticales) — es lo que dibuja el nodo. */}
           <MenuIcon size={26} color={th.colors.text} horizontal />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cardBtn} onPress={onAssign} activeOpacity={0.8}>
+          <Text style={styles.cardBtnText}>{t('templates.assignModal.assignBtn')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -170,30 +172,29 @@ function CreateSheet({ visible, onClose, onCreate }) {
 
         <View>
           <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
-          <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
-          {cycles == null ? (
-            <TouchableOpacity
-              style={[styles.noLimitRow, styles.noLimitRowActive]}
-              onPress={() => setCycles(4)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.noLimitTextActive}>{t('editor.cyclesNoLimit')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              <StepField
-                horizontal
-                label={t('editor.stageWeeksUnit')}
-                value={cycles}
-                onChange={setCycles}
-                min={1}
-                max={52}
-              />
-              <TouchableOpacity style={styles.noLimitRow} onPress={() => setCycles(null)} activeOpacity={0.7}>
-                <Text style={styles.noLimitText}>{t('editor.cyclesNoLimit')}</Text>
-              </TouchableOpacity>
-            </>
+          {/* "Sin límite" es un estado del propio ajuste, no otra opción de una
+              lista: va en el `Switch` compartido de `ui/EditorRows` y, cuando
+              está activo, el stepper desaparece porque no hay número que contar.
+              La explicación va DEBAJO del control, no entre el título y él. */}
+          {cycles != null && (
+            <StepField
+              horizontal
+              label={t('editor.stageWeeksUnit')}
+              value={cycles}
+              onChange={setCycles}
+              min={1}
+              max={52}
+            />
           )}
+          <View style={styles.toggleWrap}>
+            <ToggleRow
+              label={t('templates.newModal.noLimitLabel')}
+              hint={t('editor.cyclesNoLimit')}
+              value={cycles == null}
+              onChange={(on) => setCycles(on ? null : 4)}
+            />
+          </View>
+          <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
         </View>
 
         <TouchableOpacity
@@ -275,14 +276,21 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
           </ScrollView>
         )}
 
-        <TextInput
-          style={styles.sheetInput}
-          placeholder={t('templates.assignModal.programNamePlaceholder')}
-          placeholderTextColor={th.colors.mutedLight}
-          value={customName}
-          onChangeText={setCustomName}
-          returnKeyType="done"
-        />
+        {/* El nombre de la copia lleva etiqueta de sección propia: dentro del
+            campo, como placeholder, el input se leía como una fila más de la
+            lista de clientes. Vacío = el nombre de la plantilla, que es lo que
+            enseña el placeholder. */}
+        <View>
+          <Text style={styles.sheetLabel}>{t('templates.assignModal.programNameLabel')}</Text>
+          <TextInput
+            style={styles.sheetInput}
+            placeholder={program.name}
+            placeholderTextColor={th.colors.mutedLight}
+            value={customName}
+            onChangeText={setCustomName}
+            returnKeyType="done"
+          />
+        </View>
 
         <TouchableOpacity
           style={[styles.cta, !clientId && styles.ctaDisabled]}
@@ -562,28 +570,31 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Tarjeta de plantilla (`204:1901`) ──
   card: {
+    flexDirection:   'row',
+    alignItems:      'stretch',
+    gap:             spacing.md,
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    // El mock separa el bloque de info de los botones con 18 (usa el token de
-    // radius como gap — regla 3: vale el número, no el nombre).
-    gap: 18,
   },
-  cardBody: { gap: spacing.xs },
-  cardName: { ...textStyles.cardTitle, color: th.colors.text },
-  statsRow: { flexDirection: 'row', gap: 9 },
-  stat:     { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
+  cardBody:  { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.xs },
+  cardName:  { ...textStyles.cardTitle, color: th.colors.text },
+  statsRow:  { flexDirection: 'row', gap: 9 },
+  stat:      { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
   statValue: { ...textStyles.spacingTag, color: th.colors.accent },
-  statLabel: { ...textStyles.smallBold,  color: th.colors.mutedLight, textTransform: 'uppercase' },
+  // Figma pone la etiqueta a `text/SmallBold` (8 px); subida a 10 en QA sin
+  // cambiar familia ni tracking — a 8 px no se leía en dispositivo.
+  statLabel: { ...textStyles.smallBold, fontSize: 10, color: th.colors.mutedLight, textTransform: 'uppercase' },
 
+  // Columna derecha: `···` arriba, `Asignar` abajo.
   cardActions: {
-    flexDirection:  'row',
-    alignItems:     'center',
+    alignItems:     'flex-end',
     justifyContent: 'space-between',
+    gap:            spacing.sm,
   },
   cardBtn: {
-    backgroundColor: th.colors.muted,
+    backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
     padding:         spacing.md,
     alignItems:      'center',
@@ -591,7 +602,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardBtnText: { ...textStyles.cardType, color: th.colors.text },
   cardMenuBtn: {
-    backgroundColor: th.colors.muted,
+    backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.xs2,
@@ -618,7 +629,9 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
-  sheetHint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14, marginBottom: spacing.sm },
+  // Los textos de apoyo van a `text/subtitle` (12), no a `text/tag` (10): a 10
+  // no se leían en dispositivo (QA).
+  sheetHint:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
   sheetEmpty: { ...textStyles.subtitle, color: th.colors.mutedLight, textAlign: 'center', paddingVertical: spacing.md },
   // Dentro de una hoja el fondo YA es `bg`: los campos van sobre `surface`.
   sheetInput: {
@@ -629,16 +642,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
   },
-  noLimitRow: {
-    marginTop:         spacing.sm,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.surface,
+  // `ToggleRow` va a `radius/xxs` porque nace de la lista agrupada del editor de
+  // ejercicio; suelta necesita el recorte del contenedor para redondearse.
+  toggleWrap: {
+    marginTop:    spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: th.radius.sm,
+    overflow:     'hidden',
   },
-  noLimitRowActive:  { backgroundColor: th.tint.accent10 },
-  noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
-  noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
 
   // Hoja de asignar
   assignName: { ...textStyles.cardTitle, color: th.colors.text, marginBottom: spacing.xs },
@@ -653,8 +664,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
   clientRowActive: { backgroundColor: th.tint.accent10 },
   clientName:      { ...textStyles.cardType, color: th.colors.text },
-  clientSub:       { ...textStyles.tag, color: th.colors.mutedLight },
-  clientReplaces:  { ...textStyles.tag, color: th.colors.orange },
+  clientSub:       { ...textStyles.subtitle, color: th.colors.mutedLight },
+  clientReplaces:  { ...textStyles.subtitle, color: th.colors.orange },
   clientCheck:     { ...textStyles.cardType, color: th.colors.accent },
 
   // Confirmación de borrado — mismo par que cierra el editor de ejercicio.

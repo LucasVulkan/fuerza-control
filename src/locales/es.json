@@ -1884,6 +1884,7 @@
       "namePlaceholder": "Nombre de la plantilla",
       "sessionsLabel": "Sesiones del ciclo",
       "sessionsUnit": "sesiones",
+      "noLimitLabel": "Sin límite de ciclos",
       "createBtn": "CREAR Y EDITAR"
     },
     "assignModal": {
