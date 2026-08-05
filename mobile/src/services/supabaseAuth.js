@@ -160,3 +160,20 @@ export async function getSession() {
 export async function signOut() {
   await supabase.auth.signOut();
 }
+
+/**
+ * Borra la cuenta del usuario que tiene sesión ahora mismo.
+ *
+ * Requisito de la App Store 5.1.1(v). Va por Edge Function porque eliminar el
+ * usuario de `auth.users` necesita admin API, que no puede vivir en el cliente.
+ * La función saca la identidad del JWT, así que aquí no se manda ningún id:
+ * solo puedes borrar tu propia cuenta.
+ *
+ * Ver supabase/functions/delete-account/index.ts para qué se borra y qué no.
+ */
+export async function deleteAccount() {
+  const { data, error } = await supabase.functions.invoke('delete-account');
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}

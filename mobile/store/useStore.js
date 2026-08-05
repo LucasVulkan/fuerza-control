@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -3430,6 +3430,18 @@ export const useStore = create(
       unlinkFromTrainer: async ({ keepProgram = false } = {}) => {
         const { clientSync, trainerSync } = get();
 
+        // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
+        // falta la sesión del cliente para que la RPC sepa qué fila es suya.
+        // Sin esto el hueco se quedaba ocupado y con el historial dentro, y el
+        // entrenador seguía viendo al cliente como conectado.
+        // No es fatal: desconectarse en local tiene que funcionar aunque no
+        // haya red.
+        if (clientSync.slotId) {
+          await releaseClientSlot().catch((err) => {
+            console.error('[unlinkFromTrainer] releaseClientSlot failed:', err.message);
+          });
+        }
+
         // Restore previous activeProgramId if we saved one on link.
         // Skip when keepProgram=true — e.g. the user just created a new program
         // and we shouldn't overwrite it with the pre-link program.
@@ -3578,6 +3590,67 @@ export const useStore = create(
             linkedProvider: provider,
           },
         }));
+      },
+
+      // ══════════════════════════════════════════════════════════════════════
+      // BORRADO DE CUENTA
+      // ══════════════════════════════════════════════════════════════════════
+
+      /**
+       * ¿Hay algo que borrar en el servidor? En modo sin conexión no existe
+       * ninguna cuenta, y la pantalla tiene que decirlo en vez de ofrecer un
+       * botón que no haría nada.
+       */
+      hasRemoteAccount: () => {
+        const { trainerSync, clientSync } = get();
+        const asTrainer = !!trainerSync.mode && trainerSync.mode !== 'offline';
+        return asTrainer || !!clientSync.slotId;
+      },
+
+      /**
+       * Borra la cuenta del servidor y deja la app como si nunca se hubiera
+       * conectado a nada. Requisito de la App Store 5.1.1(v).
+       *
+       * Qué NO hace, a propósito:
+       *  - No borra el historial ni los programas de este móvil. Son datos del
+       *    usuario y la app funciona sin cuenta; borrarlos de oficio sería
+       *    destruir lo que no ha pedido. Para eso está desinstalar.
+       *  - No toca el Pro. RevenueCat va con ID anónimo (App.js solo llama a
+       *    `configure`, nunca a `logIn`), así que la compra está atada a la
+       *    cuenta de Apple/Google Play, no a esta. Se recupera con "Restaurar
+       *    compras".
+       *
+       * ponytail: sin reintento. Si falla a medias la cuenta sigue viva (la
+       * Edge Function borra el usuario de auth lo último) y volver a pulsar
+       * reanuda desde donde estaba.
+       */
+      deleteAccount: async () => {
+        const { deleteAccount: deleteRemoteAccount, signOut: supabaseSignOut } =
+          require('../src/services/supabaseAuth');
+
+        await deleteRemoteAccount();
+        await supabaseSignOut().catch(() => {});
+
+        set(() => ({
+          trainerSync: {
+            mode: 'offline', code: null, userId: null,
+            trainerName: null, lastSeenSessionsCount: {},
+          },
+          clientSync: {
+            slotId: null, clientCode: null, supabaseUserId: null,
+            googleLinked: false, linkedProvider: null, trainerName: null,
+            pendingUpload: false, lastSyncedAt: null, syncErrorAt: null,
+            lastProgramImportedAt: null, lastAppliedStageActivation: null,
+            previousActiveProgramId: null, trainerProgramIds: [],
+            linkedAt: null, pendingOverrides: {},
+          },
+          // Los clientes eran filas del servidor que ya no existen. Dejarlos en
+          // la lista sería enseñar gente con la que no se puede sincronizar.
+          clients: {},
+          clientLogs: {},
+        }));
+
+        return { ok: true };
       },
 
       // ══════════════════════════════════════════════════════════════════════

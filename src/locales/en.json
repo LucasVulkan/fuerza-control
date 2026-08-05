@@ -82,6 +82,8 @@
     "exportProgramHistorySub": "Only the active program and its sessions",
     "planRow": "Plan",
     "docsRow": "Documentation",
+    "deleteAccountRow": "Delete my account",
+    "deleteAccountSub": "Deletes your account and everything on the server. Can't be undone.",
     "exporting": "Exporting…",
     "pendingBanner": "⚠️ Last session not sent to trainer · Tap to retry",
     "pendingBannerSyncing": "Syncing…",
@@ -2021,5 +2023,24 @@
       "volume": "Adds sets to the accessories only; the key lifts are left alone."
     },
     "baseLine": "The stages of the block derive from “{{name}}”"
+  },
+  "deleteAccount": {
+    "title": "Delete account",
+    "lead": "Your account and everything stored in it will be deleted from the server. This can't be undone.",
+    "noAccount": "There's no account to delete: this app is in offline mode and nothing of yours leaves this phone. To start over, uninstall the app.",
+    "whatHappens": "WHAT GETS DELETED",
+    "implTrainer": "Your clients stop syncing: they lose the program you sent them and their code stops working.",
+    "implClient": "You stop being connected to your trainer, and the history they had of you is deleted.",
+    "implIrreversible": "There's no way to get it back. Not with your code, not by signing in again with Google or Apple.",
+    "whatStays": "WHAT DOESN'T",
+    "staysLocal": "Your history, programs and exercises on this phone stay as they are. The app keeps working without an account.",
+    "staysPro": "If you have Pro you keep it: the purchase belongs to your Apple or Google Play account, not this one. Restore it with \"Restore purchases\".",
+    "cta": "DELETE MY ACCOUNT",
+    "confirmTitle": "Delete your account?",
+    "confirmBody": "This can't be undone.",
+    "confirmCta": "Delete",
+    "toastDone": "Account deleted",
+    "errTitle": "Couldn't delete the account",
+    "errBody": "Try again in a moment."
   }
 }

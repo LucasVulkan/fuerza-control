@@ -82,6 +82,8 @@
     "exportProgramHistorySub": "Solo el programa activo y sus sesiones",
     "planRow": "Plan",
     "docsRow": "Documentación",
+    "deleteAccountRow": "Eliminar mi cuenta",
+    "deleteAccountSub": "Borra tu cuenta y lo que haya en el servidor. No se puede deshacer.",
     "exporting": "Exportando…",
     "pendingBanner": "⚠️ Última sesión no enviada al entrenador · Toca para reintentar",
     "pendingBannerSyncing": "Sincronizando…",
@@ -2021,5 +2023,24 @@
       "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
     },
     "baseLine": "Las etapas del bloque se derivan de «{{name}}»"
+  },
+  "deleteAccount": {
+    "title": "Eliminar cuenta",
+    "lead": "Se borra tu cuenta del servidor y todo lo que esté guardado en ella. Esto no se puede deshacer.",
+    "noAccount": "No tienes ninguna cuenta que borrar: esta app está en modo sin conexión y nada tuyo sale de este móvil. Si quieres empezar de cero, desinstala la app.",
+    "whatHappens": "QUÉ SE BORRA",
+    "implTrainer": "Tus clientes dejan de estar sincronizados: pierden el programa que les enviaste y su código deja de funcionar.",
+    "implClient": "Dejas de estar conectado con tu entrenador y se borra el historial que él tenía tuyo.",
+    "implIrreversible": "No hay forma de recuperarlo. Ni con tu código, ni entrando otra vez con Google o Apple.",
+    "whatStays": "QUÉ NO SE BORRA",
+    "staysLocal": "Tu historial, tus programas y tus ejercicios de este móvil se quedan como están. La app sigue funcionando sin cuenta.",
+    "staysPro": "Si tienes Pro no lo pierdes: la compra va con tu cuenta de Apple o Google Play, no con esta. Se recupera con \"Restaurar compras\".",
+    "cta": "ELIMINAR MI CUENTA",
+    "confirmTitle": "¿Eliminar tu cuenta?",
+    "confirmBody": "Esta acción no se puede deshacer.",
+    "confirmCta": "Eliminar",
+    "toastDone": "Cuenta eliminada",
+    "errTitle": "No se pudo eliminar la cuenta",
+    "errBody": "Inténtalo otra vez en un momento."
   }
 }

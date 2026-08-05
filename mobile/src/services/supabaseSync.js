@@ -226,15 +226,20 @@ export async function deleteClientSlot(slotId) {
 }
 
 /**
- * Marks a slot as disconnected (client switched trainers or unlinked).
+ * El cliente suelta el hueco que ocupa y borra lo suyo (historial, overrides),
+ * dejando el programa, el nombre y el código, que son del entrenador.
+ *
+ * Va por RPC y no por un update directo porque la política
+ * "Client can update their slot" lleva `with check (auth.uid() = client_id)`:
+ * poner `client_id = null` la incumple, así que el cliente no puede soltarse a
+ * sí mismo con un update normal. Ver supabase/release_client_slot.sql.
+ *
+ * Devuelve cuántas filas se soltaron (0 si no había ninguna: no es un error).
  */
-export async function disconnectClientSlot(slotId) {
-  const { error } = await supabase
-    .from('trainer_clients')
-    .update({ client_id: null, disconnected_at: new Date().toISOString() })
-    .eq('id', slotId);
-
+export async function releaseClientSlot() {
+  const { data, error } = await supabase.rpc('release_client_slot');
   if (error) throw error;
+  return data ?? 0;
 }
 
 /**

@@ -19,6 +19,7 @@ import { useStore } from '../../store/useStore';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
 import TrainerSyncModal      from './TrainerSyncModal';
+import DeleteAccountModal    from './DeleteAccountModal';
 import PaywallModal from './PaywallModal';
 import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
@@ -110,6 +111,7 @@ const ICON_EXPORT   = <Path d="M12 19V5M6 11l6-6 6 6" />;
 const ICON_IMPORT   = <Path d="M12 5v14M6 13l6 6 6-6" />;
 const ICON_PLAN     = <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />;
 const ICON_DOCS     = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
+const ICON_TRASH    = <G><Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></G>;
 
 // ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
 // Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
@@ -317,7 +319,8 @@ function ExportSheet({ visible, onClose }) {
 
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode }) {
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode, onDeleteAccount }) {
+  const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
   const navigation = useNavigation();
@@ -507,6 +510,18 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           label={t('header.docsRow')}
           onPress={() => go('Docs')}
         />
+        {/* Apple pide (5.1.1(v)) que borrar la cuenta se encuentre desde
+            dentro. Va aquí, en CUENTA, y no dentro de Sincronización: esa
+            fila es solo para Pro y se abre desde Clientes. */}
+        <MenuRow
+          icon={<RowIcon color={th.tint.red50}>{ICON_TRASH}</RowIcon>}
+          label={t('header.deleteAccountRow')}
+          labelColor={th.tint.red50}
+          sub={t('header.deleteAccountSub')}
+          subLines={0}
+          minHeight={62}
+          onPress={() => { onClose(); onDeleteAccount(); }}
+        />
       </Section>
 
       {__DEV__ && (
@@ -537,6 +552,7 @@ export default function AppHeader() {
   const [showArchived,      setShowArchived]       = useState(false);
   const [showExport,        setShowExport]         = useState(false);
   const [showSyncMode,      setShowSyncMode]       = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount]  = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
   const importData                = useStore((s) => s.importData);
@@ -654,6 +670,7 @@ export default function AppHeader() {
         onShowArchived={() => setShowArchived(true)}
         onShowExport={() => setShowExport(true)}
         onChangeSyncMode={() => setShowSyncMode(true)}
+        onDeleteAccount={() => setShowDeleteAccount(true)}
       />
 
       {showArchived && (
@@ -666,6 +683,11 @@ export default function AppHeader() {
         visible={showSyncMode}
         onClose={() => setShowSyncMode(false)}
         isFirstTime={false}
+      />
+
+      <DeleteAccountModal
+        visible={showDeleteAccount}
+        onClose={() => setShowDeleteAccount(false)}
       />
 
       {importState && (
