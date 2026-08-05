@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   blockActiveSec, modelSec, sessionMinutes, internalLoad,
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
-  rollingMean, monotony, strain, loadState, setsByMuscleGroup,
+  rollingMean, monotony, strain, loadState, setsByMuscleGroup, plannedSetsByGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
@@ -606,6 +606,33 @@ describe('setsByMuscleGroup', () => {
   it('ignora ejercicios sin series registradas y devuelve [] con un log vacío', () => {
     expect(setsByMuscleGroup([sesion('a', T0, [ex('squat_barbell', 0)])], EXERCISE_LIBRARY)).toEqual([]);
     expect(setsByMuscleGroup([], EXERCISE_LIBRARY)).toEqual([]);
+  });
+});
+
+describe('plannedSetsByGroup', () => {
+  it('suma las series prescritas de todas las sesiones del ciclo, por grupo', () => {
+    const templates = [
+      { exercises: [{ exerciseId: 'squat_barbell', sets: 4 }, { exerciseId: 'pull_up_weighted', sets: 3 }] },
+      { exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] },
+    ];
+    expect(plannedSetsByGroup(templates, EXERCISE_LIBRARY)).toEqual([
+      { group: 'quads', sets: 6 },
+      { group: 'back',  sets: 3 },
+    ]);
+  });
+
+  it('los bloques no suman y el ejercicio sin grupo cae en "other"', () => {
+    const templates = [{
+      exercises: [{ exerciseId: 'propio', sets: 3 }],
+      blocks: [{ format: 'amrap', movements: [{ exerciseId: 'squat_barbell', amount: 10 }] }],
+    }];
+    expect(plannedSetsByGroup(templates, { propio: { primaryGroup: 'custom' } }))
+      .toEqual([{ group: 'other', sets: 3 }]);
+  });
+
+  it('sin series efectivas no inventa filas', () => {
+    expect(plannedSetsByGroup([{ exercises: [{ exerciseId: 'squat_barbell', sets: 0 }] }], EXERCISE_LIBRARY)).toEqual([]);
+    expect(plannedSetsByGroup([], EXERCISE_LIBRARY)).toEqual([]);
   });
 });
 

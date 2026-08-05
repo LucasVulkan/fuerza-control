@@ -616,6 +616,11 @@ export function performanceWeekly(log, allExercises, opts = {}) {
  *
  * @returns {Array<{ group: string, sets: number }>} de más a menos series.
  */
+export function muscleGroupOf(def) {
+  const raw = def?.primaryGroup;
+  return raw && raw !== 'custom' ? raw : 'other';
+}
+
 export function setsByMuscleGroup(log, allExercises, { from = null, to = Date.now() } = {}) {
   const counts = new Map();
   for (const entry of log ?? []) {
@@ -624,8 +629,42 @@ export function setsByMuscleGroup(log, allExercises, { from = null, to = Date.no
     for (const ex of entry.exercises ?? []) {
       const n = doneSets(ex).length;
       if (!n) continue;
-      const raw   = allExercises?.[ex.exerciseId]?.primaryGroup;
-      const group = raw && raw !== 'custom' ? raw : 'other';
+      const group = muscleGroupOf(allExercises?.[ex.exerciseId]);
+      counts.set(group, (counts.get(group) ?? 0) + n);
+    }
+  }
+  return [...counts.entries()]
+    .map(([group, sets]) => ({ group, sets }))
+    .sort((a, b) => b.sets - a.sets);
+}
+
+/**
+ * Series PRESCRITAS por grupo muscular en un ciclo (= una vuelta a las sesiones
+ * que se le pasen). La gemela de `setsByMuscleGroup`: una cuenta lo planificado
+ * y otra lo hecho, y viven pegadas a propósito — si las reglas de atribución
+ * divergen, comparar el programa con lo entrenado deja de significar nada.
+ *
+ * Mismas reglas, ya justificadas arriba: atribución por `primaryGroup` (volumen
+ * directo), `custom`/borrado → `'other'`, el dropset no suma serie (es
+ * intensificación de la última, no una serie nueva), el calentamiento no cuenta
+ * y los bloques de acondicionamiento tampoco (no tienen ni series ni grupo).
+ *
+ * Entran plantillas ya resueltas (`getEffectiveTemplate`), no `days`: la
+ * pantalla las resuelve igualmente para pintarlas, y así esto se testea sin store.
+ *
+ * @returns {Array<{ group: string, sets: number }>} de más a menos series.
+ */
+export function plannedSets(exConfig, def) {
+  return exConfig?.sets ?? def?.sets ?? 3;
+}
+
+export function plannedSetsByGroup(templates, allExercises) {
+  const counts = new Map();
+  for (const tpl of templates ?? []) {
+    for (const ex of tpl?.exercises ?? []) {
+      const n = plannedSets(ex, allExercises?.[ex.exerciseId]);
+      if (!n) continue;
+      const group = muscleGroupOf(allExercises?.[ex.exerciseId]);
       counts.set(group, (counts.get(group) ?? 0) + n);
     }
   }
