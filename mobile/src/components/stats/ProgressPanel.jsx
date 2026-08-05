@@ -7,15 +7,15 @@
  * gratis en el lado entrenador, que es donde monotonía y strain son más
  * accionables.
  *
- * El conmutador queda FUERA del scroll de cada pestaña: cada una trae su propia
- * ScrollView con su padding de página.
+ * El conmutador viaja DENTRO del scroll de cada pestaña (prop `header`, primer
+ * hijo de su ScrollView): no aporta nada fijo en pantalla y clavado arriba solo
+ * robaba alto útil al contenido. El padding lateral ya lo pone el
+ * contentContainer de cada pestaña, así que va sin envoltorio.
  */
 import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { spacing } from '../../theme';
-import { useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import ProgressTab from './ProgressTab';
 import LoadTab     from './LoadTab';
@@ -24,7 +24,6 @@ export default function ProgressPanel({
   baseLog, programTemplateIds, allExercises, fallbackBodyWeight,
   onRefresh, refreshing = false,
 }) {
-  const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
   const [view, setView] = useState('exercises');
 
@@ -33,14 +32,13 @@ export default function ProgressPanel({
     { id: 'load',      label: t('load.tabLoad') },
   ];
 
-  return (
-    <View style={styles.flex}>
-      <View style={styles.switchWrap}>
-        <SegmentedControl options={options} value={view} onChange={setView} />
-      </View>
+  const header = <SegmentedControl options={options} value={view} onChange={setView} />;
 
+  return (
+    <View style={{ flex: 1 }}>
       {view === 'exercises' ? (
         <ProgressTab
+          header={header}
           baseLog={baseLog}
           programTemplateIds={programTemplateIds}
           allExercises={allExercises}
@@ -49,6 +47,7 @@ export default function ProgressPanel({
         />
       ) : (
         <LoadTab
+          header={header}
           baseLog={baseLog}
           allExercises={allExercises}
           fallbackBodyWeight={fallbackBodyWeight}
@@ -59,8 +58,3 @@ export default function ProgressPanel({
     </View>
   );
 }
-
-const makeStyles = () => StyleSheet.create({
-  flex:       { flex: 1 },
-  switchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-});

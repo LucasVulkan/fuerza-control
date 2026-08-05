@@ -1149,7 +1149,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
 
 // ── ProgressTab ────────────────────────────────────────────────────────────────
 
-export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
+export default function ProgressTab({ header, baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -1290,6 +1290,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         />
       ) : undefined}
     >
+      {header}
+
       {/* ── Grupo control + cards (Figma 122:899: gap 15, py 10) ──────────────── */}
       <View style={styles.headerGroup}>
       {/* ── Fila de control: período + toggle programa ──────────────────────── */}
@@ -1476,7 +1478,7 @@ const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   // Página Figma (122:789): padding lateral space/lg (15), gap space/md (10).
   // Sin paddingTop propio: el headerGroup ya aporta 10px bajo el top bar.
-  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md },
 
   // Grupo control+cards (Figma 122:899): gap space/lg (15) + padding vertical space/md (10).
   headerGroup: { width: '100%', gap: spacing.lg, paddingVertical: spacing.md },

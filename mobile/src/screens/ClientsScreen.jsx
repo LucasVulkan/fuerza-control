@@ -29,6 +29,7 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
 import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
@@ -2375,18 +2376,25 @@ export default function ClientsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
 
-        {/* ‹ · nombre · última actividad, todo en una línea */}
-        <View style={styles.detailHeader}>
-          <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
-          {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
-        </View>
+        {/* Banda de navegación: cabecera y pestañas comparten fondo y cierran con
+            un borde. Lo que va DENTRO de la banda navega, lo que va sobre `bg`
+            filtra — así las pestañas no se confunden con los controles
+            segmentados de filtro que viven dentro de cada tab, sin necesidad de
+            pintarlas distinto. */}
+        <View style={styles.detailNavBand}>
+          {/* ‹ · nombre · última actividad, todo en una línea */}
+          <View style={styles.detailHeader}>
+            <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
+            {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
+          </View>
 
-        {/* Tabs */}
-        <View style={styles.detailTabs}>
-          <SegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
+          {/* Tabs */}
+          <View style={styles.detailTabs}>
+            <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
+          </View>
         </View>
 
         {/* ── Tab: Programas ── */}
@@ -4079,6 +4087,12 @@ const makeStyles = (th) => StyleSheet.create({
   // Legacy action button stubs
 
   // ── Detail header ──
+  // Sin borde inferior: la pestaña activa cruza esa línea para fundirse con su
+  // contenido, así que el corte lo marca el escalón de fondo (banda `surface`
+  // sobre página `bg`) y no una raya que la pestaña tendría que interrumpir.
+  detailNavBand: {
+    backgroundColor: th.colors.surface,
+  },
   detailHeader: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4111,12 +4125,11 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted,
     flexShrink: 0,
   },
-  // El aire bajo las pestañas lo pone el contenido de cada tab, no esta fila:
-  // así el tab no arranca a dos dedos del control.
+  // SIN `paddingBottom`: la pestaña activa tiene que llegar hasta el borde de la
+  // banda para fundirse con el contenido. El aire de debajo lo pone cada tab.
   detailTabs: {
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
-    paddingBottom:     spacing.sm,
   },
 
   // ── Tab content ──
@@ -4127,7 +4140,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   tabContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.sm,
+    paddingTop:        spacing.lg,
     // Mismo aire entre tarjetas que la lista del historial principal.
     gap:               spacing.md,
   },
@@ -4138,7 +4151,7 @@ const makeStyles = (th) => StyleSheet.create({
   // botones va pegada a la tarjeta, la sección de próxima sesión bien separada).
   programTabContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.sm,
+    paddingTop:        spacing.lg,
   },
 
   // ── Tarjeta de programa asignado ─────────────────────────────────────────────
@@ -4392,7 +4405,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   infoCodeWrap: {
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.md,
+    paddingTop:        spacing.lg,
     paddingBottom:     spacing.sm,
   },
 

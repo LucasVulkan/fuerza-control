@@ -10,7 +10,7 @@
 import { useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
-  ScrollView, Alert, StyleSheet,
+  ScrollView, Alert, StyleSheet, PixelRatio,
 } from 'react-native';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,10 +33,15 @@ const CELL_GAP = 3;
 // ── Mapa de calor ──────────────────────────────────────────────────────────────
 // Cuatro escalones, no un degradado continuo: en celdas de 30 px nadie
 // distingue un 0,42 de un 0,55 de opacidad, y cuatro pasos sí se comparan de un
-// vistazo. Por encima del segundo escalón el fondo ya es lo bastante sólido
-// como para que el número del día tenga que ir en oscuro.
-const HEAT_STEPS = [0.18, 0.42, 0.66, 0.9];
-const HEAT_DARK_TEXT_FROM = 2;
+// vistazo.
+//
+// El techo es 0.5 a propósito: por encima de ahí el relleno se acerca demasiado
+// al accent puro y el número del día dejaba de leerse, lo que obligaba a
+// invertir su color a mitad de la escala. Con el tope bajo, `colors.text` se lee
+// sobre los cuatro escalones en todos los temas (accent claro sobre fondo
+// oscuro en FormaFit, accent oscuro sobre fondo claro en Space), así que el
+// texto es siempre el mismo y solo cambia el fondo.
+const HEAT_STEPS = [0.10, 0.21, 0.31, 0.42];
 
 /** Escalón de un día según los cortes de cuartil del propio usuario. */
 function heatLevel(load, cuts) {
@@ -113,6 +118,17 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
 
+  // Ancho de celda medido, no `flex: 1`: con flex, Yoga reparte los píxeles
+  // sobrantes de la fila entre unas columnas sí y otras no, y esas quedaban 1 px
+  // más anchas — con el número descentrado respecto al resto del grid. Se
+  // trunca al píxel físico para que 7 celdas + 6 huecos nunca desborden, y el
+  // resto (< 1 px) se lo queda `space-between` en los huecos, donde no se ve.
+  const [cellW, setCellW] = useState(0);
+  function measureGrid(e) {
+    const px = PixelRatio.get();
+    setCellW(Math.floor(((e.nativeEvent.layout.width - CELL_GAP * 6) / 7) * px) / px);
+  }
+
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
 
   function prevMonth() {
@@ -153,16 +169,16 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
       {/* Day-of-week headers */}
       <View style={cal.header}>
         {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
-          <Text key={d} style={cal.hDay}>{d}</Text>
+          <Text key={d} style={[cal.hDay, { width: cellW }]}>{d}</Text>
         ))}
       </View>
 
       {/* Grid — trim trailing empty rows */}
-      <View style={cal.grid}>
+      <View style={cal.grid} onLayout={measureGrid}>
         {weeks.filter((week) => week.some((d) => d !== null)).map((week, wi) => (
           <View key={wi} style={cal.week}>
             {week.map((day, di) => {
-              if (day === null) return <View key={di} style={cal.cellBlank} />;
+              if (day === null) return <View key={di} style={[cal.cellBlank, { width: cellW }]} />;
               const hit     = trainedDays[day];
               const trained = !!hit;
               // Entrenó pero sin sRPE: no hay carga que pintar. Va en contorno,
@@ -180,6 +196,7 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   key={di}
                   style={[
                     cal.cell,
+                    { width: cellW },
                     level >= 0 && { backgroundColor: withOpacity(th.colors.accent, HEAT_STEPS[level]) },
                     noRpe   && cal.cellNoRpe,
                     isToday && !trained && cal.cellToday,
@@ -191,9 +208,7 @@ function WorkoutCalendar({ onDayPress, selectedDate }) {
                   <Text
                     style={[
                       cal.dayNum,
-                      // El texto se invierte solo cuando el fondo ya es sólido.
-                      level >= HEAT_DARK_TEXT_FROM && cal.dayNumOnHeat,
-                      level >= 0 && level < HEAT_DARK_TEXT_FROM && cal.dayNumOnTint,
+                      level >= 0 && cal.dayNumOnHeat,
                       noRpe   && cal.dayNumNoRpe,
                       isToday && !trained && cal.dayNumToday,
                     ]}
@@ -253,14 +268,13 @@ const makeCal = (th) => StyleSheet.create({
 
   // Day-of-week header
   header: {
-    flexDirection: 'row',
-    gap:           CELL_GAP,
-    marginBottom:  4,
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    marginBottom:   4,
   },
   // Subida de brillo y peso: en muted2 a 9 px la fila de días se perdía y el
   // calendario quedaba sin sus ejes.
   hDay: {
-    flex:          1,
     textAlign:     'center',
     fontSize:      10,
     fontWeight:    typography.heavy,
@@ -270,12 +284,11 @@ const makeCal = (th) => StyleSheet.create({
 
   // Grid
   grid: { gap: CELL_GAP },
-  week: { flexDirection: 'row', gap: CELL_GAP },
+  week: { flexDirection: 'row', justifyContent: 'space-between' },
 
-  cellBlank: { flex: 1, height: CELL_H },
+  cellBlank: { height: CELL_H },
 
   cell: {
-    flex:           1,
     height:         CELL_H,
     borderRadius:   th.radius.xs + 1,
     alignItems:     'center',
@@ -288,9 +301,11 @@ const makeCal = (th) => StyleSheet.create({
   cellSel:   { borderWidth: 2, borderColor: th.colors.text },
 
   dayNum:       { fontSize: 10, color: th.colors.muted2 },
-  dayNumOnTint: { color: th.colors.text,     fontWeight: typography.bold },
-  dayNumOnHeat: { color: th.colors.onAccent, fontWeight: typography.heavy },
-  dayNumNoRpe:  { color: th.colors.accent,   fontWeight: typography.bold },
+  // Mismo color y mismo peso en los cuatro escalones: lo que ordena los días es
+  // el fondo, no el número, y verlo cambiar de color a mitad de escala se leía
+  // como otro estado más.
+  dayNumOnHeat: { color: th.colors.text,   fontWeight: typography.bold },
+  dayNumNoRpe:  { color: th.colors.accent, fontWeight: typography.bold },
   dayNumToday:  { color: th.colors.accent,   fontWeight: typography.medium },
 
   // ── Leyenda del mapa de calor ──

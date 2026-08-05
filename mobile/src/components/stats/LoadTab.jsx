@@ -203,7 +203,7 @@ function IndexChart({ series, height = 96 }) {
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onRefresh, refreshing = false }) {
+export default function LoadTab({ header, baseLog, allExercises, fallbackBodyWeight, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -380,6 +380,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
           tintColor={th.colors.accent} colors={[th.colors.accent]} />
       ) : undefined}
     >
+      {header}
       {children}
     </ScrollView>
   );
@@ -675,7 +676,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md },
 
   controlRow:    { flexDirection: 'row', alignItems: 'center' },
   segmentedWrap: { width: 198 },
