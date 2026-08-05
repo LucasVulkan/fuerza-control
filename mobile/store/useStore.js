@@ -755,20 +755,6 @@ export const useStore = create(
         });
       },
 
-      cancelEditSession: (destination = 'home') => {
-        const { _editSnapshot } = get();
-        if (_editSnapshot !== null) {
-          set({ userPrograms: _editSnapshot, _editSnapshot: null });
-        }
-        set((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
-        get().navigate(destination);
-      },
-
-      confirmEditSession: (destination = 'home') => {
-        set((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
-        get().navigate(destination);
-      },
-
       updateExerciseParams: (templateId, exerciseId, updates) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
