@@ -4,6 +4,12 @@
 cualquier implementador (humano o LLM) pueda ejecutarla sin la conversación
 original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
+## Auditoría de corrección
+
+| Spec | Estado | Coste | Nota |
+|---|---|---|---|
+| [auditoria-tecnica.md](auditoria-tecnica.md) — Auditoría técnica (ago 2026) | diagnóstico cerrado, SIN implementar. 24 fallos: 2 críticos · 7 altos · 7 medios · 8 bajos | 🟡 | No es una feature: es corrección. La **tanda A** ([§25](auditoria-tecnica.md#25-orden-de-trabajo-sugerido)) va antes de publicar — un fallo al rehidratar AsyncStorage deja la app en pantalla negra sin recuperación, y restaurar un backup completo pierde todos los programas de clientes. La tanda B arregla que la copia programada a Drive nunca se ejecute; la D, que en iOS todo el mundo sea Pro |
+
 ## Specs listas para implementar
 
 | Spec | Estado | Coste | Nota |
