@@ -591,6 +591,46 @@ const MIN_CYCLE_SPEED_DEFAULT = 0.6;
 const LEVEL_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
 const LEVEL_SCORE = [20, 8, 0];
 
+/**
+ * Frecuencia semanal objetivo por grupo, y cuánto pesa acercarse a ella.
+ *
+ * Es la regla de diseño del catálogo convertida en puntuación: la progresión
+ * doble necesita exposición repetida al mismo movimiento, así que una plantilla
+ * que toca cada grupo dos veces por semana vale más que una que lo toca una.
+ *
+ * Sin esto, a 3 días una full body y un PPL puntúan **idéntico** —misma
+ * identidad, mismo nivel, misma velocidad de ciclo— y gana el que esté antes en
+ * el array. Y son muy distintos: la full body da frecuencia 3 por grupo y el
+ * PPL, 1.
+ */
+const FREQ_TARGET = 2;
+const FREQ_WEIGHT = 15;
+
+/**
+ * Cuántas veces por semana toca cada grupo su ejercicio principal, comparado con
+ * el objetivo. Devuelve 0..FREQ_WEIGHT.
+ *
+ * Sólo cuenta los tier 1: dos series de un aislamiento no son una exposición al
+ * patrón. Se satura en el objetivo — pasar de 2 a 3 no puntúa más, porque a
+ * partir de ahí lo que manda es el volumen, no la frecuencia.
+ */
+function frequencyScore(archetype, cycleSpeed) {
+  const sessionsWith = {};
+  for (const day of archetype.days) {
+    const groups = new Set(day.exercises
+      .filter((ex) => (ex.tier ?? (ex.role === 'key' ? 1 : 3)) === 1)
+      .map((ex) => ex.primaryGroup));
+    for (const g of groups) sessionsWith[g] = (sessionsWith[g] ?? 0) + 1;
+  }
+
+  const groups = Object.keys(sessionsWith);
+  if (!groups.length) return 0;
+
+  const media = groups.reduce((sum, g) =>
+    sum + Math.min(sessionsWith[g] * cycleSpeed, FREQ_TARGET) / FREQ_TARGET, 0) / groups.length;
+  return FREQ_WEIGHT * media;
+}
+
 function equipmentGap(archetype, equipment = []) {
   let missing = 0;
   for (const day of archetype.days) {
@@ -622,6 +662,11 @@ export function rankArchetypes(answers = {}) {
     // Cuanto más se aleje el ciclo de durar una semana, peor encaja.
     score -= 20 * Math.abs(cycleSpeed - 1);
 
+    // Frecuencia semanal por grupo: a igualdad de todo lo demás, gana la que
+    // repite cada patrón principal.
+    const freq = frequencyScore(archetype, cycleSpeed);
+    score += freq;
+
     const minSpeed = MIN_CYCLE_SPEED[archetype.discipline] ?? MIN_CYCLE_SPEED_DEFAULT;
     if (cycleSpeed < minSpeed) score -= 60;
 
@@ -632,6 +677,9 @@ export function rankArchetypes(answers = {}) {
     if (cycleSpeed > 1.25) notes.push('rotates');
     if (cycleSpeed < minSpeed) notes.push('slowCycle');
     if (levelGap > 0) notes.push('levelStretch');
+    // Menos de la mitad del objetivo: cada grupo se toca una vez por semana o
+    // menos. La tarjeta debería decirlo.
+    if (freq < FREQ_WEIGHT * 0.75) notes.push('lowFrequency');
 
     return { archetype, score, sessionsPerCycle, cycleSpeed, adaptationCost, notes };
   }).sort((a, b) => b.score - a.score

@@ -562,6 +562,12 @@ export const VOLUME_BANDS = {
  *  motor primario. Sin esta lista, tres planchas disparan el recorte. */
 export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms'];
 
+/** Grupos cuyo techo DIRECTO es más bajo porque el contador no ve todo lo que
+ *  hacen: el hombro se lleva parte de cada press, el tríceps lo mismo, el
+ *  bíceps de cada tracción. Y el hombro es además la articulación que sostiene
+ *  el resto del entrenamiento. */
+export const GROUP_CEILING_FACTOR = { shoulders: 0.7, arms: 0.7 };
+
 /** Un grupo con énfasis declarado por la plantilla sube su techo. Sin esto, la
  *  plantilla de glúteo (21 sets/ciclo, deliberados) se recorta a 20 y deja de
  *  ser una plantilla de glúteo. */
@@ -859,6 +865,7 @@ Reemplaza `findBestArchetype`. **Nunca devuelve vacío.**
 | `discipline` coincide | +40 |
 | `goal` coincide | +15 |
 | nivel exacto | +20 · adyacente +8 · a dos +0 |
+| **frecuencia semanal por grupo** (media de `min(freq, 2) / 2` sobre los grupos con tier 1) | hasta +15 |
 | **velocidad de ciclo**: `−20 × abs(cycleSpeed − 1)` | — |
 | `cycleSpeed < MIN_CYCLE_SPEED[discipline]` (0,9 fuerza · 0,6 resto) | −60 |
 | principiante con `sessionsPerCycle > 3` (§2.6) | −100 |
@@ -867,6 +874,18 @@ Reemplaza `findBestArchetype`. **Nunca devuelve vacío.**
 ```
 cycleSpeed = daysPerWeek / sessionsPerCycle      // ciclos por semana
 ```
+
+**Por qué un término de frecuencia** (añadido después de la fase 5, a raíz de la
+revisión de niveles): sin él, a 3 días una full body y un PPL puntúan
+**idéntico** —misma identidad, mismo nivel, misma velocidad de ciclo— y ganaba
+el que estuviera antes en el array. Y son muy distintos: la full body toca cada
+grupo 3 veces por semana y el PPL, 1. Es la regla de diseño del catálogo
+(§11.4, "frecuencia ≥2 sobre el mismo movimiento") convertida en puntuación.
+
+Sólo cuentan los tier 1 —dos series de un aislamiento no son una exposición al
+patrón— y se satura en 2: pasar de 2 a 3 no puntúa más, porque a partir de ahí
+lo que manda es el volumen. Comprobado con un PPL de 3 ficticio: 87,0 para la
+full body frente a 82,5, y el PPL se lleva la nota `lowFrequency`.
 
 **Por qué `cycleSpeed` y no una tabla de "sesiones ideales por días":** es la
 magnitud real del modelo rotativo, sale de dos números que ya existen, y una sola

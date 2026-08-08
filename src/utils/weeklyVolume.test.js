@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   weeklySetsByGroup, normalizeWeeklyVolume, ceilingFor,
-  VOLUME_BANDS, CLAMPED_GROUPS, EMPHASIS_BONUS,
+  VOLUME_BANDS, CLAMPED_GROUPS, EMPHASIS_BONUS, GROUP_CEILING_FACTOR,
 } from './weeklyVolume';
 import { adaptArchetype } from './archetypeAdapter';
 import { ARCHETYPES } from '../data/archetypes';
@@ -46,6 +46,23 @@ describe('ceilingFor — banda, disciplina y énfasis', () => {
   it('fuerza tolera menos volumen que hipertrofia', () => {
     expect(ceilingFor('back', { level: 'intermediate', discipline: 'strength' }))
       .toBeLessThan(ceilingFor('back', { level: 'intermediate', discipline: 'standard' }));
+  });
+
+  it('hombro y brazos tienen el techo directo más bajo', () => {
+    // El contador solo ve series directas; hombro y triceps se llevan ademas
+    // una parte de cada press, y el biceps de cada traccion.
+    const opts = { level: 'intermediate' };
+    expect(ceilingFor('shoulders', opts)).toBeLessThan(ceilingFor('chest', opts));
+    expect(ceilingFor('arms', opts)).toBeLessThan(ceilingFor('back', opts));
+    expect(ceilingFor('shoulders', opts))
+      .toBe(VOLUME_BANDS.intermediate.hard * GROUP_CEILING_FACTOR.shoulders);
+  });
+
+  it('el factor se aplica en todos los niveles', () => {
+    for (const level of ['beginner', 'intermediate', 'advanced']) {
+      expect(ceilingFor('shoulders', { level }))
+        .toBeLessThan(ceilingFor('quads', { level }));
+    }
   });
 
   it('el énfasis sube el techo de su grupo, y sólo del suyo', () => {

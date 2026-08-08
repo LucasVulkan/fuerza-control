@@ -150,3 +150,27 @@ describe('rankArchetypes — avisos para la pantalla de propuestas', () => {
     expect(r.notes).toContain('levelStretch');
   });
 });
+
+describe('rankArchetypes — frecuencia semanal por grupo', () => {
+  it('a 3 días, la full body no arrastra aviso de frecuencia', () => {
+    // Toca espalda, pecho y pierna en las tres sesiones: frecuencia 3.
+    const r = rankArchetypes(ask({ daysPerWeek: 3 }))
+      .find((x) => x.archetype.id === 'fullbody_hypertrophy_intermediate');
+    expect(r.notes).not.toContain('lowFrequency');
+  });
+
+  it('cuando el ciclo avanza demasiado despacio, la frecuencia cae y se avisa', () => {
+    // 1 día por semana sobre un ciclo de 3 sesiones: cada grupo, una vez cada
+    // tres semanas. Sigue siendo lo mejor disponible, pero hay que decirlo.
+    const r = rankArchetypes(ask({ daysPerWeek: 1 }))
+      .find((x) => x.archetype.id === 'fullbody_hypertrophy_intermediate');
+    expect(r.notes).toContain('lowFrequency');
+  });
+
+  it('la frecuencia puntúa: la misma plantilla vale más cuando se entrena más', () => {
+    const id = 'fullbody_hypertrophy_intermediate';
+    const uno  = rankArchetypes(ask({ daysPerWeek: 1 })).find((x) => x.archetype.id === id);
+    const tres = rankArchetypes(ask({ daysPerWeek: 3 })).find((x) => x.archetype.id === id);
+    expect(tres.score).toBeGreaterThan(uno.score);
+  });
+});

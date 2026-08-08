@@ -45,6 +45,24 @@ export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_ha
  */
 export const EMPHASIS_BONUS = 6;
 
+/**
+ * Grupos cuyo techo DIRECTO es más bajo porque el contador no ve todo lo que
+ * hacen.
+ *
+ * Aquí solo se cuentan las series en las que el grupo es `primaryGroup`. El
+ * hombro se lleva además una parte de cada press de banca, inclinado y fondo; el
+ * tríceps, lo mismo; el bíceps, de cada remo y cada dominada. Son motores
+ * secundarios de los patrones fundamentales, así que 18 series "directas" de
+ * hombro no son 18: son 18 más todo lo indirecto.
+ *
+ * Y el hombro además es la articulación más delicada y la que sostiene el resto
+ * del entrenamiento: pasarse ahí no cuesta un grupo, cuesta el programa entero.
+ *
+ * El 0,7 es criterio, no medida: deja el techo de un intermedio en 14 series
+ * directas. Mover con datos reales, no por intuición.
+ */
+export const GROUP_CEILING_FACTOR = { shoulders: 0.7, arms: 0.7 };
+
 // Suelos, los mismos que la escalera de compresión (`MIN_SETS_ACCESSORY` se
 // importa de allí para que no haya dos verdades).
 const MIN_ACCESSORIES = 2;
@@ -81,10 +99,18 @@ export function weeklySetsByGroup(sessions, daysPerWeek, allExercises = EXERCISE
   return weekly;
 }
 
-/** Techo de un grupo: banda del nivel × carácter de la disciplina + énfasis. */
+/**
+ * Techo de un grupo: banda del nivel × carácter de la disciplina × factor del
+ * grupo, y después el bonus de énfasis.
+ *
+ * El énfasis se suma al final a propósito: una plantilla que prioriza un grupo
+ * le da las mismas series extra sea cual sea su factor.
+ */
 export function ceilingFor(group, { level = 'intermediate', discipline = 'standard', volumeEmphasis = [] } = {}) {
   const band = VOLUME_BANDS[level] ?? VOLUME_BANDS.intermediate;
-  const base = band.hard * disciplineRules(discipline).volumeBandScale;
+  const base = band.hard
+    * disciplineRules(discipline).volumeBandScale
+    * (GROUP_CEILING_FACTOR[group] ?? 1);
   return base + (volumeEmphasis.includes(group) ? EMPHASIS_BONUS : 0);
 }
 
