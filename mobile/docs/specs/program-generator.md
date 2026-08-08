@@ -2,7 +2,10 @@
 
 > Estado: **diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
 > fusionadas** (`606ccdf` fase A, `eff1666` fase B — ver §4 y §5, marcadas al
-> final de cada una). **Fase C EN PAUSA** (jul 2026, a petición del usuario:
+> final de cada una). **Fase C SUSTITUIDA por
+> [program-templates.md](program-templates.md)** (ago 2026) — ver §6.
+>
+> Nota histórica sobre la fase C, en pausa desde jul 2026 (a petición del usuario:
 > "es muy extenso y no termino de tenerlo claro") — 4 de ~10-12 arquetipos
 > escritos y verificados (ver §6.1), matcher por puntuación y retirada del
 > procedural SIN EMPEZAR. §1 describe la arquitectura TAL COMO QUEDÓ tras A+B
@@ -275,7 +278,16 @@ generada supera ~35 min estimados (margen por el suelo duro) y todas conservan
 ≥1 key; con 90 min salen 6 ejercicios; invariantes existentes intactos con el
 nuevo parámetro presente y ausente (default 60).
 
-## 6. FASE C — Biblioteca de plantillas + matching por puntuación 🟡 EN PAUSA
+## 6. FASE C — Biblioteca de plantillas + matching por puntuación ⛔ SUSTITUIDA
+
+> **Reemplazada por [program-templates.md](program-templates.md)** (ago 2026).
+> Aquella spec recoge lo que aquí quedó pendiente (matcher por puntuación,
+> retirada del procedural, plantillas que faltan) y añade lo que este
+> diagnóstico no vio: volumen semanal por grupo, fases con duración concreta y
+> el onboarding de propuestas. **§6.1 sigue siendo la referencia viva** de las
+> plantillas ya escritas y de sus decisiones de diseño — la spec nueva la cita
+> en su §7.4. §6.2 queda archivada: su punto 4 (¿simplificar el onboarding?) es
+> la pregunta que la spec nueva responde.
 
 ### 6.1 Arquetipos escritos hasta la pausa (4 de ~10-12)
 

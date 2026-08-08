@@ -187,19 +187,19 @@ describe(`invariantes del generador — matriz representativa (${MATRIX.length} 
     // No hay un límite exacto en la spec; lo que importa es que sean casos de
     // biblioteca agotada (bodyweight + limitaciones), no huecos descartados.
     //
-    // Umbral subido de 10% a 11% al añadir fullbody_strength_advanced (primer
-    // arquetipo de discipline='strength'): usuarios beginner con equipo casi
-    // nulo (bodyweight puro o solo pullup_bar+parallettes) ahora llegan a él
-    // vía tier3 de findBestArchetype (ignora nivel a propósito). El sustitutor
-    // de adaptArchetype solo relaja pattern+group → pattern (2 niveles), sin
-    // la cascada de getKeyCandidatesWithFallback (A1) que sí tiene el generador
-    // procedural — para squat/row/push barbell sin NINGÚN equipo ni siquiera
-    // hay candidato bodyweight de nivel beginner en la biblioteca (mismo tipo
-    // de hueco que back sin ejercicios bodyweight, ver EMPHASIS_KEY_GROUPS).
-    // Verificado caso a caso: son biblioteca agotada, no huecos descartables.
-    // Cascada de sustitución más robusta en adaptArchetype = candidato a fase C.
+    // Umbral bajado de 11% a 9% con el resolvedor de slots
+    // (program-templates.md §5.2): la cascada de 5 escalones sustituyó a
+    // `findSubstitute`, que solo relajaba pattern+group → pattern y devolvía
+    // `candidates[0]` sin ordenar. Medido sobre esta misma matriz: 56 → 40
+    // sesiones cortas.
+    //
+    // Lo que queda son 39 slots tier 1 de `back` con `equipment: []`: la
+    // biblioteca **no tiene ni un solo ejercicio de tracción sin material**
+    // (43 bodyweight, ninguno de back). Ningún resolvedor puede arreglar eso —
+    // es contenido que falta, no lógica. `adaptArchetype` los devuelve ahora en
+    // `unresolved` en vez de descartarlos en silencio.
     console.log(`Sesiones <4 ejercicios: ${shortSessions} / matriz de ${MATRIX.length} combos`);
-    expect(shortSessions).toBeLessThan(MATRIX.length * 0.11);
+    expect(shortSessions).toBeLessThan(MATRIX.length * 0.09);
   });
 });
 

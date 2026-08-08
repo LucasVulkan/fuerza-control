@@ -18,6 +18,7 @@
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
 import { GOAL_PARAMS } from './programGenerator';
+import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
 
 const LIMITATION_GROUPS = {
@@ -32,53 +33,20 @@ const LIMITATION_NOTE = {
   knee:       'No dejes que la rodilla colapse. Reduce rango si hay molestia.',
 };
 
-const LEVEL_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
-
 // Ejercicio de core por defecto para rellenar cuando se reduce a beginner
 const DEFAULT_CORE_EXERCISES = ['dead_bug', 'plank', 'crunch', 'leg_raise_lying'];
 
+// Tier por defecto cuando la plantilla no lo declara (spec §3.1). El tier vive
+// sólo aquí dentro: al exConfig sale como `isKey`, que sigue siendo booleano.
+function tierOf(archetypeEx) {
+  return archetypeEx.tier ?? (archetypeEx.role === 'key' ? 1 : 3);
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function hasEquipment(ex, userEquipment) {
-  if (!ex.equipment || ex.equipment.length === 0) return true;
-  return ex.equipment.some((e) => userEquipment.includes(e));
-}
-
-function fitsLevel(ex, userLevel) {
-  return LEVEL_ORDER[ex.level] <= LEVEL_ORDER[userLevel];
-}
 
 function getLimitedGroups(limitations) {
   if (!limitations || limitations.includes('none')) return [];
   return limitations.flatMap((l) => LIMITATION_GROUPS[l] ?? []);
-}
-
-/**
- * Busca el mejor sustituto para un ejercicio dado.
- * Respeta patrón, grupo muscular, equipo y nivel.
- */
-function findSubstitute({ pattern, primaryGroup, userLevel, userEquipment, excludeIds = [] }) {
-  const candidates = Object.values(EXERCISE_LIBRARY).filter((ex) => {
-    if (excludeIds.includes(ex.id)) return false;
-    if (ex.pattern !== pattern) return false;
-    if (ex.primaryGroup !== primaryGroup) return false;
-    if (!hasEquipment(ex, userEquipment)) return false;
-    if (!fitsLevel(ex, userLevel)) return false;
-    return true;
-  });
-
-  if (candidates.length) return candidates[0];
-
-  // Relajar: mismo patrón, cualquier grupo
-  const byPattern = Object.values(EXERCISE_LIBRARY).filter((ex) => {
-    if (excludeIds.includes(ex.id)) return false;
-    if (ex.pattern !== pattern) return false;
-    if (!hasEquipment(ex, userEquipment)) return false;
-    if (!fitsLevel(ex, userLevel)) return false;
-    return true;
-  });
-
-  return byPattern[0] ?? null;
 }
 
 /**
@@ -161,7 +129,7 @@ function reduceForBeginner(exercises, userEquipment) {
   if (!hasCore) {
     const coreEx = DEFAULT_CORE_EXERCISES
       .map((id) => EXERCISE_LIBRARY[id])
-      .find((ex) => ex && hasEquipment(ex, userEquipment));
+      .find((ex) => ex && fitsEquipment(ex, userEquipment));
 
     if (coreEx) {
       result.push({
@@ -253,7 +221,13 @@ function trimToTimeBudget(exercises, sessionMinutes) {
 
 /**
  * Adapta un arquetipo a las respuestas del onboarding.
- * Devuelve { program, sessionTemplates } en el mismo formato que generateProgram.
+ *
+ * Devuelve `{ program, sessionTemplates }` en el mismo formato que
+ * `generateProgram`, más el diagnóstico de la adaptación (spec §5.1):
+ * `substitutions` (qué cambió y por qué) y `unresolved` (slots que la
+ * biblioteca no pudo llenar). Hoy nadie los consume — el preview lo hará en la
+ * fase 6 y el harness en la 7; hasta entonces existen para que dejen de
+ * perderse dentro de la función.
  */
 export function adaptArchetype(archetype, answers) {
   const {
@@ -268,6 +242,8 @@ export function adaptArchetype(archetype, answers) {
   const programId = generateId('prog');
   const sessionTemplates = {};
   const programDays = [];
+  const substitutions = [];
+  const unresolved = [];
 
   // A4: si el objetivo elegido difiere del objetivo del arquetipo, los keys
   // adoptan los parámetros del goal elegido (ver buildExConfig).
@@ -282,48 +258,43 @@ export function adaptArchetype(archetype, answers) {
     dayDef.exercises.forEach((archetypeEx) => {
       const originalDef = EXERCISE_LIBRARY[archetypeEx.exerciseId];
       const isLimited = limitedGroups.includes(archetypeEx.primaryGroup);
+      const tier = tierOf(archetypeEx);
 
-      // A3: si es key y el grupo está limitado, sustituir por variante suave
-      // (beginner, mismo pattern+grupo) en vez de eliminar. Solo si no hay
-      // sustituto se elimina el ejercicio.
-      if (archetypeEx.role === 'key' && isLimited) {
-        const sub = findSubstitute({
-          pattern: archetypeEx.pattern,
-          primaryGroup: archetypeEx.primaryGroup,
-          userLevel: 'beginner',
-          userEquipment: equipment,
-          excludeIds: [...usedIds],
-        });
-        if (!sub) return; // no hay sustituto — slot vacío
-        if (usedIds.has(sub.id)) return; // evitar duplicados en el día
-        usedIds.add(sub.id);
-        exercises.push(buildExConfig(archetypeEx, sub.id, isLimited, limitations, applyGoalParams, goalParams));
-        return;
-      }
+      // Por qué hay que resolver el slot en vez de usar la preferencia de la
+      // plantilla. A3: una limitación NO elimina el ejercicio, lo baja a una
+      // variante amable (el resolvedor recibe `userLevel: 'beginner'`).
+      const reason =
+        !originalDef || !fitsEquipment(originalDef, equipment) ? 'equipment'
+        : isLimited                                            ? 'limitation'
+        : !fitsLevel(originalDef, level)                       ? 'level'
+        // La preferencia ya está en la sesión (dos slots del arquetipo apuntan
+        // al mismo ejercicio): se resuelve el segundo en vez de perderlo.
+        : usedIds.has(archetypeEx.exerciseId)                  ? 'duplicate'
+        : null;
 
       let resolvedId = archetypeEx.exerciseId;
 
-      // ¿Tiene equipo? ¿Encaja el nivel?
-      const needsSubstitution =
-        !originalDef ||
-        !hasEquipment(originalDef, equipment) ||
-        !fitsLevel(originalDef, level) ||
-        (isLimited && archetypeEx.role === 'accessory');
-
-      if (needsSubstitution) {
-        const sub = findSubstitute({
-          pattern: archetypeEx.pattern,
-          primaryGroup: isLimited ? archetypeEx.primaryGroup : archetypeEx.primaryGroup,
-          userLevel: isLimited ? 'beginner' : level,
+      if (reason) {
+        const resolved = resolveSlot({
+          pattern:       archetypeEx.pattern,
+          primaryGroup:  archetypeEx.primaryGroup,
+          tier,
+          goal,
+          userLevel:     isLimited ? 'beginner' : level,
           userEquipment: equipment,
-          excludeIds: [...usedIds],
+          excludeIds:    usedIds,
         });
 
-        if (!sub) return; // no hay sustituto — slot vacío
-        resolvedId = sub.id;
+        if (!resolved) {
+          // La biblioteca no da más de sí. No se pierde en silencio: el hueco
+          // sale en el resultado y un tier 1 aquí es violación de integridad.
+          unresolved.push({ pattern: archetypeEx.pattern, primaryGroup: archetypeEx.primaryGroup, tier });
+          return;
+        }
+        resolvedId = resolved.exercise.id;
+        substitutions.push({ slotExerciseId: archetypeEx.exerciseId, resolvedExerciseId: resolvedId, reason });
       }
 
-      if (usedIds.has(resolvedId)) return; // evitar duplicados en el día
       usedIds.add(resolvedId);
 
       exercises.push(buildExConfig(archetypeEx, resolvedId, isLimited, limitations, applyGoalParams, goalParams));
@@ -381,5 +352,5 @@ export function adaptArchetype(archetype, answers) {
     0,
   );
 
-  return { program, sessionTemplates };
+  return { program, sessionTemplates, substitutions, unresolved };
 }
