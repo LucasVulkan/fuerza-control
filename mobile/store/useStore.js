@@ -1195,6 +1195,17 @@ export const useStore = create(
         const updatedSessionTemplates = { ...sessionTemplates };
         const allExercises = { ...exerciseLibrary, ...customExercises };
 
+        // Mismos ids de grupo frescos que en `duplicateStageInProgram`: las
+        // copias siguen vinculadas entre sí dentro de la etapa nueva, pero nunca
+        // a la de origen. Sin esto, editar un ejercicio de la fase 2 editaría el
+        // de la fase 1 — que es justo lo que las fases existen para separar.
+        const groupMap = {};
+        const remapGroup = (g) => {
+          if (!g) return null;
+          if (!groupMap[g]) groupMap[g] = generateId('lnk');
+          return groupMap[g];
+        };
+
         function cloneDays(sourceDays) {
           return sourceDays.map(({ sessionTemplateId, label }) => {
             const src = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
@@ -1206,7 +1217,8 @@ export const useStore = create(
               // primera sesión de cada etapa nueva deja al cliente sin chip de
               // progresión y sin pesos de referencia (spec §4.1).
               derivedFrom: sessionTemplateId,
-              exercises: applyRx(src?.exercises ?? [], rx, allExercises),
+              exercises: applyRx(src?.exercises ?? [], rx, allExercises)
+                .map((ex) => (ex.linkGroup ? { ...ex, linkGroup: remapGroup(ex.linkGroup) } : ex)),
             };
             return { sessionTemplateId: newTplId, label };
           });
@@ -1274,7 +1286,16 @@ export const useStore = create(
         const updatedSessionTemplates = { ...sessionTemplates };
         const allExercises = { ...exerciseLibrary, ...customExercises };
 
-        const newStages = rungs.map(({ name, durationWeeks, rx }) => ({
+        const newStages = rungs.map(({ name, durationWeeks, rx }) => {
+          // Un mapa de grupos por peldaño: cada etapa queda vinculada consigo
+          // misma y con ninguna otra (igual que `duplicateStageInProgram`).
+          const groupMap = {};
+          const remapGroup = (g) => {
+            if (!g) return null;
+            if (!groupMap[g]) groupMap[g] = generateId('lnk');
+            return groupMap[g];
+          };
+          return {
           id: generateId('stage'),
           name,
           durationWeeks: durationWeeks ?? 4,
@@ -1285,12 +1306,14 @@ export const useStore = create(
               ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
               id: newTplId, programId,
               derivedFrom: sessionTemplateId,
-              exercises: applyRx(src?.exercises ?? [], rx, allExercises),
+              exercises: applyRx(src?.exercises ?? [], rx, allExercises)
+                .map((ex) => (ex.linkGroup ? { ...ex, linkGroup: remapGroup(ex.linkGroup) } : ex)),
             };
             return { sessionTemplateId: newTplId, label };
           }),
           ...(rx ? { rx, derivedFromStageId: source.id ?? null } : {}),
-        }));
+          };
+        });
 
         // Misma razón que en `addStageToProgram`: con una etapa abierta delante
         // el cliente no puede salir de ella nunca.

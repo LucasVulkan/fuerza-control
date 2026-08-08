@@ -5,6 +5,7 @@
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
+import { autoLinkRepeated } from './exerciseLinks';
 import { compressSession } from './sessionCompression';
 import { withStages } from './stageProgress';
 import { normalizeWeeklyVolume } from './weeklyVolume';
@@ -425,6 +426,12 @@ export function generateProgram(answers) {
 
     programDays.push({ sessionTemplateId: templateId, label: dayDef.label, emphasis: dayDef.emphasis });
   });
+
+  // Lo que el ciclo repite con la misma programación progresa junto
+  // (program-templates.md §5.5). Aquí pasa a menudo: con más días que patrones,
+  // A6 cicla los patrones y el mismo key reaparece en varias sesiones.
+  autoLinkRepeated(Object.values(sessionTemplates), () => generateId('lnk'))
+    .forEach((tpl) => { sessionTemplates[tpl.id] = tpl; });
 
   // Una etapa, sin límite de ciclos (`durationWeeks: null`): es el
   // comportamiento que tenía un programa generado antes de unificar el modelo,

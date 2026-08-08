@@ -140,6 +140,44 @@ describe('fases de plantilla → etapas', () => {
     });
   });
 
+  it('los grupos de vinculación no cruzan de fase', async () => {
+    // Sin remapear, un ejercicio vinculado en la etapa base seguiria en el mismo
+    // grupo en la fase 2: editar la intensificación editaría la acumulación, que
+    // es justo lo que las fases existen para separar. `duplicateStageInProgram`
+    // ya lo hacía; `addStageToProgram`, que es quien materializa las fases, no.
+    const { program } = await generate();
+    const { sessionTemplates } = useStore.getState();
+
+    const groupsOf = (stage) => new Set(
+      stage.days
+        .flatMap((d) => sessionTemplates[d.sessionTemplateId].exercises)
+        .map((e) => e.linkGroup)
+        .filter(Boolean),
+    );
+
+    const perStage = program.stages.map(groupsOf);
+    expect(perStage[0].size).toBeGreaterThan(0); // hay algo que vincular
+
+    perStage.forEach((groups, i) => {
+      perStage.slice(i + 1).forEach((later) => {
+        [...groups].forEach((g) => expect(later.has(g)).toBe(false));
+      });
+    });
+  });
+
+  it('dentro de una fase, lo repetido sigue vinculado entre sí', async () => {
+    const { program } = await generate();
+    const { sessionTemplates } = useStore.getState();
+
+    program.stages.forEach((stage) => {
+      const exercises = stage.days.flatMap((d) => sessionTemplates[d.sessionTemplateId].exercises);
+      const byGroup = new Map();
+      exercises.filter((e) => e.linkGroup)
+        .forEach((e) => byGroup.set(e.linkGroup, [...(byGroup.get(e.linkGroup) ?? []), e]));
+      byGroup.forEach((members) => expect(members.length).toBeGreaterThanOrEqual(2));
+    });
+  });
+
   it('todas las plantillas del catálogo declaran fases', () => {
     ARCHETYPES.forEach((a) => {
       expect(a.phases, a.id).toBeTruthy();

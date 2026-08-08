@@ -18,6 +18,7 @@
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
 import { GOAL_PARAMS } from './programGenerator';
+import { autoLinkRepeated } from './exerciseLinks';
 import { compressSession } from './sessionCompression';
 import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
@@ -310,6 +311,12 @@ export function adaptArchetype(archetype, answers) {
       emphasis: dayDef.emphasis,
     });
   });
+
+  // Lo que el ciclo repite con la misma programación progresa junto (§5.5).
+  // Después de recortar por volumen y por tiempo: si la compresión dejó una
+  // instancia con menos series que otra, ya no son la misma prescripción.
+  autoLinkRepeated(Object.values(sessionTemplates), () => generateId('lnk'))
+    .forEach((tpl) => { sessionTemplates[tpl.id] = tpl; });
 
   // La primera fase de la plantilla ES la etapa base (§6.1). Sin `phases`, una
   // etapa sin límite de ciclos — el comportamiento de siempre. Las fases 2..N

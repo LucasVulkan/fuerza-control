@@ -144,3 +144,66 @@ export function exerciseInstanceCount(program, exerciseId, getTemplate) {
     getTemplate(tid)?.exercises?.some((e) => e.exerciseId === exerciseId)
   ).length;
 }
+
+/**
+ * Vincula automáticamente lo que el ciclo repite — spec
+ * `mobile/docs/specs/program-templates.md` §5.5.
+ *
+ * Las plantillas repiten a propósito el mismo ejercicio en varias sesiones del
+ * ciclo: la progresión doble necesita exposición repetida al mismo movimiento.
+ * Pero cada instancia era independiente, así que dos sentadillas del mismo ciclo
+ * progresaban por separado, cada una leyendo sólo su propio historial. Con
+ * frecuencia 2 eso es la mitad de la información para decidir el peso de mañana.
+ *
+ * **Sólo se agrupan las instancias cuya programación coincide** — mismo
+ * `pickLinkedConfig`: series, repeticiones, descanso, progresión y `isKey`. Si
+ * difieren, se quedan sueltas, y con razón: es la regla que ya declara
+ * `LINKED_CONFIG_KEYS` («si una sentadilla es la principal de un día y accesoria
+ * de otro, su programación ya difiere y no deberían estar en el mismo grupo»).
+ * O sea que la excepción de "objetivos diferentes" se detecta sola, sin que la
+ * plantilla tenga que declararla.
+ *
+ * Va **después** del recorte por volumen y por tiempo: si la compresión deja una
+ * instancia con 3 series y otra con 2, ya no deben vincularse. No se igualan a
+ * la baja para poder juntarlas — sería inventar programación que la plantilla no
+ * escribió.
+ *
+ * @param {object[]} templates  sessionTemplates del ciclo (una etapa)
+ * @param {function} makeId     generador de ids (`() => generateId('lnk')`)
+ * @returns {object[]} los mismos templates, con `linkGroup` donde toca
+ */
+export function autoLinkRepeated(templates, makeId) {
+  // exerciseId → (configuración serializada → posiciones donde aparece)
+  const byExercise = new Map();
+
+  templates.forEach((tpl, ti) => {
+    (tpl.exercises ?? []).forEach((ex, ei) => {
+      if (ex.linkGroup) return; // ya vinculado a mano: no se toca
+      const perEx = byExercise.get(ex.exerciseId) ?? new Map();
+      const key = JSON.stringify(pickLinkedConfig(ex));
+      perEx.set(key, [...(perEx.get(key) ?? []), { ti, ei }]);
+      byExercise.set(ex.exerciseId, perEx);
+    });
+  });
+
+  const assigned = new Map();
+  for (const perEx of byExercise.values()) {
+    for (const spots of perEx.values()) {
+      // En SESIONES distintas: dos copias dentro del mismo día no son "el mismo
+      // ejercicio repetido en la semana".
+      if (new Set(spots.map((s) => s.ti)).size < 2) continue;
+      const gid = makeId();
+      spots.forEach((s) => assigned.set(`${s.ti}:${s.ei}`, gid));
+    }
+  }
+
+  if (!assigned.size) return templates;
+
+  return templates.map((tpl, ti) => ({
+    ...tpl,
+    exercises: (tpl.exercises ?? []).map((ex, ei) => {
+      const gid = assigned.get(`${ti}:${ei}`);
+      return gid ? { ...ex, linkGroup: gid } : ex;
+    }),
+  }));
+}

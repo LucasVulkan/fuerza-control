@@ -1,7 +1,7 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1, 2, 2b, 3 y 4 implementadas** (ago 2026, ver §5.2, §5.3,
-> §5.3.1, §5.4 y §6); fases 3b, 5, 6, 7 y 8 pendientes.
+> Estado: **fases 1, 2, 2b, 3, 3b y 4 implementadas** (ago 2026, ver §5.2,
+> §5.3, §5.3.1, §5.4, §5.5 y §6); fases 5, 6, 7 y 8 pendientes.
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -591,7 +591,30 @@ se pisan.
 - Exceso irreducible (bodyweight + limitaciones) ⇒ `overBudget` no vacío, sin
   bucle infinito.
 
-### 5.5 Vincular lo que se repite en el ciclo
+### 5.5 FASE 3b — Vincular lo que se repite en el ciclo ✅ IMPLEMENTADA
+
+> `autoLinkRepeated` en [exerciseLinks.js](../../../src/utils/exerciseLinks.js),
+> llamado por los dos caminos justo antes de montar el programa — después de
+> volumen y de tiempo, como pedía la spec.
+>
+> **Bug encontrado y arreglado por el camino, en el store.**
+> `duplicateStageInProgram` remapea los `linkGroup` al clonar una etapa, con este
+> comentario: *"las copias siguen vinculadas entre sí pero nunca a la etapa
+> original"*. **`addStageToProgram` no lo hacía** — y es el que materializa las
+> fases (§6.2) y el que usa el planificador. Con grupos creados a mano, editar un
+> ejercicio de la fase 2 editaba el de la fase 1: exactamente lo que las fases
+> existen para separar. Nadie lo había visto porque hasta ahora nada creaba
+> grupos automáticamente y hay que tener etapas *y* vínculos a la vez.
+>
+> Arreglado en los dos sitios que clonan con `applyRx` (`addStageToProgram` y el
+> constructor de escaleras), con un mapa de grupos **por etapa**. Hay test de
+> regresión en `programPhases.test.js`: falla si se revierte.
+>
+> La pregunta abierta se resolvió como estaba propuesto: si la compresión deja
+> dos instancias con distintas series, **se quedan sueltas**. No se igualan a la
+> baja — sería inventar programación que la plantilla no escribió.
+
+### 5.5.1 El diseño
 
 Las plantillas **repiten a propósito el mismo ejercicio en varias sesiones del
 ciclo** (§11.4: la progresión doble necesita exposición repetida al mismo
