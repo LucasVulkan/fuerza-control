@@ -311,7 +311,11 @@ export function adaptArchetype(archetype, answers) {
     });
   });
 
-  // Una etapa sin límite de ciclos — misma razón que en `programGenerator`.
+  // La primera fase de la plantilla ES la etapa base (§6.1). Sin `phases`, una
+  // etapa sin límite de ciclos — el comportamiento de siempre. Las fases 2..N
+  // las materializa `generateAndActivateProgram` con `addStageToProgram`, que ya
+  // sabe clonar, aplicar el `rx` y encadenar `derivedFrom`.
+  const phases = archetype.phases ?? null;
   const program = withStages(
     {
       id: programId,
@@ -322,13 +326,19 @@ export function adaptArchetype(archetype, answers) {
       currentWeek: 1,
       onboardingSnapshot: answers,
     },
-    [{ id: generateId('stage'), name: 'Etapa 1', durationWeeks: null, days: programDays }],
+    [{
+      id: generateId('stage'),
+      name: phases?.[0]?.name ?? 'Etapa 1',
+      durationWeeks: phases?.[0]?.durationWeeks ?? null,
+      days: programDays,
+    }],
     0,
   );
 
   return {
     program,
     sessionTemplates,
+    phases,
     substitutions,
     unresolved,
     overTime,

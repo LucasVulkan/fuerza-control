@@ -988,7 +988,8 @@
     "preview": {
       "cycleHint": "Your {{sessions}} sessions rotate in a cycle — you train {{days}} days a week.",
       "estimatedMinutes": "~{{minutes}} min",
-      "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises."
+      "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises.",
+      "weeksAndPhases": "{{weeks}} weeks · {{phases}} phases"
     },
     "stepGoal": {
       "title": "What's your goal?",

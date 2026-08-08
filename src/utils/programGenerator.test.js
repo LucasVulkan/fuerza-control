@@ -61,13 +61,17 @@ function checkInvariants(result, answers, normalizedEquipment) {
   }
 
   // Modelo unificado (docs/specs/stage-planner.md §3): todo programa nace con
-  // UNA etapa, sin límite de ciclos (el onboarding no pregunta duración), y
-  // `program.days` espeja los días de la etapa activa.
+  // UNA etapa y `program.days` espeja los días de la etapa activa. Las fases
+  // 2..N de una plantilla las materializa el store, no el adaptador.
   if ((program.stages?.length ?? 0) !== 1) {
     violations.push(`stages: got ${program.stages?.length ?? 0}, expected 1`);
   } else {
-    if (program.stages[0].durationWeeks !== null) {
-      violations.push(`stage durationWeeks: got ${program.stages[0].durationWeeks}, expected null`);
+    // `null` = sin límite (plantilla sin fases y camino procedural); un entero
+    // positivo = la duración de la primera fase (program-templates.md §6.1).
+    // Lo que no vale es 0, negativo o `undefined`, que romperían `advanceCycle`.
+    const weeks = program.stages[0].durationWeeks;
+    if (weeks !== null && !(Number.isInteger(weeks) && weeks > 0)) {
+      violations.push(`stage durationWeeks: got ${weeks}, expected null or a positive integer`);
     }
     if (program.currentStageIndex !== 0) {
       violations.push(`currentStageIndex: got ${program.currentStageIndex}, expected 0`);

@@ -1,7 +1,7 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1, 2, 2b y 3 implementadas** (ago 2026, ver §5.2, §5.3, §5.3.1
-> y §5.4); fases 3b-8 pendientes.
+> Estado: **fases 1, 2, 2b, 3 y 4 implementadas** (ago 2026, ver §5.2, §5.3,
+> §5.3.1, §5.4 y §6); fases 3b, 5, 6, 7 y 8 pendientes.
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -656,7 +656,32 @@ factor sobre la banda.
 
 ---
 
-## 6. FASE 4 — Plantillas con fases y duración concreta 🟢
+## 6. FASE 4 — Plantillas con fases y duración concreta 🟢 ✅ IMPLEMENTADA
+
+> Barata, como se esperaba: la maquinaria estaba entera. `adaptArchetype` escribe
+> la etapa base con el nombre y la duración de la primera fase y devuelve
+> `phases`; `generateAndActivateProgram` recorre las demás llamando a
+> `addStageToProgram({ rx, name, durationWeeks, sourceStageIdx: 0 })`. Cero
+> lógica de derivación nueva.
+>
+> **Las 8 plantillas del catálogo ya declaran fases** (`DEFAULT_PHASES` en
+> `archetypes.js`, un esquema por objetivo — ver §6.3). Un programa de
+> onboarding pasa de ser infinito a durar 8 o 9 semanas.
+>
+> El preview lo enseña en portada: *"8 semanas · 3 fases · 3 sesiones por
+> ciclo"*. Si alguna etapa quedara sin límite, no se pinta total — no lo hay.
+>
+> **Invariante del harness relajado.** `programGenerator.test.js` exigía
+> `stages[0].durationWeeks === null`. Ahora acepta `null` (plantilla sin fases y
+> camino procedural) **o un entero positivo**; lo que sigue siendo violación es
+> `0`, negativo o `undefined`, que romperían `advanceCycle`. Los valores exactos
+> los fija `mobile/store/programPhases.test.js`, que prueba el camino real —
+> etapas, duraciones, cadena `derivedFrom` y el contenido de cada `rx`.
+>
+> **Efecto secundario que importa:** hasta ahora un programa de onboarding nunca
+> disparaba el banner de fin de etapa ni la propuesta de
+> [stage-proposal.md](stage-proposal.md), porque `durationWeeks: null` no tiene
+> umbral que alcanzar. Ahora sí.
 
 Barata: la maquinaria existe entera (§1.6). Falta que la plantilla la declare y
 que el onboarding la invoque.
@@ -708,9 +733,33 @@ Cero lógica de derivación nueva: `addStageToProgram` ya clona, aplica `rx`, ac
 **Sólo el store móvil.** `src/store/useStore.js` es la versión web (su
 `addStageToProgram` ni siquiera acepta `rx`) y queda fuera de alcance.
 
-**Tests**: 3 fases ⇒ 3 etapas con sus `durationWeeks`; los templates de la etapa
-2 son `applyRx` de los de la 1 y llevan `derivedFrom`; sin `phases` ⇒ 1 etapa con
-`durationWeeks: null` (invariante existente de `programGenerator.test.js:69`).
+**Tests**: `mobile/store/programPhases.test.js` — 3 fases ⇒ 3 etapas con sus
+`durationWeeks`, los templates de cada etapa son `applyRx` de la BASE y llevan
+`derivedFrom`, sin `phases` ⇒ 1 etapa con `durationWeeks: null`, y el camino
+procedural no inventa fases.
+
+### 6.3 El esquema por defecto — a revisar con criterio de dominio
+
+`DEFAULT_PHASES` en `archetypes.js`. Es el punto de partida razonable de cada
+objetivo, **no una decisión cerrada**: una plantilla puede declarar las suyas, y
+estas están puestas para que el catálogo entero tenga duración desde el primer
+día.
+
+| Objetivo | Fases | Total |
+|---|---|---|
+| `hypertrophy` | Acumulación 4 · Intensificación 3 (`keys`, −3 reps, +25% descanso) · Descarga 1 | **8 semanas** |
+| `strength` | Acumulación 4 · Intensificación 4 (`keys`, −2 reps, +25% descanso) · Descarga 1 | **9 semanas** |
+| `endurance` | Acumulación 4 · Volumen 3 (`accessories`, +1 serie) · Descarga 1 | **8 semanas** |
+
+Las tres decisiones que hay detrás, por si se quieren mover:
+
+- **Fuerza desplaza menos las repeticiones** (−2, no −3): un programa de fuerza
+  ya vive en rangos cortos, y −3 sobre un 5×5 lo dejaría en dobles.
+- **Calistenia sube volumen en vez de intensidad**: la progresión va por
+  repeticiones y dificultad del movimiento, no por acortar el rango.
+- **Todas terminan en descarga de una semana**, con `progressionHold: 'deload'`
+  para que el chip de progresión cambie de mensaje en vez de desaparecer
+  ([stage-planner.md](stage-planner.md) §2.5).
 
 ---
 

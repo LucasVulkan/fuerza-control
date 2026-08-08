@@ -317,7 +317,7 @@ export const useStore = create(
         };
 
         const archetype = findBestArchetype(normalizedAnswers);
-        const { program, sessionTemplates } = archetype
+        const { program, sessionTemplates, phases } = archetype
           ? adaptArchetype(archetype, normalizedAnswers)
           : generateProgram(normalizedAnswers);
 
@@ -332,8 +332,22 @@ export const useStore = create(
           },
           ui: { ...s.ui, view: 'home' },
         }));
+
+        // Fases 2..N de la plantilla (program-templates.md §6.2). La primera ya
+        // es la etapa base. `sourceStageIdx: 0` porque los deltas son absolutos
+        // contra la base, no acumulativos (stage-planner.md §2.4).
+        for (const phase of (phases ?? []).slice(1)) {
+          get().addStageToProgram(program.id, {
+            rx: phase.rx,
+            name: phase.name,
+            durationWeeks: phase.durationWeeks,
+            sourceStageIdx: 0,
+          });
+        }
+
         // Return program so caller can show a preview before navigating
-        return { program, sessionTemplates };
+        const finalProgram = get().programs[program.id];
+        return { program: finalProgram, sessionTemplates: get().sessionTemplates, phases };
       },
 
       archiveProgram: (programId, clearHistory = false) => {

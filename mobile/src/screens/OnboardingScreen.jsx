@@ -353,6 +353,13 @@ export default function OnboardingScreen() {
       }
     }
 
+    // 0 si alguna etapa es "sin límite": entonces el programa no tiene final y
+    // no hay total que enseñar.
+    const stages = program.stages ?? [];
+    const totalWeeks = stages.every((s) => s.durationWeeks > 0)
+      ? stages.reduce((n, s) => n + s.durationWeeks, 0)
+      : 0;
+
     const countsWarmup = includesWarmup(answers.sessionMinutes);
     const estimatedMinutes = (tpl) => Math.round(
       estimateSessionSec(tpl.exercises ?? [], { ...exerciseLibrary, ...customExercises },
@@ -366,7 +373,16 @@ export default function OnboardingScreen() {
           <BrandTag />
           <Text style={styles.previewReady}>✓ PROGRAMA LISTO</Text>
           <Text style={styles.previewTitle}>{program.name}</Text>
-          <Text style={styles.previewMeta}>{days.length} sesiones por ciclo</Text>
+          <Text style={styles.previewMeta}>
+            {/* La duración va en portada: es lo que convierte esto en un
+                programa y no en una lista de ejercicios (§6). */}
+            {totalWeeks > 0 && `${t('onboarding.preview.weeksAndPhases', {
+              weeks: totalWeeks,
+              phases: program.stages.length,
+              defaultValue: `${totalWeeks} semanas · ${program.stages.length} fases`,
+            })} · `}
+            {days.length} sesiones por ciclo
+          </Text>
           {/* B4: hint de ciclo cuando la frecuencia pedida supera las sesiones generadas */}
           {answers.daysPerWeek > days.length && (
             <Text style={styles.previewCycleHint}>

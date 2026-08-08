@@ -988,7 +988,8 @@
     "preview": {
       "cycleHint": "Tus {{sessions}} sesiones rotan en ciclo — entrenas {{days}} días a la semana.",
       "estimatedMinutes": "~{{minutes}} min",
-      "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios."
+      "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios.",
+      "weeksAndPhases": "{{weeks}} semanas · {{phases}} fases"
     },
     "stepGoal": {
       "title": "¿Cuál es tu objetivo?",

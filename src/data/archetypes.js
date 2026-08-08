@@ -9,6 +9,48 @@
  * esté representado al menos una vez por día.
  */
 
+/**
+ * Fases por defecto según el objetivo de la plantilla — spec
+ * `mobile/docs/specs/program-templates.md` §6.
+ *
+ * La primera fase ES la etapa base, por eso su `rx` es `null`. Las demás se
+ * materializan clonando la base y aplicando su regla, así que los deltas son
+ * absolutos contra la primera, no acumulativos.
+ *
+ * El vocabulario es el de `stageRx.js` y no admite nada más: si una fase
+ * necesitara cambiar ejercicios, no sería una fase — sería otra plantilla.
+ *
+ * Una plantilla puede declarar las suyas; esto es sólo el punto de partida
+ * razonable para cada objetivo.
+ */
+const DELOAD = { name: 'Descarga', durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } };
+
+export const DEFAULT_PHASES = {
+  // 8 semanas. Acumular volumen y después apretar las repeticiones de los
+  // básicos: el clásico para hipertrofia.
+  hypertrophy: [
+    { name: 'Acumulación',     durationWeeks: 4, rx: null },
+    { name: 'Intensificación', durationWeeks: 3, rx: { scope: 'keys', repsShift: -3, restPct: 25 } },
+    DELOAD,
+  ],
+
+  // 9 semanas. El desplazamiento de repeticiones es menor porque un programa de
+  // fuerza ya vive en rangos cortos: −3 sobre un 5×5 lo dejaría en dobles.
+  strength: [
+    { name: 'Acumulación',     durationWeeks: 4, rx: null },
+    { name: 'Intensificación', durationWeeks: 4, rx: { scope: 'keys', repsShift: -2, restPct: 25 } },
+    DELOAD,
+  ],
+
+  // 8 semanas. En calistenia la progresión va por repeticiones y dificultad del
+  // movimiento, no por acortar el rango: se sube volumen de accesorios.
+  endurance: [
+    { name: 'Acumulación', durationWeeks: 4, rx: null },
+    { name: 'Volumen',     durationWeeks: 3, rx: { scope: 'accessories', setsDelta: 1 } },
+    DELOAD,
+  ],
+};
+
 export const ARCHETYPES = [
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -21,6 +63,7 @@ export const ARCHETYPES = [
     discipline: 'standard',
     distribution: 'full_body',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'intermediate',
     daysPerWeek: 3,
     days: [
@@ -78,6 +121,7 @@ export const ARCHETYPES = [
     tags: ['full_body', 'hypertrophy', 'advanced'],
     discipline: 'standard', distribution: 'full_body',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'advanced',
     daysPerWeek: 3,
     days: [
@@ -140,6 +184,7 @@ export const ARCHETYPES = [
     discipline: 'standard',
     distribution: 'full_body',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'beginner',
     daysPerWeek: 3,
     days: [
@@ -199,6 +244,7 @@ export const ARCHETYPES = [
     discipline: 'standard',
     distribution: 'upper_lower',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'intermediate',
     daysPerWeek: 4,
     days: [
@@ -271,6 +317,7 @@ export const ARCHETYPES = [
     discipline: 'standard',
     distribution: 'upper_lower',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'advanced',
     daysPerWeek: 4,
     days: [
@@ -348,6 +395,7 @@ export const ARCHETYPES = [
     discipline: 'strength',
     distribution: 'full_body',
     goal: 'strength',
+    phases: DEFAULT_PHASES.strength,
     level: 'advanced',
     daysPerWeek: 3,
     days: [
@@ -405,6 +453,7 @@ export const ARCHETYPES = [
     tags: ['glutes_focus', 'hypertrophy', 'intermediate'],
     discipline: 'glutes_legs', distribution: 'full_body',
     goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
     level: 'intermediate',
     // Sus 21 series de glúteo por ciclo son el programa, no un exceso: sin esto
     // el normalizador las recorta al techo de intermedio (20) y la plantilla
@@ -467,6 +516,7 @@ export const ARCHETYPES = [
     tags: ['functional', 'endurance', 'intermediate'],
     discipline: 'calisthenics', distribution: 'full_body',
     goal: 'endurance',
+    phases: DEFAULT_PHASES.endurance,
     level: 'intermediate',
     daysPerWeek: 3,
     days: [
