@@ -107,8 +107,28 @@ export function disciplineRules(discipline) {
 
 // Suelos duros. Ninguna combinación de peldaños puede bajar de aquí.
 const MIN_ACCESSORIES = 2;   // 1 principal + 2 accesorios es el mínimo de sesión
-const MIN_SETS_ACCESSORY = 2;
+export const MIN_SETS_ACCESSORY = 2;
 const MIN_SETS_TIER1 = 3;
+
+/**
+ * Cuántos accesorios pueden quedarse en el suelo de series antes de que
+ * convenga eliminar uno.
+ *
+ * Media sesión a dos series es volumen repartido demasiado fino: cada ejercicio
+ * cuesta su montaje y su transición igual, y a cambio deja un estímulo que casi
+ * no cuenta. Al tercero sale mejor quitar uno y que los demás conserven sus
+ * series.
+ *
+ * No puede bloquearse: si va a haber un tercero en el suelo es que hay al menos
+ * tres accesorios, y el suelo de sesión (1 principal + 2 accesorios) permite
+ * quitar uno.
+ */
+export const MAX_ACCESSORIES_AT_FLOOR = 2;
+
+/** Accesorios de la sesión que ya están en su suelo de series. */
+export function accessoriesAtFloor(exercises) {
+  return exercises.filter((ex) => isAccessory(ex) && (ex.sets ?? 0) <= MIN_SETS_ACCESSORY).length;
+}
 
 export function tierOfExercise(ex) {
   return ex.tier ?? (ex.isKey ? 1 : 3);
@@ -132,7 +152,14 @@ function canRemove(exercises, i) {
     && exercises.filter(isAccessory).length > MIN_ACCESSORIES;
 }
 
-/** −1 serie al ejercicio del tier dado con más series, si supera su suelo. */
+/**
+ * −1 serie al ejercicio del tier dado con más series, si supera su suelo.
+ *
+ * Se niega a crear un accesorio de más en el suelo cuando ya hay
+ * `MAX_ACCESSORIES_AT_FLOOR`: devolver `null` hace que la escalera pase al
+ * siguiente peldaño, que es el de eliminar. Es la regla "antes de dejar un
+ * tercero a dos series, quita uno".
+ */
 function reduceSets(exercises, tier, floor) {
   let best = -1;
   exercises.forEach((ex, i) => {
@@ -141,6 +168,10 @@ function reduceSets(exercises, tier, floor) {
     if (best === -1 || ex.sets > exercises[best].sets) best = i;
   });
   if (best === -1) return null;
+
+  const dejaOtroEnElSuelo = tier !== 1 && exercises[best].sets - 1 <= MIN_SETS_ACCESSORY;
+  if (dejaOtroEnElSuelo && accessoriesAtFloor(exercises) >= MAX_ACCESSORIES_AT_FLOOR) return null;
+
   return exercises.map((ex, i) => (i === best ? { ...ex, sets: ex.sets - 1 } : ex));
 }
 

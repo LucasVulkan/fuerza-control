@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { compressSession, estimateSessionSec, includesWarmup, DISCIPLINE_RULES } from './sessionCompression';
+import {
+  compressSession, estimateSessionSec, includesWarmup, accessoriesAtFloor,
+  DISCIPLINE_RULES, MAX_ACCESSORIES_AT_FLOOR,
+} from './sessionCompression';
 
 const ex = (exerciseId, tier, sets, restSec = 90) => ({ exerciseId, tier, isKey: tier === 1, sets, restSec });
 
@@ -167,6 +170,37 @@ describe('presupuesto de sesiones cortas', () => {
     const { overTime, exercises } = compressSession(LEG_DAY, { sessionMinutes: 30 });
     expect(overTime).toBe(true);
     expect(exercises.filter((e) => e.tier === 1)).toHaveLength(2);
+  });
+});
+
+describe('tope de accesorios en el suelo de series', () => {
+  it('nunca deja tres accesorios a 2 series, sea cual sea el presupuesto', () => {
+    for (const sessionMinutes of [10, 20, 30, 40, 50, 60, 75, 90]) {
+      for (const discipline of ['standard', 'strength', 'calisthenics']) {
+        const { exercises } = compressSession(LEG_DAY, { sessionMinutes, discipline });
+        expect(accessoriesAtFloor(exercises), `${sessionMinutes}min/${discipline}`)
+          .toBeLessThanOrEqual(MAX_ACCESSORIES_AT_FLOOR);
+      }
+    }
+  });
+
+  it('al tercero quita un accesorio en vez de recortarlo', () => {
+    // Tres accesorios de 3 series: recortarlos todos daría tres en el suelo.
+    const tres = [
+      ex('squat_barbell',       1, 4, 180),
+      ex('leg_press_standard',  3, 3, 90),
+      ex('leg_extension',       3, 3, 90),
+      ex('calf_raise_standing', 3, 3, 90),
+    ];
+    const { exercises } = compressSession(tres, { sessionMinutes: 25 });
+
+    expect(accessoriesAtFloor(exercises)).toBeLessThanOrEqual(MAX_ACCESSORIES_AT_FLOOR);
+    expect(exercises.length).toBeLessThan(tres.length);   // se quitó uno
+    // El principal sigue ahí. Sus series sí pueden bajar (en hipertrofia el
+    // último peldaño lo permite), pero nunca por debajo de su suelo de 3.
+    const key = exercises.find((e) => e.tier === 1);
+    expect(key.exerciseId).toBe('squat_barbell');
+    expect(key.sets).toBeGreaterThanOrEqual(3);
   });
 });
 

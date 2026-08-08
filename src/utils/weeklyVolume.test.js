@@ -169,3 +169,21 @@ describe('integración — la plantilla de glúteo conserva su énfasis', () => 
     });
   });
 });
+
+describe('tope de accesorios en el suelo — también al recortar volumen', () => {
+  it('recortar volumen no deja tres accesorios a 2 series', async () => {
+    const { accessoriesAtFloor, MAX_ACCESSORIES_AT_FLOOR } = await import('./sessionCompression');
+    const cargada = [
+      ex('pulldown_pronated', 1, 4),
+      ex('cable_row',         3, 3),
+      ex('db_row_unilateral', 3, 3),
+      ex('face_pull',         3, 3),
+      ex('bicep_curl_supination', 3, 3),
+    ];
+    for (const daysPerWeek of [2, 3, 4, 5, 6]) {
+      const r = normalizeWeeklyVolume([cargada], { daysPerWeek, level: 'beginner' });
+      expect(accessoriesAtFloor(r.sessions[0]), `${daysPerWeek} días`)
+        .toBeLessThanOrEqual(MAX_ACCESSORIES_AT_FLOOR);
+    }
+  });
+});

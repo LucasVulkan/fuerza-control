@@ -477,7 +477,7 @@ Pasos, cada uno repetible hasta agotarse, en el orden que dicte la disciplina
 | Paso | Qué hace | Suelo |
 |---|---|---|
 | `t3Redundant` | Quita el último tier 3 cuyo `primaryGroup` ya cubra otro ejercicio de la sesión | — |
-| `t3Sets` | −1 serie al tier 3 con más series | 2 series |
+| `t3Sets` | −1 serie al tier 3 con más series | 2 series · **máx. 2 accesorios en el suelo** |
 | `t3Remove` | Quita el último tier 3 | 2 accesorios por sesión |
 | `t2Sets` | −1 serie al tier 2 con más series | 2 series |
 | `t2Remove` | Quita el tier 2 cuyo patrón ya cubra un tier 1 de la sesión | — |
@@ -486,6 +486,21 @@ Pasos, cada uno repetible hasta agotarse, en el orden que dicte la disciplina
 Tier 1 **nunca se elimina**. Si se agotan los pasos disponibles y sigue sin
 caber, se para, `overTime: true`, y el preview enseña la duración real. Mentir
 sobre el tiempo es peor que pasarse de él.
+
+**Tope de accesorios en el suelo** (`MAX_ACCESSORIES_AT_FLOOR = 2`, decisión del
+usuario). Ni la escalera ni el normalizador de volumen dejan un **tercer**
+accesorio a 2 series: antes de eso, quitan uno. Media sesión a dos series es
+volumen repartido demasiado fino — cada ejercicio cuesta su montaje igual y a
+cambio deja un estímulo que casi no cuenta.
+
+Aplica a los dos mecanismos que reducen series, y no puede bloquearse: si va a
+haber un tercero en el suelo es que hay ≥3 accesorios, y el suelo de sesión
+(1 principal + 2 accesorios) permite quitar uno.
+
+Medido sobre 4096 sesiones (toda la matriz × los cuatro presupuestos): las
+sesiones con tres accesorios en el suelo pasan de **11 a 0**, y el resto de
+indicadores queda **idéntico** — mismas sesiones cortas (244), mismos desbordes
+de tiempo (1660), mismos grupos sobre techo (180).
 
 **Tests**: el ejemplo del usuario — sentadilla 4×6 (t1), RDL 3×8 (t1), prensa
 3×10 (t2), extensión 3×12 (t3), gemelo 3×15 (t3) — a un presupuesto corto debe

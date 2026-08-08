@@ -14,7 +14,10 @@
  */
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
-import { disciplineRules, tierOfExercise } from './sessionCompression';
+import {
+  disciplineRules, tierOfExercise, accessoriesAtFloor,
+  MAX_ACCESSORIES_AT_FLOOR, MIN_SETS_ACCESSORY,
+} from './sessionCompression';
 
 /**
  * Sets semanales por grupo. `hard` es el techo que dispara el recorte;
@@ -42,8 +45,8 @@ export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_ha
  */
 export const EMPHASIS_BONUS = 6;
 
-// Suelos, los mismos que la escalera de compresión.
-const MIN_SETS_ACCESSORY = 2;
+// Suelos, los mismos que la escalera de compresión (`MIN_SETS_ACCESSORY` se
+// importa de allí para que no haya dos verdades).
 const MIN_ACCESSORIES = 2;
 // Un principal puede bajar a 3 series como último recurso, pero no se elimina
 // jamás — eso sigue siendo intocable (spec §2.9).
@@ -171,8 +174,14 @@ export function normalizeWeeklyVolume(sessions, {
       const session = result[cand.si];
       const ex = session[cand.ei];
 
+      // Mismo tope que la escalera de compresión: no se deja un tercer accesorio
+      // en el suelo de series; antes se quita uno. Media sesión a dos series es
+      // volumen repartido demasiado fino.
+      const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY
+        && accessoriesAtFloor(session) >= MAX_ACCESSORIES_AT_FLOOR;
+
       let newSession = null;
-      if (ex.sets > MIN_SETS_ACCESSORY) {
+      if (ex.sets > MIN_SETS_ACCESSORY && !dejariaOtroEnElSuelo) {
         newSession = session.map((e, i) => (i === cand.ei ? { ...e, sets: e.sets - 1 } : e));
       } else if (canDrop(session, cand.ei, excess.group, allExercises)) {
         newSession = session.filter((_, i) => i !== cand.ei);
