@@ -18,6 +18,7 @@
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
 import { GOAL_PARAMS } from './programGenerator';
+import { compressSession } from './sessionCompression';
 import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
 
@@ -71,6 +72,10 @@ function buildExConfig(archetypeEx, resolvedExId, isLimited, limitations, applyG
   return {
     exerciseId: resolvedExId,
     isKey,
+    // Interno del adaptador (spec §3.3): la escalera de compresión necesita
+    // distinguir el complementario del aislamiento, pero al sessionTemplate no
+    // sale — `stripTier` lo quita en el último paso.
+    tier: tierOf(archetypeEx),
     sets: isLimited ? Math.min(baseSets, 2) : baseSets,
     restSec: baseRestSec,
     minReps: isLimited ? 12 : baseMinReps,
@@ -78,6 +83,13 @@ function buildExConfig(archetypeEx, resolvedExId, isLimited, limitations, applyG
     progressionOverride: null,
     limitationNote,
   };
+}
+
+/** El `tier` no cruza la frontera del adaptador (spec §3.3). */
+function stripTier(exConfig) {
+  const out = { ...exConfig };
+  delete out.tier;
+  return out;
 }
 
 function getLimitationNote(group, limitations) {
@@ -135,6 +147,7 @@ function reduceForBeginner(exercises, userEquipment) {
       result.push({
         exerciseId: coreEx.id,
         isKey: false,
+        tier: 3,
         sets: 3,
         restSec: 60,
         minReps: coreEx.minTime ? null : 12,
@@ -148,75 +161,6 @@ function reduceForBeginner(exercises, userEquipment) {
   return result;
 }
 
-// ─── B3: presupuesto de tiempo ────────────────────────────────────────────────
-// Duplicado de programGenerator.js — misma fórmula espejo de `sessionStats`
-// (mobile/src/utils/sessionStats.js): sets × (35s trabajo + restSec); en
-// ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
-// No se comparte entre generateProgram/adaptArchetype a propósito: ambos
-// caminos ya duplican LIMITATION_GROUPS/getLimitedGroups de forma independiente.
-
-// Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
-const EXERCISE_OVERHEAD_SEC = 180;
-// Calentamiento general, una vez por sesión (si la sesión no está vacía).
-// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
-// para no contar el calentamiento dos veces.
-const SESSION_OVERHEAD_SEC = 480;
-
-function estimateSessionSec(exercises) {
-  let seconds = 0;
-  for (const ex of exercises) {
-    const def = EXERCISE_LIBRARY[ex.exerciseId];
-    const n = ex.sets ?? 0;
-    const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
-    const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
-    seconds += n * (work + (ex.restSec ?? 90)) + EXERCISE_OVERHEAD_SEC;
-  }
-  if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
-  return seconds;
-}
-
-/**
- * Recorta accesorios hasta caber en el presupuesto de `sessionMinutes` (B3.3-4).
- * Ver comentario largo en programGenerator.js#trimToTimeBudget — mismas reglas:
- * keys nunca se tocan, se quita el último accesorio con grupo ya cubierto
- * (si no hay, el último accesorio a secas), suelo duro de 1 key + 2 accesorios.
- */
-function trimToTimeBudget(exercises, sessionMinutes) {
-  if (!sessionMinutes) return exercises;
-  const budgetSec = sessionMinutes * 60;
-  const keyCount = exercises.filter((e) => e.isKey).length;
-  let result = exercises;
-
-  while (estimateSessionSec(result) > budgetSec) {
-    const accessories = result.filter((e) => !e.isKey);
-    if (accessories.length <= 2) break; // suelo duro: 1 key + 2 accesorios mínimo
-    if (result.length - accessories.length !== keyCount) break; // guarda, no debería pasar
-
-    const groupCounts = {};
-    result.forEach((e) => {
-      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
-      if (g) groupCounts[g] = (groupCounts[g] ?? 0) + 1;
-    });
-
-    let toRemove = null;
-    for (let i = result.length - 1; i >= 0; i--) {
-      const e = result[i];
-      if (e.isKey) continue;
-      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
-      if (g && groupCounts[g] > 1) { toRemove = e; break; }
-    }
-    if (!toRemove) {
-      for (let i = result.length - 1; i >= 0; i--) {
-        if (!result[i].isKey) { toRemove = result[i]; break; }
-      }
-    }
-    if (!toRemove) break;
-    result = result.filter((e) => e !== toRemove);
-  }
-
-  return result;
-}
-
 // ─── Adaptador principal ──────────────────────────────────────────────────────
 
 /**
@@ -224,10 +168,11 @@ function trimToTimeBudget(exercises, sessionMinutes) {
  *
  * Devuelve `{ program, sessionTemplates }` en el mismo formato que
  * `generateProgram`, más el diagnóstico de la adaptación (spec §5.1):
- * `substitutions` (qué cambió y por qué) y `unresolved` (slots que la
- * biblioteca no pudo llenar). Hoy nadie los consume — el preview lo hará en la
- * fase 6 y el harness en la 7; hasta entonces existen para que dejen de
- * perderse dentro de la función.
+ * `substitutions` (qué cambió y por qué), `unresolved` (slots que la biblioteca
+ * no pudo llenar) y `overTime` (sesiones que no caben en el presupuesto ni tras
+ * la compresión). Hoy nadie los consume — el preview lo hará en la fase 6 y el
+ * harness en la 7; hasta entonces existen para que dejen de perderse dentro de
+ * la función.
  */
 export function adaptArchetype(archetype, answers) {
   const {
@@ -244,6 +189,7 @@ export function adaptArchetype(archetype, answers) {
   const programDays = [];
   const substitutions = [];
   const unresolved = [];
+  const overTime = [];
 
   // A4: si el objetivo elegido difiere del objetivo del arquetipo, los keys
   // adoptan los parámetros del goal elegido (ver buildExConfig).
@@ -306,11 +252,17 @@ export function adaptArchetype(archetype, answers) {
       exercises = reduceForBeginner(exercises, equipment);
     }
 
-    // B3: recortar accesorios si la sesión excede el presupuesto de tiempo.
-    exercises = trimToTimeBudget(exercises, sessionMinutes);
+    // Escalera de compresión (§5.3): baja series antes de borrar, en el orden
+    // que dicte la disciplina. El objetivo elegido manda sobre el del arquetipo
+    // — es lo que el usuario quiere conservar cuando algo tiene que caer.
+    const compressed = compressSession(exercises, {
+      sessionMinutes,
+      discipline: answers.discipline ?? archetype.discipline,
+    });
+    if (compressed.overTime) overTime.push(dayDef.label);
 
-    // Añadir orden
-    exercises = exercises.map((ex, idx) => ({ ...ex, order: idx + 1 }));
+    // El tier se queda aquí dentro (§3.3); fuera va el orden.
+    exercises = compressed.exercises.map((ex, idx) => ({ ...stripTier(ex), order: idx + 1 }));
 
     // Warmup del primer key
     const firstKey = exercises.find((ex) => ex.isKey);
@@ -352,5 +304,5 @@ export function adaptArchetype(archetype, answers) {
     0,
   );
 
-  return { program, sessionTemplates, substitutions, unresolved };
+  return { program, sessionTemplates, substitutions, unresolved, overTime };
 }

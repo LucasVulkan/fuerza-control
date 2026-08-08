@@ -5,6 +5,7 @@
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
+import { compressSession } from './sessionCompression';
 import { withStages } from './stageProgress';
 
 // ─── Parámetros por objetivo ──────────────────────────────────────────────────
@@ -257,89 +258,6 @@ function getKeyCandidatesWithFallback({ primaryGroup, level, equipment, limitati
 // exercisesPerSession inicial según minutos de sesión pedidos (B3.2).
 const EXERCISES_PER_SESSION_BY_TIME = { 30: 3, 45: 4, 60: 5, 90: 6 };
 
-// Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
-const EXERCISE_OVERHEAD_SEC = 180;
-// Calentamiento general, una vez por sesión (si la sesión no está vacía).
-// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
-// para no contar el calentamiento dos veces.
-const SESSION_OVERHEAD_SEC = 480;
-
-/**
- * Estima segundos de una sesión. Fórmula espejo de `sessionStats`
- * (mobile/src/utils/sessionStats.js): por ejercicio, sets × (35s trabajo +
- * restSec) + overhead de transición; en ejercicios de tiempo el "trabajo" es
- * el punto medio de minTime–maxTime; más un calentamiento general único por
- * sesión no vacía. Duplicada aquí (no en mobile/) porque src/ no puede
- * importar de mobile/.
- * exercises: exConfig[] (forma de buildExConfig/adaptArchetype: exerciseId,
- * sets, restSec, minReps/maxReps — null si es de tiempo).
- */
-function estimateSessionSec(exercises) {
-  let seconds = 0;
-  for (const ex of exercises) {
-    const def = EXERCISE_LIBRARY[ex.exerciseId];
-    const n = ex.sets ?? 0;
-    const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
-    const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
-    seconds += n * (work + (ex.restSec ?? 90)) + EXERCISE_OVERHEAD_SEC;
-  }
-  if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
-  return seconds;
-}
-
-/**
- * Recorta accesorios de una sesión ya construida hasta caber en el
- * presupuesto de `sessionMinutes` (B3.3-4).
- *
- * Reglas (en este orden, revisado línea a línea por Fable — no reordenar):
- * - Los keys NUNCA se recortan por tiempo (ni se cuentan como candidatos aquí).
- * - Mientras el tiempo estimado supere el presupuesto y queden accesorios
- *   recortables: se quita el ÚLTIMO accesorio (recorremos de atrás hacia
- *   delante) cuyo primaryGroup ya esté cubierto por otro ejercicio de la
- *   sesión (key o accesorio) — perder ese ejercicio no deja el grupo a cero.
- *   Si ninguno cumple eso, se quita el último accesorio a secas.
- * - Suelo duro: nunca bajar de 1 key + 2 accesorios (3 ejercicios totales).
- *   Si aun en el suelo no cabe en el presupuesto, se deja así — el preview
- *   mostrará la duración real (más larga que el presupuesto pedido).
- */
-function trimToTimeBudget(exercises, sessionMinutes) {
-  if (!sessionMinutes) return exercises;
-  const budgetSec = sessionMinutes * 60;
-  const keyCount = exercises.filter((e) => e.isKey).length;
-  let result = exercises;
-
-  while (estimateSessionSec(result) > budgetSec) {
-    const accessories = result.filter((e) => !e.isKey);
-    if (accessories.length <= 2) break; // suelo duro: 1 key + 2 accesorios mínimo
-    if (result.length - accessories.length !== keyCount) break; // no debería pasar, guarda
-
-    const groupCounts = {};
-    result.forEach((e) => {
-      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
-      if (g) groupCounts[g] = (groupCounts[g] ?? 0) + 1;
-    });
-
-    // Último accesorio cuyo grupo aparece más de una vez (ya cubierto por otro ejercicio)
-    let toRemove = null;
-    for (let i = result.length - 1; i >= 0; i--) {
-      const e = result[i];
-      if (e.isKey) continue;
-      const g = EXERCISE_LIBRARY[e.exerciseId]?.primaryGroup;
-      if (g && groupCounts[g] > 1) { toRemove = e; break; }
-    }
-    // Si ninguno tiene grupo duplicado, el último accesorio a secas
-    if (!toRemove) {
-      for (let i = result.length - 1; i >= 0; i--) {
-        if (!result[i].isKey) { toRemove = result[i]; break; }
-      }
-    }
-    if (!toRemove) break;
-    result = result.filter((e) => e !== toRemove);
-  }
-
-  return result;
-}
-
 // ─── Generador principal ──────────────────────────────────────────────────────
 
 export function generateProgram(answers) {
@@ -475,8 +393,11 @@ export function generateProgram(answers) {
       exercises.push(buildExConfig(ex, params, false, limitedGroups, limitations, isLimited));
     });
 
-    // B3: recortar accesorios si la sesión excede el presupuesto de tiempo.
-    const budgetedExercises = trimToTimeBudget(exercises, sessionMinutes);
+    // Escalera de compresión (program-templates.md §5.3). Este camino no tiene
+    // tier 2 —sus exConfig sólo llevan `isKey`—, así que la escalera se queda en
+    // los peldaños de tier 3 y tier 1, que es exactamente lo que hacía el bucle
+    // anterior más el escalón de bajar series antes de borrar.
+    const { exercises: budgetedExercises } = compressSession(exercises, { sessionMinutes, discipline });
 
     sessionTemplates[templateId] = {
       id: templateId,

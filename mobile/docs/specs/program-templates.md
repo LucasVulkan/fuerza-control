@@ -1,6 +1,7 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fase 1 implementada** (ago 2026, ver §5.2); fases 2-8 pendientes.
+> Estado: **fases 1 y 2 implementadas** (ago 2026, ver §5.2 y §5.3); fases 3-8
+> pendientes.
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -339,7 +340,35 @@ aislamiento; con `goal: 'strength'` gana el candidato con `priority.strength ===
 'high'` frente a uno `medium` del mismo patrón; ningún tier 1 queda sin resolver
 en la matriz completa salvo biblioteca agotada demostrable.
 
-### 5.3 FASE 2 — Escalera de compresión por tiempo 🟢
+### 5.3 FASE 2 — Escalera de compresión por tiempo 🟢 ✅ IMPLEMENTADA
+
+> `src/utils/sessionCompression.js` (nuevo, puro): escalera + `DISCIPLINE_RULES`
+> + `estimateSessionSec`. Lo usan **los dos** caminos: `adaptArchetype` y
+> `generateProgram`. Eso revierte a propósito la duplicación deliberada de la
+> fórmula de tiempo — se mantenía porque eran tres líneas; con seis peldaños y
+> una tabla por disciplina, dos copias divergen seguro.
+>
+> Medido sobre la matriz de 528 combos, **con el mismo número de ejercicios por
+> sesión** (3,99 y 4,63 de media): sesiones que se pasan del presupuesto de 45
+> min, 626 → 410; de 60 min, 236 → 119. Sesiones cortas (<4 ejercicios), 40 → 30.
+> Es decir: se cumple más el presupuesto sin perder contenido, que es justo lo
+> que aporta el escalón que faltaba.
+>
+> **Decisión al implementar — qué cae primero.** El ejemplo del análisis quitaba
+> el gemelo antes que la extensión de cuádriceps. La regla escrita hace lo
+> contrario: `t3Redundant` se lleva la **extensión**, porque es el tercer
+> ejercicio de `quads` del día, mientras que el gemelo es el único de su grupo.
+> Prevalece la regla —eliminar redundancia antes que estímulo único— porque es
+> la doctrina del propio análisis ("preservar estímulo → eliminar redundancia →
+> reducir volumen"). Pendiente de confirmar con el usuario.
+>
+> **Hallazgo, no bloqueante:** el presupuesto de **30 min es estructuralmente
+> inalcanzable**. El suelo de 1 principal + 2 accesorios, más 8 min de
+> calentamiento general y 3 min de transición por ejercicio, ya suman ~17 min
+> antes de la primera serie; una sesión mínima real ronda los 35. A 30 min se
+> pasan 1202 de 2016 sesiones, y la escalera no puede hacer más. O la opción de
+> 30 min del onboarding se replantea, o los overheads de `estimateSessionSec`
+> son demasiado altos para entrenar en casa. Decisión de producto, no de código.
 
 Sustituye el bucle de `trimToTimeBudget`. Mismo sitio, mismas garantías previas
 (keys intactos, estimación con la fórmula espejo de `sessionStats`), pero con el
@@ -856,7 +885,7 @@ plantilla:
 | # | Alcance | Coste | Depende de | Modelo |
 |---|---|---|---|---|
 | 1 | Resolvedor de slots (§5.2) | 🟢 | — | ✅ **IMPLEMENTADA** — 1917 tests verdes, sesiones cortas 56 → 40 |
-| 2 | Escalera de compresión + `DISCIPLINE_RULES` (§5.3, §5.6) | 🟢 | tiers (§3.1) | Sonnet |
+| 2 | Escalera de compresión + `DISCIPLINE_RULES` (§5.3, §5.6) | 🟢 | tiers (§3.1) | ✅ **IMPLEMENTADA** — desbordes a 60 min 236 → 119, mismo nº de ejercicios |
 | 3 | Normalizador de volumen + `volumeEmphasis` (§5.4) | 🟢 | 2 (comparten tabla) | Sonnet |
 | 3b | Vincular lo repetido en el ciclo (§5.5) | 🟢 | 2, 3 | Sonnet |
 | 4 | `phases` → N etapas (§6) | 🟢 | — | Sonnet |
