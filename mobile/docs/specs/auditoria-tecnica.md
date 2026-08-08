@@ -18,6 +18,16 @@
 >
 > **Verificación.** `npx eslint <archivo>` (comparar el recuento contra HEAD) y
 > `npx vitest run` desde la raíz. Los fallos con test propuesto lo indican.
+>
+> **El store se puede testear** desde ago 2026: `vite.config.js` tiene un bloque
+> `test` que aliasa toda la superficie React Native / Expo a
+> `test/native-stub.js`. Sin eso, importar `store/useStore.js` en vitest muere
+> con `Unexpected token` — `react-native` viene en Flow y `@react-navigation/native`
+> trae sintaxis de tipos, y `vi.mock` no sirve porque el módulo se resuelve y se
+> parsea antes de sustituirse. Si el store importa un módulo nativo nuevo, hay
+> que añadir su export al stub o los tests revientan con un error de parseo
+> poco evocador. **Los stubs son inertes**: un test verde prueba la lógica pura
+> del store, nunca que el lado nativo funcione.
 
 ## 0. Índice por severidad
 
@@ -148,12 +158,16 @@ Dos desviaciones respecto al arreglo propuesto arriba:
    `finally`) — cierto en ambas plataformas por cola serie, pero no garantizado
    por contrato.
 
-**Sin test.** Importar el store en vitest exige mockear `react-native`, seis
-módulos de `expo-*`, notifee y supabase — más código de andamiaje que el
-arreglo, y hoy no hay ni un test que importe el store. Verificado con
-`npx eslint store/useStore.js` (15 errores, los mismos 15 que en HEAD) y
-`npx vitest run` (44 archivos, 1902 tests, verde). Pendiente de comprobar en
-dispositivo con la reproducción de arriba: debe abrir en `Setup`.
+**Test.** `store/useStore.test.js`, tres casos sobre el callback que devuelve
+`onRehydrateStorage()`: invocado como `(undefined, error)` marca `_hasHydrated`;
+invocado con un estado cuyo acceso lanza, también; y por ese camino la ruta
+inicial sale `Setup`, no `Main`. Los tres fallan contra el código de antes del
+arreglo. Se añadieron después, junto con el aliasado de vitest que hizo
+importable el store — este apartado llegó a decir "sin test".
+
+Verificado con `npx eslint store/useStore.js` (15 errores, los mismos 15 que
+en HEAD) y `npx vitest run`. Pendiente de comprobar en dispositivo con la
+reproducción de arriba: debe abrir en `Setup`.
 
 ---
 
@@ -254,16 +268,16 @@ Efecto lateral bueno: el reparto de logs heredados (`:2630`, backups
 pre-`clientLogs`) ahora ve los programas managed en `updates.programs`, así que
 atribuye al cliente correcto entradas que antes se quedaban en el log personal.
 
-**Sin test**, y esta vez se intentó: un test que mockea `react-native`,
-`async-storage` y los cuatro `expo-*` no llega ni a importar el store —
-`RolldownError: Flow is not supported` en `react-native/index.js`, porque
-`vi.mock` no evita que vite resuelva y parsee el módulo real. Haría falta un
-`vitest.config.js` con alias a stubs, que el repo no tiene (los tests actuales
-son todos de `src/utils`). Queda anotado como tarea aparte: con ese config,
-los fallos 10, 15, 16, 18 y 19 también pasan a ser testeables. Verificado con
+**Test.** `store/useStore.test.js`, tres casos: el programa managed se restaura
+desde un backup con la forma exacta de `exportFullBackup`, no se degrada a
+`personal`, y —control— sin la sección de clientes no se cuela. Los dos
+primeros fallan contra el código de antes del arreglo; el tercero pasa en
+ambos, que es lo que lo hace un control.
+
+El arreglo se implementó antes que el aliasado de vitest, así que este
+apartado llegó a decir "sin test". Verificado con
 `npx eslint store/useStore.js` (15 errores, los mismos que en HEAD) y
-`npx vitest run` (verde). Pendiente en dispositivo con la reproducción de
-arriba.
+`npx vitest run`. Pendiente en dispositivo con la reproducción de arriba.
 
 ---
 
