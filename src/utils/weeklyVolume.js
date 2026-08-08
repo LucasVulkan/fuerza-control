@@ -45,6 +45,9 @@ export const EMPHASIS_BONUS = 6;
 // Suelos, los mismos que la escalera de compresión.
 const MIN_SETS_ACCESSORY = 2;
 const MIN_ACCESSORIES = 2;
+// Un principal puede bajar a 3 series como último recurso, pero no se elimina
+// jamás — eso sigue siendo intocable (spec §2.9).
+const MIN_SETS_TIER1 = 3;
 
 const groupOf = (ex, allExercises) => allExercises[ex.exerciseId]?.primaryGroup;
 
@@ -84,14 +87,16 @@ export function ceilingFor(group, { level = 'intermediate', discipline = 'standa
 
 /**
  * Candidatos a recortar de un grupo, en orden de preferencia: el tier más alto
- * primero (3 antes que 2, **tier 1 nunca**), después la sesión que más aporte al
- * grupo, y de ellos el que más series tenga.
+ * primero (3 antes que 2), después la sesión que más aporte al grupo, y de ellos
+ * el que más series tenga.
  *
  * Devuelve la lista entera y no sólo el mejor: el preferido puede estar ya en su
  * suelo de series y en una sesión que no admite quitarle nada, y en ese caso hay
  * que probar el siguiente antes de dar el grupo por perdido.
+ *
+ * `includeTier1` es el último recurso — ver el bucle principal.
  */
-function candidatesFor(sessions, group, allExercises) {
+function candidatesFor(sessions, group, allExercises, includeTier1 = false) {
   const contribution = sessions.map((session) => session.reduce(
     (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0,
   ));
@@ -100,8 +105,10 @@ function candidatesFor(sessions, group, allExercises) {
   sessions.forEach((session, si) => {
     session.forEach((ex, ei) => {
       if (groupOf(ex, allExercises) !== group) return;
-      if (tierOfExercise(ex) === 1) return;
-      out.push({ si, ei, tier: tierOfExercise(ex), sets: ex.sets ?? 0, contribution: contribution[si] });
+      const tier = tierOfExercise(ex);
+      if (tier === 1 && !includeTier1) return;
+      if (tier !== 1 && includeTier1) return;
+      out.push({ si, ei, tier, sets: ex.sets ?? 0, contribution: contribution[si] });
     });
   });
 
@@ -127,9 +134,12 @@ function canDrop(session, index, group, allExercises) {
 /**
  * Recorta el ciclo hasta que ningún grupo pase su techo.
  *
+ * Orden: accesorios primero (series hasta 2, después eliminar si el grupo sigue
+ * cubierto) y, sólo cuando se agotan, series de principales hasta 3.
+ *
  * @returns {{ sessions, weekly, overBudget }} `overBudget` lista los grupos que
- *          siguen por encima porque ya sólo quedan tier 1, que no se tocan. No
- *          se fuerza: se declara.
+ *          siguen por encima porque ya nada puede bajar más sin romper un suelo.
+ *          No se fuerza: se declara.
  */
 export function normalizeWeeklyVolume(sessions, {
   daysPerWeek,
@@ -174,7 +184,27 @@ export function normalizeWeeklyVolume(sessions, {
       break;
     }
 
-    // Ya sólo quedan tier 1, o quitar más rompería el suelo de sesión.
+    // Último recurso: bajarle una serie a un principal, con suelo de 3 y sin
+    // eliminarlo nunca. Los accesorios ya se han agotado, así que la única
+    // alternativa sería dejar el exceso tal cual — y un principiante con 24
+    // series semanales de espalda las tiene aunque no las mire nadie. Bajar de
+    // 4 a 3 series un básico no le quita el carácter al programa; el ejercicio
+    // sigue ahí, con su progresión.
+    if (!acted) {
+      for (const cand of candidatesFor(result, excess.group, allExercises, true)) {
+        const session = result[cand.si];
+        const ex = session[cand.ei];
+        if ((ex.sets ?? 0) <= MIN_SETS_TIER1) continue;
+
+        result = result.map((s, i) => (i === cand.si
+          ? s.map((e, j) => (j === cand.ei ? { ...e, sets: e.sets - 1 } : e))
+          : s));
+        acted = true;
+        break;
+      }
+    }
+
+    // Ni accesorios ni principales por encima de su suelo: el exceso se declara.
     if (!acted) givenUp.add(excess.group);
   }
 }

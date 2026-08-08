@@ -170,6 +170,30 @@ describe('presupuesto de sesiones cortas', () => {
   });
 });
 
+describe('sesiones cortas — borrar antes que bajar series', () => {
+  // Cinco grupos distintos y sin pares antagonistas contiguos: ni redundancia
+  // que quitar ni superserie que montar, así que sólo se ve el efecto del orden.
+  const MIXED = [
+    ex('pulldown_pronated',      1, 4, 120),
+    ex('bicep_curl_supination',  3, 4, 90),
+    ex('leg_curl_lying',         3, 4, 90),
+    ex('calf_raise_standing',    3, 4, 90),
+    ex('plank',                  3, 4, 90),
+  ];
+
+  it('por debajo del umbral quita un ejercicio y respeta las series del resto', () => {
+    const { exercises } = compressSession(MIXED, { sessionMinutes: 59 });
+    expect(exercises).toHaveLength(4);
+    expect(exercises.every((e) => e.sets === 4)).toBe(true);
+  });
+
+  it('por encima, conserva los ejercicios y les baja series', () => {
+    const { exercises } = compressSession(MIXED, { sessionMinutes: 62 });
+    expect(exercises).toHaveLength(5);
+    expect(exercises.some((e) => e.tier !== 1 && e.sets < 4)).toBe(true);
+  });
+});
+
 describe('superserie de opuestos', () => {
   // Accesorios contiguos y antagonistas: apertura de pecho + remo.
   const PUSH_PULL_DAY = [

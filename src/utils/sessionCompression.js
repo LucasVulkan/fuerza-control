@@ -232,6 +232,25 @@ function supersetOpposites(exercises, allExercises) {
   return null;
 }
 
+/**
+ * La misma escalera, pero borrando antes de bajar series.
+ *
+ * En una sesión corta el montaje domina: un ejercicio a 2 series cuesta 180 s de
+ * transición para 190 s de trabajo. Quitarlo ahorra los 370 s enteros; bajarle
+ * una serie ahorra 95. Cuando el presupuesto aprieta, media docena de ejercicios
+ * a dos series es tiempo perdido preparando material — mejor menos ejercicios
+ * con sus series completas.
+ *
+ * Se deriva del orden de cada disciplina en vez de escribir una segunda tabla:
+ * los peldaños que quitan van delante, los que recortan detrás, y cada grupo
+ * conserva su orden relativo. Para `strength`, que ya borra primero, no cambia
+ * nada.
+ */
+function removalFirst(order) {
+  const isRemoval = (step) => step.endsWith('Redundant') || step.endsWith('Remove');
+  return [...order.filter(isRemoval), ...order.filter((s) => !isRemoval(s))];
+}
+
 const STEPS = {
   superset:    (ex, all)      => supersetOpposites(ex, all),
   t3Redundant: (ex, all, emph) => removeRedundant(ex, 3, all, emph),
@@ -263,7 +282,7 @@ export function compressSession(exercises, {
   // único peldaño que gana tiempo sin quitar ejercicios.
   const order = includeWarmup
     ? disciplineRules(discipline).compression
-    : ['superset', ...disciplineRules(discipline).compression];
+    : ['superset', ...removalFirst(disciplineRules(discipline).compression)];
   let result = exercises;
 
   while (estimateSessionSec(result, allExercises, { includeWarmup }) > budgetSec) {

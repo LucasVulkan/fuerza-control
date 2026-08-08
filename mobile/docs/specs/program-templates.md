@@ -160,6 +160,10 @@ los pesos de referencia al cambiar de fase). **El generador no la usa.**
    escribió la plantilla.
 9. **Tier 1 no se elimina nunca** — ni por tiempo, ni por volumen, ni por
    material (si hay alternativa). Es la regla de integridad principal.
+   *Bajarle series* sí se permite, con suelo de 3: por tiempo sólo en las
+   disciplinas cuya tabla lo incluye (§5.6), y por volumen sólo cuando los
+   accesorios se han agotado (§5.4). No es la misma decisión: el ejercicio sigue
+   en la sesión, con su progresión.
 10. **Las fases de una plantilla son deltas contra la BASE**, no acumulativos —
     misma decisión que el planificador ([stage-planner.md](stage-planner.md) §2.4).
 11. **Las reglas de integridad son un validador, no un pipeline** (§9). Se
@@ -397,6 +401,26 @@ invertía el orden de los presupuestos. Sin ellas, 45 min darían 45 de trabajo 
 entregaría menos entrenamiento. Quitando sólo el calentamiento, `45 − 3n` frente
 a `52 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
 
+**Regla 1b — por debajo del umbral, borrar antes que bajar series.** En una
+sesión corta el montaje domina: un ejercicio a 2 series cuesta 180 s de
+transición para 190 s de trabajo. Quitarlo ahorra los 370 s enteros; bajarle una
+serie ahorra 95. Media docena de ejercicios a dos series es tiempo perdido
+preparando material — mejor menos ejercicios con sus series completas.
+
+Se deriva del orden de cada disciplina (`removalFirst`) en vez de escribir una
+segunda tabla: los peldaños que quitan van delante, los que recortan detrás, y
+cada grupo conserva su orden relativo. Para `strength`, que ya borraba primero,
+no cambia nada.
+
+⚠️ **Medido: hoy casi no se nota** (sesiones que se pasan a 45 min, 76 → 75; a
+60 min, 62 → 60). La razón es que `t3Redundant` va primero en los dos órdenes y
+las plantillas actuales tienen redundancia de sobra, así que el reordenamiento
+rara vez llega a actuar. Se conserva porque la regla es correcta y el coste son
+cuatro líneas derivadas; ganará peso cuando el catálogo tenga plantillas con
+accesorios más diferenciados (fase 8). Hay un test que lo aísla con una sesión
+sin redundancia ni pares antagonistas: a 59 min salen 4 ejercicios con sus 4
+series, a 62 min salen 5 con tres recortados a 3.
+
 **Regla 2 — superserie de opuestos, sólo en sesiones cortas.** Peldaño nuevo,
 el primero de la escalera porque es el único que gana tiempo **sin quitar
 ejercicios**: encadena dos accesorios tier 3 contiguos de patrones antagonistas
@@ -490,11 +514,18 @@ RDL intactas.
 > el número y empeoraba el entrenamiento. Es la misma doctrina que la escalera de
 > compresión — se elimina redundancia, no estímulo único.
 >
-> **Hallazgo, de la misma familia que el de los 30 minutos:** en sesiones muy
-> concentradas los suelos hacen inalcanzable el techo. Un día donde todo es
-> espalda —1 principal a 4 series + 2 accesorios en su suelo de 2— son 16 series
-> semanales a dos ciclos por semana, con un techo de principiante de 14. No hay
-> recorte posible sin romper el suelo de sesión: se declara en `overBudget`.
+> **Decisión posterior del usuario — el principal baja a 3 series como último
+> recurso.** La spec original decía "tier 1 nunca". Se mantiene para
+> *eliminarlo* (§2.9, sigue siendo intocable), pero cuando los accesorios se
+> agotan sí se le baja una serie, con suelo de 3. Razón: un principiante con 24
+> series semanales de espalda las tiene aunque no las mire nadie, y bajar un
+> básico de 4 a 3 series no le quita el carácter al programa — el ejercicio sigue
+> ahí, con su progresión. Medido: grupos por encima de su techo **34 → 28**,
+> programas afectados **23 → 19**.
+>
+> **Hallazgo, de la misma familia que el de los 30 minutos:** aun así quedan
+> excesos irreducibles. Tres principales de espalda a 3 series (su suelo) por dos
+> ciclos semanales son 18 series con un techo de 14. Se declara en `overBudget`.
 >
 > `glutes_hypertrophy_intermediate` ya declara
 > `volumeEmphasis: ['glutes_hamstrings']` — es la primera plantilla que usa el

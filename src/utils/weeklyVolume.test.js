@@ -71,19 +71,26 @@ describe('normalizeWeeklyVolume', () => {
     expect(r.overBudget).toEqual([]);
   });
 
-  it('con los suelos de por medio, recorta lo que puede y declara el resto', () => {
-    // 1 principal + 2 accesorios: los accesorios bajan a 2 series y ahí se
-    // acaba — quitar uno rompería el suelo de sesión. 20 → 16, techo 14.
+  it('con los suelos de por medio, recorta lo que puede', () => {
+    // 1 principal + 2 accesorios: los accesorios bajan a 2 series (quitar uno
+    // rompería el suelo de sesión) y el principal a 3. 20 → 14, justo el techo.
     const r = normalizeWeeklyVolume([BACK_DAY], { daysPerWeek: 2, level: 'beginner' });
-    expect(r.weekly.back).toBeLessThan(20);
-    expect(r.overBudget).toContain('back');
+    expect(r.weekly.back).toBeLessThanOrEqual(VOLUME_BANDS.beginner.hard);
     expect(r.sessions[0].filter((e) => e.tier !== 1).every((e) => e.sets === 2)).toBe(true);
   });
 
-  it('nunca toca las series de un principal', () => {
+  it('los accesorios se agotan antes de tocar un principal', () => {
+    // Con margen en los accesorios, el principal se queda como estaba.
+    const wide = [...BACK_DAY, ex('chest_fly_machine', 3, 3)];
+    const r = normalizeWeeklyVolume([wide], { daysPerWeek: 2, level: 'beginner' });
+    expect(r.sessions[0].find((e) => e.tier === 1).sets).toBe(4);
+  });
+
+  it('como último recurso baja un principal a 3 series, y nunca lo elimina', () => {
     const r = normalizeWeeklyVolume([BACK_DAY], { daysPerWeek: 2, level: 'beginner' });
     const key = r.sessions[0].find((e) => e.tier === 1);
-    expect(key.sets).toBe(4);
+    expect(key).toBeTruthy();
+    expect(key.sets).toBe(3);
   });
 
   it('deja el grupo cubierto: no borra el último ejercicio de un grupo', () => {
@@ -94,11 +101,13 @@ describe('normalizeWeeklyVolume', () => {
     expect(backCount).toBeGreaterThanOrEqual(1);
   });
 
-  it('declara `overBudget` cuando ya sólo quedan principales', () => {
+  it('declara `overBudget` cuando ni bajando los principales a su suelo llega', () => {
     const allKeys = [ex('pulldown_pronated', 1, 5), ex('cable_row', 1, 5), ex('barbell_row', 1, 5)];
     const r = normalizeWeeklyVolume([allKeys], { daysPerWeek: 2, level: 'beginner' });
+    // 3 principales × 3 series × 2 ciclos = 18 semanales, techo 14: irreducible.
     expect(r.overBudget).toContain('back');
-    expect(r.sessions[0]).toEqual(allKeys); // no se ha tocado nada
+    expect(r.sessions[0]).toHaveLength(3);                      // ninguno eliminado
+    expect(r.sessions[0].every((e) => e.sets === 3)).toBe(true); // todos en su suelo
   });
 
   it('el énfasis de la plantilla sobrevive al normalizador', () => {
