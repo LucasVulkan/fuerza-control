@@ -258,6 +258,7 @@ export function adaptArchetype(archetype, answers) {
     const compressed = compressSession(exercises, {
       sessionMinutes,
       discipline: answers.discipline ?? archetype.discipline,
+      volumeEmphasis: archetype.volumeEmphasis ?? [],
     });
     if (compressed.overTime) overTime.push(dayDef.label);
 

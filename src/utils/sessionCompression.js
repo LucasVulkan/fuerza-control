@@ -44,7 +44,12 @@ export function estimateSessionSec(exercises, allExercises = EXERCISE_LIBRARY) {
     const n = ex.sets ?? 0;
     const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
     const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
-    seconds += n * (work + (ex.restSec ?? 90)) + EXERCISE_OVERHEAD_SEC;
+    // Superserie: los eslabones no finales comparten el descanso del último, así
+    // que no cuentan el suyo (misma regla que `sessionStats`). Nada genera
+    // superseries todavía, pero una plantilla puede declararlas y el editor las
+    // crea a mano: sin esto el presupuesto no vería el ahorro.
+    const rest = ex.supersetWithNext ? 0 : (ex.restSec ?? 90);
+    seconds += n * (work + rest) + EXERCISE_OVERHEAD_SEC;
   }
   if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
   return seconds;
@@ -120,8 +125,15 @@ function reduceSets(exercises, tier, floor) {
   return exercises.map((ex, i) => (i === best ? { ...ex, sets: ex.sets - 1 } : ex));
 }
 
-/** El último del tier dado cuyo grupo ya cubre otro ejercicio de la sesión. */
-function removeRedundant(exercises, tier, allExercises) {
+/**
+ * El último del tier dado cuyo grupo ya cubre otro ejercicio de la sesión.
+ *
+ * Un grupo con énfasis declarado (`volumeEmphasis`) NO es redundante por mucho
+ * que se repita: en un programa de glúteo, el tercer ejercicio de glúteo es el
+ * programa. El énfasis es de la plantilla, no del objetivo — `goal` describe
+ * cómo se entrena (rango de reps), no qué se prioriza.
+ */
+function removeRedundant(exercises, tier, allExercises, emphasis) {
   const groupOf = (ex) => allExercises[ex.exerciseId]?.primaryGroup;
   const counts = {};
   exercises.forEach((ex) => {
@@ -130,14 +142,22 @@ function removeRedundant(exercises, tier, allExercises) {
   });
   const i = findLastIndex(exercises, (ex, idx) => {
     const g = groupOf(ex);
-    return tierOfExercise(ex) === tier && g && counts[g] > 1 && canRemove(exercises, idx);
+    return tierOfExercise(ex) === tier && g && counts[g] > 1
+      && !emphasis.includes(g) && canRemove(exercises, idx);
   });
   return i === -1 ? null : removeAt(exercises, i);
 }
 
-function removeLastOfTier(exercises, tier) {
-  const i = findLastIndex(exercises, (ex, idx) => tierOfExercise(ex) === tier && canRemove(exercises, idx));
-  return i === -1 ? null : removeAt(exercises, i);
+/** El último del tier dado; los grupos con énfasis se sacrifican los últimos. */
+function removeLastOfTier(exercises, tier, allExercises, emphasis) {
+  const groupOf = (ex) => allExercises[ex.exerciseId]?.primaryGroup;
+  const removable = (ex, idx) => tierOfExercise(ex) === tier && canRemove(exercises, idx);
+
+  const i = findLastIndex(exercises, (ex, idx) => removable(ex, idx) && !emphasis.includes(groupOf(ex)));
+  if (i !== -1) return removeAt(exercises, i);
+
+  const fallback = findLastIndex(exercises, removable);
+  return fallback === -1 ? null : removeAt(exercises, fallback);
 }
 
 /** Un tier 2 cuyo patrón ya trabaja un tier 1 de la misma sesión es prescindible. */
@@ -152,12 +172,12 @@ function removeCoveredByTier1(exercises, allExercises) {
 }
 
 const STEPS = {
-  t3Redundant: (ex, all) => removeRedundant(ex, 3, all),
-  t3Sets:      (ex)      => reduceSets(ex, 3, MIN_SETS_ACCESSORY),
-  t3Remove:    (ex)      => removeLastOfTier(ex, 3),
-  t2Sets:      (ex)      => reduceSets(ex, 2, MIN_SETS_ACCESSORY),
-  t2Remove:    (ex, all) => removeCoveredByTier1(ex, all),
-  t1Sets:      (ex)      => reduceSets(ex, 1, MIN_SETS_TIER1),
+  t3Redundant: (ex, all, emph) => removeRedundant(ex, 3, all, emph),
+  t3Sets:      (ex)            => reduceSets(ex, 3, MIN_SETS_ACCESSORY),
+  t3Remove:    (ex, all, emph) => removeLastOfTier(ex, 3, all, emph),
+  t2Sets:      (ex)            => reduceSets(ex, 2, MIN_SETS_ACCESSORY),
+  t2Remove:    (ex, all)       => removeCoveredByTier1(ex, all),
+  t1Sets:      (ex)            => reduceSets(ex, 1, MIN_SETS_TIER1),
 };
 
 /**
@@ -166,7 +186,12 @@ const STEPS = {
  * @returns {{ exercises: object[], overTime: boolean }} `overTime` = se agotaron
  *          los peldaños y la sesión sigue pasándose. No se fuerza: se enseña.
  */
-export function compressSession(exercises, { sessionMinutes, discipline = 'standard', allExercises = EXERCISE_LIBRARY } = {}) {
+export function compressSession(exercises, {
+  sessionMinutes,
+  discipline = 'standard',
+  volumeEmphasis = [],
+  allExercises = EXERCISE_LIBRARY,
+} = {}) {
   if (!sessionMinutes) return { exercises, overTime: false };
 
   const budgetSec = sessionMinutes * 60;
@@ -176,7 +201,7 @@ export function compressSession(exercises, { sessionMinutes, discipline = 'stand
   while (estimateSessionSec(result, allExercises) > budgetSec) {
     let next = null;
     for (const stepName of order) {
-      next = STEPS[stepName](result, allExercises);
+      next = STEPS[stepName](result, allExercises, volumeEmphasis);
       if (next) break;
     }
     if (!next) return { exercises: result, overTime: true };

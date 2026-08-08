@@ -191,7 +191,10 @@ daysPerWeek, days: [{ label, name, color, emphasis, exercises: [...] }] }`.
 ```js
 // ── en el arquetipo ────────────────────────────────────────────────────────
 summary: 'Tren superior y tren inferior alternados. Cada básico dos veces por semana.',
-volumeEmphasis: ['glutes_hamstrings'],   // opcional — sube el techo de esos grupos (§5.4)
+// Opcional. Hace dos cosas con el mismo dato: sube el techo de volumen de esos
+// grupos (§5.4) y los protege del recorte por redundancia (§5.3). NO cuelga del
+// `goal` — el goal es cómo se entrena, el énfasis es qué prioriza la plantilla.
+volumeEmphasis: ['glutes_hamstrings'],
 phases: [ … ],                            // opcional — §6
 
 // ── en cada ejercicio del arquetipo ───────────────────────────────────────
@@ -354,21 +357,57 @@ en la matriz completa salvo biblioteca agotada demostrable.
 > Es decir: se cumple más el presupuesto sin perder contenido, que es justo lo
 > que aporta el escalón que faltaba.
 >
-> **Decisión al implementar — qué cae primero.** El ejemplo del análisis quitaba
-> el gemelo antes que la extensión de cuádriceps. La regla escrita hace lo
-> contrario: `t3Redundant` se lleva la **extensión**, porque es el tercer
-> ejercicio de `quads` del día, mientras que el gemelo es el único de su grupo.
-> Prevalece la regla —eliminar redundancia antes que estímulo único— porque es
-> la doctrina del propio análisis ("preservar estímulo → eliminar redundancia →
-> reducir volumen"). Pendiente de confirmar con el usuario.
+> **Decisión cerrada — qué cae primero.** Cae la **redundancia**, no el estímulo
+> único: en el día de pierna del análisis se va la extensión de cuádriceps
+> (tercer ejercicio de `quads`) antes que el gemelo (único de su grupo). Es la
+> doctrina del propio análisis — "preservar estímulo → eliminar redundancia →
+> reducir volumen".
 >
-> **Hallazgo, no bloqueante:** el presupuesto de **30 min es estructuralmente
-> inalcanzable**. El suelo de 1 principal + 2 accesorios, más 8 min de
-> calentamiento general y 3 min de transición por ejercicio, ya suman ~17 min
-> antes de la primera serie; una sesión mínima real ronda los 35. A 30 min se
-> pasan 1202 de 2016 sesiones, y la escalera no puede hacer más. O la opción de
-> 30 min del onboarding se replantea, o los overheads de `estimateSessionSec`
-> son demasiado altos para entrenar en casa. Decisión de producto, no de código.
+> **Con una excepción: el énfasis de la plantilla.** Un grupo listado en
+> `volumeEmphasis` no cuenta como redundante por mucho que se repita — en un
+> programa de glúteo, el tercer ejercicio de glúteo *es* el programa. `t3Remove`
+> además lo sacrifica el último. El suelo de sesión sigue mandando por encima:
+> con un presupuesto imposible, el énfasis también cae.
+>
+> Ojo con de dónde cuelga esto: **no del `goal`**. Los goals (`hypertrophy`,
+> `endurance`, `strength`, `max_strength`) describen *cómo* se entrena —rango de
+> reps, descanso, intensidad—, no qué se prioriza. "Glúteo" no es un goal, es una
+> **disciplina** (`glutes_legs`, que autorrellena `goal: 'hypertrophy'`), y su
+> énfasis vive en la plantilla. Por eso el mismo campo `volumeEmphasis` gobierna
+> las dos caras: sube el techo de volumen del grupo (§5.4) y lo protege del
+> recorte por tiempo.
+
+#### 5.3.1 El presupuesto de 30 minutos — decisión pendiente
+
+**30 min es hoy estructuralmente inalcanzable.** El suelo de 1 principal + 2
+accesorios, más 8 min de calentamiento general (`SESSION_OVERHEAD_SEC`) y 3 min
+de transición por ejercicio (`EXERCISE_OVERHEAD_SEC`), suman ~17 min antes de la
+primera serie; una sesión mínima real ronda los 35. A 30 min se pasan 1202 de
+2016 sesiones de la matriz y la escalera no puede hacer nada más.
+
+Esos overheads son una **suposición**: modelan un gimnasio comercial lleno
+(buscar máquina, esperar, montar discos). Entrenando en casa con mancuernas no
+son 3 min por ejercicio. Y son los mismos que usa `sessionStats`, así que
+presupuesto y preview coinciden — esa coherencia hay que conservarla.
+
+Tres salidas, en orden de coste:
+
+1. **El presupuesto mide tiempo de TRABAJO, no total** (propuesta del usuario).
+   `sessionMinutes` se compara contra `sets × (trabajo + descanso)`; el preview
+   enseña los dos números: *"~30 min de trabajo · ~47 min con calentamiento y
+   transiciones"*. Barato y honesto. **Consecuencia que hay que aceptar: afecta
+   a todos los presupuestos, no sólo al de 30** — quien pida 60 min recibirá
+   sesiones de ~75 min reales. Sin decidir.
+2. **Superserie como peldaño de la escalera.** El mecanismo está entero:
+   `supersetWithNext` en el exConfig, `sessionStats` ya no cuenta el descanso de
+   los eslabones no finales, `sessionSlots` los pinta encadenados — y desde esta
+   fase `estimateSessionSec` también lo respeta. **Nadie las genera.** Emparejar
+   dos accesorios de grupos distintos ahorra ~3 min por pareja y **conserva los
+   dos ejercicios**: es estrictamente mejor que borrar uno. Candidato a fase 2b.
+3. **Bloques de acondicionamiento.** Buena forma de entrenar con poco tiempo,
+   pero un bloque es **contenido**, no una transformación: no se puede fabricar
+   comprimiendo una sesión de fuerza. Lo declara la plantilla. Va a la fase 8,
+   con su propio diseño.
 
 Sustituye el bucle de `trimToTimeBudget`. Mismo sitio, mismas garantías previas
 (keys intactos, estimación con la fórmula espejo de `sessionStats`), pero con el

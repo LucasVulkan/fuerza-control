@@ -85,6 +85,47 @@ describe('compressSession — escalera', () => {
   });
 });
 
+describe('compressSession — énfasis de la plantilla', () => {
+  // El día de glúteo: tres ejercicios del mismo grupo A PROPÓSITO.
+  const GLUTE_DAY = [
+    ex('hip_thrust',        1, 4, 120),
+    ex('romanian_deadlift', 1, 4, 120),
+    ex('leg_extension',     3, 3, 90),
+    ex('cable_kickback',    3, 3, 60),
+  ];
+
+  it('sin énfasis, el tercer ejercicio del grupo es redundante y cae', () => {
+    const mins = Math.floor(estimateSessionSec(GLUTE_DAY) / 60) - 1;
+    const { exercises } = compressSession(GLUTE_DAY, { sessionMinutes: mins });
+    expect(idsOf(exercises)).not.toContain('glute_kickback_cable');
+  });
+
+  it('con énfasis declarado, el grupo prioritario sobrevive al recorte', () => {
+    const mins = Math.floor(estimateSessionSec(GLUTE_DAY) / 60) - 1;
+    const { exercises } = compressSession(GLUTE_DAY, {
+      sessionMinutes: mins, volumeEmphasis: ['glutes_hamstrings'],
+    });
+    expect(idsOf(exercises)).toContain('cable_kickback');
+  });
+
+  it('el énfasis se sacrifica el último, no nunca: con presupuesto imposible también cae', () => {
+    const { exercises } = compressSession(GLUTE_DAY, {
+      sessionMinutes: 10, volumeEmphasis: ['glutes_hamstrings'],
+    });
+    // El suelo manda por encima del énfasis (1 principal + 2 accesorios).
+    expect(exercises.filter((e) => e.tier !== 1).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('estimateSessionSec — espejo de sessionStats', () => {
+  it('los eslabones de una superserie no cuentan su descanso', () => {
+    const plain = [ex('leg_extension', 3, 3, 60), ex('calf_raise_standing', 3, 3, 60)];
+    const superset = [{ ...plain[0], supersetWithNext: true }, plain[1]];
+    // 3 series × 60 s de descanso ahorrados
+    expect(estimateSessionSec(plain) - estimateSessionSec(superset)).toBe(180);
+  });
+});
+
 describe('compressSession — carácter por disciplina', () => {
   it('fuerza no recorta las series de los básicos; hipertrofia sí', () => {
     const strength    = compressSession(LEG_DAY, { sessionMinutes: 10, discipline: 'strength' });
