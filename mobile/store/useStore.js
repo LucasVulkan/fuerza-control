@@ -3754,109 +3754,137 @@ export const useStore = create(
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
         theme:       state.theme,        // active UI theme
       }),
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-
-        // Apply language from persisted profile
-        if (state.profile?.language) {
-          i18n.changeLanguage(state.profile.language);
-        }
-
-        // Clear stale active sessions (older than 12h) so the app doesn't
-        // always open on WorkoutScreen after closing mid-session during testing.
-        if (state.activeSession?.templateId) {
-          const age = Date.now() - (state.activeSession.startedAt ?? 0);
-          if (age > 12 * 60 * 60 * 1000) {
-            state.activeSession = INITIAL_ACTIVE_SESSION;
+      onRehydrateStorage: () => (state, error) => {
+        // Zustand calls this with (undefined, error) when the storage read
+        // fails, and re-calls it the same way if this callback itself throws
+        // (zustand/middleware.js:439). Either path used to skip the
+        // `_hasHydrated` flag below, and RootNavigator blocks the render until
+        // it flips → permanently blank screen with no way out from inside the
+        // app. Everything runs inside try/finally so the flag always lands.
+        try {
+          if (error) {
+            console.warn('[rehydrate] AsyncStorage read failed:', error);
+            // Keep the unreadable blob: the first set() after boot overwrites
+            // it, and it may still hold recoverable clients/programs.
+            // ponytail: relies on AsyncStorage dispatching in call order, so
+            // this getItem lands before the setItem that the setState below
+            // triggers. If that ever proves flaky, snapshot on write instead.
+            AsyncStorage.getItem('fc_tracker_v1')
+              .then((raw) => raw && AsyncStorage.setItem('fc_tracker_v1_corrupt', raw))
+              .catch(() => {});
           }
-        }
+          if (!state) return;   // `finally` still runs
 
-        // Migrate: split client entries out of the personal workoutLog (one-time).
-        // Runs only when clientLogs doesn't exist yet (first launch after update).
-        if (!state.clientLogs) {
-          state.clientLogs = {};
-          const { personalLog, clientEntries } = splitClientLogEntries(
-            state.workoutLog, state.clients, state.programs,
+          // Apply language from persisted profile
+          if (state.profile?.language) {
+            i18n.changeLanguage(state.profile.language);
+          }
+
+          // Clear stale active sessions (older than 12h) so the app doesn't
+          // always open on WorkoutScreen after closing mid-session during testing.
+          if (state.activeSession?.templateId) {
+            const age = Date.now() - (state.activeSession.startedAt ?? 0);
+            if (age > 12 * 60 * 60 * 1000) {
+              state.activeSession = INITIAL_ACTIVE_SESSION;
+            }
+          }
+
+          // Migrate: split client entries out of the personal workoutLog (one-time).
+          // Runs only when clientLogs doesn't exist yet (first launch after update).
+          if (!state.clientLogs) {
+            state.clientLogs = {};
+            const { personalLog, clientEntries } = splitClientLogEntries(
+              state.workoutLog, state.clients, state.programs,
+            );
+            if (Object.keys(clientEntries).length) {
+              state.workoutLog = personalLog;
+              Object.entries(clientEntries).forEach(([cid, entries]) => {
+                state.clientLogs[cid] = entries.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+              });
+            }
+          }
+
+          // Default the next-session overrides map on older persisted state.
+          if (state.clientSync && !state.clientSync.pendingOverrides) state.clientSync.pendingOverrides = {};
+
+          // Migrate: every program owns at least one stage
+          // (`docs/specs/stage-planner.md` §3). The migrated stage gets
+          // `durationWeeks: null` — "no limit" — which is exactly how a
+          // stage-less program behaved, so nobody's running program suddenly
+          // grows an ending. Idempotent, so it costs nothing on later launches.
+          if (state.programs) {
+            Object.entries(state.programs).forEach(([id, p]) => {
+              const staged = ensureStages(p);
+              if (staged !== p) state.programs[id] = staged;
+            });
+          }
+
+          // Migrate string tags → tagRegistry IDs
+          if (!state.tagRegistry) state.tagRegistry = [];
+          const needsTagMigration = Object.values(state.clients ?? {}).some(
+            (c) => (c.tags ?? []).some((t) => !String(t).startsWith('tag_'))
           );
-          if (Object.keys(clientEntries).length) {
-            state.workoutLog = personalLog;
-            Object.entries(clientEntries).forEach(([cid, entries]) => {
-              state.clientLogs[cid] = entries.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+          if (needsTagMigration) {
+            const nameToId = {};
+            Object.values(state.clients ?? {}).forEach((c) => {
+              (c.tags ?? []).forEach((t) => {
+                if (!String(t).startsWith('tag_') && !nameToId[t]) {
+                  const id = 'tag_' + Math.random().toString(36).slice(2, 10);
+                  state.tagRegistry.push({ id, name: String(t) });
+                  nameToId[t] = id;
+                }
+              });
+            });
+            Object.values(state.clients ?? {}).forEach((c) => {
+              if (c.tags?.length) c.tags = c.tags.map((t) => nameToId[t] ?? t);
             });
           }
-        }
 
-        // Default the next-session overrides map on older persisted state.
-        if (state.clientSync && !state.clientSync.pendingOverrides) state.clientSync.pendingOverrides = {};
-
-        // Migrate: every program owns at least one stage
-        // (`docs/specs/stage-planner.md` §3). The migrated stage gets
-        // `durationWeeks: null` — "no limit" — which is exactly how a
-        // stage-less program behaved, so nobody's running program suddenly
-        // grows an ending. Idempotent, so it costs nothing on later launches.
-        if (state.programs) {
-          Object.entries(state.programs).forEach(([id, p]) => {
-            const staged = ensureStages(p);
-            if (staged !== p) state.programs[id] = staged;
-          });
-        }
-
-        // Migrate string tags → tagRegistry IDs
-        if (!state.tagRegistry) state.tagRegistry = [];
-        const needsTagMigration = Object.values(state.clients ?? {}).some(
-          (c) => (c.tags ?? []).some((t) => !String(t).startsWith('tag_'))
-        );
-        if (needsTagMigration) {
-          const nameToId = {};
-          Object.values(state.clients ?? {}).forEach((c) => {
-            (c.tags ?? []).forEach((t) => {
-              if (!String(t).startsWith('tag_') && !nameToId[t]) {
-                const id = 'tag_' + Math.random().toString(36).slice(2, 10);
-                state.tagRegistry.push({ id, name: String(t) });
-                nameToId[t] = id;
-              }
+          // Migrate hex colors → CSS vars
+          const HEX_TO_VAR = {
+            '#e8ff47': 'var(--day1)', '#E8FF47': 'var(--day1)',
+            '#ff6b35': 'var(--day2)', '#FF6B35': 'var(--day2)',
+            '#7eb8ff': 'var(--day3)', '#7EB8FF': 'var(--day3)',
+            '#a78bfa': 'var(--day4)', '#A78BFA': 'var(--day4)',
+            '#34d399': 'var(--day5)', '#34D399': 'var(--day5)',
+            '#f472b6': 'var(--day6)', '#F472B6': 'var(--day6)',
+          };
+          const migrateTemplates = (map) => {
+            if (!map) return;
+            Object.values(map).forEach((tpl) => {
+              if (tpl?.color && HEX_TO_VAR[tpl.color]) tpl.color = HEX_TO_VAR[tpl.color];
             });
-          });
-          Object.values(state.clients ?? {}).forEach((c) => {
-            if (c.tags?.length) c.tags = c.tags.map((t) => nameToId[t] ?? t);
-          });
+          };
+          migrateTemplates(state.userPrograms);
+          migrateTemplates(state.sessionTemplates);
+
+        } catch (e) {
+          console.warn('[rehydrate] migration failed, booting with what loaded:', e);
+        } finally {
+          // Determine the initial screen. We set _hasHydrated + _initialRoute so
+          // RootNavigator can mount the Stack with the correct initialRouteName
+          // without any setTimeout / navigateTo race condition.
+          //
+          // Read the live store, not `state`: on the success path they are the
+          // same object (middleware.js:431 passes get()), and on the failure
+          // path `state` is undefined while the store still holds the initial
+          // state — which routes to Setup, same as a fresh install.
+          const s = useStore.getState();
+          const hasProgram     = s.profile?.activeProgramId && s.programs?.[s.profile.activeProgramId];
+          const setupDone      = s.profile?.setupComplete;
+          const onboardingDone = s.profile?.onboardingCompleted;
+
+          let initialRoute = 'Main';
+          if (!setupDone && !onboardingDone && !hasProgram) {
+            initialRoute = 'Setup';
+          } else if (!onboardingDone && !hasProgram) {
+            initialRoute = 'Onboarding';
+          } else if (s.activeSession?.templateId) {
+            initialRoute = 'Workout';
+          }
+
+          useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
         }
-
-        // Migrate hex colors → CSS vars
-        const HEX_TO_VAR = {
-          '#e8ff47': 'var(--day1)', '#E8FF47': 'var(--day1)',
-          '#ff6b35': 'var(--day2)', '#FF6B35': 'var(--day2)',
-          '#7eb8ff': 'var(--day3)', '#7EB8FF': 'var(--day3)',
-          '#a78bfa': 'var(--day4)', '#A78BFA': 'var(--day4)',
-          '#34d399': 'var(--day5)', '#34D399': 'var(--day5)',
-          '#f472b6': 'var(--day6)', '#F472B6': 'var(--day6)',
-        };
-        const migrateTemplates = (map) => {
-          if (!map) return;
-          Object.values(map).forEach((tpl) => {
-            if (tpl?.color && HEX_TO_VAR[tpl.color]) tpl.color = HEX_TO_VAR[tpl.color];
-          });
-        };
-        migrateTemplates(state.userPrograms);
-        migrateTemplates(state.sessionTemplates);
-
-        // Determine the initial screen. We set _hasHydrated + _initialRoute so
-        // RootNavigator can mount the Stack with the correct initialRouteName
-        // without any setTimeout / navigateTo race condition.
-        const hasProgram     = state.profile?.activeProgramId && state.programs?.[state.profile.activeProgramId];
-        const setupDone      = state.profile?.setupComplete;
-        const onboardingDone = state.profile?.onboardingCompleted;
-
-        let initialRoute = 'Main';
-        if (!setupDone && !onboardingDone && !hasProgram) {
-          initialRoute = 'Setup';
-        } else if (!onboardingDone && !hasProgram) {
-          initialRoute = 'Onboarding';
-        } else if (state.activeSession?.templateId) {
-          initialRoute = 'Workout';
-        }
-
-        useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
       },
     }
   )

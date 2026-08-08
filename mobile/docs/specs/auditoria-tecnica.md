@@ -1,7 +1,8 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO, sin implementar**. Ningún arreglo de este documento
-> está en `main`.
+> Estado: **🔍 DIAGNÓSTICO. Fallo 1 implementado** (ago 2026), 23 pendientes.
+> Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
+> bloque **Implementado** al final de la sección.
 >
 > Barrido de corrección sobre el móvil siguiendo el flujo real
 > (`index.js → App.js → RootNavigator → screens → store → services → utils`) y
@@ -22,7 +23,7 @@
 
 | # | Severidad | Título | Archivo principal |
 |---|-----------|--------|-------------------|
-| [1](#1) | 🔴 Crítica | Pantalla negra permanente si falla la rehidratación | `store/useStore.js:3757` |
+| [1](#1) | 🔴 Crítica | ✅ Pantalla negra permanente si falla la rehidratación | `store/useStore.js:3757` |
 | [2](#2) | 🔴 Crítica | Restaurar un backup pierde los programas de clientes | `store/useStore.js:2555` |
 | [3](#3) | 🟠 Alta | La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
 | [4](#4) | 🟠 Alta | El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
@@ -52,7 +53,7 @@ Rutas relativas a `mobile/` salvo las que empiezan por `supabase/` o `src/utils/
 
 ---
 
-## 1. Pantalla negra permanente si falla la rehidratación 🔴 {#1}
+## 1. Pantalla negra permanente si falla la rehidratación 🔴 ✅ {#1}
 
 **Dónde.** `store/useStore.js:3757` (`onRehydrateStorage`) y
 `src/navigation/RootNavigator.jsx:130`.
@@ -117,6 +118,42 @@ recuperable; hoy no arranca.
 **Test.** `store/useStore.test.js` nuevo: invocar el callback devuelto por
 `onRehydrateStorage()` con `(undefined, new Error('boom'))` y comprobar que
 `useStore.getState()._hasHydrated === true`.
+
+### ✅ Implementado (ago 2026)
+
+En `store/useStore.js:3757`. El cuerpo entero del callback pasa a `try /
+catch / finally`; el `if (!state) return;` se mantiene tal cual — `finally`
+corre igual — así que el diff sobre las migraciones es solo indentación.
+
+Dos desviaciones respecto al arreglo propuesto arriba:
+
+1. **La ruta se calcula sobre `useStore.getState()`, no sobre `state`.** El
+   código propuesto dejaba `initialRoute = 'Main'` por defecto, lo que
+   contradice su propio texto ("con `state` a `undefined` la app arranca en
+   `Setup`"): tal cual, un arranque con storage ilegible habría caído en la
+   pantalla principal vacía. Leyendo el store en vivo sale una sola rama para
+   los tres casos — en el camino bueno `state === get()` (`middleware.js:431`),
+   en el de lectura fallida el store tiene el estado inicial y enruta a `Setup`
+   igual que una instalación nueva, y si lo que petó fue una migración tras un
+   rehidratado correcto la ruta sale del estado ya cargado en vez de un
+   fallback ciego.
+
+2. **Se rescata el blob ilegible.** Al desbloquear el arranque con estado
+   vacío, el primer `set()` sobrescribe lo que hubiera en `fc_tracker_v1`. Si
+   estaba roto solo por un lado, se pierde la cartera de clientes de un
+   entrenador sin posibilidad de rescate. Con `error` informado se copia el
+   crudo a `fc_tracker_v1_corrupt` antes de que eso pase. Lleva comentario
+   `ponytail:` en el código: depende de que AsyncStorage despache en orden de
+   llamada (el `getItem` antes del `setItem` que dispara el `setState` del
+   `finally`) — cierto en ambas plataformas por cola serie, pero no garantizado
+   por contrato.
+
+**Sin test.** Importar el store en vitest exige mockear `react-native`, seis
+módulos de `expo-*`, notifee y supabase — más código de andamiaje que el
+arreglo, y hoy no hay ni un test que importe el store. Verificado con
+`npx eslint store/useStore.js` (15 errores, los mismos 15 que en HEAD) y
+`npx vitest run` (44 archivos, 1902 tests, verde). Pendiente de comprobar en
+dispositivo con la reproducción de arriba: debe abrir en `Setup`.
 
 ---
 
@@ -1285,7 +1322,7 @@ verificable:
 
 | Tanda | Fallos | Superficie |
 |-------|--------|-----------|
-| **A — arranque y datos** | [1](#1), [2](#2), [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
+| **A — arranque y datos** | ✅ [1](#1), [2](#2), [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** | [3](#3), [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
