@@ -1,6 +1,6 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. Fallo 1 implementado** (ago 2026), 23 pendientes.
+> Estado: **🔍 DIAGNÓSTICO. Fallos 1 y 2 implementados** (ago 2026), 22 pendientes.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -24,7 +24,7 @@
 | # | Severidad | Título | Archivo principal |
 |---|-----------|--------|-------------------|
 | [1](#1) | 🔴 Crítica | ✅ Pantalla negra permanente si falla la rehidratación | `store/useStore.js:3757` |
-| [2](#2) | 🔴 Crítica | Restaurar un backup pierde los programas de clientes | `store/useStore.js:2555` |
+| [2](#2) | 🔴 Crítica | ✅ Restaurar un backup pierde los programas de clientes | `store/useStore.js:2555` |
 | [3](#3) | 🟠 Alta | La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
 | [4](#4) | 🟠 Alta | El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
 | [5](#5) | 🟠 Alta | Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
@@ -157,7 +157,7 @@ dispositivo con la reproducción de arriba: debe abrir en `Setup`.
 
 ---
 
-## 2. Restaurar un backup completo pierde los programas de clientes 🔴 {#2}
+## 2. Restaurar un backup completo pierde los programas de clientes 🔴 ✅ {#2}
 
 **Dónde.** `store/useStore.js:2555-2587` (`importData`), contra
 `store/useStore.js:2325` (`exportFullBackup`) y `:2739` (`performDriveBackup`).
@@ -218,6 +218,52 @@ if (sections.clients) {
 construir un estado con 1 cliente + 1 programa managed, serializar con la misma
 forma que `exportFullBackup`, pasar por `importData` con todas las secciones, y
 comprobar que `programs[client.activeProgramId]` existe.
+
+### ✅ Implementado (ago 2026)
+
+En `store/useStore.js:2604`, tal cual el arreglo propuesto: los `managed` del
+archivo se cuelgan de `sections.clients`, que es donde ya viajan los
+`clientLogs`. Sin cambios en `needsTemplateData` — ya incluía esa sección.
+
+Cuatro comprobaciones del alcance que el diagnóstico no traía:
+
+1. **Las tres llamadas internas a `importData` no estaban afectadas.**
+   `:3226`, `:3324` y `:3501` (cliente recibiendo su programa) van con
+   `{ program: true }` y parecían condenadas por el mismo `return` de `:2558`,
+   pero lo que sube el entrenador pasa antes por `_buildProgramJson`, que
+   normaliza a `mode: 'personal'` (`:2396`, `:2470`). El fallo se limita a las
+   dos restauraciones de backup completo (`AppHeader` y `DriveBackupScreen`).
+
+2. **No revienta, degrada en silencio.** Las tres lecturas de
+   `programs[client.activeProgramId]` en `ClientsScreen` (`:1981`, `:2186`,
+   `:3091`) están guardadas: la ficha muestra "sin programa" mientras
+   `activeProgramId` sigue apuntando a un id muerto. Los `clientLogs` sí
+   vuelven, así que queda historial huérfano. Y `confirmReplaceActive` deja de
+   avisar antes de sobrescribir, porque su `hasActive` sale falso.
+
+3. **No se propaga al móvil del cliente.** `uploadProgramToClient` lanza
+   `'Programa no encontrado.'` cuando falta el programa (`:2870`), así que una
+   restauración rota no puede empujar el vacío al slot de Supabase.
+
+4. **No hay recuperación.** `refreshTrainerSlots` reconstruye clientes que
+   falten, pero con `programIds: []` y `activeProgramId: null` (`:3086`), y
+   nunca descarga el programa; `downloadProgram` solo se llama desde el lado
+   cliente. Sin este arreglo, lo perdido no vuelve por ninguna vía.
+
+Efecto lateral bueno: el reparto de logs heredados (`:2630`, backups
+pre-`clientLogs`) ahora ve los programas managed en `updates.programs`, así que
+atribuye al cliente correcto entradas que antes se quedaban en el log personal.
+
+**Sin test**, y esta vez se intentó: un test que mockea `react-native`,
+`async-storage` y los cuatro `expo-*` no llega ni a importar el store —
+`RolldownError: Flow is not supported` en `react-native/index.js`, porque
+`vi.mock` no evita que vite resuelva y parsee el módulo real. Haría falta un
+`vitest.config.js` con alias a stubs, que el repo no tiene (los tests actuales
+son todos de `src/utils`). Queda anotado como tarea aparte: con ese config,
+los fallos 10, 15, 16, 18 y 19 también pasan a ser testeables. Verificado con
+`npx eslint store/useStore.js` (15 errores, los mismos que en HEAD) y
+`npx vitest run` (verde). Pendiente en dispositivo con la reproducción de
+arriba.
 
 ---
 
@@ -1322,7 +1368,7 @@ verificable:
 
 | Tanda | Fallos | Superficie |
 |-------|--------|-----------|
-| **A — arranque y datos** | ✅ [1](#1), [2](#2), [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
+| **A — arranque y datos** | ✅ [1](#1), ✅ [2](#2), [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** | [3](#3), [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |

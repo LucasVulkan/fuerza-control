@@ -2603,6 +2603,19 @@ export const useStore = create(
           }
           if (sections.clients) {
             updates.clients = { ...s.clients, ...(data.clients ?? {}) };
+
+            // Un programa `managed` es propiedad de un cliente, igual que su
+            // historial: si el cliente entra, su programa entra con él. Las
+            // otras dos ramas lo descartan a propósito — `program` lo
+            // convertiría en programa personal del entrenador y `templates`
+            // solo acepta `mode: 'template'` — así que sin esto la ficha
+            // restaurada apunta a un id que ya no existe. `needsTemplateData`
+            // ya incluye esta sección, así que sus sessionTemplates entran.
+            const managed = Object.fromEntries(
+              Object.entries(allFilePrograms).filter(([, p]) => p.mode === 'managed'),
+            );
+            updates.programs = { ...(updates.programs ?? s.programs), ...managed };
+
             // Restore per-client histories from backups that include them
             if (data.clientLogs && Object.keys(data.clientLogs).length) {
               const mergedLogs = { ...s.clientLogs };
