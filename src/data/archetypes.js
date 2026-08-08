@@ -625,10 +625,6 @@ export function rankArchetypes(answers = {}) {
     const minSpeed = MIN_CYCLE_SPEED[archetype.discipline] ?? MIN_CYCLE_SPEED_DEFAULT;
     if (cycleSpeed < minSpeed) score -= 60;
 
-    // Un principiante no lleva más de 3 sesiones distintas: si pide 6 días,
-    // rota una de 3 con el volumen recortado a su banda (spec §2.6).
-    if (level === 'beginner' && sessionsPerCycle > 3) score -= 100;
-
     score -= 3 * adaptationCost;
 
     const notes = [];

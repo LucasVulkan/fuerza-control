@@ -59,10 +59,23 @@ describe('rankArchetypes — qué gana y por qué', () => {
     expect(winner({ daysPerWeek: 3 }).sessionsPerCycle).toBe(3);
   });
 
-  it('un principiante nunca recibe de primeras más de 3 sesiones', () => {
+  it('el nivel NO bloquea una distribución: nada veta a un principiante', () => {
+    // Repartir los días en full body, U/L o PPL es organización, no dificultad.
+    // Lo que cambia con el nivel es el volumen y la selección de ejercicios.
+    // Antes había un −100 a las plantillas de >3 sesiones para principiantes:
+    // era un veto, y el día que exista un PPL de 6 vetaría justo la respuesta
+    // correcta para quien entrena 6 días.
     for (const daysPerWeek of [1, 2, 3, 4, 5, 6, 7]) {
-      expect(winner({ level: 'beginner', daysPerWeek }).sessionsPerCycle,
-        `${daysPerWeek} días`).toBeLessThanOrEqual(3);
+      const ranked = rankArchetypes(ask({ level: 'beginner', daysPerWeek }));
+      const grandes = ranked.filter((r) => r.sessionsPerCycle > 3);
+      grandes.forEach((r) => {
+        const equivalente = ranked.find((x) => x.sessionsPerCycle <= 3
+          && x.archetype.discipline === r.archetype.discipline
+          && x.cycleSpeed === r.cycleSpeed);
+        // Sin plantilla equivalente no hay nada que comparar; lo que se
+        // comprueba es que la diferencia nunca sea un abismo de veto.
+        if (equivalente) expect(Math.abs(r.score - equivalente.score)).toBeLessThan(50);
+      });
     }
   });
 

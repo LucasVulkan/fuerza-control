@@ -49,7 +49,10 @@ const PROG_IDS  = ['double_progression', 'linear', 'reps_progression'];
 const EXCLUSIVE_IDS = { limitations: 'none', equipment: 'bodyweight' };
 
 const LEVEL_ORDER    = { beginner: 0, intermediate: 1, advanced: 2 };
-const DIST_MIN_LEVEL = { full_body: 'beginner', upper_lower: 'intermediate', push_pull_legs: 'intermediate' };
+// La distribucion NO se bloquea por nivel (program-templates.md §2.14): repartir
+// los dias en full body, U/L o PPL es organización, no dificultad. Lo que sí
+// cambia con el nivel es el volumen (VOLUME_BANDS), la selección de ejercicios
+// (fitsLevel) y los objetivos de fuerza (GOAL_MIN_LEVEL).
 const DIST_FOR       = {
   full_body:      ['standard', 'calisthenics', 'glutes_legs', 'strength'],
   upper_lower:    ['standard', 'calisthenics', 'strength'],
@@ -61,24 +64,22 @@ function goalAvailable(goalId, level) {
   return LEVEL_ORDER[level] >= LEVEL_ORDER[GOAL_MIN_LEVEL[goalId]];
 }
 
-function distAvailable(distId, level, discipline) {
-  return LEVEL_ORDER[level] >= LEVEL_ORDER[DIST_MIN_LEVEL[distId]]
-    && DIST_FOR[distId].includes(discipline);
+function distAvailable(distId, discipline) {
+  return DIST_FOR[distId].includes(discipline);
 }
 
-// B2: distribución recomendada según días/nivel (tabla de la spec §5-B2),
-// filtrada por los gates de disciplina y nivel; si la preferida no pasa,
-// cae a la siguiente compatible.
-function recommendDistribution({ daysPerWeek: d, level, discipline }) {
-  const beginner = level === 'beginner';
+// Distribución recomendada según los días disponibles, filtrada solo por
+// disciplina. El nivel ya NO interviene: un principiante puede hacer PPL: lo que
+// le distingue es cuánto volumen y qué ejercicios, no cómo reparte los días.
+function recommendDistribution({ daysPerWeek: d, discipline }) {
   let preferred;
   if (d <= 2)       preferred = 'full_body';
-  else if (d === 3) preferred = beginner ? 'full_body' : 'push_pull_legs';
+  else if (d === 3) preferred = 'push_pull_legs';
   else if (d === 4) preferred = 'upper_lower';
-  else if (d <= 6)  preferred = beginner ? 'full_body' : 'push_pull_legs';
+  else if (d <= 6)  preferred = 'push_pull_legs';
   else              preferred = 'push_pull_legs'; // 7 días — con hint de descanso activo
   const ordered = [preferred, ...DIST_IDS.filter((id) => id !== preferred)];
-  return ordered.find((id) => distAvailable(id, level, discipline)) ?? 'full_body';
+  return ordered.find((id) => distAvailable(id, discipline)) ?? 'full_body';
 }
 
 // ─── Import helper ────────────────────────────────────────────────────────────
@@ -842,14 +843,10 @@ function StepDistrib({ answers, set_, onNext, onBack, isLast }) {
       isLast={isLast}
     >
       {orderedIds.map((id) => {
-        const levelOk     = LEVEL_ORDER[answers.level] >= LEVEL_ORDER[DIST_MIN_LEVEL[id]];
-        const disciplineOk = DIST_FOR[id].includes(answers.discipline);
-        const available    = levelOk && disciplineOk;
-        const disabledReason = !disciplineOk
-          ? t('onboarding.disabledReasons.notForDiscipline', { discipline: t(`onboarding.disciplines.${answers.discipline}.label`, answers.discipline), defaultValue: 'No disponible para esta disciplina' })
-          : !levelOk
-          ? (DIST_MIN_LEVEL[id] === 'intermediate' ? t('onboarding.disabledReasons.requiresIntermediate', 'Requiere nivel intermedio') : t('onboarding.disabledReasons.requiresAdvanced', 'Requiere nivel avanzado'))
-          : undefined;
+        const available = DIST_FOR[id].includes(answers.discipline);
+        const disabledReason = available
+          ? undefined
+          : t('onboarding.disabledReasons.notForDiscipline', { discipline: t(`onboarding.disciplines.${answers.discipline}.label`, answers.discipline), defaultValue: 'No disponible para esta disciplina' });
         return (
           <OptionCard
             key={id}
