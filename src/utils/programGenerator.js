@@ -7,6 +7,7 @@ import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
 import { compressSession } from './sessionCompression';
 import { withStages } from './stageProgress';
+import { normalizeWeeklyVolume } from './weeklyVolume';
 
 // ─── Parámetros por objetivo ──────────────────────────────────────────────────
 
@@ -304,7 +305,9 @@ export function generateProgram(answers) {
     };
   });
 
-  activeDays.forEach((dayDef) => {
+  // Dos pasadas, igual que `adaptArchetype`: el normalizador de volumen mira el
+  // ciclo entero, así que primero se montan todas las sesiones.
+  const built = activeDays.map((dayDef) => {
     const templateId = generateId('tpl');
     const exercises = [];
     const usedInSession = new Set(); // evitar repetir en el mismo día
@@ -393,11 +396,21 @@ export function generateProgram(answers) {
       exercises.push(buildExConfig(ex, params, false, limitedGroups, limitations, isLimited));
     });
 
+    return { dayDef, templateId, exercises, primaryKeyEx };
+  });
+
+  // Volumen semanal del ciclo contra la banda del nivel (program-templates.md
+  // §5.4), antes de la compresión por tiempo.
+  const { sessions: leveledSessions } = normalizeWeeklyVolume(built.map((b) => b.exercises), {
+    daysPerWeek, level, discipline,
+  });
+
+  built.forEach(({ dayDef, templateId, primaryKeyEx }, i) => {
     // Escalera de compresión (program-templates.md §5.3). Este camino no tiene
     // tier 2 —sus exConfig sólo llevan `isKey`—, así que la escalera se queda en
     // los peldaños de tier 3 y tier 1, que es exactamente lo que hacía el bucle
     // anterior más el escalón de bajar series antes de borrar.
-    const { exercises: budgetedExercises } = compressSession(exercises, { sessionMinutes, discipline });
+    const { exercises: budgetedExercises } = compressSession(leveledSessions[i], { sessionMinutes, discipline });
 
     sessionTemplates[templateId] = {
       id: templateId,

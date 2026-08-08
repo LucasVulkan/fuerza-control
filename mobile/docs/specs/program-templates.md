@@ -1,7 +1,7 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1, 2 y 2b implementadas** (ago 2026, ver §5.2, §5.3 y §5.3.1);
-> fases 3-8 pendientes.
+> Estado: **fases 1, 2, 2b y 3 implementadas** (ago 2026, ver §5.2, §5.3, §5.3.1
+> y §5.4); fases 3b-8 pendientes.
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -466,7 +466,39 @@ sobre el tiempo es peor que pasarse de él.
 producir, en este orden: fuera el gemelo, extensión a 2, prensa a 2, sentadilla y
 RDL intactas.
 
-### 5.4 FASE 3 — Normalizador de volumen semanal 🟢
+### 5.4 FASE 3 — Normalizador de volumen semanal 🟢 ✅ IMPLEMENTADA
+
+> `src/utils/weeklyVolume.js`, enganchado en los dos caminos. `adaptArchetype` y
+> `generateProgram` pasan a **dos pasadas**: primero se resuelven todas las
+> sesiones, después se normaliza el ciclo entero, y sólo entonces se comprime
+> por tiempo y se montan las plantillas.
+>
+> Medido sobre los combos que la UI puede producir de verdad (1392 sesiones):
+> grupos por encima de su techo **62 → 34**, programas afectados **47 → 23**,
+> peor exceso **14,8 → 5,8** series semanales de más.
+>
+> **Coste, y por qué se acepta:** las sesiones de <4 ejercicios pasan de 30 a 67
+> sobre la matriz completa, y el umbral informativo del harness sube de 9% a
+> 14%. El reparto justifica el cambio: las cortas a 3 días son **exactamente las
+> mismas de antes** (15); todo el aumento está en 4-7 días. Un principiante que
+> entrena 6 días sobre un ciclo de 3 sesiones las repite el doble de veces, así
+> que cada una tiene que ser más corta — no es un defecto, es la respuesta.
+>
+> **Regla añadida sobre la spec:** un ejercicio sólo se elimina si **el grupo
+> sigue cubierto por otro ejercicio de esa misma sesión**. Sin esa condición,
+> recortar volumen semanal podía dejar un día entero sin nada de espalda: bajaba
+> el número y empeoraba el entrenamiento. Es la misma doctrina que la escalera de
+> compresión — se elimina redundancia, no estímulo único.
+>
+> **Hallazgo, de la misma familia que el de los 30 minutos:** en sesiones muy
+> concentradas los suelos hacen inalcanzable el techo. Un día donde todo es
+> espalda —1 principal a 4 series + 2 accesorios en su suelo de 2— son 16 series
+> semanales a dos ciclos por semana, con un techo de principiante de 14. No hay
+> recorte posible sin romper el suelo de sesión: se declara en `overBudget`.
+>
+> `glutes_hypertrophy_intermediate` ya declara
+> `volumeEmphasis: ['glutes_hamstrings']` — es la primera plantilla que usa el
+> campo, y sus 21 series sobreviven al techo de 20.
 
 `src/utils/weeklyVolume.js` (nuevo, puro):
 
@@ -958,7 +990,7 @@ plantilla:
 | 1 | Resolvedor de slots (§5.2) | 🟢 | — | ✅ **IMPLEMENTADA** — 1917 tests verdes, sesiones cortas 56 → 40 |
 | 2 | Escalera de compresión + `DISCIPLINE_RULES` (§5.3, §5.6) | 🟢 | tiers (§3.1) | ✅ **IMPLEMENTADA** — desbordes a 60 min 236 → 119, mismo nº de ejercicios |
 | 2b | Sesiones cortas: presupuesto sin calentamiento + superserie de opuestos (§5.3.1) | 🟢 | 2 | ✅ **IMPLEMENTADA** — desbordes a 45 min 410 → 144 |
-| 3 | Normalizador de volumen + `volumeEmphasis` (§5.4) | 🟢 | 2 (comparten tabla) | Sonnet |
+| 3 | Normalizador de volumen + `volumeEmphasis` (§5.4) | 🟢 | 2 (comparten tabla) | ✅ **IMPLEMENTADA** — grupos sobre el techo 62 → 34, peor exceso 14,8 → 5,8 |
 | 3b | Vincular lo repetido en el ciclo (§5.5) | 🟢 | 2, 3 | Sonnet |
 | 4 | `phases` → N etapas (§6) | 🟢 | — | Sonnet |
 | 5 | `rankArchetypes` + retirada del procedural (§7) | 🟢 | — | Sonnet |

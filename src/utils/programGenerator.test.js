@@ -187,19 +187,28 @@ describe(`invariantes del generador — matriz representativa (${MATRIX.length} 
     // No hay un límite exacto en la spec; lo que importa es que sean casos de
     // biblioteca agotada (bodyweight + limitaciones), no huecos descartados.
     //
-    // Umbral bajado de 11% a 9% con el resolvedor de slots
-    // (program-templates.md §5.2): la cascada de 5 escalones sustituyó a
-    // `findSubstitute`, que solo relajaba pattern+group → pattern y devolvía
-    // `candidates[0]` sin ordenar. Medido sobre esta misma matriz: 56 → 40
-    // sesiones cortas.
+    // Este indicador ya no mide una sola cosa. Tiene tres causas, dos buenas:
     //
-    // Lo que queda son 39 slots tier 1 de `back` con `equipment: []`: la
-    // biblioteca **no tiene ni un solo ejercicio de tracción sin material**
-    // (43 bodyweight, ninguno de back). Ningún resolvedor puede arreglar eso —
-    // es contenido que falta, no lógica. `adaptArchetype` los devuelve ahora en
-    // `unresolved` en vez de descartarlos en silencio.
+    // 1. Biblioteca agotada. 39 slots tier 1 de `back` con `equipment: []`: no
+    //    hay **ni un solo ejercicio de tracción sin material** en la biblioteca
+    //    (43 bodyweight, ninguno de back). Es contenido que falta, no lógica;
+    //    `adaptArchetype` los declara en `unresolved` en vez de descartarlos.
+    // 2. Presupuesto de tiempo. La escalera (§5.3) recorta lo que no cabe.
+    // 3. **Volumen semanal** (§5.4, nuevo): un principiante que entrena 6 días
+    //    sobre un ciclo de 3 sesiones las hace el doble de veces, así que cada
+    //    una tiene que ser más corta. Una sesión de 3 ejercicios repetida 6
+    //    veces por semana no es un defecto: es la respuesta correcta.
+    //
+    // Por eso el umbral sube de 9% a 14% al entrar el normalizador (30 → 67
+    // sobre esta matriz). El reparto lo confirma: las sesiones cortas a 3 días
+    // son exactamente las mismas de antes (15); todo el aumento está en 4-7
+    // días, donde el multiplicador de frecuencia es mayor que 1.
+    //
+    // A cambio, los grupos por encima de su techo semanal bajan de 62 a 34 y el
+    // peor exceso de 14,8 a 5,8 series/semana (medido sobre los combos que la
+    // UI puede producir de verdad).
     console.log(`Sesiones <4 ejercicios: ${shortSessions} / matriz de ${MATRIX.length} combos`);
-    expect(shortSessions).toBeLessThan(MATRIX.length * 0.09);
+    expect(shortSessions).toBeLessThan(MATRIX.length * 0.14);
   });
 });
 

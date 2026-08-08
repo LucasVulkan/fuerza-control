@@ -406,6 +406,11 @@ export const ARCHETYPES = [
     discipline: 'glutes_legs', distribution: 'full_body',
     goal: 'hypertrophy',
     level: 'intermediate',
+    // Sus 21 series de glúteo por ciclo son el programa, no un exceso: sin esto
+    // el normalizador las recorta al techo de intermedio (20) y la plantilla
+    // deja de ser una plantilla de glúteo. Protege también del recorte por
+    // redundancia (program-templates.md §5.3).
+    volumeEmphasis: ['glutes_hamstrings'],
     daysPerWeek: 3,
     days: [
       {

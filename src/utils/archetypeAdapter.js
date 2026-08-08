@@ -21,6 +21,7 @@ import { GOAL_PARAMS } from './programGenerator';
 import { compressSession } from './sessionCompression';
 import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
+import { normalizeWeeklyVolume } from './weeklyVolume';
 
 const LIMITATION_GROUPS = {
   shoulder:   ['shoulders', 'chest'],
@@ -169,10 +170,11 @@ function reduceForBeginner(exercises, userEquipment) {
  * Devuelve `{ program, sessionTemplates }` en el mismo formato que
  * `generateProgram`, más el diagnóstico de la adaptación (spec §5.1):
  * `substitutions` (qué cambió y por qué), `unresolved` (slots que la biblioteca
- * no pudo llenar) y `overTime` (sesiones que no caben en el presupuesto ni tras
- * la compresión). Hoy nadie los consume — el preview lo hará en la fase 6 y el
- * harness en la 7; hasta entonces existen para que dejen de perderse dentro de
- * la función.
+ * no pudo llenar), `overTime` (sesiones que no caben en el presupuesto ni tras
+ * la compresión), `weekly` (series semanales por grupo) y `overBudget` (grupos
+ * que siguen por encima de su techo porque ya sólo quedan principales). Hoy
+ * nadie los consume — el preview lo hará en la fase 6 y el harness en la 7;
+ * hasta entonces existen para que dejen de perderse dentro de la función.
  */
 export function adaptArchetype(archetype, answers) {
   const {
@@ -196,7 +198,11 @@ export function adaptArchetype(archetype, answers) {
   const applyGoalParams = goal !== archetype.goal;
   const goalParams = GOAL_PARAMS[goal] ?? GOAL_PARAMS.hypertrophy;
 
-  archetype.days.forEach((dayDef) => {
+  // Dos pasadas: el normalizador de volumen (§5.4) mira el CICLO entero, así que
+  // primero se resuelven todas las sesiones y sólo después se montan las
+  // plantillas. La compresión por tiempo va después del volumen a propósito
+  // (§4): recortar series acorta la sesión, y el tiempo tiene la última palabra.
+  const built = archetype.days.map((dayDef) => {
     const templateId = generateId('tpl');
     const usedIds = new Set();
     let exercises = [];
@@ -252,18 +258,33 @@ export function adaptArchetype(archetype, answers) {
       exercises = reduceForBeginner(exercises, equipment);
     }
 
+    return { dayDef, templateId, exercises };
+  });
+
+  const discipline = answers.discipline ?? archetype.discipline;
+  const volumeEmphasis = archetype.volumeEmphasis ?? [];
+
+  // Volumen semanal del ciclo contra la banda del nivel (§5.4).
+  const normalized = normalizeWeeklyVolume(built.map((b) => b.exercises), {
+    daysPerWeek: answers.daysPerWeek,
+    level,
+    discipline,
+    volumeEmphasis,
+  });
+
+  built.forEach(({ dayDef, templateId }, i) => {
     // Escalera de compresión (§5.3): baja series antes de borrar, en el orden
     // que dicte la disciplina. El objetivo elegido manda sobre el del arquetipo
     // — es lo que el usuario quiere conservar cuando algo tiene que caer.
-    const compressed = compressSession(exercises, {
+    const compressed = compressSession(normalized.sessions[i], {
       sessionMinutes,
-      discipline: answers.discipline ?? archetype.discipline,
-      volumeEmphasis: archetype.volumeEmphasis ?? [],
+      discipline,
+      volumeEmphasis,
     });
     if (compressed.overTime) overTime.push(dayDef.label);
 
     // El tier se queda aquí dentro (§3.3); fuera va el orden.
-    exercises = compressed.exercises.map((ex, idx) => ({ ...stripTier(ex), order: idx + 1 }));
+    const exercises = compressed.exercises.map((ex, idx) => ({ ...stripTier(ex), order: idx + 1 }));
 
     // Warmup del primer key
     const firstKey = exercises.find((ex) => ex.isKey);
@@ -305,5 +326,13 @@ export function adaptArchetype(archetype, answers) {
     0,
   );
 
-  return { program, sessionTemplates, substitutions, unresolved, overTime };
+  return {
+    program,
+    sessionTemplates,
+    substitutions,
+    unresolved,
+    overTime,
+    weekly: normalized.weekly,
+    overBudget: normalized.overBudget,
+  };
 }
