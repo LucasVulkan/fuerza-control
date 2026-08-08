@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compressSession, estimateSessionSec, DISCIPLINE_RULES } from './sessionCompression';
+import { compressSession, estimateSessionSec, includesWarmup, DISCIPLINE_RULES } from './sessionCompression';
 
 const ex = (exerciseId, tier, sets, restSec = 90) => ({ exerciseId, tier, isKey: tier === 1, sets, restSec });
 
@@ -31,9 +31,8 @@ describe('compressSession — escalera', () => {
   });
 
   it('primero cae el accesorio redundante, no el primero que pilla', () => {
-    // Un peldaño: presupuesto justo por debajo de lo que cuesta la sesión.
-    const mins = Math.floor(estimateSessionSec(LEG_DAY) / 60) - 1;
-    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: mins });
+    // LEG_DAY cuesta ~60 min; con 60 de presupuesto se dispara un peldaño.
+    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: 60 });
     // `leg_extension` es el tercer ejercicio de quads del día; el gemelo es el
     // único de su grupo. Cae la redundancia.
     expect(idsOf(exercises)).not.toContain('leg_extension');
@@ -123,6 +122,98 @@ describe('estimateSessionSec — espejo de sessionStats', () => {
     const superset = [{ ...plain[0], supersetWithNext: true }, plain[1]];
     // 3 series × 60 s de descanso ahorrados
     expect(estimateSessionSec(plain) - estimateSessionSec(superset)).toBe(180);
+  });
+
+  it('sin calentamiento general descuenta 8 min, y sólo eso', () => {
+    const withWarmup = estimateSessionSec(LEG_DAY);
+    const without = estimateSessionSec(LEG_DAY, undefined, { includeWarmup: false });
+    expect(withWarmup - without).toBe(480);
+  });
+});
+
+describe('presupuesto de sesiones cortas', () => {
+  it('por debajo de 60 min no se cuenta el calentamiento general', () => {
+    expect(includesWarmup(30)).toBe(false);
+    expect(includesWarmup(45)).toBe(false);
+    expect(includesWarmup(60)).toBe(true);
+    expect(includesWarmup(90)).toBe(true);
+  });
+
+  it('pedir más tiempo nunca entrega menos trabajo', () => {
+    // La razón de conservar las transiciones bajo el umbral: sin ellas, 45 min
+    // darían más trabajo que 60. Se comprueba sobre el trabajo real resultante.
+    const workSec = (mins) => {
+      const { exercises } = compressSession(LEG_DAY, { sessionMinutes: mins });
+      return exercises.reduce((s, e) => s + e.sets * (35 + (e.supersetWithNext ? 0 : e.restSec)), 0);
+    };
+    expect(workSec(45)).toBeLessThanOrEqual(workSec(60));
+    expect(workSec(60)).toBeLessThanOrEqual(workSec(90));
+  });
+
+  it('una sesión ligera ya cabe en 30 min — antes no cabía ninguna', () => {
+    const light = [
+      ex('bench_press_db',    1, 3, 90),
+      ex('chest_fly_machine', 3, 3, 60),
+      ex('cable_row',         3, 3, 60),
+    ];
+    const { overTime } = compressSession(light, { sessionMinutes: 30 });
+    expect(overTime).toBe(false);
+  });
+
+  it('un día de básicos pesados sigue sin caber en 30, y lo dice', () => {
+    // No es un fallo de la escalera: dos principales a 3 series con 3 y 2 min
+    // de descanso son 20 min sólo de descanso. `overTime` es la respuesta
+    // honesta; el suelo de series no se salta por caber en el presupuesto.
+    const { overTime, exercises } = compressSession(LEG_DAY, { sessionMinutes: 30 });
+    expect(overTime).toBe(true);
+    expect(exercises.filter((e) => e.tier === 1)).toHaveLength(2);
+  });
+});
+
+describe('superserie de opuestos', () => {
+  // Accesorios contiguos y antagonistas: apertura de pecho + remo.
+  const PUSH_PULL_DAY = [
+    ex('bench_press_db',   1, 4, 120),
+    ex('chest_fly_machine', 3, 3, 60),
+    ex('cable_row',         3, 3, 60),
+  ];
+
+  it('encadena dos accesorios opuestos antes que quitar nada', () => {
+    const mins = Math.floor(estimateSessionSec(PUSH_PULL_DAY, undefined, { includeWarmup: false }) / 60) - 1;
+    const { exercises } = compressSession(PUSH_PULL_DAY, { sessionMinutes: mins });
+    expect(exercises).toHaveLength(3);
+    expect(exercises.find((e) => e.exerciseId === 'chest_fly_machine').supersetWithNext).toBe(true);
+  });
+
+  it('no encadena dos ejercicios del mismo empuje', () => {
+    const sameSide = [
+      ex('bench_press_db',    1, 4, 120),
+      ex('chest_fly_machine', 3, 3, 60),
+      ex('tricep_pushdown',   3, 3, 60),
+    ];
+    const { exercises } = compressSession(sameSide, { sessionMinutes: 30 });
+    expect(exercises.every((e) => !e.supersetWithNext)).toBe(true);
+  });
+
+  it('no encadena en sesiones largas — con 90 min no hay razón', () => {
+    const { exercises } = compressSession(PUSH_PULL_DAY, { sessionMinutes: 90 });
+    expect(exercises.every((e) => !e.supersetWithNext)).toBe(true);
+  });
+
+  it('nunca encadena más de dos: el último queda suelto', () => {
+    const chain = [
+      ex('bench_press_db',    1, 4, 120),
+      ex('chest_fly_machine', 3, 3, 60),
+      ex('cable_row',         3, 3, 60),
+      ex('shoulder_press_db', 3, 3, 60),
+    ];
+    const { exercises } = compressSession(chain, { sessionMinutes: 20 });
+    const marked = exercises.filter((e) => e.supersetWithNext);
+    marked.forEach((e) => {
+      const i = exercises.indexOf(e);
+      expect(exercises[i - 1]?.supersetWithNext).toBeFalsy();
+    });
+    expect(exercises[exercises.length - 1].supersetWithNext).toBeFalsy();
   });
 });
 

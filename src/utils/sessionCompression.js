@@ -32,12 +32,26 @@ const EXERCISE_OVERHEAD_SEC = 180;
 const SESSION_OVERHEAD_SEC = 480;
 
 /**
+ * Por debajo de esta duración pedida, la sesión se estima **sin calentamiento
+ * general**: en 30 o 45 minutos no se calienta ocho minutos, se entra a
+ * trabajar. Las transiciones entre ejercicios sí se cuentan siempre — cambiar
+ * las mancuernas cuesta lo que cuesta, lo hagas en casa o en el gimnasio.
+ *
+ * Por qué no se quitan también las transiciones por debajo del umbral, que era
+ * la propuesta original: invierte el orden de los presupuestos. Sin ellas, 45
+ * min darían 45 de trabajo y 60 min darían 60 − 8 − 3n ≈ 37 con cinco
+ * ejercicios — pedir más tiempo entregaría menos entrenamiento. Quitando sólo el
+ * calentamiento, 45 → 45 − 3n y 60 → 52 − 3n: siempre creciente, sea cual sea n.
+ */
+export const NO_WARMUP_BELOW_MIN = 60;
+
+/**
  * Segundos estimados de una sesión. Fórmula espejo de `sessionStats`
  * (`mobile/src/utils/sessionStats.js`): sets × (35s trabajo + descanso); en
  * ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
  * No se importa la de mobile: rompería la frontera src↔mobile.
  */
-export function estimateSessionSec(exercises, allExercises = EXERCISE_LIBRARY) {
+export function estimateSessionSec(exercises, allExercises = EXERCISE_LIBRARY, { includeWarmup = true } = {}) {
   let seconds = 0;
   for (const ex of exercises) {
     const def = allExercises[ex.exerciseId];
@@ -51,8 +65,13 @@ export function estimateSessionSec(exercises, allExercises = EXERCISE_LIBRARY) {
     const rest = ex.supersetWithNext ? 0 : (ex.restSec ?? 90);
     seconds += n * (work + rest) + EXERCISE_OVERHEAD_SEC;
   }
-  if (exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
+  if (includeWarmup && exercises.length > 0) seconds += SESSION_OVERHEAD_SEC;
   return seconds;
+}
+
+/** ¿Esta duración pedida cuenta el calentamiento general? */
+export function includesWarmup(sessionMinutes) {
+  return !sessionMinutes || sessionMinutes >= NO_WARMUP_BELOW_MIN;
 }
 
 /**
@@ -171,7 +190,50 @@ function removeCoveredByTier1(exercises, allExercises) {
   return i === -1 ? null : removeAt(exercises, i);
 }
 
+/**
+ * Patrones antagonistas. Emparejar en superserie dos ejercicios del MISMO grupo
+ * no es una superserie, es fatiga acumulada sobre el mismo músculo: los dos
+ * salen peor. Los que no aparecen aquí (core, gemelo, agarre) no se emparejan.
+ */
+const OPPOSITE_PATTERNS = {
+  horizontal_push: ['horizontal_pull', 'vertical_pull'],
+  vertical_push:   ['vertical_pull', 'horizontal_pull'],
+  horizontal_pull: ['horizontal_push', 'vertical_push'],
+  vertical_pull:   ['vertical_push', 'horizontal_push'],
+  squat:           ['hip_hinge'],
+  hip_hinge:       ['squat'],
+};
+
+/**
+ * Encadena dos accesorios contiguos y opuestos en superserie: el primero deja
+ * de contar su descanso (lo comparte con el segundo), así que la sesión se
+ * acorta **conservando los dos ejercicios**. Es el único peldaño que gana
+ * tiempo sin quitar nada, por eso va el primero.
+ *
+ * Sólo pares contiguos: `supersetWithNext` significa "encadenado con el
+ * siguiente", así que reordenar para emparejar cambiaría el orden que escribió
+ * quien diseñó la sesión. En las plantillas reales los accesorios contiguos ya
+ * suelen ser opuestos (remo + apertura, apertura + curl).
+ *
+ * Nunca encadena más de dos: si el anterior ya está marcado, este no se toca.
+ */
+function supersetOpposites(exercises, allExercises) {
+  const patternOf = (ex) => allExercises[ex.exerciseId]?.pattern;
+
+  for (let i = 0; i < exercises.length - 1; i++) {
+    const a = exercises[i];
+    const b = exercises[i + 1];
+    if (tierOfExercise(a) !== 3 || tierOfExercise(b) !== 3) continue;
+    if (a.supersetWithNext || exercises[i - 1]?.supersetWithNext) continue;
+    if (!(OPPOSITE_PATTERNS[patternOf(a)] ?? []).includes(patternOf(b))) continue;
+
+    return exercises.map((ex, idx) => (idx === i ? { ...ex, supersetWithNext: true } : ex));
+  }
+  return null;
+}
+
 const STEPS = {
+  superset:    (ex, all)      => supersetOpposites(ex, all),
   t3Redundant: (ex, all, emph) => removeRedundant(ex, 3, all, emph),
   t3Sets:      (ex)            => reduceSets(ex, 3, MIN_SETS_ACCESSORY),
   t3Remove:    (ex, all, emph) => removeLastOfTier(ex, 3, all, emph),
@@ -195,10 +257,16 @@ export function compressSession(exercises, {
   if (!sessionMinutes) return { exercises, overTime: false };
 
   const budgetSec = sessionMinutes * 60;
-  const order = disciplineRules(discipline).compression;
+  const includeWarmup = includesWarmup(sessionMinutes);
+  // La superserie sólo entra en sesiones cortas: con 90 minutos por delante no
+  // hay razón para comprometer el descanso de nada. Y va la primera porque es el
+  // único peldaño que gana tiempo sin quitar ejercicios.
+  const order = includeWarmup
+    ? disciplineRules(discipline).compression
+    : ['superset', ...disciplineRules(discipline).compression];
   let result = exercises;
 
-  while (estimateSessionSec(result, allExercises) > budgetSec) {
+  while (estimateSessionSec(result, allExercises, { includeWarmup }) > budgetSec) {
     let next = null;
     for (const stepName of order) {
       next = STEPS[stepName](result, allExercises, volumeEmphasis);

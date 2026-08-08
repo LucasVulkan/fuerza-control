@@ -1,7 +1,7 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1 y 2 implementadas** (ago 2026, ver §5.2 y §5.3); fases 3-8
-> pendientes.
+> Estado: **fases 1, 2 y 2b implementadas** (ago 2026, ver §5.2, §5.3 y §5.3.1);
+> fases 3-8 pendientes.
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -377,37 +377,69 @@ en la matriz completa salvo biblioteca agotada demostrable.
 > las dos caras: sube el techo de volumen del grupo (§5.4) y lo protege del
 > recorte por tiempo.
 
-#### 5.3.1 El presupuesto de 30 minutos — decisión pendiente
+#### 5.3.1 FASE 2b — Sesiones cortas 🟢 ✅ IMPLEMENTADA
 
-**30 min es hoy estructuralmente inalcanzable.** El suelo de 1 principal + 2
-accesorios, más 8 min de calentamiento general (`SESSION_OVERHEAD_SEC`) y 3 min
-de transición por ejercicio (`EXERCISE_OVERHEAD_SEC`), suman ~17 min antes de la
-primera serie; una sesión mínima real ronda los 35. A 30 min se pasan 1202 de
-2016 sesiones de la matriz y la escalera no puede hacer nada más.
+El problema: **30 min era estructuralmente inalcanzable**. El suelo de 1
+principal + 2 accesorios, más 8 min de calentamiento general
+(`SESSION_OVERHEAD_SEC`) y 3 min de transición por ejercicio
+(`EXERCISE_OVERHEAD_SEC`), sumaban ~17 min antes de la primera serie. Se pasaban
+1202 de 2016 sesiones de la matriz y la escalera no podía hacer nada más.
 
-Esos overheads son una **suposición**: modelan un gimnasio comercial lleno
-(buscar máquina, esperar, montar discos). Entrenando en casa con mancuernas no
-son 3 min por ejercicio. Y son los mismos que usa `sessionStats`, así que
-presupuesto y preview coinciden — esa coherencia hay que conservarla.
+Y esos overheads son una **suposición**: modelan un gimnasio comercial lleno.
 
-Tres salidas, en orden de coste:
+**Regla 1 — por debajo de 60 min no se cuenta el calentamiento general**
+(`NO_WARMUP_BELOW_MIN`). En media hora no se calientan ocho minutos: se entra a
+trabajar.
 
-1. **El presupuesto mide tiempo de TRABAJO, no total** (propuesta del usuario).
-   `sessionMinutes` se compara contra `sets × (trabajo + descanso)`; el preview
-   enseña los dos números: *"~30 min de trabajo · ~47 min con calentamiento y
-   transiciones"*. Barato y honesto. **Consecuencia que hay que aceptar: afecta
-   a todos los presupuestos, no sólo al de 30** — quien pida 60 min recibirá
-   sesiones de ~75 min reales. Sin decidir.
-2. **Superserie como peldaño de la escalera.** El mecanismo está entero:
-   `supersetWithNext` en el exConfig, `sessionStats` ya no cuenta el descanso de
-   los eslabones no finales, `sessionSlots` los pinta encadenados — y desde esta
-   fase `estimateSessionSec` también lo respeta. **Nadie las genera.** Emparejar
-   dos accesorios de grupos distintos ahorra ~3 min por pareja y **conserva los
-   dos ejercicios**: es estrictamente mejor que borrar uno. Candidato a fase 2b.
-3. **Bloques de acondicionamiento.** Buena forma de entrenar con poco tiempo,
-   pero un bloque es **contenido**, no una transformación: no se puede fabricar
-   comprimiendo una sesión de fuerza. Lo declara la plantilla. Va a la fase 8,
-   con su propio diseño.
+Las transiciones **sí se cuentan siempre**, y no es un matiz: quitarlas también
+invertía el orden de los presupuestos. Sin ellas, 45 min darían 45 de trabajo y
+60 min darían `60 − 8 − 3n ≈ 37` con cinco ejercicios — pedir más tiempo
+entregaría menos entrenamiento. Quitando sólo el calentamiento, `45 − 3n` frente
+a `52 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
+
+**Regla 2 — superserie de opuestos, sólo en sesiones cortas.** Peldaño nuevo,
+el primero de la escalera porque es el único que gana tiempo **sin quitar
+ejercicios**: encadena dos accesorios tier 3 contiguos de patrones antagonistas
+(`OPPOSITE_PATTERNS`: empuje↔tracción, sentadilla↔bisagra) marcando
+`supersetWithNext`, con lo que el primero deja de contar su descanso.
+
+- Sólo **contiguos**: `supersetWithNext` significa "encadenado con el siguiente",
+  así que emparejar a distancia obligaría a reordenar lo que escribió quien
+  diseñó la sesión. En las plantillas reales los accesorios contiguos ya suelen
+  ser opuestos (remo + apertura).
+- Sólo **opuestos**: encadenar dos del mismo grupo no es una superserie, es
+  fatiga acumulada sobre el mismo músculo. Los patrones sin antagonista (core,
+  gemelo, agarre) no se emparejan.
+- Nunca **más de dos** eslabones.
+- Sólo por **debajo de 60 min**: con 90 minutos por delante no hay razón para
+  comprometer el descanso de nada.
+
+**El preview usa el mismo criterio.** Enseñaba `sessionStats`, que siempre suma
+el calentamiento — habría contradicho al presupuesto que se acaba de aplicar.
+Ahora usa `estimateSessionSec` con el mismo flag, y cuando el calentamiento no
+cuenta lo dice: `onboarding.preview.noWarmupNote`. `sessionStats` no se toca: lo
+usa el resto de la app y sí debe contarlo todo.
+
+**Medido** sobre la matriz de 528 combos (sesiones que se pasan del presupuesto):
+
+| presupuesto | antes de la fase 2 | fase 2 | **fase 2b** |
+|---|---|---|---|
+| 30 min | 1250 | 1202 | **508** |
+| 45 min | 626 | 410 | **144** |
+| 60 min | 236 | 119 | 119 (sin cambio, por diseño) |
+
+Y la media de ejercicios a 45 min **sube** de 3,99 a 4,04: la superserie
+conserva lo que el peldaño siguiente habría borrado. El grueso de la mejora es
+la regla 1 (55 superseries en 2016 sesiones no explican 694 sesiones menos).
+
+**Lo que sigue sin caber es correcto.** Un día de dos básicos pesados a 3 series
+con 3 y 2 min de descanso son 20 min sólo de descanso: no entra en 30 minutos y
+`overTime` lo dice. El suelo de series no se salta para cumplir un presupuesto.
+
+**Bloques de acondicionamiento — fuera, a la fase 8.** Son buena forma de
+entrenar con poco tiempo, pero un bloque es **contenido**, no una
+transformación: no se fabrica un AMRAP comprimiendo una sesión de fuerza. Lo
+declara la plantilla, con su propio diseño.
 
 Sustituye el bucle de `trimToTimeBudget`. Mismo sitio, mismas garantías previas
 (keys intactos, estimación con la fórmula espejo de `sessionStats`), pero con el
@@ -925,6 +957,7 @@ plantilla:
 |---|---|---|---|---|
 | 1 | Resolvedor de slots (§5.2) | 🟢 | — | ✅ **IMPLEMENTADA** — 1917 tests verdes, sesiones cortas 56 → 40 |
 | 2 | Escalera de compresión + `DISCIPLINE_RULES` (§5.3, §5.6) | 🟢 | tiers (§3.1) | ✅ **IMPLEMENTADA** — desbordes a 60 min 236 → 119, mismo nº de ejercicios |
+| 2b | Sesiones cortas: presupuesto sin calentamiento + superserie de opuestos (§5.3.1) | 🟢 | 2 | ✅ **IMPLEMENTADA** — desbordes a 45 min 410 → 144 |
 | 3 | Normalizador de volumen + `volumeEmphasis` (§5.4) | 🟢 | 2 (comparten tabla) | Sonnet |
 | 3b | Vincular lo repetido en el ciclo (§5.5) | 🟢 | 2, 3 | Sonnet |
 | 4 | `phases` → N etapas (§6) | 🟢 | — | Sonnet |

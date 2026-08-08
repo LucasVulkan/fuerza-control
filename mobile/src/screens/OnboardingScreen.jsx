@@ -24,7 +24,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useStore } from '../../store/useStore';
-import { sessionStats } from '../utils/sessionStats';
+import { estimateSessionSec, includesWarmup } from '../../../src/utils/sessionCompression';
 import ImportModal from '../components/ImportModal';
 import ClientCodeModal from '../components/ClientCodeModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
@@ -353,6 +353,12 @@ export default function OnboardingScreen() {
       }
     }
 
+    const countsWarmup = includesWarmup(answers.sessionMinutes);
+    const estimatedMinutes = (tpl) => Math.round(
+      estimateSessionSec(tpl.exercises ?? [], { ...exerciseLibrary, ...customExercises },
+        { includeWarmup: countsWarmup }) / 60,
+    );
+
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* Header */}
@@ -369,6 +375,15 @@ export default function OnboardingScreen() {
                 days: answers.daysPerWeek,
                 defaultValue: `Tus ${days.length} sesiones rotan en ciclo — entrenas ${answers.daysPerWeek} días a la semana.`,
               })}
+            </Text>
+          )}
+          {/* §5.3.1: en sesiones cortas el tiempo se estima sin calentamiento
+              general — en 30 o 45 minutos se entra a trabajar. Decirlo, porque
+              el número de arriba depende de ello. */}
+          {!countsWarmup && (
+            <Text style={styles.previewCycleHint}>
+              {t('onboarding.preview.noWarmupNote',
+                'Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios.')}
             </Text>
           )}
         </View>
@@ -397,10 +412,14 @@ export default function OnboardingScreen() {
                   <Text style={styles.previewSessionMeta}>
                     {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
                     {(tpl.exercises ?? []).length} ejercicios
-                    {/* B4: duración estimada por sesión (sessionStats es código mobile) */}
+                    {/* Duración estimada con el MISMO criterio que el recorte
+                        (program-templates.md §5.3.1): por debajo de 60 min
+                        pedidos no se cuenta el calentamiento general, así que
+                        aquí no se usa `sessionStats` — daría un número que
+                        contradice al presupuesto que acaba de aplicarse. */}
                     {` · ${t('onboarding.preview.estimatedMinutes', {
-                      minutes: sessionStats(tpl, allEx).minutes,
-                      defaultValue: `~${sessionStats(tpl, allEx).minutes} min`,
+                      minutes: estimatedMinutes(tpl),
+                      defaultValue: `~${estimatedMinutes(tpl)} min`,
                     })}`}
                   </Text>
                   {isExpanded && (
