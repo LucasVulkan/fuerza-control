@@ -44,7 +44,7 @@ import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
-import { findBestArchetype } from '../../src/data/archetypes';
+import { rankArchetypes } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
 import { generateProgram } from '../../src/utils/programGenerator';
 
@@ -316,7 +316,11 @@ export const useStore = create(
             : answers.equipment,
         };
 
-        const archetype = findBestArchetype(normalizedAnswers);
+        // El ranking nunca devuelve vacío (program-templates.md §7): todo el
+        // mundo recibe una plantilla adaptada. `generateProgram` queda como
+        // relleno por si el catálogo estuviera vacío, no como autor.
+        const ranked = rankArchetypes(normalizedAnswers);
+        const archetype = ranked[0]?.archetype ?? null;
         const { program, sessionTemplates, phases } = archetype
           ? adaptArchetype(archetype, normalizedAnswers)
           : generateProgram(normalizedAnswers);

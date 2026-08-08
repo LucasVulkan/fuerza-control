@@ -9,6 +9,8 @@
  * esté representado al menos una vez por día.
  */
 
+import { EXERCISE_LIBRARY } from './exerciseLibrary';
+
 /**
  * Fases por defecto según el objetivo de la plantilla — spec
  * `mobile/docs/specs/program-templates.md` §6.
@@ -65,7 +67,6 @@ export const ARCHETYPES = [
     goal: 'hypertrophy',
     phases: DEFAULT_PHASES.hypertrophy,
     level: 'intermediate',
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -123,7 +124,6 @@ export const ARCHETYPES = [
     goal: 'hypertrophy',
     phases: DEFAULT_PHASES.hypertrophy,
     level: 'advanced',
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -186,7 +186,6 @@ export const ARCHETYPES = [
     goal: 'hypertrophy',
     phases: DEFAULT_PHASES.hypertrophy,
     level: 'beginner',
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -246,7 +245,6 @@ export const ARCHETYPES = [
     goal: 'hypertrophy',
     phases: DEFAULT_PHASES.hypertrophy,
     level: 'intermediate',
-    daysPerWeek: 4,
     days: [
       {
         label: 'A',
@@ -319,7 +317,6 @@ export const ARCHETYPES = [
     goal: 'hypertrophy',
     phases: DEFAULT_PHASES.hypertrophy,
     level: 'advanced',
-    daysPerWeek: 4,
     days: [
       {
         label: 'A',
@@ -397,7 +394,6 @@ export const ARCHETYPES = [
     goal: 'strength',
     phases: DEFAULT_PHASES.strength,
     level: 'advanced',
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -460,7 +456,6 @@ export const ARCHETYPES = [
     // deja de ser una plantilla de glúteo. Protege también del recorte por
     // redundancia (program-templates.md §5.3).
     volumeEmphasis: ['glutes_hamstrings'],
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -518,7 +513,6 @@ export const ARCHETYPES = [
     goal: 'endurance',
     phases: DEFAULT_PHASES.endurance,
     level: 'intermediate',
-    daysPerWeek: 3,
     days: [
       {
         label: 'A',
@@ -567,33 +561,92 @@ export const ARCHETYPES = [
 ];
 
 /**
- * Encuentra el arquetipo más adecuado para los parámetros del onboarding.
- * Devuelve el arquetipo o null si no hay coincidencia.
+ * Ranking de plantillas — spec `mobile/docs/specs/program-templates.md` §7.
+ *
+ * Sustituye al `findBestArchetype` de coincidencia exacta, que exigía el mismo
+ * `daysPerWeek` en sus tres tiers: como todas las plantillas son de 3 o 4
+ * sesiones, quien pedía 1, 2, 5, 6 o 7 días caía SIEMPRE al generador
+ * procedural. Y comparaba dos magnitudes distintas: `answers.daysPerWeek` es la
+ * frecuencia semanal del usuario; el campo del arquetipo era el nº de sesiones
+ * del ciclo.
+ *
+ * **Nunca devuelve vacío.** El primero es la recomendación; los siguientes son
+ * las alternativas que verá el usuario en la pantalla de propuestas, con su
+ * coste de adaptación declarado.
+ */
+
+/** Ciclos por semana. El modelo es rotativo: el ciclo no dura una semana. */
+const cycleSpeedOf = (daysPerWeek, sessionsPerCycle) =>
+  (daysPerWeek > 0 && sessionsPerCycle > 0 ? daysPerWeek / sessionsPerCycle : 1);
+
+/**
+ * Por debajo de esto el ciclo avanza tan despacio que los patrones pierden
+ * frecuencia semanal. En fuerza importa mucho más: un ciclo de 4 sesiones a 2
+ * días/semana deja la sentadilla en 0,5 exposiciones semanales, y eso no es
+ * practicar un levantamiento.
+ */
+const MIN_CYCLE_SPEED = { strength: 0.9 };
+const MIN_CYCLE_SPEED_DEFAULT = 0.6;
+
+const LEVEL_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
+const LEVEL_SCORE = [20, 8, 0];
+
+function equipmentGap(archetype, equipment = []) {
+  let missing = 0;
+  for (const day of archetype.days) {
+    for (const ex of day.exercises) {
+      const def = EXERCISE_LIBRARY[ex.exerciseId];
+      const needed = def?.equipment ?? [];
+      if (needed.length && !needed.some((e) => equipment.includes(e))) missing++;
+    }
+  }
+  return missing;
+}
+
+export function rankArchetypes(answers = {}) {
+  const {
+    discipline, goal, level = 'intermediate', daysPerWeek = 3, equipment = [],
+  } = answers;
+
+  return ARCHETYPES.map((archetype) => {
+    const sessionsPerCycle = archetype.days.length;
+    const cycleSpeed = cycleSpeedOf(daysPerWeek, sessionsPerCycle);
+    const adaptationCost = equipmentGap(archetype, equipment);
+    const levelGap = Math.abs(LEVEL_ORDER[archetype.level] - LEVEL_ORDER[level]);
+
+    let score = 0;
+    if (archetype.discipline === discipline) score += 40;
+    if (archetype.goal === goal) score += 15;
+    score += LEVEL_SCORE[levelGap] ?? 0;
+
+    // Cuanto más se aleje el ciclo de durar una semana, peor encaja.
+    score -= 20 * Math.abs(cycleSpeed - 1);
+
+    const minSpeed = MIN_CYCLE_SPEED[archetype.discipline] ?? MIN_CYCLE_SPEED_DEFAULT;
+    if (cycleSpeed < minSpeed) score -= 60;
+
+    // Un principiante no lleva más de 3 sesiones distintas: si pide 6 días,
+    // rota una de 3 con el volumen recortado a su banda (spec §2.6).
+    if (level === 'beginner' && sessionsPerCycle > 3) score -= 100;
+
+    score -= 3 * adaptationCost;
+
+    const notes = [];
+    if (adaptationCost > 0) notes.push('needsBarbell');
+    if (cycleSpeed > 1.25) notes.push('rotates');
+    if (cycleSpeed < minSpeed) notes.push('slowCycle');
+    if (levelGap > 0) notes.push('levelStretch');
+
+    return { archetype, score, sessionsPerCycle, cycleSpeed, adaptationCost, notes };
+  }).sort((a, b) => b.score - a.score
+    // Desempate estable por orden en el array: mismas respuestas, mismo programa.
+    || ARCHETYPES.indexOf(a.archetype) - ARCHETYPES.indexOf(b.archetype));
+}
+
+/**
+ * @deprecated Envoltorio para el store web (`src/store/useStore.js`), que queda
+ * fuera del alcance de esta spec. El camino móvil usa `rankArchetypes`.
  */
 export function findBestArchetype(answers) {
-  const { discipline, distribution, goal, level, daysPerWeek } = answers;
-
-  // Coincidencia exacta: disciplina + distribución + objetivo + nivel + días
-  const exact = ARCHETYPES.find(
-    (a) => a.discipline === discipline && a.distribution === distribution
-      && a.goal === goal && a.level === level && a.daysPerWeek === daysPerWeek
-  );
-  if (exact) return exact;
-
-  // Disciplina + distribución + nivel + días (ignorar objetivo)
-  const byDisciplineLevel = ARCHETYPES.find(
-    (a) => a.discipline === discipline && a.distribution === distribution
-      && a.level === level && a.daysPerWeek === daysPerWeek
-  );
-  if (byDisciplineLevel) return byDisciplineLevel;
-
-  // Disciplina + distribución + días (ignorar nivel y objetivo)
-  const byDiscipline = ARCHETYPES.find(
-    (a) => a.discipline === discipline && a.distribution === distribution
-      && a.daysPerWeek === daysPerWeek
-  );
-  if (byDiscipline) return byDiscipline;
-
-  // Sin coincidencia — el generador procedural manejará el caso
-  return null;
+  return rankArchetypes(answers)[0]?.archetype ?? null;
 }

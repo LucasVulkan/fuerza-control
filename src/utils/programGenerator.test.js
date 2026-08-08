@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateProgram, GOAL_PARAMS } from './programGenerator';
 import { adaptArchetype } from './archetypeAdapter';
-import { findBestArchetype } from '../data/archetypes';
+import { rankArchetypes } from '../data/archetypes';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
 // ─── Replica de la normalización que hace generateAndActivateProgram ─────────
@@ -12,11 +12,16 @@ function normalizeEquipment(equipment) {
     : equipment;
 }
 
-/** Replica el camino real: arquetipo si hay match, si no procedural. */
+/**
+ * Replica el camino real. Con el ranking (program-templates.md §7) el
+ * procedural ya no es autor: siempre gana una plantilla. Se conserva la rama
+ * por si algún día el catálogo estuviera vacío.
+ */
 function runOnboarding(answers) {
   const normalized = { ...answers, equipment: normalizeEquipment(answers.equipment) };
-  const archetype = findBestArchetype(normalized);
-  return archetype ? adaptArchetype(archetype, normalized) : generateProgram(normalized);
+  const archetype = rankArchetypes(normalized)[0]?.archetype ?? null;
+  const result = archetype ? adaptArchetype(archetype, normalized) : generateProgram(normalized);
+  return { ...result, archetype };
 }
 
 function exerciseFitsEquipment(ex, equipment) {
@@ -48,14 +53,15 @@ function noKeyGroupHasCompound(emphasis, equipment) {
 }
 
 /** Corre las invariantes sobre un {program, sessionTemplates} ya generado. */
-function checkInvariants(result, answers, normalizedEquipment) {
+function checkInvariants(result, answers, normalizedEquipment, archetype) {
   const { program, sessionTemplates } = result;
   const violations = [];
 
-  // B2: daysPerWeek es frecuencia (1–7); las sesiones distintas generadas se
-  // capan a min(daysPerWeek, 6) — con 7 días el ciclo rota (hint en el preview).
-  // Excepción: el camino arquetipo (match exacto de daysPerWeek) siempre cumple.
-  const expectedSessions = Math.min(answers.daysPerWeek, 6);
+  // El nº de sesiones lo fija la PLANTILLA, no los días pedidos
+  // (program-templates.md §2.2): `daysPerWeek` es frecuencia, y el ciclo rota a
+  // la velocidad que haga falta. Sólo el camino procedural, que monta el ciclo
+  // desde cero, lo deriva de los días — capado a 6 (con 7 el ciclo rota).
+  const expectedSessions = archetype ? archetype.days.length : Math.min(answers.daysPerWeek, 6);
   if (program.days.length !== expectedSessions) {
     violations.push(`sessions: got ${program.days.length}, expected ${expectedSessions}`);
   }
@@ -165,12 +171,14 @@ describe(`invariantes del generador — matriz representativa (${MATRIX.length} 
 
   const allViolations = [];
   let shortSessions = 0;
+  let totalSessions = 0;
 
   MATRIX.forEach((answers, i) => {
     it(`combo #${i}: ${answers.discipline}/${answers.distribution}/${answers.daysPerWeek}d/${answers.level}/${answers.goal}/[${answers.equipment}]/[${answers.limitations}]`, () => {
       const normalizedEquipment = normalizeEquipment(answers.equipment);
       const result = runOnboarding(answers);
-      const violations = checkInvariants(result, answers, normalizedEquipment);
+      const violations = checkInvariants(result, answers, normalizedEquipment, result.archetype);
+      totalSessions += result.program.days.length;
 
       const real = [];
       violations.forEach((v) => {
@@ -211,8 +219,14 @@ describe(`invariantes del generador — matriz representativa (${MATRIX.length} 
     // A cambio, los grupos por encima de su techo semanal bajan de 62 a 34 y el
     // peor exceso de 14,8 a 5,8 series/semana (medido sobre los combos que la
     // UI puede producir de verdad).
-    console.log(`Sesiones <4 ejercicios: ${shortSessions} / matriz de ${MATRIX.length} combos`);
-    expect(shortSessions).toBeLessThan(MATRIX.length * 0.14);
+    //
+    // Con el ranking (§7) el denominador cambia: el nº de sesiones lo fija la
+    // plantilla (3-4), no los días pedidos (hasta 6), así que la matriz produce
+    // 1627 sesiones en vez de 2016. Por eso el umbral pasa a medirse **por
+    // sesión** y no por combo, que es lo comparable. 98/1627 = 6%.
+    const rate = shortSessions / totalSessions;
+    console.log(`Sesiones <4 ejercicios: ${shortSessions} / ${totalSessions} (${(rate * 100).toFixed(1)}%)`);
+    expect(rate).toBeLessThan(0.08);
   });
 });
 
@@ -259,13 +273,20 @@ describe('regresión — casos con nombre propio', () => {
     });
   });
 
-  it('fuerza + full_body + 5 días → 5 sesiones', () => {
-    const result = runOnboarding({
+  it('fuerza + 5 días → la plantilla fija las sesiones, el ciclo rota más rápido', () => {
+    // Antes esto exigía 5 sesiones: era el procedural montando una por día.
+    // Con el ranking manda la plantilla (program-templates.md §2.2) y el ciclo
+    // de 3 sesiones se recorre 1,67 veces por semana.
+    const answers = {
       level: 'intermediate', discipline: 'strength', distribution: 'full_body',
       daysPerWeek: 5, goal: 'strength', equipment: ['dumbbells', 'machines', 'cables', 'barbell'],
       limitations: ['none'],
-    });
-    expect(result.program.days.length).toBe(5);
+    };
+    const result = runOnboarding(answers);
+
+    expect(result.archetype).toBeTruthy();
+    expect(result.archetype.discipline).toBe('strength');
+    expect(result.program.days.length).toBe(result.archetype.days.length);
   });
 
   it('arquetipo beginner nativo llega íntegro: 3 keys/día, sin reduceForBeginner', () => {
@@ -358,10 +379,10 @@ describe('regresión — casos con nombre propio', () => {
   });
 
   it('adaptArchetype con goal=strength sobre arquetipo hypertrophy → los keys llevan reps de fuerza (5-8)', () => {
-    const archetype = findBestArchetype({
+    const archetype = rankArchetypes({
       discipline: 'standard', distribution: 'full_body', goal: 'hypertrophy',
       level: 'intermediate', daysPerWeek: 3,
-    });
+    })[0].archetype;
     expect(archetype).toBeTruthy();
     expect(archetype.goal).toBe('hypertrophy');
 

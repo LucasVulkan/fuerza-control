@@ -1,7 +1,9 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1, 2, 2b, 3, 3b y 4 implementadas** (ago 2026, ver §5.2,
-> §5.3, §5.3.1, §5.4, §5.5 y §6); fases 5, 6, 7 y 8 pendientes.
+> Estado: **fases 1, 2, 2b, 3, 3b, 4 y 5 implementadas** (ago 2026, ver §5.2,
+> §5.3, §5.3.1, §5.4, §5.5, §6 y §7); fases 6, 7 y 8 pendientes.
+> **La 8 (catálogo) pasa a ser la más urgente**: el ranking destapó que no hay
+> plantilla de 5-7 días y esos usuarios reciben demasiado volumen (§7).
 > Origen: dos conversaciones Opus + usuario (ago 2026) — la primera sobre el
 > onboarding de propuestas, la segunda sobre las reglas que hacen flexible una
 > plantilla.
@@ -786,7 +788,48 @@ Las tres decisiones que hay detrás, por si se quieren mover:
 
 ---
 
-## 7. FASE 5 — Matcher por ranking 🟢
+## 7. FASE 5 — Matcher por ranking 🟢 ✅ IMPLEMENTADA
+
+> `rankArchetypes` en [archetypes.js](../../../src/data/archetypes.js), con los
+> pesos de §7.1 tal cual. El campo `daysPerWeek` del arquetipo **se ha
+> eliminado**: era la duplicación que causaba el bug original (se calcula de
+> `days.length`). `findBestArchetype` queda como envoltorio deprecado para el
+> store web, que está fuera de alcance.
+>
+> **528/528 combos de la matriz reciben ahora una plantilla** (antes 60), y
+> **ninguna sesión queda sin ejercicio clave**. El generador procedural deja de
+> ser autor.
+>
+> ⚠️ **Y esto destapa el agujero del catálogo, que hay que leer entero.** Los
+> grupos por encima de su techo semanal suben de 28 a **102**, y están
+> concentrados donde el mapa (§11.1) ya decía que faltaba contenido:
+>
+> | días/semana | grupos sobre techo | de ellos, declarados en `overBudget` |
+> |---|---|---|
+> | 3 | 2 | 2 |
+> | 4 | 14 | 6 |
+> | 5 | 18 | 15 |
+> | 6 | 28 | 16 |
+> | 7 | 40 | 34 |
+>
+> La causa no es el ranking: **no existe ninguna plantilla de 5-7 días**, así que
+> a esos usuarios les toca un ciclo de 3 sesiones rodando a 2,33 vueltas por
+> semana, y los suelos impiden recortar tanto volumen. Antes iban al procedural,
+> que montaba 6 sesiones con el volumen correcto pero sin curar.
+>
+> Es un intercambio real y hay que nombrarlo: **hemos cambiado volumen correcto
+> sin curar por estructura curada con demasiado volumen**, para 5-7 días. Lo
+> cierra la fase 8, y por eso PPL-6 es la prioridad 2 del catálogo: no es "una
+> plantilla más", es la que arregla esta tabla.
+>
+> **Dos invariantes del harness reescritos**, los dos porque medían el
+> comportamiento viejo:
+>
+> - *"nº de sesiones === días pedidos"* → ahora **lo fija la plantilla** (§2.2).
+>   Sólo el camino procedural lo deriva de los días.
+> - El indicador de sesiones cortas pasa a medirse **por sesión** (6,0%) y no por
+>   combo: con el ranking la matriz produce 1627 sesiones en vez de 2016, así que
+>   el porcentaje por combo dejó de ser comparable consigo mismo.
 
 Reemplaza `findBestArchetype`. **Nunca devuelve vacío.**
 
