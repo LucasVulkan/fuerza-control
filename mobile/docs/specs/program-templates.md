@@ -1112,8 +1112,27 @@ Dos reglas reducen el mapa a la mitad:
 |---|---|---|
 | 1 | **PPL · 6 sesiones · intermedio** (`ppl6_hypertrophy_intermediate`) | ✅ **ESCRITA**. Cierra el tramo de 5-7 días |
 | 2 | **PPL · 3 sesiones · intermedio** (`ppl3_hypertrophy_intermediate`) | ✅ **ESCRITA**. Ver la nota de abajo |
-| 3 | **Full Body · 2 sesiones · beginner + intermedio** | Todo el extremo de 1-2 días |
+| 3 | **Full Body · 2 sesiones · intermedio** (`fullbody2_hypertrophy_intermediate`) | ✅ **ESCRITA**. Cubre 1-2 días |
 | 4 | **Fuerza · 3 sesiones · intermedio** | Sólo existe la avanzada (5×5 con barra) |
+
+**Sobre la Full Body de 2 sesiones.** Con sólo dos sesiones, la restricción que
+manda no es el volumen: es que **cada grupo tiene que aparecer en las dos** o se
+queda a frecuencia 1. Por eso ancla las dos compuestas de pierna —el tren
+inferior es el que más gana con la exposición repetida y sólo tiene dos patrones
+que cubrir— y reparte el tren superior: A los horizontales, B los verticales.
+Los seis grupos salen a frecuencia 2 sin repetir la sesión.
+
+⚠️ **Es una plantilla de 90 minutos, y eso destapa otra vez el problema de la
+sobrecarga fija** (§5.3.1). Con seis ejercicios, **26 de los 60 minutos del
+presupuesto se van en sobrecarga** — 18 de transiciones (3 min × 6) más 8 de
+calentamiento. Quedan 34 para trabajar, y seis ejercicios no caben ahí: la
+sesión íntegra son 70 min, a 60 se comprime hasta ~60 y declara `overTime` por
+segundos. Ninguna combinación de series lo arregla, porque lo que no cabe es la
+sobrecarga.
+
+Ahora muerde el presupuesto **por defecto** del onboarding, no sólo el de 30. Si
+`EXERCISE_OVERHEAD_SEC = 180` es demasiado para una sesión encadenada, esta es la
+plantilla que lo demuestra.
 
 **Sobre el PPL de 3 sesiones — decisión del usuario, revirtiendo un descarte
 mío.** Toca cada grupo una vez por semana, así que incumple la regla de

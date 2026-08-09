@@ -382,6 +382,69 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // FULL BODY · 2 SESIONES · INTERMEDIO
+  //
+  // Dos sesiones = dos días. La restricción que manda aquí no es el volumen: es
+  // que **cada grupo tiene que aparecer en las dos sesiones** o se queda a
+  // frecuencia 1. Con solo dos días no sobra ningún hueco.
+  //
+  // ANCLAS en las dos compuestas de pierna (hack squat y peso muerto rumano,
+  // idénticas en A y B). El tren inferior es el que más gana con la exposición
+  // repetida y solo tiene dos patrones que cubrir, así que puede permitirse el
+  // ancla; el tren superior tiene cuatro y se reparte: A lleva los horizontales
+  // (banca y remo) y B los verticales (press de hombro y jalón). Así los seis
+  // grupos salen a frecuencia 2 sin repetir la sesión.
+  //
+  // Volumen semanal bajo por definición —dos días son dos días— y por debajo de
+  // la banda del nivel. Es el mismo precio que paga el PPL de 3, y por la misma
+  // razón: no cabe más sin convertirlo en volumen basura.
+  //
+  // Sesiones largas (~65 min íntegras): quien entrena dos veces por semana
+  // suele poder estirarse. Con presupuesto de 60 la escalera recorta un
+  // accesorio, que es lo correcto.
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'fullbody2_hypertrophy_intermediate',
+    name: 'Full Body · 2 días',
+    tags: ['full_body', 'hypertrophy', 'intermediate'],
+    discipline: 'standard',
+    distribution: 'full_body',
+    goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
+    level: 'intermediate',
+    days: [
+      {
+        label: 'A',
+        name: 'Cuerpo completo · horizontal',
+        color: 'var(--day1)',
+        emphasis: 'full',
+        exercises: [
+          { exerciseId: 'hack_squat',           role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db', role: 'key',      sets: 3, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'bench_press_db',       role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'tbar_row',             role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'lateral_raise_db',     role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'cable_crunch',         role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'core',            primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Cuerpo completo · vertical',
+        color: 'var(--day2)',
+        emphasis: 'full',
+        exercises: [
+          { exerciseId: 'hack_squat',            role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',           primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db',  role: 'key',      sets: 3, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge',       primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'pulldown_pronated',     role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'shoulder_press_db',     role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'chest_fly_machine',     role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'bicep_curl_supination', role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // PUSH / PULL / LEGS · FRECUENCIA 1 · INTERMEDIO
   //
   // Tres sesiones = tres días. Cada grupo se entrena UNA vez por semana, así que
