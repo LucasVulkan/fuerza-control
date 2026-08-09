@@ -46,6 +46,30 @@ const SESSION_OVERHEAD_SEC = 480;
 export const NO_WARMUP_BELOW_MIN = 60;
 
 /**
+ * Margen sobre el presupuesto antes de empezar a recortar.
+ *
+ * El presupuesto es una **estimación** construida sobre overheads inventados
+ * (3 min de transición por ejercicio, 8 de calentamiento), no un cronómetro.
+ * Tratarlo como límite exacto hacía que una sesión de 60 min y 20 segundos
+ * perdiera un ejercicio, mientras que una de 59:59 pasaba entera. Eso no es
+ * precisión: es ruido con consecuencias.
+ *
+ * El 15% da +9 min sobre un presupuesto de 60 —lo que un usuario entiende por
+ * "una hora"— y escala bien en los extremos: 34 min para quien pidió 30, 103
+ * para quien pidió 90. Un porcentaje y no minutos fijos porque +10 sobre 30 es
+ * un tercio más de sesión, y ahí sí importa.
+ *
+ * Por debajo del presupuesto no hay nada que hacer: si la sesión sale corta, se
+ * enseña corta. La tolerancia sólo actúa por arriba.
+ */
+export const TIME_TOLERANCE = 0.15;
+
+/** Segundos a partir de los cuales una sesión se considera que no cabe. */
+export function budgetSecFor(sessionMinutes) {
+  return sessionMinutes * 60 * (1 + TIME_TOLERANCE);
+}
+
+/**
  * Segundos estimados de una sesión. Fórmula espejo de `sessionStats`
  * (`mobile/src/utils/sessionStats.js`): sets × (35s trabajo + descanso); en
  * ejercicios de tiempo el "trabajo" es el punto medio de minTime–maxTime.
@@ -306,7 +330,7 @@ export function compressSession(exercises, {
 } = {}) {
   if (!sessionMinutes) return { exercises, overTime: false };
 
-  const budgetSec = sessionMinutes * 60;
+  const budgetSec = budgetSecFor(sessionMinutes);
   const includeWarmup = includesWarmup(sessionMinutes);
   // La superserie sólo entra en sesiones cortas: con 90 minutos por delante no
   // hay razón para comprometer el descanso de nada. Y va la primera porque es el

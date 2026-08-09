@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   compressSession, estimateSessionSec, includesWarmup, accessoriesAtFloor,
-  DISCIPLINE_RULES, MAX_ACCESSORIES_AT_FLOOR,
+  DISCIPLINE_RULES, MAX_ACCESSORIES_AT_FLOOR, TIME_TOLERANCE, budgetSecFor,
 } from './sessionCompression';
 
 const ex = (exerciseId, tier, sets, restSec = 90) => ({ exerciseId, tier, isKey: tier === 1, sets, restSec });
@@ -34,8 +34,9 @@ describe('compressSession — escalera', () => {
   });
 
   it('primero cae el accesorio redundante, no el primero que pilla', () => {
-    // LEG_DAY cuesta ~60 min; con 60 de presupuesto se dispara un peldaño.
-    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: 60 });
+    // LEG_DAY cuesta ~52 min sin calentamiento; 45 + 15% de tolerancia son
+    // 51,75, así que se dispara un peldaño y sólo uno.
+    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: 45 });
     // `leg_extension` es el tercer ejercicio de quads del día; el gemelo es el
     // único de su grupo. Cae la redundancia.
     expect(idsOf(exercises)).not.toContain('leg_extension');
@@ -173,6 +174,41 @@ describe('presupuesto de sesiones cortas', () => {
   });
 });
 
+describe('tolerancia del presupuesto', () => {
+  // Sesión de ~52 min sin calentamiento; con 45 de presupuesto se pasa un 16%.
+  const CASI = [
+    ex('bench_press_db',    1, 4, 120),
+    ex('chest_fly_machine', 3, 3, 60),
+    ex('cable_row',         3, 3, 60),
+    ex('lateral_raise_db',  3, 3, 60),
+  ];
+
+  it('pasarse por poco no cuesta un ejercicio', () => {
+    const est = estimateSessionSec(CASI, undefined, { includeWarmup: false }) / 60;
+    // Un presupuesto un 5% por debajo de la estimación: dentro de la tolerancia.
+    const mins = Math.round(est / 1.05);
+    const r = compressSession(CASI, { sessionMinutes: mins });
+
+    expect(r.exercises).toEqual(CASI);
+    expect(r.overTime).toBe(false);
+  });
+
+  it('pasarse de largo sí lo cuesta', () => {
+    const est = estimateSessionSec(CASI, undefined, { includeWarmup: false }) / 60;
+    // Un 40% por debajo: fuera de la tolerancia, hay que recortar.
+    const mins = Math.round(est / 1.4);
+    const r = compressSession(CASI, { sessionMinutes: mins });
+
+    expect(r.exercises).not.toEqual(CASI);
+  });
+
+  it('la tolerancia es proporcional, no minutos fijos', () => {
+    // +10 min sobre 30 sería un tercio más de sesión; sobre 90, calderilla.
+    expect(budgetSecFor(30)).toBe(30 * 60 * (1 + TIME_TOLERANCE));
+    expect(budgetSecFor(90) - 90 * 60).toBeGreaterThan(budgetSecFor(30) - 30 * 60);
+  });
+});
+
 describe('tope de accesorios en el suelo de series', () => {
   it('nunca deja tres accesorios a 2 series, sea cual sea el presupuesto', () => {
     for (const sessionMinutes of [10, 20, 30, 40, 50, 60, 75, 90]) {
@@ -208,23 +244,23 @@ describe('sesiones cortas — borrar antes que bajar series', () => {
   // Cinco grupos distintos y sin pares antagonistas contiguos: ni redundancia
   // que quitar ni superserie que montar, así que sólo se ve el efecto del orden.
   const MIXED = [
-    ex('pulldown_pronated',      1, 4, 120),
-    ex('bicep_curl_supination',  3, 4, 90),
-    ex('leg_curl_lying',         3, 4, 90),
-    ex('calf_raise_standing',    3, 4, 90),
-    ex('plank',                  3, 4, 90),
+    ex('pulldown_pronated',      1, 5, 120),
+    ex('bicep_curl_supination',  3, 5, 90),
+    ex('leg_curl_lying',         3, 5, 90),
+    ex('calf_raise_standing',    3, 5, 90),
+    ex('plank',                  3, 5, 90),
   ];
 
   it('por debajo del umbral quita un ejercicio y respeta las series del resto', () => {
     const { exercises } = compressSession(MIXED, { sessionMinutes: 59 });
     expect(exercises).toHaveLength(4);
-    expect(exercises.every((e) => e.sets === 4)).toBe(true);
+    expect(exercises.every((e) => e.sets === 5)).toBe(true);
   });
 
   it('por encima, conserva los ejercicios y les baja series', () => {
     const { exercises } = compressSession(MIXED, { sessionMinutes: 62 });
     expect(exercises).toHaveLength(5);
-    expect(exercises.some((e) => e.tier !== 1 && e.sets < 4)).toBe(true);
+    expect(exercises.some((e) => e.tier !== 1 && e.sets < 5)).toBe(true);
   });
 });
 
@@ -237,7 +273,9 @@ describe('superserie de opuestos', () => {
   ];
 
   it('encadena dos accesorios opuestos antes que quitar nada', () => {
-    const mins = Math.floor(estimateSessionSec(PUSH_PULL_DAY, undefined, { includeWarmup: false }) / 60) - 1;
+    // Por debajo de la estimación una vez descontada la tolerancia.
+    const est = estimateSessionSec(PUSH_PULL_DAY, undefined, { includeWarmup: false }) / 60;
+    const mins = Math.floor(est / (1 + TIME_TOLERANCE)) - 1;
     const { exercises } = compressSession(PUSH_PULL_DAY, { sessionMinutes: mins });
     expect(exercises).toHaveLength(3);
     expect(exercises.find((e) => e.exerciseId === 'chest_fly_machine').supersetWithNext).toBe(true);

@@ -403,6 +403,24 @@ invertía el orden de los presupuestos. Sin ellas, 45 min darían 45 de trabajo 
 entregaría menos entrenamiento. Quitando sólo el calentamiento, `45 − 3n` frente
 a `52 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
 
+**Regla 0 — el presupuesto tiene tolerancia** (`TIME_TOLERANCE = 0,15`,
+decisión del usuario). Antes, 60 minutos eran 60 exactos: una sesión de 60:20
+perdía un ejercicio y una de 59:59 pasaba entera. Eso no es precisión, es ruido
+con consecuencias — el presupuesto es una **estimación** construida sobre
+overheads inventados (3 min por transición, 8 de calentamiento), no un
+cronómetro.
+
+El 15% da +9 min sobre un presupuesto de 60, que es lo que alguien entiende por
+"una hora", y escala bien en los extremos: 34 para quien pidió 30, 103 para quien
+pidió 90. Un porcentaje y no minutos fijos, porque +10 sobre 30 es un tercio más
+de sesión. Por debajo del presupuesto no actúa: si la sesión sale corta, se
+enseña corta.
+
+Medido sobre la matriz: a 60 min los avisos de `overTime` pasan de **293 a 100**
+y la media de ejercicios por sesión sube de 4,86 a 4,97. Y la Full Body de 2
+sesiones —que a 60 se quedaba en 60:20 y perdía contenido— sobrevive entera:
+68 min, 6 ejercicios, sin aviso.
+
 **Regla 1b — por debajo del umbral, borrar antes que bajar series.** En una
 sesión corta el montaje domina: un ejercicio a 2 series cuesta 180 s de
 transición para 190 s de trabajo. Quitarlo ahorra los 370 s enteros; bajarle una
