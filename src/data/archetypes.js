@@ -382,6 +382,86 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // PUSH / PULL / LEGS · FRECUENCIA 1 · INTERMEDIO
+  //
+  // Tres sesiones = tres días. Cada grupo se entrena UNA vez por semana, así que
+  // esta plantilla no cumple la regla de frecuencia ≥2 (§11.4) — y no pasa nada:
+  // es una opción legítima para quien prefiere entrenar por grupos, acumula
+  // menos fatiga separándolos o simplemente lo prefiere así. El ranking la
+  // ordena por debajo de una full body a 3 días (término de frecuencia, §7.1) y
+  // la ofrece como alternativa con la nota `lowFrequency`. Ordenar, no excluir.
+  //
+  // En qué se diferencia de la de frecuencia 2, más allá del número de sesiones:
+  //
+  // - SEIS ejercicios por sesión, no cinco: todo el trabajo semanal de un grupo
+  //   cabe en un solo día.
+  // - DOS movimientos por grupo grande (banca + inclinado, jalón + remo): la
+  //   variedad de ángulos vive dentro de la sesión, no entre mitades.
+  // - SIN anclas: cada sesión aparece una sola vez en el ciclo, así que no hay
+  //   nada que vincular. Es la contrapartida real de esta distribución.
+  //
+  // Volumen semanal más bajo que en la de frecuencia 2 (pecho 10 frente a 14,
+  // espalda 11 frente a 17) y por debajo de la banda de referencia del nivel.
+  // No es un descuido: es el techo de lo que se puede meter en una sesión sin
+  // convertirlo en volumen basura. Es el precio de la frecuencia 1, y el
+  // normalizador no lo corrige porque sólo recorta, nunca añade (§2.8).
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'ppl3_hypertrophy_intermediate',
+    name: 'Push / Pull / Legs · 3 días',
+    tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
+    discipline: 'standard',
+    distribution: 'push_pull_legs',
+    goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
+    level: 'intermediate',
+    days: [
+      {
+        label: 'A',
+        name: 'Empuje',
+        color: 'var(--day1)',
+        emphasis: 'push',
+        exercises: [
+          { exerciseId: 'bench_press_db',    role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'incline_press_db',  role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'shoulder_press_db', role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'chest_fly_machine', role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'lateral_raise_db',  role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'tricep_pushdown',   role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'arms' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Tracción',
+        color: 'var(--day2)',
+        emphasis: 'pull',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',     role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'tbar_row',              role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'seated_row_neutral',    role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'face_pull',             role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'horizontal_pull', primaryGroup: 'shoulders' },
+          { exerciseId: 'bicep_curl_supination', role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+          { exerciseId: 'hammer_curl',           role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+        ],
+      },
+      {
+        label: 'C',
+        name: 'Pierna',
+        color: 'var(--day3)',
+        emphasis: 'legs',
+        exercises: [
+          { exerciseId: 'hack_squat',            role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',      primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db',  role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge',  primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'bulgarian_split_squat', role: 'accessory',sets: 3, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'squat',      primaryGroup: 'quads' },
+          { exerciseId: 'leg_curl_lying',        role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'hip_hinge',  primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'calf_raise_machine',    role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'calf_raise', primaryGroup: 'legs_lower' },
+          { exerciseId: 'cable_crunch',          role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'core',       primaryGroup: 'core' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // PUSH / PULL / LEGS · FRECUENCIA 2 · INTERMEDIO
   //
   // Seis sesiones = seis días: el ciclo dura una semana y cada grupo se entrena
@@ -403,7 +483,7 @@ export const ARCHETYPES = [
   // hombro 12 (techo 14) · brazos 12 (techo 14) · core 12.
   // ─────────────────────────────────────────────────────────────────────────
   {
-    id: 'ppl_hypertrophy_intermediate',
+    id: 'ppl6_hypertrophy_intermediate',
     name: 'Push / Pull / Legs · Hipertrofia',
     tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
     discipline: 'standard',

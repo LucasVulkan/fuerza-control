@@ -1108,10 +1108,30 @@ Dos reglas reducen el mapa a la mitad:
 
 | # | Plantilla | Por qué |
 |---|---|---|
-| ~~1~~ | ~~PPL · 3 sesiones~~ | **Descartada.** Con 3 sesiones, PPL toca cada grupo **una vez por semana** e incumple por construcción la regla de frecuencia ≥2 (§11.4). A 3 días lo bueno es full body, que ya tenemos. Lo que fallaba no era el catálogo: era `recommendDistribution`, que sugería PPL a 3 días. Arreglado con el término de frecuencia del ranking (§7.1) |
-| **1** | **PPL · 6 sesiones · intermedio** | ✅ **ESCRITA** (`ppl_hypertrophy_intermediate`). Cierra el tramo de 5-7 días |
-| 2 | **Full Body · 2 sesiones · beginner + intermedio** | Todo el extremo de 1-2 días |
-| 3 | **Fuerza · 3 sesiones · intermedio** | Sólo existe la avanzada (5×5 con barra) |
+| # | Plantilla | Estado |
+|---|---|---|
+| 1 | **PPL · 6 sesiones · intermedio** (`ppl6_hypertrophy_intermediate`) | ✅ **ESCRITA**. Cierra el tramo de 5-7 días |
+| 2 | **PPL · 3 sesiones · intermedio** (`ppl3_hypertrophy_intermediate`) | ✅ **ESCRITA**. Ver la nota de abajo |
+| 3 | **Full Body · 2 sesiones · beginner + intermedio** | Todo el extremo de 1-2 días |
+| 4 | **Fuerza · 3 sesiones · intermedio** | Sólo existe la avanzada (5×5 con barra) |
+
+**Sobre el PPL de 3 sesiones — decisión del usuario, revirtiendo un descarte
+mío.** Toca cada grupo una vez por semana, así que incumple la regla de
+frecuencia ≥2 (§11.4) y entrega menos volumen semanal que una full body a los
+mismos 3 días (pecho 10 frente a 14, espalda 11 frente a 17). Yo la había
+descartado por eso; es un error de criterio: **es una opción legítima** para
+quien prefiere entrenar por grupos, acumula menos fatiga separándolos o
+simplemente lo prefiere así.
+
+Y el sistema no necesita que se excluya para hacer lo correcto: a 3 días el
+ranking pone la full body primera (87,0) y el PPL-3 segundo (82,5) **con la nota
+`lowFrequency`**. Ordenar, no excluir — la misma doctrina que con el material.
+
+Sus diferencias con la de frecuencia 2 son de diseño, no de escala: seis
+ejercicios por sesión en vez de cinco, dos movimientos por grupo grande dentro
+del mismo día (la variedad de ángulos vive en la sesión, no entre mitades) y
+**cero anclas**, porque cada sesión aparece una sola vez en el ciclo y no hay
+nada que vincular. Esa es la contrapartida real de esta distribución.
 | 5 | U/L fuerza 4 · U/L glúteo 4 · U/L o PPL calistenia | Celdas de 4 sesiones de las identidades no estándar |
 
 **Hueco de biblioteca, no de plantilla** (detectado al implementar la fase 1):
