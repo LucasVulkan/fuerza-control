@@ -94,3 +94,66 @@ describe('importData — fallo 2', () => {
     expect(useStore.getState().programs.prog_personal).toBeDefined();
   });
 });
+
+describe('importData — fallo 10, reemplazar plantillas', () => {
+  /** Tres plantillas propias, más un programa personal que no debe moverse. */
+  const estadoLocal = () => ({
+    programs: {
+      tpl_mia_1: { id: 'tpl_mia_1', name: 'Mía 1', mode: 'template', days: [] },
+      tpl_mia_2: { id: 'tpl_mia_2', name: 'Mía 2', mode: 'template', days: [] },
+      tpl_mia_3: { id: 'tpl_mia_3', name: 'Mía 3', mode: 'template', days: [] },
+      prog_mio:  { id: 'prog_mio',  name: 'Mi programa', mode: 'personal', days: [] },
+    },
+    clients: {}, clientLogs: {}, workoutLog: [],
+  });
+
+  /** Backup con 1 plantilla y 1 programa personal — el caso que rompía. */
+  const backup = () => ({
+    version: '2', exportType: 'full',
+    profile: { activeProgramId: null },
+    workoutLog: [], clientLogs: {}, userPrograms: {}, sessionTemplates: {}, customExercises: {},
+    clients: {},
+    programs: {
+      tpl_archivo: { id: 'tpl_archivo', name: 'Del archivo', mode: 'template', days: [] },
+      prog_archivo: { id: 'prog_archivo', name: 'Personal del archivo', mode: 'personal', days: [] },
+    },
+  });
+
+  const plantillas = () => Object.values(useStore.getState().programs).filter((p) => p.mode === 'template');
+
+  beforeEach(() => { useStore.setState(estadoLocal()); });
+
+  it('reemplaza de verdad con la sección de programas también marcada', () => {
+    // Marcadas las dos: es el estado por defecto de ImportModal en cuanto el
+    // archivo trae cualquier programa, y era el que degradaba a "combinar".
+    useStore.getState().importData(
+      backup(),
+      { program: true, templates: true, templatesMode: 'replace' },
+      { silent: true },
+    );
+
+    expect(plantillas().map((p) => p.id)).toEqual(['tpl_archivo']);
+  });
+
+  it('reemplazar no toca los programas que no son plantilla', () => {
+    useStore.getState().importData(
+      backup(),
+      { program: true, templates: true, templatesMode: 'replace' },
+      { silent: true },
+    );
+
+    const { programs } = useStore.getState();
+    expect(programs.prog_mio).toBeDefined();
+    expect(programs.prog_archivo).toBeDefined();
+  });
+
+  it('combinar sigue sumando', () => {
+    useStore.getState().importData(
+      backup(),
+      { program: true, templates: true, templatesMode: 'merge' },
+      { silent: true },
+    );
+
+    expect(plantillas()).toHaveLength(4);
+  });
+});

@@ -1,6 +1,7 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. Fallos 1 y 2 implementados** (ago 2026), 22 pendientes.
+> Estado: **🔍 DIAGNÓSTICO. Fallos 1, 2 y 10 implementados** (ago 2026) — tanda A
+> cerrada, 21 pendientes.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -42,7 +43,7 @@
 | [7](#7) | 🟠 Alta | El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
 | [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
-| [10](#10) | 🟡 Media | "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
+| [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
 | [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:597` |
 | [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:126` |
 | [13](#13) | 🟡 Media | Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
@@ -763,7 +764,7 @@ ser Pro por accidente. Para desarrollo ya existe la vía explícita:
 
 ---
 
-## 10. "Reemplazar plantillas" se degrada a "combinar" 🟡 {#10}
+## 10. "Reemplazar plantillas" se degrada a "combinar" 🟡 ✅ {#10}
 
 **Dónde.** `store/useStore.js:2565` y `:2583`.
 
@@ -815,6 +816,33 @@ set((s) => {
 
 Compatible con el arreglo de §2: la rama `sections.clients` usa el mismo
 `basePrograms`.
+
+### ✅ Implementado (ago 2026)
+
+Tal cual el arreglo propuesto: `replacingTemplates` + `basePrograms` se
+calculan al abrir el `set`, y las tres ramas que escriben `programs`
+—programa, plantillas y clientes— parten de ahí. El orden deja de importar,
+que era el fondo del fallo. El `if (replace) … else …` de la rama de plantillas
+desaparece: las dos ramas eran la misma línea con distinta base, y ahora la
+base ya viene decidida. Saldo neto, cinco líneas menos de lógica.
+
+Precisión sobre el disparador: la casilla "Programa activo" viene marcada en
+cuanto el archivo trae **cualquier** programa (`ImportModal.jsx:252`,
+`hasPrograms` no distingue modo), aunque no traiga ninguno personal. Y
+`sections.program` asigna `updates.programs` incondicionalmente, con
+`personalPrograms` vacío o no. Así que la única forma de que "reemplazar"
+funcionara era desmarcar a mano "Programa activo" — algo que nadie hace, porque
+nada sugiere que esa casilla mande sobre las plantillas.
+
+Comprobado también el borde contrario: la fila de plantillas está
+`disabled={!hasTemplates}` (`ImportModal.jsx:191`), así que no se puede elegir
+"reemplazar" contra un archivo sin plantillas y quedarse sin ninguna.
+
+**Test.** `store/useStore.test.js`, tres casos: reemplazar con la sección de
+programas también marcada deja exactamente la plantilla del archivo; reemplazar
+no toca los programas que no son plantilla; y combinar sigue sumando. El
+primero falla contra el código anterior, los otros dos pasan en ambos — son el
+control de que el arreglo no se pasa de destructivo.
 
 ---
 
@@ -1382,7 +1410,7 @@ verificable:
 
 | Tanda | Fallos | Superficie |
 |-------|--------|-----------|
-| **A — arranque y datos** | ✅ [1](#1), ✅ [2](#2), [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
+| **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** | [3](#3), [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |

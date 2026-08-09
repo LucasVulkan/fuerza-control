@@ -2588,6 +2588,17 @@ export const useStore = create(
 
         set((s) => {
           const updates = {};
+
+          // "Reemplazar plantillas" define sobre qué conjunto se construye TODO
+          // el mapa de programas, así que se decide una sola vez y aquí. Cuando
+          // cada rama elegía su propia base, la primera en escribir ganaba: la
+          // de programas corre antes y arranca de `s.programs`, con las
+          // plantillas viejas dentro, y reemplazar se degradaba a combinar.
+          const replacingTemplates = sections.templates && (sections.templatesMode ?? 'merge') === 'replace';
+          const basePrograms = replacingTemplates
+            ? Object.fromEntries(Object.entries(s.programs ?? {}).filter(([, p]) => p.mode !== 'template'))
+            : s.programs;
+
           const needsTemplateData = sections.program || sections.clients || sections.templates;
           if (needsTemplateData) {
             updates.sessionTemplates = { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) };
@@ -2603,28 +2614,19 @@ export const useStore = create(
             const firstId = (savedActiveId && personalPrograms[savedActiveId])
               ? savedActiveId
               : Object.keys(personalPrograms)[0] ?? null;
-            updates.programs = { ...(updates.programs ?? s.programs), ...personalPrograms };
+            updates.programs = { ...(updates.programs ?? basePrograms), ...personalPrograms };
             if (firstId) {
               updates.profile = { ...s.profile, activeProgramId: firstId, onboardingCompleted: true };
             }
           }
           if (sections.templates) {
             const templatePrograms = {};
-            const mode = sections.templatesMode ?? 'merge';
             Object.entries(allFilePrograms).forEach(([id, p]) => {
               if (p.mode !== 'template') return;
               templatePrograms[id] = p;
             });
-            if (mode === 'replace') {
-              // Remove existing templates, replace with imported ones
-              const nonTemplates = {};
-              Object.entries(s.programs ?? {}).forEach(([id, p]) => {
-                if (p.mode !== 'template') nonTemplates[id] = p;
-              });
-              updates.programs = { ...(updates.programs ?? nonTemplates), ...templatePrograms };
-            } else {
-              updates.programs = { ...(updates.programs ?? s.programs), ...templatePrograms };
-            }
+            // Las viejas ya están fuera de `basePrograms` si toca reemplazar.
+            updates.programs = { ...(updates.programs ?? basePrograms), ...templatePrograms };
           }
           if (sections.log) {
             const incoming = data.workoutLog ?? [];
@@ -2655,7 +2657,7 @@ export const useStore = create(
             const managed = Object.fromEntries(
               Object.entries(allFilePrograms).filter(([, p]) => p.mode === 'managed'),
             );
-            updates.programs = { ...(updates.programs ?? s.programs), ...managed };
+            updates.programs = { ...(updates.programs ?? basePrograms), ...managed };
 
             // Restore per-client histories from backups that include them
             if (data.clientLogs && Object.keys(data.clientLogs).length) {
