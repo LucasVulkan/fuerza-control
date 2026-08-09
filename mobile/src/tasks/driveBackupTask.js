@@ -10,8 +10,10 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager    from 'expo-task-manager';
 import * as SecureStore    from 'expo-secure-store';
+import AsyncStorage        from '@react-native-async-storage/async-storage';
 
 import { uploadBackup, findOrCreateFolder, pruneOldBackups } from '../services/driveService';
+import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../../src/utils/backupPayload';
 
 export const DRIVE_BACKUP_TASK = 'DRIVE_BACKUP_TASK';
 
@@ -51,9 +53,15 @@ TaskManager.defineTask(DRIVE_BACKUP_TASK, async () => {
       return BackgroundFetch.BackgroundFetchResult.Failed;
     }
 
-    // Get backup JSON from SecureStore (written by the store before registering task)
-    const backupJson = await SecureStore.getItemAsync('drive_backup_json');
-    if (!backupJson) return BackgroundFetch.BackgroundFetchResult.NoData;
+    // El backup se arma aquí, desde el estado que zustand persiste en cada
+    // cambio. Antes se leía un snapshot de SecureStore que solo escribía la
+    // copia por sesión: con frecuencia diaria/semanal/mensual esa clave no
+    // existía nunca y la tarea salía por aquí en cada ejecución, para siempre
+    // (fallo 3). Y cuando existía era una foto congelada del día en que se
+    // escribió, así que la copia "diaria" subía siempre lo mismo.
+    const persisted = await AsyncStorage.getItem(BACKUP_STORAGE_KEY);
+    if (!persisted) return BackgroundFetch.BackgroundFetchResult.NoData;
+    const backupJson = buildBackupJson(JSON.parse(persisted).state ?? {});
 
     // Upload
     const activeFolderId = folderId ?? (await findOrCreateFolder(token));

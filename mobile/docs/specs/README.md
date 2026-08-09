@@ -8,7 +8,7 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [auditoria-tecnica.md](auditoria-tecnica.md) — Auditoría técnica (ago 2026) | diagnóstico cerrado. 24 fallos: 2 críticos · 7 altos · 7 medios · 8 bajos — **1 implementado**, 23 pendientes | 🟡 | No es una feature: es corrección. La **tanda A** ([§25](auditoria-tecnica.md#25-orden-de-trabajo-sugerido)) va antes de publicar — un fallo al rehidratar AsyncStorage deja la app en pantalla negra sin recuperación, y restaurar un backup completo pierde todos los programas de clientes. La tanda B arregla que la copia programada a Drive nunca se ejecute; la D, que en iOS todo el mundo sea Pro |
+| [auditoria-tecnica.md](auditoria-tecnica.md) — Auditoría técnica (ago 2026) | diagnóstico cerrado. 25 fallos: 2 críticos · 7 altos · 8 medios · 8 bajos — **5 implementados** (tanda A + los dos de Drive), 20 pendientes | 🟡 | No es una feature: es corrección. La **tanda A** ([§26](auditoria-tecnica.md#26-orden-de-trabajo-sugerido)) va antes de publicar — un fallo al rehidratar AsyncStorage deja la app en pantalla negra sin recuperación, y restaurar un backup completo pierde todos los programas de clientes. La tanda B arregla que la copia programada a Drive nunca se ejecute; la D, que en iOS todo el mundo sea Pro |
 
 ## Specs listas para implementar
 

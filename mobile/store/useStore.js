@@ -43,6 +43,7 @@ import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, wi
 import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
+import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../src/utils/backupPayload';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -2364,21 +2365,8 @@ export const useStore = create(
       // ── Export ────────────────────────────────────────────────────────────────
 
       exportFullBackup: async () => {
-        const s        = get();
         const fileName = `fc-backup-${new Date().toISOString().split('T')[0]}.fitdata`;
-        const json     = JSON.stringify({
-          version: '2', exportType: 'full',
-          exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Forma Fit',
-          profile: s.profile,
-          workoutLog: s.workoutLog,
-          clientLogs: s.clientLogs ?? {},
-          userPrograms: s.userPrograms,
-          programs: s.programs,
-          sessionTemplates: s.sessionTemplates,
-          customExercises: s.customExercises,
-          clients: s.clients ?? {},
-        }, null, 2);
+        const json     = buildBackupJson(get());
 
         try {
           if (Platform.OS === 'android') {
@@ -2698,10 +2686,28 @@ export const useStore = create(
       /** Writes drive config (no tokens) to SecureStore so background task can read it. */
       _syncDriveConfigToSecureStore: async () => {
         const { driveBackup } = get();
+
+        // La tarea de fondo apunta aquí la fecha de su última subida y nadie se
+        // la devolvía al store, así que este write la pisaba con la copia vieja
+        // de memoria y el control de "¿ha pasado ya un día?" retrocedía: copias
+        // más frecuentes de lo configurado. Gana la más reciente de las dos, y
+        // de paso el store se entera de lo que subió la tarea.
+        let lastBackup = driveBackup.lastBackup;
+        try {
+          const raw    = await SecureStore.getItemAsync('drive_backup_config');
+          const remote = raw ? JSON.parse(raw).lastBackup : null;
+          if (remote && (!lastBackup || new Date(remote) > new Date(lastBackup))) {
+            lastBackup = remote;
+            set((s) => ({ driveBackup: { ...s.driveBackup, lastBackup: remote } }));
+          }
+        } catch {
+          // Config ilegible: se reescribe entera abajo.
+        }
+
         const config = {
           enabled:    driveBackup.enabled,
           frequency:  driveBackup.frequency,
-          lastBackup: driveBackup.lastBackup,
+          lastBackup,
           folderId:   driveBackup.folderId,
         };
         await SecureStore.setItemAsync('drive_backup_config', JSON.stringify(config));
@@ -2725,6 +2731,8 @@ export const useStore = create(
         await SecureStore.deleteItemAsync('drive_access_token').catch(() => {});
         await SecureStore.deleteItemAsync('drive_refresh_token').catch(() => {});
         await SecureStore.deleteItemAsync('drive_backup_config').catch(() => {});
+        // Legado: ya nadie escribe esta clave, pero los que actualicen la
+        // tienen puesta y ocupando (fallo 4 — no cabía, además).
         await SecureStore.deleteItemAsync('drive_backup_json').catch(() => {});
         await unregisterBackupTask().catch(() => {});
         set((s) => ({
@@ -2791,23 +2799,10 @@ export const useStore = create(
         const { driveBackup } = get();
         if (!driveBackup.enabled) return { ok: false, error: 'Drive no conectado' };
 
-        const s = get();
-        const json = JSON.stringify({
-          version: '2', exportType: 'full',
-          exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Forma Fit',
-          profile: s.profile,
-          workoutLog: s.workoutLog,
-          clientLogs: s.clientLogs ?? {},
-          userPrograms: s.userPrograms,
-          programs: s.programs,
-          sessionTemplates: s.sessionTemplates,
-          customExercises: s.customExercises,
-          clients: s.clients ?? {},
-        }, null, 2);
+        const json = buildBackupJson(get());
 
-        // Also persist JSON to SecureStore so the background task can reuse it
-        await SecureStore.setItemAsync('drive_backup_json', json);
+        // La tarea de fondo ya no necesita que le dejemos nada preparado: se
+        // arma el backup ella misma desde el estado que zustand persiste.
 
         try {
           const fileName = await get()._withDriveToken(async (token) => {
@@ -3785,13 +3780,19 @@ export const useStore = create(
         set((s) => ({
           driveBackup: { ...s.driveBackup, lastBackup: null, lastBackupFile: null },
         }));
+        // Borrar la config antes de reescribirla: el sync adopta la fecha más
+        // reciente de las dos, y aquí queremos justo lo contrario — que no
+        // quede ninguna.
+        await SecureStore.deleteItemAsync('drive_backup_config').catch(() => {});
         await get()._syncDriveConfigToSecureStore();
       },
     }),
 
     // ── Persist configuration ────────────────────────────────────────────────
     {
-      name: 'fc_tracker_v1',
+      // La tarea de fondo lee esta misma clave para armar el backup, así que
+      // vive en el módulo compartido: renombrarla aquí la rompería en silencio.
+      name: BACKUP_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         profile: state.profile,
@@ -3825,8 +3826,8 @@ export const useStore = create(
             // ponytail: relies on AsyncStorage dispatching in call order, so
             // this getItem lands before the setItem that the setState below
             // triggers. If that ever proves flaky, snapshot on write instead.
-            AsyncStorage.getItem('fc_tracker_v1')
-              .then((raw) => raw && AsyncStorage.setItem('fc_tracker_v1_corrupt', raw))
+            AsyncStorage.getItem(BACKUP_STORAGE_KEY)
+              .then((raw) => raw && AsyncStorage.setItem(`${BACKUP_STORAGE_KEY}_corrupt`, raw))
               .catch(() => {});
           }
           if (!state) return;   // `finally` still runs

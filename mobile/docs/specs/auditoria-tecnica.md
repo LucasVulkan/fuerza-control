@@ -1,7 +1,7 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. Fallos 1, 2 y 10 implementados** (ago 2026) — tanda A
-> cerrada, 21 pendientes.
+> Estado: **🔍 DIAGNÓSTICO. Fallos 1, 2, 10, 3 y 4 implementados** (ago 2026) —
+> tanda A cerrada, 20 pendientes de 25.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -36,8 +36,8 @@
 |---|-----------|--------|-------------------|
 | [1](#1) | 🔴 Crítica | ✅ Pantalla negra permanente si falla la rehidratación | `store/useStore.js:3757` |
 | [2](#2) | 🔴 Crítica | ✅ Restaurar un backup pierde los programas de clientes | `store/useStore.js:2555` |
-| [3](#3) | 🟠 Alta | La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
-| [4](#4) | 🟠 Alta | El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
+| [3](#3) | 🟠 Alta | ✅ La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
+| [4](#4) | 🟠 Alta | ✅ El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
 | [5](#5) | 🟠 Alta | Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
 | [6](#6) | 🟠 Alta | `getProgressionRecommendation` siempre devuelve `null` | `store/useStore.js:1891` |
 | [7](#7) | 🟠 Alta | El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
@@ -58,6 +58,7 @@
 | [22](#22) | 🟢 Baja | `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:390` |
 | [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js` |
 | [24](#24) | 🟢 Baja | Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
+| [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 
 Rutas relativas a `mobile/` salvo las que empiezan por `supabase/` o `src/utils/`
 (estas últimas están en la raíz del repo, compartidas).
@@ -282,7 +283,7 @@ apartado llegó a decir "sin test". Verificado con
 
 ---
 
-## 3. La copia programada a Drive no se ejecuta nunca 🟠 {#3}
+## 3. La copia programada a Drive no se ejecuta nunca 🟠 ✅ {#3}
 
 **Dónde.** `store/useStore.js:2069` y `:2754`; `src/tasks/driveBackupTask.js:55`.
 
@@ -351,9 +352,59 @@ Llamarlo desde:
 `performDriveBackup` pasa a usar `get()._backupJson()` en lugar de repetir el
 objeto (hoy está duplicado literal entre `:2328` y `:2739`).
 
+### ✅ Implementado (ago 2026) — junto con el §4, y sin snapshot
+
+**Se descartó la idea del snapshot**, que es lo que proponen este apartado y el
+§4. Preparar una foto deja vivo el segundo de los dos fallos encadenados: solo
+se refresca en los momentos en que alguien se acordó de llamar a la función, así
+que quien cambia de frecuencia el lunes y el jueves edita programas y da de alta
+clientes sin terminar ningún entreno, el viernes sube la foto del lunes.
+
+En su lugar, **la tarea se arma el backup ella misma** desde el estado que
+zustand persiste en AsyncStorage en cada cambio. Comprobado campo por campo que
+`partialize` (`:3796`) cubre los ocho que el formato necesita.
+
+- `src/utils/backupPayload.js` — nuevo, puro: `buildBackupPayload(state)`,
+  `buildBackupJson(state)` y `BACKUP_STORAGE_KEY`. La entrada es un objeto
+  plano, no el store, y por eso sirve igual para `get()` que para el blob
+  rehidratado, que es lo único que la tarea puede leer.
+- Lo usan los tres sitios que construían el objeto literal: `exportFullBackup`,
+  `performDriveBackup` y `driveBackupTask`. Muere la duplicación que este mismo
+  apartado señalaba.
+- `persist({ name: BACKUP_STORAGE_KEY })`: la clave deja de estar escrita a mano
+  en dos módulos que tienen que coincidir o la tarea se rompe en silencio.
+
+Lo que **no** hizo falta: `backupSnapshot.js`, `_stageBackupForTask`,
+`_backupJson`, ni las tres llamadas nuevas en `setDriveFrequency`,
+`connectDrive` y `saveSession`. El arreglo borra más de lo que añade.
+
+**Tercer defecto, encontrado en el mismo camino.** La tarea apunta la fecha de
+su subida en `drive_backup_config` (`driveBackupTask.js:67`) y **nadie se la
+devolvía al store**, que reescribe ese fichero desde su copia en memoria cada
+vez que se toca algo de Drive. La fecha de la tarea se perdía y el control de
+"¿ha pasado ya un día?" retrocedía: copias más frecuentes de lo configurado. Hoy
+no se nota porque la tarea no sube nunca; con el 3 arreglado, sí.
+`_syncDriveConfigToSecureStore` pasa a adoptar la más reciente de las dos, y de
+paso el store se entera de lo que subió la tarea. `deleteDriveBackups` borra la
+config antes de rescribirla, porque ahí se quiere justo lo contrario.
+
+**Riesgo asumido:** que AsyncStorage esté disponible dentro del contexto de
+background fetch. La tarea ya usa SecureStore ahí, que es un módulo nativo de la
+misma clase, así que debería. **Es lo que hay que verificar en dispositivo**:
+frecuencia diaria, esperar, y comprobar que aparece el archivo en Drive. Si
+fallara, el plan B es el snapshot en fichero de este apartado, y la función pura
+sirve igual.
+
+**Test.** `src/utils/backupPayload.test.js`, cuatro casos: los doce campos del
+formato y ninguno más; que no se filtren `driveBackup` (correo y carpeta de
+Drive) ni `trainerSync` / `clientSync` (credenciales) en un archivo que se
+comparte por WhatsApp; tolerancia a un estado a medias; y que salga del blob
+`{ state, version }` tal cual lo lee la tarea. La tarea y `performDriveBackup`
+siguen sin cobertura: son red y módulos nativos.
+
 ---
 
-## 4. El backup se guarda en SecureStore, que limita a 2048 bytes 🟠 {#4}
+## 4. El backup se guarda en SecureStore, que limita a 2048 bytes 🟠 ✅ {#4}
 
 **Dónde.** `store/useStore.js:2754`.
 
@@ -411,6 +462,20 @@ export async function deleteBackupSnapshot() {
 
 En SecureStore se quedan solo `drive_access_token`, `drive_refresh_token` y
 `drive_backup_config`, que sí son pequeños y sí son secretos.
+
+### ✅ Implementado (ago 2026) — sin fichero de snapshot
+
+Resuelto por el mismo cambio del §3, pero por eliminación en vez de por
+sustitución: **si nadie prepara un snapshot, no hay nada grande que guardar en
+ningún sitio**. La escritura de `drive_backup_json` desaparece; no se cambia de
+cajón, se quita el cajón.
+
+`disconnectDrive` conserva el `deleteItemAsync('drive_backup_json')` marcado
+como legado: ya nadie escribe esa clave, pero quien actualice la tiene puesta y
+ocupando espacio en SecureStore.
+
+En SecureStore quedan exactamente los tres valores que el apartado pedía dejar:
+`drive_access_token`, `drive_refresh_token` y `drive_backup_config`.
 
 ---
 
@@ -1403,7 +1468,48 @@ export function getWeekStatuses(workoutLog, now = Date.now()) {
 
 ---
 
-## 25. Orden de trabajo sugerido
+## 25. El backup completo no lleva `tagRegistry` ni `blockPresets` 🟡 {#25}
+
+**Dónde.** `src/utils/backupPayload.js` (antes, el objeto literal de
+`exportFullBackup` y `performDriveBackup`), contra `partialize`
+(`store/useStore.js:3796`) e `importData` (`:2578`).
+
+> Añadido en ago 2026 al arreglar el §3, no venía del barrido original.
+
+**Por qué falla.** El estado persistido guarda quince claves; el backup solo
+lleva ocho. Dos de las que faltan no son configuración local, son datos del
+usuario:
+
+- **`tagRegistry`** — el catálogo de etiquetas de clientes. Cada cliente guarda
+  IDs (`tag_a1b2c3d4`) que apuntan aquí; los nombres viven solo en el registro.
+- **`blockPresets`** — los bloques de acondicionamiento guardados por el
+  entrenador para reutilizar.
+
+`importData` tampoco tiene rama para ninguno de los dos, así que aunque
+viajaran no entrarían.
+
+**Qué lo dispara.** Cualquier restauración de backup completo, igual que el §2.
+Los clientes vuelven con sus etiquetas convertidas en códigos sin nombre, y los
+presets de bloques no vuelven.
+
+**Reproducción.** Etiquetar dos clientes → exportar backup completo → borrar
+datos → importar con todas las secciones. Las etiquetas siguen asignadas, pero
+sin nombre que mostrar.
+
+**Arreglo.** Añadir ambos a `buildBackupPayload` y una rama en `importData`.
+`tagRegistry` es un array, no un mapa: fusionar por `id` sin duplicar, y colgarlo
+de `sections.clients`, que es de quien son las etiquetas. `blockPresets` es un
+mapa y va con `sections.templates` o con su propia casilla — decisión de
+producto, porque implica una fila más en `ImportModal`.
+
+**Cuidado con lo que NO debe entrar.** `driveBackup`, `trainerSync` y
+`clientSync` son las otras claves que faltan y **deben seguir fuera**: llevan
+carpeta y correo de Drive y credenciales de sincronización, y un `.fitdata` se
+comparte por WhatsApp. `backupPayload.test.js` ya lo vigila.
+
+---
+
+## 26. Orden de trabajo sugerido
 
 Agrupado por lo que se toca, no por severidad, para que cada tanda sea un PR
 verificable:
@@ -1411,7 +1517,7 @@ verificable:
 | Tanda | Fallos | Superficie |
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
-| **B — Drive** | [3](#3), [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
+| **B — Drive** | ✅ [3](#3), ✅ [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
@@ -1421,7 +1527,7 @@ La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
 inservible y [2](#2) destruye datos del entrenador en la operación que
 precisamente existe para no perderlos.
 
-## 26. Lo que NO entra en esta spec
+## 27. Lo que NO entra en esta spec
 
 Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
 
