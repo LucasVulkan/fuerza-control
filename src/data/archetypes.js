@@ -422,8 +422,12 @@ export const ARCHETYPES = [
         color: 'var(--day1)',
         emphasis: 'push',
         exercises: [
+          // El segundo estímulo de pecho es un patrón distinto, no la misma
+          // banca con otro ángulo: el fondo es vertical_push y añade recorrido y
+          // tríceps. Sin barra de fondos ni paralelas, el resolvedor cae en
+          // `bench_dip` — flojo para un intermedio, pero conserva el patrón.
           { exerciseId: 'bench_press_db',    role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
-          { exerciseId: 'incline_press_db',  role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'dip',               role: 'key',      sets: 3, minReps: 8,  maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'chest' },
           { exerciseId: 'shoulder_press_db', role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
           { exerciseId: 'chest_fly_machine', role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
           { exerciseId: 'lateral_raise_db',  role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
