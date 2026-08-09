@@ -578,6 +578,8 @@
     "backupsHint": "Toca una copia para restaurarla en este móvil.",
     "backupsEmpty": "Todavía no hay ninguna copia en tu Drive.",
     "backupsNeedConnect": "Conecta tu cuenta de Google en la pestaña Ajustes para ver tus copias.",
+    "backupsLoadFailed": "No se ha podido consultar tu Drive. Desliza hacia abajo para reintentar.",
+    "backupsNeedReconnect": "La sesión con Google ha caducado, así que no se ha podido consultar tu Drive. Vuelve a conectar en la pestaña Ajustes: tus copias siguen ahí.",
     "loadingBackups": "Cargando copias…",
     "loadingBackup": "Guardando copia…",
     "loadingRestore": "Descargando la copia…",

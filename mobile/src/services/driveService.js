@@ -10,6 +10,20 @@ const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadTyp
 const FOLDER_NAME  = 'Forma Backups';
 const MAX_BACKUPS  = 30; // keep the 30 most recent files
 
+/**
+ * Todo fallo HTTP sale por aquí, con el código en `err.status`.
+ *
+ * `_withDriveToken` decide si refresca el token mirando ese número. Antes
+ * buscaba la subcadena '401' en el mensaje, así que reformular cualquiera de
+ * estos textos rompía el refresco en silencio. Si añades un `throw` nuevo en
+ * este módulo, que salga de aquí o quedará fuera del refresco.
+ */
+function driveError(message, status) {
+  const err = new Error(`${message} ${status}`);
+  err.status = status;
+  return err;
+}
+
 // ── Folder ────────────────────────────────────────────────────────────────────
 
 /** Returns the ID of the "Forma Backups" folder, creating it if needed. */
@@ -31,7 +45,10 @@ export async function findOrCreateFolder(token) {
 
 /** Uploads a JSON string as a file inside the given folder. Returns the file object. */
 export async function uploadBackup(token, folderId, fileName, jsonContent) {
-  const boundary = 'fc_backup_bound';
+  // Aleatorio por petición: el cuerpo lleva texto libre del usuario (nombres de
+  // programa, notas de sesión, notas de cliente) y con un separador fijo bastaba
+  // con escribirlo en una nota para corromper el multipart.
+  const boundary = 'fc_' + Math.random().toString(36).slice(2);
   const body = [
     `--${boundary}`,
     'Content-Type: application/json; charset=UTF-8',
@@ -52,7 +69,7 @@ export async function uploadBackup(token, folderId, fileName, jsonContent) {
     },
     body,
   });
-  if (!res.ok) throw new Error(`Upload error ${res.status}`);
+  if (!res.ok) throw driveError('Upload error', res.status);
   return res.json();
 }
 
@@ -73,21 +90,23 @@ export async function downloadBackup(token, fileId) {
   const res = await fetch(`${DRIVE_V3}/files/${fileId}?alt=media`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Error al descargar: ${res.status}`);
+  if (!res.ok) throw driveError('Error al descargar:', res.status);
   return res.json();
 }
 
 /** Deletes a single file by ID. */
 export async function deleteFile(token, fileId) {
-  await fetch(`${DRIVE_V3}/files/${fileId}`, {
+  const res = await fetch(`${DRIVE_V3}/files/${fileId}`, {
     method:  'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (!res.ok) throw driveError('Drive DELETE error', res.status);
 }
 
 /** Deletes ALL files in the backup folder. */
 export async function deleteAllBackups(token, folderId) {
   const files = await listBackups(token, folderId);
+  // Acción explícita del usuario: si algo no se borra tiene que enterarse.
   await Promise.all(files.map((f) => deleteFile(token, f.id)));
 }
 
@@ -96,7 +115,11 @@ export async function pruneOldBackups(token, folderId) {
   const files = await listBackups(token, folderId);
   if (files.length <= MAX_BACKUPS) return;
   const toDelete = files.slice(MAX_BACKUPS);
-  await Promise.all(toDelete.map((f) => deleteFile(token, f.id)));
+  // Limpieza de fondo, al contrario que `deleteAllBackups`: que falle un borrado
+  // no puede tumbar la copia que se acaba de subir con éxito. La próxima pasada
+  // lo reintenta. Esto además cierra la doble subida del §19: un 401 aquí ya no
+  // sale del `fn` y por tanto no dispara el reintento con el archivo ya subido.
+  await Promise.allSettled(toDelete.map((f) => deleteFile(token, f.id)));
 }
 
 // ── Token exchange (code → tokens) ───────────────────────────────────────────
@@ -117,7 +140,7 @@ export async function exchangeCodeForTokens({ code, codeVerifier, redirectUri, c
       grant_type:     'authorization_code',
     }).toString(),
   });
-  if (!res.ok) throw new Error(`Token exchange error ${res.status}`);
+  if (!res.ok) throw driveError('Token exchange error', res.status);
   return res.json(); // { access_token, refresh_token, expires_in, ... }
 }
 
@@ -138,7 +161,7 @@ export async function refreshAccessToken(refreshToken, clientId) {
       grant_type:    'refresh_token',
     }).toString(),
   });
-  if (!res.ok) throw new Error(`Refresh error ${res.status}`);
+  if (!res.ok) throw driveError('Refresh error', res.status);
   return res.json(); // { access_token, expires_in, ... }
 }
 
@@ -158,7 +181,7 @@ async function driveGet(url, token) {
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Drive GET error ${res.status}`);
+  if (!res.ok) throw driveError('Drive GET error', res.status);
   return res.json();
 }
 
@@ -171,6 +194,6 @@ async function drivePost(url, token, body) {
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Drive POST error ${res.status}`);
+  if (!res.ok) throw driveError('Drive POST error', res.status);
   return res.json();
 }

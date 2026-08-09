@@ -29,7 +29,7 @@ import * as SecureStore from 'expo-secure-store';
 import Constants        from 'expo-constants';
 
 import { useStore }                                                         from '../../store/useStore';
-import { exchangeCodeForTokens, getUserEmail, listBackups, downloadBackup, findOrCreateFolder } from '../services/driveService';
+import { exchangeCodeForTokens, getUserEmail }                           from '../services/driveService';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI }                            from '../config/google';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
@@ -72,6 +72,8 @@ export default function DriveBackupScreen() {
   const setDriveBackupName = useStore((s) => s.setDriveBackupName);
   const performDriveBackup = useStore((s) => s.performDriveBackup);
   const deleteDriveBackups = useStore((s) => s.deleteDriveBackups);
+  const listDriveBackups   = useStore((s) => s.listDriveBackups);
+  const downloadDriveBackup = useStore((s) => s.downloadDriveBackup);
   const importData         = useStore((s) => s.importData);
   const showToast          = useStore((s) => s.showToast);
   const lang               = useStore((s) => s.profile?.language ?? 'es');
@@ -81,6 +83,7 @@ export default function DriveBackupScreen() {
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setMsg]         = useState('');
   const [files,       setFiles]       = useState(null);  // null = not loaded yet
+  const [loadFailed,  setLoadFailed]  = useState(false); // ≠ "no hay copias"
   const [refreshing,  setRefreshing]  = useState(false);
   const [freqOpen,    setFreqOpen]    = useState(false);
 
@@ -144,11 +147,14 @@ export default function DriveBackupScreen() {
     else setLoading(true);
     setMsg(t('drive.loadingBackups'));
     try {
-      const token    = await SecureStore.getItemAsync('drive_access_token');
-      const folderId = driveBackup.folderId ?? (token ? await findOrCreateFolder(token).catch(() => null) : null);
-      setFiles(token && folderId ? await listBackups(token, folderId) : []);
+      setFiles(await listDriveBackups());
+      setLoadFailed(false);
     } catch {
-      setFiles([]);
+      // Lista vacía y "no he podido preguntar" son cosas distintas: antes las
+      // dos acababan en `setFiles([])` y la pantalla juraba que no había copias
+      // con el token simplemente caducado.
+      setFiles(null);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -162,6 +168,17 @@ export default function DriveBackupScreen() {
       loadFiles();
     }
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // La tarea de fondo deja esta nota cuando se encuentra el token caducado, y
+  // hasta ahora no la leía nadie: el aviso de reconexión no llegaba nunca desde
+  // ese camino. Se consume al leerla — el estado ya vive en `needsReconnect`.
+  useEffect(() => {
+    SecureStore.getItemAsync('drive_needs_reconnect').then((v) => {
+      if (v !== 'true') return;
+      useStore.setState((s) => ({ driveBackup: { ...s.driveBackup, needsReconnect: true } }));
+      SecureStore.deleteItemAsync('drive_needs_reconnect').catch(() => {});
+    }).catch(() => {});
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   async function handleBackupNow() {
@@ -197,8 +214,7 @@ export default function DriveBackupScreen() {
             setLoading(true);
             setMsg(t('drive.loadingRestore'));
             try {
-              const token = await SecureStore.getItemAsync('drive_access_token');
-              const data  = await downloadBackup(token, file.id);
+              const data = await downloadDriveBackup(file.id);
               importData(data, { program: true, log: true, settings: true, customExercises: true, clients: true }, { silent: true });
               showToast(t('drive.toastRestored'), 2200, 'success');
               navigation.goBack();
@@ -518,6 +534,10 @@ export default function DriveBackupScreen() {
               <ActivityIndicator size="small" color={th.colors.mutedLight} />
               <Text style={styles.loadingTxt}>{t('drive.loadingBackups')}</Text>
             </View>
+          ) : loadFailed ? (
+            <Text style={styles.hint}>
+              {driveBackup.needsReconnect ? t('drive.backupsNeedReconnect') : t('drive.backupsLoadFailed')}
+            </Text>
           ) : !files || files.length === 0 ? (
             <Text style={styles.hint}>{t('drive.backupsEmpty')}</Text>
           ) : (

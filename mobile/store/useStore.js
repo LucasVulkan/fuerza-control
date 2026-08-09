@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy'; // v19: legacy = readAsStringAsync, EncodingType, cacheDirectory
 import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
-import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken } from '../src/services/driveService';
+import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken, listBackups, downloadBackup } from '../src/services/driveService';
 import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
@@ -2773,7 +2773,10 @@ export const useStore = create(
         try {
           return await fn(token);
         } catch (e) {
-          if (!e?.message?.includes('401')) throw e;
+          // Por código, no por subcadena del mensaje: `driveService` lo adjunta
+          // en `err.status`. Con `includes('401')` bastaba reformular un texto
+          // para que el refresco dejara de dispararse, sin ruido.
+          if (e?.status !== 401) throw e;
           // Token expired — try to refresh
           const refreshToken = await SecureStore.getItemAsync('drive_refresh_token');
           if (!refreshToken) {
@@ -2804,6 +2807,10 @@ export const useStore = create(
         // La tarea de fondo ya no necesita que le dejemos nada preparado: se
         // arma el backup ella misma desde el estado que zustand persiste.
 
+        // ponytail: `_withDriveToken` reintenta el callback ENTERO en un 401, así
+        // que lo de dentro tiene que ser repetible. Hoy lo es —`pruneOldBackups`
+        // se traga sus fallos y no propaga el 401— pero si algún día se añade
+        // aquí algo no idempotente, hay que partir el callback en dos.
         try {
           const fileName = await get()._withDriveToken(async (token) => {
             const activeFolderId = driveBackup.folderId ?? (await findOrCreateFolder(token));
@@ -3769,14 +3776,29 @@ export const useStore = create(
         }
       },
 
+      /**
+       * Lista y descarga, dentro de `_withDriveToken` para que un token caducado
+       * se renueve. `DriveBackupScreen` las hacía a pelo con el token de
+       * SecureStore: pasada la hora que dura, listar devolvía 401, la pantalla
+       * se lo tragaba y decía "no hay copias" con treinta en Drive.
+       */
+      listDriveBackups: async () => get()._withDriveToken(async (token) => {
+        const folderId = get().driveBackup.folderId ?? (await findOrCreateFolder(token));
+        return listBackups(token, folderId);
+      }),
+
+      downloadDriveBackup: async (fileId) =>
+        get()._withDriveToken((token) => downloadBackup(token, fileId)),
+
       /** Deletes all backup files from Drive and resets lastBackup metadata. */
       deleteDriveBackups: async () => {
-        const { driveBackup } = get();
-        const token = await SecureStore.getItemAsync('drive_access_token');
-        if (!token) return;
-        if (driveBackup.folderId) {
-          await deleteAllBackups(token, driveBackup.folderId);
-        }
+        // Dentro de `_withDriveToken` como las demás: leía el token a pelo y
+        // hacía `return` en silencio si no estaba, así que pasada una hora
+        // "borrar todas las copias" no borraba nada y no decía ni mu.
+        await get()._withDriveToken(async (token) => {
+          const folderId = get().driveBackup.folderId;
+          if (folderId) await deleteAllBackups(token, folderId);
+        });
         set((s) => ({
           driveBackup: { ...s.driveBackup, lastBackup: null, lastBackupFile: null },
         }));

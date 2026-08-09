@@ -1,7 +1,7 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. Fallos 1, 2, 10, 3 y 4 implementados** (ago 2026) —
-> tanda A cerrada, 20 pendientes de 25.
+> Estado: **🔍 DIAGNÓSTICO. 9 fallos implementados** (ago 2026) — tandas A y B
+> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20), 16 pendientes de 25.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -46,14 +46,14 @@
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
 | [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:597` |
 | [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:126` |
-| [13](#13) | 🟡 Media | Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
+| [13](#13) | 🟡 Media | ✅ Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
 | [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js` |
 | [15](#15) | 🟡 Media | Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:943` |
 | [16](#16) | 🟡 Media | `st.days.forEach` sin guard en 4 sitios | `store/useStore.js:345` |
-| [17](#17) | 🟢 Baja | `drive_needs_reconnect` se escribe y nadie lo lee | `src/tasks/driveBackupTask.js:50` |
+| [17](#17) | 🟢 Baja | ✅ `drive_needs_reconnect` se escribe y nadie lo lee | `src/tasks/driveBackupTask.js:50` |
 | [18](#18) | 🟢 Baja | `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2132` |
-| [19](#19) | 🟢 Baja | El reintento de Drive re-ejecuta lo ya hecho | `store/useStore.js:2709` |
-| [20](#20) | 🟢 Baja | Boundary multipart fijo en la subida a Drive | `src/services/driveService.js:34` |
+| [19](#19) | 🟢 Baja | ✅ El reintento de Drive re-ejecuta lo ya hecho | `store/useStore.js:2709` |
+| [20](#20) | 🟢 Baja | ✅ Boundary multipart fijo en la subida a Drive | `src/services/driveService.js:34` |
 | [21](#21) | 🟢 Baja | `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:339` |
 | [22](#22) | 🟢 Baja | `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:390` |
 | [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js` |
@@ -1038,7 +1038,7 @@ proporcional al tamaño de la base del entrenador.
 
 ---
 
-## 13. Listar y restaurar backups no refresca el token expirado 🟡 {#13}
+## 13. Listar y restaurar backups no refresca el token expirado 🟡 ✅ {#13}
 
 **Dónde.** `src/screens/DriveBackupScreen.jsx:147` (`loadFiles`) y `:200`
 (`handleRestoreFile`).
@@ -1083,6 +1083,53 @@ downloadDriveBackup: async (fileId) =>
 y que la pantalla distinga "sin copias" de "no se pudo consultar" — si el error
 es `'Token expirado'`, mostrar el aviso de reconexión que ya existe para
 `needsReconnect`, no una lista vacía.
+
+### ✅ Implementado (ago 2026) — con los 17, 19 y 20 y un tercer sitio
+
+`listDriveBackups` y `downloadDriveBackup` entran en el store dentro de
+`_withDriveToken`, y la pantalla las usa en lugar de leer el token a pelo. En
+`loadFiles`, el `catch` deja de mentir: `loadFailed` separa "no hay copias" de
+"no he podido preguntar", y si el fallo dejó `needsReconnect` puesto el texto
+lo dice y remite a Ajustes. Dos claves nuevas en `es.json`/`en.json`.
+
+**Tercer sitio que se saltaba el envoltorio**, no listado aquí:
+`deleteDriveBackups` (`store/useStore.js:3780`) leía el token directamente y
+hacía `return` en silencio si no estaba, así que pasada la hora de vida del
+token "borrar todas las copias" no borraba nada y no lo decía. Ahora va dentro
+de `_withDriveToken` como el resto. Arreglar solo los dos de este apartado
+habría dejado el hermano roto.
+
+**§17** — el `useEffect` propuesto, tal cual, al montar `DriveBackupScreen`:
+lee `drive_needs_reconnect`, lo vuelca a `needsReconnect` y consume la clave.
+Tiene sentido ahora y no antes, porque hasta el §3 la tarea no llegaba a
+ejecutarse y por tanto nunca escribía esa nota.
+
+**§19** — todo fallo HTTP de `driveService` pasa por un `driveError(msg, status)`
+que adjunta `err.status`, y `_withDriveToken` compara `e?.status !== 401`. Iban
+los seis o ninguno: si uno se queda sin código, el refresco deja de dispararse
+por ese camino sin ruido. `getUserEmail` se queda fuera a propósito — corre en
+el alta de OAuth, con el token recién emitido y fuera del envoltorio.
+
+La doble subida no se acepta, se cierra: `pruneOldBackups` pasa a
+`Promise.allSettled`, así que un 401 en la limpieza ya no sale del callback y no
+dispara el reintento con el archivo ya subido. `deleteAllBackups` mantiene
+`Promise.all` — es una acción explícita del usuario y tiene que fallar si falla.
+Queda un `ponytail:` en `performDriveBackup` avisando de que el callback se
+reintenta entero y lo que se meta ahí debe ser repetible.
+
+**§20** — `'fc_' + Math.random().toString(36).slice(2)` por petición.
+
+**Además**, `deleteFile` no miraba la respuesta: un borrado fallido pasaba por
+bueno. Ahora lanza como el resto, que es lo que hace que `deleteAllBackups`
+pueda informar.
+
+**Test.** `src/services/driveService.test.js`, 9 casos con `fetch` sustituido:
+separador distinto en cada subida, separador que no colisiona con una nota que
+contenga el fijo antiguo, `err.status` en los seis puntos de fallo (uno por
+caso) y que `pruneOldBackups` no propague. 8 de los 9 fallan contra el código
+anterior. Lo que toca pantalla y red sigue sin cobertura: verificación en
+dispositivo — conectar Drive, esperar más de una hora, abrir "Copias" y
+comprobar que salen las copias en vez de "no hay ninguna".
 
 ---
 
@@ -1225,7 +1272,7 @@ desaparecen también los cuatro `if (program.stages?.length > 0) … else …`.
 
 ---
 
-## 17. `drive_needs_reconnect` se escribe y nadie lo lee 🟢 {#17}
+## 17. `drive_needs_reconnect` se escribe y nadie lo lee 🟢 ✅ {#17}
 
 **Dónde.** `src/tasks/driveBackupTask.js:50`.
 
@@ -1250,6 +1297,11 @@ useEffect(() => {
   });
 }, []);
 ```
+
+### ✅ Implementado (ago 2026)
+
+El `useEffect` propuesto, al montar `DriveBackupScreen`. Detalle en el bloque
+implementado del [§13](#13), que es donde entró todo el lote de Drive.
 
 ---
 
@@ -1281,7 +1333,7 @@ clearWorkoutLog: (scope) => {
 
 ---
 
-## 19. El reintento de Drive re-ejecuta lo ya hecho 🟢 {#19}
+## 19. El reintento de Drive re-ejecuta lo ya hecho 🟢 ✅ {#19}
 
 **Dónde.** `store/useStore.js:2709-2722` (`_withDriveToken`).
 
@@ -1316,9 +1368,15 @@ if (e?.status !== 401) throw e;
 La doble subida es aceptable (`pruneOldBackups` limpia), pero conviene dejarlo
 anotado con un `ponytail:` en `performDriveBackup`.
 
+### ✅ Implementado (ago 2026)
+
+`err.status` en los seis puntos de fallo y comparación por código. La doble
+subida **no** se acepta: `pruneOldBackups` pasa a `Promise.allSettled` y el 401
+de la limpieza ya no dispara el reintento. Detalle en el [§13](#13).
+
 ---
 
-## 20. Boundary multipart fijo en la subida a Drive 🟢 {#20}
+## 20. Boundary multipart fijo en la subida a Drive 🟢 ✅ {#20}
 
 **Dónde.** `src/services/driveService.js:34`.
 
@@ -1335,6 +1393,10 @@ notas por ejercicio, nombres y notas de cliente. Si alguien escribe
 ```js
 const boundary = 'fc_' + Math.random().toString(36).slice(2);
 ```
+
+### ✅ Implementado (ago 2026)
+
+`'fc_' + Math.random().toString(36).slice(2)`, con test. Detalle en el [§13](#13).
 
 ---
 
@@ -1517,7 +1579,7 @@ verificable:
 | Tanda | Fallos | Superficie |
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
-| **B — Drive** | ✅ [3](#3), ✅ [4](#4), [13](#13), [17](#17), [19](#19), [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
+| **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |

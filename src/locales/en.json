@@ -578,6 +578,8 @@
     "backupsHint": "Tap a backup to restore it on this phone.",
     "backupsEmpty": "There are no backups in your Drive yet.",
     "backupsNeedConnect": "Connect your Google account in the Settings tab to see your backups.",
+    "backupsLoadFailed": "Couldn't reach your Drive. Pull down to try again.",
+    "backupsNeedReconnect": "Your Google session expired, so we couldn't check your Drive. Reconnect in the Settings tab — your backups are still there.",
     "loadingBackups": "Loading backups…",
     "loadingBackup": "Saving backup…",
     "loadingRestore": "Downloading the backup…",
