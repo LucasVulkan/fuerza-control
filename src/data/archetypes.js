@@ -382,6 +382,118 @@ export const ARCHETYPES = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // PUSH / PULL / LEGS · FRECUENCIA 2 · INTERMEDIO
+  //
+  // Seis sesiones = seis días: el ciclo dura una semana y cada grupo se entrena
+  // dos veces. Es la plantilla que cubre el tramo de 5-7 días, donde antes sólo
+  // había ciclos de tres sesiones rodando al doble de velocidad.
+  //
+  // ANCLAS (idénticas en las dos mitades, así `autoLinkRepeated` las vincula y
+  // progresan con un solo historial): banca en A/D, jalón y remo en B/E, hack
+  // squat y peso muerto rumano en C/F. Son los motores primarios de los patrones
+  // fundamentales. Hombro y brazos NO se anclan: ya reciben carga en cada press
+  // y cada tracción, y su techo directo es más bajo por eso
+  // (`GROUP_CEILING_FACTOR`). La variación entre mitades vive en el segundo
+  // movimiento y en los accesorios.
+  //
+  // Cada sesión cierra con una función de core distinta: anti-rotación (B),
+  // anti-extensión (D), anti-lateral (E) y flexión (F).
+  //
+  // Volumen semanal: pecho 14 · espalda 17 · cuádriceps 14 · glúteo 14 ·
+  // hombro 12 (techo 14) · brazos 12 (techo 14) · core 12.
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'ppl_hypertrophy_intermediate',
+    name: 'Push / Pull / Legs · Hipertrofia',
+    tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
+    discipline: 'standard',
+    distribution: 'push_pull_legs',
+    goal: 'hypertrophy',
+    phases: DEFAULT_PHASES.hypertrophy,
+    level: 'intermediate',
+    days: [
+      {
+        label: 'A',
+        name: 'Empuje · pecho',
+        color: 'var(--day1)',
+        emphasis: 'push',
+        exercises: [
+          { exerciseId: 'bench_press_db',        role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'shoulder_press_db',     role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'chest_fly_machine',     role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'lateral_raise_db',      role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'tricep_pushdown',       role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'arms' },
+        ],
+      },
+      {
+        label: 'B',
+        name: 'Tracción · dorsal',
+        color: 'var(--day2)',
+        emphasis: 'pull',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',     role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'tbar_row',              role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'face_pull',             role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'horizontal_pull', primaryGroup: 'shoulders' },
+          { exerciseId: 'bicep_curl_supination', role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+          { exerciseId: 'pallof_press',          role: 'accessory',sets: 3, minReps: 10, maxReps: 15, restSec: 45,  pattern: 'core',            primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'C',
+        name: 'Pierna · rodilla',
+        color: 'var(--day3)',
+        emphasis: 'legs',
+        exercises: [
+          { exerciseId: 'hack_squat',            role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',      primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db',  role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge',  primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'leg_extension',         role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'squat',      primaryGroup: 'quads' },
+          { exerciseId: 'leg_curl_lying',        role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'hip_hinge',  primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'calf_raise_machine',    role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'calf_raise', primaryGroup: 'legs_lower' },
+        ],
+      },
+      {
+        label: 'D',
+        name: 'Empuje · hombro',
+        color: 'var(--day4)',
+        emphasis: 'push',
+        exercises: [
+          { exerciseId: 'bench_press_db',             role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'shoulder_press_machine',     role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'vertical_push',   primaryGroup: 'shoulders' },
+          { exerciseId: 'incline_fly_db',             role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'horizontal_push', primaryGroup: 'chest' },
+          { exerciseId: 'overhead_triceps_ext_cable', role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'vertical_push',   primaryGroup: 'arms' },
+          { exerciseId: 'plank',                      role: 'accessory',sets: 3, minReps: null, maxReps: null, restSec: 45, pattern: 'core',         primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'E',
+        name: 'Tracción · espesor',
+        color: 'var(--day5)',
+        emphasis: 'pull',
+        exercises: [
+          { exerciseId: 'pulldown_pronated',    role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'tbar_row',             role: 'key',      sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'seated_row_neutral',   role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'horizontal_pull', primaryGroup: 'back' },
+          { exerciseId: 'hammer_curl',          role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 60,  pattern: 'vertical_pull',   primaryGroup: 'arms' },
+          { exerciseId: 'side_plank',           role: 'accessory',sets: 3, minReps: null, maxReps: null, restSec: 45, pattern: 'core',          primaryGroup: 'core' },
+        ],
+      },
+      {
+        label: 'F',
+        name: 'Pierna · cadera',
+        color: 'var(--day6)',
+        emphasis: 'legs',
+        exercises: [
+          { exerciseId: 'hack_squat',            role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'romanian_deadlift_db',  role: 'key',      sets: 4, minReps: 8,  maxReps: 10, restSec: 120, pattern: 'hip_hinge', primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'bulgarian_split_squat', role: 'accessory',sets: 3, minReps: 8,  maxReps: 10, restSec: 90,  pattern: 'squat',     primaryGroup: 'quads' },
+          { exerciseId: 'seated_leg_curl',       role: 'accessory',sets: 3, minReps: 12, maxReps: 15, restSec: 60,  pattern: 'hip_hinge', primaryGroup: 'glutes_hamstrings' },
+          { exerciseId: 'cable_crunch',          role: 'accessory',sets: 3, minReps: 15, maxReps: 20, restSec: 45,  pattern: 'core',      primaryGroup: 'core' },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // FULL BODY · FUERZA · AVANZADO (5x5 clásico — squat/bench/row A y C,
   // deadlift/OHP/squat pausada B; primer arquetipo de discipline='strength')
   // ─────────────────────────────────────────────────────────────────────────

@@ -833,10 +833,16 @@ Las tres decisiones que hay detrás, por si se quieren mover:
 > | 6 | 28 | 16 |
 > | 7 | 40 | 34 |
 >
-> La causa no es el ranking: **no existe ninguna plantilla de 5-7 días**, así que
-> a esos usuarios les toca un ciclo de 3 sesiones rodando a 2,33 vueltas por
-> semana, y los suelos impiden recortar tanto volumen. Antes iban al procedural,
-> que montaba 6 sesiones con el volumen correcto pero sin curar.
+> ✅ **CERRADO** con `ppl_hypertrophy_intermediate` (§11.2). Un intermedio de
+> 5, 6 o 7 días recibe ahora el PPL con velocidad de ciclo ~1 y **cero excesos**
+> de volumen; los grupos sobre techo de toda la matriz bajan de 199 a 184. Lo que
+> sigue debajo es el diagnóstico original, que explica por qué la fase 8 pasó a
+> ser la urgente.
+>
+> La causa no era el ranking: **no existía ninguna plantilla de 5-7 días**, así
+> que a esos usuarios les tocaba un ciclo de 3 sesiones rodando a 2,33 vueltas
+> por semana, y los suelos impiden recortar tanto volumen. Antes iban al
+> procedural, que montaba 6 sesiones con el volumen correcto pero sin curar.
 >
 > Es un intercambio real y hay que nombrarlo: **hemos cambiado volumen correcto
 > sin curar por estructura curada con demasiado volumen**, para 5-7 días. Lo
@@ -1072,9 +1078,9 @@ modelo + usuario, una plantilla cada vez, como las cuatro de
                           SESIONES DEL CICLO
                  2          3            4            6
               ┌──────────┬────────────┬────────────┬────────────┐
- GANAR        │    ❌    │ FB  ✅✅✅ │ U/L  ✅✅  │    ❌      │
- MÚSCULO      │  FB-2    │ PPL   ❌   │            │  PPL-6     │
-              │  beg/int │            │  int/adv   │   int      │
+ GANAR        │    ❌    │ FB  ✅✅✅ │ U/L  ✅✅  │  PPL   ✅  │
+ MÚSCULO      │  FB-2    │ (PPL-3     │            │   int      │
+              │  beg/int │  descartado)│  int/adv   │            │
               ├──────────┼────────────┼────────────┼────────────┤
  PONERTE      │    —     │ FB    ✅   │    ❌      │    —       │
  FUERTE       │          │ solo adv   │  U/L fza   │            │
@@ -1102,10 +1108,10 @@ Dos reglas reducen el mapa a la mitad:
 
 | # | Plantilla | Por qué |
 |---|---|---|
-| 1 | **PPL · 3 sesiones · intermedio** | No hay ninguna PPL y es lo que la app recomienda al perfil más común (§1.2) |
-| 2 | **PPL · 6 sesiones · intermedio** | Derivada de la anterior (§11.3). Desbloquea 5, 6 y 7 días |
-| 3 | **Full Body · 2 sesiones · beginner + intermedio** | Todo el extremo de 1-2 días es procedural hoy |
-| 4 | **Fuerza · 3 sesiones · intermedio** | Sólo existe la avanzada (5×5 con barra) |
+| ~~1~~ | ~~PPL · 3 sesiones~~ | **Descartada.** Con 3 sesiones, PPL toca cada grupo **una vez por semana** e incumple por construcción la regla de frecuencia ≥2 (§11.4). A 3 días lo bueno es full body, que ya tenemos. Lo que fallaba no era el catálogo: era `recommendDistribution`, que sugería PPL a 3 días. Arreglado con el término de frecuencia del ranking (§7.1) |
+| **1** | **PPL · 6 sesiones · intermedio** | ✅ **ESCRITA** (`ppl_hypertrophy_intermediate`). Cierra el tramo de 5-7 días |
+| 2 | **Full Body · 2 sesiones · beginner + intermedio** | Todo el extremo de 1-2 días |
+| 3 | **Fuerza · 3 sesiones · intermedio** | Sólo existe la avanzada (5×5 con barra) |
 | 5 | U/L fuerza 4 · U/L glúteo 4 · U/L o PPL calistenia | Celdas de 4 sesiones de las identidades no estándar |
 
 **Hueco de biblioteca, no de plantilla** (detectado al implementar la fase 1):
