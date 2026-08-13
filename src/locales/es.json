@@ -454,6 +454,9 @@
     "codeFoundAccount": "Cuenta encontrada",
     "codeProgramLabel": "PROGRAMA",
     "codeAlreadyLinked": "Ya estás conectado con un entrenador. Al continuar dejas de estarlo y pasas a este.",
+    "codeSlotOccupied": "Este hueco ya lo ocupa un dispositivo. Si eres tú y has reinstalado la app, tu entrenador tiene que generarte un código nuevo: tu historial se conserva.",
+    "errSlotOccupied": "Este hueco ya está ocupado. Pídele a tu entrenador que te genere un código nuevo — tu historial no se pierde.",
+    "errCodeNotFound": "Código no encontrado. Comprueba que lo has escrito bien.",
     "codeHistoryLabel": "TU HISTORIAL",
     "codeHistoryProgram": "Solo el programa",
     "codeHistoryProgramSub": "Se importa el programa del entrenador. Tu historial de este móvil no cambia.",
@@ -1764,7 +1767,13 @@
     "codeCard": {
       "title": "CÓDIGO DE CONEXIÓN",
       "explain": "Dáselo a {{name}}: lo introduce en su app y a partir de ahí recibirá sus programas y tú verás su historial.",
-      "dismiss": "Entendido"
+      "dismiss": "Entendido",
+      "reissue": "Generar código nuevo",
+      "reissueConfirmTitle": "¿Generar un código nuevo?",
+      "reissueConfirmBody": "El código actual dejará de funcionar y {{name}} tendrá que introducir el nuevo. Su historial y su programa se conservan.\n\nÚsalo si ha reinstalado la app, ha perdido el código, o el código se le ha filtrado a alguien.",
+      "reissueConfirmCta": "Generar",
+      "reissueDone": "Código nuevo generado",
+      "reissueError": "No se pudo generar el código nuevo"
     },
     "keyTab": {
       "title": "CLAVE DE CLIENTE",

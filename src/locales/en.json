@@ -454,6 +454,9 @@
     "codeFoundAccount": "Account found",
     "codeProgramLabel": "PROGRAM",
     "codeAlreadyLinked": "You're already connected to a trainer. Continuing disconnects you from them and connects you to this one.",
+    "codeSlotOccupied": "This slot is already taken by a device. If that's you and you reinstalled the app, your trainer needs to issue you a new code — your history is kept.",
+    "errSlotOccupied": "This slot is already taken. Ask your trainer to issue you a new code — you won't lose your history.",
+    "errCodeNotFound": "Code not found. Check that you typed it correctly.",
     "codeHistoryLabel": "YOUR HISTORY",
     "codeHistoryProgram": "Program only",
     "codeHistoryProgramSub": "The trainer's program is imported. The history on this phone doesn't change.",
@@ -1764,7 +1767,13 @@
     "codeCard": {
       "title": "CONNECTION CODE",
       "explain": "Give it to {{name}}: they enter it in their app and from then on they get their programs and you see their history.",
-      "dismiss": "Got it"
+      "dismiss": "Got it",
+      "reissue": "Issue a new code",
+      "reissueConfirmTitle": "Issue a new code?",
+      "reissueConfirmBody": "The current code will stop working and {{name}} will have to enter the new one. Their history and program are kept.\n\nUse this if they reinstalled the app, lost the code, or the code leaked.",
+      "reissueConfirmCta": "Issue",
+      "reissueDone": "New code issued",
+      "reissueError": "Couldn't issue a new code"
     },
     "keyTab": {
       "title": "CLIENT KEY",

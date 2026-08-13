@@ -582,8 +582,41 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const connectClientToCloud = useStore((s) => s.connectClientToCloud);
+  const reissueClientCode    = useStore((s) => s.reissueClientCode);
   const [copied, setCopied]         = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [reissuing, setReissuing]   = useState(false);
+
+  /**
+   * Código nuevo + asiento liberado. Es la única salida de tres situaciones que
+   * hasta ahora no tenían ninguna: el cliente reinstaló siendo anónimo y su
+   * identidad se perdió, perdió el código, o el código se filtró.
+   * Ver `docs/specs/client-connection.md` §4.4.
+   */
+  function handleReissue() {
+    Alert.alert(
+      t('clients.codeCard.reissueConfirmTitle'),
+      t('clients.codeCard.reissueConfirmBody', { name: client.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('clients.codeCard.reissueConfirmCta'),
+          style: 'destructive',
+          onPress: async () => {
+            setReissuing(true);
+            try {
+              await reissueClientCode(client.id);
+              showToast(t('clients.codeCard.reissueDone'), 2200, 'success');
+            } catch (err) {
+              Alert.alert(t('clients.codeCard.reissueError'), err?.message ?? '');
+            } finally {
+              setReissuing(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   if (!client.syncSlotId) {
     return (
@@ -660,6 +693,17 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
           </Svg>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity
+        style={styles.codeDismiss}
+        onPress={handleReissue}
+        disabled={reissuing}
+        activeOpacity={0.6}
+      >
+        <Text style={styles.codeDismissText}>
+          {reissuing ? t('clients.keyTab.connecting') : t('clients.codeCard.reissue')}
+        </Text>
+      </TouchableOpacity>
+
       {onDismiss && (
         <TouchableOpacity style={styles.codeDismiss} onPress={onDismiss} activeOpacity={0.6}>
           <Text style={styles.codeDismissText}>{t('clients.codeCard.dismiss')}</Text>

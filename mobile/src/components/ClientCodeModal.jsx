@@ -180,10 +180,21 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       setSlotInfo(info);
       setStep('confirm');
     } catch (err) {
-      setError(err.message);
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }
+  }
+
+  /**
+   * Las RPC de conexión lanzan códigos secos y `supabaseSync` los deja en
+   * `err.code`. Se ramifica por ahí y no por el texto: `SLOT_OCCUPIED` no es un
+   * error que el usuario deba leer en crudo, es una instrucción de qué hacer.
+   */
+  function errorText(err) {
+    if (err?.code === 'SLOT_OCCUPIED')  return t('trainer.errSlotOccupied');
+    if (err?.code === 'CODE_NOT_FOUND') return t('trainer.errCodeNotFound');
+    return err?.message ?? t('trainer.errGoogle');
   }
 
   async function handleConfirm() {
@@ -203,7 +214,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       handleClose();
       onSuccess?.();
     } catch (err) {
-      setError(err.message);
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }
@@ -333,6 +344,16 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
           {isAlreadyLinked && (
             <View style={styles.warnCard}>
               <Text style={styles.warnText}>{t('trainer.codeAlreadyLinked')}</Text>
+            </View>
+          )}
+
+          {/* El hueco lo ocupa otro dispositivo, así que lo más probable es que
+              el enlace falle con SLOT_OCCUPIED. No se bloquea aquí: si el
+              ocupante resulta ser este mismo usuario, el servidor deja pasar
+              —es idempotente— y quien decide es él, no esta pantalla. */}
+          {slotInfo.alreadyLinked && !googleUserId && (
+            <View style={styles.warnCard}>
+              <Text style={styles.warnText}>{t('trainer.codeSlotOccupied')}</Text>
             </View>
           )}
 

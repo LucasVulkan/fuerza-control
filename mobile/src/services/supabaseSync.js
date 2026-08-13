@@ -265,16 +265,10 @@ export async function transferMySlotsTo(newTrainerId) {
   return data ?? 0;
 }
 
-/**
- * Transfers a list of slot IDs to the currently authenticated trainer.
- * Called after creating a new trainer code account so old slots are not lost.
- * Requires the `claim_trainer_slots` SQL function in Supabase (SECURITY DEFINER).
- */
-export async function claimTrainerSlots(slotIds) {
-  if (!slotIds?.length) return;
-  const { error } = await supabase.rpc('claim_trainer_slots', { slot_ids: slotIds });
-  if (error) throw error;
-}
+// `claimTrainerSlots` vivía aquí. La RPC del servidor era un update sin ninguna
+// comprobación —cualquiera con el UUID de un hueco se hacía su entrenador— y ya
+// está revocada y borrada. Su escenario legítimo lo cubre `transferMySlotsTo`,
+// que cede en vez de reclamar. Fallo 26 de la auditoría.
 
 /**
  * Permanently deletes a client slot from Supabase.

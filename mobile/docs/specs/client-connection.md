@@ -1,7 +1,8 @@
 # Spec — Modelo de conexión entrenador ↔ cliente
 
-> Estado: **SQL escrito, SIN desplegar. Fase 1a (store y servicios)
-> IMPLEMENTADA; fase 1b (pantallas) pendiente** (ago 2026).
+> Estado: **App IMPLEMENTADA (fases 1a y 1b). SQL escrito, SIN desplegar**
+> (ago 2026). Lo siguiente es desplegar `supabase/connection_model.sql` y
+> probar en dispositivo; hasta entonces vincular clientes no funciona.
 > El SQL vive en `supabase/connection_model.sql`. Desplegarlo **rompe la app
 > actual** (`get_slot_by_code` cambia de firma), así que servidor y app van
 > juntos.
@@ -203,14 +204,36 @@ entrenos. **Es parte del trabajo, no un extra.**
   los tests. Lint del store: 15 → 5 errores. Solo queda el de
   `react-native-purchases`, que sí es una carga perezosa deliberada.
 
-### App — fase 1b, pendiente (pantallas)
+### App — fase 1b ✅ (pantallas)
 
-- Mensaje de `SLOT_OCCUPIED` que dirija a pedir código nuevo (`ClientCodeModal`);
-  `alreadyLinked` ya llega, hoy no lo lee nadie.
-- Ficha de cliente: acción "Generar código nuevo" sobre `reissueClientCode`.
-- `TrainerSyncModal`: transferencia con `transferMySlotsTo` en la sesión del
-  dueño viejo; retirar las tres llamadas a `claimTrainerSlots`; puerta real en
-  `code_reveal` + oferta de vincular Google/Apple (§4.3).
+- `ClientCodeModal`: aviso cuando el hueco ya está ocupado, y `SLOT_OCCUPIED`
+  traducido a "pide a tu entrenador un código nuevo — tu historial se conserva"
+  en vez del código crudo. **No se bloquea en la validación**: si el ocupante
+  resulta ser el mismo usuario el servidor deja pasar (es idempotente), así que
+  decide él y no la pantalla.
+- Ficha de cliente (`ClientCodeBlock`, pestaña Info): acción "Generar código
+  nuevo" con confirmación que explica qué se conserva y para qué sirve. Vive en
+  la tarjeta permanente, no en la del tab de Programa, que desaparece en cuanto
+  el cliente canjea — que es justo cuando hace falta.
+- `TrainerSyncModal`: las **tres** llamadas a `claimTrainerSlots` fuera.
+  - Login social: `transferMySlotsTo(nuevoId)` dentro del tramo autenticado con
+    el código viejo. Desaparece la recolección de identificadores de huecos: el
+    servidor filtra por `trainer_id = auth.uid()` y no hay nada que enumerar.
+  - Alta de cuenta por código: se captura el código anterior antes de que
+    `setTrainerSyncMode` lo sustituya, y se cede desde su sesión.
+  - `handleReconnect`: la llamada se borra sin sustituto. Recuperar por código
+    devuelve **siempre el mismo user id**, así que los huecos ya son suyos: ese
+    `claimTrainerSlots` no arreglaba ningún escenario real y sí abría el fallo 26.
+- `claimTrainerSlots` retirada de `supabaseSync`.
+
+**Limitación conocida y heredada:** el traspaso solo funciona si la cuenta
+anterior era de tipo código, la única que se puede recuperar en silencio. De una
+cuenta social a otra haría falta que el usuario entrase en la vieja.
+
+### Pendiente
+
+- §4.3: puerta real en `code_reveal` (reescribir los últimos 4 caracteres) y
+  oferta de vincular Google/Apple como recuperación.
 - §5: distinguir tipos de fallo y reintentar en primer plano.
 
 ## 7. Lo que NO cambia

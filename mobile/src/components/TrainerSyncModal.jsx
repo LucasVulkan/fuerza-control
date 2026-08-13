@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import { setupTrainerCodeAccount, recoverWithTrainerCode, loginTrainerWithIdToken, signOut as supabaseSignOut } from '../services/supabaseAuth';
-import { claimTrainerSlots, getTrainerSlots } from '../services/supabaseSync';
+import { transferMySlotsTo } from '../services/supabaseSync';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
 import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
@@ -223,47 +223,40 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
 
   /**
-   * Cierra el login social: entra en Supabase con el id_token y arrastra los
-   * slots de clientes a la cuenta nueva.
+   * Cierra el login social y arrastra los huecos a la cuenta nueva.
    *
-   * Google y Apple solo se diferencian en cómo se consigue ese id_token (OAuth
-   * con navegador vs hoja nativa), así que a partir de aquí el camino es el
-   * mismo y no se duplica: los slots, el fallback por código y el refresco son
-   * idénticos para los dos.
+   * Google y Apple solo se diferencian en cómo se consigue el id_token (OAuth
+   * con navegador vs hoja nativa); a partir de aquí el camino es el mismo.
    *
-   * `existingSlotIds` se captura FUERA, antes de tocar la sesión: una vez hecho
-   * el login la sesión anterior ya no existe.
+   * **Cede quien posee, no reclama quien recibe.** Antes esto llamaba a
+   * `claimTrainerSlots(ids)`, que en el servidor era un update sin ninguna
+   * comprobación: bastaba conocer un UUID para hacerse entrenador de un hueco
+   * ajeno (fallo 26 de la auditoría). Ahora la transferencia se ejecuta
+   * autenticado como el dueño VIEJO y el servidor filtra por
+   * `trainer_id = auth.uid()`: solo puedes regalar lo que ya es tuyo. Por eso
+   * tampoco hace falta recolectar identificadores de huecos.
+   *
+   * El baile de sesiones (social → código → social) ya existía; lo único que
+   * cambia es que la transferencia ocurre en el tramo del medio.
+   *
+   * Limitación conocida y heredada: solo funciona si la cuenta anterior era de
+   * tipo código, que es la única que se puede recuperar en silencio. Pasar de
+   * una cuenta social a otra exige que el usuario entre en la vieja.
    */
-  async function finishSocialLogin({ provider, idToken, accessToken, existingSlotIds }) {
+  async function finishSocialLogin({ provider, idToken, accessToken }) {
     const { userId } = await loginTrainerWithIdToken({ provider, idToken, accessToken });
     setTrainerSyncMode(provider, { userId });
 
-    // Collect all slot IDs to claim under the new user.
-    // Start with locally-known slots (captures same-device switch to this mode).
-    let allSlotIds = [...existingSlotIds];
-
-    // Fallback: if no local slots, try the stored trainer code to find old slots
-    // that still belong to the code-based account (e.g. fresh install).
-    if (allSlotIds.length === 0) {
-      const storedCode = useStore.getState().trainerSync.code;
-      if (storedCode) {
-        try {
-          const { userId: codeUserId } = await recoverWithTrainerCode(storedCode);
-          const codeSlots = await getTrainerSlots(codeUserId);
-          allSlotIds = codeSlots.map((s) => s.id).filter(Boolean);
-        } catch (err) {
-          console.error('[TrainerSync] code fallback for slot discovery failed:', err.message);
-        }
-        // Restore the social session regardless of whether code recovery found slots.
-        await loginTrainerWithIdToken({ provider, idToken, accessToken }).catch(() => {});
+    const storedCode = useStore.getState().trainerSync.code;
+    if (storedCode) {
+      try {
+        await recoverWithTrainerCode(storedCode);        // sesión del dueño viejo
+        await transferMySlotsTo(userId);                 // where trainer_id = auth.uid()
+      } catch (err) {
+        console.error('[TrainerSync] transferencia de huecos fallida:', err.message);
       }
-    }
-
-    // Transfer all found slots to the new user ID.
-    if (allSlotIds.length > 0) {
-      await claimTrainerSlots(allSlotIds).catch((err) => {
-        console.error('[TrainerSync] claimTrainerSlots failed:', err.message);
-      });
+      // Volver a la sesión social pase lo que pase.
+      await loginTrainerWithIdToken({ provider, idToken, accessToken }).catch(() => {});
     }
 
     // Restore any server slots missing from local state (e.g. fresh install).
@@ -272,21 +265,12 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     onClose();
   }
 
-  /** IDs de slot conocidos ahora mismo, antes de que el login cambie la sesión. */
-  function currentSlotIds() {
-    return Object.values(useStore.getState().clients ?? {})
-      .map((c) => c.syncSlotId)
-      .filter(Boolean);
-  }
-
   // Handle OAuth redirect response
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (googleResponse?.type !== 'success') return;
     (async () => {
       setLoading(true);
       try {
-        const existingSlotIds = currentSlotIds();
-
         const tokens = await exchangeCodeForTokens({
           code:         googleResponse.params.code,
           codeVerifier: googleRequestRef.current?.codeVerifier,
@@ -299,7 +283,6 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           provider:    'google',
           idToken:     tokens.id_token,
           accessToken: tokens.access_token,
-          existingSlotIds,
         });
       } catch (err) {
         Alert.alert(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
@@ -315,7 +298,6 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
    * efecto que montar.
    */
   async function handleApple() {
-    const existingSlotIds = currentSlotIds();
     setLoading(true);
     try {
       const credential = await signInWithApple();
@@ -333,7 +315,6 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       await finishSocialLogin({
         provider: 'apple',
         idToken:  credential.idToken,
-        existingSlotIds,
       });
     } catch (err) {
       Alert.alert(t('sync.errAppleTitle'), err.message ?? t('sync.errGoogleBody'));
@@ -355,19 +336,13 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   async function handleReconnect() {
     setLoading(true);
     try {
+      // Recuperar la cuenta por código devuelve SIEMPRE el mismo user id — el
+      // correo sintético sale del propio código — así que los huecos ya son
+      // suyos y no hay nada que transferir. El `claimTrainerSlots` que había
+      // aquí no arreglaba ningún escenario real y sí abría el fallo 26.
       const { userId } = await recoverWithTrainerCode(trainerSync.code);
       setTrainerSyncMode('code', { code: trainerSync.code, userId });
-
-      // Transfer ownership of all local client slots to this userId.
-      // Requires the claim_trainer_slots SQL function (SECURITY DEFINER) in Supabase.
-      const existingSlotIds = Object.values(
-        useStore.getState().clients ?? {}
-      ).map((c) => c.syncSlotId).filter(Boolean);
-      if (existingSlotIds.length > 0) {
-        await claimTrainerSlots(existingSlotIds).catch(() => {
-          // Non-fatal if the SQL function isn't deployed yet.
-        });
-      }
+      await useStore.getState().refreshTrainerSlots().catch(() => {});
 
       onClose();
     } catch (err) {
@@ -414,22 +389,29 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     if (selected === 'code') {
       setLoading(true);
       try {
-        // Collect existing slot IDs BEFORE signing out so we can re-claim them
-        const existingSlotIds = Object.values(
-          useStore.getState().clients ?? {}
-        ).map((c) => c.syncSlotId).filter(Boolean);
+        // El código anterior, antes de que `setTrainerSyncMode` lo sustituya:
+        // es la única forma de volver a la sesión del dueño viejo para cederle
+        // los huecos a la cuenta nueva.
+        const previousCode = useStore.getState().trainerSync.code;
 
         await supabaseSignOut().catch(() => {});
         const { code, userId } = await setupTrainerCodeAccount();
         setTrainerSyncMode('code', { code, userId });
 
-        // Re-associate any existing client slots with the new trainer userId.
-        // Requires the claim_trainer_slots SQL function in Supabase.
-        if (existingSlotIds.length > 0) {
-          await claimTrainerSlots(existingSlotIds).catch(() => {
-            // Non-fatal: SQL function may not be deployed yet.
-          });
+        // Los huecos siguen siendo del dueño anterior y solo él puede cederlos
+        // (`where trainer_id = auth.uid()`). Si la cuenta anterior era social no
+        // se puede recuperar en silencio, así que ahí no hay traspaso posible
+        // sin que el usuario vuelva a entrar en ella — limitación conocida.
+        if (previousCode && previousCode !== code) {
+          try {
+            await recoverWithTrainerCode(previousCode);
+            await transferMySlotsTo(userId);
+          } catch (err) {
+            console.error('[TrainerSync] traspaso desde el código anterior fallido:', err.message);
+          }
+          await recoverWithTrainerCode(code).catch(() => {});   // volver a la nueva
         }
+        await useStore.getState().refreshTrainerSlots().catch(() => {});
 
         setNewCode(code);
         setScreen('code_reveal');
