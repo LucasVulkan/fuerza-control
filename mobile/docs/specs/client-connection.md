@@ -1,8 +1,11 @@
 # Spec — Modelo de conexión entrenador ↔ cliente
 
-> Estado: **App IMPLEMENTADA (fases 1a y 1b). SQL escrito, SIN desplegar**
-> (ago 2026). Lo siguiente es desplegar `supabase/connection_model.sql` y
-> probar en dispositivo; hasta entonces vincular clientes no funciona.
+> Estado: **App IMPLEMENTADA (fases 1a y 1b). SQL DESPLEGADO** (ago 2026).
+> Verificado en el servidor: `claim_trainer_slots` ya no existe y las seis
+> funciones restantes siguen siendo `security definer`.
+>
+> **Falta la prueba en dispositivo** de los dos escenarios que no se pueden
+> simular — ver §7.
 > El SQL vive en `supabase/connection_model.sql`. Desplegarlo **rompe la app
 > actual** (`get_slot_by_code` cambia de firma), así que servidor y app van
 > juntos.
@@ -174,7 +177,7 @@ entrenos. **Es parte del trabajo, no un extra.**
 
 ## 6. Superficie de cambios
 
-### SQL — `supabase/connection_model.sql`, escrito, sin desplegar
+### SQL — `supabase/connection_model.sql` ✅ desplegado (ago 2026)
 
 | Operación | Cambio |
 |---|---|
@@ -236,13 +239,34 @@ cuenta social a otra haría falta que el usuario entrase en la vieja.
   oferta de vincular Google/Apple como recuperación.
 - §5: distinguir tipos de fallo y reintentar en primer plano.
 
-## 7. Lo que NO cambia
+## 7. Prueba en dispositivo — pendiente
+
+Lo único que queda del modelo, y no se puede simular desde los tests: dependen
+de perder de verdad la identidad anónima y de que Supabase emita sesiones.
+
+**A. Conexión limpia.** Crear cliente → pasar código → conectar desde otro
+dispositivo. Debe entrar y bajarse el programa. Comprueba de paso el orden nuevo
+(vincular primero, descargar después).
+
+**B. Ciclo de reinstalación**, que es el escenario que motivó todo:
+1. Cliente anónimo conectado y con alguna sesión registrada.
+2. Borrar los datos de la app del cliente (no basta con cerrarla: hay que
+   perder la identidad anónima).
+3. Introducir el mismo código → **debe rechazarlo** con el mensaje de pedir uno
+   nuevo, no dejar entrar.
+4. El entrenador toca "Generar código nuevo" en la pestaña Info.
+5. Entrar con el nuevo → **el historial tiene que seguir ahí**.
+
+**C. Cambio de modo de cuenta del entrenador** (solo si la anterior era por
+código): pasar a Google y comprobar que los clientes siguen en la lista.
+
+## 8. Lo que NO cambia
 
 El modelo de datos —una tabla, una fila por cliente, buzón compartido— es
 correcto y no se toca. Tampoco se cambia Supabase, ni se mete un backend
 propio, ni fusión de cambios campo a campo. El problema nunca estuvo ahí.
 
-## 8. Decidido, no volver a abrir
+## 9. Decidido, no volver a abrir
 
 - **El código de cliente se conserva.** Es buena UX y el daño si se filtra queda
   acotado. Lo que cambia es que deja de ser una credencial permanente e

@@ -1,9 +1,14 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 10 fallos implementados** (ago 2026) — tandas A y B
-> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20) más el 5, 15 pendientes de 25.
-> La tanda C queda a medias a propósito: **los fallos 7 y 8 son de servidor**
-> (SQL + Edge Function) y no se arreglan editando el repo, ver §7 y §8.
+> Estado: **🔍 DIAGNÓSTICO. 12 fallos resueltos** (ago 2026) — tandas A y B
+> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20) y la C casi (5, 7, 26; queda el 8).
+> 14 pendientes de 26.
+>
+> El SQL del modelo de conexión **está desplegado** (ago 2026): comprobado que
+> `claim_trainer_slots` ya no existe y que las seis funciones restantes siguen
+> siendo `security definer`. Falta la prueba en dispositivo de los dos
+> escenarios de (re)conexión — ver [client-connection.md](client-connection.md).
+> El fallo 8 sigue abierto: es la Edge Function, no el SQL.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -47,7 +52,7 @@
 | [4](#4) | 🟠 Alta | ✅ El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
 | [5](#5) | 🟠 Alta | ✅ Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
 | [6](#6) | 🟠 Alta | `getProgressionRecommendation` siempre devuelve `null` | `store/useStore.js:1891` |
-| [7](#7) | 🟠 Alta | El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
+| [7](#7) | 🟠 Alta | ✅ El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
 | [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
@@ -66,7 +71,7 @@
 | [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js` |
 | [24](#24) | 🟢 Baja | Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
-| [26](#26) | 🔴 **Crítica** | `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
+| [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
 
 Rutas relativas a `mobile/` salvo las que empiezan por `supabase/` o `src/utils/`
 (estas últimas están en la raíz del repo, compartidas).
@@ -666,7 +671,7 @@ del store y espere un chip, no `null`.
 
 ---
 
-## 7. El código de cliente permite desalojar al cliente real 🟠 {#7}
+## 7. El código de cliente permite desalojar al cliente real 🟠 ✅ {#7}
 
 **Dónde.** `supabase/secure_trainer_clients.sql`, función `link_client_to_slot`.
 
@@ -730,6 +735,31 @@ En el móvil, `linkClientToSlot` (`src/services/supabaseSync.js:198`) acepta el
 flag, y `ClientCodeModal` ya tiene `alreadyLinked` para pedir la confirmación
 antes de reenviar con `p_takeover: true`. Complementario: rate limiting sobre
 `get_slot_by_code`.
+
+### ✅ Resuelto (ago 2026) — sin `p_takeover`
+
+**Se descartó el desalojo con confirmación** que propone este apartado, y con él
+el `p_takeover`. El código deja de desalojar del todo: solo abre asientos
+vacíos. Quien reinstala pide un código nuevo a su entrenador, que lo reemite con
+un toque. Decisión del usuario; el razonamiento completo está en
+[client-connection.md](client-connection.md) §3.3.
+
+Dos correcciones al arreglo propuesto aquí, ambas necesarias:
+
+1. **`create or replace function link_client_to_slot(p_code text, p_takeover boolean default false)` no reemplaza a `link_client_to_slot(text)`.** Firma distinta,
+   función distinta: PostgreSQL habría dejado las dos, con la vieja —la
+   vulnerable— todavía con su `grant execute ... to authenticated` puesto en el
+   mismo archivo. Al no cambiar de firma, esto dejó de ser un problema.
+2. **`ClientCodeModal` no tenía la confirmación, solo el dato.** `alreadyLinked`
+   se calculaba y se guardaba en `slotInfo`, pero **nada lo leía**.
+
+**Segunda puerta, que este apartado no veía:** `get_slot_by_code` publicaba
+`client_id`, que es la mitad de los argumentos de `transfer_client_slot`. Con un
+código se podía tomar el asiento del cliente saltándose `link_client_to_slot`
+por completo, así que arreglar solo esta función no habría cerrado el resultado.
+Ya no se publica.
+
+Desplegado y verificado en ago 2026.
 
 ---
 
@@ -1611,7 +1641,7 @@ comparte por WhatsApp. `backupPayload.test.js` ya lo vigila.
 
 ---
 
-## 26. `claim_trainer_slots` regala la cuenta a cualquiera 🔴 {#26}
+## 26. `claim_trainer_slots` regala la cuenta a cualquiera 🔴 ✅ {#26}
 
 > **No salió del barrido original.** Apareció en ago 2026 al pedir el SQL que
 > la app llama pero que no estaba en `supabase/`. Es el fallo más grave del
@@ -1660,6 +1690,19 @@ de cuenta, un flujo poco frecuente.
 de reclamar. Ver [client-connection.md](client-connection.md) §4.2 y
 `supabase/connection_model.sql`.
 
+### ✅ Resuelto (ago 2026)
+
+Mitigado el mismo día revocando el `execute`, y cerrado del todo al desplegar
+`connection_model.sql`: la función **ya no existe**. Comprobado en el servidor
+que no aparece en `pg_proc` y que las seis restantes siguen siendo
+`security definer`.
+
+Su escenario legítimo —que los huecos sigan al entrenador cuando cambia de modo
+de cuenta— lo cubre `transfer_my_slots_to`, que se ejecuta autenticado como el
+dueño viejo y filtra por `trainer_id = auth.uid()`. Resultó además que el
+escenario más común, reinstalar con el código, **nunca la necesitó**: la cuenta
+por código es determinista y devuelve siempre el mismo user id.
+
 **Segunda puerta, del mismo linaje.** `transfer_client_slot` sí está bien
 construida, pero `get_slot_by_code` publicaba `client_id`, que es la mitad de
 sus argumentos: con un código se podía tomar el asiento del cliente saltándose
@@ -1681,7 +1724,7 @@ verificable:
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
-| **C — sincronización** | ✅ [5](#5), [7](#7), [8](#8) 🔒 servidor | store + SQL + Edge Function |
+| **C — sincronización** | ✅ [5](#5), ✅ [7](#7), [8](#8) | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
 | **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |
