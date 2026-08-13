@@ -14,10 +14,19 @@ const syncMock = {
   createClientSlot: vi.fn(), uploadProgram: vi.fn(), downloadHistory: vi.fn(),
   downloadProgram: vi.fn(), getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(),
   uploadHistory: vi.fn(), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(),
-  claimTrainerSlots: vi.fn(), getClientSlotByUserId: vi.fn(), transferClientSlot: vi.fn(),
+  getClientSlotByUserId: vi.fn(), transferClientSlot: vi.fn(),
   updateTrainerNameForSlots: vi.fn(), releaseClientSlot: vi.fn(),
+  reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(),
 };
 vi.mock('../src/services/supabaseSync', () => syncMock);
+
+// Idem para la autenticación: el store la importa entera de forma estática.
+const authMock = {
+  signInAnonymously: vi.fn(async () => ({ userId: 'anon_1' })),
+  recoverWithTrainerCode: vi.fn(), loginClientWithIdToken: vi.fn(),
+  deleteAccount: vi.fn(), signOut: vi.fn(),
+};
+vi.mock('../src/services/supabaseAuth', () => authMock);
 
 // `_ensureTrainerSession` pide el cliente de Supabase antes de cualquier
 // llamada. Sin doble, el cliente real intenta leer la sesión del storage y
@@ -239,5 +248,105 @@ describe('refreshTrainerSlots — fallo 5', () => {
     expect(fichas).toHaveLength(1);
     expect(fichas[0].remoteSessionsCount).toBe(3);
     expect(fichas[0].syncLinked).toBe(true);
+  });
+});
+
+describe('linkToTrainer — modelo de conexión', () => {
+  const slot = {
+    id: 'slot_1', client_name: 'Ana', program_name: 'Fuerza 3d',
+    is_linked: false, history_updated_at: null, trainer_name: 'Lucas',
+  };
+  const programJson = {
+    program: { id: 'prog_1', name: 'Fuerza 3d', days: [], stageActivatedAt: null },
+    sessionTemplates: {}, userPrograms: {}, customExercises: {},
+  };
+
+  beforeEach(() => {
+    Object.values(syncMock).forEach((fn) => fn.mockReset?.());
+    authMock.signInAnonymously.mockResolvedValue({ userId: 'anon_1' });
+    syncMock.getSlotByClientCode.mockResolvedValue(slot);
+    syncMock.linkClientToSlot.mockResolvedValue('slot_1');
+    syncMock.downloadProgram.mockResolvedValue({ programJson, updatedAt: null, trainerName: 'Lucas', overrides: {} });
+    syncMock.downloadHistory.mockResolvedValue({ history: [], customExercises: {}, progress: null, updatedAt: null });
+    useStore.setState({ programs: {}, clientSync: { ...useStore.getState().clientSync, slotId: null } });
+  });
+
+  it('descarga el programa DESPUÉS de ocupar el asiento, no de la consulta por código', async () => {
+    await useStore.getState().linkToTrainer('ABCD-1234');
+
+    // El orden es la garantía: si se descargara antes, `get_slot_by_code`
+    // tendría que seguir publicando el programa a cualquiera con el código.
+    const linkOrder     = syncMock.linkClientToSlot.mock.invocationCallOrder[0];
+    const downloadOrder = syncMock.downloadProgram.mock.invocationCallOrder[0];
+    expect(linkOrder).toBeLessThan(downloadOrder);
+  });
+
+  it('deja el clientSync apuntando al programa descargado', async () => {
+    await useStore.getState().linkToTrainer('ABCD-1234');
+
+    const { clientSync } = useStore.getState();
+    expect(clientSync.slotId).toBe('slot_1');
+    expect(clientSync.trainerProgramIds).toEqual(['prog_1']);
+  });
+
+  it('propaga SLOT_OCCUPIED sin importar nada', async () => {
+    const err = new Error('SLOT_OCCUPIED');
+    err.code = 'SLOT_OCCUPIED';
+    syncMock.linkClientToSlot.mockRejectedValue(err);
+
+    await expect(useStore.getState().linkToTrainer('ABCD-1234')).rejects.toMatchObject({ code: 'SLOT_OCCUPIED' });
+    expect(syncMock.downloadProgram).not.toHaveBeenCalled();
+    expect(useStore.getState().clientSync.slotId).toBeNull();
+  });
+});
+
+describe('validateClientCode — sin programa ni client_id publicados', () => {
+  beforeEach(() => {
+    Object.values(syncMock).forEach((fn) => fn.mockReset?.());
+    authMock.signInAnonymously.mockResolvedValue({ userId: 'anon_1' });
+  });
+
+  it('lee is_linked y program_name, que es todo lo que el servidor publica', async () => {
+    syncMock.getSlotByClientCode.mockResolvedValue({
+      id: 'slot_1', program_name: 'Fuerza 3d', is_linked: true,
+      history_updated_at: '2026-08-01', trainer_name: 'Lucas',
+    });
+
+    const info = await useStore.getState().validateClientCode('ABCD-1234');
+
+    expect(info).toMatchObject({ slotId: 'slot_1', programName: 'Fuerza 3d', alreadyLinked: true });
+  });
+
+  it('sin programa subido no deja seguir', async () => {
+    syncMock.getSlotByClientCode.mockResolvedValue({ id: 'slot_1', program_name: null, is_linked: false });
+
+    await expect(useStore.getState().validateClientCode('ABCD-1234')).rejects.toThrow('no ha subido');
+  });
+});
+
+describe('reissueClientCode — la salida de la reconexión', () => {
+  beforeEach(() => {
+    Object.values(syncMock).forEach((fn) => fn.mockReset?.());
+    useStore.setState({
+      clients: { cli_1: { id: 'cli_1', name: 'Ana', syncSlotId: 'slot_1', syncCode: 'VIEJO-CODE', syncLinked: true } },
+      trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: null, code: null },
+    });
+  });
+
+  it('guarda el código nuevo y deja el asiento como libre', async () => {
+    syncMock.reissueClientCode.mockResolvedValue('NUEV-CODE');
+
+    const code = await useStore.getState().reissueClientCode('cli_1');
+
+    expect(code).toBe('NUEV-CODE');
+    const client = useStore.getState().clients.cli_1;
+    expect(client.syncCode).toBe('NUEV-CODE');
+    expect(client.syncLinked).toBe(false);
+  });
+
+  it('un cliente sin hueco en el servidor no se puede reemitir', async () => {
+    useStore.setState({ clients: { cli_2: { id: 'cli_2', name: 'Sin hueco' } } });
+
+    await expect(useStore.getState().reissueClientCode('cli_2')).rejects.toThrow('no tiene hueco');
   });
 });

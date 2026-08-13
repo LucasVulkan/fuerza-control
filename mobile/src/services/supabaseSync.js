@@ -12,6 +12,29 @@
 
 import { supabase } from '../config/supabase';
 
+/**
+ * Las RPC del modelo de conexión lanzan códigos secos (`SLOT_OCCUPIED`,
+ * `CODE_NOT_FOUND`…) en vez de frases. Postgres los entrega dentro del mensaje,
+ * así que aquí se extraen a `err.code` y quien llama ramifica por el código, no
+ * por una subcadena — misma lección que el §19 de la auditoría: un mensaje
+ * reformulado no puede romper una decisión en silencio.
+ *
+ * Ver `supabase/connection_model.sql`.
+ */
+const RPC_CODES = [
+  'SLOT_OCCUPIED',
+  'CODE_NOT_FOUND',
+  'SLOT_NOT_FOUND_OR_NOT_YOURS',
+  'NEW_TRAINER_REQUIRED',
+  'CODE_GENERATION_FAILED',
+];
+
+function rpcError(error) {
+  const err = new Error(error?.message ?? 'Error de sincronización');
+  err.code = RPC_CODES.find((c) => error?.message?.includes(c)) ?? null;
+  return err;
+}
+
 /** Generates a short client code in the format XXXX-XXXX (easy to type). */
 function generateClientCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -176,29 +199,70 @@ export async function downloadHistory(slotId) {
 }
 
 /**
- * Looks up a client slot by the client_code the client entered.
- * Goes through the get_slot_by_code SECURITY DEFINER function so RLS can stay
- * locked to own-rows-only: the function returns ONLY the row matching the exact
- * code (no table enumeration). Returns the slot row or null if not found.
+ * Consulta el hueco que corresponde a un código, sin vincularse.
+ *
+ * Devuelve solo lo justo para pintar la pantalla de confirmación:
+ * `{ id, client_name, program_name, program_updated_at, is_linked,
+ *    history_updated_at, trainer_name }`.
+ *
+ * Ya NO devuelve `client_id` (era la mitad de los argumentos de
+ * `transferClientSlot`, o sea una segunda puerta al asiento del cliente),
+ * `trainer_id` (no lo usaba nadie) ni `program_json` (el programa entero a
+ * quien supiera un código). El programa se descarga después de vincularse.
  */
 export async function getSlotByClientCode(clientCode) {
   const { data, error } = await supabase.rpc('get_slot_by_code', { p_code: clientCode });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   return data?.[0] ?? null;
 }
 
 /**
- * Links (or re-links) the caller to the slot matching the code.
- * The code acts as a permanent reconnect credential — re-linking is allowed by
- * design, so a client can re-enter their code after reinstalling or switching
- * devices. Runs through link_client_to_slot (SECURITY DEFINER), which binds the
- * row to auth.uid() — the caller cannot link anyone but themselves.
- * Returns the linked slot id.
+ * Ocupa el asiento del hueco que corresponde al código.
+ *
+ * El código **solo abre asientos vacíos**. Si el hueco está ocupado por otro,
+ * lanza `SLOT_OCCUPIED` y el camino es que el entrenador reemita el código
+ * (`reissueClientCode`), no desalojar: el servidor no puede distinguir "soy yo
+ * otra vez tras reinstalar" de "soy otro con su código".
+ *
+ * Reintentar siendo ya el ocupante está permitido — es idempotente.
+ * Ver `docs/specs/client-connection.md` §3.
  */
 export async function linkClientToSlot(clientCode) {
   const { data, error } = await supabase.rpc('link_client_to_slot', { p_code: clientCode });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   return data;
+}
+
+/**
+ * El entrenador reemite el código de uno de sus clientes: código nuevo **y**
+ * asiento liberado, sin tocar el historial.
+ *
+ * Las dos cosas van juntas a propósito: un código nuevo sobre un asiento
+ * ocupado no serviría de nada. Sostiene la reconexión tras reinstalar, el
+ * código perdido, y la revocación de un código filtrado.
+ *
+ * Devuelve el código nuevo.
+ */
+export async function reissueClientCode(slotId) {
+  const { data, error } = await supabase.rpc('trainer_reissue_client_code', { p_slot_id: slotId });
+  if (error) throw rpcError(error);
+  return data;
+}
+
+/**
+ * Cede TODOS los huecos del entrenador autenticado ahora mismo a otro usuario.
+ *
+ * Se llama estando autenticado como el dueño **viejo**: el `where trainer_id =
+ * auth.uid()` del servidor es toda la autorización que hace falta, porque solo
+ * puedes regalar lo que ya es tuyo. Sustituye a `claimTrainerSlots`, que hacía
+ * lo contrario —reclamar por id, sin comprobar nada— y era el fallo 26.
+ *
+ * Devuelve cuántos huecos se movieron.
+ */
+export async function transferMySlotsTo(newTrainerId) {
+  const { data, error } = await supabase.rpc('transfer_my_slots_to', { p_new_trainer_id: newTrainerId });
+  if (error) throw rpcError(error);
+  return data ?? 0;
 }
 
 /**

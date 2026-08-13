@@ -1,6 +1,7 @@
 # Spec — Modelo de conexión entrenador ↔ cliente
 
-> Estado: **SQL escrito, SIN desplegar. App SIN implementar** (ago 2026).
+> Estado: **SQL escrito, SIN desplegar. Fase 1a (store y servicios)
+> IMPLEMENTADA; fase 1b (pantallas) pendiente** (ago 2026).
 > El SQL vive en `supabase/connection_model.sql`. Desplegarlo **rompe la app
 > actual** (`get_slot_by_code` cambia de firma), así que servidor y app van
 > juntos.
@@ -185,18 +186,31 @@ entrenos. **Es parte del trabajo, no un extra.**
 | `release_client_slot` | sin cambios ✅ |
 | `transfer_client_slot` | sin cambios ✅ (deja de ser atacable al no publicarse `client_id`) |
 
-### App — pendiente
+### App — fase 1a ✅ (store y servicios)
 
-- `linkToTrainer` descarga el programa **después** de vincularse
-  (`get_slot_by_code` ya no lo devuelve).
+- `linkToTrainer` descarga el programa **después** de vincularse. El orden es la
+  garantía de que la consulta por código no tenga que publicar nada
+  aprovechable, y hay un test que lo vigila comparando el orden de llamada.
 - `validateClientCode` usa `is_linked` y `program_name`.
-- Mensaje de `SLOT_OCCUPIED` que dirija a pedir código nuevo.
-- Ficha de cliente: acción "Generar código nuevo".
-- `TrainerSyncModal`: transferencia en la sesión del dueño viejo; retirar
-  `claimTrainerSlots`; puerta real en `code_reveal` + oferta de vincular
-  Google/Apple.
-- Import muerto de `claimTrainerSlots` en `store/useStore.js:25` (hoy es uno de
-  los errores de lint).
+- `reissueClientCode(clientId)` — acción nueva del entrenador.
+- `supabaseSync`: `reissueClientCode`, `transferMySlotsTo`, y un `rpcError()`
+  que extrae el código seco de la RPC a `err.code`, para que quien llama
+  ramifique por código y no por subcadena del mensaje (lección del §19).
+- Import muerto de `claimTrainerSlots` retirado del store.
+- **Todos los `require()` de `supabaseAuth` y `config/supabase` pasan a import
+  estático.** No era opcional: `require` lo resuelve Node saltándose Vite, así
+  que ni alias ni mocks llegan y esas funciones quedaban fuera del alcance de
+  los tests. Lint del store: 15 → 5 errores. Solo queda el de
+  `react-native-purchases`, que sí es una carga perezosa deliberada.
+
+### App — fase 1b, pendiente (pantallas)
+
+- Mensaje de `SLOT_OCCUPIED` que dirija a pedir código nuevo (`ClientCodeModal`);
+  `alreadyLinked` ya llega, hoy no lo lee nadie.
+- Ficha de cliente: acción "Generar código nuevo" sobre `reissueClientCode`.
+- `TrainerSyncModal`: transferencia con `transferMySlotsTo` en la sesión del
+  dueño viejo; retirar las tres llamadas a `claimTrainerSlots`; puerta real en
+  `code_reveal` + oferta de vincular Google/Apple (§4.3).
 - §5: distinguir tipos de fallo y reintentar en primer plano.
 
 ## 7. Lo que NO cambia

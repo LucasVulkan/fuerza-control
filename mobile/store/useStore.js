@@ -22,7 +22,7 @@ import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, re
 import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, claimTrainerSlots, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -45,7 +45,10 @@ import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../src/utils/backupPayload';
 import { supabase } from '../src/config/supabase';
-import { recoverWithTrainerCode } from '../src/services/supabaseAuth';
+import {
+  recoverWithTrainerCode, signInAnonymously, loginClientWithIdToken,
+  deleteAccount as deleteRemoteAccount, signOut as supabaseSignOut,
+} from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -3188,20 +3191,58 @@ export const useStore = create(
       },
 
       /**
+       * Reemite el código de un cliente: código nuevo y asiento liberado, sin
+       * tocar su historial. Es la salida de los tres casos que antes no tenían
+       * ninguna (`docs/specs/client-connection.md` §3.3, §3.4, §4.4):
+       *
+       *   · el cliente reinstaló siendo anónimo y su identidad se perdió;
+       *   · perdió el código;
+       *   · el código se filtró y hay que revocarlo.
+       *
+       * El cliente que estuviera dentro queda fuera, que es lo correcto en los
+       * tres. Devuelve el código nuevo para poder enseñarlo al momento.
+       */
+      reissueClientCode: async (clientId) => {
+        const { clients, trainerSync } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId) throw new Error('Este cliente no tiene hueco en Supabase.');
+
+        await _ensureTrainerSession(trainerSync);
+        const newCode = await reissueClientCodeRpc(client.syncSlotId);
+
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              syncCode:   newCode,
+              // El asiento queda vacío: hasta que el cliente entre con el código
+              // nuevo, la ficha vuelve a enseñar la tarjeta del código.
+              syncLinked: false,
+            },
+          },
+        }));
+
+        return newCode;
+      },
+
+      /**
        * Validates a client code and returns slot info WITHOUT linking.
        * Used in step 1 of the modal to show "Programa encontrado".
        * Signs in anonymously first so RLS policies (auth.uid() checks) don't block the read.
        */
       validateClientCode: async (code) => {
-        const { signInAnonymously } = require('../src/services/supabaseAuth');
         await signInAnonymously(); // ensure we have a Supabase session before querying
         const slot = await getSlotByClientCode(code);
         if (!slot) throw new Error('Código no encontrado. Comprueba que lo has escrito bien.');
-        if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
+        if (!slot.program_name) throw new Error('El entrenador aún no ha subido ningún programa.');
         return {
           slotId:           slot.id,
-          programName:      slot.program_json?.program?.name ?? 'Programa',
-          alreadyLinked:    !!slot.client_id,
+          programName:      slot.program_name,
+          // El hueco ya está ocupado: el enlace va a fallar con SLOT_OCCUPIED y
+          // la salida es que el entrenador reemita el código. La pantalla lo usa
+          // para decirlo ANTES de que el usuario pulse.
+          alreadyLinked:    !!slot.is_linked,
           hasRemoteHistory: !!slot.history_updated_at,
           trainerName:      slot.trainer_name ?? null,
         };
@@ -3281,31 +3322,39 @@ export const useStore = create(
        *                                      into the local workoutLog (deduplicated by id).
        */
       linkToTrainer: async (code, { mergeHistory = false } = {}) => {
-        const { signInAnonymously } = require('../src/services/supabaseAuth');
 
         // 1. Anonymous Supabase session
         const { userId } = await signInAnonymously();
 
-        // 2. Look up slot
+        // 2. Look up slot. Ya no trae el programa: `get_slot_by_code` solo
+        // devuelve el nombre, para que un código filtrado no valga como llave
+        // de lectura del programa entero.
         const slot = await getSlotByClientCode(code);
         if (!slot) throw new Error('Código no encontrado.');
-        if (!slot.program_json) throw new Error('El entrenador aún no ha subido ningún programa.');
+        if (!slot.program_name) throw new Error('El entrenador aún no ha subido ningún programa.');
 
-        // 3. Link this user (auth.uid()) to the slot via the verified RPC
+        // 3. Ocupar el asiento. Lanza SLOT_OCCUPIED si hay otro dentro — la
+        // pantalla lo traduce a "pide un código nuevo a tu entrenador".
         await linkClientToSlot(code);
 
-        // 4. Save previous activeProgramId so we can restore it on unlink
+        // 4. Ya somos el ocupante, así que ahora sí podemos descargar el
+        // programa. Este orden es el que permite que la consulta por código no
+        // publique nada aprovechable.
+        const { programJson } = await downloadProgram(slot.id);
+        if (!programJson) throw new Error('El entrenador aún no ha subido ningún programa.');
+
+        // 5. Save previous activeProgramId so we can restore it on unlink
         const previousActiveProgramId = get().profile.activeProgramId ?? null;
 
-        // 5. Import the program using existing logic (same format as file export)
-        get().importData(slot.program_json, { program: true, log: false }, { silent: true });
+        // 6. Import the program using existing logic (same format as file export)
+        get().importData(programJson, { program: true, log: false }, { silent: true });
 
-        // 6. Restore progress, and optionally the workout log, from the slot.
+        // 7. Restore progress, and optionally the workout log, from the slot.
         // The counters come back even when the user declines the history merge:
         // progress is state, not a reading of the log (spec §6.4).
-        await get()._restoreFromSlot(slot.id, slot.program_json?.program?.id, mergeHistory);
+        await get()._restoreFromSlot(slot.id, programJson?.program?.id, mergeHistory);
 
-        // 7. Save client sync state
+        // 8. Save client sync state
         set(() => ({
           clientSync: {
             slotId:                 slot.id,
@@ -3317,9 +3366,9 @@ export const useStore = create(
             syncErrorAt:            null,
             lastProgramImportedAt:  new Date().toISOString(),
             // Baseline for "did the trainer activate another stage?" (spec §6.3)
-            lastAppliedStageActivation: slot.program_json?.program?.stageActivatedAt ?? null,
+            lastAppliedStageActivation: programJson?.program?.stageActivatedAt ?? null,
             previousActiveProgramId,
-            trainerProgramIds:      [slot.program_json?.program?.id].filter(Boolean),
+            trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
           },
         }));
@@ -3519,7 +3568,6 @@ export const useStore = create(
         // Restore trainer session automatically if we have the code
         if (trainerSync.mode === 'code' && trainerSync.code) {
           try {
-            const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
             await recoverWithTrainerCode(trainerSync.code);
           } catch { /* silent — trainer can re-auth manually if needed */ }
         }
@@ -3543,7 +3591,6 @@ export const useStore = create(
        * { found: true, slotId, userId, programName, hasRemoteHistory }
        */
       validateGoogleClient: async ({ provider = 'google', idToken, accessToken }) => {
-        const { loginClientWithIdToken } = require('../src/services/supabaseAuth');
         const { userId } = await loginClientWithIdToken({ provider, idToken, accessToken });
 
         const slot = await getClientSlotByUserId(userId);
@@ -3622,8 +3669,7 @@ export const useStore = create(
         // owner id does not match" on the first attempt, then the second attempt
         // silently skips the transfer (newUserId === oldUserId as Google user)
         // without actually updating the DB — leaving future reconnects broken.
-        const { supabase: _sb } = require('../src/config/supabase');
-        const { data: { user: currentUser } } = await _sb.auth.getUser();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
         const oldUserId = clientSync.supabaseUserId ?? currentUser?.id;
         if (!oldUserId) throw new Error('No se encontró sesión activa. Reconéctate con el código del entrenador.');
 
@@ -3631,7 +3677,6 @@ export const useStore = create(
         //    Depending on the Supabase project config, this may either create a new
         //    Google user OR link the Google identity to the existing anonymous account
         //    (same user ID). We handle both cases below.
-        const { loginClientWithIdToken } = require('../src/services/supabaseAuth');
         const { userId: newUserId } = await loginClientWithIdToken({ provider, idToken, accessToken });
 
         // 2. Transfer the slot only if Supabase issued a distinct Google user ID.
@@ -3686,8 +3731,6 @@ export const useStore = create(
        * reanuda desde donde estaba.
        */
       deleteAccount: async () => {
-        const { deleteAccount: deleteRemoteAccount, signOut: supabaseSignOut } =
-          require('../src/services/supabaseAuth');
 
         await deleteRemoteAccount();
         await supabaseSignOut().catch(() => {});
