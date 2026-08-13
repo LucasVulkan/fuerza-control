@@ -1,7 +1,9 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 9 fallos implementados** (ago 2026) — tandas A y B
-> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20), 16 pendientes de 25.
+> Estado: **🔍 DIAGNÓSTICO. 10 fallos implementados** (ago 2026) — tandas A y B
+> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20) más el 5, 15 pendientes de 25.
+> La tanda C queda a medias a propósito: **los fallos 7 y 8 son de servidor**
+> (SQL + Edge Function) y no se arreglan editando el repo, ver §7 y §8.
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
@@ -38,7 +40,7 @@
 | [2](#2) | 🔴 Crítica | ✅ Restaurar un backup pierde los programas de clientes | `store/useStore.js:2555` |
 | [3](#3) | 🟠 Alta | ✅ La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
 | [4](#4) | 🟠 Alta | ✅ El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
-| [5](#5) | 🟠 Alta | Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
+| [5](#5) | 🟠 Alta | ✅ Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
 | [6](#6) | 🟠 Alta | `getProgressionRecommendation` siempre devuelve `null` | `store/useStore.js:1891` |
 | [7](#7) | 🟠 Alta | El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
 | [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
@@ -479,7 +481,7 @@ En SecureStore quedan exactamente los tres valores que el apartado pedía dejar:
 
 ---
 
-## 5. Carrera en `refreshTrainerSlots` → clientes locales duplicados 🟠 {#5}
+## 5. Carrera en `refreshTrainerSlots` → clientes locales duplicados 🟠 ✅ {#5}
 
 **Dónde.** `store/useStore.js:3049-3096`.
 
@@ -561,6 +563,38 @@ asíncronas del store. Esta es la única que hoy corrompe datos; el resto
 (`uploadProgramToClient`, `downloadClientHistory`, `sendOverrides`) se salvan
 porque escriben campos que nadie más toca en paralelo. Conviene adoptar la regla
 general: **leer siempre dentro del updater de `set`**.
+
+### ✅ Implementado (ago 2026)
+
+Tal cual el arreglo propuesto: guard de reentrada `_refreshingSlots`, una sola
+escritura, y `clients` leído dentro del updater de `set`. Los dos `set`
+separados se funden en uno. `_refreshingSlots` vive en el estado inicial y
+**no** está en `partialize`: si la app muere a mitad de refresco tiene que
+arrancar en `false` o el refresco quedaría bloqueado para siempre.
+
+**Matiz que salió al aislar las dos piezas, y que corrige la intuición del
+diagnóstico:** el que evita el duplicado **no es el guard**, es leer `clients`
+dentro del updater. Quitando solo el guard y dejando el `set` único, el test del
+duplicado sigue en verde: la segunda llamada ejecuta su updater después de la
+primera y ya ve la ficha creada. Lo que aporta el guard es ahorrar la segunda
+ida al servidor y evitar que un refresco viejo escriba contadores por encima de
+uno más nuevo. Ambas cosas valen, pero conviene saber cuál sostiene la
+corrección: si algún día alguien "simplifica" el `set` volviendo a sacar la
+lectura fuera, el guard **no** le salvará.
+
+**Efecto colateral:** `_ensureTrainerSession` pasa a importar `supabase` y
+`recoverWithTrainerCode` con `import` estático en vez de `require`. No era
+opcional: `require` lo resuelve Node saltándose la resolución de Vite, así que
+ni los alias ni los mocks le llegan y la función entera quedaba fuera del
+alcance de cualquier test. Los dos módulos son hojas —no hay ciclo que romper—
+y ya se cargaban igual al importar el store, vía `supabaseSync`. Bajan dos
+errores de lint (15 → 13), no suben.
+
+**Test.** `store/useStore.test.js`, cuatro casos con `getTrainerSlots` doblado:
+dos llamadas solapadas dejan una sola ficha, la segunda ni va al servidor, el
+guard se suelta aunque el refresco falle (y el siguiente vuelve a entrar), y un
+refresco posterior actualiza la ficha en vez de crear otra. Los cuatro fallan
+contra el código anterior.
 
 ---
 
@@ -1580,7 +1614,7 @@ verificable:
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
-| **C — sincronización** | [5](#5), [7](#7), [8](#8) | store + SQL + Edge Function |
+| **C — sincronización** | ✅ [5](#5), [7](#7), [8](#8) 🔒 servidor | store + SQL + Edge Function |
 | **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
 | **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |

@@ -6,7 +6,27 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useStore } from './useStore.js';
+
+// El store importa todo el servicio de sincronización de golpe, así que el
+// doble tiene que ofrecer todos los nombres o el import falla.
+const syncMock = {
+  getTrainerSlots: vi.fn(async () => []),
+  createClientSlot: vi.fn(), uploadProgram: vi.fn(), downloadHistory: vi.fn(),
+  downloadProgram: vi.fn(), getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(),
+  uploadHistory: vi.fn(), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(),
+  claimTrainerSlots: vi.fn(), getClientSlotByUserId: vi.fn(), transferClientSlot: vi.fn(),
+  updateTrainerNameForSlots: vi.fn(), releaseClientSlot: vi.fn(),
+};
+vi.mock('../src/services/supabaseSync', () => syncMock);
+
+// `_ensureTrainerSession` pide el cliente de Supabase antes de cualquier
+// llamada. Sin doble, el cliente real intenta leer la sesión del storage y
+// revienta con un `storage.getItem is not a function` que no dice nada.
+vi.mock('../src/config/supabase', () => ({
+  supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
+}));
+
+const { useStore } = await import('./useStore.js');
 
 /** The callback zustand invokes once the persisted state has been read. */
 const rehydrateCallback = () => useStore.persist.getOptions().onRehydrateStorage();
@@ -155,5 +175,69 @@ describe('importData — fallo 10, reemplazar plantillas', () => {
     );
 
     expect(plantillas()).toHaveLength(4);
+  });
+});
+
+describe('refreshTrainerSlots — fallo 5', () => {
+  const slot = { id: 'slot_1', client_name: 'Ana', client_code: 'ABCD-1234', sessions_count: 3, client_id: 'u1', disconnected_at: null };
+
+  beforeEach(() => {
+    syncMock.getTrainerSlots.mockReset();
+    useStore.setState({
+      clients: {},
+      _refreshingSlots: false,
+      trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: null, code: null },
+    });
+  });
+
+  it('dos llamadas solapadas no duplican la ficha del mismo hueco', async () => {
+    // La ventana real: `getTrainerSlots` tarda, y mientras tanto entra la
+    // segunda llamada (montaje + pull-to-refresh) viendo `clients` aún vacío.
+    let resolver;
+    syncMock.getTrainerSlots.mockReturnValue(new Promise((r) => { resolver = r; }));
+
+    const a = useStore.getState().refreshTrainerSlots();
+    const b = useStore.getState().refreshTrainerSlots();
+    resolver([slot]);
+    await Promise.all([a, b]);
+
+    const fichas = Object.values(useStore.getState().clients);
+    expect(fichas).toHaveLength(1);
+    expect(fichas[0].syncSlotId).toBe('slot_1');
+  });
+
+  it('la segunda llamada ni siquiera va al servidor', async () => {
+    let resolver;
+    syncMock.getTrainerSlots.mockReturnValue(new Promise((r) => { resolver = r; }));
+
+    const a = useStore.getState().refreshTrainerSlots();
+    const b = useStore.getState().refreshTrainerSlots();
+    resolver([slot]);
+    await Promise.all([a, b]);
+
+    expect(syncMock.getTrainerSlots).toHaveBeenCalledTimes(1);
+  });
+
+  it('el guard se suelta aunque el refresco falle', async () => {
+    syncMock.getTrainerSlots.mockRejectedValueOnce(new Error('sin red'));
+
+    await expect(useStore.getState().refreshTrainerSlots()).rejects.toThrow('sin red');
+    expect(useStore.getState()._refreshingSlots).toBe(false);
+
+    // Y el siguiente refresco vuelve a entrar.
+    syncMock.getTrainerSlots.mockResolvedValueOnce([slot]);
+    await useStore.getState().refreshTrainerSlots();
+    expect(Object.values(useStore.getState().clients)).toHaveLength(1);
+  });
+
+  it('un refresco posterior actualiza la ficha existente, no crea otra', async () => {
+    syncMock.getTrainerSlots.mockResolvedValue([slot]);
+    await useStore.getState().refreshTrainerSlots();
+    await useStore.getState().refreshTrainerSlots();
+
+    const fichas = Object.values(useStore.getState().clients);
+    expect(fichas).toHaveLength(1);
+    expect(fichas[0].remoteSessionsCount).toBe(3);
+    expect(fichas[0].syncLinked).toBe(true);
   });
 });

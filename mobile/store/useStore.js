@@ -44,6 +44,8 @@ import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
 import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../src/utils/backupPayload';
+import { supabase } from '../src/config/supabase';
+import { recoverWithTrainerCode } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../../src/data/archetypes';
 import { adaptArchetype } from '../../src/utils/archetypeAdapter';
@@ -64,15 +66,17 @@ import { navigateTo } from '../src/navigation/navigationRef';
 //  - No session at all (app restart, token expired) → re-auth with stored code
 //  - Session for wrong userId (trainer created a second code account) → re-auth
 //    with the stored code to switch back to the correct account
+// Import estatico a proposito, no `require`: los dos modulos son hojas (no hay
+// ciclo que romper) y un `require` lo resuelve Node saltandose por completo la
+// resolucion de Vite, asi que esta funcion quedaba fuera del alcance de los
+// tests. Ambos ya se cargaban igual al importar el store, via supabaseSync.
 async function _ensureTrainerSession(trainerSync) {
-  const { supabase } = require('../src/config/supabase');
   const { data: { session } } = await supabase.auth.getSession();
 
   // Session is valid AND belongs to the expected trainer user → nothing to do
   if (session && (!trainerSync.userId || session.user.id === trainerSync.userId)) return;
 
   if (trainerSync.mode === 'code' && trainerSync.code) {
-    const { recoverWithTrainerCode } = require('../src/services/supabaseAuth');
     await recoverWithTrainerCode(trainerSync.code);
   } else if (trainerSync.mode === 'google' || trainerSync.mode === 'apple') {
     // Ni Google ni Apple se pueden renovar en silencio: los dos exigen que el
@@ -282,6 +286,11 @@ export const useStore = create(
       // NOT persisted. RootNavigator waits for this before rendering.
       _hasHydrated:  false,
       _initialRoute: 'Main',
+
+      // Guard de reentrada de `refreshTrainerSlots`. NO persistido: si la app
+      // muere a mitad de refresco, al arrancar tiene que valer `false` o el
+      // refresco quedaria bloqueado para siempre.
+      _refreshingSlots: false,
 
       // External file import — set when the OS opens a .fitdata file via intent.
       // NOT persisted. AppHeader watches this and shows ImportModal when set.
@@ -3105,39 +3114,43 @@ export const useStore = create(
        * Called on ClientsScreen mount and pull-to-refresh.
        */
       refreshTrainerSlots: async () => {
-        const { trainerSync, clients } = get();
+        const { trainerSync } = get();
         if (!trainerSync.userId) return;
 
-        await _ensureTrainerSession(trainerSync);
+        // Guard de reentrada: hay dos disparadores que no se coordinan entre sí
+        // —el efecto de montaje y el pull-to-refresh de `ClientsScreen`— y las
+        // dos esperas de red dejan una ventana de 1-2 s. No es lo que evita el
+        // duplicado (eso lo hace leer dentro del `set`), sino la segunda ida al
+        // servidor y que un refresco viejo escriba contadores por encima de uno
+        // más nuevo.
+        // ponytail: un flag, no una cola. La segunda llamada se descarta en vez
+        // de esperar — el refresco es idempotente y ya lo está haciendo otra.
+        if (get()._refreshingSlots) return;
+        set({ _refreshingSlots: true });
 
-        const slots = await getTrainerSlots(trainerSync.userId);
+        try {
+          await _ensureTrainerSession(trainerSync);
 
-        // Build slotId → sessions_count map
-        const countBySlot = {};
-        slots.forEach((slot) => { countBySlot[slot.id] = slot.sessions_count ?? 0; });
+          const slots = await getTrainerSlots(trainerSync.userId);
 
-        // slotId → ¿el cliente ha canjeado ya el código? `client_id` se rellena
-        // cuando el cliente se vincula, así que es la única señal real de
-        // "conexión establecida" que tiene el entrenador: tener slot solo
-        // significa que TÚ lo creaste. La usa la ficha para retirar la tarjeta
-        // del código una vez el cliente ya está dentro.
-        const linkedBySlot = {};
-        slots.forEach((slot) => { linkedBySlot[slot.id] = !!slot.client_id; });
-
-        // Restore server slots that are missing from local state (e.g. after reinstall).
-        // Only active slots (disconnected_at = null) are restored.
-        const knownSlotIds = new Set(
-          Object.values(clients).map((c) => c.syncSlotId).filter(Boolean),
-        );
-        const missingSlots = slots.filter(
-          (s) => !knownSlotIds.has(s.id) && !s.disconnected_at,
-        );
-        if (missingSlots.length > 0) {
+          // Un solo `set`, y `clients` leído DENTRO del updater, que es lo único
+          // atómico aquí. Antes se fotografiaba antes de las dos esperas de red:
+          // dos llamadas solapadas veían las dos la lista vacía y ambas creaban
+          // ficha para el mismo `syncSlotId` con `generateId` distintos. El
+          // duplicado no es cosmético — las dos apuntan al mismo hueco, así que
+          // mandar un programa desde una pisa lo que mandó la otra.
           set((s) => {
-            const restored = { ...s.clients };
-            for (const slot of missingSlots) {
+            const next = { ...s.clients };
+
+            // Huecos del servidor que faltan en local (p. ej. tras reinstalar).
+            // Solo los activos: un `disconnected_at` es un cliente que se soltó.
+            const known = new Set(
+              Object.values(next).map((c) => c.syncSlotId).filter(Boolean),
+            );
+            for (const slot of slots) {
+              if (known.has(slot.id) || slot.disconnected_at) continue;
               const id = generateId('client');
-              restored[id] = {
+              next[id] = {
                 id,
                 name:         slot.client_name ?? 'Cliente',
                 createdAt:    new Date().toISOString().split('T')[0],
@@ -3148,26 +3161,30 @@ export const useStore = create(
                 syncCode:    slot.client_code ?? null,
                 syncSlotId:  slot.id,
               };
+              known.add(slot.id);
             }
-            return { clients: restored };
-          });
-        }
 
-        // Update remoteSessionsCount for each matching local client
-        set((s) => {
-          const updated = { ...s.clients };
-          Object.keys(updated).forEach((clientId) => {
-            const slotId = updated[clientId].syncSlotId;
-            if (slotId && countBySlot[slotId] !== undefined) {
-              updated[clientId] = {
-                ...updated[clientId],
-                remoteSessionsCount: countBySlot[slotId],
-                syncLinked:          linkedBySlot[slotId],
+            // Contadores y "¿ha canjeado ya el código?". `client_id` se rellena
+            // cuando el cliente se vincula, así que es la única señal real de
+            // conexión establecida que tiene el entrenador: tener hueco solo
+            // significa que TÚ lo creaste. La ficha la usa para retirar la
+            // tarjeta del código una vez el cliente ya está dentro.
+            const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
+            for (const clientId of Object.keys(next)) {
+              const slot = bySlot.get(next[clientId].syncSlotId);
+              if (!slot) continue;
+              next[clientId] = {
+                ...next[clientId],
+                remoteSessionsCount: slot.sessions_count ?? 0,
+                syncLinked:          !!slot.client_id,
               };
             }
+
+            return { clients: next };
           });
-          return { clients: updated };
-        });
+        } finally {
+          set({ _refreshingSlots: false });
+        }
       },
 
       /**

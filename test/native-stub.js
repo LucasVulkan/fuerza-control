@@ -87,6 +87,15 @@ export const createNavigationContainerRef = () => ({
   goBack:   noop,
 });
 
+// ── AsyncStorage, también como exports con nombre ─────────────────────────────
+// El cliente de Supabase recibe el módulo como `storage`, y según cómo resuelva
+// la interop le llega el namespace en vez del default. Exportarlo por los dos
+// caminos evita un `storage.getItem is not a function` bastante opaco.
+export const getItem    = async () => null;
+export const setItem    = asyncNoop;
+export const removeItem = asyncNoop;
+export const getAllKeys = async () => [];
+
 // ── default import: AsyncStorage, react-native-purchases, notifee ─────────────
 export default {
   getItem:    async () => null,
