@@ -7,6 +7,11 @@
 > Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
 > bloque **Implementado** al final de la sección.
 >
+> ⚠️ **El [fallo 26](#26) es lo más urgente del documento** y no salió del
+> barrido: apareció al leer SQL que no estaba en el repositorio. Los fallos 5,
+> 7, 8 y 26 se rediseñaron juntos en
+> [client-connection.md](client-connection.md).
+>
 > Barrido de corrección sobre el móvil siguiendo el flujo real
 > (`index.js → App.js → RootNavigator → screens → store → services → utils`) y
 > las dos direcciones del protocolo entrenador↔cliente. No es una revisión de
@@ -61,6 +66,7 @@
 | [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js` |
 | [24](#24) | 🟢 Baja | Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
+| [26](#26) | 🔴 **Crítica** | `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
 
 Rutas relativas a `mobile/` salvo las que empiezan por `supabase/` o `src/utils/`
 (estas últimas están en la raíz del repo, compartidas).
@@ -1605,7 +1611,68 @@ comparte por WhatsApp. `backupPayload.test.js` ya lo vigila.
 
 ---
 
-## 26. Orden de trabajo sugerido
+## 26. `claim_trainer_slots` regala la cuenta a cualquiera 🔴 {#26}
+
+> **No salió del barrido original.** Apareció en ago 2026 al pedir el SQL que
+> la app llama pero que no estaba en `supabase/`. Es el fallo más grave del
+> documento, y estaba precisamente en la parte que nadie podía revisar.
+
+**Dónde.** Función `claim_trainer_slots(uuid[])`, solo en el dashboard de
+Supabase. Confirmado `prosecdef = true`.
+
+**Por qué falla.** El cuerpo entero es:
+
+```sql
+UPDATE trainer_clients SET trainer_id = auth.uid() WHERE id = ANY(slot_ids);
+```
+
+Ni una comprobación. No pregunta si los huecos eran tuyos, si alguna vez lo
+fueron, ni quién eres. Con `security definer`, las políticas de acceso no la
+contienen.
+
+**El ataque, que no requiere ingenio:**
+
+1. La clave anónima va dentro del APK → cualquiera abre sesión autenticada.
+2. Hace falta el UUID del hueco. **Todo cliente vinculado tiene el suyo**
+   (`clientSync.slotId`), y `get_slot_by_code` lo entregaba a quien supiera o
+   acertara un código.
+3. Una llamada y el `trainer_id` pasa a ser el del atacante.
+4. La política del entrenador es `trainer_id = auth.uid()`, así que **el
+   legítimo deja de ver la fila**: el cliente desaparece de su app. El atacante
+   se queda con programa e historial y puede escribir en el hueco.
+
+Es decir: **cualquier cliente puede robarle un hueco a su propio entrenador**
+con un identificador que ya tiene, sin adivinar nada.
+
+**Mitigación inmediata**, antes que cualquier otra cosa:
+
+```sql
+revoke execute on function public.claim_trainer_slots(uuid[]) from authenticated, anon, public;
+```
+
+No rompe ningún flujo: los tres sitios que la llaman (`TrainerSyncModal.jsx`
+:264, :367, :429) envuelven la llamada en un `catch` que se traga el error —
+uno lleva el comentario *"Non-fatal if the SQL function isn't deployed yet"*.
+Lo único que se pierde es que los huecos sigan al entrenador al cambiar de modo
+de cuenta, un flujo poco frecuente.
+
+**Arreglo.** No se parchea, se sustituye por su espejo correcto: ceder en vez
+de reclamar. Ver [client-connection.md](client-connection.md) §4.2 y
+`supabase/connection_model.sql`.
+
+**Segunda puerta, del mismo linaje.** `transfer_client_slot` sí está bien
+construida, pero `get_slot_by_code` publicaba `client_id`, que es la mitad de
+sus argumentos: con un código se podía tomar el asiento del cliente saltándose
+`link_client_to_slot` por completo. Arreglar el §7 solo no habría cerrado ese
+resultado. El SQL nuevo deja de publicar `client_id`.
+
+**Lección de proceso.** Dos funciones `security definer` —la categoría más
+peligrosa que existe— vivían solo en el dashboard. Ningún análisis de este
+sistema podía ser completo. Todo el backend pasa a estar en `supabase/`.
+
+---
+
+## 27. Orden de trabajo sugerido
 
 Agrupado por lo que se toca, no por severidad, para que cada tanda sea un PR
 verificable:
@@ -1623,7 +1690,7 @@ La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
 inservible y [2](#2) destruye datos del entrenador en la operación que
 precisamente existe para no perderlos.
 
-## 27. Lo que NO entra en esta spec
+## 28. Lo que NO entra en esta spec
 
 Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
 
