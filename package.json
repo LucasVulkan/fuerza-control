@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "panel": "node devpanel.mjs",
-    "seed": "node seed-load-data.mjs"
+    "seed": "node seed-load-data.mjs",
+    "estado": "node scripts/estado.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

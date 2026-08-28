@@ -173,6 +173,8 @@ Dos desviaciones respecto al arreglo propuesto arriba:
    `finally`) — cierto en ambas plataformas por cola serie, pero no garantizado
    por contrato.
 
+**Probar en dispositivo.** `AsyncStorage.setItem('fc_tracker_v1', '{"state":{')` y relanzar: debe abrir en Setup, no quedarse en blanco.
+
 **Test.** `store/useStore.test.js`, tres casos sobre el callback que devuelve
 `onRehydrateStorage()`: invocado como `(undefined, error)` marca `_hasHydrated`;
 invocado con un estado cuyo acceso lanza, también; y por ese camino la ruta
@@ -400,6 +402,8 @@ no se nota porque la tarea no sube nunca; con el 3 arreglado, sí.
 `_syncDriveConfigToSecureStore` pasa a adoptar la más reciente de las dos, y de
 paso el store se entera de lo que subió la tarea. `deleteDriveBackups` borra la
 config antes de rescribirla, porque ahí se quiere justo lo contrario.
+
+**Probar en dispositivo.** Frecuencia diaria, esperar, y comprobar que aparece el archivo en Drive. Es lo que confirma que AsyncStorage funciona dentro del background fetch.
 
 **Riesgo asumido:** que AsyncStorage esté disponible dentro del contexto de
 background fetch. La tarea ya usa SecureStore ahí, que es un módulo nativo de la
@@ -929,6 +933,8 @@ dentro de `{__DEV__ && …}` (`AppHeader.jsx:526`), y `showProTabs = isPro ||
 !proTabsHidden` deja las pestañas visibles igual — el muro está dentro de cada
 pantalla, no en la barra.
 
+**Probar en dispositivo.** Build de iOS con la clave puesta: comprar, cerrar y reabrir (sigue Pro), y "restaurar compras" en instalación limpia.
+
 **Queda tuyo, y sin ello iOS no puede vender:** rellenar `RC_IOS_API_KEY` con la
 Public SDK key de RevenueCat. Con el guard, iOS ya no regala Pro; pero hasta que
 esté la clave, en iOS **nadie** puede comprarlo.
@@ -1232,6 +1238,8 @@ reintenta entero y lo que se meta ahí debe ser repetible.
 **Además**, `deleteFile` no miraba la respuesta: un borrado fallido pasaba por
 bueno. Ahora lanza como el resto, que es lo que hace que `deleteAllBackups`
 pueda informar.
+
+**Probar en dispositivo.** Conectar Drive, esperar más de una hora, abrir "Copias": deben salir las copias en vez de "no hay ninguna".
 
 **Test.** `src/services/driveService.test.js`, 9 casos con `fetch` sustituido:
 separador distinto en cada subida, separador que no colisiona con una nota que

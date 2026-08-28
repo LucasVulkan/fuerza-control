@@ -241,6 +241,8 @@ cuenta social a otra haría falta que el usuario entrase en la vieja.
 
 ## 7. Prueba en dispositivo — pendiente
 
+**Probar en dispositivo.** Ciclo de reinstalación: cliente anónimo conectado → borrar datos de la app → mismo código debe ser rechazado → el entrenador genera código nuevo → entra y el historial sigue ahí. Más conexión limpia y cambio de modo de cuenta.
+
 Lo único que queda del modelo, y no se puede simular desde los tests: dependen
 de perder de verdad la identidad anónima y de que Supabase emita sesiones.
 
