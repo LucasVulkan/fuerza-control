@@ -121,7 +121,8 @@ const html = `<!doctype html>
      letter-spacing:.05em;padding:0 8px 8px;border-bottom:1px solid var(--bd)}
   td{padding:9px 8px;border-bottom:1px solid #1e2124;vertical-align:top}
   tr.ok td{color:var(--mut)} tr.ok .ruta{opacity:.5}
-  .num{color:var(--mut);width:34px} .sev{width:28px} .tick{margin-right:6px}
+  .num{color:var(--mut);width:34px} .tick{margin-right:6px}
+  .sev{white-space:nowrap;width:1%;padding-right:14px}
   .ruta{width:34%;font-size:12px}
   code{background:#1e2126;padding:1px 5px;border-radius:4px;font-size:12px}
   .filtros{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
