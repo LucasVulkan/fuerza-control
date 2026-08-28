@@ -56,7 +56,7 @@ function MainTabs() {
   const { t }          = useTranslation();
   const th             = useTheme();
   const styles         = useThemedStyles(makeStyles);
-  const isPro          = useStore((s) => s.profile?.isPro          ?? true);
+  const isPro          = useStore((s) => s.profile?.isPro          ?? false);
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
   // Clients with unsent uploads (program changes and/or next-session prescriptions).

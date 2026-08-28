@@ -1796,7 +1796,7 @@ export default function ClientsScreen() {
   const renameTag    = useStore((s) => s.renameTag);
   const deleteTag    = useStore((s) => s.deleteTag);
 
-  const isPro        = profile.isPro ?? true;
+  const isPro        = profile.isPro ?? false;
   const setProfile   = useStore((s) => s.setProfile);
   const trainerSync  = useStore((s) => s.trainerSync);
 

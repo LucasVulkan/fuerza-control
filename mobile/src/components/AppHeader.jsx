@@ -338,7 +338,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
   const lang          = profile.language      ?? 'es';
   const unit          = profile.weightUnit    ?? 'kg';
-  const isPro         = profile.isPro         ?? true;
+  const isPro         = profile.isPro         ?? false;
   const proTabsHidden = profile.proTabsHidden ?? false;
 
   function go(route) { onClose(); navigation.navigate(route); }

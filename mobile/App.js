@@ -167,6 +167,14 @@ export default function App() {
       const { LOG_LEVEL } = require('react-native-purchases');
       if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
       const apiKey = Platform.OS === 'ios' ? RC_IOS_API_KEY : RC_ANDROID_API_KEY;
+      // Sin clave real no se configura nada. Con el marcador de posición,
+      // `configure` pasa pero `getCustomerInfo` no resuelve nunca, y como
+      // `checkProStatus` conserva el valor anterior cuando falla, el estado se
+      // quedaba en el que trajera el perfil — que era Pro (fallo 9).
+      if (!apiKey || apiKey.startsWith('YOUR_')) {
+        console.warn('[RevenueCat] clave sin configurar para', Platform.OS, '— sin comprobacion de suscripcion');
+        return;
+      }
       Purchases.configure({ apiKey });
       checkProStatus();
     } catch {

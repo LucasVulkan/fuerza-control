@@ -158,7 +158,7 @@ export default function OnboardingScreen() {
   const customExercises            = useStore((s) => s.customExercises);
   const storeNavigate              = useStore((s) => s.navigate);
   const language                   = useStore((s) => s.profile?.language ?? 'es');
-  const isPro                      = useStore((s) => s.profile?.isPro ?? true);
+  const isPro                      = useStore((s) => s.profile?.isPro ?? false);
   const programs                   = useStore((s) => s.programs);
   const pendingExternalImport      = useStore((s) => s.pendingExternalImport);
   const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);

@@ -110,7 +110,13 @@ const INITIAL_PROFILE = {
   goals: [],
   bodyWeight: null,
   theme: 'dark',
-  isPro: true,
+  // Por defecto NO Pro. Era `true`, y como `checkProStatus` conserva el valor
+  // cuando la comprobacion falla —correcto: no se revoca a un cliente de pago
+  // por quedarse sin cobertura—, cualquiera sin modulo nativo o con la clave de
+  // iOS sin rellenar se quedaba Pro para siempre. En desarrollo hay dos vias
+  // explicitas: EXPO_PUBLIC_FORCE_PRO=true y el interruptor PRO/FREE del menu,
+  // que solo existe bajo __DEV__.
+  isPro: false,
   proTabsHidden: false,
   language: 'es',
   weightUnit: 'kg',

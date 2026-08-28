@@ -350,3 +350,23 @@ describe('reissueClientCode — la salida de la reconexión', () => {
     await expect(useStore.getState().reissueClientCode('cli_2')).rejects.toThrow('no tiene hueco');
   });
 });
+
+describe('isPro — fallo 9', () => {
+  it('un perfil nuevo NO es Pro', () => {
+    // El default de INITIAL_PROFILE es lo único que decide qué pasa cuando la
+    // comprobación con RevenueCat no llega a ocurrir: sin módulo nativo, con la
+    // clave de iOS sin rellenar, o en Expo Go.
+    expect(useStore.getState().profile.isPro).toBe(false);
+  });
+
+  it('si la comprobación no puede ejecutarse, no concede ni revoca', async () => {
+    // `checkProStatus` conserva el valor a propósito: revocar por un fallo de
+    // red dejaría sin funciones a un cliente de pago que está sin cobertura.
+    // Con el default en false, conservar ya no significa regalar.
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
+    expect(await useStore.getState().checkProStatus()).toBe(true);
+
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
+    expect(await useStore.getState().checkProStatus()).toBe(false);
+  });
+});

@@ -342,7 +342,7 @@ export default function ProgramScreen() {
 
   const profile    = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
-  const isPro      = profile?.isPro ?? true;
+  const isPro      = profile?.isPro ?? false;
 
   const programs                 = useStore((s) => s.programs);
   const clients                  = useStore((s) => s.clients);

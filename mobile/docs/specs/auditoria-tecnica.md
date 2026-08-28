@@ -1,8 +1,8 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 12 fallos resueltos** (ago 2026) — tandas A y B
-> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20) y la C casi (5, 7, 26; queda el 8).
-> 14 pendientes de 26.
+> Estado: **🔍 DIAGNÓSTICO. 13 fallos resueltos** (ago 2026) — tandas A, B y D
+> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20, 9) y la C casi (5, 7, 26; queda el
+> 8). 13 pendientes de 26.
 >
 > El SQL del modelo de conexión **está desplegado** (ago 2026): comprobado que
 > `claim_trainer_slots` ya no existe y que las seis funciones restantes siguen
@@ -54,7 +54,7 @@
 | [6](#6) | 🟠 Alta | `getProgressionRecommendation` siempre devuelve `null` | `store/useStore.js:1891` |
 | [7](#7) | 🟠 Alta | ✅ El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
 | [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
-| [9](#9) | 🟠 Alta | En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
+| [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
 | [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:597` |
 | [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:126` |
@@ -836,7 +836,7 @@ toca aquí.
 
 ---
 
-## 9. En iOS todo el mundo es Pro 🟠 {#9}
+## 9. En iOS todo el mundo es Pro 🟠 ✅ {#9}
 
 **Dónde.** `src/config/revenuecat.js:13`, `App.js:163-175`,
 `store/useStore.js:107` y `:3655`.
@@ -896,6 +896,46 @@ Con `isPro: false` de partida, Expo Go y los builds sin módulo nativo dejan de
 ser Pro por accidente. Para desarrollo ya existe la vía explícita:
 `EXPO_PUBLIC_FORCE_PRO=true`, que `mobile/eas.json` activa en el perfil
 `preview`.
+
+### ✅ Implementado (ago 2026) — con cinco sitios más de los que decía
+
+Las dos partes del arreglo propuesto, más una tercera que el diagnóstico no
+veía.
+
+**El guard de la clave** va antes de `Purchases.configure`, no después: con el
+marcador de posición `configure` pasa sin quejarse y es `getCustomerInfo` quien
+no resuelve nunca, así que comprobar más tarde no habría servido de nada.
+
+**`INITIAL_PROFILE.isPro: false`.** No se toca el `catch` de `checkProStatus`,
+que conserva el valor a propósito: revocar por un fallo de red dejaría sin
+funciones a un cliente de pago que está sin cobertura. El fallo nunca fue
+conservar, era **qué se conservaba**.
+
+**Lo que faltaba: `?? true` repartido por cinco pantallas.**
+
+```
+src/components/AppHeader.jsx:341        src/screens/ClientsScreen.jsx:1799
+src/navigation/RootNavigator.jsx:59     src/screens/OnboardingScreen.jsx:161
+src/screens/ProgramScreen.jsx:345
+```
+
+Es el mismo default inseguro —"si no lo sé, es Pro"— copiado cinco veces.
+Arreglar solo `INITIAL_PROFILE` habría dejado que cualquier perfil **sin** el
+campo (uno persistido de antes de que existiera) siguiera dando Pro en las cinco.
+Todos a `?? false`.
+
+**Sin impacto en desarrollo**, comprobado: el interruptor PRO/FREE del menú vive
+dentro de `{__DEV__ && …}` (`AppHeader.jsx:526`), y `showProTabs = isPro ||
+!proTabsHidden` deja las pestañas visibles igual — el muro está dentro de cada
+pantalla, no en la barra.
+
+**Queda tuyo, y sin ello iOS no puede vender:** rellenar `RC_IOS_API_KEY` con la
+Public SDK key de RevenueCat. Con el guard, iOS ya no regala Pro; pero hasta que
+esté la clave, en iOS **nadie** puede comprarlo.
+
+**Test.** `store/useStore.test.js`: un perfil nuevo no es Pro, y `checkProStatus`
+sin módulo nativo ni concede ni revoca. El primero falla si alguien devuelve el
+default a `true`.
 
 ---
 
@@ -1725,7 +1765,7 @@ verificable:
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** | ✅ [5](#5), ✅ [7](#7), [8](#8) | store + SQL + Edge Function |
-| **D — monetización** | [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
+| **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
 | **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |
 
