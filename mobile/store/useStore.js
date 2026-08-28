@@ -60,6 +60,25 @@ import i18n from '../src/i18n';
 // Navigation ref (wired up in App.js)
 import { navigateTo } from '../src/navigation/navigationRef';
 
+/**
+ * Respuestas del onboarding → forma que consume el motor.
+ *
+ * Idempotente a propósito: la pantalla la aplica antes de rankear y adaptar para
+ * su preview, y el store la vuelve a aplicar al generar. Si cada uno normalizara
+ * a su manera, el programa previsualizado y el guardado podrían no coincidir.
+ */
+export function normalizeOnboardingAnswers(answers) {
+  const equipment = answers.equipment ?? [];
+  // A5: 'bodyweight' es un id de UI, no de equipo real — `exerciseFitsEquipment`
+  // ya trata [] como "sólo peso corporal".
+  if (equipment.includes('bodyweight')) return { ...answers, equipment: [] };
+  // Quien declara máquinas tiene poleas: el gimnasio que tiene unas tiene las otras.
+  if (equipment.includes('machines') && !equipment.includes('cables')) {
+    return { ...answers, equipment: [...equipment, 'cables'] };
+  }
+  return { ...answers, equipment };
+}
+
 // ─── Initial state ─────────────────────────────────────────────────────────────
 
 // ── Trainer session guard ──────────────────────────────────────────────────────
@@ -327,19 +346,20 @@ export const useStore = create(
       // ONBOARDING
       // ══════════════════════════════════════════════════════════════════════
 
-      generateAndActivateProgram: async (answers) => {
-        const normalizedAnswers = {
-          ...answers,
-          equipment: answers.equipment.includes('machines') && !answers.equipment.includes('cables')
-            ? [...answers.equipment, 'cables']
-            : answers.equipment,
-        };
+      // `archetypeId`: la plantilla que el usuario eligió en la pantalla de
+      // propuestas (onboarding-proposals.md §3.3). Sin él, la primera del
+      // ranking — que es lo que hacía el onboarding antiguo y lo que sigue
+      // haciendo cualquier llamada que no ofrezca elección.
+      generateAndActivateProgram: async (answers, archetypeId = null) => {
+        const normalizedAnswers = normalizeOnboardingAnswers(answers);
 
         // El ranking nunca devuelve vacío (program-templates.md §7): todo el
         // mundo recibe una plantilla adaptada. `generateProgram` queda como
         // relleno por si el catálogo estuviera vacío, no como autor.
         const ranked = rankArchetypes(normalizedAnswers);
-        const archetype = ranked[0]?.archetype ?? null;
+        const archetype = (archetypeId
+          && ranked.find((r) => r.archetype.id === archetypeId)?.archetype)
+          ?? ranked[0]?.archetype ?? null;
         const { program, sessionTemplates, phases } = archetype
           ? adaptArchetype(archetype, normalizedAnswers)
           : generateProgram(normalizedAnswers);
@@ -350,7 +370,9 @@ export const useStore = create(
           profile: {
             ...s.profile,
             activeProgramId: program.id,
-            onboardingAnswers: answers,
+            // Normalizadas, no crudas: el snapshot se usa para regenerar, y
+            // 'bodyweight' como id de equipo no significa nada para el motor.
+            onboardingAnswers: normalizedAnswers,
             onboardingCompleted: true,
           },
           ui: { ...s.ui, view: 'home' },

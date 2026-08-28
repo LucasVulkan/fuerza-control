@@ -1,6 +1,11 @@
 # Spec — Onboarding de propuestas (fase 6 de program-templates)
 
-> Estado: **cerrada, SIN implementar** (ago 2026). Es la **fase 6** de
+> Estado: **implementada** (ago 2026), con dos decisiones del usuario que se
+> apartan de lo que decía la versión cerrada de esta spec y que están marcadas
+> en su sitio: las seis preguntas van **todas antes** de la lista (§1) y el
+> programa **no se guarda hasta que se confirma** el preview (§3.3).
+>
+> Es la **fase 6** de
 > [program-templates.md](program-templates.md) §8, extraída a documento propio
 > porque es la única fase con UI y necesita contexto que aquella spec da por
 > sabido.
@@ -16,19 +21,29 @@
 Hoy el onboarding hace **ocho preguntas** y entrega un programa ya decidido. El
 usuario no elige: recibe.
 
-Después de esta fase hace **cuatro preguntas, enseña tres programas reales, y
-pregunta dos cosas más** para ajustar el que se elija.
+Después de esta fase hace **seis preguntas y enseña tres programas reales**, con
+su detalle entero, para que elija uno.
 
 ```
-4 preguntas          →  PANTALLA DE PROPUESTAS  →  2 preguntas    →  preview
-nivel                    2-3 candidatos             tiempo/sesión     con fases
-qué buscas               + "ver todas"              limitaciones
-días/semana
+6 preguntas          →  PANTALLA DE PROPUESTAS  →  preview
+nivel                    3 candidatas               con fases y
+qué buscas               + "ver todas"              lo que se adaptó
+días/semana              → detalle de cada una
 material
+tiempo/sesión
+limitaciones
 ```
 
-El corte no es arbitrario: **antes de la lista van las respuestas que eligen qué
-plantilla; después, las que sólo modifican la elegida.**
+**Implementado**: las seis preguntas van antes de la lista, decisión del usuario.
+La versión cerrada de esta spec partía el bloque en 4 + 2, con tiempo y
+limitaciones detrás de la lista, porque sólo las cuatro primeras eligen
+plantilla. Se movieron delante por una razón concreta: el detalle de una
+candidata enseña sus ejercicios, y sin tiempo ni limitaciones contestados esos
+ejercicios no son los definitivos — la lista prometería una cosa y el preview
+entregaría otra.
+
+La tabla sigue valiendo para entender qué hace cada respuesta: **las cuatro
+primeras eligen qué plantilla; las dos últimas sólo modifican la elegida.**
 
 | Respuesta | Qué hace | Dónde |
 |---|---|---|
@@ -71,16 +86,21 @@ Los pasos actuales del modo `auto`:
 
 ```
 step 0  StepLevel        → se conserva (pregunta 1)
-step 1  StepDiscipline   → se fusiona con StepGoal en la pregunta de identidad
+step 1  StepDiscipline   ┐ fusionados en StepIdentity, la pregunta 2
+step 4  StepGoal         ┘ ("¿Qué buscas?", 4 tarjetas)
 step 2  StepDays         → se conserva (pregunta 3)
-step 3  StepTime         → se MUEVE detrás de la pantalla de propuestas
-step 4  StepGoal         → se fusiona con StepDiscipline
 step 5  StepEquipment    → se conserva (pregunta 4)
-step 6  StepLimitations  → se MUEVE detrás de la pantalla de propuestas
-step 7  StepDistrib      → SE ELIMINA, y con él `recommendDistribution`,
+step 3  StepTime         → se conserva (pregunta 5)
+step 6  StepLimitations  → se conserva (pregunta 6)
+step 7  StepDistrib      → ELIMINADO, y con él `recommendDistribution`,
                            `distAvailable`, `DIST_FOR` y `DIST_IDS`
-step 8  StepProgression  → se conserva, detrás de la elección (sólo avanzados)
+step 8  StepProgression  → se conserva, última pregunta (sólo avanzados)
 ```
+
+El orden ya no se lleva con `step === N`: `stepIds` es la lista de pasos (con
+`'progression'` sólo si el nivel es avanzado) y el router hace `switch` sobre
+ella. `OnboardingStep` recibe una prop nueva, `nextLabel`, porque el último paso
+ya no genera el programa — lleva a la lista.
 
 Componentes reutilizables que ya existen y hay que seguir usando, en
 `mobile/src/components/onboarding/`: `OnboardingStep`, `OptionCard` (soporta
@@ -96,6 +116,14 @@ momento de migrarla.
 están las reglas de fidelidad (radio, espaciado, tipografía y color exactos de
 Figma), el sistema de tokens (`src/theme.js` + `src/themes.js`, tocar sólo
 `formaFit`) y las trampas de React Native ya pisadas.
+
+**Lo que se hizo, y su límite:** esta pantalla **no tiene nodo en Figma** — no
+está en `docs/figma-extraction/pages/`. Las pantallas nuevas (tarjeta de
+propuesta, detalle, aviso de adaptación) se montaron con los tokens de `theme.js`
+y los patrones ya migrados: tarjeta `surface` con `radius/md` y padding `lg`,
+badge en `tint/accent-10` con texto `accent`, avisos en `surface2` y los que
+duelen en `color/orange`. **Eso no es fidelidad a Figma, es coherencia con lo
+migrado**: cuando exista el nodo, hay que revisarla contra él.
 
 ---
 
@@ -168,9 +196,21 @@ tiempo.
 el camino entero: rankea, adapta, guarda y materializa las fases 2..N. Devuelve
 `{ program, sessionTemplates, phases }`.
 
-**Cambio necesario:** hoy la plantilla la elige él (`rankArchetypes(...)[0]`).
-Con la pantalla de propuestas la elige el usuario, así que la acción tiene que
-aceptar un `archetypeId` opcional y usarlo en vez del primero del ranking.
+**Implementado:** la acción acepta un segundo argumento `archetypeId` opcional y
+lo usa en vez del primero del ranking. Sin él se comporta como siempre — el store
+web y `programPhases.test.js` la siguen llamando con un solo argumento.
+
+**Y el guardado va después del preview.** La pantalla no llama a esta acción para
+enseñar el preview: llama a `adaptArchetype` por su cuenta y pinta el resultado en
+memoria. La acción sólo se ejecuta al pulsar EMPEZAR o EDITAR. Si guardara al
+elegir, "ver otro programa" (§5.4) dejaría un programa activo y sus etapas ya
+materializadas en el store cada vez que el usuario cambia de opinión.
+
+Para que el programa previsualizado y el guardado sean el mismo, la normalización
+de respuestas vive ahora en un sitio: `normalizeOnboardingAnswers`, exportada de
+`mobile/store/useStore.js`. Es idempotente — la pantalla la aplica y el store la
+vuelve a aplicar. Antes estaba partida en dos (`bodyweight` en la pantalla,
+`cables` en el store).
 
 ### 3.4 Tiempo
 
@@ -243,7 +283,11 @@ sesiones expandibles con sus ejercicios. Botón **Elegir este programa**.
 5. **Tiempo por sesión** — `StepTime` tal cual (30/45/60/90).
 6. **Limitaciones** — `StepLimitations` tal cual.
 
-Después, sólo para avanzados, `StepProgression` como hasta ahora.
+**Van antes de la lista, no después** (§1): el detalle de una candidata enseña
+sus ejercicios ya resueltos, y sin estas dos contestadas no serían los
+definitivos. Después, sólo para avanzados, `StepProgression` como hasta ahora —
+también antes de la lista, porque no afecta a la elección y dejar una sola
+pregunta suelta detrás partía el bloque sin motivo.
 
 ### 5.4 El preview
 
@@ -261,8 +305,9 @@ de calentamiento. **Le falta consumir lo que el adaptador ya devuelve:**
 
 ## 6. Lo que hay que añadir al dato
 
-`summary` en cada arquetipo de `src/data/archetypes.js`: una frase de carácter
-para la tarjeta. Las 11 plantillas lo necesitan. El tono:
+✅ Hecho: las 11 plantillas de `src/data/archetypes.js` llevan ya su `summary`.
+
+`summary` en cada arquetipo: una frase de carácter para la tarjeta. El tono:
 
 - Upper/Lower: *"Tren superior y tren inferior alternados. Cada básico dos veces
   por semana."*
@@ -295,26 +340,25 @@ Hay que crear:
 - `onboarding.preview.substitutions.*` · `.unresolved` · `.overTime` ·
   `.overBudget`.
 
-Se pueden **borrar** al eliminar el paso de distribución:
-`onboarding.stepDistribution.*`, `onboarding.distributions.*`, y
-`onboarding.disabledReasons.requiresIntermediate` / `.requiresAdvanced` si no
-quedan otros usos.
+**No se borró nada.** `onboarding.stepDistribution.*` y
+`onboarding.distributions.*` las sigue usando el onboarding **web**, y
+`disabledReasons.requiresIntermediate` la usa además la pregunta de identidad.
+La condición "si no quedan otros usos" no se cumple.
 
 ---
 
 ## 8. Verificación
 
-- `npx vitest run` desde la raíz, verde. Los **1107 tests** actuales no deberían
-  moverse: esta fase no toca el motor.
-- `npx eslint mobile/src/screens/OnboardingScreen.jsx` — comparar el número
-  contra HEAD. Hay **2 errores preexistentes** (`useRef` sin usar y un `setState`
-  dentro de un efecto); no añadir más.
-- Test nuevo: el `answers` que produce el flujo nuevo tiene la misma forma que
-  consume `generateAndActivateProgram`, con `distribution` derivada de la
-  plantilla elegida. El `onboardingSnapshot` no puede perder campos — se usa para
-  regenerar.
-- A mano, en dispositivo: los cuatro modos (auto, manual, plantilla propia,
-  importar) y el flujo de conexión con entrenador siguen funcionando.
+- ✅ `npx vitest run` desde la raíz: **1114 verdes** — los 1107 de antes, intactos
+  (esta fase no toca el motor), más los 7 del test nuevo.
+- ✅ `npx eslint mobile/src` sale igual que en HEAD: 197 problemas / 170 errores /
+  27 avisos. En `OnboardingScreen.jsx` siguen los **2 errores preexistentes**
+  (`useRef` sin usar y un `setState` dentro de un efecto) y ninguno más.
+- ✅ Test nuevo: `mobile/store/onboardingAnswers.test.js` — `archetypeId` manda
+  sobre el ranking, `normalizeOnboardingAnswers` es idempotente y no pierde
+  campos, y el `onboardingSnapshot` conserva todas las respuestas incluida la
+  `distribution` de la plantilla elegida.
+**Probar en dispositivo.** Los cuatro modos (auto, manual, plantilla propia, importar) y la conexión con entrenador siguen funcionando; y el camino nuevo entero: elegir una candidata, "ver otro programa", volver de la lista a las preguntas sin perder ninguna respuesta, y EMPEZAR y EDITAR desde el preview — que es donde por fin se guarda el programa.
 
 ---
 
@@ -330,9 +374,14 @@ quedan otros usos.
   `Animated` de React Native core.
 - **El preview usa `estimateSessionSec`, no `sessionStats`**, y es deliberado
   (§3.4). No "arreglarlo".
-- Los ficheros `mobile/package.json`, `mobile/package-lock.json` y
-  `mobile/tsconfig.json` llevan modificaciones sin commitear ajenas a esta tarea.
-  No incluirlos en el commit.
+- **`onboarding.stepDistribution.*` y `onboarding.distributions.*` NO se borran**
+  aunque §7 lo permitiera: el onboarding **web** (`src/components/onboarding/
+  OnboardingView.jsx`) sigue preguntando la distribución y usándolas. Lo mismo
+  con `disabledReasons.requiresIntermediate` / `.requiresAdvanced`, que además
+  las usa la pregunta de identidad. Esta fase toca sólo el onboarding móvil.
+- **El preview se pinta sin haber guardado nada** (§3.3). Si alguien mueve la
+  llamada a `generateAndActivateProgram` a `chooseArchetype`, "ver otro programa"
+  vuelve a crear programas huérfanos.
 
 ---
 

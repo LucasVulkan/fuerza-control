@@ -936,6 +936,49 @@
     "emptySessionsHint": "{{count}} empty sessions will be created. Add exercises to each from the program editor.",
     "createAndEdit": "Create and edit →",
     "stepIndicator": "STEP {{current}} OF {{total}}",
+    "identity": {
+      "title": "What are you after?",
+      "subtitle": "This is what picks the kind of program.",
+      "muscle": {
+        "label": "Build muscle",
+        "description": "General hypertrophy. The most complete and versatile approach."
+      },
+      "strength": {
+        "label": "Get strong",
+        "description": "Squat, deadlift and press at the centre. Heavy sets, long rests."
+      },
+      "glutes_legs": {
+        "label": "Glutes and legs",
+        "description": "Maximum emphasis on glutes, hamstrings and legs."
+      },
+      "calisthenics": {
+        "label": "Calisthenics",
+        "description": "Bodyweight, grip and core. Relative strength and body control."
+      }
+    },
+    "proposals": {
+      "title": "Your programs",
+      "subtitle": "Picked from what you answered. Tap one to see all of it.",
+      "seeProposals": "SEE PROGRAMS",
+      "recommended": "Recommended",
+      "sessionsPerCycle": "{{sessions}} sessions per cycle",
+      "seeAll": "See all {{total}} templates",
+      "seeTop": "See only the recommended ones",
+      "choose": "CHOOSE THIS PROGRAM",
+      "another": "‹ See another program",
+      "phasesTitle": "PHASES",
+      "phaseWeeks": "{{weeks}} weeks",
+      "sessionsTitle": "SESSIONS",
+      "notes": {
+        "needsBarbell": "Built around the barbell. Without one we swap {{exercises}} exercises.",
+        "rotates": "{{sessions}} sessions rotating in a cycle: you train {{days}} days, so you'll see each session more than once.",
+        "slowCycle": "With {{days}} days, the cycle takes more than a week to close.",
+        "levelStretch": "Written for {{level}} level; we adapt the exercises and the volume.",
+        "lowFrequency": "Each muscle group once a week.",
+        "fits": "Fits the equipment you have."
+      }
+    },
+    "generateError": "Could not generate the program. Please try again.",
     "stepLevel": {
       "title": "What's your level?",
       "subtitle": "This determines which exercises and structures will be included in your program."
@@ -991,6 +1034,15 @@
       }
     },
     "preview": {
+      "ready": "✓ PROGRAM READY",
+      "edit": "EDIT",
+      "start": "START →",
+      "exerciseCount": "{{exercises}} exercises",
+      "setCount": "{{sets}} sets",
+      "adaptedTitle": "WHAT WE ADJUSTED",
+      "unresolved": "We could not fill {{slots}} {{group}} slots with your equipment.",
+      "overTime": "Your session {{label}} runs ~{{minutes}} min, over the {{budget}} you asked for.",
+      "overBudget": "{{group}} volume is above what we recommend for your level.",
       "cycleHint": "Your {{sessions}} sessions rotate in a cycle — you train {{days}} days a week.",
       "estimatedMinutes": "~{{minutes}} min",
       "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises.",

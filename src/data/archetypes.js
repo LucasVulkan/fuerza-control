@@ -61,6 +61,7 @@ export const ARCHETYPES = [
   {
     id: 'fullbody_hypertrophy_intermediate',
     name: 'Full Body · Hipertrofia',
+    summary: 'Todo el cuerpo en cada sesión, tres sesiones que rotan. Cada patrón vuelve dos veces por semana.',
     tags: ['full_body', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
     distribution: 'full_body',
@@ -119,6 +120,7 @@ export const ARCHETYPES = [
   {
     id: 'fullbody_hypertrophy_advanced',
     name: 'Full Body · Hipertrofia · Barra libre',
+    summary: 'Full body con los básicos de barra en el centro. Para quien ya tiene la técnica.',
     tags: ['full_body', 'hypertrophy', 'advanced'],
     discipline: 'standard', distribution: 'full_body',
     goal: 'hypertrophy',
@@ -180,6 +182,7 @@ export const ARCHETYPES = [
   {
     id: 'fullbody_hypertrophy_beginner',
     name: 'Full Body · Hipertrofia · Iniciación',
+    summary: 'Todo el cuerpo en cada sesión, con movimientos guiados y fáciles de aprender.',
     tags: ['full_body', 'hypertrophy', 'beginner'],
     discipline: 'standard',
     distribution: 'full_body',
@@ -239,6 +242,7 @@ export const ARCHETYPES = [
   {
     id: 'upperlower_hypertrophy_intermediate',
     name: 'Upper/Lower · Hipertrofia',
+    summary: 'Tren superior y tren inferior alternados. Cada básico dos veces por semana.',
     tags: ['upper_lower', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
     distribution: 'upper_lower',
@@ -311,6 +315,7 @@ export const ARCHETYPES = [
   {
     id: 'upperlower_hypertrophy_advanced',
     name: 'Upper/Lower · Hipertrofia · Barra libre',
+    summary: 'Superior e inferior alternados, con barra libre en los principales.',
     tags: ['upper_lower', 'hypertrophy', 'advanced'],
     discipline: 'standard',
     distribution: 'upper_lower',
@@ -406,6 +411,7 @@ export const ARCHETYPES = [
   {
     id: 'fullbody2_hypertrophy_intermediate',
     name: 'Full Body · 2 días',
+    summary: 'Todo el cuerpo en cada sesión. Para quien entrena dos veces por semana.',
     tags: ['full_body', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
     distribution: 'full_body',
@@ -472,6 +478,7 @@ export const ARCHETYPES = [
   {
     id: 'ppl3_hypertrophy_intermediate',
     name: 'Push / Pull / Legs · 3 días',
+    summary: 'Empuje, tracción y pierna, cada uno una vez por semana.',
     tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
     distribution: 'push_pull_legs',
@@ -552,6 +559,7 @@ export const ARCHETYPES = [
   {
     id: 'ppl6_hypertrophy_intermediate',
     name: 'Push / Pull / Legs · Hipertrofia',
+    summary: 'Empuje, tracción y pierna, cada uno dos veces por semana.',
     tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
     distribution: 'push_pull_legs',
@@ -647,6 +655,7 @@ export const ARCHETYPES = [
   {
     id: 'fullbody_strength_advanced',
     name: 'Full Body · Fuerza',
+    summary: 'Sentadilla, banca, peso muerto y press militar. Series pesadas y descansos largos.',
     tags: ['full_body', 'strength', 'advanced'],
     discipline: 'strength',
     distribution: 'full_body',
@@ -705,6 +714,7 @@ export const ARCHETYPES = [
   {
     id: 'glutes_hypertrophy_intermediate',
     name: 'Glúteo Prioritario · Hipertrofia',
+    summary: 'Glúteo e isquios en el centro de las tres sesiones, con pierna anterior de apoyo.',
     tags: ['glutes_focus', 'hypertrophy', 'intermediate'],
     discipline: 'glutes_legs', distribution: 'full_body',
     goal: 'hypertrophy',
@@ -767,6 +777,7 @@ export const ARCHETYPES = [
   {
     id: 'calisthenics_functional_intermediate',
     name: 'Calistenia · Funcional',
+    summary: 'Peso corporal, core y agarre. Fuerza relativa y control del cuerpo.',
     tags: ['functional', 'endurance', 'intermediate'],
     discipline: 'calisthenics', distribution: 'full_body',
     goal: 'endurance',

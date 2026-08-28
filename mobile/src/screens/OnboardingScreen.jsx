@@ -1,10 +1,16 @@
 /**
- * OnboardingScreen — port fiel del original web (OnboardingView.jsx).
+ * OnboardingScreen.
  *
- * 3 modos:
- *   null    → selector (Auto / Manual / Importar)
- *   'auto'  → wizard 7-8 pasos
- *   'manual'→ nombre + nº de sesiones
+ * 4 modos:
+ *   null              → selector (Auto / Manual / Importar / Plantilla / Entrenador)
+ *   'auto'            → preguntas → propuestas → preview  (onboarding-proposals.md)
+ *   'manual'          → nombre + nº de sesiones
+ *   'template_picker' → clonar una plantilla propia
+ *
+ * El modo 'auto' tiene tres fases (`autoPhase`): las preguntas, la lista de
+ * plantillas candidatas (con su detalle) y el preview del programa elegido.
+ * Nada se guarda hasta que el usuario confirma en el preview — por eso "ver otro
+ * programa" no deja programas huérfanos detrás.
  *
  * Se reutiliza como pantalla de "nuevo programa" desde dentro de la app
  * pasando el parámetro de navegación: { fromApp: true }.
@@ -23,8 +29,10 @@ import { useTranslation } from 'react-i18next';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { useStore } from '../../store/useStore';
+import { useStore, normalizeOnboardingAnswers } from '../../store/useStore';
 import { estimateSessionSec, includesWarmup } from '../../../src/utils/sessionCompression';
+import { rankArchetypes } from '../../../src/data/archetypes';
+import { adaptArchetype } from '../../../src/utils/archetypeAdapter';
 import ImportModal from '../components/ImportModal';
 import ClientCodeModal from '../components/ClientCodeModal';
 import OnboardingProgress from '../components/onboarding/OnboardingProgress';
@@ -37,50 +45,36 @@ import { resolveColor } from '../themes';
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
 const LEVEL_IDS = ['beginner', 'intermediate', 'advanced'];
-const DISC_IDS  = ['standard', 'calisthenics', 'glutes_legs', 'strength'];
-const DIST_IDS  = ['full_body', 'upper_lower', 'push_pull_legs'];
-const GOAL_IDS  = ['hypertrophy', 'endurance', 'strength', 'max_strength'];
 const EQUIP_IDS = ['bodyweight', 'machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
 const LIMIT_IDS = ['none', 'shoulder', 'lower_back', 'knee'];
 const PROG_IDS  = ['double_progression', 'linear', 'reps_progression'];
+
+// §5.1: disciplina y objetivo se preguntan juntos. Son dos campos del motor pero
+// una sola decisión del usuario, y separarlos obligaba a explicar la diferencia.
+// `max_strength` ya no es opción: lo trae la plantilla si lo usa.
+const IDENTITY_OPTIONS = [
+  { id: 'muscle',       discipline: 'standard',     goal: 'hypertrophy' },
+  { id: 'strength',     discipline: 'strength',     goal: 'strength'    },
+  { id: 'glutes_legs',  discipline: 'glutes_legs',  goal: 'hypertrophy' },
+  { id: 'calisthenics', discipline: 'calisthenics', goal: 'endurance'   },
+];
 
 // IDs exclusivos por campo: seleccionarlos limpia el resto y viceversa
 // (limitations: 'none' = sin limitaciones; equipment: 'bodyweight' = solo peso corporal).
 const EXCLUSIVE_IDS = { limitations: 'none', equipment: 'bodyweight' };
 
 const LEVEL_ORDER    = { beginner: 0, intermediate: 1, advanced: 2 };
-// La distribucion NO se bloquea por nivel (program-templates.md §2.14): repartir
-// los dias en full body, U/L o PPL es organización, no dificultad. Lo que sí
-// cambia con el nivel es el volumen (VOLUME_BANDS), la selección de ejercicios
-// (fitsLevel) y los objetivos de fuerza (GOAL_MIN_LEVEL).
-const DIST_FOR       = {
-  full_body:      ['standard', 'calisthenics', 'glutes_legs', 'strength'],
-  upper_lower:    ['standard', 'calisthenics', 'strength'],
-  push_pull_legs: ['standard', 'calisthenics', 'strength'],
-};
 const GOAL_MIN_LEVEL = { hypertrophy: 'beginner', endurance: 'beginner', strength: 'intermediate', max_strength: 'advanced' };
 
 function goalAvailable(goalId, level) {
   return LEVEL_ORDER[level] >= LEVEL_ORDER[GOAL_MIN_LEVEL[goalId]];
 }
 
-function distAvailable(distId, discipline) {
-  return DIST_FOR[distId].includes(discipline);
-}
+// La distribución (full body / U/L / PPL) ya no se pregunta: es una propiedad de
+// la plantilla que el usuario elige en la pantalla de propuestas. Se sigue
+// guardando en el snapshot, tomada de la plantilla elegida (§9).
 
-// Distribución recomendada según los días disponibles, filtrada solo por
-// disciplina. El nivel ya NO interviene: un principiante puede hacer PPL: lo que
-// le distingue es cuánto volumen y qué ejercicios, no cómo reparte los días.
-function recommendDistribution({ daysPerWeek: d, discipline }) {
-  let preferred;
-  if (d <= 2)       preferred = 'full_body';
-  else if (d === 3) preferred = 'push_pull_legs';
-  else if (d === 4) preferred = 'upper_lower';
-  else if (d <= 6)  preferred = 'push_pull_legs';
-  else              preferred = 'push_pull_legs'; // 7 días — con hint de descanso activo
-  const ordered = [preferred, ...DIST_IDS.filter((id) => id !== preferred)];
-  return ordered.find((id) => distAvailable(id, discipline)) ?? 'full_body';
-}
+const totalWeeksOf = (phases) => (phases ?? []).reduce((n, p) => n + (p.durationWeeks ?? 0), 0);
 
 // ─── Import helper ────────────────────────────────────────────────────────────
 
@@ -139,6 +133,207 @@ function ModeCard({ icon, title, desc, onPress, accent = false }) {
   );
 }
 
+// ─── Piezas compartidas por propuestas, detalle y preview ─────────────────────
+
+/** Sesiones distintas del ciclo, en orden de aparición. */
+function uniqueSessionTemplates(program, templates) {
+  const days = program.stages?.length > 0 ? (program.stages[0].days ?? []) : (program.days ?? []);
+  const seen = new Set();
+  const out  = [];
+  for (const day of days) {
+    if (seen.has(day.sessionTemplateId)) continue;
+    seen.add(day.sessionTemplateId);
+    const tpl = templates[day.sessionTemplateId];
+    if (tpl) out.push(tpl);
+  }
+  return out;
+}
+
+function exerciseName(allEx, id, language) {
+  const def = allEx[id];
+  if (!def) return id;
+  return language === 'en' ? (def.nameEn ?? def.name) : def.name;
+}
+
+/** `N semanas · M fases · S sesiones por ciclo` — la portada de cada tarjeta (§5.2). */
+function proposalMeta(t, entry) {
+  const phases = entry.archetype.phases ?? [];
+  const weeks  = totalWeeksOf(phases);
+  const parts  = [];
+  if (weeks > 0) {
+    parts.push(t('onboarding.preview.weeksAndPhases', {
+      weeks, phases: phases.length, defaultValue: `${weeks} semanas · ${phases.length} fases`,
+    }));
+  }
+  parts.push(t('onboarding.proposals.sessionsPerCycle', {
+    sessions: entry.sessionsPerCycle,
+    defaultValue: `${entry.sessionsPerCycle} sesiones por ciclo`,
+  }));
+  return parts.join(' · ');
+}
+
+// Orden de la tabla de §3.1. `rotates` y `slowCycle` son excluyentes entre sí,
+// así que en la práctica sólo compiten la barra y el resto.
+const NOTE_ORDER = ['needsBarbell', 'rotates', 'slowCycle', 'levelStretch', 'lowFrequency'];
+
+/** El aviso honesto de la tarjeta. Sin ninguna nota, encaja y se dice. */
+function proposalNote(t, entry, daysPerWeek) {
+  const note = NOTE_ORDER.find((n) => entry.notes.includes(n));
+  if (!note) return t('onboarding.proposals.notes.fits', 'Encaja con tu material.');
+  return t(`onboarding.proposals.notes.${note}`, {
+    exercises: entry.adaptationCost,
+    sessions:  entry.sessionsPerCycle,
+    days:      daysPerWeek,
+    level:     t(`onboarding.levels.${entry.archetype.level}.label`, entry.archetype.level),
+    defaultValue: '',
+  });
+}
+
+/** Una sesión del ciclo, plegable, con sus ejercicios. */
+function SessionRow({ tpl, index, allEx, exName, expanded, onToggle, countsWarmup }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const accent = resolveColor(th, tpl.color ?? 'var(--day1)');
+  // Duración estimada con el MISMO criterio que el recorte (program-templates.md
+  // §5.3.1): por debajo de 60 min pedidos no se cuenta el calentamiento general,
+  // así que aquí no se usa `sessionStats` — daría un número que contradice al
+  // presupuesto que acaba de aplicarse.
+  const minutes = Math.round(
+    estimateSessionSec(tpl.exercises ?? [], allEx, { includeWarmup: countsWarmup }) / 60,
+  );
+
+  return (
+    <TouchableOpacity
+      style={[styles.previewSession, { borderLeftColor: accent }]}
+      onPress={onToggle}
+      activeOpacity={0.75}
+    >
+      <Text style={[styles.previewSessionLabel, { color: accent }]}>
+        {tpl.label ?? String.fromCharCode(65 + index)}
+      </Text>
+      <View style={styles.previewSessionInfo}>
+        <View style={styles.previewSessionHeader}>
+          <Text style={styles.previewSessionName}>{tpl.name}</Text>
+          <Text style={styles.previewChevron}>{expanded ? '▲' : '▼'}</Text>
+        </View>
+        <Text style={styles.previewSessionMeta}>
+          {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
+          {t('onboarding.preview.exerciseCount', {
+            exercises: (tpl.exercises ?? []).length,
+            defaultValue: `${(tpl.exercises ?? []).length} ejercicios`,
+          })}
+          {` · ${t('onboarding.preview.estimatedMinutes', { minutes, defaultValue: `~${minutes} min` })}`}
+        </Text>
+        {expanded && (
+          <View style={styles.previewExList}>
+            {(tpl.exercises ?? []).map((exCfg, idx) => (
+              <View key={idx} style={styles.previewExItem}>
+                <Text style={styles.previewExOrder}>{exCfg.order ?? idx + 1}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewExName}>{exName(exCfg.exerciseId)}</Text>
+                  <Text style={styles.previewExMeta}>
+                    {t('onboarding.preview.setCount', {
+                      sets: exCfg.sets,
+                      defaultValue: `${exCfg.sets} series`,
+                    })}
+                    {exCfg.minReps && exCfg.maxReps ? ` · ${exCfg.minReps}–${exCfg.maxReps} reps` : ''}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/**
+ * §5.4 — lo que el adaptador tuvo que hacer para que la plantilla te encaje.
+ *
+ * `adaptArchetype` devuelve estos cuatro campos desde las fases 1-3 y hasta
+ * ahora no los leía nadie: el programa llegaba con ejercicios sustituidos, con
+ * huecos sin cubrir o pasado de tiempo, y no se decía. Enseñarlo es la promesa
+ * de la feature, no un extra.
+ */
+function AdaptationNotice({
+  substitutions, unresolved, overTime, overBudget,
+  sessionMinutes, templates, allEx, language, countsWarmup,
+}) {
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+
+  // El mismo hueco se resuelve igual en varias sesiones: decirlo una vez.
+  const subs = [];
+  const seenSub = new Set();
+  for (const s of substitutions ?? []) {
+    const key = `${s.slotExerciseId}→${s.resolvedExerciseId}`;
+    if (seenSub.has(key)) continue;
+    seenSub.add(key);
+    subs.push(s);
+  }
+
+  const gaps = {};
+  for (const u of unresolved ?? []) gaps[u.primaryGroup] = (gaps[u.primaryGroup] ?? 0) + 1;
+
+  const late = (overTime ?? []).map((label) => {
+    const tpl = Object.values(templates).find((x) => x.label === label);
+    const minutes = tpl
+      ? Math.round(estimateSessionSec(tpl.exercises ?? [], allEx, { includeWarmup: countsWarmup }) / 60)
+      : 0;
+    return { label, minutes };
+  });
+
+  const budget = overBudget ?? [];
+
+  if (!subs.length && !Object.keys(gaps).length && !late.length && !budget.length) return null;
+
+  const group = (g) => t(`exerciseSelector.groups.${g}`, g);
+
+  return (
+    <View style={styles.noticeCard}>
+      <Text style={styles.noticeTitle}>
+        {t('onboarding.preview.adaptedTitle', 'LO QUE HEMOS AJUSTADO')}
+      </Text>
+
+      {subs.map((s, i) => (
+        <Text key={`s${i}`} style={styles.noticeItem}>
+          {`${exerciseName(allEx, s.slotExerciseId, language)} → ${exerciseName(allEx, s.resolvedExerciseId, language)}`}
+        </Text>
+      ))}
+
+      {Object.entries(gaps).map(([g, n]) => (
+        <Text key={`u${g}`} style={styles.noticeWarn}>
+          {t('onboarding.preview.unresolved', {
+            slots: n,
+            group: group(g),
+            defaultValue: `No hemos podido cubrir ${n} huecos de ${group(g)} con tu material.`,
+          })}
+        </Text>
+      ))}
+
+      {late.map(({ label, minutes }) => (
+        <Text key={`o${label}`} style={styles.noticeWarn}>
+          {t('onboarding.preview.overTime', {
+            label, minutes, budget: sessionMinutes,
+            defaultValue: `Tu sesión ${label} dura ~${minutes} min, más de los ${sessionMinutes} que pediste.`,
+          })}
+        </Text>
+      ))}
+
+      {budget.map((g) => (
+        <Text key={`b${g}`} style={styles.noticeWarn}>
+          {t('onboarding.preview.overBudget', {
+            group: group(g),
+            defaultValue: `Volumen de ${group(g)} por encima de lo recomendado para tu nivel.`,
+          })}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
@@ -179,7 +374,6 @@ export default function OnboardingScreen() {
   const [templateProgramName, setTemplateProgramName] = useState('');
   const [loading,          setLoading]         = useState(false);
   const [importState,      setImportState]     = useState(null);
-  const [generatedProgram, setGeneratedProgram]= useState(null); // { program, sessionTemplates }
   const [expandedSessions, setExpandedSessions]= useState(new Set());
   const [manualSessions,   setManualSessions]  = useState(3);
   const [manualName,       setManualName]      = useState('');
@@ -208,8 +402,21 @@ export default function OnboardingScreen() {
     progressionModel: 'double_progression',
   });
 
-  // B1: nivel → disciplina → días → tiempo → objetivo → equipo → limitaciones → distribución (+ progresión si advanced)
-  const totalSteps = answers.level === 'advanced' ? 9 : 8;
+  // Fase del modo auto: preguntas → propuestas (con su detalle) → preview.
+  const [autoPhase,  setAutoPhase]  = useState('questions');
+  const [showAll,    setShowAll]    = useState(false);   // "ver todas" en propuestas
+  const [detailId,   setDetailId]   = useState(null);    // arquetipo abierto en detalle
+  const [chosen,     setChosen]     = useState(null);    // { archetypeId, adapted }
+
+  // Nivel → identidad → días → material eligen la plantilla; tiempo y
+  // limitaciones sólo ajustan la elegida. Se preguntan todas antes de la lista
+  // para que el detalle de cada candidata enseñe los ejercicios definitivos.
+  const stepIds = answers.level === 'advanced'
+    ? ['level', 'identity', 'days', 'equipment', 'time', 'limitations', 'progression']
+    : ['level', 'identity', 'days', 'equipment', 'time', 'limitations'];
+  const totalSteps  = stepIds.length;
+  // Bajar de avanzado a intermedio acorta la lista con el paso ya pasado.
+  const currentStep = stepIds[Math.min(step, totalSteps - 1)];
 
   function set_(field, value) {
     setAnswers((a) => ({ ...a, [field]: value }));
@@ -227,6 +434,24 @@ export default function OnboardingScreen() {
       };
     });
   }
+
+  // Las respuestas tal y como las consume el motor. La misma normalización que
+  // aplica el store, para que la plantilla que se previsualiza sea la que se
+  // guarda.
+  const submitAnswers = useMemo(() => normalizeOnboardingAnswers(answers), [answers]);
+
+  // §3.1: el ranking nunca devuelve vacío y nunca oculta nada — el material
+  // ordena, no filtra.
+  const ranked = useMemo(
+    () => (autoPhase === 'questions' ? [] : rankArchetypes(submitAnswers)),
+    [autoPhase, submitAnswers],
+  );
+
+  const detailEntry = detailId ? ranked.find((r) => r.archetype.id === detailId) : null;
+  const detailAdapted = useMemo(
+    () => (detailEntry ? adaptArchetype(detailEntry.archetype, submitAnswers) : null),
+    [detailEntry, submitAnswers],
+  );
 
   function finish() {
     // If the user was connected to a trainer, disconnect now that they have
@@ -256,26 +481,40 @@ export default function OnboardingScreen() {
     });
   }
 
-  async function handleFinish() {
+  // Elegir una plantilla NO guarda nada: adapta en memoria y enseña el preview.
+  // El programa sólo se crea cuando el usuario confirma, para que "ver otro
+  // programa" no vaya dejando programas a medias en el store.
+  function chooseArchetype(entry, adapted) {
+    setChosen({ archetypeId: entry.archetype.id, adapted });
+    setExpandedSessions(new Set());
+    setDetailId(null);
+    setAutoPhase('preview');
+  }
+
+  function backToProposals() {
+    setChosen(null);
+    setDetailId(null);
+    setExpandedSessions(new Set());
+    setAutoPhase('proposals');
+  }
+
+  async function persistChosen() {
+    const entry = ranked.find((r) => r.archetype.id === chosen.archetypeId);
+    // §9: `distribution` ya no se pregunta, pero el snapshot la sigue llevando —
+    // se toma de la plantilla elegida.
+    const finalAnswers = { ...submitAnswers, distribution: entry?.archetype.distribution ?? 'full_body' };
+    return generateAndActivateProgram(finalAnswers, chosen.archetypeId);
+  }
+
+  // `after` corre con el programa ya guardado y activo.
+  async function confirmProgram(after) {
     setLoading(true);
     try {
-      // A5: 'bodyweight' es un id de UI, no de equipo real — se traduce a
-      // equipment: [] (exerciseFitsEquipment ya trata [] como "solo peso corporal").
-      const submitAnswers = answers.equipment.includes('bodyweight')
-        ? { ...answers, equipment: [] }
-        : answers;
-      const result = await generateAndActivateProgram(submitAnswers);
-      if (fromApp) {
-        // Desde dentro de la app: volver atrás sin mostrar preview
-        navigation.goBack();
-      } else {
-        // Primera vez: mostrar preview del programa generado
-        setGeneratedProgram(result);
-        setLoading(false);
-      }
+      await persistChosen();
+      after();
     } catch (err) {
       console.error('Error generando programa:', err);
-      Alert.alert('Error', 'No se pudo generar el programa. Inténtalo de nuevo.');
+      Alert.alert(t('common.error', 'Error'), t('onboarding.generateError', 'No se pudo generar el programa. Inténtalo de nuevo.'));
       setLoading(false);
     }
   }
@@ -330,67 +569,70 @@ export default function OnboardingScreen() {
   }
 
   function nextStep() {
-    if (step === totalSteps - 1) { handleFinish(); return; }
+    if (step >= totalSteps - 1) { setAutoPhase('proposals'); return; }
     setStep((s) => s + 1);
   }
   function prevStep() { setStep((s) => Math.max(0, s - 1)); }
 
-  // ── Preview del programa generado ────────────────────────────────────────────
-  if (generatedProgram) {
-    const { program, sessionTemplates: generatedTemplates } = generatedProgram;
-    const days = program.stages?.length > 0
-      ? program.stages[0].days
-      : program.days ?? [];
+  // §4.6: volver atrás no pierde las respuestas — `answers` no se toca.
+  function backToQuestions() {
+    setShowAll(false);
+    setDetailId(null);
+    setStep(totalSteps - 1);
+    setAutoPhase('questions');
+  }
 
-    // Sesiones únicas en orden de aparición
-    const uniqueTemplates = [];
-    const seen = new Set();
-    for (const day of days) {
-      const tid = day.sessionTemplateId;
-      if (!seen.has(tid)) {
-        seen.add(tid);
-        const tpl = generatedTemplates[tid];
-        if (tpl) uniqueTemplates.push(tpl);
-      }
-    }
-
-    // 0 si alguna etapa es "sin límite": entonces el programa no tiene final y
-    // no hay total que enseñar.
-    const stages = program.stages ?? [];
-    const totalWeeks = stages.every((s) => s.durationWeeks > 0)
-      ? stages.reduce((n, s) => n + s.durationWeeks, 0)
-      : 0;
-
-    const countsWarmup = includesWarmup(answers.sessionMinutes);
-    const estimatedMinutes = (tpl) => Math.round(
-      estimateSessionSec(tpl.exercises ?? [], { ...exerciseLibrary, ...customExercises },
-        { includeWarmup: countsWarmup }) / 60,
+  // ── Loading ──────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <View style={[styles.loadingScreen, { paddingTop: insets.top }]}>
+        <Text style={styles.loadingTitle}>{t('onboarding.generating', 'GENERANDO...')}</Text>
+        <ActivityIndicator color={th.colors.accent} size="large" style={{ marginTop: spacing.lg }} />
+        <Text style={styles.loadingDesc}>{t('onboarding.buildingPlan', 'Construyendo tu plan...')}</Text>
+      </View>
     );
+  }
+
+  // ── Preview del programa elegido ─────────────────────────────────────────────
+  // Todavía sin guardar: se pinta del `adaptArchetype` que hizo `chooseArchetype`.
+  if (mode === 'auto' && autoPhase === 'preview' && chosen) {
+    const {
+      program, sessionTemplates: chosenTemplates, phases,
+      substitutions, unresolved, overTime, overBudget,
+    } = chosen.adapted;
+    const totalWeeks      = totalWeeksOf(phases);
+    const uniqueTemplates = uniqueSessionTemplates(program, chosenTemplates);
+    const countsWarmup    = includesWarmup(answers.sessionMinutes);
+    const allEx           = { ...exerciseLibrary, ...customExercises };
+    const exName          = (id) => exerciseName(allEx, id, language);
 
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* Header */}
         <View style={styles.previewHeader}>
           <BrandTag />
-          <Text style={styles.previewReady}>✓ PROGRAMA LISTO</Text>
+          <Text style={styles.previewReady}>{t('onboarding.preview.ready', '✓ PROGRAMA LISTO')}</Text>
           <Text style={styles.previewTitle}>{program.name}</Text>
           <Text style={styles.previewMeta}>
             {/* La duración va en portada: es lo que convierte esto en un
-                programa y no en una lista de ejercicios (§6). */}
+                programa y no en una lista de ejercicios (§4.5). */}
             {totalWeeks > 0 && `${t('onboarding.preview.weeksAndPhases', {
               weeks: totalWeeks,
-              phases: program.stages.length,
-              defaultValue: `${totalWeeks} semanas · ${program.stages.length} fases`,
+              phases: phases.length,
+              defaultValue: `${totalWeeks} semanas · ${phases.length} fases`,
             })} · `}
-            {days.length} sesiones por ciclo
+            {t('onboarding.proposals.sessionsPerCycle', {
+              sessions: uniqueTemplates.length,
+              defaultValue: `${uniqueTemplates.length} sesiones por ciclo`,
+            })}
           </Text>
           {/* B4: hint de ciclo cuando la frecuencia pedida supera las sesiones generadas */}
-          {answers.daysPerWeek > days.length && (
+          {answers.daysPerWeek > uniqueTemplates.length && (
             <Text style={styles.previewCycleHint}>
               {t('onboarding.preview.cycleHint', {
-                sessions: days.length,
+                sessions: uniqueTemplates.length,
                 days: answers.daysPerWeek,
-                defaultValue: `Tus ${days.length} sesiones rotan en ciclo — entrenas ${answers.daysPerWeek} días a la semana.`,
+                defaultValue: `Tus ${uniqueTemplates.length} sesiones rotan en ciclo — entrenas ${answers.daysPerWeek} días a la semana.`,
               })}
             </Text>
           )}
@@ -405,93 +647,184 @@ export default function OnboardingScreen() {
           )}
         </View>
 
-        {/* Sesiones expandibles */}
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
-          {uniqueTemplates.map((tpl, i) => {
-            const accent     = resolveColor(th, tpl.color ?? 'var(--day1)');
-            const isExpanded = expandedSessions.has(tpl.id);
-            const allEx      = { ...exerciseLibrary, ...customExercises };
-            return (
-              <TouchableOpacity
-                key={tpl.id}
-                style={[styles.previewSession, { borderLeftColor: accent }]}
-                onPress={() => toggleSession(tpl.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.previewSessionLabel, { color: accent }]}>
-                  {tpl.label ?? String.fromCharCode(65 + i)}
-                </Text>
-                <View style={styles.previewSessionInfo}>
-                  <View style={styles.previewSessionHeader}>
-                    <Text style={styles.previewSessionName}>{tpl.name}</Text>
-                    <Text style={styles.previewChevron}>{isExpanded ? '▲' : '▼'}</Text>
-                  </View>
-                  <Text style={styles.previewSessionMeta}>
-                    {tpl.emphasis ? `${tpl.emphasis} · ` : ''}
-                    {(tpl.exercises ?? []).length} ejercicios
-                    {/* Duración estimada con el MISMO criterio que el recorte
-                        (program-templates.md §5.3.1): por debajo de 60 min
-                        pedidos no se cuenta el calentamiento general, así que
-                        aquí no se usa `sessionStats` — daría un número que
-                        contradice al presupuesto que acaba de aplicarse. */}
-                    {` · ${t('onboarding.preview.estimatedMinutes', {
-                      minutes: estimatedMinutes(tpl),
-                      defaultValue: `~${estimatedMinutes(tpl)} min`,
-                    })}`}
-                  </Text>
-                  {isExpanded && (
-                    <View style={styles.previewExList}>
-                      {(tpl.exercises ?? []).map((exCfg, idx) => {
-                        const def  = allEx[exCfg.exerciseId];
-                        const name = def
-                          ? (language === 'en' ? (def.nameEn ?? def.name) : def.name)
-                          : exCfg.exerciseId;
-                        return (
-                          <View key={idx} style={styles.previewExItem}>
-                            <Text style={styles.previewExOrder}>{exCfg.order ?? idx + 1}</Text>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.previewExName}>{name}</Text>
-                              <Text style={styles.previewExMeta}>
-                                {exCfg.sets} series
-                                {exCfg.minReps && exCfg.maxReps
-                                  ? ` · ${exCfg.minReps}–${exCfg.maxReps} reps`
-                                  : ''}
-                              </Text>
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {/* §5.4: lo que el adaptador tuvo que hacer para que el programa te
+              encaje. Hasta ahora pasaba en silencio. */}
+          <AdaptationNotice
+            substitutions={substitutions}
+            unresolved={unresolved}
+            overTime={overTime}
+            overBudget={overBudget}
+            sessionMinutes={answers.sessionMinutes}
+            templates={chosenTemplates}
+            allEx={allEx}
+            language={language}
+            countsWarmup={countsWarmup}
+          />
+
+          {uniqueTemplates.map((tpl, i) => (
+            <SessionRow
+              key={tpl.id}
+              tpl={tpl}
+              index={i}
+              allEx={allEx}
+              exName={exName}
+              expanded={expandedSessions.has(tpl.id)}
+              onToggle={() => toggleSession(tpl.id)}
+              countsWarmup={countsWarmup}
+            />
+          ))}
+
+          <TouchableOpacity onPress={backToProposals} activeOpacity={0.75} style={styles.linkBtn}>
+            <Text style={styles.linkBtnText}>
+              {t('onboarding.proposals.another', '‹ Ver otro programa')}
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
 
-        {/* Footer — Editar + Empezar */}
+        {/* Footer — Editar + Empezar. Aquí es donde el programa se guarda. */}
         <View style={styles.previewFooter}>
-          <TouchableOpacity style={styles.editBtn} onPress={handleEditProgram} activeOpacity={0.85}>
-            <Text style={styles.editBtnText}>EDITAR</Text>
+          <TouchableOpacity style={styles.editBtn} onPress={() => confirmProgram(handleEditProgram)} activeOpacity={0.85}>
+            <Text style={styles.editBtnText}>{t('onboarding.preview.edit', 'EDITAR')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.startBtn} onPress={finish} activeOpacity={0.85}>
-            <Text style={styles.startBtnText}>EMPEZAR →</Text>
+          <TouchableOpacity style={styles.startBtn} onPress={() => confirmProgram(finish)} activeOpacity={0.85}>
+            <Text style={styles.startBtnText}>{t('onboarding.preview.start', 'EMPEZAR →')}</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
-  if (loading) {
+  // ── Detalle de una candidata ─────────────────────────────────────────────────
+  if (mode === 'auto' && autoPhase === 'proposals' && detailEntry) {
+    const { archetype } = detailEntry;
+    const { program, sessionTemplates: detailTemplates, phases } = detailAdapted;
+    const uniqueTemplates = uniqueSessionTemplates(program, detailTemplates);
+    const countsWarmup    = includesWarmup(answers.sessionMinutes);
+    const allEx           = { ...exerciseLibrary, ...customExercises };
+    const exName          = (id) => exerciseName(allEx, id, language);
+
     return (
-      <View style={[styles.loadingScreen, { paddingTop: insets.top }]}>
-        <Text style={styles.loadingTitle}>{t('onboarding.generating', 'GENERANDO...')}</Text>
-        <ActivityIndicator color={th.colors.accent} size="large" style={{ marginTop: spacing.lg }} />
-        <Text style={styles.loadingDesc}>{t('onboarding.buildingPlan', 'Construyendo tu plan...')}</Text>
+      <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.previewHeader}>
+          <Text style={styles.previewTitle}>{archetype.name}</Text>
+          <Text style={styles.previewMeta}>{proposalMeta(t, detailEntry)}</Text>
+          {archetype.summary ? <Text style={styles.proposalSummary}>{archetype.summary}</Text> : null}
+        </View>
+
+        <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
+          {/* Las fases: lo que distingue un programa de una lista de ejercicios */}
+          <Text style={styles.sectionLabel}>{t('onboarding.proposals.phasesTitle', 'FASES')}</Text>
+          {(phases ?? []).map((ph, i) => (
+            <View key={i} style={styles.phaseRow}>
+              <Text style={styles.phaseIndex}>{i + 1}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.phaseName}>{ph.name}</Text>
+                <Text style={styles.phaseMeta}>
+                  {t('onboarding.proposals.phaseWeeks', {
+                    weeks: ph.durationWeeks,
+                    defaultValue: `${ph.durationWeeks} semanas`,
+                  })}
+                </Text>
+              </View>
+            </View>
+          ))}
+
+          <Text style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            {t('onboarding.proposals.sessionsTitle', 'SESIONES')}
+          </Text>
+          {uniqueTemplates.map((tpl, i) => (
+            <SessionRow
+              key={tpl.id}
+              tpl={tpl}
+              index={i}
+              allEx={allEx}
+              exName={exName}
+              expanded={expandedSessions.has(tpl.id)}
+              onToggle={() => toggleSession(tpl.id)}
+              countsWarmup={countsWarmup}
+            />
+          ))}
+        </ScrollView>
+
+        <View style={styles.previewFooter}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setDetailId(null)} activeOpacity={0.75}>
+            <Text style={styles.backBtnText}>{t('common.back', 'Atrás')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.startBtn} onPress={() => chooseArchetype(detailEntry, detailAdapted)} activeOpacity={0.85}>
+            <Text style={styles.startBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {t('onboarding.proposals.choose', 'ELEGIR ESTE PROGRAMA')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
+
+  // ── Propuestas ───────────────────────────────────────────────────────────────
+  // §4.2: el material ordena, no filtra. Nada se oculta ni se bloquea aquí.
+  if (mode === 'auto' && autoPhase === 'proposals') {
+    const visible = showAll ? ranked : ranked.slice(0, 3);
+
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.previewHeader}>
+          <BrandTag />
+          <Text style={styles.previewTitle}>{t('onboarding.proposals.title', 'Tus programas')}</Text>
+          <Text style={styles.previewMeta}>
+            {t('onboarding.proposals.subtitle', 'Elegidos por lo que has contestado. Toca uno para verlo entero.')}
+          </Text>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
+          {visible.map((entry, i) => (
+            <TouchableOpacity
+              key={entry.archetype.id}
+              style={styles.proposalCard}
+              onPress={() => { setExpandedSessions(new Set()); setDetailId(entry.archetype.id); }}
+              activeOpacity={0.75}
+            >
+              <View style={styles.proposalHeader}>
+                <Text style={styles.proposalName}>{entry.archetype.name}</Text>
+                {i === 0 && (
+                  <View style={styles.proposalBadge}>
+                    <Text style={styles.proposalBadgeText}>
+                      {t('onboarding.proposals.recommended', 'Recomendado')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.proposalMeta}>{proposalMeta(t, entry)}</Text>
+              {entry.archetype.summary ? (
+                <Text style={styles.proposalSummary}>{entry.archetype.summary}</Text>
+              ) : null}
+              <Text style={styles.proposalNote}>{proposalNote(t, entry, answers.daysPerWeek)}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {ranked.length > 3 && (
+            <TouchableOpacity onPress={() => setShowAll((v) => !v)} activeOpacity={0.75} style={styles.linkBtn}>
+              <Text style={styles.linkBtnText}>
+                {showAll
+                  ? t('onboarding.proposals.seeTop', 'Ver sólo las recomendadas')
+                  : t('onboarding.proposals.seeAll', {
+                    total: ranked.length,
+                    defaultValue: `Ver las ${ranked.length} plantillas`,
+                  })}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+
+        <View style={styles.previewFooter}>
+          <TouchableOpacity style={styles.backBtn} onPress={backToQuestions} activeOpacity={0.75}>
+            <Text style={styles.backBtnText}>{t('common.back', 'Atrás')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
 
   // ── Selector de modo ─────────────────────────────────────────────────────────
   if (mode === null) {
@@ -748,31 +1081,34 @@ export default function OnboardingScreen() {
         </Text>
       </View>
 
-      {/* Pasos — B1: nivel → disciplina → días → tiempo → objetivo → equipo → limitaciones → distribución */}
-      {step === 0 && <StepLevel      answers={answers} set_={set_}        onNext={nextStep} onBack={() => setMode(null)} />}
-      {step === 1 && <StepDiscipline answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 2 && <StepDays       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 3 && <StepTime       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 4 && <StepGoal       answers={answers} set_={set_}        onNext={nextStep} onBack={prevStep} />}
-      {step === 5 && <StepEquipment  answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />}
-      {step === 6 && <StepLimitations answers={answers} toggleMulti={toggleMulti} onNext={nextStep} onBack={prevStep} />}
-      {step === 7 && (
-        <StepDistrib
-          answers={answers} set_={set_}
-          onNext={nextStep} onBack={prevStep}
-          isLast={answers.level !== 'advanced'}
-        />
-      )}
-      {step === 8 && answers.level === 'advanced' && (
-        <StepProgression answers={answers} set_={set_} onNext={nextStep} onBack={prevStep} isLast />
-      )}
+      {/* nivel → identidad → días → material → tiempo → limitaciones (+ progresión si avanzado) */}
+      {(() => {
+        const nav = {
+          onNext: nextStep,
+          onBack: step === 0 ? () => setMode(null) : prevStep,
+          // El último paso no genera: lleva a la lista de propuestas.
+          nextLabel: step === totalSteps - 1
+            ? t('onboarding.proposals.seeProposals', 'VER PROGRAMAS')
+            : undefined,
+        };
+        switch (currentStep) {
+          case 'level':       return <StepLevel       answers={answers} set_={set_} {...nav} />;
+          case 'identity':    return <StepIdentity    answers={answers} setAnswers={setAnswers} {...nav} />;
+          case 'days':        return <StepDays        answers={answers} set_={set_} {...nav} />;
+          case 'equipment':   return <StepEquipment   answers={answers} toggleMulti={toggleMulti} {...nav} />;
+          case 'time':        return <StepTime        answers={answers} set_={set_} {...nav} />;
+          case 'limitations': return <StepLimitations answers={answers} toggleMulti={toggleMulti} {...nav} />;
+          case 'progression': return <StepProgression answers={answers} set_={set_} {...nav} />;
+          default:            return null;
+        }
+      })()}
     </View>
   );
 }
 
 // ─── Pasos individuales ───────────────────────────────────────────────────────
 
-function StepLevel({ answers, set_, onNext, onBack }) {
+function StepLevel({ answers, set_, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
@@ -780,6 +1116,7 @@ function StepLevel({ answers, set_, onNext, onBack }) {
       subtitle={t('onboarding.stepLevel.subtitle', '¿Cuál es tu nivel de experiencia?')}
       onNext={onNext}
       onBack={onBack}
+      nextLabel={nextLabel}
       nextDisabled={!answers.level}
     >
       {LEVEL_IDS.map((id) => (
@@ -796,82 +1133,9 @@ function StepLevel({ answers, set_, onNext, onBack }) {
   );
 }
 
-function StepDiscipline({ answers, set_, onNext, onBack }) {
-  const { t } = useTranslation();
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepDiscipline.title', 'Disciplina')}
-      subtitle={t('onboarding.stepDiscipline.subtitle', '¿Qué tipo de entrenamiento prefieres?')}
-      onNext={onNext}
-      onBack={onBack}
-      nextDisabled={!answers.discipline}
-    >
-      {DISC_IDS.map((id) => (
-        <OptionCard
-          key={id}
-          label={t(`onboarding.disciplines.${id}.label`, id)}
-          description={t(`onboarding.disciplines.${id}.description`, '')}
-          detail={t(`onboarding.disciplines.${id}.detail`, '')}
-          selected={answers.discipline === id}
-          onClick={() => {
-            set_('discipline', id);
-            if (id === 'strength'    && !answers.goal) set_('goal', 'strength');
-            if (id === 'glutes_legs' && !answers.goal) set_('goal', 'hypertrophy');
-            if (id === 'glutes_legs')                  set_('distribution', 'full_body');
-          }}
-        />
-      ))}
-    </OnboardingStep>
-  );
-}
-
-// B2: paso de distribución al FINAL del wizard, con la recomendada primera
-// (según días+nivel+disciplina) y badge "Recomendado".
-function StepDistrib({ answers, set_, onNext, onBack, isLast }) {
-  const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
-  const recommended = recommendDistribution(answers);
-  const orderedIds = [recommended, ...DIST_IDS.filter((id) => id !== recommended)];
-
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepDistribution.title', 'Distribución')}
-      subtitle={t('onboarding.stepDistribution.subtitle', '¿Cómo quieres distribuir los días?')}
-      onNext={onNext}
-      onBack={onBack}
-      nextDisabled={!answers.distribution}
-      isLast={isLast}
-    >
-      {orderedIds.map((id) => {
-        const available = DIST_FOR[id].includes(answers.discipline);
-        const disabledReason = available
-          ? undefined
-          : t('onboarding.disabledReasons.notForDiscipline', { discipline: t(`onboarding.disciplines.${answers.discipline}.label`, answers.discipline), defaultValue: 'No disponible para esta disciplina' });
-        return (
-          <OptionCard
-            key={id}
-            label={t(`onboarding.distributions.${id}.label`, id)}
-            description={t(`onboarding.distributions.${id}.description`, '')}
-            badge={id === recommended ? t('onboarding.stepDistribution.recommended', 'Recomendado') : undefined}
-            selected={answers.distribution === id}
-            disabled={!available}
-            disabledReason={disabledReason}
-            onClick={() => available && set_('distribution', id)}
-          />
-        );
-      })}
-      {answers.daysPerWeek === 7 && (
-        <Text style={styles.hint}>
-          {t('onboarding.stepDistribution.sevenDaysHint', 'Con 7 días, incluye al menos un día suave o de descanso activo.')}
-        </Text>
-      )}
-    </OnboardingStep>
-  );
-}
-
 // B1: selector genérico de frecuencia 1–7. daysPerWeek = días que entrena por
 // semana (frecuencia), no nº de sesiones distintas — el ciclo rotativo hace el resto.
-function StepDays({ answers, set_, onNext, onBack }) {
+function StepDays({ answers, set_, onNext, onBack, nextLabel }) {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const d = answers.daysPerWeek;
@@ -880,7 +1144,7 @@ function StepDays({ answers, set_, onNext, onBack }) {
     <OnboardingStep
       title={t('onboarding.stepDays.titleFrequency', 'Días por semana')}
       subtitle={t('onboarding.stepDays.subtitleFrequency', '¿Cuántos días a la semana entrenas?')}
-      onNext={onNext} onBack={onBack}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
     >
       <View style={styles.dayBtns}>
         {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -904,13 +1168,13 @@ function StepDays({ answers, set_, onNext, onBack }) {
 // B1: tiempo disponible por sesión → answers.sessionMinutes (presupuesto B3).
 const TIME_OPTIONS = [30, 45, 60, 90];
 
-function StepTime({ answers, set_, onNext, onBack }) {
+function StepTime({ answers, set_, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
       title={t('onboarding.stepTime.title', 'Tiempo por sesión')}
       subtitle={t('onboarding.stepTime.subtitle', '¿Cuánto tiempo tienes para entrenar cada día?')}
-      onNext={onNext} onBack={onBack}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
     >
       {TIME_OPTIONS.map((min) => (
         <OptionCard
@@ -925,26 +1189,29 @@ function StepTime({ answers, set_, onNext, onBack }) {
   );
 }
 
-function StepGoal({ answers, set_, onNext, onBack }) {
+// §5.1: "¿Qué buscas?" — una sola pregunta que fija `discipline` y `goal`.
+// Sigue habiendo un mínimo de nivel para los objetivos de fuerza (GOAL_MIN_LEVEL):
+// eso bloquea una TARJETA de esta pregunta, no una plantilla de la lista.
+function StepIdentity({ answers, setAnswers, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
-      title={t('onboarding.stepGoal.title', 'Objetivo')}
-      subtitle={t('onboarding.stepGoal.subtitle', '¿Cuál es tu objetivo principal?')}
-      onNext={onNext} onBack={onBack}
-      nextDisabled={!answers.goal}
+      title={t('onboarding.identity.title', '¿Qué buscas?')}
+      subtitle={t('onboarding.identity.subtitle', 'Con esto elegimos el tipo de programa.')}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
+      nextDisabled={!answers.discipline || !answers.goal}
     >
-      {GOAL_IDS.map((id) => {
-        const available = goalAvailable(id, answers.level);
+      {IDENTITY_OPTIONS.map(({ id, discipline, goal }) => {
+        const available = goalAvailable(goal, answers.level);
         return (
           <OptionCard
             key={id}
-            label={t(`onboarding.goals.${id}.label`, id)}
-            description={t(`onboarding.goals.${id}.description`, '')}
-            selected={answers.goal === id}
+            label={t(`onboarding.identity.${id}.label`, id)}
+            description={t(`onboarding.identity.${id}.description`, '')}
+            selected={answers.discipline === discipline && answers.goal === goal}
             disabled={!available}
-            disabledReason={!available ? (GOAL_MIN_LEVEL[id] === 'intermediate' ? t('onboarding.disabledReasons.requiresIntermediate', 'Requiere nivel intermedio') : t('onboarding.disabledReasons.requiresAdvanced', 'Requiere nivel avanzado')) : undefined}
-            onClick={() => available && set_('goal', id)}
+            disabledReason={available ? undefined : t('onboarding.disabledReasons.requiresIntermediate', 'Requiere nivel intermedio')}
+            onClick={() => available && setAnswers((a) => ({ ...a, discipline, goal }))}
           />
         );
       })}
@@ -952,13 +1219,13 @@ function StepGoal({ answers, set_, onNext, onBack }) {
   );
 }
 
-function StepEquipment({ answers, toggleMulti, onNext, onBack }) {
+function StepEquipment({ answers, toggleMulti, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
       title={t('onboarding.stepEquipment.title', 'Equipamiento')}
       subtitle={t('onboarding.stepEquipment.subtitle', '¿Con qué material entrenas? (Selección múltiple)')}
-      onNext={onNext} onBack={onBack}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
       nextDisabled={answers.equipment.length === 0}
     >
       {EQUIP_IDS.map((id) => (
@@ -975,13 +1242,13 @@ function StepEquipment({ answers, toggleMulti, onNext, onBack }) {
   );
 }
 
-function StepLimitations({ answers, toggleMulti, onNext, onBack }) {
+function StepLimitations({ answers, toggleMulti, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
       title={t('onboarding.stepLimitations.title', 'Limitaciones')}
       subtitle={t('onboarding.stepLimitations.subtitle', '¿Tienes alguna limitación física? (Selección múltiple)')}
-      onNext={onNext} onBack={onBack}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
       nextDisabled={answers.limitations.length === 0}
     >
       {LIMIT_IDS.map((id) => (
@@ -998,14 +1265,13 @@ function StepLimitations({ answers, toggleMulti, onNext, onBack }) {
   );
 }
 
-function StepProgression({ answers, set_, onNext, onBack, isLast }) {
+function StepProgression({ answers, set_, onNext, onBack, nextLabel }) {
   const { t } = useTranslation();
   return (
     <OnboardingStep
       title={t('onboarding.stepProgression.title', 'Modelo de progresión')}
       subtitle={t('onboarding.stepProgression.subtitle', '¿Cómo quieres progresar semana a semana?')}
-      onNext={onNext} onBack={onBack}
-      isLast={isLast}
+      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
     >
       {PROG_IDS.map((id) => (
         <OptionCard
@@ -1192,6 +1458,123 @@ const makeStyles = (th) => StyleSheet.create({
     fontWeight:    typography.heavy,
     letterSpacing: 1.5,
     color:         th.colors.onAccent,
+  },
+
+  // Propuestas — tarjeta de plantilla candidata
+  proposalCard: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    marginBottom:    spacing.md,
+    gap:             spacing.sm,
+  },
+  proposalHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    gap:            spacing.sm,
+  },
+  proposalName: {
+    flex:       1,
+    fontSize:   typography.lg,
+    fontWeight: typography.heavy,
+    color:      th.colors.text,
+  },
+  proposalBadge: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs,
+  },
+  proposalBadgeText: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.bold,
+    letterSpacing: 0.5,
+    color:         th.colors.accent,
+  },
+  proposalMeta: {
+    fontSize:   typography.sm,
+    fontWeight: typography.medium,
+    color:      th.colors.accent,
+  },
+  proposalSummary: {
+    fontSize:   typography.base,
+    color:      th.colors.text,
+    lineHeight: typography.base * 1.5,
+  },
+  proposalNote: {
+    fontSize:   typography.sm,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.5,
+  },
+
+  // Detalle — fases
+  sectionLabel: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.heavy,
+    letterSpacing: 1,
+    color:         th.colors.muted,
+    marginBottom:  spacing.sm,
+  },
+  phaseRow: {
+    flexDirection:   'row',
+    gap:             spacing.md,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.sm,
+    padding:         spacing.md,
+    marginBottom:    spacing.xs2,
+  },
+  phaseIndex: {
+    fontSize:   typography.sm,
+    fontWeight: typography.heavy,
+    color:      th.colors.accent,
+    width:      14,
+  },
+  phaseName: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      th.colors.text,
+  },
+  phaseMeta: {
+    fontSize:  typography.xs,
+    color:     th.colors.muted,
+    marginTop: 1,
+  },
+
+  // Enlaces de texto ("ver todas", "ver otro programa")
+  linkBtn: {
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+  },
+  linkBtnText: {
+    fontSize:   typography.base,
+    fontWeight: typography.medium,
+    color:      th.colors.accent,
+  },
+
+  // Aviso de adaptación (§5.4)
+  noticeCard: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    marginBottom:    spacing.md,
+    gap:             spacing.sm,
+  },
+  noticeTitle: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.heavy,
+    letterSpacing: 1,
+    color:         th.colors.muted,
+  },
+  noticeItem: {
+    fontSize:   typography.sm,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.5,
+  },
+  noticeWarn: {
+    fontSize:   typography.sm,
+    color:      th.colors.orange,
+    lineHeight: typography.sm * 1.5,
   },
 
   // Loading

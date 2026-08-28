@@ -936,6 +936,49 @@
     "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.",
     "createAndEdit": "Crear y editar →",
     "stepIndicator": "PASO {{current}} DE {{total}}",
+    "identity": {
+      "title": "¿Qué buscas?",
+      "subtitle": "Con esto elegimos el tipo de programa.",
+      "muscle": {
+        "label": "Ganar músculo",
+        "description": "Hipertrofia general. El enfoque más completo y versátil."
+      },
+      "strength": {
+        "label": "Ponerte fuerte",
+        "description": "Sentadilla, peso muerto y press como eje. Series pesadas y descansos largos."
+      },
+      "glutes_legs": {
+        "label": "Glúteo y pierna",
+        "description": "Máximo énfasis en glúteo, isquios y pierna."
+      },
+      "calisthenics": {
+        "label": "Calistenia",
+        "description": "Peso corporal, agarre y core. Fuerza relativa y control del cuerpo."
+      }
+    },
+    "proposals": {
+      "title": "Tus programas",
+      "subtitle": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
+      "seeProposals": "VER PROGRAMAS",
+      "recommended": "Recomendado",
+      "sessionsPerCycle": "{{sessions}} sesiones por ciclo",
+      "seeAll": "Ver las {{total}} plantillas",
+      "seeTop": "Ver sólo las recomendadas",
+      "choose": "ELEGIR ESTE PROGRAMA",
+      "another": "‹ Ver otro programa",
+      "phasesTitle": "FASES",
+      "phaseWeeks": "{{weeks}} semanas",
+      "sessionsTitle": "SESIONES",
+      "notes": {
+        "needsBarbell": "Diseñado con barra. Sin ella sustituimos {{exercises}} ejercicios.",
+        "rotates": "{{sessions}} sesiones que rotan en ciclo: entrenas {{days}} días, verás cada sesión más de una vez.",
+        "slowCycle": "Con {{days}} días, el ciclo tarda más de una semana en cerrarse.",
+        "levelStretch": "Pensada para nivel {{level}}; adaptamos ejercicios y volumen.",
+        "lowFrequency": "Cada grupo, una vez por semana.",
+        "fits": "Encaja con tu material."
+      }
+    },
+    "generateError": "No se pudo generar el programa. Inténtalo de nuevo.",
     "stepLevel": {
       "title": "¿Cuál es tu nivel?",
       "subtitle": "Esto determina qué ejercicios y estructuras se incluirán en tu programa."
@@ -991,6 +1034,15 @@
       }
     },
     "preview": {
+      "ready": "✓ PROGRAMA LISTO",
+      "edit": "EDITAR",
+      "start": "EMPEZAR →",
+      "exerciseCount": "{{exercises}} ejercicios",
+      "setCount": "{{sets}} series",
+      "adaptedTitle": "LO QUE HEMOS AJUSTADO",
+      "unresolved": "No hemos podido cubrir {{slots}} huecos de {{group}} con tu material.",
+      "overTime": "Tu sesión {{label}} dura ~{{minutes}} min, más de los {{budget}} que pediste.",
+      "overBudget": "Volumen de {{group}} por encima de lo recomendado para tu nivel.",
       "cycleHint": "Tus {{sessions}} sesiones rotan en ciclo — entrenas {{days}} días a la semana.",
       "estimatedMinutes": "~{{minutes}} min",
       "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios.",

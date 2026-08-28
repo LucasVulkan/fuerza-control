@@ -17,6 +17,7 @@ export default function OnboardingStep({
   nextDisabled = false,
   showBack     = true,
   isLast       = false,
+  nextLabel,           // texto explícito del botón; manda sobre `isLast`
 }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -57,9 +58,10 @@ export default function OnboardingStep({
             adjustsFontSizeToFit
             minimumFontScale={0.7}
           >
-            {isLast
-              ? t('onboarding.generateProgram', 'GENERAR PROGRAMA')
-              : `${t('common.next', 'Siguiente')} ›`}
+            {nextLabel
+              ?? (isLast
+                ? t('onboarding.generateProgram', 'GENERAR PROGRAMA')
+                : `${t('common.next', 'Siguiente')} ›`)}
           </Text>
         </TouchableOpacity>
       </View>
