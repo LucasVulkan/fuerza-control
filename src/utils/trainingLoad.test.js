@@ -32,18 +32,18 @@ function entry({ id = 'log_1', ts = T0, exerciseId = 'squat_barbell', sets = [],
 describe('modelSec', () => {
   it('suma trabajo + descanso por serie, transición por ejercicio y calentamiento de sesión', () => {
     const e = entry({ sets: [set(100, 5), set(100, 5)] });
-    // 2 × (35 + 90) + 180 (transición) + 480 (calentamiento) = 910
-    expect(modelSec(e)).toBe(910);
+    // 2 × (35 + 90) + 120 (transición) + 480 (calentamiento) = 850
+    expect(modelSec(e)).toBe(850);
   });
 
   it('usa el tiempo REAL de las series de tiempo, no los 35 s por defecto', () => {
     const e = entry({ sets: [{ time: '60', done: true }] });
-    expect(modelSec(e)).toBe(60 + 90 + 180 + 480);
+    expect(modelSec(e)).toBe(60 + 90 + 120 + 480);
   });
 
   it('cae a 90 s de descanso cuando el log no lo trae (ad-hoc)', () => {
     const e = { id: 'l', timestamp: T0, duration: 0, exercises: [{ exerciseId: 'x', isAdHoc: true, sets: [set(20, 10)] }] };
-    expect(modelSec(e)).toBe(35 + 90 + 180 + 480);
+    expect(modelSec(e)).toBe(35 + 90 + 120 + 480);
   });
 
   it('ignora ejercicios sin series y devuelve 0 en una sesión vacía', () => {
@@ -57,7 +57,7 @@ describe('modelSec', () => {
       exercises: [],
       blocks: [{ format: 'amrap', capSec: 600, result: { rounds: 5 } }],
     };
-    expect(modelSec(e)).toBe(600 + 180 + 480);
+    expect(modelSec(e)).toBe(600 + 120 + 480);
   });
 });
 
@@ -72,8 +72,8 @@ describe('blockActiveSec', () => {
 });
 
 describe('sessionMinutes — reloj de pared acotado por el modelo', () => {
-  const sets = [set(100, 5), set(100, 5)];          // modelo = 910 s ≈ 15.17 min
-  const model = 910 / 60;
+  const sets = [set(100, 5), set(100, 5)];          // modelo = 850 s ≈ 14.17 min
+  const model = 850 / 60;
 
   it('respeta el reloj cuando es plausible', () => {
     const e = entry({ sets, duration: 18 * 60000 });

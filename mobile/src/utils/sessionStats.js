@@ -2,7 +2,7 @@ import { blockEstimatedSec } from '../../../src/utils/conditioningBlocks';
 import { warmupSteps } from '../../../src/utils/warmup';
 
 // Transición/montaje por ejercicio o bloque: buscar máquina, montar peso, ajustar.
-const EXERCISE_OVERHEAD_SEC = 180;
+const EXERCISE_OVERHEAD_SEC = 120;
 // Calentamiento general, una vez por sesión (si la sesión no está vacía).
 // Independiente de las series de calentamiento por ejercicio (warmup-sets,
 // ver más abajo) — ese es un bloque específico por ejercicio, este es el

@@ -403,6 +403,30 @@ invertía el orden de los presupuestos. Sin ellas, 45 min darían 45 de trabajo 
 entregaría menos entrenamiento. Quitando sólo el calentamiento, `45 − 3n` frente
 a `52 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
 
+**Regla −1 — la transición por ejercicio baja de 3 a 2 minutos**
+(`EXERCISE_OVERHEAD_SEC = 120`, decisión del usuario). Tres minutos entre un hack
+squat y un peso muerto rumano encadenados modelan un gimnasio lleno buscando
+máquina, no una sesión normal. Con seis ejercicios eran 18 minutos de transiciones
+sobre un presupuesto de 60.
+
+Se cambia en **las tres copias** del modelo, que están duplicadas a propósito y
+documentadas como una sola: `sessionCompression` (el presupuesto),
+`sessionStats` (el plan, que alimenta el preview) y `trainingLoad` (lo hecho,
+desde el log). Separarlas haría que una sesión planificada a 60 se registrara
+como más larga al completarla.
+
+⚠️ **Consecuencia asumida: los valores históricos de carga cambian.** Cada
+sesión del log pasa a estimarse ~1 min más corta por ejercicio, así que la carga
+baja de forma uniforme en todo el historial. Monotonía no se entera (es un
+cociente), strain sí. Los tests de `modelSec` que fijaban la aritmética se
+actualizaron con los números nuevos.
+
+Medido sobre la matriz — avisos de `overTime`: a 30 min **836 → 705**, a 45
+**291 → 142**, a 60 **100 → 61**, a 90 **4 → 0**. Y un día de básicos pesados
+(sentadilla + peso muerto rumano + tres accesorios) pasó de **irreducible a
+caber en 30 minutos** con los dos principales dentro. Era la queja original de
+§5.3.1.
+
 **Regla 0 — el presupuesto tiene tolerancia** (`TIME_TOLERANCE = 0,15`,
 decisión del usuario). Antes, 60 minutos eran 60 exactos: una sesión de 60:20
 perdía un ejercicio y una de 59:59 pasaba entera. Eso no es precisión, es ruido

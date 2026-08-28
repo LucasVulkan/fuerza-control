@@ -25,7 +25,7 @@
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
 // Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
-const EXERCISE_OVERHEAD_SEC = 180;
+const EXERCISE_OVERHEAD_SEC = 120;
 // Calentamiento general, una vez por sesión (si la sesión no está vacía).
 // Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
 // para no contar el calentamiento dos veces.
@@ -39,9 +39,9 @@ const SESSION_OVERHEAD_SEC = 480;
  *
  * Por qué no se quitan también las transiciones por debajo del umbral, que era
  * la propuesta original: invierte el orden de los presupuestos. Sin ellas, 45
- * min darían 45 de trabajo y 60 min darían 60 − 8 − 3n ≈ 37 con cinco
+ * min darían 45 de trabajo y 60 min darían 60 − 8 − 2n ≈ 42 con cinco
  * ejercicios — pedir más tiempo entregaría menos entrenamiento. Quitando sólo el
- * calentamiento, 45 → 45 − 3n y 60 → 52 − 3n: siempre creciente, sea cual sea n.
+ * calentamiento, 45 → 45 − 2n y 60 → 52 − 2n: siempre creciente, sea cual sea n.
  */
 export const NO_WARMUP_BELOW_MIN = 60;
 
@@ -49,7 +49,7 @@ export const NO_WARMUP_BELOW_MIN = 60;
  * Margen sobre el presupuesto antes de empezar a recortar.
  *
  * El presupuesto es una **estimación** construida sobre overheads inventados
- * (3 min de transición por ejercicio, 8 de calentamiento), no un cronómetro.
+ * (2 min de transición por ejercicio, 8 de calentamiento), no un cronómetro.
  * Tratarlo como límite exacto hacía que una sesión de 60 min y 20 segundos
  * perdiera un ejercicio, mientras que una de 59:59 pasaba entera. Eso no es
  * precisión: es ruido con consecuencias.

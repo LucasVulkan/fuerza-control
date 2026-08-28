@@ -34,9 +34,11 @@ describe('compressSession — escalera', () => {
   });
 
   it('primero cae el accesorio redundante, no el primero que pilla', () => {
-    // LEG_DAY cuesta ~52 min sin calentamiento; 45 + 15% de tolerancia son
-    // 51,75, así que se dispara un peldaño y sólo uno.
-    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: 45 });
+    // Presupuesto justo por debajo de la estimación una vez descontada la
+    // tolerancia: dispara un peldaño y sólo uno.
+    const est = estimateSessionSec(LEG_DAY, undefined, { includeWarmup: false }) / 60;
+    const mins = Math.floor(est / (1 + TIME_TOLERANCE)) - 1;
+    const { exercises } = compressSession(LEG_DAY, { sessionMinutes: mins });
     // `leg_extension` es el tercer ejercicio de quads del día; el gemelo es el
     // único de su grupo. Cae la redundancia.
     expect(idsOf(exercises)).not.toContain('leg_extension');
@@ -164,13 +166,14 @@ describe('presupuesto de sesiones cortas', () => {
     expect(overTime).toBe(false);
   });
 
-  it('un día de básicos pesados sigue sin caber en 30, y lo dice', () => {
-    // No es un fallo de la escalera: dos principales a 3 series con 3 y 2 min
-    // de descanso son 20 min sólo de descanso. `overTime` es la respuesta
-    // honesta; el suelo de series no se salta por caber en el presupuesto.
+  it('un día de básicos pesados ya cabe en 30, con los principales intactos', () => {
+    // Con la transición en 2 min (antes 3) esta sesión pasó de irreducible a
+    // caber: 47 min íntegra, y a 30 se queda en 4 ejercicios con los dos
+    // principales dentro. Antes declaraba `overTime` hiciera lo que hiciera.
     const { overTime, exercises } = compressSession(LEG_DAY, { sessionMinutes: 30 });
-    expect(overTime).toBe(true);
+    expect(overTime).toBe(false);
     expect(exercises.filter((e) => e.tier === 1)).toHaveLength(2);
+    expect(exercises.every((e) => e.sets >= (e.tier === 1 ? 3 : 2))).toBe(true);
   });
 });
 
@@ -252,7 +255,9 @@ describe('sesiones cortas — borrar antes que bajar series', () => {
   ];
 
   it('por debajo del umbral quita un ejercicio y respeta las series del resto', () => {
-    const { exercises } = compressSession(MIXED, { sessionMinutes: 59 });
+    const est = estimateSessionSec(MIXED, undefined, { includeWarmup: false }) / 60;
+    const mins = Math.min(59, Math.floor(est / (1 + TIME_TOLERANCE)) - 1);
+    const { exercises } = compressSession(MIXED, { sessionMinutes: mins });
     expect(exercises).toHaveLength(4);
     expect(exercises.every((e) => e.sets === 5)).toBe(true);
   });

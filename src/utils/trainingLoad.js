@@ -26,7 +26,7 @@ import { doneSets } from './sessionRecap';
 // HECHO desde una entrada de log (mismo precedente que LIMITATION_GROUPS).
 const WORK_SEC             = 35;   // trabajo de una serie basada en reps
 const DEFAULT_REST_SEC     = 90;   // descanso cuando el log no lo trae (ad-hoc)
-const EXERCISE_OVERHEAD_SEC = 180; // transición: buscar máquina, montar peso
+const EXERCISE_OVERHEAD_SEC = 120; // transición: buscar máquina, montar peso
 const SESSION_OVERHEAD_SEC  = 480; // calentamiento general, una vez por sesión
 
 /** Ventana de la referencia de 1RM, en semanas. */
