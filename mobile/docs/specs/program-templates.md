@@ -978,6 +978,12 @@ gana la de menor `adaptationCost` de su identidad; determinista.
 
 ## 8. FASE 6 — Onboarding de propuestas 🔴
 
+> ➡️ **Extraída a [onboarding-proposals.md](onboarding-proposals.md)**, que es
+> el documento a seguir para implementarla: añade el estado real del código, las
+> formas exactas de las APIs que dejaron las fases 1-5, la migración a FormaFit y
+> las trampas conocidas. Lo que sigue aquí es el diseño, que no cambia.
+
+
 ⚠️ **`OnboardingScreen` no está migrada a FormaFit.** Esta fase la rehace, así
 que es el momento de migrarla. **Leer [UI-MIGRATION.md](../UI-MIGRATION.md)
 antes de tocarla.**
