@@ -1,6 +1,6 @@
 # Spec — Programas por plantilla flexible
 
-> Estado: **fases 1, 2, 2b, 3, 3b, 4 y 5 implementadas** (ago 2026, ver §5.2,
+> Estado: **fases 1-5 implementadas** (ago 2026, ver §5.2,
 > §5.3, §5.3.1, §5.4, §5.5, §6 y §7); fases 6, 7 y 8 pendientes.
 > **La 8 (catálogo) pasa a ser la más urgente**: el ranking destapó que no hay
 > plantilla de 5-7 días y esos usuarios reciben demasiado volumen (§7).
@@ -1234,12 +1234,12 @@ plantilla:
 | 2 | Escalera de compresión + `DISCIPLINE_RULES` (§5.3, §5.6) | 🟢 | tiers (§3.1) | ✅ **IMPLEMENTADA** — desbordes a 60 min 236 → 119, mismo nº de ejercicios |
 | 2b | Sesiones cortas: presupuesto sin calentamiento + superserie de opuestos (§5.3.1) | 🟢 | 2 | ✅ **IMPLEMENTADA** — desbordes a 45 min 410 → 144 |
 | 3 | Normalizador de volumen + `volumeEmphasis` (§5.4) | 🟢 | 2 (comparten tabla) | ✅ **IMPLEMENTADA** — grupos sobre el techo 62 → 34, peor exceso 14,8 → 5,8 |
-| 3b | Vincular lo repetido en el ciclo (§5.5) | 🟢 | 2, 3 | Sonnet |
-| 4 | `phases` → N etapas (§6) | 🟢 | — | Sonnet |
-| 5 | `rankArchetypes` + retirada del procedural (§7) | 🟢 | — | Sonnet |
+| 3b | Vincular lo repetido en el ciclo (§5.5) | 🟢 | 2, 3 | ✅ **IMPLEMENTADA** — y arregla un bug de `linkGroup` entre etapas en el store |
+| 4 | `phases` → N etapas (§6) | 🟢 | — | ✅ **IMPLEMENTADA** — las 11 plantillas duran 8-9 semanas en 3 fases |
+| 5 | `rankArchetypes` + retirada del procedural (§7) | 🟢 | — | ✅ **IMPLEMENTADA** — 528/528 combos reciben plantilla |
 | 6 | Onboarding de propuestas + migración FormaFit (§8) | 🔴 | 4, 5 | Opus/Sonnet — leer UI-MIGRATION.md |
 | 7 | Reglas de integridad en el harness (§9) | 🟢 | 1-5 | Sonnet |
-| 8 | Catálogo: 4 plantillas prioritarias + tracción sin material (§11) | 🔴 | 1-3 | **Modelo + usuario**, no delegable |
+| 8 | Catálogo (§11) | 🔴 | 1-3 | 🟡 **EN CURSO** — 3 de 4 escritas (PPL-6, PPL-3, FB-2). Faltan Fuerza-3 intermedio y la tracción sin material. **Modelo + usuario**, no delegable |
 
 Las fases 1-5 aportan valor por separado y no dependen de la UI: con ellas
 hechas, el onboarding actual ya entrega programas con fases, volumen sano,
