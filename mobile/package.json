@@ -54,6 +54,7 @@
   },
   "private": true,
   "devDependencies": {
-    "babel-preset-expo": "^54.0.10"
+    "babel-preset-expo": "^54.0.10",
+    "typescript": "~5.9.2"
   }
 }
