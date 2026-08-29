@@ -174,3 +174,43 @@ describe('rankArchetypes — frecuencia semanal por grupo', () => {
     expect(tres.score).toBeGreaterThan(uno.score);
   });
 });
+
+describe('rankArchetypes — sin material todavía', () => {
+  // El onboarding móvil enseña la lista después de tres preguntas: nivel,
+  // objetivo y días. El material se pregunta luego, ya con la plantilla
+  // elegida, y se ve cómo adapta en vivo.
+  const sinMaterial = (over = {}) => {
+    const { equipment, ...resto } = ask(over);   // eslint-disable-line no-unused-vars
+    return rankArchetypes(resto);
+  };
+
+  it('ausente no es lo mismo que vacío: `[]` sigue siendo "sólo peso corporal"', () => {
+    const id = 'upperlower_hypertrophy_advanced';
+    const sin   = sinMaterial().find((r) => r.archetype.id === id);
+    const nada  = rankArchetypes(ask({ equipment: [] })).find((r) => r.archetype.id === id);
+
+    expect(sin.adaptationCost).toBe(0);
+    expect(nada.adaptationCost).toBeGreaterThan(0);
+    expect(sin.score).toBeGreaterThan(nada.score);
+  });
+
+  it('no acusa de necesitar barra a quien no ha dicho qué tiene', () => {
+    expect(sinMaterial().some((r) => r.notes.includes('needsBarbell'))).toBe(false);
+  });
+
+  it('quien pide 4 días no recibe primero una plantilla de 2 sesiones', () => {
+    // La regresión concreta: puntuando el material ausente como "no tiene nada"
+    // se hundían las plantillas de barra y ganaba Full Body · 2 días.
+    const primera = sinMaterial({ daysPerWeek: 4 })[0];
+    expect(primera.sessionsPerCycle).toBe(4);
+    expect(primera.archetype.id).toBe('upperlower_hypertrophy_intermediate');
+  });
+
+  it('sigue ordenando por disciplina, objetivo, nivel y días', () => {
+    expect(sinMaterial({ discipline: 'calisthenics', goal: 'endurance' })[0].archetype.discipline)
+      .toBe('calisthenics');
+    expect(sinMaterial({ discipline: 'glutes_legs' })[0].archetype.discipline)
+      .toBe('glutes_legs');
+    expect(sinMaterial({ daysPerWeek: 2 })[0].sessionsPerCycle).toBe(2);
+  });
+});

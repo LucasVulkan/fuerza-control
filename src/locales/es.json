@@ -957,6 +957,9 @@
       }
     },
     "proposals": {
+      "weeks": "{{weeks}} semanas",
+      "weeksShort": "semanas",
+      "sessionsPerCycleShort": "sesiones\npor ciclo",
       "title": "Tus programas",
       "subtitle": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
       "seeProposals": "VER PROGRAMAS",
@@ -964,18 +967,17 @@
       "sessionsPerCycle": "{{sessions}} sesiones por ciclo",
       "seeAll": "Ver las {{total}} plantillas",
       "seeTop": "Ver sólo las recomendadas",
-      "choose": "ELEGIR ESTE PROGRAMA",
+      
       "another": "‹ Ver otro programa",
-      "phasesTitle": "FASES",
-      "phaseWeeks": "{{weeks}} semanas",
-      "sessionsTitle": "SESIONES",
+      
+      
+      
       "notes": {
         "needsBarbell": "Diseñado con barra. Sin ella sustituimos {{exercises}} ejercicios.",
         "rotates": "{{sessions}} sesiones que rotan en ciclo: entrenas {{days}} días, verás cada sesión más de una vez.",
         "slowCycle": "Con {{days}} días, el ciclo tarda más de una semana en cerrarse.",
         "levelStretch": "Pensada para nivel {{level}}; adaptamos ejercicios y volumen.",
-        "lowFrequency": "Cada grupo, una vez por semana.",
-        "fits": "Encaja con tu material."
+        "lowFrequency": "Cada grupo, una vez por semana."
       }
     },
     "generateError": "No se pudo generar el programa. Inténtalo de nuevo.",
@@ -1045,8 +1047,7 @@
       "overBudget": "Volumen de {{group}} por encima de lo recomendado para tu nivel.",
       "cycleHint": "Tus {{sessions}} sesiones rotan en ciclo — entrenas {{days}} días a la semana.",
       "estimatedMinutes": "~{{minutes}} min",
-      "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios.",
-      "weeksAndPhases": "{{weeks}} semanas · {{phases}} fases"
+      "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios."
     },
     "stepGoal": {
       "title": "¿Cuál es tu objetivo?",
@@ -1064,7 +1065,16 @@
       "title": "Modelo de progresión",
       "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
     },
-    "generateProgram": "🏋️ GENERAR PROGRAMA",
+    "tuning": {
+      "waiting": "Elige tu material y verás cómo queda el programa.",
+      "minutesPerSession": "min por sesión",
+      "lostExercises": "{{lost}} ejercicios menos que la plantilla original.",
+      "substituted": "{{swapped}} ejercicios sustituidos",
+      "andMore": "y {{rest}} más",
+      "noLimitationSwaps": "Nada que sustituir: la plantilla ya evita esa zona.",
+      "unresolved": "{{slots}} huecos que tu material no cubre."
+    },
+    "generateProgram": "VER EL PROGRAMA",
     "levels": {
       "beginner": {
         "label": "Principiante",

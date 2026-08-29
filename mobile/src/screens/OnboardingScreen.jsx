@@ -133,7 +133,7 @@ function ModeCard({ icon, title, desc, onPress, accent = false }) {
   );
 }
 
-// ─── Piezas compartidas por propuestas, detalle y preview ─────────────────────
+// ─── Piezas compartidas por propuestas, ajuste y preview ─────────────────────
 
 /** Sesiones distintas del ciclo, en orden de aparición. */
 function uniqueSessionTemplates(program, templates) {
@@ -155,37 +155,20 @@ function exerciseName(allEx, id, language) {
   return language === 'en' ? (def.nameEn ?? def.name) : def.name;
 }
 
-/** `N semanas · M fases · S sesiones por ciclo` — la portada de cada tarjeta (§5.2). */
-function proposalMeta(t, entry) {
-  const phases = entry.archetype.phases ?? [];
-  const weeks  = totalWeeksOf(phases);
-  const parts  = [];
-  if (weeks > 0) {
-    parts.push(t('onboarding.preview.weeksAndPhases', {
-      weeks, phases: phases.length, defaultValue: `${weeks} semanas · ${phases.length} fases`,
-    }));
-  }
-  parts.push(t('onboarding.proposals.sessionsPerCycle', {
-    sessions: entry.sessionsPerCycle,
-    defaultValue: `${entry.sessionsPerCycle} sesiones por ciclo`,
-  }));
-  return parts.join(' · ');
-}
-
 // Orden de la tabla de §3.1.
 const NOTE_ORDER = ['needsBarbell', 'rotates', 'slowCycle', 'levelStretch', 'lowFrequency'];
 
 /**
- * Los avisos honestos de la tarjeta. Sin ninguna nota, encaja y se dice.
+ * Los avisos honestos de la tarjeta. Ninguno cuando no hay nada que avisar: la
+ * lista se pinta antes de preguntar el material, así que aquí no se puede
+ * prometer que "encaja con lo que tienes".
  *
- * TODAS, no la primera: sin barra las once plantillas disparan `needsBarbell`,
- * así que enseñar sólo una dejaba a las once diciendo lo mismo y tapaba la que
- * de verdad distingue. En particular `levelStretch`, que es la que explica que a
- * un principiante se le quite un accesorio por sesión (`reduceForBeginner`).
+ * TODAS las notas, no la primera: enseñar sólo una tapaba a las demás, y la que
+ * se comía siempre era `levelStretch` — la que explica que a un principiante se
+ * le quite un accesorio por sesión (`reduceForBeginner`).
  */
 function proposalNotes(t, entry, daysPerWeek) {
   const notes = NOTE_ORDER.filter((n) => entry.notes.includes(n));
-  if (!notes.length) return [t('onboarding.proposals.notes.fits', 'Encaja con tu material.')];
   return notes.map((n) => t(`onboarding.proposals.notes.${n}`, {
     exercises: entry.adaptationCost,
     sessions:  entry.sessionsPerCycle,
@@ -340,6 +323,192 @@ function AdaptationNotice({
   );
 }
 
+/**
+ * Tarjeta de plantilla candidata.
+ *
+ * Se pinta ANTES de preguntar el material, así que no puede enseñar ejercicios:
+ * no se sabe todavía cuáles sobrevivirían. Lo que sí es cierto pase lo que pase
+ * es la estructura — cuántas sesiones tiene el ciclo, cómo se llaman y cuánto
+ * dura el programa — y es justo lo que distingue una plantilla de otra.
+ *
+ * Las sesiones por ciclo van en grande porque son la confusión número uno: el
+ * ranking ofrece plantillas cuyo ciclo no coincide con los días pedidos, y en
+ * letra pequeña eso no se ve.
+ */
+function ProposalCard({ entry, recommended, daysPerWeek, onPress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const { archetype } = entry;
+  const weeks = totalWeeksOf(archetype.phases);
+  const notas = proposalNotes(t, entry, daysPerWeek);
+
+  return (
+    <TouchableOpacity style={styles.proposalCard} onPress={onPress} activeOpacity={0.75}>
+      <View style={styles.proposalHeader}>
+        <Text style={styles.proposalName}>{archetype.name}</Text>
+        {recommended && (
+          <View style={styles.proposalBadge}>
+            <Text style={styles.proposalBadgeText}>
+              {t('onboarding.proposals.recommended', 'Recomendado')}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.cycleRow}>
+        <Text style={styles.cycleNum}>{entry.sessionsPerCycle}</Text>
+        <Text style={styles.cycleLabel}>
+          {t('onboarding.proposals.sessionsPerCycleShort', 'sesiones\npor ciclo')}
+        </Text>
+        {weeks > 0 && (
+          <>
+            <View style={styles.cycleSep} />
+            <Text style={styles.cycleNum}>{weeks}</Text>
+            <Text style={styles.cycleLabel}>{t('onboarding.proposals.weeksShort', 'semanas')}</Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.sessionList}>
+        {archetype.days.map((d, i) => (
+          <View key={i} style={styles.sessionChipRow}>
+            <Text style={[styles.sessionChipLabel, { color: resolveColor(th, d.color ?? 'var(--day1)') }]}>
+              {d.label}
+            </Text>
+            <Text style={styles.sessionChipName} numberOfLines={1}>{d.name}</Text>
+          </View>
+        ))}
+      </View>
+
+      {archetype.summary ? <Text style={styles.proposalSummary}>{archetype.summary}</Text> : null}
+      {notas.map((nota, n) => (
+        <Text key={n} style={styles.proposalNote}>{nota}</Text>
+      ))}
+    </TouchableOpacity>
+  );
+}
+
+/**
+ * El panel en vivo del paso de ajuste.
+ *
+ * Cada toque en material, tiempo o limitaciones vuelve a pasar la plantilla por
+ * `adaptArchetype`, y esto enseña el resultado: cuánto dura cada sesión, cuántos
+ * ejercicios quedan respecto a la plantilla original, y qué se ha sustituido.
+ * Es lo que convierte tres preguntas en una cosa que se ve funcionar.
+ */
+function LiveSummary({ archetype, adapted, focus, answers, allEx, language, waiting }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+
+  if (waiting || !adapted) {
+    return (
+      <View style={styles.livePanel}>
+        <Text style={styles.liveWaiting}>
+          {t('onboarding.tuning.waiting', 'Elige tu material y verás cómo queda el programa.')}
+        </Text>
+      </View>
+    );
+  }
+
+  const countsWarmup = includesWarmup(answers.sessionMinutes);
+  const tpls    = uniqueSessionTemplates(adapted.program, adapted.sessionTemplates);
+  const minutos = tpls.map((tpl) => Math.round(
+    estimateSessionSec(tpl.exercises ?? [], allEx, { includeWarmup: countsWarmup }) / 60,
+  ));
+  const media = minutos.length
+    ? Math.round(minutos.reduce((a, b) => a + b, 0) / minutos.length)
+    : 0;
+
+  const totalEx = tpls.reduce((n, tpl) => n + (tpl.exercises?.length ?? 0), 0);
+  const baseEx  = archetype.days.reduce((n, d) => n + d.exercises.length, 0);
+  // Sólo se enseña cuando de verdad se ha perdido algo: con 45, 60 y 90 minutos
+  // casi nunca recorta, y un "-0 ejercicios" permanente no informa de nada.
+  const perdidos = baseEx - totalEx;
+
+  // El mismo hueco se resuelve igual en varias sesiones: decirlo una vez.
+  const subs = [];
+  const vistos = new Set();
+  for (const s of adapted.substitutions ?? []) {
+    if (focus === 'limitations' && s.reason !== 'limitation') continue;
+    const key = `${s.slotExerciseId}→${s.resolvedExerciseId}`;
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    subs.push(s);
+  }
+  const MAX_SUBS = 5;
+
+  return (
+    <View style={styles.livePanel}>
+      <View style={styles.liveBig}>
+        <Text style={styles.liveBigNum}>{`~${media}`}</Text>
+        <Text style={styles.liveBigLabel}>
+          {t('onboarding.tuning.minutesPerSession', 'min por sesión')}
+        </Text>
+      </View>
+
+      <View style={styles.liveChips}>
+        {tpls.map((tpl, i) => (
+          <View key={tpl.id} style={styles.liveChip}>
+            <Text style={styles.liveChipLabel}>{tpl.label ?? String.fromCharCode(65 + i)}</Text>
+            <Text style={styles.liveChipValue}>{`${minutos[i]}′`}</Text>
+            <Text style={styles.liveChipValue}>{`${tpl.exercises?.length ?? 0} ej`}</Text>
+          </View>
+        ))}
+      </View>
+
+      {perdidos > 0 && (
+        <Text style={styles.liveWarn}>
+          {t('onboarding.tuning.lostExercises', {
+            lost: perdidos,
+            defaultValue: `${perdidos} ejercicios menos que la plantilla original.`,
+          })}
+        </Text>
+      )}
+
+      {focus !== 'time' && subs.length > 0 && (
+        <View style={styles.liveSubs}>
+          <Text style={styles.liveSubsTitle}>
+            {t('onboarding.tuning.substituted', {
+              swapped: subs.length,
+              defaultValue: `${subs.length} ejercicios sustituidos`,
+            })}
+          </Text>
+          {subs.slice(0, MAX_SUBS).map((s, i) => (
+            <Text key={i} style={styles.liveSubItem}>
+              {`${exerciseName(allEx, s.slotExerciseId, language)} → ${exerciseName(allEx, s.resolvedExerciseId, language)}`}
+            </Text>
+          ))}
+          {subs.length > MAX_SUBS && (
+            <Text style={styles.liveSubItem}>
+              {t('onboarding.tuning.andMore', {
+                rest: subs.length - MAX_SUBS,
+                defaultValue: `y ${subs.length - MAX_SUBS} más`,
+              })}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {focus === 'limitations' && subs.length === 0 && !!answers.limitations.length
+        && !answers.limitations.includes('none') && (
+        <Text style={styles.liveSubItem}>
+          {t('onboarding.tuning.noLimitationSwaps', 'Nada que sustituir: la plantilla ya evita esa zona.')}
+        </Text>
+      )}
+
+      {(adapted.unresolved ?? []).length > 0 && (
+        <Text style={styles.liveWarn}>
+          {t('onboarding.tuning.unresolved', {
+            slots: adapted.unresolved.length,
+            defaultValue: `${adapted.unresolved.length} huecos que tu material no cubre.`,
+          })}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
@@ -408,21 +577,24 @@ export default function OnboardingScreen() {
     progressionModel: 'double_progression',
   });
 
-  // Fase del modo auto: preguntas → propuestas (con su detalle) → preview.
-  const [autoPhase,  setAutoPhase]  = useState('questions');
-  const [showAll,    setShowAll]    = useState(false);   // "ver todas" en propuestas
-  const [detailId,   setDetailId]   = useState(null);    // arquetipo abierto en detalle
-  const [chosen,     setChosen]     = useState(null);    // { archetypeId, adapted }
+  // Fase del modo auto: preguntas → propuestas → ajuste interactivo → preview.
+  const [autoPhase, setAutoPhase] = useState('questions');
+  const [showAll,   setShowAll]   = useState(false);   // "ver todas" en propuestas
+  const [chosenId,  setChosenId]  = useState(null);    // plantilla elegida
+  const [tuneStep,  setTuneStep]  = useState(0);
 
-  // Nivel → identidad → días → material eligen la plantilla; tiempo y
-  // limitaciones sólo ajustan la elegida. Se preguntan todas antes de la lista
-  // para que el detalle de cada candidata enseñe los ejercicios definitivos.
-  const stepIds = answers.level === 'advanced'
-    ? ['level', 'identity', 'days', 'equipment', 'time', 'limitations', 'progression']
-    : ['level', 'identity', 'days', 'equipment', 'time', 'limitations'];
+  // Sólo tres preguntas antes de la lista: son las que eligen QUÉ plantilla.
+  // El material, el tiempo y las limitaciones no eligen, adaptan — y se
+  // preguntan después, con la plantilla delante y el resultado a la vista.
+  const stepIds     = ['level', 'identity', 'days'];
   const totalSteps  = stepIds.length;
-  // Bajar de avanzado a intermedio acorta la lista con el paso ya pasado.
   const currentStep = stepIds[Math.min(step, totalSteps - 1)];
+
+  // La progresión no cambia la adaptación (no entra en `adaptArchetype`), así
+  // que va la última y sin panel en vivo: no habría nada que enseñar.
+  const tuneIds = answers.level === 'advanced'
+    ? ['equipment', 'time', 'limitations', 'progression']
+    : ['equipment', 'time', 'limitations'];
 
   function set_(field, value) {
     setAnswers((a) => ({ ...a, [field]: value }));
@@ -445,18 +617,29 @@ export default function OnboardingScreen() {
   // aplica el store, para que la plantilla que se previsualiza sea la que se
   // guarda.
   const submitAnswers = useMemo(() => normalizeOnboardingAnswers(answers), [answers]);
-
-  // §3.1: el ranking nunca devuelve vacío y nunca oculta nada — el material
-  // ordena, no filtra.
-  const ranked = useMemo(
-    () => (autoPhase === 'questions' ? [] : rankArchetypes(submitAnswers)),
-    [autoPhase, submitAnswers],
+  const allEx = useMemo(
+    () => ({ ...exerciseLibrary, ...customExercises }),
+    [exerciseLibrary, customExercises],
   );
 
-  const detailEntry = detailId ? ranked.find((r) => r.archetype.id === detailId) : null;
-  const detailAdapted = useMemo(
-    () => (detailEntry ? adaptArchetype(detailEntry.archetype, submitAnswers) : null),
-    [detailEntry, submitAnswers],
+  // SIN material a propósito: en este punto no se ha preguntado, y `equipment`
+  // ausente le dice a `rankArchetypes` que no lo puntúe. Pasarle `[]` sería
+  // decirle que el usuario no tiene nada, que es otra cosa muy distinta.
+  const ranked = useMemo(() => (autoPhase === 'questions' ? [] : rankArchetypes({
+    level:       answers.level,
+    discipline:  answers.discipline,
+    goal:        answers.goal,
+    daysPerWeek: answers.daysPerWeek,
+  })), [autoPhase, answers.level, answers.discipline, answers.goal, answers.daysPerWeek]);
+
+  const chosenEntry = chosenId ? ranked.find((r) => r.archetype.id === chosenId) : null;
+
+  // El motor, en vivo. Se recalcula con cada toque del paso de ajuste: es lo que
+  // convierte "material" y "tiempo" en algo que se ve pasar en vez de en dos
+  // preguntas más.
+  const tuned = useMemo(
+    () => (chosenEntry ? adaptArchetype(chosenEntry.archetype, submitAnswers) : null),
+    [chosenEntry, submitAnswers],
   );
 
   function finish() {
@@ -487,29 +670,39 @@ export default function OnboardingScreen() {
     });
   }
 
-  // Elegir una plantilla NO guarda nada: adapta en memoria y enseña el preview.
-  // El programa sólo se crea cuando el usuario confirma, para que "ver otro
-  // programa" no vaya dejando programas a medias en el store.
-  function chooseArchetype(entry, adapted) {
-    setChosen({ archetypeId: entry.archetype.id, adapted });
+  // Elegir una plantilla NO guarda nada: lleva al paso de ajuste, donde se
+  // adapta en vivo. El programa sólo se crea al confirmar el preview, para que
+  // "ver otro programa" no vaya dejando programas a medias en el store.
+  function chooseArchetype(entry) {
+    setChosenId(entry.archetype.id);
+    setTuneStep(0);
     setExpandedSessions(new Set());
-    setDetailId(null);
-    setAutoPhase('preview');
+    setAutoPhase('tuning');
   }
 
   function backToProposals() {
-    setChosen(null);
-    setDetailId(null);
+    setChosenId(null);
     setExpandedSessions(new Set());
     setAutoPhase('proposals');
   }
 
+  function nextTuneStep() {
+    if (tuneStep >= tuneIds.length - 1) { setAutoPhase('preview'); return; }
+    setTuneStep((s) => s + 1);
+  }
+
+  // Desde el primer ajuste, atrás es volver a la lista: cambiar de plantilla es
+  // barato y no cuesta ninguna respuesta (§4.6).
+  function prevTuneStep() {
+    if (tuneStep === 0) { backToProposals(); return; }
+    setTuneStep((s) => s - 1);
+  }
+
   async function persistChosen() {
-    const entry = ranked.find((r) => r.archetype.id === chosen.archetypeId);
     // §9: `distribution` ya no se pregunta, pero el snapshot la sigue llevando —
     // se toma de la plantilla elegida.
-    const finalAnswers = { ...submitAnswers, distribution: entry?.archetype.distribution ?? 'full_body' };
-    return generateAndActivateProgram(finalAnswers, chosen.archetypeId);
+    const finalAnswers = { ...submitAnswers, distribution: chosenEntry?.archetype.distribution ?? 'full_body' };
+    return generateAndActivateProgram(finalAnswers, chosenId);
   }
 
   // `after` corre con el programa ya guardado y activo.
@@ -583,7 +776,7 @@ export default function OnboardingScreen() {
   // §4.6: volver atrás no pierde las respuestas — `answers` no se toca.
   function backToQuestions() {
     setShowAll(false);
-    setDetailId(null);
+    setChosenId(null);
     setStep(totalSteps - 1);
     setAutoPhase('questions');
   }
@@ -600,39 +793,32 @@ export default function OnboardingScreen() {
   }
 
   // ── Preview del programa elegido ─────────────────────────────────────────────
-  // Todavía sin guardar: se pinta del `adaptArchetype` que hizo `chooseArchetype`.
-  if (mode === 'auto' && autoPhase === 'preview' && chosen) {
+  // Todavía sin guardar: se pinta del `adaptArchetype` en vivo.
+  if (mode === 'auto' && autoPhase === 'preview' && tuned) {
     const {
-      program, sessionTemplates: chosenTemplates, phases,
+      program, sessionTemplates: tunedTemplates, phases,
       substitutions, unresolved, overTime, overBudget,
-    } = chosen.adapted;
+    } = tuned;
     const totalWeeks      = totalWeeksOf(phases);
-    const uniqueTemplates = uniqueSessionTemplates(program, chosenTemplates);
+    const uniqueTemplates = uniqueSessionTemplates(program, tunedTemplates);
     const countsWarmup    = includesWarmup(answers.sessionMinutes);
-    const allEx           = { ...exerciseLibrary, ...customExercises };
     const exName          = (id) => exerciseName(allEx, id, language);
 
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {/* Header */}
         <View style={styles.previewHeader}>
           <BrandTag />
           <Text style={styles.previewReady}>{t('onboarding.preview.ready', '✓ PROGRAMA LISTO')}</Text>
           <Text style={styles.previewTitle}>{program.name}</Text>
           <Text style={styles.previewMeta}>
-            {/* La duración va en portada: es lo que convierte esto en un
-                programa y no en una lista de ejercicios (§4.5). */}
-            {totalWeeks > 0 && `${t('onboarding.preview.weeksAndPhases', {
-              weeks: totalWeeks,
-              phases: phases.length,
-              defaultValue: `${totalWeeks} semanas · ${phases.length} fases`,
-            })} · `}
             {t('onboarding.proposals.sessionsPerCycle', {
               sessions: uniqueTemplates.length,
               defaultValue: `${uniqueTemplates.length} sesiones por ciclo`,
             })}
+            {totalWeeks > 0 && ` · ${t('onboarding.proposals.weeks', {
+              weeks: totalWeeks, defaultValue: `${totalWeeks} semanas`,
+            })}`}
           </Text>
-          {/* B4: hint de ciclo cuando la frecuencia pedida supera las sesiones generadas */}
           {answers.daysPerWeek > uniqueTemplates.length && (
             <Text style={styles.previewCycleHint}>
               {t('onboarding.preview.cycleHint', {
@@ -643,8 +829,7 @@ export default function OnboardingScreen() {
             </Text>
           )}
           {/* §5.3.1: en sesiones cortas el tiempo se estima sin calentamiento
-              general — en 30 o 45 minutos se entra a trabajar. Decirlo, porque
-              el número de arriba depende de ello. */}
+              general. Decirlo, porque el número de arriba depende de ello. */}
           {!countsWarmup && (
             <Text style={styles.previewCycleHint}>
               {t('onboarding.preview.noWarmupNote',
@@ -654,15 +839,13 @@ export default function OnboardingScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
-          {/* §5.4: lo que el adaptador tuvo que hacer para que el programa te
-              encaje. Hasta ahora pasaba en silencio. */}
           <AdaptationNotice
             substitutions={substitutions}
             unresolved={unresolved}
             overTime={overTime}
             overBudget={overBudget}
             sessionMinutes={answers.sessionMinutes}
-            templates={chosenTemplates}
+            templates={tunedTemplates}
             allEx={allEx}
             language={language}
             countsWarmup={countsWarmup}
@@ -688,7 +871,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Footer — Editar + Empezar. Aquí es donde el programa se guarda. */}
+        {/* Aquí es donde el programa se guarda por primera vez. */}
         <View style={styles.previewFooter}>
           <TouchableOpacity style={styles.editBtn} onPress={() => confirmProgram(handleEditProgram)} activeOpacity={0.85}>
             <Text style={styles.editBtnText}>{t('onboarding.preview.edit', 'EDITAR')}</Text>
@@ -701,69 +884,109 @@ export default function OnboardingScreen() {
     );
   }
 
-  // ── Detalle de una candidata ─────────────────────────────────────────────────
-  if (mode === 'auto' && autoPhase === 'proposals' && detailEntry) {
-    const { archetype } = detailEntry;
-    const { program, sessionTemplates: detailTemplates, phases } = detailAdapted;
-    const uniqueTemplates = uniqueSessionTemplates(program, detailTemplates);
-    const countsWarmup    = includesWarmup(answers.sessionMinutes);
-    const allEx           = { ...exerciseLibrary, ...customExercises };
-    const exName          = (id) => exerciseName(allEx, id, language);
+  // ── Ajuste interactivo de la plantilla elegida ───────────────────────────────
+  // Material, tiempo y limitaciones. Cada toque re-adapta la plantilla y el
+  // panel de arriba enseña el resultado: es el único sitio donde el usuario ve
+  // el motor trabajar en vez de recibir su salida ya cocinada.
+  if (mode === 'auto' && autoPhase === 'tuning' && chosenEntry) {
+    const paso = tuneIds[Math.min(tuneStep, tuneIds.length - 1)];
+    const esUltimo = tuneStep >= tuneIds.length - 1;
+    const COPY = {
+      equipment:   ['onboarding.stepEquipment.title', 'Equipamiento', 'onboarding.stepEquipment.subtitle', '¿Con qué material entrenas? (Selección múltiple)'],
+      time:        ['onboarding.stepTime.title', 'Tiempo por sesión', 'onboarding.stepTime.subtitle', '¿Cuánto tiempo tienes para entrenar cada día?'],
+      limitations: ['onboarding.stepLimitations.title', 'Limitaciones', 'onboarding.stepLimitations.subtitle', '¿Tienes alguna limitación física? (Selección múltiple)'],
+      progression: ['onboarding.stepProgression.title', 'Modelo de progresión', 'onboarding.stepProgression.subtitle', '¿Cómo quieres progresar semana a semana?'],
+    }[paso];
+
+    const bloqueado =
+      (paso === 'equipment'   && !answers.equipment.length) ||
+      (paso === 'limitations' && !answers.limitations.length);
 
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={styles.previewHeader}>
-          <Text style={styles.previewTitle}>{archetype.name}</Text>
-          <Text style={styles.previewMeta}>{proposalMeta(t, detailEntry)}</Text>
-          {archetype.summary ? <Text style={styles.proposalSummary}>{archetype.summary}</Text> : null}
-          {/* Los mismos avisos que en la tarjeta: es aquí donde se decide. */}
-          {proposalNotes(t, detailEntry, answers.daysPerWeek).map((nota, n) => (
-            <Text key={n} style={styles.proposalNote}>{nota}</Text>
-          ))}
+        <View style={styles.tuneHeader}>
+          <Text style={styles.tuneProgram} numberOfLines={1}>{chosenEntry.archetype.name}</Text>
+          <Text style={styles.tuneTitle}>{t(COPY[0], COPY[1])}</Text>
+          <Text style={styles.tuneSubtitle}>{t(COPY[2], COPY[3])}</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
-          {/* Las fases: lo que distingue un programa de una lista de ejercicios */}
-          <Text style={styles.sectionLabel}>{t('onboarding.proposals.phasesTitle', 'FASES')}</Text>
-          {(phases ?? []).map((ph, i) => (
-            <View key={i} style={styles.phaseRow}>
-              <Text style={styles.phaseIndex}>{i + 1}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.phaseName}>{ph.name}</Text>
-                <Text style={styles.phaseMeta}>
-                  {t('onboarding.proposals.phaseWeeks', {
-                    weeks: ph.durationWeeks,
-                    defaultValue: `${ph.durationWeeks} semanas`,
-                  })}
-                </Text>
-              </View>
-            </View>
+        {/* Fijo, no dentro del scroll: si se va con el dedo, deja de ser en vivo. */}
+        {paso !== 'progression' && (
+          <LiveSummary
+            archetype={chosenEntry.archetype}
+            adapted={tuned}
+            focus={paso}
+            answers={answers}
+            allEx={allEx}
+            language={language}
+            waiting={paso === 'equipment' && !answers.equipment.length}
+          />
+        )}
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.tuneOptions}
+          showsVerticalScrollIndicator={false}
+        >
+          {paso === 'equipment' && EQUIP_IDS.map((id) => (
+            <OptionCard
+              key={id}
+              label={t(`onboarding.equipment.${id}.label`, id)}
+              description={t(`onboarding.equipment.${id}.description`, '')}
+              multi
+              selected={answers.equipment.includes(id)}
+              onClick={() => toggleMulti('equipment', id)}
+            />
           ))}
 
-          <Text style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
-            {t('onboarding.proposals.sessionsTitle', 'SESIONES')}
-          </Text>
-          {uniqueTemplates.map((tpl, i) => (
-            <SessionRow
-              key={tpl.id}
-              tpl={tpl}
-              index={i}
-              allEx={allEx}
-              exName={exName}
-              expanded={expandedSessions.has(tpl.id)}
-              onToggle={() => toggleSession(tpl.id)}
-              countsWarmup={countsWarmup}
+          {paso === 'time' && TIME_OPTIONS.map((min) => (
+            <OptionCard
+              key={min}
+              label={t(`onboarding.sessionTimes.${min}.label`, `${min} min`)}
+              description={t(`onboarding.sessionTimes.${min}.description`, '')}
+              selected={answers.sessionMinutes === min}
+              onClick={() => set_('sessionMinutes', min)}
+            />
+          ))}
+
+          {paso === 'limitations' && LIMIT_IDS.map((id) => (
+            <OptionCard
+              key={id}
+              label={t(`onboarding.limitations.${id}.label`, id)}
+              description={t(`onboarding.limitations.${id}.description`, '')}
+              multi
+              selected={answers.limitations.includes(id)}
+              onClick={() => toggleMulti('limitations', id)}
+            />
+          ))}
+
+          {paso === 'progression' && PROG_IDS.map((id) => (
+            <OptionCard
+              key={id}
+              label={t(`onboarding.progressionModels.${id}.label`, id)}
+              description={t(`onboarding.progressionModels.${id}.description`, '')}
+              selected={answers.progressionModel === id}
+              onClick={() => set_('progressionModel', id)}
             />
           ))}
         </ScrollView>
 
         <View style={styles.previewFooter}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => setDetailId(null)} activeOpacity={0.75}>
+          <TouchableOpacity style={styles.backBtn} onPress={prevTuneStep} activeOpacity={0.75}>
             <Text style={styles.backBtnText}>{t('common.back', 'Atrás')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.startBtn} onPress={() => chooseArchetype(detailEntry, detailAdapted)} activeOpacity={0.85}>
-            <Text style={styles.startBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {t('onboarding.proposals.choose', 'ELEGIR ESTE PROGRAMA')}
+          <TouchableOpacity
+            style={[styles.startBtn, bloqueado && styles.startBtnOff]}
+            onPress={bloqueado ? undefined : nextTuneStep}
+            activeOpacity={bloqueado ? 1 : 0.85}
+          >
+            <Text
+              style={[styles.startBtnText, bloqueado && styles.startBtnTextOff]}
+              numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}
+            >
+              {esUltimo
+                ? t('onboarding.generateProgram', 'VER EL PROGRAMA')
+                : `${t('common.next', 'Siguiente')} ›`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -772,7 +995,9 @@ export default function OnboardingScreen() {
   }
 
   // ── Propuestas ───────────────────────────────────────────────────────────────
-  // §4.2: el material ordena, no filtra. Nada se oculta ni se bloquea aquí.
+  // Todavía sin saber el material: la tarjeta enseña la ESTRUCTURA (sesiones,
+  // ciclo y semanas), que no depende de lo que el usuario tenga. Los ejercicios
+  // no salen aquí porque aún no se sabe cuáles sobrevivirían.
   if (mode === 'auto' && autoPhase === 'proposals') {
     const visible = showAll ? ranked : ranked.slice(0, 3);
 
@@ -782,36 +1007,19 @@ export default function OnboardingScreen() {
           <BrandTag />
           <Text style={styles.previewTitle}>{t('onboarding.proposals.title', 'Tus programas')}</Text>
           <Text style={styles.previewMeta}>
-            {t('onboarding.proposals.subtitle', 'Elegidos por lo que has contestado. Toca uno para verlo entero.')}
+            {t('onboarding.proposals.subtitle', 'Elige uno. Después lo ajustamos a tu material y a tu tiempo.')}
           </Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
           {visible.map((entry, i) => (
-            <TouchableOpacity
+            <ProposalCard
               key={entry.archetype.id}
-              style={styles.proposalCard}
-              onPress={() => { setExpandedSessions(new Set()); setDetailId(entry.archetype.id); }}
-              activeOpacity={0.75}
-            >
-              <View style={styles.proposalHeader}>
-                <Text style={styles.proposalName}>{entry.archetype.name}</Text>
-                {i === 0 && (
-                  <View style={styles.proposalBadge}>
-                    <Text style={styles.proposalBadgeText}>
-                      {t('onboarding.proposals.recommended', 'Recomendado')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.proposalMeta}>{proposalMeta(t, entry)}</Text>
-              {entry.archetype.summary ? (
-                <Text style={styles.proposalSummary}>{entry.archetype.summary}</Text>
-              ) : null}
-              {proposalNotes(t, entry, answers.daysPerWeek).map((nota, n) => (
-                <Text key={n} style={styles.proposalNote}>{nota}</Text>
-              ))}
-            </TouchableOpacity>
+              entry={entry}
+              recommended={i === 0}
+              daysPerWeek={answers.daysPerWeek}
+              onPress={() => chooseArchetype(entry)}
+            />
           ))}
 
           {ranked.length > 3 && (
@@ -1093,25 +1301,21 @@ export default function OnboardingScreen() {
         </Text>
       </View>
 
-      {/* nivel → identidad → días → material → tiempo → limitaciones (+ progresión si avanzado) */}
+      {/* Sólo nivel → identidad → días. El resto se pregunta tras elegir. */}
       {(() => {
         const nav = {
           onNext: nextStep,
           onBack: step === 0 ? () => setMode(null) : prevStep,
-          // El último paso no genera: lleva a la lista de propuestas.
+          // El último paso no genera nada: lleva a la lista de plantillas.
           nextLabel: step === totalSteps - 1
             ? t('onboarding.proposals.seeProposals', 'VER PROGRAMAS')
             : undefined,
         };
         switch (currentStep) {
-          case 'level':       return <StepLevel       answers={answers} set_={set_} {...nav} />;
-          case 'identity':    return <StepIdentity    answers={answers} setAnswers={setAnswers} {...nav} />;
-          case 'days':        return <StepDays        answers={answers} set_={set_} {...nav} />;
-          case 'equipment':   return <StepEquipment   answers={answers} toggleMulti={toggleMulti} {...nav} />;
-          case 'time':        return <StepTime        answers={answers} set_={set_} {...nav} />;
-          case 'limitations': return <StepLimitations answers={answers} toggleMulti={toggleMulti} {...nav} />;
-          case 'progression': return <StepProgression answers={answers} set_={set_} {...nav} />;
-          default:            return null;
+          case 'level':    return <StepLevel    answers={answers} set_={set_} {...nav} />;
+          case 'identity': return <StepIdentity answers={answers} setAnswers={setAnswers} {...nav} />;
+          case 'days':     return <StepDays     answers={answers} set_={set_} {...nav} />;
+          default:         return null;
         }
       })()}
     </View>
@@ -1180,27 +1384,6 @@ function StepDays({ answers, set_, onNext, onBack, nextLabel }) {
 // B1: tiempo disponible por sesión → answers.sessionMinutes (presupuesto B3).
 const TIME_OPTIONS = [30, 45, 60, 90];
 
-function StepTime({ answers, set_, onNext, onBack, nextLabel }) {
-  const { t } = useTranslation();
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepTime.title', 'Tiempo por sesión')}
-      subtitle={t('onboarding.stepTime.subtitle', '¿Cuánto tiempo tienes para entrenar cada día?')}
-      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
-    >
-      {TIME_OPTIONS.map((min) => (
-        <OptionCard
-          key={min}
-          label={t(`onboarding.sessionTimes.${min}.label`, `${min} min`)}
-          description={t(`onboarding.sessionTimes.${min}.description`, '')}
-          selected={answers.sessionMinutes === min}
-          onClick={() => set_('sessionMinutes', min)}
-        />
-      ))}
-    </OnboardingStep>
-  );
-}
-
 // §5.1: "¿Qué buscas?" — una sola pregunta que fija `discipline` y `goal`.
 // Sigue habiendo un mínimo de nivel para los objetivos de fuerza (GOAL_MIN_LEVEL):
 // eso bloquea una TARJETA de esta pregunta, no una plantilla de la lista.
@@ -1227,73 +1410,6 @@ function StepIdentity({ answers, setAnswers, onNext, onBack, nextLabel }) {
           />
         );
       })}
-    </OnboardingStep>
-  );
-}
-
-function StepEquipment({ answers, toggleMulti, onNext, onBack, nextLabel }) {
-  const { t } = useTranslation();
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepEquipment.title', 'Equipamiento')}
-      subtitle={t('onboarding.stepEquipment.subtitle', '¿Con qué material entrenas? (Selección múltiple)')}
-      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
-      nextDisabled={answers.equipment.length === 0}
-    >
-      {EQUIP_IDS.map((id) => (
-        <OptionCard
-          key={id}
-          label={t(`onboarding.equipment.${id}.label`, id)}
-          description={t(`onboarding.equipment.${id}.description`, '')}
-          multi
-          selected={answers.equipment.includes(id)}
-          onClick={() => toggleMulti('equipment', id)}
-        />
-      ))}
-    </OnboardingStep>
-  );
-}
-
-function StepLimitations({ answers, toggleMulti, onNext, onBack, nextLabel }) {
-  const { t } = useTranslation();
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepLimitations.title', 'Limitaciones')}
-      subtitle={t('onboarding.stepLimitations.subtitle', '¿Tienes alguna limitación física? (Selección múltiple)')}
-      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
-      nextDisabled={answers.limitations.length === 0}
-    >
-      {LIMIT_IDS.map((id) => (
-        <OptionCard
-          key={id}
-          label={t(`onboarding.limitations.${id}.label`, id)}
-          description={t(`onboarding.limitations.${id}.description`, '')}
-          multi
-          selected={answers.limitations.includes(id)}
-          onClick={() => toggleMulti('limitations', id)}
-        />
-      ))}
-    </OnboardingStep>
-  );
-}
-
-function StepProgression({ answers, set_, onNext, onBack, nextLabel }) {
-  const { t } = useTranslation();
-  return (
-    <OnboardingStep
-      title={t('onboarding.stepProgression.title', 'Modelo de progresión')}
-      subtitle={t('onboarding.stepProgression.subtitle', '¿Cómo quieres progresar semana a semana?')}
-      onNext={onNext} onBack={onBack} nextLabel={nextLabel}
-    >
-      {PROG_IDS.map((id) => (
-        <OptionCard
-          key={id}
-          label={t(`onboarding.progressionModels.${id}.label`, id)}
-          description={t(`onboarding.progressionModels.${id}.description`, '')}
-          selected={answers.progressionModel === id}
-          onClick={() => set_('progressionModel', id)}
-        />
-      ))}
     </OnboardingStep>
   );
 }
@@ -1471,6 +1587,8 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.5,
     color:         th.colors.onAccent,
   },
+  startBtnOff:     { backgroundColor: th.colors.surface2 },
+  startBtnTextOff: { color: th.colors.muted },
 
   // Propuestas — tarjeta de plantilla candidata
   proposalCard: {
@@ -1520,37 +1638,151 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: typography.sm * 1.5,
   },
 
-  // Detalle — fases
-  sectionLabel: {
+  // Tarjeta de propuesta — ciclo y sesiones
+  cycleRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
+  cycleNum: {
+    fontSize:   26,
+    fontWeight: typography.heavy,
+    color:      th.colors.accent,
+    lineHeight: 28,
+  },
+  cycleLabel: {
+    fontSize:   typography.xs,
+    color:      th.colors.mutedLight,
+    lineHeight: 12,
+  },
+  cycleSep: {
+    width:           borders.thin,
+    alignSelf:       'stretch',
+    marginHorizontal: spacing.sm,
+    backgroundColor: th.colors.border,
+  },
+  sessionList: {
+    gap: spacing.xs,
+  },
+  sessionChipRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.sm,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.xs,
+    paddingHorizontal: spacing.sm2,
+    paddingVertical:   spacing.sm,
+  },
+  sessionChipLabel: {
+    fontSize:   typography.sm,
+    fontWeight: typography.heavy,
+    width:      12,
+  },
+  sessionChipName: {
+    flex:     1,
+    fontSize: typography.sm,
+    color:    th.colors.text,
+  },
+
+  // Ajuste interactivo
+  tuneHeader: {
+    paddingHorizontal: spacing.xl,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.md,
+  },
+  tuneProgram: {
+    fontSize:      typography.xs,
+    fontWeight:    typography.heavy,
+    letterSpacing: 1,
+    color:         th.colors.accent,
+    marginBottom:  spacing.xs2,
+  },
+  tuneTitle: {
+    fontSize:   24,
+    fontWeight: typography.heavy,
+    color:      th.colors.text,
+    lineHeight: 28,
+  },
+  tuneSubtitle: {
+    fontSize:   typography.base,
+    color:      th.colors.muted,
+    marginTop:  spacing.xs2,
+    lineHeight: typography.base * 1.5,
+  },
+  tuneOptions: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom:     spacing.lg,
+  },
+
+  // Panel en vivo
+  livePanel: {
+    marginHorizontal: spacing.xl,
+    marginBottom:     spacing.md,
+    backgroundColor:  th.colors.surface,
+    borderRadius:     th.radius.md,
+    padding:          spacing.lg,
+    gap:              spacing.sm,
+  },
+  liveWaiting: {
+    fontSize:   typography.sm,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.5,
+  },
+  liveBig: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+    gap:           spacing.sm,
+  },
+  liveBigNum: {
+    fontSize:   32,
+    fontWeight: typography.heavy,
+    color:      th.colors.accent,
+  },
+  liveBigLabel: {
+    fontSize: typography.base,
+    color:    th.colors.mutedLight,
+  },
+  liveChips: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           spacing.xs2,
+  },
+  liveChip: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: spacing.sm2,
+    paddingVertical:   spacing.sm,
+  },
+  liveChipLabel: {
+    fontSize:   typography.xs,
+    fontWeight: typography.heavy,
+    color:      th.colors.accent,
+  },
+  liveChipValue: {
+    fontSize: typography.xs,
+    color:    th.colors.mutedLight,
+  },
+  liveSubs: {
+    gap: spacing.xs,
+  },
+  liveSubsTitle: {
     fontSize:      typography.xs,
     fontWeight:    typography.heavy,
     letterSpacing: 1,
     color:         th.colors.muted,
-    marginBottom:  spacing.sm,
   },
-  phaseRow: {
-    flexDirection:   'row',
-    gap:             spacing.md,
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-    marginBottom:    spacing.xs2,
-  },
-  phaseIndex: {
+  liveSubItem: {
     fontSize:   typography.sm,
-    fontWeight: typography.heavy,
-    color:      th.colors.accent,
-    width:      14,
+    color:      th.colors.mutedLight,
+    lineHeight: typography.sm * 1.4,
   },
-  phaseName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  phaseMeta: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 1,
+  liveWarn: {
+    fontSize:   typography.sm,
+    color:      th.colors.orange,
+    lineHeight: typography.sm * 1.4,
   },
 
   // Enlaces de texto ("ver todas", "ver otro programa")

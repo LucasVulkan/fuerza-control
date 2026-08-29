@@ -1,63 +1,63 @@
 # Spec — Onboarding de propuestas (fase 6 de program-templates)
 
-> Estado: **implementada** (ago 2026), con dos decisiones del usuario que se
-> apartan de lo que decía la versión cerrada de esta spec y que están marcadas
-> en su sitio: las seis preguntas van **todas antes** de la lista (§1) y el
-> programa **no se guarda hasta que se confirma** el preview (§3.3).
->
-> Es la **fase 6** de
+> Estado: **implementada** (ago 2026). Es la **fase 6** de
 > [program-templates.md](program-templates.md) §8, extraída a documento propio
 > porque es la única fase con UI y necesita contexto que aquella spec da por
 > sabido.
 >
-> **Autocontenida a propósito**: todo lo necesario para ejecutarla está aquí o en
-> los ficheros que se citan explícitamente. Las fases 1-5 ya están implementadas
-> y su resultado se describe en §3.
+> **Ojo al leer**: el enfoque cambió durante el QA y este documento describe el
+> resultado, no la versión que se cerró en su día. Los tres cambios grandes están
+> marcados donde tocan: sólo **tres** preguntas antes de la lista (§1), el
+> material **ya no puntúa** el ranking (§3.1), y el resto de preguntas son un
+> **paso interactivo** después de elegir (§5.3).
+>
+> **Autocontenida a propósito**: todo lo necesario está aquí o en los ficheros
+> que se citan explícitamente. Las fases 1-5 ya estaban implementadas y su
+> resultado se describe en §3.
 
 ---
 
 ## 1. Qué se construye
 
-Hoy el onboarding hace **ocho preguntas** y entrega un programa ya decidido. El
-usuario no elige: recibe.
+El onboarding hacía **ocho preguntas** y entregaba un programa ya decidido. El
+usuario no elegía: recibía.
 
-Después de esta fase hace **seis preguntas y enseña tres programas reales**, con
-su detalle entero, para que elija uno.
+Ahora hace **tres preguntas, enseña tres plantillas reales**, y sólo después
+pregunta lo que falta — enseñando en vivo lo que cada respuesta le hace al
+programa.
 
 ```
-6 preguntas          →  PANTALLA DE PROPUESTAS  →  preview
-nivel                    3 candidatas               con fases y
-qué buscas               + "ver todas"              lo que se adaptó
-días/semana              → detalle de cada una
-material
-tiempo/sesión
-limitaciones
+3 preguntas   →  PLANTILLAS      →  3 ajustes en vivo  →  preview
+nivel            3 candidatas       material              lo adaptado
+qué buscas       + "ver todas"      tiempo/sesión         + guardar
+días/semana      sesiones a la      limitaciones
+                 vista              (+ progresión)
 ```
 
-**Implementado**: las seis preguntas van antes de la lista, decisión del usuario.
-La versión cerrada de esta spec partía el bloque en 4 + 2, con tiempo y
-limitaciones detrás de la lista, porque sólo las cuatro primeras eligen
-plantilla. Se movieron delante por una razón concreta: el detalle de una
-candidata enseña sus ejercicios, y sin tiempo ni limitaciones contestados esos
-ejercicios no son los definitivos — la lista prometería una cosa y el preview
-entregaría otra.
-
-La tabla sigue valiendo para entender qué hace cada respuesta: **las cuatro
-primeras eligen qué plantilla; las dos últimas sólo modifican la elegida.**
+El corte es el que importa: **antes de la lista sólo van las respuestas que
+eligen QUÉ plantilla. Las que sólo la adaptan van después, con la plantilla
+delante y el resultado a la vista.**
 
 | Respuesta | Qué hace | Dónde |
 |---|---|---|
 | nivel | elige plantilla + fija la banda de volumen | antes |
 | identidad (disciplina+objetivo) | elige plantilla | antes |
 | días/semana | elige plantilla (`cycleSpeed`) | antes |
-| material | ordena las candidatas + resuelve ejercicios | antes |
-| tiempo/sesión | comprime la elegida | después |
-| limitaciones | resuelve ejercicios de la elegida | después |
+| material | resuelve ejercicios — **ya no ordena** (§3.1) | después, en vivo |
+| tiempo/sesión | comprime la elegida | después, en vivo |
+| limitaciones | resuelve ejercicios de la elegida | después, en vivo |
+| progresión | sólo se guarda; no adapta nada | después, sin panel |
 | **distribución** | **la pregunta desaparece** | — |
 
 La distribución (full body / U/L / PPL) deja de preguntarse: es una propiedad de
 la plantilla que se elige. Preguntarla y después enseñar plantillas es preguntar
 dos veces.
+
+**El porqué de todo esto**: el generador no es la feature, el catálogo lo es. Una
+lista que sale después de ocho preguntas es el output de un algoritmo que ya ha
+decidido; una lista que sale después de tres es un catálogo que se navega. Y la
+adaptación deja de ser una transformación silenciosa para ser algo que se ve
+ocurrir.
 
 ---
 
@@ -85,22 +85,27 @@ También se conservan intactos el flujo de importación (`parseImportFile`,
 Los pasos actuales del modo `auto`:
 
 ```
-step 0  StepLevel        → se conserva (pregunta 1)
+step 0  StepLevel        → se conserva, pregunta 1
 step 1  StepDiscipline   ┐ fusionados en StepIdentity, la pregunta 2
 step 4  StepGoal         ┘ ("¿Qué buscas?", 4 tarjetas)
-step 2  StepDays         → se conserva (pregunta 3)
-step 5  StepEquipment    → se conserva (pregunta 4)
-step 3  StepTime         → se conserva (pregunta 5)
-step 6  StepLimitations  → se conserva (pregunta 6)
+step 2  StepDays         → se conserva, pregunta 3   ← y aquí sale la lista
+step 5  StepEquipment    ┐
+step 3  StepTime         │ el componente DESAPARECE: sus opciones se pintan
+step 6  StepLimitations  │ dentro del paso de ajuste, junto al panel en vivo
+step 8  StepProgression  ┘ (§5.3)
 step 7  StepDistrib      → ELIMINADO, y con él `recommendDistribution`,
                            `distAvailable`, `DIST_FOR` y `DIST_IDS`
-step 8  StepProgression  → se conserva, última pregunta (sólo avanzados)
 ```
 
-El orden ya no se lleva con `step === N`: `stepIds` es la lista de pasos (con
-`'progression'` sólo si el nivel es avanzado) y el router hace `switch` sobre
-ella. `OnboardingStep` recibe una prop nueva, `nextLabel`, porque el último paso
-ya no genera el programa — lleva a la lista.
+El modo `auto` ya no es un wizard con un índice: es una máquina de cuatro fases
+(`autoPhase`) — `questions`, `proposals`, `tuning`, `preview`. Las preguntas
+previas siguen usando `OnboardingStep`, que gana una prop `nextLabel` porque el
+último paso ya no genera nada: lleva a la lista.
+
+Los cuatro pasos de ajuste NO usan `OnboardingStep`: necesitan el panel en vivo
+fijo entre la cabecera y el scroll de opciones, y `OnboardingStep` mete todo lo
+que le pasas dentro del ScrollView. Con el panel dentro se iría con el dedo al
+primer scroll, que es justo lo contrario de "en vivo".
 
 Componentes reutilizables que ya existen y hay que seguir usando, en
 `mobile/src/components/onboarding/`: `OnboardingStep`, `OptionCard` (soporta
@@ -119,7 +124,7 @@ Figma), el sistema de tokens (`src/theme.js` + `src/themes.js`, tocar sólo
 
 **Lo que se hizo, y su límite:** esta pantalla **no tiene nodo en Figma** — no
 está en `docs/figma-extraction/pages/`. Las pantallas nuevas (tarjeta de
-propuesta, detalle, aviso de adaptación) se montaron con los tokens de `theme.js`
+propuesta, panel en vivo, aviso de adaptación) se montaron con los tokens de `theme.js`
 y los patrones ya migrados: tarjeta `surface` con `radius/md` y padding `lg`,
 badge en `tint/accent-10` con texto `accent`, avisos en `surface2` y los que
 duelen en `color/orange`. **Eso no es fidelidad a Figma, es coherencia con lo
@@ -151,20 +156,48 @@ devuelve vacío.
 ]
 ```
 
-`answers` necesita `level`, `discipline`, `goal`, `daysPerWeek` y `equipment` —
-es decir, **exactamente las cuatro primeras preguntas**.
+`answers` necesita `level`, `discipline`, `goal` y `daysPerWeek` — las **tres**
+preguntas previas.
 
-Las cinco `notes` posibles son los avisos honestos de la tarjeta:
+### `equipment` es opcional, y ausente ≠ vacío — CAMBIO DE MOTOR
+
+`[]` significa "sé lo que tiene y es sólo su peso corporal". **Ausente** significa
+"todavía no se lo he preguntado", y es el caso del onboarding móvil, que enseña
+la lista antes de preguntar el material.
+
+Antes no se distinguían, y puntuar el hueco como "no tiene nada" daba una lista
+activamente equivocada. Medido, nivel intermedio y 4 días pedidos:
+
+```
+con material                      sin material (lo que se veía)
+1. FB · Iniciación                1. Full Body · 2 días     ← 2 sesiones para 4 días
+2. Upper/Lower                    2. Full Body · Hipertrofia
+3. PPL · 3 días                   3. FB · Iniciación
+4. Full Body                      4. PPL · 3 días
+5. Full Body · 2 días             5. Upper/Lower            ← fuera del podio
+```
+
+Con `equipment` ausente, `rankArchetypes` no resta `adaptationCost` (lo devuelve
+en 0) y no emite `needsBarbell`. Ordenan la disciplina, el objetivo, el nivel, la
+velocidad de ciclo y la frecuencia. El coste de adaptación se enseña después, ya
+con la plantilla elegida y en vivo.
+
+El onboarding **web** sigue preguntando el material antes, le sigue pasando
+`equipment`, y se comporta exactamente como siempre. Cubierto por
+`src/data/rankArchetypes.test.js`.
+
+Las `notes` posibles son los avisos honestos de la tarjeta:
 
 | nota | Cuándo | Qué decir |
 |---|---|---|
-| `needsBarbell` | `adaptationCost > 0` | "Diseñado con barra. Sin ella sustituimos N ejercicios." |
+| `needsBarbell` | `adaptationCost > 0` — **sólo si se conoce el material**, así que nunca en esta pantalla | "Diseñado con barra. Sin ella sustituimos N ejercicios." |
 | `rotates` | `cycleSpeed > 1,25` | "3 sesiones que rotan en ciclo: entrenas 4 días, verás cada sesión más de una vez." |
 | `slowCycle` | el ciclo avanza demasiado despacio | "Con 2 días, el ciclo tarda más de una semana en cerrarse." |
 | `levelStretch` | la plantilla no es de tu nivel | "Pensada para intermedios; adaptamos ejercicios y volumen." |
 | `lowFrequency` | cada grupo se toca ~1 vez por semana | "Cada grupo, una vez por semana." |
 
-Sin ninguna nota: *"Encaja con tu material."*
+Sin ninguna nota, **no se dice nada**. La frase que había ("Encaja con tu
+material") era mentira en esta pantalla: aún no se sabe qué material tiene.
 
 ### 3.2 `adaptArchetype(archetype, answers)` → `src/utils/archetypeAdapter.js`
 
@@ -226,13 +259,15 @@ presupuesto aplicado no se contradigan. Conservarlo así — está explicado en
 ## 4. Decisiones cerradas — no re-litigar
 
 1. **La plantilla tiene protagonismo.** El usuario elige de una lista; no recibe
-   un programa fabricado.
-2. **El material nunca filtra, ordena.** Ninguna plantilla se oculta por falta de
-   equipo: baja en el ranking y declara su coste en la tarjeta.
+   un programa fabricado. El generador no es la feature: el catálogo lo es.
+2. **El material ni filtra ni ordena: adapta, y se ve.** Antes hundía en el
+   ranking a las plantillas caras de adaptar. Ahora se pregunta *después* de
+   elegir, y lo que hace se enseña en vivo mientras se contesta (§5.3).
 3. **La pregunta de distribución desaparece.**
 4. **Disciplina y objetivo se fusionan** en una pregunta de identidad.
-5. **La duración va en portada de la tarjeta**: es lo que convierte esto en un
-   programa y no en una lista de ejercicios.
+5. **La tarjeta enseña estructura, no texto.** Las sesiones del ciclo, cuántas
+   son y cuántas semanas dura. Nada de ejercicios: cuando se pinta la lista
+   todavía no se sabe cuáles sobrevivirían.
 6. **Volver atrás no pierde las respuestas.** "Ver otro programa" devuelve a la
    lista con todo lo contestado.
 
@@ -240,10 +275,10 @@ presupuesto aplicado no se contradigan. Conservarlo así — está explicado en
 
 ## 5. Pantalla por pantalla
 
-### 5.1 Las cuatro preguntas
+### 5.1 Las tres preguntas que eligen plantilla
 
 1. **Nivel** — `StepLevel` tal cual está.
-2. **¿Qué buscas?** — pregunta nueva; fusiona disciplina y objetivo:
+2. **¿Qué buscas?** — `StepIdentity`, fusiona disciplina y objetivo:
 
    | Tarjeta | `discipline` | `goal` |
    |---|---|---|
@@ -253,53 +288,102 @@ presupuesto aplicado no se contradigan. Conservarlo así — está explicado en
    | Calistenia | `calisthenics` | `endurance` |
 
    `max_strength` deja de ser opción del onboarding: lo trae la plantilla si lo
-   usa. `GOAL_MIN_LEVEL` sigue existiendo para los objetivos de fuerza.
+   usa. `GOAL_MIN_LEVEL` sigue existiendo y bloquea la tarjeta "Ponerte fuerte" a
+   los principiantes — bloquea una TARJETA de esta pregunta, nunca una plantilla
+   de la lista.
 
 3. **Días por semana** — `StepDays` tal cual (1-7).
-4. **Material** — `StepEquipment` tal cual (multi, con `bodyweight` exclusivo).
+
+Y ya. El material, el tiempo y las limitaciones no eligen plantilla: la ajustan,
+y se preguntan después.
 
 ### 5.2 La pantalla de propuestas
 
-`rankArchetypes(answers).slice(0, 3)` más acceso a la lista completa.
+`rankArchetypes({ level, discipline, goal, daysPerWeek })` — **sin `equipment`**,
+a propósito (§3.1). Las tres primeras, más "ver todas".
 
-Cada tarjeta lleva:
+Cada tarjeta (`ProposalCard`) lleva:
 
 - Nombre del programa (`archetype.name`).
-- **`N semanas · M fases · S sesiones por ciclo`**
-  - semanas = suma de `phases[].durationWeeks`
-  - fases = `phases.length`
-  - sesiones = `sessionsPerCycle`
-- Una frase de carácter → **campo `summary`, que hay que añadir** (§6).
-- El aviso que corresponda según `notes` (tabla de §3.1).
+- **El número de sesiones por ciclo en grande**, junto a las semanas (suma de
+  `phases[].durationWeeks`). Las fases **no** salen: son estructura interna y en
+  la tarjeta sólo añadían texto.
+- **La lista de sesiones del ciclo** — etiqueta y nombre de cada `archetype.days`.
+  Es lo que de verdad distingue una plantilla de otra, y es cierto pase lo que
+  pase con el material.
+- La frase de carácter (`summary`, §6).
+- Las notas que apliquen, **todas**, no la primera (§9).
 - Badge **Recomendado** en la primera.
 
-"Ver todas" abre la lista completa ordenada. **Nada se oculta ni se bloquea.**
+El número de sesiones va en grande por un motivo concreto de QA: el ranking
+ofrece plantillas cuyo ciclo no coincide con los días pedidos (pides 4, te
+ofrece una de 3 que rota), y en letra pequeña eso no se ve.
 
-Tocar una tarjeta abre el detalle: las fases con su duración y su carácter, y las
-sesiones expandibles con sus ejercicios. Botón **Elegir este programa**.
+Tocar una tarjeta **elige** esa plantilla y lleva al ajuste. **No hay pantalla de
+detalle**: lo que enseñaba —las sesiones— ya está en la tarjeta, y los ejercicios
+no se pueden enseñar todavía sin mentir.
 
-### 5.3 Las dos preguntas de ajuste
+### 5.3 El ajuste interactivo
 
-5. **Tiempo por sesión** — `StepTime` tal cual (30/45/60/90).
-6. **Limitaciones** — `StepLimitations` tal cual.
+Tres pasos, y para avanzados un cuarto:
 
-**Van antes de la lista, no después** (§1): el detalle de una candidata enseña
-sus ejercicios ya resueltos, y sin estas dos contestadas no serían los
-definitivos. Después, sólo para avanzados, `StepProgression` como hasta ahora —
-también antes de la lista, porque no afecta a la elección y dejar una sola
-pregunta suelta detrás partía el bloque sin motivo.
+4. **Material** — multi, con `bodyweight` exclusivo.
+5. **Tiempo por sesión** — 30/45/60/90.
+6. **Limitaciones** — multi, con `none` exclusivo.
+7. **Progresión** — sólo avanzados. Va la última y **sin panel**:
+   `progressionModel` no entra en `adaptArchetype`, así que no habría nada en
+   vivo que enseñar.
+
+Cada toque vuelve a pasar la plantilla por `adaptArchetype`, y `LiveSummary`
+—fijo, fuera del scroll, o dejaría de ser en vivo al primer dedazo— enseña el
+resultado:
+
+- **`~N min por sesión`** en grande, más un chip por sesión con sus minutos y su
+  número de ejercicios.
+- Los ejercicios perdidos respecto a la plantilla original, **sólo si los hay**.
+- Los ejercicios sustituidos, con su par `origen → destino`. En el paso de
+  limitaciones se filtran a los de `reason: 'limitation'`.
+- Los huecos que el material no cubre.
+
+Medido con Upper/Lower, principiante, 4 días:
+
+```
+sin material aún   ~41 min   15 ejercicios (7 menos)   12 sustituidos   5 huecos
+con sus máquinas   ~50 min   20 ejercicios (2 menos)    8 sustituidos   0 huecos
+lo mismo a 45 min  ~42 min   20 ejercicios (2 menos)
+lo mismo a 30 min  ~35 min   17 ejercicios (5 menos)
+```
+
+**Por qué el número grande son los minutos y no "lo que pierdes".** Medido: con
+las plantillas actuales, 45, 60 y 90 minutos no recortan NADA — sólo muerde el
+presupuesto de 30. Un contador que dijera "0 ejercicios perdidos" en tres de las
+cuatro opciones se sentiría roto aunque fuese correcto. Los minutos sí se mueven
+con cada opción, porque por debajo de 60 se deja de contar el calentamiento
+general.
 
 ### 5.4 El preview
 
-El preview actual ya enseña las fases, la duración estimada por sesión y el aviso
-de calentamiento. **Le falta consumir lo que el adaptador ya devuelve:**
+Enseña la cabecera (sesiones por ciclo, semanas, avisos de ciclo y de
+calentamiento), las sesiones plegables con sus ejercicios, y `AdaptationNotice`
+con lo que el adaptador devolvía desde las fases 1-3 sin que lo leyera nadie:
 
-- `substitutions` → *"Press banca barra → Press banca mancuerna"*. Hoy pasan en
-  silencio, y enseñarlas es la promesa de honestidad de toda la feature.
+- `substitutions` → *"Press banca barra → Press banca mancuerna"*.
 - `unresolved` → *"No hemos podido cubrir 2 huecos de espalda con tu material."*
 - `overTime` → *"Tu sesión A dura ~68 min, más de los 60 que pediste."*
 - `overBudget` → *"Volumen de hombro por encima de lo recomendado para tu nivel."*
 - **"Ver otro programa"** → vuelve a §5.2 sin perder respuestas.
+
+Hay solape deliberado con el panel de §5.3: el panel es para decidir mientras
+contestas, el preview es el resumen de lo decidido. El preview además lista los
+ejercicios, que el panel no.
+
+**Sigue faltando una honestidad, y es del motor**: `reduceForBeginner`
+(`archetypeAdapter.js:108`) le quita un accesorio por sesión a un principiante
+que elige una plantilla de intermedio, y `adaptArchetype` no lo reporta en
+ninguno de sus cuatro campos. `AdaptationNotice` no puede decirlo. El panel en
+vivo de §5.3 sí lo insinúa —cuenta los ejercicios perdidos contra la plantilla
+original— pero no dice por qué. Para cerrarlo, `adaptArchetype` tendría que
+devolver esa reducción.
 
 ---
 
@@ -332,25 +416,34 @@ Ya existen: `onboarding.stepLevel.*`, `onboarding.stepDays.*`,
 `onboarding.preview.cycleHint`, `.estimatedMinutes`, `.noWarmupNote` y
 `.weeksAndPhases`.
 
-Hay que crear:
+Creadas:
 
 - `onboarding.identity.*` — las 4 tarjetas de la pregunta fusionada.
-- `onboarding.proposals.*` — título, badge "Recomendado", los cinco avisos de
-  `notes`, "ver todas", "elegir este programa", "ver otro programa".
-- `onboarding.preview.substitutions.*` · `.unresolved` · `.overTime` ·
-  `.overBudget`.
+- `onboarding.proposals.*` — título, badge, avisos de `notes`, ciclo, semanas,
+  "ver todas", "ver otro programa".
+- `onboarding.tuning.*` — el panel en vivo: minutos por sesión, ejercicios
+  perdidos, sustituidos, huecos sin cubrir.
+- `onboarding.preview.*` — `.unresolved`, `.overTime`, `.overBudget`,
+  `.adaptedTitle`, `.ready`, `.edit`, `.start`, `.exerciseCount`, `.setCount`.
 
-**No se borró nada.** `onboarding.stepDistribution.*` y
-`onboarding.distributions.*` las sigue usando el onboarding **web**, y
-`disabledReasons.requiresIntermediate` la usa además la pregunta de identidad.
-La condición "si no quedan otros usos" no se cumple.
+Borradas al quedarse sin uso: `proposals.notes.fits` (mentía en una pantalla que
+aún no sabe el material), y `proposals.choose` · `.phasesTitle` · `.phaseWeeks` ·
+`.sessionsTitle` · `preview.weeksAndPhases`, que eran de la pantalla de detalle
+que ya no existe.
+
+**No se borra** `onboarding.stepDistribution.*` ni `onboarding.distributions.*`:
+las sigue usando el onboarding **web**. Tampoco `stepEquipment.*`,
+`stepTime.*`, `stepLimitations.*` ni `stepProgression.*` — los componentes
+desaparecieron pero sus títulos y subtítulos los reusa el paso de ajuste.
+`disabledReasons.requiresIntermediate` la usa la pregunta de identidad.
 
 ---
 
 ## 8. Verificación
 
-- ✅ `npx vitest run` desde la raíz: **1114 verdes** — los 1107 de antes, intactos
-  (esta fase no toca el motor), más los 7 del test nuevo.
+- ✅ `npx vitest run` desde la raíz: **1118 verdes** — los 1107 de antes,
+  intactos, más 7 de `mobile/store/onboardingAnswers.test.js` y 4 de
+  `src/data/rankArchetypes.test.js` para el material ausente (§3.1).
 - ✅ `npx eslint mobile/src` sale igual que en HEAD: 197 problemas / 170 errores /
   27 avisos. En `OnboardingScreen.jsx` siguen los **2 errores preexistentes**
   (`useRef` sin usar y un `setState` dentro de un efecto) y ninguno más.
@@ -382,12 +475,35 @@ La condición "si no quedan otros usos" no se cumple.
 - **El preview se pinta sin haber guardado nada** (§3.3). Si alguien mueve la
   llamada a `generateAndActivateProgram` a `chooseArchetype`, "ver otro programa"
   vuelve a crear programas huérfanos.
+- **Al rankear NO se pasa `equipment`** (§3.1). Pasarle `[]` "por limpieza"
+  reintroduce la regresión entera: `[]` significa "no tiene nada", no "no lo sé".
+- **La tarjeta enseña TODAS las notas, no la primera.** Salió del QA: con la
+  primera sola, `needsBarbell` se comía siempre a `levelStretch` — que era justo
+  la que explicaba por qué a un principiante le salían 4 ejercicios en tren
+  inferior y no 5.
+- **El panel en vivo va FUERA del ScrollView.** Por eso los pasos de ajuste no
+  usan `OnboardingStep`: mete a sus hijos dentro del scroll, y un panel que se va
+  con el dedo deja de ser en vivo.
+- **`adaptArchetype` corre en cada render del ajuste**, y así tiene que ser: es
+  lo que hace que el panel responda. Es puro y barato (milisegundos); no hace
+  falta debounce ni memo más fino que el `useMemo` sobre `submitAnswers`.
 
 ---
 
 ## 10. Qué NO entra
 
-- El motor de generación: fases 1-5, terminadas y calibradas.
+- El motor de generación: fases 1-5, calibradas. **Con una excepción**, y está
+  documentada en §3.1: `rankArchetypes` tuvo que aprender a no puntuar el
+  material cuando no se le da. Sin eso, la lista antes de preguntarlo salía al
+  revés y todo el enfoque se cae.
 - El catálogo de plantillas (fase 8): faltan Fuerza · 3 sesiones · intermedio y
   los ejercicios de tracción sin material. Es contenido y va aparte.
 - Las reglas de integridad del harness (fase 7).
+
+### Lo que este cambio deja como siguiente prioridad
+
+Si las plantillas son la feature, **el catálogo es el producto**. Son 11, y la
+fase 8 reconoce que están incompletas. Con el generador de protagonista eso era
+un detalle de contenido; con las plantillas de protagonista, es lo más
+importante que queda por hacer. La pantalla ya está lista para catálogos más
+grandes: "ver todas" no tiene tope y la tarjeta se explica sola.

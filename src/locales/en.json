@@ -957,6 +957,9 @@
       }
     },
     "proposals": {
+      "weeks": "{{weeks}} weeks",
+      "weeksShort": "weeks",
+      "sessionsPerCycleShort": "sessions\nper cycle",
       "title": "Your programs",
       "subtitle": "Picked from what you answered. Tap one to see all of it.",
       "seeProposals": "SEE PROGRAMS",
@@ -964,18 +967,17 @@
       "sessionsPerCycle": "{{sessions}} sessions per cycle",
       "seeAll": "See all {{total}} templates",
       "seeTop": "See only the recommended ones",
-      "choose": "CHOOSE THIS PROGRAM",
+      
       "another": "‹ See another program",
-      "phasesTitle": "PHASES",
-      "phaseWeeks": "{{weeks}} weeks",
-      "sessionsTitle": "SESSIONS",
+      
+      
+      
       "notes": {
         "needsBarbell": "Built around the barbell. Without one we swap {{exercises}} exercises.",
         "rotates": "{{sessions}} sessions rotating in a cycle: you train {{days}} days, so you'll see each session more than once.",
         "slowCycle": "With {{days}} days, the cycle takes more than a week to close.",
         "levelStretch": "Written for {{level}} level; we adapt the exercises and the volume.",
-        "lowFrequency": "Each muscle group once a week.",
-        "fits": "Fits the equipment you have."
+        "lowFrequency": "Each muscle group once a week."
       }
     },
     "generateError": "Could not generate the program. Please try again.",
@@ -1045,8 +1047,7 @@
       "overBudget": "{{group}} volume is above what we recommend for your level.",
       "cycleHint": "Your {{sessions}} sessions rotate in a cycle — you train {{days}} days a week.",
       "estimatedMinutes": "~{{minutes}} min",
-      "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises.",
-      "weeksAndPhases": "{{weeks}} weeks · {{phases}} phases"
+      "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises."
     },
     "stepGoal": {
       "title": "What's your goal?",
@@ -1064,7 +1065,16 @@
       "title": "Progression model",
       "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
     },
-    "generateProgram": "🏋️ GENERATE PROGRAM",
+    "tuning": {
+      "waiting": "Pick your equipment and you'll see how the program adapts.",
+      "minutesPerSession": "min per session",
+      "lostExercises": "{{lost}} exercises fewer than the original template.",
+      "substituted": "{{swapped}} exercises swapped",
+      "andMore": "and {{rest}} more",
+      "noLimitationSwaps": "Nothing to swap: the template already avoids that area.",
+      "unresolved": "{{slots}} slots your equipment does not cover."
+    },
+    "generateProgram": "SEE THE PROGRAM",
     "levels": {
       "beginner": {
         "label": "Beginner",

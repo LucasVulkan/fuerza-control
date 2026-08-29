@@ -38,7 +38,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
-| **Onboarding** (preguntas, propuestas, detalle, preview) | 🟡 sin nodo en Figma — hecho con tokens y patrones ya migrados, revisar cuando exista el nodo. Spec: [`specs/onboarding-proposals.md`](specs/onboarding-proposals.md) | `src/screens/OnboardingScreen.jsx` |
+| **Onboarding** (preguntas, plantillas, ajuste en vivo, preview) | 🟡 sin nodo en Figma — hecho con tokens y patrones ya migrados, revisar cuando exista el nodo. Spec: [`specs/onboarding-proposals.md`](specs/onboarding-proposals.md) | `src/screens/OnboardingScreen.jsx` |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)

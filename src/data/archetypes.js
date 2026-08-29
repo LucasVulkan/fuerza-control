@@ -913,15 +913,29 @@ function equipmentGap(archetype, equipment = []) {
   return missing;
 }
 
+/**
+ * Puntúa y ordena TODAS las plantillas. Nunca devuelve vacío.
+ *
+ * `answers.equipment` es opcional, y su AUSENCIA no es lo mismo que una lista
+ * vacía: `[]` significa "sé lo que tiene y es sólo su peso corporal", y ausente
+ * significa "todavía no se lo he preguntado". El onboarding móvil enseña la
+ * lista antes de preguntar el material (onboarding-proposals.md §1), y puntuar
+ * ese hueco como si no tuviera nada invertía el orden — hundía las plantillas de
+ * barra y sacaba primero una de 2 sesiones a quien había pedido entrenar 4.
+ * Sin material conocido no se resta nada y no se emite `needsBarbell`: el coste
+ * de adaptación se enseña después, ya con la plantilla elegida.
+ */
 export function rankArchetypes(answers = {}) {
   const {
-    discipline, goal, level = 'intermediate', daysPerWeek = 3, equipment = [],
+    discipline, goal, level = 'intermediate', daysPerWeek = 3,
   } = answers;
+  const knowsEquipment = Array.isArray(answers.equipment);
+  const equipment = knowsEquipment ? answers.equipment : [];
 
   return ARCHETYPES.map((archetype) => {
     const sessionsPerCycle = archetype.days.length;
     const cycleSpeed = cycleSpeedOf(daysPerWeek, sessionsPerCycle);
-    const adaptationCost = equipmentGap(archetype, equipment);
+    const adaptationCost = knowsEquipment ? equipmentGap(archetype, equipment) : 0;
     const levelGap = Math.abs(LEVEL_ORDER[archetype.level] - LEVEL_ORDER[level]);
 
     let score = 0;
@@ -943,7 +957,7 @@ export function rankArchetypes(answers = {}) {
     score -= 3 * adaptationCost;
 
     const notes = [];
-    if (adaptationCost > 0) notes.push('needsBarbell');
+    if (knowsEquipment && adaptationCost > 0) notes.push('needsBarbell');
     if (cycleSpeed > 1.25) notes.push('rotates');
     if (cycleSpeed < minSpeed) notes.push('slowCycle');
     if (levelGap > 0) notes.push('levelStretch');
