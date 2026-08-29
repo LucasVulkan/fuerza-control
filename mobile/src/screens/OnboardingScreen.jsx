@@ -172,21 +172,27 @@ function proposalMeta(t, entry) {
   return parts.join(' · ');
 }
 
-// Orden de la tabla de §3.1. `rotates` y `slowCycle` son excluyentes entre sí,
-// así que en la práctica sólo compiten la barra y el resto.
+// Orden de la tabla de §3.1.
 const NOTE_ORDER = ['needsBarbell', 'rotates', 'slowCycle', 'levelStretch', 'lowFrequency'];
 
-/** El aviso honesto de la tarjeta. Sin ninguna nota, encaja y se dice. */
-function proposalNote(t, entry, daysPerWeek) {
-  const note = NOTE_ORDER.find((n) => entry.notes.includes(n));
-  if (!note) return t('onboarding.proposals.notes.fits', 'Encaja con tu material.');
-  return t(`onboarding.proposals.notes.${note}`, {
+/**
+ * Los avisos honestos de la tarjeta. Sin ninguna nota, encaja y se dice.
+ *
+ * TODAS, no la primera: sin barra las once plantillas disparan `needsBarbell`,
+ * así que enseñar sólo una dejaba a las once diciendo lo mismo y tapaba la que
+ * de verdad distingue. En particular `levelStretch`, que es la que explica que a
+ * un principiante se le quite un accesorio por sesión (`reduceForBeginner`).
+ */
+function proposalNotes(t, entry, daysPerWeek) {
+  const notes = NOTE_ORDER.filter((n) => entry.notes.includes(n));
+  if (!notes.length) return [t('onboarding.proposals.notes.fits', 'Encaja con tu material.')];
+  return notes.map((n) => t(`onboarding.proposals.notes.${n}`, {
     exercises: entry.adaptationCost,
     sessions:  entry.sessionsPerCycle,
     days:      daysPerWeek,
     level:     t(`onboarding.levels.${entry.archetype.level}.label`, entry.archetype.level),
     defaultValue: '',
-  });
+  }));
 }
 
 /** Una sesión del ciclo, plegable, con sus ejercicios. */
@@ -710,6 +716,10 @@ export default function OnboardingScreen() {
           <Text style={styles.previewTitle}>{archetype.name}</Text>
           <Text style={styles.previewMeta}>{proposalMeta(t, detailEntry)}</Text>
           {archetype.summary ? <Text style={styles.proposalSummary}>{archetype.summary}</Text> : null}
+          {/* Los mismos avisos que en la tarjeta: es aquí donde se decide. */}
+          {proposalNotes(t, detailEntry, answers.daysPerWeek).map((nota, n) => (
+            <Text key={n} style={styles.proposalNote}>{nota}</Text>
+          ))}
         </View>
 
         <ScrollView contentContainerStyle={styles.previewList} showsVerticalScrollIndicator={false}>
@@ -798,7 +808,9 @@ export default function OnboardingScreen() {
               {entry.archetype.summary ? (
                 <Text style={styles.proposalSummary}>{entry.archetype.summary}</Text>
               ) : null}
-              <Text style={styles.proposalNote}>{proposalNote(t, entry, answers.daysPerWeek)}</Text>
+              {proposalNotes(t, entry, answers.daysPerWeek).map((nota, n) => (
+                <Text key={n} style={styles.proposalNote}>{nota}</Text>
+              ))}
             </TouchableOpacity>
           ))}
 
