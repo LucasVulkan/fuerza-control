@@ -130,7 +130,14 @@ export function disciplineRules(discipline) {
 }
 
 // Suelos duros. Ninguna combinación de peldaños puede bajar de aquí.
-const MIN_ACCESSORIES = 2;   // 1 principal + 2 accesorios es el mínimo de sesión
+//
+// Bajó de 2 a 1 en ago-2026. Con 2, una sesión que nacía con sólo dos accesorios
+// —Full Body · 2 días son cuatro principales y dos accesorios— no podía soltar
+// NINGÚN ejercicio por mucho que se apretara el presupuesto: se quedaba en seis
+// ejercicios a 30 minutos y sólo le quedaba recortar series. Lo que protege de
+// verdad la sesión es que tier 1 no se toca (`canRemove`), no el segundo
+// accesorio.
+const MIN_ACCESSORIES = 1;   // 1 principal + 1 accesorio es el mínimo de sesión
 export const MIN_SETS_ACCESSORY = 2;
 const MIN_SETS_TIER1 = 3;
 
@@ -144,8 +151,8 @@ const MIN_SETS_TIER1 = 3;
  * series.
  *
  * No puede bloquearse: si va a haber un tercero en el suelo es que hay al menos
- * tres accesorios, y el suelo de sesión (1 principal + 2 accesorios) permite
- * quitar uno.
+ * tres accesorios, y el suelo de sesión (1 principal + 1 accesorio) permite
+ * quitar uno de sobra.
  */
 export const MAX_ACCESSORIES_AT_FLOOR = 2;
 

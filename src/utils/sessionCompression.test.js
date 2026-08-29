@@ -60,10 +60,32 @@ describe('compressSession — escalera', () => {
     expect(idsOf(exercises)).toContain('romanian_deadlift');
   });
 
-  it('nunca baja de 1 principal + 2 accesorios', () => {
+  it('una sesión que nace con 2 accesorios puede soltar uno', () => {
+    // La regresión que motivó bajar el suelo: Full Body · 2 días son cuatro
+    // principales y dos accesorios. Con el suelo en 2, `canRemove` exigía dejar
+    // MÁS de dos, así que no podía soltar nada — seis ejercicios a 30 minutos y
+    // sólo series que recortar. En el onboarding se veía como "el tiempo sólo
+    // quita series".
+    const DOS_ACCESORIOS = [
+      ex('squat_barbell',       1, 4, 180),
+      ex('romanian_deadlift',   1, 3, 120),
+      ex('bench_press_barbell', 1, 4, 180),
+      ex('leg_extension',       3, 3, 60),
+      ex('calf_raise_standing', 3, 3, 45),
+    ];
+    const { exercises } = compressSession(DOS_ACCESORIOS, { sessionMinutes: 30 });
+    expect(exercises.length).toBeLessThan(DOS_ACCESORIOS.length);
+    // Y los tres principales siguen ahí: el suelo que importa es ese.
+    expect(exercises.filter((e) => e.tier === 1)).toHaveLength(3);
+  });
+
+  it('nunca baja de 1 principal + 1 accesorio', () => {
+    // El suelo bajó de 2 accesorios a 1 (ago 2026): con 2, las sesiones que
+    // nacen con pocos accesorios no podían soltar NINGÚN ejercicio por mucho que
+    // se apretara el tiempo, y sólo les quedaba recortar series.
     const { exercises } = compressSession(LEG_DAY, { sessionMinutes: 10 });
     expect(exercises.filter((e) => e.tier === 1).length).toBe(2);
-    expect(exercises.filter((e) => e.tier !== 1).length).toBeGreaterThanOrEqual(2);
+    expect(exercises.filter((e) => e.tier !== 1).length).toBeGreaterThanOrEqual(1);
   });
 
   it('declara `overTime` en vez de forzar el presupuesto', () => {
@@ -117,8 +139,8 @@ describe('compressSession — énfasis de la plantilla', () => {
     const { exercises } = compressSession(GLUTE_DAY, {
       sessionMinutes: 10, volumeEmphasis: ['glutes_hamstrings'],
     });
-    // El suelo manda por encima del énfasis (1 principal + 2 accesorios).
-    expect(exercises.filter((e) => e.tier !== 1).length).toBeGreaterThanOrEqual(2);
+    // El suelo manda por encima del énfasis (1 principal + 1 accesorio).
+    expect(exercises.filter((e) => e.tier !== 1).length).toBeGreaterThanOrEqual(1);
   });
 });
 
