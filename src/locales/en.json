@@ -1066,6 +1066,13 @@
       "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
     },
     "tuning": {
+      "timeCutsTitle": "TO FIT IN {{budget}} MIN",
+      "cutExercises": "−{{count}} exercise",
+      "cutExercises_other": "−{{count}} exercises",
+      "cutSets": "−{{count}} set",
+      "cutSets_other": "−{{count}} sets",
+      "noCuts": "It all fits in {{budget}} min. Nothing cut.",
+      "stillOver": "Still over even after cutting: {{sessions}}.",
       "waiting": "Pick your equipment and you'll see how the program adapts.",
       "minutesPerSession": "min per session",
       "lostExercises": "{{lost}} exercises fewer than the original template.",

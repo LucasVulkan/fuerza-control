@@ -397,9 +397,21 @@ function ProposalCard({ entry, recommended, daysPerWeek, onPress }) {
  * ejercicios quedan respecto a la plantilla original, y qué se ha sustituido.
  * Es lo que convierte tres preguntas en una cosa que se ve funcionar.
  */
-function LiveSummary({ archetype, adapted, focus, answers, allEx, language, waiting }) {
+function LiveSummary({ archetype, adapted, focus, answers, engineAnswers, allEx, language, waiting }) {
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
+
+  // Lo que cuesta EL TIEMPO, y sólo el tiempo. La misma plantilla con las mismas
+  // respuestas pero sin presupuesto (`sessionMinutes: null` desactiva
+  // `compressSession`), para restar contra ella. Comparar contra la plantilla
+  // original no vale aquí: mezclaría lo que quitan el material y el nivel, que
+  // no se mueven al tocar esta pregunta.
+  const sinLimite = useMemo(
+    () => (focus === 'time' && engineAnswers
+      ? adaptArchetype(archetype, { ...engineAnswers, sessionMinutes: null })
+      : null),
+    [focus, archetype, engineAnswers],
+  );
 
   if (waiting || !adapted) {
     return (
@@ -422,9 +434,20 @@ function LiveSummary({ archetype, adapted, focus, answers, allEx, language, wait
 
   const totalEx = tpls.reduce((n, tpl) => n + (tpl.exercises?.length ?? 0), 0);
   const baseEx  = archetype.days.reduce((n, d) => n + d.exercises.length, 0);
-  // Sólo se enseña cuando de verdad se ha perdido algo: con 45, 60 y 90 minutos
-  // casi nunca recorta, y un "-0 ejercicios" permanente no informa de nada.
+  // Contra la plantilla escrita: resume lo que se han llevado entre el material
+  // y el nivel. En el paso de tiempo no se enseña, porque ahí la pregunta es
+  // otra y este número no se movería al contestarla.
   const perdidos = baseEx - totalEx;
+
+  // Recorte por tiempo, sesión a sesión. `null` = todavía no toca calcularlo.
+  const sets = (tpl) => (tpl.exercises ?? []).reduce((n, e) => n + (e.sets ?? 0), 0);
+  const recortes = sinLimite
+    ? uniqueSessionTemplates(sinLimite.program, sinLimite.sessionTemplates).map((libre, i) => ({
+      label:     tpls[i]?.label ?? libre.label,
+      exercises: (libre.exercises?.length ?? 0) - (tpls[i]?.exercises?.length ?? 0),
+      sets:      sets(libre) - sets(tpls[i] ?? {}),
+    })).filter((r) => r.exercises > 0 || r.sets > 0)
+    : null;
 
   // El mismo hueco se resuelve igual en varias sesiones: decirlo una vez.
   const subs = [];
@@ -457,11 +480,49 @@ function LiveSummary({ archetype, adapted, focus, answers, allEx, language, wait
         ))}
       </View>
 
-      {perdidos > 0 && (
+      {focus !== 'time' && perdidos > 0 && (
         <Text style={styles.liveWarn}>
           {t('onboarding.tuning.lostExercises', {
             lost: perdidos,
             defaultValue: `${perdidos} ejercicios menos que la plantilla original.`,
+          })}
+        </Text>
+      )}
+
+      {/* Qué se ha llevado el tiempo, sesión a sesión. Decir "nada" también es
+          decir algo: con 45, 60 y 90 minutos el presupuesto no suele morder. */}
+      {recortes && (recortes.length > 0 ? (
+        <View style={styles.liveSubs}>
+          <Text style={styles.liveSubsTitle}>
+            {t('onboarding.tuning.timeCutsTitle', {
+              budget: answers.sessionMinutes,
+              defaultValue: `PARA CABER EN ${answers.sessionMinutes} MIN`,
+            })}
+          </Text>
+          {recortes.map((r) => (
+            <Text key={r.label} style={styles.liveWarn}>
+              {`${r.label}   `}
+              {[
+                r.exercises > 0 && t('onboarding.tuning.cutExercises', { count: r.exercises, defaultValue: `−${r.exercises} ejercicios` }),
+                r.sets > 0 && t('onboarding.tuning.cutSets', { count: r.sets, defaultValue: `−${r.sets} series` }),
+              ].filter(Boolean).join(' · ')}
+            </Text>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.liveSubItem}>
+          {t('onboarding.tuning.noCuts', {
+            budget: answers.sessionMinutes,
+            defaultValue: `Todo cabe en ${answers.sessionMinutes} min. Ningún recorte.`,
+          })}
+        </Text>
+      ))}
+
+      {focus === 'time' && (adapted.overTime ?? []).length > 0 && (
+        <Text style={styles.liveWarn}>
+          {t('onboarding.tuning.stillOver', {
+            sessions: adapted.overTime.join(', '),
+            defaultValue: `Ni recortando cabe: ${adapted.overTime.join(', ')}.`,
           })}
         </Text>
       )}
@@ -917,6 +978,7 @@ export default function OnboardingScreen() {
             adapted={tuned}
             focus={paso}
             answers={answers}
+            engineAnswers={submitAnswers}
             allEx={allEx}
             language={language}
             waiting={paso === 'equipment' && !answers.equipment.length}

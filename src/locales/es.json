@@ -1066,6 +1066,13 @@
       "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
     },
     "tuning": {
+      "timeCutsTitle": "PARA CABER EN {{budget}} MIN",
+      "cutExercises": "−{{count}} ejercicio",
+      "cutExercises_other": "−{{count}} ejercicios",
+      "cutSets": "−{{count}} serie",
+      "cutSets_other": "−{{count}} series",
+      "noCuts": "Todo cabe en {{budget}} min. Ningún recorte.",
+      "stillOver": "Ni recortando cabe: {{sessions}}.",
       "waiting": "Elige tu material y verás cómo queda el programa.",
       "minutesPerSession": "min por sesión",
       "lostExercises": "{{lost}} ejercicios menos que la plantilla original.",

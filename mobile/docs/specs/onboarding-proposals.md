@@ -340,10 +340,21 @@ resultado:
 
 - **`~N min por sesión`** en grande, más un chip por sesión con sus minutos y su
   número de ejercicios.
-- Los ejercicios perdidos respecto a la plantilla original, **sólo si los hay**.
-- Los ejercicios sustituidos, con su par `origen → destino`. En el paso de
+- **En el paso de tiempo, el recorte sesión a sesión**: `A −1 ejercicio · −3
+  series`. Y si no recorta nada, se dice — *"Todo cabe en 45 min. Ningún
+  recorte."* Callar ahí dejaba la pregunta sin respuesta.
+- En material y limitaciones, los ejercicios perdidos respecto a la plantilla
+  escrita, sólo si los hay, y los sustituidos con su par `origen → destino`. En
   limitaciones se filtran a los de `reason: 'limitation'`.
 - Los huecos que el material no cubre.
+
+**Cada recorte contra su propia referencia.** El del tiempo se calcula contra la
+misma plantilla con las mismas respuestas y `sessionMinutes: null`, que desactiva
+`compressSession` (`sessionCompression.js:331`). Restar contra la plantilla
+escrita no vale en ese paso: mezclaría lo que se llevan el material y el nivel,
+que no se mueven al cambiar de 90 a 45, y el número se quedaría clavado dando la
+impresión de que la pregunta no hace nada. Cuesta un `adaptArchetype` de más, y
+sólo en ese paso.
 
 Medido con Upper/Lower, principiante, 4 días:
 
@@ -354,12 +365,19 @@ lo mismo a 45 min  ~42 min   20 ejercicios (2 menos)
 lo mismo a 30 min  ~35 min   17 ejercicios (5 menos)
 ```
 
-**Por qué el número grande son los minutos y no "lo que pierdes".** Medido: con
-las plantillas actuales, 45, 60 y 90 minutos no recortan NADA — sólo muerde el
-presupuesto de 30. Un contador que dijera "0 ejercicios perdidos" en tres de las
-cuatro opciones se sentiría roto aunque fuese correcto. Los minutos sí se mueven
-con cada opción, porque por debajo de 60 se deja de contar el calentamiento
-general.
+**Por qué el número grande son los minutos y no "lo que pierdes".** Medido, con
+las plantillas actuales el presupuesto casi sólo muerde a 30 minutos:
+
+```
+                        90    60    45                    30
+Upper/Lower             —     —     —                     A −2ej/−5ser  B −1/−3  C −1/−5  D −1/−5
+PPL · 6 días            —     —     —                     las seis, −1ej/−3ser cada una
+Full Body · Fuerza      —     —     C −1ej/−3ser          A −1/−8  B −1/−6  C −1/−8
+```
+
+Los minutos sí se mueven con cada opción, porque por debajo de 60 se deja de
+contar el calentamiento general. El recorte va debajo, con su detalle por sesión
+cuando lo hay y diciéndolo explícitamente cuando no.
 
 ### 5.4 El preview
 
