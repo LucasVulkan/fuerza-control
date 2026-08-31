@@ -1,12 +1,11 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 14 fallos resueltos** (ago 2026) — tandas A, B, D y
-> E-parcial cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20, 9, 6) y la C casi (5, 7,
-> 26). 12 pendientes de 26.
+> Estado: **🔍 DIAGNÓSTICO. 15 fallos resueltos** (ago 2026) — **tandas A, B, C
+> y D cerradas** (1, 2, 3, 4, 5, 7, 8, 9, 10, 13, 17, 19, 20, 26) más el 6.
+> 11 pendientes de 26, ninguno crítico.
 >
-> El **[fallo 8](#8) está escrito pero SIN desplegar**: es Edge Function. Y su
-> segunda mitad (sacar el código a SecureStore) queda **descartada a
-> propósito** — el motivo, en su sección.
+> La segunda mitad del [fallo 8](#8) —sacar el código del entrenador a
+> SecureStore— queda **descartada a propósito**; el motivo, en su sección.
 >
 > El SQL del modelo de conexión **está desplegado** (ago 2026): comprobado que
 > `claim_trainer_slots` ya no existe y que las seis funciones restantes siguen
@@ -57,7 +56,7 @@
 | [5](#5) | 🟠 Alta | ✅ Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
 | [6](#6) | 🟠→🟢 | ✅ `getProgressionRecommendation` siempre devuelve `null` (código muerto) | `store/useStore.js:1891` |
 | [7](#7) | 🟠 Alta | ✅ El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
-| [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
+| [8](#8) | 🟠 Alta | ✅ `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
 | [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:597` |
@@ -798,7 +797,7 @@ Desplegado y verificado en ago 2026.
 
 ---
 
-## 8. `create-trainer-account` sin validación ni rate limit 🟠 {#8}
+## 8. `create-trainer-account` sin validación ni rate limit 🟠 ✅ {#8}
 
 **Dónde.** `supabase/functions/create-trainer-account/index.ts:22-24`.
 
@@ -869,14 +868,18 @@ son los dos únicos consumidores; pasan a leerlo con `await`.
 contraseña es el código que el usuario ve y comparte"— es de diseño y no se
 toca aquí.
 
-### 📤 Edge Function endurecida (ago 2026) — escrita, SIN desplegar
+### ✅ Edge Function endurecida y desplegada (ago 2026)
 
 `supabase/functions/create-trainer-account/index.ts` pasa a la forma que ya
 tenía `delete-account`: helper `json()`, todo dentro de `try`, `req.json()` con
 `.catch(() => null)`, comprobación de tipo y de formato contra `CODE_RE`, y el
 mensaje interno de Supabase al log en vez de al cliente.
 
-**Falta desplegarla:** `supabase functions deploy create-trainer-account`.
+**Desplegada y verificada** contra el endpoint real: `{}`, `{"code":123}`,
+`{"code":"NO-VALE"}`, un cuerpo que no es JSON y una petición sin cuerpo
+devuelven los cinco `400 {"error":"Código inválido"}`. Los dos últimos eran
+500 antes. No se probó con un código válido a propósito: crearía un usuario de
+verdad en `auth.users`.
 
 **Test.** `mobile/src/services/supabaseAuth.test.js`. El contrato del código
 vive partido en dos sitios sin nada que los una: lo **genera**
@@ -1846,7 +1849,7 @@ verificable:
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
-| **C — sincronización** | ✅ [5](#5), ✅ [7](#7), [8](#8) 📤 sin desplegar | store + SQL + Edge Function |
+| **C — sincronización** ✅ | ✅ [5](#5), ✅ [7](#7), ✅ [8](#8) | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
 | **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |
