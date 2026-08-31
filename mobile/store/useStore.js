@@ -33,7 +33,6 @@ import {
 // Shared data & utilities (resolved by Metro watchFolders)
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
 import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
-import { getProgression } from '../../src/utils/progression';
 import { generateId } from '../../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
 import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
@@ -1950,27 +1949,6 @@ export const useStore = create(
           return { activeSession: { ...s.activeSession, blockState: next } };
         });
         if (!get().ui.restTimer.active) dismissCountdownNotification().catch(() => {});
-      },
-
-      getProgressionRecommendation: (templateId, exerciseId) => {
-        const { getEffectiveTemplate, exerciseLibrary, customExercises } = get();
-        const template = getEffectiveTemplate(templateId);
-        if (!template) return null;
-        const exConfig = template.exercises.find((e) => e.exerciseId === exerciseId);
-        if (!exConfig) return null;
-        const baseDef = exerciseLibrary[exerciseId] ?? customExercises[exerciseId];
-        if (!baseDef) return null;
-        const effectiveDef = exConfig.progressionModel
-          ? { ...baseDef, progressionModel: exConfig.progressionModel } : baseDef;
-        const lastExercise = lastExerciseRef({
-          workoutLog: get().workoutLog,
-          program:    get().programs[template.programId],
-          templateId,
-          exConfig,
-          getTemplate: getEffectiveTemplate,
-        });
-        if (!lastExercise) return null;
-        return getProgression(effectiveDef, lastExercise.sets, exConfig.sets);
       },
 
       saveSession: () => {

@@ -1,8 +1,12 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 13 fallos resueltos** (ago 2026) — tandas A, B y D
-> cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20, 9) y la C casi (5, 7, 26; queda el
-> 8). 13 pendientes de 26.
+> Estado: **🔍 DIAGNÓSTICO. 14 fallos resueltos** (ago 2026) — tandas A, B, D y
+> E-parcial cerradas (1, 2, 10, 3, 4, 13, 17, 19, 20, 9, 6) y la C casi (5, 7,
+> 26). 12 pendientes de 26.
+>
+> El **[fallo 8](#8) está escrito pero SIN desplegar**: es Edge Function. Y su
+> segunda mitad (sacar el código a SecureStore) queda **descartada a
+> propósito** — el motivo, en su sección.
 >
 > El SQL del modelo de conexión **está desplegado** (ago 2026): comprobado que
 > `claim_trainer_slots` ya no existe y que las seis funciones restantes siguen
@@ -51,7 +55,7 @@
 | [3](#3) | 🟠 Alta | ✅ La copia programada a Drive no se ejecuta nunca | `store/useStore.js:2069` |
 | [4](#4) | 🟠 Alta | ✅ El backup se guarda en SecureStore (límite 2048 B) | `store/useStore.js:2754` |
 | [5](#5) | 🟠 Alta | ✅ Carrera en `refreshTrainerSlots` → clientes duplicados | `store/useStore.js:3049` |
-| [6](#6) | 🟠 Alta | `getProgressionRecommendation` siempre devuelve `null` | `store/useStore.js:1891` |
+| [6](#6) | 🟠→🟢 | ✅ `getProgressionRecommendation` siempre devuelve `null` (código muerto) | `store/useStore.js:1891` |
 | [7](#7) | 🟠 Alta | ✅ El código de cliente permite desalojar al cliente real | `supabase/secure_trainer_clients.sql` |
 | [8](#8) | 🟠 Alta | `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
@@ -613,7 +617,7 @@ contra el código anterior.
 
 ---
 
-## 6. `getProgressionRecommendation` siempre devuelve `null` 🟠 {#6}
+## 6. `getProgressionRecommendation` siempre devuelve `null` 🟠 ✅ {#6}
 
 **Dónde.** `store/useStore.js:1891`.
 
@@ -672,6 +676,33 @@ getProgressionRecommendation: (templateId, exerciseId) => {
 
 **Test.** Ampliar `src/utils/progression.test.js` con un caso que llame a través
 del store y espere un chip, no `null`.
+
+### ✅ Resuelto (ago 2026) — borrando, no arreglando
+
+**El diagnóstico técnico es exacto y la severidad está mal.** Este apartado —y
+la frase "la progresión automática no funciona"— hace pensar que hay algo roto
+de cara al usuario. No lo hay: **la progresión que se ve en la app funciona**.
+La calcula `ExerciseCard.jsx:378`, que sí pasa los cuatro argumentos, y de ahí
+sale el `60 → 62.5 kg` del chip.
+
+La función rota vivía en el store y **no la llamaba nadie**. Buscado en toda la
+app: cero llamadas. El único otro sitio con ese nombre es la copia web del
+store, fuera de alcance. No es un fallo que sufriera ningún usuario: era código
+muerto que aparentaba funcionar.
+
+Y ya había costado dinero sin darlo: al implementar el planificador de etapas se
+unificó en `lastExerciseRef` cómo tres sitios resolvían la última referencia, y
+uno de esos tres era esta función (`stage-planner.md` §"Cómo quedó al
+implementar"). Se refactorizó código que nadie ejecuta.
+
+**Así que se borra**, junto con el import de `getProgression` que solo ella
+usaba. Arreglarla habría producido una función correcta que sigue sin llamar
+nadie, y el siguiente que refactorice volvería a pagar el peaje. Además era una
+trampa activa: parecía disponible, y quien la usara se habría encontrado un
+`null` silencioso.
+
+Si algún día hace falta desde el store, la referencia de cómo llamarla bien está
+en `ExerciseCard.jsx:378`.
 
 ---
 
@@ -837,6 +868,49 @@ son los dos únicos consumidores; pasan a leerlo con `await`.
 **Ámbito.** Ambos arreglos son de superficie. La decisión de fondo —"la
 contraseña es el código que el usuario ve y comparte"— es de diseño y no se
 toca aquí.
+
+### 📤 Edge Function endurecida (ago 2026) — escrita, SIN desplegar
+
+`supabase/functions/create-trainer-account/index.ts` pasa a la forma que ya
+tenía `delete-account`: helper `json()`, todo dentro de `try`, `req.json()` con
+`.catch(() => null)`, comprobación de tipo y de formato contra `CODE_RE`, y el
+mensaje interno de Supabase al log en vez de al cliente.
+
+**Falta desplegarla:** `supabase functions deploy create-trainer-account`.
+
+**Test.** `mobile/src/services/supabaseAuth.test.js`. El contrato del código
+vive partido en dos sitios sin nada que los una: lo **genera**
+`generateTrainerCode` en la app y lo **valida** `CODE_RE` en el servidor, que es
+Deno y no puede importar nada del móvil. Si alguien cambia el generador, el
+servidor rechazaría **todas** las altas nuevas y el usuario solo vería "Código
+inválido". El test copia la expresión y comprueba 2000 códigos generados contra
+ella; verificado que salta si el generador cambia de longitud.
+
+### ❌ Descartado por ahora: sacar el código a SecureStore
+
+**El apartado dice que `_ensureTrainerSession` y `unlinkFromTrainer` son los dos
+únicos consumidores. Son doce.** Ocho están en `TrainerSyncModal`, y varios son
+lecturas **síncronas durante el render**: qué pantalla mostrar (`:192`), el aviso
+de cada modo (`:457`, `:459`) y `<CodeBox code={trainerSync.code} />` (`:497`),
+que **pinta el código**. En SecureStore todo eso pasa a ser asíncrono: es un
+refactor del modal, no un `await` en dos sitios.
+
+Y el cálculo no sale:
+
+- **Se gana poco.** Protege ante extracción forense o dispositivo rooteado. En
+  un Android normal los datos de la app ya no son legibles por otras apps.
+- **Se arriesga mucho.** Hay que migrar el código de quien ya lo tiene guardado,
+  y si esa migración falla el entrenador **pierde la cuenta y todos sus clientes
+  para siempre** — es el escenario sin recuperación de
+  [client-connection.md](client-connection.md) §4.3.
+- **No toca el fondo.** El código sigue siendo la contraseña; guardarlo mejor no
+  cambia que quien lo vea tenga la cuenta.
+
+Lo que sí lo resuelve es la fase de recuperación de `client-connection.md` §4.3:
+que la recuperación pase por una función de servidor con límite de intentos y
+que la contraseña real sea un secreto aleatorio que nadie ve. **Con eso hecho,
+mover el código a SecureStore deja de importar casi.** Hacerlo antes es asumir
+un riesgo alto por una mejora pequeña, en el orden equivocado.
 
 ---
 
@@ -1772,9 +1846,9 @@ verificable:
 |-------|--------|-----------|
 | **A — arranque y datos** ✅ | ✅ [1](#1), ✅ [2](#2), ✅ [10](#10) | `store/useStore.js` (`onRehydrateStorage`, `importData`) |
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
-| **C — sincronización** | ✅ [5](#5), ✅ [7](#7), [8](#8) | store + SQL + Edge Function |
+| **C — sincronización** | ✅ [5](#5), ✅ [7](#7), [8](#8) 📤 sin desplegar | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
-| **E — lógica de entreno** | [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
+| **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
 | **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |
 
 La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
