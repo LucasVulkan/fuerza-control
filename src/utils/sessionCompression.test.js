@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  compressSession, estimateSessionSec, includesWarmup, accessoriesAtFloor,
+  compressSession, estimateSessionSec, includesWarmup, accessoriesAtFloor, NO_WARMUP_BELOW_MIN,
   DISCIPLINE_RULES, MAX_ACCESSORIES_AT_FLOOR, TIME_TOLERANCE, budgetSecFor,
 } from './sessionCompression';
 
@@ -160,9 +160,12 @@ describe('estimateSessionSec — espejo de sessionStats', () => {
 });
 
 describe('presupuesto de sesiones cortas', () => {
-  it('por debajo de 60 min no se cuenta el calentamiento general', () => {
+  it('sólo la sesión de 30 min se estima sin calentamiento general', () => {
+    // El umbral bajó de 60 a 45 (ago 2026): con 60, elegir 45 min hundía el
+    // tiempo estimado 8 min sin haber recortado nada — cambiaba la base del
+    // cálculo, no el contenido.
     expect(includesWarmup(30)).toBe(false);
-    expect(includesWarmup(45)).toBe(false);
+    expect(includesWarmup(45)).toBe(true);
     expect(includesWarmup(60)).toBe(true);
     expect(includesWarmup(90)).toBe(true);
   });
@@ -276,11 +279,18 @@ describe('sesiones cortas — borrar antes que bajar series', () => {
     ex('plank',                  3, 5, 90),
   ];
 
-  it('por debajo del umbral quita un ejercicio y respeta las series del resto', () => {
+  it('por debajo del umbral borra ejercicios y respeta las series del resto', () => {
+    // El tope sale del umbral, no de un 59 a mano: ese 59 se escribió cuando el
+    // umbral era 60 y se quedó obsoleto al bajarlo a 45 (ago 2026).
+    //
+    // Y no se fija CUÁNTOS quita: eso depende de lo lejos que quede el
+    // presupuesto, que se mueve con el umbral. Lo que fija la regla es el orden
+    // —borrar antes que bajar series—, y eso es lo que se comprueba: se van
+    // ejercicios y los que quedan conservan sus 5 series intactas.
     const est = estimateSessionSec(MIXED, undefined, { includeWarmup: false }) / 60;
-    const mins = Math.min(59, Math.floor(est / (1 + TIME_TOLERANCE)) - 1);
+    const mins = Math.min(NO_WARMUP_BELOW_MIN - 1, Math.floor(est / (1 + TIME_TOLERANCE)) - 1);
     const { exercises } = compressSession(MIXED, { sessionMinutes: mins });
-    expect(exercises).toHaveLength(4);
+    expect(exercises.length).toBeLessThan(MIXED.length);
     expect(exercises.every((e) => e.sets === 5)).toBe(true);
   });
 

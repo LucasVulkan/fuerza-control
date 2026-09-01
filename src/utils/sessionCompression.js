@@ -33,17 +33,39 @@ const SESSION_OVERHEAD_SEC = 480;
 
 /**
  * Por debajo de esta duración pedida, la sesión se estima **sin calentamiento
- * general**: en 30 o 45 minutos no se calienta ocho minutos, se entra a
- * trabajar. Las transiciones entre ejercicios sí se cuentan siempre — cambiar
- * las mancuernas cuesta lo que cuesta, lo hagas en casa o en el gimnasio.
+ * general**: en media hora no se calienta ocho minutos, se entra a trabajar.
+ * Las transiciones entre ejercicios sí se cuentan siempre — cambiar las
+ * mancuernas cuesta lo que cuesta, lo hagas en casa o en el gimnasio.
+ *
+ * Bajó de 60 a 45 en ago-2026, tras el QA del onboarding. Con 60, elegir 45 min
+ * hacía que el tiempo estimado cayera de 47 a 39 sin haber recortado nada:
+ * cambiaba la BASE del cálculo, no el contenido, y un número que se desploma
+ * por un motivo que la pantalla no está contando es un mal número. Ahora sólo
+ * la sesión de 30 entra sin calentar —que es lo que espera quien la elige—, y a
+ * 45 el presupuesto carga los 8 minutos y recorta algo más, que sí se ve.
  *
  * Por qué no se quitan también las transiciones por debajo del umbral, que era
- * la propuesta original: invierte el orden de los presupuestos. Sin ellas, 45
- * min darían 45 de trabajo y 60 min darían 60 − 8 − 2n ≈ 42 con cinco
+ * la propuesta original: invierte el orden de los presupuestos. Sin ellas, 44
+ * min darían 44 de trabajo y 45 min darían 45 − 8 − 2n ≈ 27 con cinco
  * ejercicios — pedir más tiempo entregaría menos entrenamiento. Quitando sólo el
- * calentamiento, 45 → 45 − 2n y 60 → 52 − 2n: siempre creciente, sea cual sea n.
+ * calentamiento, 44 → 44 − 2n y 45 → 37 − 2n: siempre creciente, sea cual sea n.
  */
-export const NO_WARMUP_BELOW_MIN = 60;
+export const NO_WARMUP_BELOW_MIN = 45;
+
+/**
+ * Por debajo de esta duración, la escalera cambia de carácter: entra la
+ * superserie y se **borran ejercicios antes que bajar series**.
+ *
+ * Es un umbral APARTE del calentamiento, y lo es desde ago-2026. Los dos eran
+ * el mismo número hasta que `NO_WARMUP_BELOW_MIN` bajó a 45, y ese cambio se
+ * llevó por delante algo que nadie había pedido: una sesión de 45 minutos
+ * dejaba de soltar ejercicios y pasaba a dejar todos los accesorios en el suelo
+ * de 2 series. Medido sobre una sesión de 65 min apretada a 46: `5,2,2,3,3`
+ * series con la escalera larga, frente a tres ejercicios con sus 5 series
+ * intactas con la corta. En sesión apretada es mejor entrenar menos cosas bien
+ * que todas a medias, así que el carácter de la escalera se queda en 60.
+ */
+export const SHORT_SESSION_BELOW_MIN = 60;
 
 /**
  * Margen sobre el presupuesto antes de empezar a recortar.
@@ -342,7 +364,10 @@ export function compressSession(exercises, {
   // La superserie sólo entra en sesiones cortas: con 90 minutos por delante no
   // hay razón para comprometer el descanso de nada. Y va la primera porque es el
   // único peldaño que gana tiempo sin quitar ejercicios.
-  const order = includeWarmup
+  //
+  // El umbral es `SHORT_SESSION_BELOW_MIN`, NO el del calentamiento: son dos
+  // decisiones distintas que compartieron número hasta ago-2026.
+  const order = sessionMinutes >= SHORT_SESSION_BELOW_MIN
     ? disciplineRules(discipline).compression
     : ['superset', ...removalFirst(disciplineRules(discipline).compression)];
   let result = exercises;

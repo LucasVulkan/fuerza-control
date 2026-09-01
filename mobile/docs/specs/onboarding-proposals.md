@@ -375,7 +375,11 @@ PPL · 6 días            —     —     —                     las seis, −1
 Full Body · Fuerza      —     —     C −1ej/−3ser          A −1/−8  B −1/−6  C −1/−8
 ```
 
-Los minutos sí se mueven con cada opción, porque por debajo de 60 se deja de
+(Medido con el umbral del calentamiento en 60. **Desde ago-2026 está en 45**, así
+que el salto de estimación que describe el párrafo siguiente ya sólo ocurre entre
+30 y 45.)
+
+Los minutos sí se mueven con cada opción, porque por debajo del umbral se deja de
 contar el calentamiento general. El recorte va debajo, con su detalle por sesión
 cuando lo hay y diciéndolo explícitamente cuando no.
 

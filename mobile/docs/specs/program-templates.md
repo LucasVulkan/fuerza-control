@@ -393,15 +393,22 @@ principal + 2 accesorios, más 8 min de calentamiento general
 
 Y esos overheads son una **suposición**: modelan un gimnasio comercial lleno.
 
-**Regla 1 — por debajo de 60 min no se cuenta el calentamiento general**
+**Regla 1 — por debajo de 45 min no se cuenta el calentamiento general**
 (`NO_WARMUP_BELOW_MIN`). En media hora no se calientan ocho minutos: se entra a
 trabajar.
 
+> El umbral **era 60 y bajó a 45 en ago-2026**, tras el QA del onboarding: con
+> 60, elegir 45 min hundía el tiempo estimado ocho minutos sin haber recortado
+> nada — cambiaba la base del cálculo, no el contenido. Al bajarlo se separó
+> además de `SHORT_SESSION_BELOW_MIN` (que sigue en 60), el umbral que decide el
+> **carácter de la escalera**: los dos compartían número y el cambio se llevaba
+> por delante el borrado-antes-que-series de las sesiones de 45.
+
 Las transiciones **sí se cuentan siempre**, y no es un matiz: quitarlas también
 invertía el orden de los presupuestos. Sin ellas, 45 min darían 45 de trabajo y
-60 min darían `60 − 8 − 3n ≈ 37` con cinco ejercicios — pedir más tiempo
-entregaría menos entrenamiento. Quitando sólo el calentamiento, `45 − 3n` frente
-a `52 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
+45 min darían `45 − 8 − 3n ≈ 22` con cinco ejercicios — pedir más tiempo
+entregaría menos entrenamiento. Quitando sólo el calentamiento, `44 − 3n` frente
+a `37 − 3n`: creciente siempre, sea cual sea n. Hay un test que lo fija.
 
 **Regla −1 — la transición por ejercicio baja de 3 a 2 minutos**
 (`EXERCISE_OVERHEAD_SEC = 120`, decisión del usuario). Tres minutos entre un hack
@@ -479,8 +486,9 @@ ejercicios**: encadena dos accesorios tier 3 contiguos de patrones antagonistas
   fatiga acumulada sobre el mismo músculo. Los patrones sin antagonista (core,
   gemelo, agarre) no se emparejan.
 - Nunca **más de dos** eslabones.
-- Sólo por **debajo de 60 min**: con 90 minutos por delante no hay razón para
-  comprometer el descanso de nada.
+- Sólo por **debajo de 60 min** (`SHORT_SESSION_BELOW_MIN`, que desde ago-2026
+  es un umbral propio y ya no el del calentamiento): con 90 minutos por delante
+  no hay razón para comprometer el descanso de nada.
 
 **El preview usa el mismo criterio.** Enseñaba `sessionStats`, que siempre suma
 el calentamiento — habría contradicho al presupuesto que se acaba de aplicar.
