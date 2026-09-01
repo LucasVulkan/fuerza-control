@@ -32,3 +32,6 @@ mockups-home.html
 
 # Pagina de estado: derivada de las specs, se genera con `npm run estado`
 mobile/docs/estado.html
+
+# Scratch del CLI de Supabase (cache de la version descargada), no del proyecto
+supabase/.temp/
