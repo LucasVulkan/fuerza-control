@@ -24,7 +24,10 @@ import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
 import { normalizeWeeklyVolume } from './weeklyVolume';
 
-const LIMITATION_GROUPS = {
+// Exportado: el panel de ajustes del onboarding (mobile) lo necesita para
+// decidir qué limitación causó una sustitución dada (spec onboarding-simple
+// §8 — la etiqueta HOMBRO/LUMBAR/RODILLA).
+export const LIMITATION_GROUPS = {
   shoulder:   ['shoulders', 'chest'],
   lower_back: ['glutes_hamstrings', 'back'],
   knee:       ['quads'],
@@ -104,9 +107,15 @@ function getLimitationNote(group, limitations) {
  * - Elimina 1 key (el que no es único en su patrón ese día)
  * - Elimina 1 accessory
  * - Añade 1 core si no hay ninguno
+ *
+ * Spec onboarding-simple.md §5.1: hasta ahora el recorte era invisible — el
+ * usuario veía menos ejercicios de los que prometía la tarjeta y nadie se lo
+ * explicaba. Ahora reporta qué quitó y qué añadió para que el panel de
+ * ajustes lo pueda decir.
  */
 function reduceForBeginner(exercises, userEquipment) {
   let result = [...exercises];
+  const removed = [];
 
   // El exConfig ya no lleva pattern/primaryGroup — se leen de la biblioteca.
   const patternOf = (ex) => EXERCISE_LIBRARY[ex.exerciseId]?.pattern;
@@ -128,6 +137,7 @@ function reduceForBeginner(exercises, userEquipment) {
   if (removableKey) {
     result = result.filter((ex) => ex !== removableKey);
     keysByPattern[patternOf(removableKey)]--;
+    removed.push(removableKey.exerciseId);
   }
 
   // Eliminar 1 accessory (el último que no sea core)
@@ -136,10 +146,12 @@ function reduceForBeginner(exercises, userEquipment) {
   );
   if (removableAccessory) {
     result = result.filter((ex) => ex !== removableAccessory);
+    removed.push(removableAccessory.exerciseId);
   }
 
   // Añadir core si no hay ninguno
   const hasCore = result.some((ex) => groupOf(ex) === 'core');
+  let added = null;
   if (!hasCore) {
     const coreEx = DEFAULT_CORE_EXERCISES
       .map((id) => EXERCISE_LIBRARY[id])
@@ -157,10 +169,11 @@ function reduceForBeginner(exercises, userEquipment) {
         progressionOverride: null,
         limitationNote: null,
       });
+      added = coreEx.id;
     }
   }
 
-  return result;
+  return { exercises: result, removed, added };
 }
 
 // ─── Adaptador principal ──────────────────────────────────────────────────────
@@ -193,6 +206,7 @@ export function adaptArchetype(archetype, answers) {
   const substitutions = [];
   const unresolved = [];
   const overTime = [];
+  const levelCuts = [];
 
   // A4: si el objetivo elegido difiere del objetivo del arquetipo, los keys
   // adoptan los parámetros del goal elegido (ver buildExConfig).
@@ -256,7 +270,11 @@ export function adaptArchetype(archetype, answers) {
     // Ajustar según nivel — solo si el arquetipo NO está ya diseñado para
     // beginner (una plantilla beginner nativa no necesita reducción).
     if (level === 'beginner' && archetype.level !== 'beginner') {
-      exercises = reduceForBeginner(exercises, equipment);
+      const reduced = reduceForBeginner(exercises, equipment);
+      exercises = reduced.exercises;
+      if (reduced.removed.length || reduced.added) {
+        levelCuts.push({ label: dayDef.label, removedIds: reduced.removed, addedId: reduced.added });
+      }
     }
 
     return { dayDef, templateId, exercises };
@@ -351,5 +369,8 @@ export function adaptArchetype(archetype, answers) {
     overTime,
     weekly: normalized.weekly,
     overBudget: normalized.overBudget,
+    // §5.1: vacío salvo cuando `level: 'beginner'` adapta una plantilla de
+    // otro nivel — campo AÑADIDO, ningún consumidor existente se entera.
+    levelCuts,
   };
 }

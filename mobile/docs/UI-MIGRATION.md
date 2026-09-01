@@ -38,7 +38,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
-| **Onboarding** (preguntas, plantillas, ajuste en vivo, preview) | 🟡 sin nodo en Figma — hecho con tokens y patrones ya migrados, revisar cuando exista el nodo. Spec: [`specs/onboarding-proposals.md`](specs/onboarding-proposals.md) | `src/screens/OnboardingScreen.jsx` |
+| **Onboarding** (nivel → qué buscas → días → propuestas → tu programa) | 🟡 sin nodo en Figma — revisión 2: los tres componentes portados del web (`OptionCard`/`OnboardingStep`/`OnboardingProgress`) **borrados**, cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md) | `src/screens/OnboardingScreen.jsx`, `components/onboarding/*` |
 | **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
 
 ### HomeView — desglose (completo, 4/4 partes)
@@ -852,6 +852,64 @@ es nuevo para el del entrenador. `RecoveryScreen`/`CodeStatusScreen`/
 `CodeRevealScreen` dejan de ser componentes con estado propio dentro del fichero
 y pasan a ser bloques del mismo `DragSheet` (el estado del código de recuperación
 sube al modal), así que el estado del flujo vive en un solo sitio.
+
+### Onboarding — desglose
+
+Nodo de Figma: **ninguno**. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md)
+(revisión 2). El flujo es **nivel → qué buscas → días → propuestas → tu programa**: tres
+preguntas que auto-avanzan, tres portadas con "ver todas", y un programa con una fila de
+ajustes que abre una hoja única.
+
+**La revisión 1 se implementó y el QA la rechazó**, y su causa vale como regla general para
+el resto de la migración: `OptionCard`, `OnboardingStep` y `OnboardingProgress` eran
+**puertos literales del onboarding web** —lo decía su propia cabecera— y no se usaban en
+ninguna otra pantalla. Mientras estuvieron ahí, cambiar tokens encima no arregló nada: las
+*formas* (indicador circular, casilla cuadrada, título de 30 px, barra de progreso de 3 px)
+eran ajenas a la app. **Los tres se borraron**, junto con `AnswerChips` y `WeekStrip` de la
+revisión 1. Sin nodo en Figma, la única fidelidad posible es copiar anatomía de lo ya
+migrado, pieza por pieza:
+
+| Pieza | De dónde se copió |
+|---|---|
+| Cabecera lima con eyebrow + título | `ProgramDetailScreen` `styles.header` |
+| Puntos de progreso de las 3 preguntas | `CycleDots` de `HomeScreen.jsx:177` — 7×7, r 3.5, gap `sm`, hechos `onAccent` / resto al 16 % |
+| Tarjetas de opción (nivel, identidad) | tarjetas de navegación de Clientes/History/HomeView: `surface`, radio `md` completo. **No** lista agrupada: `getCardRadii` es para listas densas de datos, no de elección |
+| Chips de días 1-7 | `chipRow` del selector de etapas de `ProgramDetailScreen` |
+| Fila de ajustes | `NavRow` de `EditorRows.jsx:111` — la fila de Progresión del editor |
+| Hoja de ajustes | la hoja de Progresión, `ExerciseEditorInline.jsx:706`: `sheetBody` gap `lg`, `stepTitle` en `spacingTag` con el número en `accent`, `SegmentedControl`, y un `hint` que dice el EFECTO de lo elegido |
+| Pills de multiselección | `linkPill` del editor: `surface2`, radio `xs`, px 9, py `sm`, texto `btnAction`. Única desviación: aquí van en fila que envuelve, allí en columna |
+| Fila de stats (sesiones · series · minutos) | `stats`/`stat` de `ProgramDetailScreen`: valor `hero` 22 en `accent`, etiqueta `smallBold` 11 |
+| Sesiones de la tarjeta y del programa | `sessionHead` de `ProgramDetailScreen`, con letra a 18 y nombre en `subtitle` — bajados de 26/`cardTitle` tras el QA |
+| Lista de ejercicios de la sesión plegable | fila `exRow` de `ProgramDetailScreen`: número en `cardType`/`accent`, nombre en `subtitle` a 14, meta en `tag` |
+| Iconos | `ChevronDown` para desplegar y `ArrowIcon` para filas navegables, de `EditorIcons.jsx`. **El triángulo relleno (▼/▲) se borró: no se usa en ninguna parte de la app** |
+
+Decisiones propias, por no haber precedente:
+
+- **`CycleWeeks`** — el ciclo se cuenta por semanas (`SEMANA 1 · A B C A`, `SEMANA 2 · B C A B`),
+  con el cuadrado en `surface2` y **la letra en el color del día**. La revisión 1 dibujaba
+  los días de la semana (`L M X J V S D`) y el QA lo tumbó: prometía un calendario que el
+  programa no impone. Dos filas sólo cuando `daysPerWeek % sesiones !== 0`.
+- **Exigencia de la tarjeta** — tres barras de 14×8 (radio `xxs`) rellenas según el nivel de
+  la plantilla. Las semanas NO son un stat: son 8 en diez de las once plantillas, así que
+  no distinguen nada y viven en el byline.
+- **Panel de ajustes** — tres secciones con color: sustituidos en `accent`, quitados en
+  `orange`, sin cubrir en `red`, y la etiqueta de la derecha dice el motivo. Nada en azul:
+  aquí el azul significa siempre entrenador o externo (§4.8).
+- **Botón EDITAR (secundario)** en `surface2` sólido sin borde — la variante ya cerrada en
+  HomeView (`EDITAR | VER`).
+- **Emoji del selector de modo** (🤖 ✏️ 📥 📐 👤): la spec deja esa pantalla intacta, así que
+  siguen ahí. El resto de la app migrada no usa emoji como iconos: **inconsistencia
+  conocida, pendiente de decidir**, no se ha tocado a ciegas.
+
+`typography` legada se queda sólo donde la spec deja la pantalla intacta —selector de modo,
+modo manual, picker de plantillas— y en **`BrandTag`**, que comparten los cuatro modos:
+migrarlo restylearía esas tres pantallas.
+
+Esta revisión trae además **dos cambios de motor**, los únicos: `reduceForBeginner`
+(`archetypeAdapter.js`) pasa a devolver lo que quita y lo que añade —`adaptArchetype` gana
+el campo `levelCuts`— y `mobile/src/utils/adaptationDiff.js` calcula qué se llevó el
+presupuesto de tiempo. Sin ellos el panel no podía decir la verdad, que es el punto de la
+pantalla.
 
 ### ⚠️ Reordenar: lo lleva `react-native-sortables`, NO lo montes a mano
 

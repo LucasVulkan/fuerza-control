@@ -917,6 +917,48 @@
     "patternAccessory": "ACCESORIO"
   },
   "onboarding": {
+    "adjustSheet": {
+      "title": "Ajustes",
+      "step1": "Tiempo por sesión",
+      "step2": "Material",
+      "step3": "Limitaciones",
+      "material": {
+        "gym": "Gimnasio",
+        "home": "Casa",
+        "bodyweight": "Cuerpo",
+        "custom": "Otro"
+      },
+      "materialHint": {
+        "gym": "Máquinas, mancuernas, barra, dominadas, kettlebell y bandas.",
+        "home": "Mancuernas, bandas elásticas, barra de dominadas y rueda abdominal.",
+        "bodyweight": "Sólo tu peso corporal, sin material.",
+        "custom": "Tu propia selección de material."
+      },
+      "materialCustomHint": "{{subs}} ejercicios sustituidos · {{gaps}} huecos que no cubre.",
+      "timeHintOk": "Cabe todo. Ningún recorte.",
+      "timeHintRemoved_one": "Se quita {{count}} ejercicio en {{labels}}, y {{sets}} series en total.",
+      "timeHintRemoved_other": "Se quitan {{count}} ejercicios en {{labels}}, y {{sets}} series en total.",
+      "timeHintSetsOnly": "Se quitan {{sets}} series en total.",
+      "limitationsHintNone": "Sin limitaciones activas.",
+      "limitationsHint_one": "{{count}} ejercicio sustituido para evitar tus limitaciones.",
+      "limitationsHint_other": "{{count}} ejercicios sustituidos para evitar tus limitaciones."
+    },
+    "adaptationPanel": {
+      "substitutedTitle": "Sustituidos",
+      "removedTitle": "Quitados",
+      "gapsTitle": "Sin cubrir",
+      "reasonMaterial": "MATERIAL",
+      "reasonLevel": "NIVEL",
+      "reasonShoulder": "HOMBRO",
+      "reasonLowerBack": "LUMBAR",
+      "reasonKnee": "RODILLA",
+      "reasonTime": "{{minutes}} MIN",
+      "reasonLevelCut": "TU NIVEL",
+      "reasonAdded": "AÑADIDO · TU NIVEL",
+      "gapText_one": "{{count}} hueco de {{group}}",
+      "gapText_other": "{{count}} huecos de {{group}}",
+      "gapTag": "TU MATERIAL NO LLEGA"
+    },
     "generating": "GENERANDO PROGRAMA",
     "buildingPlan": "Construyendo tu plan personalizado...",
     "appName": "FUERZA & CONTROL",
@@ -957,24 +999,27 @@
       }
     },
     "proposals": {
+      "eyebrow_one": "{{level}} · {{count}} DÍA",
+      "eyebrow_other": "{{level}} · {{count}} DÍAS",
+      "best": "MEJOR",
+      "phasesCount_one": "{{count}} fase",
+      "phasesCount_other": "{{count}} fases",
+      "sessionsLabel": "SESIONES",
+      "setsLabel": "SERIES",
+      "demandLabel": "EXIGENCIA",
       "weeks": "{{weeks}} semanas",
-      "weeksShort": "semanas",
-      "sessionsPerCycleShort": "sesiones\npor ciclo",
-      "title": "Tus programas",
+      "title": "Selecciona tu programa",
       "subtitle": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
       "seeProposals": "VER PROGRAMAS",
       "recommended": "Recomendado",
       "sessionsPerCycle": "{{sessions}} sesiones por ciclo",
       "seeAll": "Ver las {{total}} plantillas",
       "seeTop": "Ver sólo las recomendadas",
-      
       "another": "‹ Ver otro programa",
-      
-      
-      
+      "forWhat": "{{days}} días · {{goal}}",
+      "change": "‹ cambiar",
       "notes": {
         "needsBarbell": "Diseñado con barra. Sin ella sustituimos {{exercises}} ejercicios.",
-        "rotates": "{{sessions}} sesiones que rotan en ciclo: entrenas {{days}} días, verás cada sesión más de una vez.",
         "slowCycle": "Con {{days}} días, el ciclo tarda más de una semana en cerrarse.",
         "levelStretch": "Pensada para nivel {{level}}; adaptamos ejercicios y volumen.",
         "lowFrequency": "Cada grupo, una vez por semana."
@@ -982,6 +1027,8 @@
     },
     "generateError": "No se pudo generar el programa. Inténtalo de nuevo.",
     "stepLevel": {
+      "headerTitle": "Tu nivel",
+      "hint": "Marca tu banda de volumen y qué programas te proponemos.",
       "title": "¿Cuál es tu nivel?",
       "subtitle": "Esto determina qué ejercicios y estructuras se incluirán en tu programa."
     },
@@ -996,6 +1043,8 @@
       "sevenDaysHint": "Con 7 días, incluye al menos un día suave o de descanso activo."
     },
     "stepDays": {
+      "headerTitle": "Días por semana",
+      "cycleHint": "Hay programas con más sesiones que días. Su ciclo dura más de una semana — te lo enseñamos en cada uno.",
       "titleUpperLower": "Sesiones por ciclo",
       "subtitleUpperLower": "Upper/Lower tiene 2 o 4 sesiones distintas. Puedes repetirlas con la frecuencia que quieras.",
       "titlePPL": "Sesiones por ciclo",
@@ -1036,7 +1085,16 @@
       }
     },
     "preview": {
-      "ready": "✓ PROGRAMA LISTO",
+      "eyebrow": "TU PROGRAMA",
+      "setsLabel": "SERIES",
+      "perSessionLabel": "POR SESIÓN",
+      "weekLabel": "SEMANA {{n}}",
+      "cycleSectionLabel": "Cómo se reparte",
+      "adjustSectionLabel": "Ajustes",
+      "adjustNavSubtitle": "Tiempo, material y limitaciones",
+      "adjustmentsRow_one": "{{count}} ajuste a tu programa",
+      "adjustmentsRow_other": "{{count}} ajustes a tu programa",
+      "ready": "✓ TU PROGRAMA",
       "edit": "EDITAR",
       "start": "EMPEZAR →",
       "exerciseCount": "{{exercises}} ejercicios",
@@ -1047,6 +1105,10 @@
       "overBudget": "Volumen de {{group}} por encima de lo recomendado para tu nivel.",
       "cycleHint": "Tus {{sessions}} sesiones rotan en ciclo — entrenas {{days}} días a la semana.",
       "estimatedMinutes": "~{{minutes}} min",
+      "minutesPerSession": "~{{minutes}} min por sesión",
+      "adjustments": "{{count}} ajuste a tu material y a tu tiempo",
+      "adjustments_other": "{{count}} ajustes a tu material y a tu tiempo",
+      "changeLater": "Puedes cambiar cualquier cosa después, en el editor.",
       "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios."
     },
     "stepGoal": {
@@ -1064,22 +1126,6 @@
     "stepProgression": {
       "title": "Modelo de progresión",
       "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
-    },
-    "tuning": {
-      "timeCutsTitle": "PARA CABER EN {{budget}} MIN",
-      "cutExercises": "−{{count}} ejercicio",
-      "cutExercises_other": "−{{count}} ejercicios",
-      "cutSets": "−{{count}} serie",
-      "cutSets_other": "−{{count}} series",
-      "noCuts": "Todo cabe en {{budget}} min. Ningún recorte.",
-      "stillOver": "Ni recortando cabe: {{sessions}}.",
-      "waiting": "Elige tu material y verás cómo queda el programa.",
-      "minutesPerSession": "min por sesión",
-      "lostExercises": "{{lost}} ejercicios menos que la plantilla original.",
-      "substituted": "{{swapped}} ejercicios sustituidos",
-      "andMore": "y {{rest}} más",
-      "noLimitationSwaps": "Nada que sustituir: la plantilla ya evita esa zona.",
-      "unresolved": "{{slots}} huecos que tu material no cubre."
     },
     "generateProgram": "VER EL PROGRAMA",
     "levels": {
@@ -1208,6 +1254,29 @@
         "label": "Rodilla",
         "description": "Molestias en rodilla o menisco."
       }
+    },
+    "equipmentPresets": {
+      "gym": {
+        "label": "Gimnasio completo",
+        "description": "Máquinas, mancuernas, barra, dominadas, kettlebell y bandas."
+      },
+      "home": {
+        "label": "Casa con mancuernas",
+        "description": "Mancuernas, bandas elásticas, barra de dominadas y rueda abdominal."
+      },
+      "bodyweight": {
+        "label": "Sólo peso corporal",
+        "description": "Sin material — ejercicios con tu propio cuerpo."
+      },
+      "custom": {
+        "label": "Personalizado",
+        "description": "Tu propia selección de material."
+      },
+      "customize": "Personalizar"
+    },
+    "chips": {
+      "limitationsCount": "{{count}} limitación",
+      "limitationsCount_other": "{{count}} limitaciones"
     },
     "progressionModels": {
       "double_progression": {

@@ -917,6 +917,48 @@
     "patternAccessory": "ACCESSORY"
   },
   "onboarding": {
+    "adjustSheet": {
+      "title": "Adjustments",
+      "step1": "Time per session",
+      "step2": "Equipment",
+      "step3": "Limitations",
+      "material": {
+        "gym": "Gym",
+        "home": "Home",
+        "bodyweight": "Body",
+        "custom": "Other"
+      },
+      "materialHint": {
+        "gym": "Machines, dumbbells, barbell, pull-up bar, kettlebell and bands.",
+        "home": "Dumbbells, resistance bands, pull-up bar and ab wheel.",
+        "bodyweight": "Just your bodyweight, no equipment.",
+        "custom": "Your own choice of equipment."
+      },
+      "materialCustomHint": "{{subs}} exercises swapped · {{gaps}} gaps it cannot fill.",
+      "timeHintOk": "Everything fits. Nothing cut.",
+      "timeHintRemoved_one": "{{count}} exercise dropped from {{labels}}, and {{sets}} sets in total.",
+      "timeHintRemoved_other": "{{count}} exercises dropped from {{labels}}, and {{sets}} sets in total.",
+      "timeHintSetsOnly": "{{sets}} sets dropped in total.",
+      "limitationsHintNone": "No limitations active.",
+      "limitationsHint_one": "{{count}} exercise swapped to work around your limitations.",
+      "limitationsHint_other": "{{count}} exercises swapped to work around your limitations."
+    },
+    "adaptationPanel": {
+      "substitutedTitle": "Swapped",
+      "removedTitle": "Dropped",
+      "gapsTitle": "Not covered",
+      "reasonMaterial": "EQUIPMENT",
+      "reasonLevel": "LEVEL",
+      "reasonShoulder": "SHOULDER",
+      "reasonLowerBack": "LOWER BACK",
+      "reasonKnee": "KNEE",
+      "reasonTime": "{{minutes}} MIN",
+      "reasonLevelCut": "YOUR LEVEL",
+      "reasonAdded": "ADDED · YOUR LEVEL",
+      "gapText_one": "{{count}} {{group}} gap",
+      "gapText_other": "{{count}} {{group}} gaps",
+      "gapTag": "YOUR EQUIPMENT FALLS SHORT"
+    },
     "generating": "GENERATING PROGRAM",
     "buildingPlan": "Building your personalized plan...",
     "appName": "FUERZA & CONTROL",
@@ -957,24 +999,27 @@
       }
     },
     "proposals": {
+      "eyebrow_one": "{{level}} · {{count}} DAY",
+      "eyebrow_other": "{{level}} · {{count}} DAYS",
+      "best": "BEST",
+      "phasesCount_one": "{{count}} phase",
+      "phasesCount_other": "{{count}} phases",
+      "sessionsLabel": "SESSIONS",
+      "setsLabel": "SETS",
+      "demandLabel": "DEMAND",
       "weeks": "{{weeks}} weeks",
-      "weeksShort": "weeks",
-      "sessionsPerCycleShort": "sessions\nper cycle",
-      "title": "Your programs",
+      "title": "Choose your program",
       "subtitle": "Picked from what you answered. Tap one to see all of it.",
       "seeProposals": "SEE PROGRAMS",
       "recommended": "Recommended",
       "sessionsPerCycle": "{{sessions}} sessions per cycle",
       "seeAll": "See all {{total}} templates",
       "seeTop": "See only the recommended ones",
-      
       "another": "‹ See another program",
-      
-      
-      
+      "forWhat": "{{days}} days · {{goal}}",
+      "change": "‹ change",
       "notes": {
         "needsBarbell": "Built around the barbell. Without one we swap {{exercises}} exercises.",
-        "rotates": "{{sessions}} sessions rotating in a cycle: you train {{days}} days, so you'll see each session more than once.",
         "slowCycle": "With {{days}} days, the cycle takes more than a week to close.",
         "levelStretch": "Written for {{level}} level; we adapt the exercises and the volume.",
         "lowFrequency": "Each muscle group once a week."
@@ -982,6 +1027,8 @@
     },
     "generateError": "Could not generate the program. Please try again.",
     "stepLevel": {
+      "headerTitle": "Your level",
+      "hint": "It sets your volume band and which programs we propose.",
       "title": "What's your level?",
       "subtitle": "This determines which exercises and structures will be included in your program."
     },
@@ -996,6 +1043,8 @@
       "sevenDaysHint": "With 7 days, include at least one easy or active-recovery day."
     },
     "stepDays": {
+      "headerTitle": "Days per week",
+      "cycleHint": "Some programs have more sessions than days. Their cycle runs longer than a week — we show you how in each one.",
       "titleUpperLower": "Sessions per cycle",
       "subtitleUpperLower": "Upper/Lower has 2 or 4 distinct sessions. You can repeat them as often as you want.",
       "titlePPL": "Sessions per cycle",
@@ -1036,7 +1085,16 @@
       }
     },
     "preview": {
-      "ready": "✓ PROGRAM READY",
+      "eyebrow": "YOUR PROGRAM",
+      "setsLabel": "SETS",
+      "perSessionLabel": "PER SESSION",
+      "weekLabel": "WEEK {{n}}",
+      "cycleSectionLabel": "How it plays out",
+      "adjustSectionLabel": "Adjustments",
+      "adjustNavSubtitle": "Time, equipment and limitations",
+      "adjustmentsRow_one": "{{count}} adjustment to your program",
+      "adjustmentsRow_other": "{{count}} adjustments to your program",
+      "ready": "✓ YOUR PROGRAM",
       "edit": "EDIT",
       "start": "START →",
       "exerciseCount": "{{exercises}} exercises",
@@ -1047,6 +1105,10 @@
       "overBudget": "{{group}} volume is above what we recommend for your level.",
       "cycleHint": "Your {{sessions}} sessions rotate in a cycle — you train {{days}} days a week.",
       "estimatedMinutes": "~{{minutes}} min",
+      "minutesPerSession": "~{{minutes}} min per session",
+      "adjustments": "{{count}} adjustment to your equipment and your time",
+      "adjustments_other": "{{count}} adjustments to your equipment and your time",
+      "changeLater": "You can change anything later, in the editor.",
       "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises."
     },
     "stepGoal": {
@@ -1064,22 +1126,6 @@
     "stepProgression": {
       "title": "Progression model",
       "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
-    },
-    "tuning": {
-      "timeCutsTitle": "TO FIT IN {{budget}} MIN",
-      "cutExercises": "−{{count}} exercise",
-      "cutExercises_other": "−{{count}} exercises",
-      "cutSets": "−{{count}} set",
-      "cutSets_other": "−{{count}} sets",
-      "noCuts": "It all fits in {{budget}} min. Nothing cut.",
-      "stillOver": "Still over even after cutting: {{sessions}}.",
-      "waiting": "Pick your equipment and you'll see how the program adapts.",
-      "minutesPerSession": "min per session",
-      "lostExercises": "{{lost}} exercises fewer than the original template.",
-      "substituted": "{{swapped}} exercises swapped",
-      "andMore": "and {{rest}} more",
-      "noLimitationSwaps": "Nothing to swap: the template already avoids that area.",
-      "unresolved": "{{slots}} slots your equipment does not cover."
     },
     "generateProgram": "SEE THE PROGRAM",
     "levels": {
@@ -1208,6 +1254,29 @@
         "label": "Knee",
         "description": "Discomfort in knee or meniscus."
       }
+    },
+    "equipmentPresets": {
+      "gym": {
+        "label": "Full gym",
+        "description": "Machines, dumbbells, barbell, pull-up bar, kettlebell and bands."
+      },
+      "home": {
+        "label": "Home with dumbbells",
+        "description": "Dumbbells, resistance bands, pull-up bar and ab wheel."
+      },
+      "bodyweight": {
+        "label": "Bodyweight only",
+        "description": "No equipment — exercises with just your body."
+      },
+      "custom": {
+        "label": "Custom",
+        "description": "Your own choice of equipment."
+      },
+      "customize": "Customize"
+    },
+    "chips": {
+      "limitationsCount": "{{count}} limitation",
+      "limitationsCount_other": "{{count}} limitations"
     },
     "progressionModels": {
       "double_progression": {
