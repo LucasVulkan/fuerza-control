@@ -1,6 +1,7 @@
 # Spec — Modelo de programas: un dueño, un diccionario, sin espejo
 
-> Estado: **NO IMPLEMENTADA** (sep 2026). Tres fases **independientes**, cada una
+> Estado: **FASE 1 IMPLEMENTADA** (2-sep-2026), pendiente de prueba en dispositivo.
+> Fases 2 y 3 sin implementar. Tres fases **independientes**, cada una
 > desplegable por su cuenta y en este orden. Origen: el §6.1 de
 > [rediseno.md](rediseno.md), extraído a documento propio porque —a diferencia de
 > las fases 1 y 2 de aquella— **esto sí toca pantallas**.
@@ -18,6 +19,11 @@
 > comparando el recuento contra HEAD. Los tests que cambian están listados en
 > cada fase; `src/utils/clientSync.sim.test.js` (647 líneas, simula el protocolo
 > entrenador↔cliente entero) es el que más avisa si algo se rompe.
+>
+> **Revisada contra el código el 2-sep-2026.** El diagnóstico se confirmó
+> entero, punto por punto. Lo que la revisión añadió va marcado en su sitio:
+> §3.1 bis (nuevo), §3.2, §3.3, §3.4, §3.5, §4.2, §4.3 y §5. Estado de partida:
+> 1134 tests en 37 ficheros, verdes en 1,3 s.
 
 ---
 
@@ -137,7 +143,18 @@ export function archivedOf(programs, owner, activeProgramId) {
 export function assignActiveProgram(client, programId) {
   return { ...client, activeProgramId: programId, programDirty: true };
 }
+
+/** Sin activo. No borra nada más: ya no queda ninguna lista que mantener. */
+export function deassignProgram(client) {
+  return { ...client, activeProgramId: null, programDirty: false };
+}
 ```
+
+`clientPrograms.js` exporta **tres** funciones, no una. `deassignProgram` se muda
+con `assignActiveProgram` ([useStore.js:590](../../store/useStore.js)), y
+`archivedProgramIds(client)` **desaparece**: su sustituto es `archivedOf(...)`,
+que mira `programs` en vez de la lista del cliente. Las tres las importa
+`clientSync.sim.test.js`.
 
 **Cambio de orden, y es el único visible:** `client.programIds` guardaba orden de
 inserción (el más nuevo delante); la lista derivada ordena por `createdAt` desc.
@@ -149,6 +166,11 @@ campo propio (`sortIndex`), no un efecto de la estructura.
 ---
 
 ## 3. Fase 1 — `owner` + `kind` sustituyen a `mode`, `clientId` y las listas
+
+> **IMPLEMENTADA** el 2-sep-2026, con todo lo de esta seccion dentro, incluido
+> el vaciado de la semilla de §4.3 adelantado. 1149 tests verdes (eran 1134;
+> se fueron los 8 de `clientPrograms.test.js` y entraron 23 nuevos). Sin
+> errores de lint nuevos: 30 problemas antes y despues.
 
 ### 3.1 Migración del estado persistido
 
@@ -185,6 +207,27 @@ de ver el resultado en el dispositivo:
 - Un id en `programIds` sin programa detrás desaparece sin dejar rastro, en vez
   de ser filtrado por cada lector.
 
+### 3.1 bis El filtro deja de ser negativo, y eso obliga a todo el que crea
+
+Hoy los filtros son **negativos** (`p.mode !== 'template'`), así que un programa
+**sin** `mode` pasa por todos. Y los hay: `adaptArchetype` y `generateProgram`
+no escriben `mode` en ningún sitio
+([archetypeAdapter.js:344](../../../src/utils/archetypeAdapter.js)), de modo que
+todo programa nacido del onboarding vive hoy con `mode: undefined` y aparece
+donde debe **por accidente**.
+
+`p.owner === 'me'` es un test **positivo**. Un programa sin `owner` no aparece en
+ninguna pantalla: sin error, sin aviso y sin nada que mirar. Los cinco caminos de
+creación tienen que escribirlo, y el cuarto es el que no estaba en la lista:
+
+| Camino | Qué escribe |
+|---|---|
+| `createEmptyProgram` | `owner: 'me'` o el cliente según el parámetro, `kind: 'program'` |
+| `createProgramForClient` | `owner: clientId`, `kind: 'program'` |
+| `cloneProgramFromTemplate` | el dueño del destino; `kind: 'template'` sólo al duplicar una plantilla |
+| **`generateAndActivateProgram`** ([useStore.js:366](../../store/useStore.js)) | `owner: 'me'`, `kind: 'program'` — **en el `set()` del store, no en el generador**: el motor de plantillas no sabe de dueños y no tiene por qué aprender |
+| `importForClient` | `owner: clientId`, después de normalizar (§3.2) |
+
 ### 3.2 Migración del formato de fichero (`.fitdata` v3)
 
 El `.fitdata` es el formato canónico: lo escriben la exportación, la copia a
@@ -195,16 +238,66 @@ backup de pruebas).
 
 **Escritura** — `_buildProgramJson` ([useStore.js:2477](../../store/useStore.js))
 y `buildBackupPayload` ([src/utils/backupPayload.js:28](../../../src/utils/backupPayload.js))
-suben a `'3'`. `_buildProgramJson` ya normaliza lo que envía
+suben a `'3'`. Y hay un **tercer escritor escondido**: `exportProgramWithLog`
+([useStore.js:2410](../../store/useStore.js)) es una copia literal de
+`_buildProgramJson` —las mismas ~60 líneas de `tplIds`, `relTpl`, `usedExIds` y
+el mismo `version: '2'`— que nadie actualizó cuando se extrajo el helper. Si no
+se toca, esa ruta exporta v2 para siempre. **No la migres: bórrala** y déjala en
+`_buildProgramJson(activeProgramId, true)` + la escritura del fichero.
+
+**Y de paso se arregla un fallo que lleva ahí desde siempre.** `_buildProgramJson`
+arma el historial así:
+
+```js
+const log = withLog ? workoutLog.filter((e) => tplIds.has(e.sessionTemplateId)) : [];
+```
+
+Sólo mira `workoutLog`, **nunca `clientLogs`**. Y la ficha del cliente ofrece
+"Exportar con historial" tanto en el programa activo
+([ClientsScreen.jsx:2515](../../src/screens/ClientsScreen.jsx)) como en cada
+archivado ([:2557](../../src/screens/ClientsScreen.jsx)), las dos con `true`.
+O sea: **exportar el programa de un cliente "con historial" produce un fichero
+con `workoutLog: []`, siempre, y sin decir nada.** Mover un programa de un cliente
+a otro pierde el historial en silencio.
+
+Con `owner`, elegir el cajón es una expresión y no una negociación entre dos
+campos — es el argumento de esta spec en miniatura:
+
+```js
+const src = program.owner === 'me' ? workoutLog : (clientLogs[program.owner] ?? []);
+const log = withLog ? src.filter((e) => tplIds.has(e.sessionTemplateId)) : [];
+```
+
+**`kind` sí se fuerza a `'program'`**, y no es descuido: `ImportModal` decide si
+enseña la casilla "Plantillas" mirando `parsedData.programs`
+([ImportModal.jsx:142](../../src/components/ImportModal.jsx)), y un fichero de
+programa suelto trae `data.program`, no `data.programs`. Un fichero con
+`kind: 'template'` no tendría casilla por la que entrar y el predicado `mine` lo
+descartaría: se perdería en silencio. Exportar una plantilla da un programa, como
+hoy. `_buildProgramJson` ya normaliza lo que envía
 (`{ ...program, mode: 'personal', status: 'active' }`) para que el cliente no
 reciba un programa marcado como de otro; pasa a `owner: 'me', kind: 'program'`.
 El cliente recibe siempre un programa suyo — **`owner` es semántica del
 dispositivo, no una identidad global**, y esa es la propiedad que hace que el
 protocolo no necesite ningún cambio más.
 
-**Lectura** — un solo normalizador, en el único sitio por el que entran los
-programas de fuera, donde ya vive `ensureStages`
-([useStore.js:2588](../../store/useStore.js)):
+**Lectura** — un solo normalizador. Pero cuidado con la premisa: "el único sitio
+por el que entran los programas de fuera" **es falsa**, y más vale saberlo antes
+de escribirlo. Hay **dos puertas**:
+
+1. `importData` ([useStore.js:2588](../../store/useStore.js)), donde ya vive
+   `ensureStages`.
+2. `importForClient` ([useStore.js:705](../../store/useStore.js)) — la ruta del
+   entrenador que importa el `.fitdata` de un cliente. Mete
+   `{ ...data.program, mode: 'managed', clientId }` **a pelo**: ni pasa por
+   `importData` ni llama a `ensureStages`.
+
+Las dos llaman a `normalizeIncomingProgram`; la segunda, además, fija
+`owner: clientId` después de normalizar. Que la puerta 2 no llame a
+`ensureStages` es un fallo **latente hoy** —lo tapan los ternarios
+`hasStages ? … : p.days`— y es justo lo que **bloquea la fase 3**.
+
+El normalizador:
 
 ```js
 function normalizeIncomingProgram(p) {
@@ -213,11 +306,21 @@ function normalizeIncomingProgram(p) {
   const { mode, clientId, ...rest } = staged;       // v1 / v2
   return {
     ...rest,
-    owner: clientId ?? 'me',
+    // `mode: 'personal'` es una AFIRMACIÓN del emisor y gana sobre `clientId`.
+    owner: mode === 'personal' ? 'me' : (clientId ?? 'me'),
     kind:  mode === 'template' ? 'template' : 'program',
   };
 }
 ```
+
+⚠️ **La precedencia de `mode` sobre `clientId` no es cosmética.** El exportador
+viejo escribía `mode: 'personal'` en cada programa suelto pero **se dejaba el
+`clientId` dentro** — la fuga del §3.2. Con `owner: clientId ?? 'me'` a secas,
+todo `.fitdata` v2 que un entrenador ya mandó a un cliente entraría en el móvil
+de ese cliente como programa de un cliente **que ahí no existe**: no lo recoge
+`mine`, no lo recoge nada, y no salta ni un error. Lo mismo vale para el
+`program_json` que ahora mismo esté esperando en un slot de Supabase escrito por
+la versión anterior.
 
 **Las tres copias del validador de versión.** `parseImportFile` está duplicado
 literalmente en [AppHeader.jsx:58](../../src/components/AppHeader.jsx),
@@ -249,6 +352,16 @@ son: un programa puede satisfacer dos ramas y la última en escribir gana — es
 exactamente la forma del fallo 10 de la auditoría ("reemplazar plantillas" se
 degradaba a "combinar").
 
+**Lo que NO desaparece de esa rama:** el `status: 'active'` forzado. Lo que se va
+es la reescritura del **`mode`**, no la del estado. Sin `status: 'active'`, un
+programa archivado dentro del fichero entra archivado y no aparece por ninguna
+parte — y de esta rama cuelga `applyPendingProgramUpdate`, que es por donde el
+cliente recibe el programa de su entrenador.
+
+**Y hay que añadirle dos reglas**, las de §3.4 bis: cuándo el import es una copia
+y cómo sobrevive el progreso. Sin ellas, la rama `mine` le roba el programa a un
+cliente y el cliente de WhatsApp pierde su ciclo en cada actualización.
+
 ### 3.4 El borrado único
 
 Cierra la fuga del punto 4 de §1. Un helper privado del store, y los tres
@@ -260,6 +373,8 @@ function purgeProgram(s, programId, { deleteHistory = false } = {}) {
   const program = s.programs[programId];
   if (!program) return {};
   const tplIds = new Set(programTemplateIds(program));   // ya existe, recorre TODAS las etapas
+  // OJO: hay DOS `programTemplateIds`. El de `clientLogs.js` devuelve un Set; el
+  // de `exerciseLinks.js` devuelve un Array. Aquí va el de clientLogs.
 
   const programs = { ...s.programs };  delete programs[programId];
   const sessions = { ...s.sessions };  tplIds.forEach((id) => delete sessions[id]);
@@ -290,22 +405,114 @@ function purgeProgram(s, programId, { deleteHistory = false } = {}) {
   hoy.
 - `removeSessionFromProgram` no cambia: ya limpiaba bien.
 
+⚠️ **Un cambio de comportamiento que hay que tomar a propósito.** Hoy
+`deleteClient` filtra `workoutLog` **siempre**, sin que nadie lo pida
+([useStore.js:568](../../store/useStore.js)): resto de cuando el historial de los
+clientes vivía mezclado con el del entrenador. `purgeProgram` sólo lo filtra con
+`deleteHistory && isMine`, así que al encadenar **deja de tocarse el log
+personal**. Es lo correcto —las entradas de un cliente viven en `clientLogs`—
+pero en un dispositivo con datos anteriores a `clientLogs` puede dejar entradas
+huérfanas visibles en el historial personal. Si molesta, esa limpieza va **una
+vez en la migración**, no en cada borrado.
+
 ⚠️ **`purgeProgram` compone.** Encadenar purgas requiere ir pasando el estado
 resultante, no llamar tres veces sobre `s`. En `deleteClient`, un `reduce`.
+
+### 3.4 bis Identidad al importar: cuándo es copia y cómo sobrevive el progreso
+
+Con la lista del cliente derivada, **sobrescribir un programa cambia de dueño a
+quien lo tenía**. Hoy eso ya pasa —exportar el programa de un cliente e
+importarlo como propio deja un solo objeto con `mode:'personal'` **y**
+`clientId` puesto, listado en los dos sitios a la vez— pero como la ficha del
+cliente lee su lista guardada, no se nota. Con `programsOf` se notaría: el
+programa desaparece de la ficha y `activeProgramId` se queda colgando, contra el
+invariante 4.
+
+#### Regla 1 — el import es una copia sólo si el id ya es de OTRO dueño
+
+```js
+// En la rama `mine` de importData, por cada programa entrante:
+const local = s.programs[incoming.id];
+if (local && local.owner !== incoming.owner) data = reidProgramFile(data);
+```
+
+`reidProgramFile` ya existe ([clientLogs.js:122](../../../src/utils/clientLogs.js)),
+lo usa `importForClient` para lo mismo, y remapea el id del programa, los de las
+sesiones, los días de **todas** las etapas y las entradas de log que van dentro
+del fichero.
+
+La condición es `local && distinto dueño`, no "id repetido", y las dos mitades
+importan:
+
+- **`local &&`** — en un móvil nuevo no hay nada con qué chocar, así que **no hay
+  re-ID**. La restauración conserva ids, historial y contadores. Es el caso que
+  más duele si se hace mal.
+- **`distinto dueño`** — mismo dueño significa "esto es el mismo programa, más
+  nuevo": se sobrescribe en el sitio, que es el camino de actualización del
+  cliente y el de restaurar un backup.
+
+#### Regla 2 — sobrescribir NO pisa los contadores
+
+Los contadores (`currentStageIndex`, `cycleCompletedIds`, `stageWeeksCompleted`,
+`totalWeeksCompleted`) viven **dentro del objeto programa**, así que un
+`{ ...incoming }` los reemplaza por los del emisor. `applyPendingProgramUpdate`
+ya lo resuelve con `mergeProgressOnImport`
+([useStore.js:3446](../../store/useStore.js)) — **pero sólo en el camino
+conectado**. Un cliente que recibe su programa por WhatsApp importa por
+`AppHeader` → `importData` directo, sin merge: **pierde su ciclo y su etapa en
+cada actualización**. Es un fallo de hoy, y el que hace que sobrescribir sea
+seguro o no.
+
+La corrección va en `importData`, que es por donde pasan los dos caminos:
+
+```js
+// El programa local con ESE id es el que se está actualizando: su posición es
+// del atleta, no del emisor.
+const kept = mergeProgressOnImport({
+  blob:           progressBlob(local),
+  program:        incoming,
+  lastActivation: local?.stageActivatedAt ?? null,
+});
+```
+
+`progressFromBlob` ya rechaza un blob cuyo `programId` no coincide, así que tras
+un re-ID no hay nada que conservar y se adoptan los contadores entrantes — que es
+lo correcto: un programa distinto, no una actualización. Las dos reglas encajan
+sin condiciones extra.
+
+#### Los seis escenarios reales
+
+| Escenario | ¿Existe el id? | Dueño local vs entrante | Qué hace | Resultado |
+|---|---|---|---|---|
+| Móvil nuevo o reinstalación, backup completo | no | — | nada | restauración exacta: mismos ids, historial enganchado, contadores intactos |
+| Reimportar el backup en el mismo móvil | sí | `me` / `me` | sobrescribe + regla 2 | actualización |
+| Entrenador exporta el programa de un cliente y lo importa como suyo | sí | `cli_X` / `me` | **copia (re-ID)** | dos programas; el cliente conserva el suyo, su activo y su historial |
+| Cliente **sin** conexión recibe la v2 por WhatsApp | sí | `me` / `me` | sobrescribe + regla 2 | programa actualizado, ciclo y etapa donde estaban |
+| Cliente **con** conexión recibe ese mismo fichero por WhatsApp | sí | `me` / `me` | igual que el anterior | no hay re-ID: el id es el mismo que le llegó por el canal conectado |
+| Cliente nuevo recibe el programa por primera vez | no | — | nada | programa nuevo con los contadores del fichero (los del entrenador, a cero) |
+
+El id del programa **nunca** delata al cliente: es un `prog_*` aleatorio, y quien
+lleva el dueño es `owner`, que la exportación fuerza a `'me'` (§3.2). Del
+`clientId` que hoy se cuela dentro de cada `.fitdata` exportado no queda rastro.
+
+Una arruga menor, ya existente y que no bloquea nada: importar a mano no toca
+`clientSync.lastProgramImportedAt`, así que un cliente conectado que aplique el
+fichero por WhatsApp volverá a ver el aviso del canal conectado. Aplicarlo dos
+veces es idempotente con la regla 2, así que como mucho es un aviso de más.
 
 ### 3.5 Checklist de ficheros — fase 1
 
 | Fichero | Qué cambia |
 |---|---|
-| `mobile/store/useStore.js` | migración §3.1; `createEmptyProgram`, `createProgramForClient`, `cloneProgramFromTemplate` escriben `owner`/`kind`; `archiveProgram`, `restoreProgram`, `deleteProgram`, `deleteClient`, `setClientActiveProgram`, `importForClient`, `importData`, `_buildProgramJson`; fuera `secondaryProgramIds` |
+| `mobile/store/useStore.js` | migración §3.1; los **cinco** caminos de creación de §3.1 bis escriben `owner`/`kind` (`generateAndActivateProgram` incluido); `archiveProgram`, `restoreProgram`, `deleteProgram`, `deleteClient`, `setClientActiveProgram`, `importForClient` (+ el `ensureStages` que le falta, §3.2), `importData` (+ las dos reglas de §3.4 bis), `_buildProgramJson` (+ el cajón de historial por `owner`, §3.2); **se borra `exportProgramWithLog`** (§3.2); fuera `secondaryProgramIds`; el estado inicial pasa a `programs: {}` / `sessionTemplates: {}` (§4.3, adelantado a esta fase) |
 | `src/utils/clientPrograms.js` (+ su test) | **se borra**, sustituido por `programOwnership.js` |
 | `mobile/src/utils/programOwnership.js` | nuevo (§2.3) + su test |
-| `mobile/src/utils/importFile.js` | nuevo — el `parseImportFile` único |
+| `mobile/src/utils/importFile.js` | nuevo — el `parseImportFile` único, con `['1','2','3']`. Las tres copias llevan los mensajes de error **en español a pelo**; al unificarlas devuelve una clave (`errors.importNoVersion`, `errors.importBadVersion`, `errors.importBadJson`) y traduce la pantalla, que es la regla del repo |
 | `mobile/src/screens/ClientsScreen.jsx` | `clientPrograms` pasa a `programsOf(programs, clientId)`; fuera el `filter(Boolean)`; `parseImportFile` importado |
 | `mobile/src/screens/ProgramScreen.jsx` | `templatesOf(programs)`; `mode: 'template'` / `'managed'` al crear |
 | `mobile/src/screens/OnboardingScreen.jsx` | `kind === 'template'` al listar; `parseImportFile` importado |
-| `mobile/src/components/AppHeader.jsx` | el filtro del modal de archivados pasa a `p.owner === 'me'`; `parseImportFile` importado |
-| `mobile/src/components/ImportModal.jsx` | `hasTemplates` mira `kind` (2 sitios) |
+| `mobile/src/components/AppHeader.jsx` | el filtro del modal de archivados (**2 sitios**: [226](../../src/components/AppHeader.jsx) y [337](../../src/components/AppHeader.jsx)) pasa a `programsOf(programs, 'me')` + `status === 'archived'` — **no** a `p.owner === 'me'` a secas: eso dejaría pasar las plantillas archivadas y `restoreProgram` convertiría una plantilla en el programa activo. `programsOf` ya excluye `kind: 'template'`. `parseImportFile` importado |
+| `mobile/src/components/ImportModal.jsx` | `hasTemplates` mira `(p.kind ?? p.mode)` (2 sitios) — sólo `kind` deja **sin casilla "Plantillas"** a todo backup v1/v2, que es donde están las plantillas de hoy |
 | `src/utils/clientLogs.js` | `splitClientLogEntries` deja de recibir `clients`: los dueños salen de `programs` |
 | `src/utils/backupPayload.js` | `version: '3'` |
 
@@ -320,6 +527,16 @@ resultante, no llamar tres veces sobre `s`. En `deleteClient`, un `reduce`.
 - **Nuevo, y es el que da valor a la fase:** borrar un programa de cliente no
   deja ni una sesión huérfana en `sessions` ni el `activeProgramId` apuntando al
   vacío. Es el fallo que hoy no cubre nadie.
+- **Nuevo, barato y cierra §3.1 bis:** cada camino de creación deja un `owner`.
+  Un test que llame a los cinco y afirme `expect(prog.owner).toBeDefined()`
+  bastaría; hoy `generateAndActivateProgram` lo suspendería.
+- **Nuevos, de §3.4 bis** — los tres que describen el modelo entero de identidad:
+  1. importar como propio el programa de un cliente deja **dos** programas, y el
+     cliente conserva el suyo, su `activeProgramId` y su historial;
+  2. importar un backup en un store **vacío** no re-ID nada: el id del programa
+     y los `sessionTemplateId` del log salen idénticos (móvil nuevo);
+  3. reimportar el mismo programa con contadores a cero **no** mueve la etapa ni
+     el ciclo del que ya estaba (cliente de WhatsApp).
 
 ---
 
@@ -367,6 +584,22 @@ correcto.
   fusiona `sessionTemplates` y `userPrograms` del fichero igual que la migración.
 - `isEdited` ([SessionEditorScreen.jsx:254](../../src/screens/SessionEditorScreen.jsx))
   desaparece con el botón.
+- **Seis pantallas reimplementan el `??` a mano**, porque `getEffectiveTemplate`
+  es un getter del store y a un getter no te puedes suscribir:
+  `SessionEditorScreen` (x2), `WorkoutScreen` (x2), `ExerciseEditorInline`,
+  `ProgramDetailScreen` (un `useMemo` que fusiona los dos diccionarios) y
+  `ClientsScreen`. Cada una está suscrita a **los dos** y se repinta si cambia
+  cualquiera. Pasan a una sola suscripción, `s.sessions`. Es la mitad del valor
+  de esta fase y no estaba contada.
+- El **editor de programa** guarda y compara los dos: `beginEditSession` clona
+  `{ programs, sessionTemplates, userPrograms }`
+  ([useStore.js:812](../../store/useStore.js)), `restoreSnapshot` los restaura y
+  `hasUnsavedChanges` compara `JSON.stringify(st.userPrograms)`
+  ([ProgramEditorScreen.jsx:149](../../src/screens/ProgramEditorScreen.jsx)).
+  Con un diccionario, esa comparación deja de mirar sólo la capa de ediciones y
+  serializa **todas** las sesiones: sigue siendo correcta y sólo corre al salir,
+  pero el comentario de al lado ("las base no cambian mientras editas") deja de
+  ser verdad. Bórralo.
 
 ### 4.3 La semilla se vacía
 
@@ -377,17 +610,30 @@ producción — comprobado. Es decir: cada instalación arranca con dos programa
 demostración y seis sesiones que no son del usuario, viajan en cada backup y hoy
 sólo están medio ocultos porque ningún listado los pide.
 
-Con `owner: 'me'` **sí aparecerían** en "mis programas". Así que la fase los
-vacía:
+Con `owner: 'me'` **sí aparecerían** en "mis programas" — y eso pasa en cuanto se
+despliega la **fase 1**, no la 2. Así que el vaciado **se adelanta a la fase 1**,
+que es donde nace el problema: cuesta las mismas dos líneas allí y evita una
+regresión visible entre fases, en una spec cuyo argumento entero es que cada fase
+se despliega sola.
 
 ```js
 programs: {},
 sessions: {},
 ```
 
+(En la fase 1 la clave todavía se llama `sessionTemplates`; en la 2 pasa a
+`sessions`.)
+
 `src/data/programs.js` queda como dato de desarrollo (lo usan tests); no se
 importa desde el store. Si hiciera falta una demo, se carga importando un
 `.fitdata`, que es el camino que ya existe.
+
+⚠️ **Vaciar el estado inicial no limpia tu dispositivo.** `programs` y
+`sessionTemplates` están en el `partialize`, así que la semilla lleva persistida
+desde el primer arranque y seguirá ahí después de la migración, ahora con
+`owner: 'me'`. O se borran esos dos programas a mano una vez, o se limpian los
+datos de la app. No merece código de migración: es un dispositivo, una vez, y la
+app no está publicada.
 
 ---
 
@@ -405,18 +651,34 @@ directamente.
   ```
 
 - Se sustituyen las lecturas de `p.days` y los ternarios
-  `hasStages ? stages[idx].days : p.days` por `stageDays(p)`. Concentradas en
-  `useStore.js` (29), `OnboardingScreen` (13), `ClientsScreen` (10),
-  `HomeScreen` (9) y `clientLogs.js` (4).
+  `hasStages ? stages[idx].days : p.days` por `stageDays(p)`. Recuento real
+  (sep-2026, sin tests): `useStore.js` 29, `HomeScreen` 8, `ClientsScreen` 7,
+  `OnboardingScreen` 6, `clientLogs.js` 4 — y de ésos, buena parte son
+  `stage.days` legítimos que se quedan. La fase es **más pequeña** de lo que
+  decía este párrafo.
 - `withStages` pierde la línea del espejo y se queda en "asigna etapas y
   clampa el índice"; `ensureStages` no cambia (sigue envolviendo programas
   antiguos en una etapa).
-- Migración: `delete p.days` en cada programa. Sin más.
+- Migración: `delete p.days` en cada programa. Sin más — y **después** del
+  `ensureStages` que ya corre ahí, no antes: es de `p.days` de donde
+  `ensureStages` saca los días de un programa antiguo.
 
-**Esta fase va la última a propósito.** Es la de más sitios tocados y la de menos
-beneficio inmediato: no arregla ningún fallo conocido, sólo quita la posibilidad
-de que vuelva a aparecer uno como el que motivó `withStages`. Si hay que dejar
-una sin hacer, es ésta.
+**Y es más barata todavía, por algo que no se ve leyendo las pantallas:** el
+bloque de `onRehydrateStorage` **ya pasa `ensureStages` por todos los programas**
+([useStore.js:3962](../../store/useStore.js)). O sea que, para el estado
+persistido, la rama `: p.days` de cada ternario `hasStages ? … : p.days` es
+**código muerto desde que se implantaron las etapas**. Esta fase no cambia
+comportamiento: borra ~15 ramas que ya no se ejecutaban.
+
+**Requisito previo, y no es opcional:** cerrar antes la puerta 2 de §3.2
+(`importForClient` sin `ensureStages`). Es el único sitio por el que hoy entra al
+estado en caliente un programa sin etapas; con el espejo borrado, ese programa se
+pintaría **vacío** hasta el siguiente arranque.
+
+**Sigue yendo la última**, ahora por dependencia y no por tamaño: necesita la
+puerta 2 cerrada. Es la de menos beneficio inmediato —no arregla ningún fallo
+conocido, sólo quita la posibilidad de que vuelva a aparecer uno como el que
+motivó `withStages`— así que si hay que dejar una sin hacer, sigue siendo ésta.
 
 ---
 
@@ -424,9 +686,9 @@ una sin hacer, es ésta.
 
 | Fase | Qué se lleva por delante | Coste | Riesgo |
 |---|---|---|---|
-| 1 — `owner` + `kind` | la fuga de sesiones huérfanas, el robo de programa al restaurar, las cuatro ramas de `importData`, `clientPrograms.js`, `secondaryProgramIds`, dos de las tres copias de `parseImportFile` | 1-2 sesiones | medio: toca el protocolo con el cliente. `clientSync.sim.test.js` es la red |
-| 2 — `sessions` | un diccionario, `resetTemplate`, `restoreSession`, el `??` de cada lectura, dos programas fantasma en cada backup | 1 sesión | bajo: `getEffectiveTemplate` absorbe el cambio |
-| 3 — sin espejo | `withStages` a la mitad, y una clase entera de deriva | 1-2 sesiones | bajo, pero muchos sitios |
+| 1 — `owner` + `kind` | la fuga de sesiones huérfanas, el robo de programa al restaurar, las cuatro ramas de `importData`, `clientPrograms.js`, `secondaryProgramIds`, dos de las tres copias de `parseImportFile`, las ~60 líneas de `exportProgramWithLog` y los dos programas fantasma de la semilla | 1-2 sesiones | medio: toca el protocolo con el cliente. `clientSync.sim.test.js` es la red |
+| 2 — `sessions` | un diccionario, `resetTemplate`, `restoreSession`, el `??` de cada lectura **y las seis suscripciones dobles de las pantallas** | 1 sesión | bajo: `getEffectiveTemplate` absorbe el cambio |
+| 3 — sin espejo | `withStages` a la mitad, ~15 ternarios que ya no se ejecutaban, y una clase entera de deriva | 1 sesión | bajo. **Depende de** cerrar la puerta 2 de §3.2 |
 
 **Fuera de alcance, a propósito:**
 
@@ -454,7 +716,7 @@ Todo lo que hay que transformar, y dónde vive cada transformación.
 | Lista del cliente | `client.programIds[]` | derivada (`programsOf`) | se borra en la migración |
 | Programas secundarios | `profile.secondaryProgramIds[]` | — | se borra (muerto) |
 | Sesiones | `sessionTemplates` + `userPrograms` | `sessions` | migración §4.2 (gana `userPrograms`) |
-| Semilla | `PROGRAMS` / `SESSION_TEMPLATES` | `{}` / `{}` | estado inicial §4.3 |
+| Semilla | `PROGRAMS` / `SESSION_TEMPLATES` | `{}` / `{}` | estado inicial §4.3 — **adelantado a la fase 1** |
 | Espejo de etapa | `program.days` | `stageDays(p)` | `delete p.days` §5 |
 | Fichero | `version: '2'` | `version: '3'` | escritura en `_buildProgramJson` + `buildBackupPayload`; lectura v1/v2 en `normalizeIncomingProgram` |
 | Validador de versión | 3 copias con `['1','2']` | `mobile/src/utils/importFile.js` con `['1','2','3']` | §3.2 |
