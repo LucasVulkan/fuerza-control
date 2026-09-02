@@ -1749,8 +1749,6 @@ export default function ClientsScreen() {
   const clientLogs             = useStore((s) => s.clientLogs);
   const exerciseLibrary        = useStore((s) => s.exerciseLibrary);
   const customExercises        = useStore((s) => s.customExercises);
-  const sessionTemplates       = useStore((s) => s.sessionTemplates);
-  const userPrograms           = useStore((s) => s.userPrograms);
   const profile                = useStore((s) => s.profile);
 
   const createClient           = useStore((s) => s.createClient);
@@ -1793,6 +1791,11 @@ export default function ClientsScreen() {
 
   // Memoizado porque ahora alimenta los memos de carga: un objeto nuevo en cada
   // render recalculaba `sessionLoads` sobre todo el historial del cliente.
+  // Suscrito SOLO para que la ficha se repinte al editar una sesion del
+  // programa: se leen con `getEffectiveTemplate`, que es estable.
+  // eslint-disable-next-line no-unused-vars
+  const sessionTemplates       = useStore((s) => s.sessionTemplates);
+
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],

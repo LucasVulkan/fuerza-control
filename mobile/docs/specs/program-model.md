@@ -1,7 +1,7 @@
 # Spec — Modelo de programas: un dueño, un diccionario, sin espejo
 
-> Estado: **FASE 1 IMPLEMENTADA** (2-sep-2026), pendiente de prueba en dispositivo.
-> Fases 2 y 3 sin implementar. Tres fases **independientes**, cada una
+> Estado: **FASES 1 Y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
+> dispositivo. Fase 3 sin implementar. Tres fases **independientes**, cada una
 > desplegable por su cuenta y en este orden. Origen: el §6.1 de
 > [rediseno.md](rediseno.md), extraído a documento propio porque —a diferencia de
 > las fases 1 y 2 de aquella— **esto sí toca pantallas**.
@@ -570,6 +570,30 @@ veces es idempotente con la regla 2, así que como mucho es un aviso de más.
 ---
 
 ## 4. Fase 2 — Un solo diccionario de sesiones
+
+> **IMPLEMENTADA** el 2-sep-2026. **Dos decisiones cambiaron respecto a lo
+> escrito abajo**, y el texto original se conserva por el razonamiento:
+>
+> 1. **El diccionario NO se renombra a `sessions`.** Se queda `sessionTemplates`
+>    y lo que desaparece es `userPrograms`. Renombrar costaba ~40 sitios más y
+>    cambiaba las DOS claves del fichero en vez de una; y `sessions` se confunde
+>    con las sesiones registradas del historial, que es como las llama la app en
+>    pantalla. El precio es que el nombre sigue diciendo "template" sin capa que
+>    lo justifique.
+> 2. **El fichero sube a `version: '4'.`** Sin subirlo, una build anterior a esta
+>    fase pasa el validador, importa el programa y se queda **sin sesiones** en
+>    silencio. Con v4 lo rechaza con "Versión 4 no compatible". La build nueva
+>    sigue leyendo v1/v2/v3 y fusiona sus dos claves (gana `userPrograms`).
+>
+> Y una trampa que casi cuesta cara: `HomeScreen` y `ClientsScreen` tenían
+> suscripciones a `sessionTemplates` que **parecen muertas** —lint incluido— y no
+> lo son. Los datos se leen con `getEffectiveTemplate`, que es una función
+> estable y por sí sola no dispara ni un render: sin esa suscripción, la pantalla
+> no se repinta al editar una sesión. Van documentadas con su `eslint-disable`.
+>
+> `editor.toastReset` **no se borra** de los locales: la sigue usando la app web
+> (`src/components/editor/DayEditor.jsx`). Sólo se va `editor.sessionRestoreBtn`.
+> 1161 tests verdes (eran 1153), y dos errores de lint MENOS que antes.
 
 ### 4.1 Por qué había dos, y por qué ya no vale
 

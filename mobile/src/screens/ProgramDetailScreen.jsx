@@ -328,7 +328,6 @@ export default function ProgramDetailScreen() {
   const clients              = useStore((s) => s.clients);
   const clientSync           = useStore((s) => s.clientSync);
   const sessionTemplates     = useStore((s) => s.sessionTemplates);
-  const userPrograms         = useStore((s) => s.userPrograms);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -343,10 +342,6 @@ export default function ProgramDetailScreen() {
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],
-  );
-  const allTemplates = useMemo(
-    () => ({ ...sessionTemplates, ...userPrograms }),
-    [sessionTemplates, userPrograms],
   );
 
   // `program.days` es el espejo de la etapa ACTIVA, no la lista de días del
@@ -389,12 +384,12 @@ export default function ProgramDetailScreen() {
       stageDiff(
         baseSessions.map((s) => s.template),
         sessions.map((s) => s.template),
-        allTemplates,
+        allTemplates: sessionTemplates,
       ),
       stageName(stages[0], 0, t),
       t,
     )
-  ), [idx, baseSessions, sessions, allTemplates, stages, t]);
+  ), [idx, baseSessions, sessions, sessionTemplates, stages, t]);
 
   const totalCycles = useMemo(() => (
     stages.some((s) => s.durationWeeks == null)

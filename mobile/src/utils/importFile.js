@@ -9,8 +9,11 @@
  * español a pelo.
  */
 
-/** Versiones de fichero que la app sabe leer. v3 = modelo `owner`/`kind`. */
-export const SUPPORTED_FILE_VERSIONS = ['1', '2', '3'];
+/**
+ * Versiones de fichero que la app sabe leer. v3 = modelo `owner`/`kind`;
+ * v4 = las sesiones en una sola clave (`sessionTemplates`), sin `userPrograms`.
+ */
+export const SUPPORTED_FILE_VERSIONS = ['1', '2', '3', '4'];
 
 /**
  * @param {string} jsonString contenido crudo del fichero

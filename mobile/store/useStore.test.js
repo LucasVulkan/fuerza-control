@@ -380,7 +380,7 @@ describe('isPro — fallo 9', () => {
 describe('program-model — owner/kind', () => {
   beforeEach(() => {
     useStore.setState({
-      programs: {}, sessionTemplates: {}, userPrograms: {},
+      programs: {}, sessionTemplates: {},
       clients: {}, clientLogs: {}, workoutLog: [],
       profile: { ...useStore.getState().profile, activeProgramId: null },
     });
@@ -453,7 +453,7 @@ describe('program-model — owner/kind', () => {
     useStore.getState().setClientActiveProgram('cli_1', pid);
 
     const file = JSON.parse(useStore.getState()._buildProgramJson(pid, false).json);
-    expect(file.version).toBe('3');
+    expect(file.version).toBe('4');
     expect(file.program.owner).toBe('me');          // el fichero no delata al cliente
     expect(file.program.clientId).toBeUndefined();
 
@@ -607,7 +607,7 @@ describe('program-model — owner/kind', () => {
 describe('program-model — ficheros v1/v2', () => {
   beforeEach(() => {
     useStore.setState({
-      programs: {}, sessionTemplates: {}, userPrograms: {},
+      programs: {}, sessionTemplates: {},
       clients: {}, clientLogs: {}, workoutLog: [],
       profile: { ...useStore.getState().profile, activeProgramId: null },
     });
@@ -708,7 +708,7 @@ describe('program-model — sustituir el activo lo archiva', () => {
 
   beforeEach(() => {
     useStore.setState({
-      programs: {}, sessionTemplates: {}, userPrograms: {},
+      programs: {}, sessionTemplates: {},
       clients: {}, clientLogs: {}, workoutLog: [],
       profile: { ...useStore.getState().profile, activeProgramId: null },
     });
@@ -770,5 +770,134 @@ describe('program-model — sustituir el activo lo archiva', () => {
     expect(s.programs[pid].status).toBe('active');          // el de Ana, intacto
     expect(s.programs[pid].owner).toBe('cli_1');
     expect(s.clients.cli_1.activeProgramId).toBe(pid);
+  });
+});
+
+/**
+ * Un solo diccionario de sesiones (`docs/specs/program-model.md` §4).
+ *
+ * `userPrograms` era la capa de ediciones sobre los originales de semilla.
+ * Desde que todo lo que crea el usuario nace ya en `sessionTemplates`, la capa
+ * no significaba nada: "Restaurar sesión original" devolvía la sesión al estado
+ * vacío en que nació, no a ningún original.
+ */
+describe('program-model — un solo diccionario de sesiones', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  it('la migración fusiona las dos capas y gana la de ediciones', () => {
+    const state = {
+      profile: { activeProgramId: null },
+      programs: {}, clients: {}, workoutLog: [],
+      sessionTemplates: {
+        tpl_a: { id: 'tpl_a', name: 'Original A' },
+        tpl_b: { id: 'tpl_b', name: 'Sólo base' },
+      },
+      userPrograms: {
+        tpl_a: { id: 'tpl_a', name: 'A editada' },
+        tpl_c: { id: 'tpl_c', name: 'Sólo edición' },
+      },
+    };
+
+    rehydrateCallback()(state, undefined);
+
+    expect(state.sessionTemplates.tpl_a.name).toBe('A editada');   // gana la capa de arriba
+    expect(state.sessionTemplates.tpl_b.name).toBe('Sólo base');
+    expect(state.sessionTemplates.tpl_c.name).toBe('Sólo edición');
+    expect(state.userPrograms).toBeUndefined();
+  });
+
+  it('la migración es idempotente y no revive la capa', () => {
+    const state = {
+      profile: { activeProgramId: null },
+      programs: {}, clients: {}, workoutLog: [],
+      sessionTemplates: { tpl_a: { id: 'tpl_a', name: 'A' } },
+    };
+
+    rehydrateCallback()(state, undefined);
+    rehydrateCallback()(state, undefined);
+
+    expect(state.sessionTemplates.tpl_a.name).toBe('A');
+    expect(state.userPrograms).toBeUndefined();
+  });
+
+  // La costura: `getEffectiveTemplate` conserva nombre y contrato, así que
+  // ninguno de sus ~50 llamantes se enteró del cambio.
+  it('getEffectiveTemplate sigue devolviendo la sesión', () => {
+    useStore.setState({ sessionTemplates: { tpl_a: { id: 'tpl_a', name: 'A' } } });
+
+    expect(useStore.getState().getEffectiveTemplate('tpl_a').name).toBe('A');
+    expect(useStore.getState().getEffectiveTemplate('no_existe')).toBeUndefined();
+  });
+
+  it('el fichero sale en v4 y sin la clave muerta', () => {
+    const pid = useStore.getState().createEmptyProgram(2, 'Mío');
+
+    const file = JSON.parse(useStore.getState()._buildProgramJson(pid, false).json);
+
+    expect(file.version).toBe('4');
+    expect(Object.keys(file.sessionTemplates)).toHaveLength(2);
+    expect(file).not.toHaveProperty('userPrograms');
+  });
+
+  // Un fichero v1/v2/v3 traía las sesiones repartidas en dos claves. Al leerlo
+  // gana `userPrograms`, que era lo que su dueño veía en pantalla.
+  it('al importar un fichero viejo, las dos claves se fusionan y gana la de ediciones', () => {
+    const viejo = {
+      version: '3', exportType: 'program',
+      program: {
+        id: 'prog_v3', name: 'Del entrenador', owner: 'me', kind: 'program', status: 'active',
+        currentStageIndex: 0,
+        stages: [{ id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_a', label: 'A' }] }],
+      },
+      sessionTemplates: { tpl_a: { id: 'tpl_a', name: 'Original', exercises: [] } },
+      userPrograms:     { tpl_a: { id: 'tpl_a', name: 'Editada por el entrenador', exercises: [] } },
+    };
+
+    useStore.getState().importData(viejo, { program: true }, { silent: true });
+
+    expect(useStore.getState().sessionTemplates.tpl_a.name).toBe('Editada por el entrenador');
+    expect(useStore.getState().userPrograms).toBeUndefined();
+  });
+
+  it('lo mismo por la otra puerta: el fichero viejo de un cliente', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+
+    useStore.getState().importForClient('cli_1', {
+      version: '2', exportType: 'program',
+      program: { id: 'prog_v2', name: 'Suyo', mode: 'personal', days: [{ sessionTemplateId: 'tpl_a', label: 'A' }] },
+      sessionTemplates: { tpl_a: { id: 'tpl_a', name: 'Original' } },
+      userPrograms:     { tpl_a: { id: 'tpl_a', name: 'Editada' } },
+    }, 'replace');
+
+    expect(useStore.getState().sessionTemplates.tpl_a.name).toBe('Editada');
+  });
+
+  // La purga de la fase 1 tenía que limpiar los dos mapas; ahora sólo uno, y
+  // eso es exactamente lo que no puede volver a quedarse a medias.
+  it('borrar un programa sigue sin dejar sesiones huérfanas', () => {
+    const pid = useStore.getState().createEmptyProgram(3, 'Mío');
+    expect(Object.keys(useStore.getState().sessionTemplates)).toHaveLength(3);
+
+    useStore.getState().deleteProgram(pid);
+
+    expect(Object.keys(useStore.getState().sessionTemplates)).toEqual([]);
+    expect(useStore.getState().profile.activeProgramId).toBeNull();
+  });
+
+  it('editar una sesión escribe en el único diccionario', () => {
+    const pid = useStore.getState().createEmptyProgram(1, 'Mío');
+    const [tplId] = Object.keys(useStore.getState().sessionTemplates);
+
+    useStore.getState().renameSession(tplId, 'Empuje');
+
+    expect(useStore.getState().sessionTemplates[tplId].name).toBe('Empuje');
+    expect(useStore.getState().userPrograms).toBeUndefined();
+    expect(useStore.getState().programs[pid]).toBeDefined();
   });
 });

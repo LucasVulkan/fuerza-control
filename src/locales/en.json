@@ -1459,7 +1459,6 @@
     "sessionDeleteBtn": "Delete session",
     "sessionDuplicateBtn": "Duplicate session",
     "toastSessionDuplicated": "Session duplicated",
-    "sessionRestoreBtn": "Restore original session",
     "badges": {
       "auto": "AUTO",
       "fixed": "FIXED",

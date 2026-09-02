@@ -150,6 +150,9 @@ export function reidProgramFile(data) {
     ...data,
     program,
     sessionTemplates: remapTemplates(data.sessionTemplates),
+    // `userPrograms` ya no se escribe (desde v4 las sesiones van en una sola
+    // clave), pero un fichero v1/v2/v3 la trae y sus ediciones tienen que
+    // seguir enganchadas a los ids nuevos. No se borra: se lee.
     userPrograms:     remapTemplates(data.userPrograms),
     workoutLog: (data.workoutLog ?? []).map((e) =>
       idMap[e.sessionTemplateId] ? { ...e, sessionTemplateId: idMap[e.sessionTemplateId] } : e,

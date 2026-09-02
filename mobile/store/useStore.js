@@ -118,6 +118,17 @@ function updateLastSetDrops(setsState, exerciseId, updater) {
 }
 
 /**
+ * Las sesiones de un fichero, en la forma que usa el store.
+ *
+ * Hasta v3 viajaban en DOS claves —`sessionTemplates` (los originales) y
+ * `userPrograms` (la capa de ediciones encima)— y desde v4 en una. Al leer una
+ * v1/v2/v3 gana `userPrograms`, que era lo que su dueño veía en pantalla.
+ */
+function mergeFileSessions(current, file) {
+  return { ...current, ...(file.sessionTemplates ?? {}), ...(file.userPrograms ?? {}) };
+}
+
+/**
  * Un programa que llega de fuera, en la forma que usa el store.
  *
  * Sube v1/v2 (`mode` + `clientId`) al modelo `owner`/`kind` y garantiza etapas.
@@ -158,9 +169,8 @@ function purgeProgram(s, programId, { deleteHistory = false } = {}) {
   if (!program) return {};
   const tplIds = programTemplateIds(program);   // Set; recorre TODAS las etapas
 
-  const programs  = { ...s.programs };         delete programs[programId];
-  const sessions  = { ...s.sessionTemplates }; tplIds.forEach((id) => delete sessions[id]);
-  const overrides = { ...s.userPrograms };     tplIds.forEach((id) => delete overrides[id]);
+  const programs = { ...s.programs };         delete programs[programId];
+  const sessions = { ...s.sessionTemplates }; tplIds.forEach((id) => delete sessions[id]);
 
   const ownerId   = program.owner;
   const isMine    = ownerId === 'me';
@@ -169,7 +179,6 @@ function purgeProgram(s, programId, { deleteHistory = false } = {}) {
   return {
     programs,
     sessionTemplates: sessions,
-    userPrograms:     overrides,
     ...(deleteHistory && isMine
       ? { workoutLog: s.workoutLog.filter((e) => !tplIds.has(e.sessionTemplateId)) } : {}),
     ...(deleteHistory && clientLog
@@ -244,14 +253,16 @@ const INITIAL_UI = {
  *   ["+1 etapa nueva", "Etapa 1: +2 sesiones", "Sesión A: +3 ejercicios"]
  */
 function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
-  const { programs, profile, sessionTemplates, userPrograms } = storeState;
+  const { programs, profile, sessionTemplates } = storeState;
   const oldProg = programs[profile.activeProgramId];
   if (!oldProg) return ['Programa nuevo del entrenador'];
 
   const newPrograms    = { ...(newProgramJson.programs ?? {}), ...(newProgramJson.program ? { [newProgramJson.program.id]: newProgramJson.program } : {}) };
   const newProg        = newPrograms[profile.activeProgramId] ?? Object.values(newPrograms)[0];
+  // El fichero v1/v2/v3 traía las sesiones en dos claves; el `userPrograms` de
+  // uno viejo gana, que era la capa de ediciones. Desde v4 sólo viene una.
   const newTemplates   = { ...(newProgramJson.sessionTemplates ?? {}), ...(newProgramJson.userPrograms ?? {}) };
-  const oldTemplates   = { ...sessionTemplates, ...userPrograms };
+  const oldTemplates   = sessionTemplates;
 
   const getStages = (p) => p?.stages?.length > 0 ? p.stages : [{ days: p?.days ?? [], name: 'Principal' }];
   const oldStages = getStages(oldProg);
@@ -334,7 +345,6 @@ export const useStore = create(
 
       clients: {},
       tagRegistry: [],   // [{ id, name }] — global tag list
-      userPrograms: {},
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
       _editSnapshot: null,
@@ -608,7 +618,6 @@ export const useStore = create(
           return {
             programs:         acc.programs,
             sessionTemplates: acc.sessionTemplates,
-            userPrograms:     acc.userPrograms,
             clients, clientLogs,
           };
         });
@@ -748,8 +757,7 @@ export const useStore = create(
               // (v1/v2 → owner/kind, y etapas) y reasigna el dueño.
               [programId]: { ...normalizeIncomingProgram(data.program), owner: clientId, kind: 'program' },
             },
-            sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
-            userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
+            sessionTemplates: mergeFileSessions(s.sessionTemplates, data),
             customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
             // Incoming program becomes active; the previous active is archived.
             clients: { ...s.clients, [clientId]: assignActiveProgram(s.clients[clientId], programId) },
@@ -770,8 +778,7 @@ export const useStore = create(
           const newCount   = merged.length - existing.length;
           set((s) => ({
             clientLogs: { ...s.clientLogs, [clientId]: merged },
-            sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
-            userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
+            sessionTemplates: mergeFileSessions(s.sessionTemplates, data),
           }));
           get().showToast(`${newCount} sesión${newCount !== 1 ? 'es' : ''} importada${newCount !== 1 ? 's' : ''}`);
         }
@@ -822,8 +829,10 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       getEffectiveTemplate: (templateId) => {
-        const { userPrograms, sessionTemplates } = get();
-        return userPrograms[templateId] ?? sessionTemplates[templateId];
+        // Se conserva el nombre a propósito: es la costura por la que pasaron
+        // los ~50 llamantes cuando había dos diccionarios, y ninguno cambió al
+        // fusionarlos.
+        return get().sessionTemplates[templateId];
       },
 
       addCustomExercise: (exerciseDef) => {
@@ -846,9 +855,9 @@ export const useStore = create(
       },
 
       beginEditSession: () => {
-        const { programs, sessionTemplates, userPrograms } = get();
+        const { programs, sessionTemplates } = get();
         set({
-          _editSnapshot: JSON.parse(JSON.stringify({ programs, sessionTemplates, userPrograms })),
+          _editSnapshot: JSON.parse(JSON.stringify({ programs, sessionTemplates })),
         });
       },
 
@@ -874,23 +883,24 @@ export const useStore = create(
         }
 
         set((s) => {
-          const nextUserPrograms = {
-            ...s.userPrograms,
+          const next = {
+            ...s.sessionTemplates,
             [templateId]: { ...template, exercises: updatedExercises },
           };
           for (const tid of siblingIds) {
-            const tpl = s.userPrograms[tid] ?? s.sessionTemplates[tid];
+            const tpl = s.sessionTemplates[tid];
             const sibEx = tpl?.exercises?.find((ex) => ex.exerciseId === exerciseId);
             if (!tpl || !sibEx) continue;
             const merged = { ...sibEx, ...sibUpdates };
-            // Skip no-op writes so untouched siblings don't gain an "edited" copy.
+            // Escribir sólo lo que cambia: un hermano intacto no tiene por qué
+            // volverse un objeto nuevo y repintar a quien lo mire.
             if (JSON.stringify(merged) === JSON.stringify(sibEx)) continue;
-            nextUserPrograms[tid] = {
+            next[tid] = {
               ...tpl,
               exercises: tpl.exercises.map((ex) => ex.exerciseId === exerciseId ? merged : ex),
             };
           }
-          return { userPrograms: nextUserPrograms };
+          return { sessionTemplates: next };
         });
       },
 
@@ -924,8 +934,8 @@ export const useStore = create(
           ex.exerciseId !== oldExerciseId ? ex : { ...ex, exerciseId: newExerciseId, progressionOverride: null }
         );
         set((s) => ({
-          userPrograms: {
-            ...s.userPrograms,
+          sessionTemplates: {
+            ...s.sessionTemplates,
             [templateId]: { ...template, exercises: updatedExercises },
           },
         }));
@@ -938,8 +948,8 @@ export const useStore = create(
           .filter((ex) => ex.exerciseId !== exerciseId)
           .map((ex, idx) => ({ ...ex, order: idx + 1 }));
         set((s) => ({
-          userPrograms: {
-            ...s.userPrograms,
+          sessionTemplates: {
+            ...s.sessionTemplates,
             [templateId]: { ...template, exercises: updatedExercises },
           },
         }));
@@ -949,8 +959,8 @@ export const useStore = create(
         const template = get().getEffectiveTemplate(templateId);
         if (!template || !reorderedExercises) return;
         set((s) => ({
-          userPrograms: {
-            ...s.userPrograms,
+          sessionTemplates: {
+            ...s.sessionTemplates,
             [templateId]: { ...template, exercises: reorderedExercises },
           },
         }));
@@ -958,7 +968,7 @@ export const useStore = create(
 
       // ── Conditioning blocks (AMRAP/EMOM/for time) — editor actions ──────────
       // Same immutable pattern as updateExerciseParams/reorderExercise: read
-      // the effective template, write the copy to userPrograms.
+      // the effective template, write it back.
       //
       // `templateId === '__free__'` no es una plantilla: es la sesión libre en
       // curso, que se edita durante el propio entreno. Las 3 acciones aceptan ese
@@ -977,7 +987,7 @@ export const useStore = create(
         if (!template) return;
         const blocks = [...(template.blocks ?? []), block];
         set((s) => ({
-          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+          sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...template, blocks } },
         }));
       },
 
@@ -990,7 +1000,7 @@ export const useStore = create(
         if (!template) return;
         const blocks = (template.blocks ?? []).map((b) => b.id === blockId ? { ...b, ...updates } : b);
         set((s) => ({
-          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+          sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...template, blocks } },
         }));
       },
 
@@ -1001,7 +1011,7 @@ export const useStore = create(
         const template = get().getEffectiveTemplate(templateId);
         if (!template || blocks.length !== (template.blocks ?? []).length) return;
         set((s) => ({
-          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+          sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...template, blocks } },
         }));
       },
 
@@ -1014,7 +1024,7 @@ export const useStore = create(
         if (!template) return;
         const blocks = (template.blocks ?? []).filter((b) => b.id !== blockId);
         set((s) => ({
-          userPrograms: { ...s.userPrograms, [templateId]: { ...template, blocks } },
+          sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...template, blocks } },
         }));
       },
 
@@ -1050,19 +1060,11 @@ export const useStore = create(
           order: template.exercises.length + 1,
         };
         set((s) => ({
-          userPrograms: {
-            ...s.userPrograms,
+          sessionTemplates: {
+            ...s.sessionTemplates,
             [templateId]: { ...template, exercises: [...template.exercises, newExConfig] },
           },
         }));
-      },
-
-      resetTemplate: (templateId) => {
-        set((s) => {
-          const next = { ...s.userPrograms };
-          delete next[templateId];
-          return { userPrograms: next };
-        });
       },
 
       renameProgram: (programId, newName) => {
@@ -1074,19 +1076,12 @@ export const useStore = create(
         }));
       },
 
-      restoreSession: (templateId) => {
-        set((s) => {
-          const { [templateId]: _removed, ...rest } = s.userPrograms;
-          return { userPrograms: rest };
-        });
-      },
-
       renameSession: (templateId, newName) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         set((s) => ({
-          userPrograms: {
-            ...s.userPrograms,
+          sessionTemplates: {
+            ...s.sessionTemplates,
             [templateId]: { ...template, name: newName },
           },
         }));
@@ -1156,7 +1151,7 @@ export const useStore = create(
       // Clones a session (edited version wins) into the same stage/program.
       // Returns the new template id so the caller can jump to the copy.
       duplicateSessionInProgram: (programId, templateId) => {
-        const { programs, sessionTemplates, userPrograms } = get();
+        const { programs, sessionTemplates } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return null;
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -1166,7 +1161,7 @@ export const useStore = create(
         if (stageIdx < 0) return null;
         const days = program.stages[stageIdx].days;
 
-        const src = userPrograms[templateId] ?? sessionTemplates[templateId];
+        const src = sessionTemplates[templateId];
         if (!src) return null;
 
         const i = days.length;
@@ -1208,12 +1203,9 @@ export const useStore = create(
         set((s) => {
           const nextSessionTemplates = { ...s.sessionTemplates };
           delete nextSessionTemplates[templateId];
-          const nextUserPrograms = { ...s.userPrograms };
-          delete nextUserPrograms[templateId];
           return {
             programs: { ...s.programs, [programId]: withStages(program, newStages) },
             sessionTemplates: nextSessionTemplates,
-            userPrograms: nextUserPrograms,
           };
         });
       },
@@ -1255,7 +1247,6 @@ export const useStore = create(
           return {
             programs:         { ...s.programs, [programId]: nextProgram },
             sessionTemplates: relabel(s.sessionTemplates),
-            userPrograms:     relabel(s.userPrograms),
           };
         });
       },
@@ -1271,7 +1262,7 @@ export const useStore = create(
       // hay que pasar SIEMPRE el índice de la etapa base: los peldaños derivan
       // de la base, no del anterior (spec §2.4).
       addStageToProgram: (programId, { rx = null, sourceStageIdx = null, name = null, durationWeeks = 4 } = {}) => {
-        const { programs, sessionTemplates, userPrograms, clients, exerciseLibrary, customExercises } = get();
+        const { programs, sessionTemplates, clients, exerciseLibrary, customExercises } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
         const existingStages = program.stages;
@@ -1291,7 +1282,7 @@ export const useStore = create(
 
         function cloneDays(sourceDays) {
           return sourceDays.map(({ sessionTemplateId, label }) => {
-            const src = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const src = sessionTemplates[sessionTemplateId];
             const newTplId = generateId('tpl');
             updatedSessionTemplates[newTplId] = {
               ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
@@ -1359,7 +1350,7 @@ export const useStore = create(
       // `rungs`: [{ name, durationWeeks, rx }]. Devuelve el índice del primer
       // peldaño creado para que la pantalla pueda saltar ahí.
       addStageLadder: (programId, { sourceStageIdx, rungs }) => {
-        const { programs, sessionTemplates, userPrograms, clients, exerciseLibrary, customExercises } = get();
+        const { programs, sessionTemplates, clients, exerciseLibrary, customExercises } = get();
         const program = ensureStages(programs[programId]);
         if (!program || !rungs?.length) return null;
         const existingStages = program.stages;
@@ -1383,7 +1374,7 @@ export const useStore = create(
           name,
           durationWeeks: durationWeeks ?? 4,
           days: (source.days ?? []).map(({ sessionTemplateId, label }) => {
-            const src = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const src = sessionTemplates[sessionTemplateId];
             const newTplId = generateId('tpl');
             updatedSessionTemplates[newTplId] = {
               ...(src ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
@@ -1430,7 +1421,7 @@ export const useStore = create(
       // Clones a stage (sessions included, edited versions win) right after the
       // source. Returns the new stage index so the caller can select it.
       duplicateStageInProgram: (programId, stageIndex) => {
-        const { programs, sessionTemplates, userPrograms } = get();
+        const { programs, sessionTemplates } = get();
         const program = programs[programId];
         const src = program?.stages?.[stageIndex];
         if (!src) return null;
@@ -1445,7 +1436,7 @@ export const useStore = create(
           return groupMap[g];
         };
         const newDays = (src.days ?? []).map(({ sessionTemplateId, label }) => {
-          const tpl = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+          const tpl = sessionTemplates[sessionTemplateId];
           const newTplId = generateId('tpl');
           updatedSessionTemplates[newTplId] = {
             ...(tpl ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
@@ -1578,7 +1569,7 @@ export const useStore = create(
       },
 
       cloneProgramFromTemplate: (sourceProgramId, { owner = 'me', kind = 'program', name = null } = {}) => {
-        const { programs, sessionTemplates, userPrograms } = get();
+        const { programs, sessionTemplates } = get();
         const srcProgram = programs[sourceProgramId];
         if (!srcProgram) return null;
 
@@ -1587,7 +1578,7 @@ export const useStore = create(
 
         function cloneDays(days) {
           return (days ?? []).map(({ sessionTemplateId, label }) => {
-            const srcTemplate = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+            const srcTemplate = sessionTemplates[sessionTemplateId];
             const newTemplateId = generateId('tpl');
             newTemplates[newTemplateId] = {
               ...(srcTemplate ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
@@ -2452,7 +2443,7 @@ export const useStore = create(
 
       _buildProgramJson: (programId, withLog = false) => {
         const s = get();
-        const { programs, sessionTemplates, userPrograms, customExercises, workoutLog, clientLogs } = s;
+        const { programs, sessionTemplates, customExercises, workoutLog, clientLogs } = s;
         const program = programs[programId];
         if (!program) return null;
 
@@ -2462,13 +2453,12 @@ export const useStore = create(
         } else {
           (program.days ?? []).forEach((d) => tplIds.add(d.sessionTemplateId));
         }
-        const relTpl = {}, relUP = {};
+        const relTpl = {};
         tplIds.forEach((id) => {
           if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
-          if (userPrograms[id])     relUP[id]  = userPrograms[id];
         });
         const usedExIds = new Set(
-          [...Object.values(relTpl), ...Object.values(relUP)]
+          Object.values(relTpl)
             .flatMap((t) => [
               ...(t.exercises ?? []).map((e) => e.exerciseId),
               ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
@@ -2490,7 +2480,7 @@ export const useStore = create(
 
         return {
           json: JSON.stringify({
-            version: '3',
+            version: '4',
             exportType: withLog ? 'program_with_log' : 'program',
             exportDate: new Date().toISOString().split('T')[0],
             appName: 'Forma Fit',
@@ -2502,7 +2492,6 @@ export const useStore = create(
             // `data.programs`, y aquí va `data.program`).
             program: { ...program, owner: 'me', kind: 'program', status: 'active' },
             sessionTemplates: relTpl,
-            userPrograms: relUP,
             customExercises: relCustom,
             workoutLog: log,
           }, null, 2),
@@ -2619,8 +2608,7 @@ export const useStore = create(
 
           const needsTemplateData = sections.program || sections.clients || sections.templates;
           if (needsTemplateData) {
-            updates.sessionTemplates = { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) };
-            updates.userPrograms = { ...s.userPrograms, ...(data.userPrograms ?? {}) };
+            updates.sessionTemplates = mergeFileSessions(s.sessionTemplates, data);
           }
           if (sections.program) {
             const personalPrograms = {};
@@ -3000,9 +2988,6 @@ export const useStore = create(
         if (trainerName?.trim()) {
           // Stamp trainerName into every session template so clients see attribution
           Object.values(programData.sessionTemplates ?? {}).forEach((tpl) => {
-            tpl.trainerName = trainerName.trim();
-          });
-          Object.values(programData.userPrograms ?? {}).forEach((tpl) => {
             tpl.trainerName = trainerName.trim();
           });
         }
@@ -3937,7 +3922,6 @@ export const useStore = create(
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
         activeSession: state.activeSession,
-        userPrograms: state.userPrograms,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         programs: state.programs,
@@ -3982,6 +3966,18 @@ export const useStore = create(
             if (age > 12 * 60 * 60 * 1000) {
               state.activeSession = INITIAL_ACTIVE_SESSION;
             }
+          }
+
+          // migración pre-publicación
+          // Una sola capa de sesiones (spec §4.2). `userPrograms` era la capa de
+          // ediciones sobre los originales de semilla; desde que todo lo que
+          // crea el usuario nace ya en `sessionTemplates`, la capa dejó de
+          // significar nada — y con ella el botón "Restaurar sesión original",
+          // que devolvía la sesión al estado vacío en que nació. Gana
+          // `userPrograms`, que es el estado que el usuario ve hoy.
+          if (state.userPrograms) {
+            state.sessionTemplates = { ...(state.sessionTemplates ?? {}), ...state.userPrograms };
+            delete state.userPrograms;
           }
 
           // migración pre-publicación
@@ -4074,7 +4070,6 @@ export const useStore = create(
               if (tpl?.color && HEX_TO_VAR[tpl.color]) tpl.color = HEX_TO_VAR[tpl.color];
             });
           };
-          migrateTemplates(state.userPrograms);
           migrateTemplates(state.sessionTemplates);
 
         } catch (e) {

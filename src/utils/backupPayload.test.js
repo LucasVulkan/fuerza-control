@@ -6,7 +6,6 @@ const estado = () => ({
   profile:          { name: 'Ana', activeProgramId: 'p1' },
   workoutLog:       [{ id: 's1' }],
   clientLogs:       { cli_1: [{ id: 's2' }] },
-  userPrograms:     { up1: { id: 'up1' } },
   programs:         { p1: { id: 'p1' } },
   sessionTemplates: { t1: { id: 't1' } },
   customExercises:  { e1: { id: 'e1' } },
@@ -23,15 +22,15 @@ const estado = () => ({
 });
 
 describe('buildBackupPayload', () => {
-  it('lleva los ocho campos de datos y la cabecera del formato', () => {
+  it('lleva los siete campos de datos y la cabecera del formato', () => {
     const payload = buildBackupPayload(estado());
 
     expect(Object.keys(payload).sort()).toEqual([
       'appName', 'clientLogs', 'clients', 'customExercises', 'exportDate',
-      'exportType', 'profile', 'programs', 'sessionTemplates', 'userPrograms',
+      'exportType', 'profile', 'programs', 'sessionTemplates',
       'version', 'workoutLog',
     ]);
-    expect(payload.version).toBe('3');
+    expect(payload.version).toBe('4');
     expect(payload.exportType).toBe('full');
     expect(payload.programs).toEqual({ p1: { id: 'p1' } });
     expect(payload.clientLogs).toEqual({ cli_1: [{ id: 's2' }] });

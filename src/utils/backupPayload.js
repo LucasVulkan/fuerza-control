@@ -27,7 +27,7 @@ export const BACKUP_STORAGE_KEY = 'fc_tracker_v1';
  */
 export function buildBackupPayload(state = {}) {
   return {
-    version:    '3',
+    version:    '4',
     exportType: 'full',
     exportDate: new Date().toISOString().split('T')[0],
     appName:    'Forma Fit',
@@ -35,7 +35,6 @@ export function buildBackupPayload(state = {}) {
     profile:          state.profile,
     workoutLog:       state.workoutLog ?? [],
     clientLogs:       state.clientLogs ?? {},
-    userPrograms:     state.userPrograms,
     programs:         state.programs,
     sessionTemplates: state.sessionTemplates,
     customExercises:  state.customExercises,

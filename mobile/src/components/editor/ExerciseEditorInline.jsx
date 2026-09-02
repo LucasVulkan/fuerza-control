@@ -183,7 +183,6 @@ export default function ExerciseEditorInline({
   const setExerciseLinkGroup   = useStore((s) => s.setExerciseLinkGroup);
   const programs               = useStore((s) => s.programs);
   const sessionTemplatesAll    = useStore((s) => s.sessionTemplates);
-  const userProgramsAll        = useStore((s) => s.userPrograms);
 
   const initialRef = useRef(computeInitial(exConfig, def));
 
@@ -311,7 +310,7 @@ export default function ExerciseEditorInline({
   }, []);
 
   // ── Cross-session linking ───────────────────────────────────────────────────
-  const getTpl       = (tid) => userProgramsAll[tid] ?? sessionTemplatesAll[tid];
+  const getTpl       = (tid) => sessionTemplatesAll[tid];
   const ownerProgram = programs[getTpl(templateId)?.programId];
   const linkGroups   = exerciseLinkGroups(ownerProgram, exConfig.exerciseId, getTpl);
   const showLinking  = exerciseInstanceCount(ownerProgram, exConfig.exerciseId, getTpl) > 1;

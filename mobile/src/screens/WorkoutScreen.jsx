@@ -333,7 +333,6 @@ export default function WorkoutScreen() {
   // Store state
   const activeSession      = useStore((s) => s.activeSession);
   const sessionTemplates   = useStore((s) => s.sessionTemplates);
-  const userPrograms       = useStore((s) => s.userPrograms);
   const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
   const customExercises    = useStore((s) => s.customExercises);
   const workoutLog         = useStore((s) => s.workoutLog);
@@ -369,7 +368,7 @@ export default function WorkoutScreen() {
   const isFree = activeSession.templateId === '__free__';
 
   // Derive template + exercises
-  const template = userPrograms[activeSession.templateId] ?? sessionTemplates[activeSession.templateId];
+  const template = sessionTemplates[activeSession.templateId];
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
   // Bloques de la sesión libre: no hay plantilla donde guardarlos, viven en la
@@ -388,7 +387,7 @@ export default function WorkoutScreen() {
   // Linked exercises read the group's latest performance (any session of the
   // group); unlinked ones keep the same-template reference.
   const ownerProgram = template?.programId ? useStore.getState().programs[template.programId] : null;
-  const getEffectiveTemplate = (tid) => userPrograms[tid] ?? sessionTemplates[tid];
+  const getEffectiveTemplate = (tid) => sessionTemplates[tid];
 
   const exercises = (template?.exercises ?? []).map((exConfig) => ({
     exConfig,

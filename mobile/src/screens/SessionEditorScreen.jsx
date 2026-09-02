@@ -235,11 +235,9 @@ export default function SessionEditorScreen({ navigation, route }) {
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
-  const userPrograms     = useStore((s) => s.userPrograms);
   const removeExercise   = useStore((s) => s.removeExercise);
   const reorderExercise  = useStore((s) => s.reorderExercise);
   const renameSession    = useStore((s) => s.renameSession);
-  const restoreSession   = useStore((s) => s.restoreSession);
   const removeSessionFromProgram   = useStore((s) => s.removeSessionFromProgram);
   const duplicateSessionInProgram  = useStore((s) => s.duplicateSessionInProgram);
   const showToast        = useStore((s) => s.showToast);
@@ -250,8 +248,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
-  const template = userPrograms[templateId] ?? sessionTemplates[templateId];
-  const isEdited = !!userPrograms[templateId];
+  const template = sessionTemplates[templateId];
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
@@ -299,7 +296,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   // entreno (ver `utils/sessionSlots.js`).
   const slots = sessionSlots(template);
 
-  const getTpl = (tid) => userPrograms[tid] ?? sessionTemplates[tid];
+  const getTpl = (tid) => sessionTemplates[tid];
 
   // Sesiones del programa con las que este ejercicio comparte configuración.
   function linkedSessions(exConfig) {
@@ -594,16 +591,6 @@ export default function SessionEditorScreen({ navigation, route }) {
               }
             }}
           />
-          {isEdited && (
-            <SheetRow
-              label={t('editor.sessionRestoreBtn')}
-              onPress={() => {
-                setMenuOpen(false);
-                restoreSession(templateId);
-                showToast(t('editor.toastReset'), 2200, 'success');
-              }}
-            />
-          )}
           {canDelete && programId && (
             <SheetRow
               label={t('editor.sessionDeleteBtn')}

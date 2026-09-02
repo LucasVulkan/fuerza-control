@@ -68,7 +68,6 @@ export default function ProgramEditorScreen({ navigation }) {
   const insets = useSafeAreaInsets();
 
   const programs              = useStore((s) => s.programs);
-  const userPrograms          = useStore((s) => s.userPrograms); // subscribe for dirty-state reactivity
   const sessionTemplates      = useStore((s) => s.sessionTemplates);
   const exerciseLibrary       = useStore((s) => s.exerciseLibrary);
   const customExercises       = useStore((s) => s.customExercises);
@@ -131,7 +130,6 @@ export default function ProgramEditorScreen({ navigation }) {
       useStore.setState({
         programs: snapshot.programs,
         sessionTemplates: snapshot.sessionTemplates,
-        userPrograms: snapshot.userPrograms,
         _editSnapshot: null,
       });
     }
@@ -144,10 +142,11 @@ export default function ProgramEditorScreen({ navigation }) {
     const st   = useStore.getState();
     const snap = st._editSnapshot;
     if (!snap) return false;
-    // Edits land in programs[editingId] (structure) and userPrograms (per-session
-    // overrides). Base sessionTemplates don't change while editing, so skip them.
+    // Los cambios caen en programs[editingId] (la estructura) y en las sesiones.
+    // Con un solo diccionario esto compara TODAS las sesiones y no sólo la capa
+    // de ediciones: sigue siendo correcto, y sólo corre al intentar salir.
     if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
-    if (JSON.stringify(st.userPrograms) !== JSON.stringify(snap.userPrograms)) return true;
+    if (JSON.stringify(st.sessionTemplates) !== JSON.stringify(snap.sessionTemplates)) return true;
     // `nameValue` solo es fuente de verdad mientras el título está en edición;
     // fuera de ahí el nombre se pinta del store y compararlo daría falsos
     // positivos (p. ej. si la pantalla montó antes de resolver el programa).
@@ -204,7 +203,7 @@ export default function ProgramEditorScreen({ navigation }) {
     : t('editor.programSummarySimple', {
         sessions: editorDays.length,
         sets: editorDays.reduce((a, { sessionTemplateId }) => {
-          const template = userPrograms[sessionTemplateId] ?? sessionTemplates[sessionTemplateId];
+          const template = sessionTemplates[sessionTemplateId];
           return a + sessionStats(template, allExercises).sets;
         }, 0),
       });
@@ -215,7 +214,7 @@ export default function ProgramEditorScreen({ navigation }) {
   // en el hilo de UI, y al soltar la librería reordena ahí mismo. El orden del
   // store solo se escribe en `onDragEnd`, cuando las posiciones ya coinciden.
   const sortableSessions = editorDays
-    .map(({ sessionTemplateId: id }) => ({ id, template: userPrograms[id] ?? sessionTemplates[id] }))
+    .map(({ sessionTemplateId: id }) => ({ id, template: sessionTemplates[id] }))
     .filter((s) => s.template);
 
   function handleReorder({ data }) {

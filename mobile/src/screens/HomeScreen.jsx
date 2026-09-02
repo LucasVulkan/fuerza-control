@@ -629,11 +629,11 @@ export default function HomeScreen() {
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
   const workoutLog           = useStore((s) => s.workoutLog);
-  // Subscribed only so template/program edits re-render this screen
+  // Suscrito SOLO para que la pantalla se repinte al editar una sesion: los
+  // datos se leen con `getEffectiveTemplate`, que es una funcion estable y por
+  // si sola nunca dispara un render.
   // eslint-disable-next-line no-unused-vars
   const sessionTemplates     = useStore((s) => s.sessionTemplates);
-  // eslint-disable-next-line no-unused-vars
-  const userPrograms         = useStore((s) => s.userPrograms);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
