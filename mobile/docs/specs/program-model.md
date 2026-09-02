@@ -610,11 +610,17 @@ producción — comprobado. Es decir: cada instalación arranca con dos programa
 demostración y seis sesiones que no son del usuario, viajan en cada backup y hoy
 sólo están medio ocultos porque ningún listado los pide.
 
-Con `owner: 'me'` **sí aparecerían** en "mis programas" — y eso pasa en cuanto se
-despliega la **fase 1**, no la 2. Así que el vaciado **se adelanta a la fase 1**,
-que es donde nace el problema: cuesta las mismas dos líneas allí y evita una
-regresión visible entre fases, en una spec cuyo argumento entero es que cada fase
-se despliega sola.
+**Corrección (2-sep-2026, comprobado en el código):** este párrafo decía que con
+`owner: 'me'` aparecerían en "mis programas". **Esa pantalla no existe.** Los
+únicos listados de programas son el modal de archivados de `AppHeader`
+(`owner: 'me'` **y** `status === 'archived'`, y la semilla está `active`), las
+plantillas (`kind === 'template'`) y la ficha de un cliente. La semilla sigue
+invisible después de migrar, igual que antes.
+
+Lo que sí es cierto —y basta para vaciarla— es que viaja en cada backup y ocupa
+sitio en el estado persistido de todo el mundo desde el primer arranque. El
+vaciado **se adelanta a la fase 1** de todos modos: cuesta las mismas dos líneas
+allí y así una instalación nueva arranca limpia desde el primer despliegue.
 
 ```js
 programs: {},
@@ -631,9 +637,9 @@ importa desde el store. Si hiciera falta una demo, se carga importando un
 ⚠️ **Vaciar el estado inicial no limpia tu dispositivo.** `programs` y
 `sessionTemplates` están en el `partialize`, así que la semilla lleva persistida
 desde el primer arranque y seguirá ahí después de la migración, ahora con
-`owner: 'me'`. O se borran esos dos programas a mano una vez, o se limpian los
-datos de la app. No merece código de migración: es un dispositivo, una vez, y la
-app no está publicada.
+`owner: 'me'`. No hay que hacer nada: no se ve en ninguna pantalla (ver la
+corrección de arriba). Si molesta que siga viajando en los backups de ESE
+dispositivo, se limpian los datos de la app. No merece código de migración.
 
 ---
 
