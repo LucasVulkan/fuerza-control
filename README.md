@@ -1,16 +1,20 @@
-# React + Vite
+# Fuerza & Control
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+App de entrenamiento (Expo / React Native). Vive entera en [`mobile/`](mobile/).
 
-Currently, two official plugins are available:
+```bash
+cd mobile && npx expo start      # arrancar la app
+npx vitest run                   # tests, desde la raíz
+npx eslint .                     # lint, desde la raíz
+npm run seed                     # genera historial de prueba (.fitdata)
+npm run estado                   # mobile/docs/estado.html desde las specs
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Reglas de trabajo: [`mobile/AGENTS.md`](mobile/AGENTS.md)
+- Estado de las features y specs: [`mobile/docs/specs/README.md`](mobile/docs/specs/README.md)
+- Backend (SQL y Edge Functions): [`supabase/`](supabase/)
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Hubo una app web en la raíz (`src/components`, `src/hooks`, `src/store`) con su
+propia copia del store. Se borró en sep-2026 tras cuatro meses congelada; el
+porqué y el cómo, en
+[`mobile/docs/specs/rediseno.md`](mobile/docs/specs/rediseno.md) §2.
