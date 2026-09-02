@@ -370,3 +370,26 @@ describe('closeOpenStage', () => {
     expect(p.stageAdvancePending).toBe(true);
   });
 });
+
+describe('ensureStages — la invariante de `days` (fallo 16)', () => {
+  it('rellena `days` en las etapas que no la traen', () => {
+    // Es lo que permite que los cinco `st.days.forEach(...)` repartidos por
+    // pantallas y store no necesiten guard. Llega así desde `updateStage` con
+    // un patch arbitrario o desde un program_json de otra versión.
+    const roto = { id: 'p1', stages: [{ id: 's1', name: 'Etapa 1' }, { id: 's2', days: [{ sessionTemplateId: 't' }] }] };
+
+    const out = ensureStages(roto);
+
+    expect(out.stages.map((st) => Array.isArray(st.days))).toEqual([true, true]);
+    expect(out.stages[1].days).toHaveLength(1);
+  });
+
+  it('no reconstruye si ya están todas bien', () => {
+    // La migración de rehidratación compara identidad para no reescribir el
+    // estado en cada arranque: `ensureStages` tiene que devolver el MISMO
+    // objeto cuando no hay nada que arreglar.
+    const sano = { id: 'p1', stages: [{ id: 's1', days: [] }] };
+
+    expect(ensureStages(sano)).toBe(sano);
+  });
+});

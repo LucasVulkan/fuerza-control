@@ -318,6 +318,8 @@ const startOfDay = (ts) => {
  * Un día CON sesión pero sin sRPE deja `internal: null` — hueco, no cero: un
  * cero se leería como "descansé", que es falso.
  */
+const MAX_SERIES_DAYS = 730;   // 2 años
+
 export function dailySeries(loads, { now = Date.now() } = {}) {
   if (!loads?.length) return [];
 
@@ -335,7 +337,15 @@ export function dailySeries(loads, { now = Date.now() } = {}) {
   const out  = [];
   // Avanza con setDate, no sumando 86400000: cruzar un cambio de hora
   // desplazaría la medianoche local y descuadraría todos los días siguientes.
-  const cursor = new Date(startOfDay(loads[0].timestamp));
+  // Cota inferior: un timestamp corrupto (0, o una fecha imposible colada por
+  // un backup) generaba un punto por día desde 1970 —veinte mil— y todo lo
+  // encadenado después recorre esa serie: la pantalla de Carga se congelaba.
+  // Dos años es más historial del que la gráfica sabe decir nada.
+  const first = Math.max(
+    startOfDay(loads[0].timestamp),
+    startOfDay(now - MAX_SERIES_DAYS * 86400000),
+  );
+  const cursor = new Date(first);
   while (cursor.getTime() <= last) {
     const key = cursor.getTime();
     const hit = byDay.get(key);

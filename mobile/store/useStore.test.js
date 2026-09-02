@@ -1158,3 +1158,32 @@ describe('program-model — sin espejo `days`', () => {
     expect([...programTemplateIds(p)]).toEqual(['tpl_a']);
   });
 });
+
+describe('clearWorkoutLog — fallo 18', () => {
+  const log = [{ id: 'a', sessionTemplateId: 't1' }, { id: 'b', sessionTemplateId: 't2' }];
+
+  beforeEach(() => {
+    useStore.setState({ workoutLog: [...log], programs: {}, profile: { ...useStore.getState().profile, activeProgramId: null } });
+  });
+
+  it('un scope desconocido no borra nada', () => {
+    // El default de `keep` era [], así que un typo, un `undefined` o un ámbito
+    // nuevo se llevaban el historial entero. Sin deshacer.
+    for (const scope of [undefined, null, '', 'todo', 'off-program', 'ALL']) {
+      expect(useStore.getState().clearWorkoutLog(scope)).toBe(0);
+      expect(useStore.getState().workoutLog).toHaveLength(2);
+    }
+  });
+
+  it("'all' sí borra", () => {
+    expect(useStore.getState().clearWorkoutLog('all')).toBe(2);
+    expect(useStore.getState().workoutLog).toHaveLength(0);
+  });
+
+  it("'off_program' sin programa activo no borra", () => {
+    // Sin programa no hay nada "del programa": borrarlo todo sería un borrado
+    // total por sorpresa.
+    expect(useStore.getState().clearWorkoutLog('off_program')).toBe(0);
+    expect(useStore.getState().workoutLog).toHaveLength(2);
+  });
+});

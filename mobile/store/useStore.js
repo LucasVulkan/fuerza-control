@@ -1454,7 +1454,10 @@ export const useStore = create(
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
-        const newStages = program.stages.map((st, i) => i === stageIndex ? { ...st, ...updates } : st);
+        // `updates` es un patch arbitrario y es la única vía por la que una etapa
+        // puede quedarse sin `days` después de pasar por `ensureStages`.
+        const newStages = program.stages.map((st, i) =>
+          i === stageIndex ? { ...st, ...updates, days: updates.days ?? st.days ?? [] } : st);
         set((s) => ({ programs: { ...s.programs, [programId]: withStages(program, newStages) } }));
       },
 
@@ -2248,6 +2251,11 @@ export const useStore = create(
        * Devuelve cuántas se borraron, para el toast.
        */
       clearWorkoutLog: (scope) => {
+        // Un scope que no se reconoce no borra: es una operación destructiva sin
+        // deshacer, y el default de `keep` es "no conservar nada". Un typo o un
+        // ámbito nuevo añadido más adelante se llevaba el historial entero.
+        if (scope !== 'all' && scope !== 'off_program') return 0;
+
         const { workoutLog, profile, programs } = get();
         let keep = [];
         if (scope === 'off_program') {

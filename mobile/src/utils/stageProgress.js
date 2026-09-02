@@ -107,7 +107,21 @@ export function closeOpenStage(stages, stageIndex, cyclesDone = 0) {
 }
 
 export function ensureStages(program, stageName = 'Etapa 1') {
-  if (!program || program.stages?.length > 0) return program;
+  if (!program) return program;
+
+  // Una etapa SIEMPRE tiene `days`, aunque sea vacío. Es la invariante que
+  // permite que los lectores hagan `st.days.forEach(...)` sin guard: hay cinco
+  // repartidos por pantallas y store, y la lista crece cada vez que se escribe
+  // código nuevo. Guardar en cada lector es una carrera que se pierde; se
+  // garantiza aquí, que es por donde pasa todo programa antes de tocarse.
+  if (program.stages?.length > 0) {
+    // Solo se reconstruye si de verdad falta alguna: la migración de
+    // rehidratación compara identidad (`staged !== p`) para no reescribir el
+    // estado en cada arranque.
+    if (program.stages.every((st) => Array.isArray(st?.days))) return program;
+    return { ...program, stages: program.stages.map((st) => ({ ...st, days: st?.days ?? [] })) };
+  }
+
   const days = program.days ?? [];
   return withStages(
     program,

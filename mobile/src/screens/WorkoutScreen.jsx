@@ -386,7 +386,12 @@ export default function WorkoutScreen() {
 
   // Linked exercises read the group's latest performance (any session of the
   // group); unlinked ones keep the same-template reference.
-  const ownerProgram = template?.programId ? useStore.getState().programs[template.programId] : null;
+  // Suscrito, no `getState()`: si el entrenador manda una versión nueva del
+  // programa mientras la sesión está abierta —`checkAndPullProgramUpdates` corre
+  // al volver a primer plano— las referencias de ejercicios vinculados se
+  // quedaban obsoletas hasta remontar la pantalla. El ternario va DENTRO del
+  // selector para que el hook se llame siempre.
+  const ownerProgram = useStore((s) => (template?.programId ? s.programs[template.programId] : null));
   const getEffectiveTemplate = (tid) => sessionTemplates[tid];
 
   const exercises = (template?.exercises ?? []).map((exConfig) => ({

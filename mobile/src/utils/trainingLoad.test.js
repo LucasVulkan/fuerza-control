@@ -281,6 +281,20 @@ describe('dailySeries', () => {
     id, ts, sets: [set(100, 5)], duration: 20 * 60000, ...(rpe != null ? { sessionRpe: rpe } : {}),
   });
 
+  it('un timestamp corrupto no dispara la serie (fallo 21)', () => {
+    // Una entrada con `timestamp: 0` colada por un backup generaba un punto por
+    // día desde 1970 —unos veinte mil— y todo lo encadenado después
+    // (rollingMean, monotony, weeklySeries) recorría esa serie: la pantalla de
+    // Carga se congelaba.
+    const loads = sessionLoads([mk('corrupta', 0, 7), mk('buena', T0, 8)], LIB);
+
+    const series = dailySeries(loads, { now: T0 });
+
+    expect(series.length).toBeLessThanOrEqual(731);
+    // Y sigue llegando hasta hoy, que es lo que la gráfica necesita.
+    expect(series.at(-1).day).toBe(new Date(T0).setHours(0, 0, 0, 0));
+  });
+
   it('rellena los días de descanso con 0 y no deja huecos de calendario', () => {
     const loads = sessionLoads([mk('a', T0, 7), mk('b', T0 + 3 * DAY, 8)], LIB);
     const series = dailySeries(loads, { now: T0 + 3 * DAY });

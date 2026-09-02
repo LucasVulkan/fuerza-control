@@ -66,15 +66,15 @@
 | [13](#13) | 🟡 Media | ✅ Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
 | [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js:239` |
 | [15](#15) | 🟡 Media | Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:1090` |
-| [16](#16) | 🟡 Media | `st.days.forEach` sin guard — **se mudó de sitio** | `src/screens/HistoryScreen.jsx:381` |
+| [16](#16) | 🟡 Media | ✅ `st.days.forEach` sin guard — **se mudó de sitio** | `src/screens/HistoryScreen.jsx:381` |
 | [17](#17) | 🟢 Baja | ✅ `drive_needs_reconnect` se escribe y nadie lo lee | `src/tasks/driveBackupTask.js:50` |
-| [18](#18) | 🟢 Baja | `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2250` |
+| [18](#18) | 🟢 Baja | ✅ `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2250` |
 | [19](#19) | 🟢 Baja | ✅ El reintento de Drive re-ejecuta lo ya hecho | `store/useStore.js:2709` |
 | [20](#20) | 🟢 Baja | ✅ Boundary multipart fijo en la subida a Drive | `src/services/driveService.js:34` |
-| [21](#21) | 🟢 Baja | `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:338` |
-| [22](#22) | 🟢 Baja | `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:389` |
+| [21](#21) | 🟢 Baja | ✅ `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:338` |
+| [22](#22) | 🟢 Baja | ✅ `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:389` |
 | [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js:17` |
-| [24](#24) | 🟢 Baja | Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
+| [24](#24) | 🟢 Baja | ✅ Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
 
@@ -1442,7 +1442,7 @@ encarece el cambio.
 
 ---
 
-## 16. `st.days.forEach` sin guard en cuatro sitios 🟡 {#16}
+## 16. `st.days.forEach` sin guard en cuatro sitios 🟡 ✅ {#16}
 
 **Dónde (sep-2026).** `src/screens/HistoryScreen.jsx:381` y
 `store/useStore.js:1241` (`removeSessionFromProgram`).
@@ -1482,7 +1482,38 @@ Una etapa sin `days` produce
 idx, updates)` (`:1302`), que acepta un patch arbitrario, o desde un
 `program_json` generado por una versión distinta de la app.
 
-**Arreglo.** Reutilizar el helper que ya existe y hace lo correcto. Para el caso
+### ✅ Resuelto (sep-2026) — en el embudo, no en cada lector
+
+**Se descartó el arreglo propuesto abajo**, y la razón es lo que se encontró al
+comprobarlo: los accesos sin guard no eran dos, eran **cuatro**, y ninguno de
+los dos nuevos podía usar `programTemplateIds` porque hacen otra cosa —
+`HistoryScreen` filtra por etapas *seleccionadas* y `removeSessionFromProgram`
+*construye* etapas nuevas. Guardar lector a lector es una carrera que se pierde:
+ya se ganó una vez en cuatro sitios y el patrón volvió en cuanto se escribió
+código nuevo.
+
+Así que la invariante se garantiza donde converge todo:
+
+- **`ensureStages`** (`src/utils/stageProgress.js`) rellena `days` en toda
+  etapa que no la traiga, no solo cuando crea la primera. Es por donde pasa
+  cualquier programa antes de tocarse: rehidratación, import, y las cuatro
+  acciones del store que editan etapas. Solo reconstruye si de verdad falta
+  alguna, porque la migración de rehidratación compara identidad
+  (`staged !== p`) para no reescribir el estado en cada arranque.
+- **`updateStage`** deja de poder quitarla. Era la única vía por la que una
+  etapa podía perder `days` *después* de pasar por `ensureStages`, porque
+  acepta un patch arbitrario y lo aplica al final.
+
+Con eso los cuatro lectores quedan a salvo sin tocarlos, y los que se escriban
+mañana también. `clientLogs.js` y el resto ya llevaban su `?? []`; se dejan.
+
+**Test.** `src/utils/stageProgress.test.js`: rellena las etapas incompletas, y
+**devuelve el mismo objeto** cuando no hay nada que arreglar — esto segundo es
+lo que protege la idempotencia de la migración.
+
+---
+
+**Arreglo propuesto originalmente.** Reutilizar el helper que ya existe. Para el caso
 de `HistoryScreen` no vale tal cual —filtra por etapas seleccionadas, no por el
 programa entero— así que ahí basta el `?? []`; en `removeSessionFromProgram`
 también, porque construye etapas nuevas y no las lee. El helper original, para
@@ -1536,7 +1567,7 @@ implementado del [§13](#13), que es donde entró todo el lote de Drive.
 
 ---
 
-## 18. `clearWorkoutLog` borra todo ante un scope desconocido 🟢 {#18}
+## 18. `clearWorkoutLog` borra todo ante un scope desconocido 🟢 ✅ {#18}
 
 **Dónde.** `store/useStore.js:2132`.
 
@@ -1561,6 +1592,12 @@ clearWorkoutLog: (scope) => {
   // … resto igual …
 }
 ```
+
+### ✅ Resuelto (sep-2026)
+
+Tal cual. **Test** en `store/useStore.test.js`: seis scopes desconocidos
+—`undefined`, `null`, `''`, `'todo'`, `'off-program'`, `'ALL'`— no borran nada,
+`'all'` sí, y `'off_program'` sin programa activo tampoco.
 
 ---
 
@@ -1631,7 +1668,7 @@ const boundary = 'fc_' + Math.random().toString(36).slice(2);
 
 ---
 
-## 21. `dailySeries` sin cota superior de días 🟢 {#21}
+## 21. `dailySeries` sin cota superior de días 🟢 ✅ {#21}
 
 **Dónde.** `src/utils/trainingLoad.js:339`.
 
@@ -1644,6 +1681,17 @@ Un punto por día de calendario desde la primera sesión. Una entrada importada
 con `timestamp: 0` (o cualquier valor corrupto) genera ~20 700 puntos, y todo lo
 encadenado después —`rollingMean`, `monotony`, `weeklySeries`, `indexTo100`—
 recorre esa serie. La pantalla de Estadísticas se congela.
+
+### ✅ Resuelto (sep-2026)
+
+Cota inferior de 730 días en `dailySeries`. **No** se añadió el filtrado de
+timestamps imposibles en `importData` que sugiere el apartado: la cota ya evita
+el congelado, y descartar entradas de un backup en silencio es peor remedio que
+la enfermedad — si alguien tiene una sesión con fecha rara, prefiere verla que
+perderla.
+
+**Test** en `src/utils/trainingLoad.test.js`: una entrada con `timestamp: 0`
+deja la serie en 731 puntos como mucho, y sigue llegando hasta hoy.
 
 **Arreglo.** Acotar el inicio y validar en la entrada:
 
@@ -1661,7 +1709,7 @@ futuros).
 
 ---
 
-## 22. `ownerProgram` leído fuera de la suscripción del store 🟢 {#22}
+## 22. `ownerProgram` leído fuera de la suscripción del store 🟢 ✅ {#22}
 
 **Dónde.** `src/screens/WorkoutScreen.jsx:390`.
 
@@ -1683,6 +1731,12 @@ const ownerProgram = useStore((s) => (template?.programId ? s.programs[template.
 Ojo: el hook debe llamarse incondicionalmente (el ternario va dentro del
 selector, no fuera), y `template` se deriva antes en el render, así que el orden
 de hooks se mantiene estable.
+
+### ✅ Resuelto (sep-2026)
+
+Tal cual, con el ternario dentro del selector. Sin test: es una pantalla, y lo
+que se arregla —que el valor se actualice cuando cambia el programa— solo se ve
+con la sesión abierta y una actualización entrando por detrás.
 
 ---
 
@@ -1716,7 +1770,7 @@ export function emomTotalIntervals(block) {
 
 ---
 
-## 24. Semana de calendario con milisegundos fijos 🟢 {#24}
+## 24. Semana de calendario con milisegundos fijos 🟢 ✅ {#24}
 
 **Dónde.** `src/utils/weekProgress.js:20`.
 
@@ -1758,6 +1812,17 @@ export function getWeekStatuses(workoutLog, now = Date.now()) {
 ```
 
 `src/utils/adherence.js:16` ya lo hace bien; solo `weekProgress` se quedó atrás.
+
+### ✅ Resuelto (sep-2026)
+
+Tal cual: `startOfWeek` con `setDate`, y los siete días también avanzan con
+`setDate` en vez de sumar `DAY_MS`. La constante `DAY_MS` se retira, que ya no
+la usaba nadie.
+
+Sin test: comprobarlo de verdad exige correr la suite en una zona horaria con
+cambio a medianoche, y montar eso para un fallo con 40 % de confianza de afectar
+a alguien no sale a cuenta. El arreglo es el patrón que ya usan los otros dos
+módulos.
 
 ---
 
@@ -1888,7 +1953,7 @@ verificable:
 | **C — sincronización** ✅ | ✅ [5](#5), ✅ [7](#7), ✅ [8](#8) | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
-| **F — UI y limpieza** | [11](#11), [12](#12), [16](#16), [18](#18), [21](#21), [22](#22), [24](#24) | pantallas + guards |
+| **F — UI y limpieza** | [11](#11), [12](#12), ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
 
 La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
 inservible y [2](#2) destruye datos del entrenador en la operación que
