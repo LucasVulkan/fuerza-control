@@ -2649,10 +2649,27 @@ export const useStore = create(
             const firstId = (savedActiveId && personalPrograms[savedActiveId])
               ? savedActiveId
               : Object.keys(personalPrograms)[0] ?? null;
-            updates.programs = { ...(updates.programs ?? basePrograms), ...personalPrograms };
+            const merged = { ...(updates.programs ?? basePrograms), ...personalPrograms };
             if (firstId) {
+              // Un entrante que SUSTITUYE al activo archiva al anterior — la
+              // misma regla que `restoreProgram`: un solo activo, y nada se
+              // pierde en silencio. Sin esto el anterior se quedaba
+              // `status: 'active'` sin ser el activo, o sea invisible: fuera de
+              // Home y fuera del modal de archivados, que filtra por `status`.
+              // Con el MISMO id no hay nada que archivar: es una actualización
+              // en el sitio, y es el caso del programa que llega del entrenador.
+              const prevId = s.profile.activeProgramId;
+              const prev   = prevId && prevId !== firstId ? merged[prevId] : null;
+              if (prev && prev.status !== 'archived') {
+                merged[prevId] = {
+                  ...prev,
+                  status: 'archived',
+                  archivedAt: new Date().toISOString().split('T')[0],
+                };
+              }
               updates.profile = { ...s.profile, activeProgramId: firstId, onboardingCompleted: true };
             }
+            updates.programs = merged;
           }
           if (sections.templates) {
             const templatePrograms = {};

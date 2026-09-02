@@ -687,3 +687,88 @@ describe('program-model — ficheros v1/v2', () => {
     expect(s.programs[s.clients.cli_2.activeProgramId].owner).toBe('cli_2');
   });
 });
+
+/**
+ * Un solo programa activo, también al importar.
+ *
+ * `importData` sólo cambiaba `profile.activeProgramId`: el anterior se quedaba
+ * con `status: 'active'` sin ser el activo, o sea **invisible** — fuera de Home
+ * y fuera del modal de archivados, que filtra por `status`. Es la misma regla
+ * que `restoreProgram` ya aplicaba por su lado.
+ */
+describe('program-model — sustituir el activo lo archiva', () => {
+  const mio = (id, extra = {}) => ({
+    id, name: id, owner: 'me', kind: 'program', status: 'active',
+    stages: [{ id: 'st_' + id, name: 'Base', days: [] }], currentStageIndex: 0, ...extra,
+  });
+  const fileWith = (program) => ({
+    version: '3', exportType: 'program',
+    program, sessionTemplates: {}, userPrograms: {},
+  });
+
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, userPrograms: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  it('otro id: el anterior se archiva y queda a la vista en "archivados"', () => {
+    useStore.setState({
+      programs: { prog_viejo: mio('prog_viejo') },
+      profile: { ...useStore.getState().profile, activeProgramId: 'prog_viejo' },
+    });
+
+    useStore.getState().importData(fileWith(mio('prog_nuevo')), { program: true }, { silent: true });
+
+    const s = useStore.getState();
+    expect(s.profile.activeProgramId).toBe('prog_nuevo');
+    expect(s.programs.prog_viejo.status).toBe('archived');
+    expect(s.programs.prog_viejo.archivedAt).toBeTruthy();
+    expect(s.programs.prog_nuevo.status).toBe('active');
+  });
+
+  it('mismo id: no archiva nada, es una actualización en el sitio', () => {
+    useStore.setState({
+      programs: { prog_x: mio('prog_x') },
+      profile: { ...useStore.getState().profile, activeProgramId: 'prog_x' },
+    });
+
+    useStore.getState().importData(
+      fileWith({ ...mio('prog_x'), name: 'v2' }), { program: true }, { silent: true },
+    );
+
+    const s = useStore.getState();
+    expect(s.profile.activeProgramId).toBe('prog_x');
+    expect(s.programs.prog_x.status).toBe('active');
+    expect(s.programs.prog_x.name).toBe('v2');
+    expect(Object.keys(s.programs)).toHaveLength(1);
+  });
+
+  it('sin programa activo previo no hay nada que archivar', () => {
+    useStore.getState().importData(fileWith(mio('prog_nuevo')), { program: true }, { silent: true });
+
+    const s = useStore.getState();
+    expect(s.profile.activeProgramId).toBe('prog_nuevo');
+    expect(Object.keys(s.programs)).toEqual(['prog_nuevo']);
+  });
+
+  // El importado es una copia (otro id), así que el anterior se archiva; el del
+  // cliente ni se entera, que es lo que protege la regla 1.
+  it('importar el programa de un cliente como propio archiva el mío, no el suyo', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'De Ana');
+    useStore.getState().setClientActiveProgram('cli_1', pid);
+    const mine = useStore.getState().createEmptyProgram(1, 'Mío');
+
+    const file = JSON.parse(useStore.getState()._buildProgramJson(pid, false).json);
+    useStore.getState().importData(file, { program: true }, { silent: true });
+
+    const s = useStore.getState();
+    expect(s.programs[mine].status).toBe('archived');       // el mío, archivado
+    expect(s.programs[pid].status).toBe('active');          // el de Ana, intacto
+    expect(s.programs[pid].owner).toBe('cli_1');
+    expect(s.clients.cli_1.activeProgramId).toBe(pid);
+  });
+});

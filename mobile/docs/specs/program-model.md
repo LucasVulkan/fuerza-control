@@ -480,6 +480,30 @@ un re-ID no hay nada que conservar y se adoptan los contadores entrantes — que
 lo correcto: un programa distinto, no una actualización. Las dos reglas encajan
 sin condiciones extra.
 
+#### Regla 3 — sustituir el activo archiva al anterior
+
+`importData` sólo cambiaba `profile.activeProgramId`. El programa que dejaba de
+ser el activo se quedaba con `status: 'active'` **sin serlo**, y eso es
+invisible: fuera de Home, que sólo pinta el activo, y fuera del modal de
+archivados, que filtra por `status === 'archived'`. No se archivaba: se perdía.
+
+```js
+// Un entrante que SUSTITUYE al activo archiva al anterior. Con el MISMO id no
+// hay nada que archivar: es una actualización en el sitio.
+const prevId = s.profile.activeProgramId;
+const prev   = prevId && prevId !== firstId ? merged[prevId] : null;
+if (prev && prev.status !== 'archived') {
+  merged[prevId] = { ...prev, status: 'archived', archivedAt: hoy() };
+}
+```
+
+No es una regla nueva: es la de `restoreProgram`
+([useStore.js:499](../../store/useStore.js)), que ya archivaba el activo al
+restaurar otro. Un solo programa activo, y nada se pierde en silencio. La
+distinción por id es lo que la hace correcta en los dos lados: el programa que
+llega del entrenador trae **el mismo id**, así que actualiza en el sitio y no
+archiva nada.
+
 #### Los seis escenarios reales
 
 | Escenario | ¿Existe el id? | Dueño local vs entrante | Qué hace | Resultado |
@@ -490,6 +514,11 @@ sin condiciones extra.
 | Cliente **sin** conexión recibe la v2 por WhatsApp | sí | `me` / `me` | sobrescribe + regla 2 | programa actualizado, ciclo y etapa donde estaban |
 | Cliente **con** conexión recibe ese mismo fichero por WhatsApp | sí | `me` / `me` | igual que el anterior | no hay re-ID: el id es el mismo que le llegó por el canal conectado |
 | Cliente nuevo recibe el programa por primera vez | no | — | nada | programa nuevo con los contadores del fichero (los del entrenador, a cero) |
+
+La regla 3 corre por encima de todos: en los que el entrante **sustituye** al
+activo (columnas 1, 3 y 6 cuando ya había uno), el anterior queda archivado y a
+la vista; en los que **actualiza** (mismo id: 2, 4 y 5), no hay nada que
+archivar.
 
 El id del programa **nunca** delata al cliente: es un `prog_*` aleatorio, y quien
 lleva el dueño es `owner`, que la exportación fuerza a `'me'` (§3.2). Del
