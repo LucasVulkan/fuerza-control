@@ -7,6 +7,7 @@ import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }    from '../../store/useStore';
+import { programTemplateIds as programTemplateIds_ } from '../../../src/utils/clientLogs';
 import AppHeader       from '../components/AppHeader';
 import ProgressPanel   from '../components/stats/ProgressPanel';
 import { useThemedStyles } from '../useTheme';
@@ -24,16 +25,12 @@ export default function StatsScreen() {
   const allExercises  = { ...exerciseLibrary, ...customExercises };
   const activeProgram = programs[profile.activeProgramId];
 
-  const programTemplateIds = useMemo(() => {
-    const ids = new Set();
-    if (!activeProgram) return ids;
-    if (activeProgram.stages?.length > 0) {
-      activeProgram.stages.forEach((st) => st.days.forEach((d) => ids.add(d.sessionTemplateId)));
-    } else {
-      (activeProgram.days ?? []).forEach((d) => ids.add(d.sessionTemplateId));
-    }
-    return ids;
-  }, [activeProgram]);
+  // El alcance "del programa" lo calcula la util compartida, que es la misma
+  // que decide qué sube el cliente a su entrenador y qué se borra al purgar.
+  const programTemplateIds = useMemo(
+    () => programTemplateIds_(activeProgram),
+    [activeProgram],
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

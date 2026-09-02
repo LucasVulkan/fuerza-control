@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { programTemplateIds, scopeFilterForUpload } from '../../src/utils/clientLogs';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -899,5 +900,172 @@ describe('program-model — un solo diccionario de sesiones', () => {
     expect(useStore.getState().sessionTemplates[tplId].name).toBe('Empuje');
     expect(useStore.getState().userPrograms).toBeUndefined();
     expect(useStore.getState().programs[pid]).toBeDefined();
+  });
+});
+
+/**
+ * Muere el espejo `program.days` (`docs/specs/program-model.md` §5).
+ *
+ * Lo que estos tests protegen no es el borrado: es que NADA de lo que colgaba
+ * del espejo se caiga con el. El espejo alimentaba tres cosas que importan —el
+ * contador de ciclo, el alcance del historial que el cliente sube a su
+ * entrenador, y el que se borra al purgar— y las tres tienen que seguir en pie
+ * leyendo los dias de su etapa.
+ */
+describe('program-model — sin espejo `days`', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  /** Un programa de 2 sesiones con un ejercicio cada una, listo para entrenar. */
+  function programaDeDos() {
+    const pid = useStore.getState().createEmptyProgram(2, 'Mío');
+    const ids = Object.keys(useStore.getState().sessionTemplates);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(
+        ids.map((id) => [id, { ...s.sessionTemplates[id], exercises: [{ exerciseId: 'squat', sets: 1 }] }]),
+      ),
+    }));
+    return { pid, ids };
+  }
+
+  /** Entrena y guarda una sesion completa. */
+  function entrenar(templateId) {
+    useStore.getState().startSession(templateId);
+    useStore.setState((s) => ({
+      activeSession: {
+        ...s.activeSession,
+        setsState: { squat: [{ weight: '100', reps: '5', time: '', done: true }] },
+      },
+    }));
+    return useStore.getState().saveSession();
+  }
+
+  it('ningun camino de creacion deja una copia de los dias', () => {
+    const { pid } = programaDeDos();
+    const tplId = useStore.getState().createEmptyProgram(2, 'Plantilla', 'template');
+    const cli = useStore.getState().createProgramForClient('cli_1', 2, 'De cliente');
+    const clon = useStore.getState().cloneProgramFromTemplate(tplId, { owner: 'cli_1' });
+
+    const { programs } = useStore.getState();
+    [pid, tplId, cli, clon].forEach((id) => {
+      expect(programs[id]).not.toHaveProperty('days');
+      expect(programs[id].stages[0].days.length).toBeGreaterThan(0);
+    });
+  });
+
+  // EL test de esta fase: el contador de ciclo leia `stage.days`, pero la rama
+  // de al lado leia el espejo. Si el ciclo dejara de cerrarse, el cliente se
+  // quedaria clavado en la semana 1 para siempre.
+  it('el ciclo se cierra al completar TODAS las sesiones, y no antes', () => {
+    const { pid, ids } = programaDeDos();
+
+    expect(entrenar(ids[0]).ok).toBe(true);
+    let p = useStore.getState().programs[pid];
+    expect(p.cycleCompletedIds).toEqual([ids[0]]);        // media rotacion
+    expect(p.stageWeeksCompleted ?? 0).toBe(0);
+
+    expect(entrenar(ids[1]).ok).toBe(true);
+    p = useStore.getState().programs[pid];
+    expect(p.cycleCompletedIds).toEqual([]);              // rotacion cerrada y reiniciada
+    expect(p.stageWeeksCompleted).toBe(1);
+    expect(p.totalWeeksCompleted).toBe(1);
+  });
+
+  it('repetir la misma sesion no cierra el ciclo', () => {
+    const { pid, ids } = programaDeDos();
+
+    entrenar(ids[0]);
+    entrenar(ids[0]);
+
+    const p = useStore.getState().programs[pid];
+    expect(p.cycleCompletedIds).toEqual([ids[0]]);
+    expect(p.stageWeeksCompleted ?? 0).toBe(0);
+  });
+
+  // El alcance: que sube el cliente a su entrenador, que cuenta como "del
+  // programa" en Carga y en Historial, y que se borra al purgar.
+  it('el alcance del programa sale de las etapas, no del espejo', () => {
+    const { pid, ids } = programaDeDos();
+    const program = useStore.getState().programs[pid];
+
+    expect(program.days).toBeUndefined();
+    expect([...programTemplateIds(program)].sort()).toEqual([...ids].sort());
+
+    const { entries } = scopeFilterForUpload({
+      workoutLog: [
+        { id: 'a', sessionTemplateId: ids[0], timestamp: 10 },
+        { id: 'b', sessionTemplateId: 'ajena', timestamp: 20 },
+      ],
+      programs: { [pid]: program },
+      trainerProgramIds: [pid],
+    });
+    expect(entries.map((e) => e.id)).toEqual(['a']);
+  });
+
+  it('borrar el programa sigue llevandose sus sesiones', () => {
+    const { pid } = programaDeDos();
+
+    useStore.getState().deleteProgram(pid);
+
+    expect(Object.keys(useStore.getState().sessionTemplates)).toEqual([]);
+  });
+
+  it('el fichero que viaja al cliente no lleva el espejo, y lleva sus sesiones', () => {
+    const { pid, ids } = programaDeDos();
+
+    const file = JSON.parse(useStore.getState()._buildProgramJson(pid, false).json);
+
+    expect(file.program).not.toHaveProperty('days');
+    expect(file.program.stages[0].days).toHaveLength(2);
+    expect(Object.keys(file.sessionTemplates).sort()).toEqual([...ids].sort());
+  });
+
+  // La migracion, en el orden que importa: `ensureStages` LEE `days` para armar
+  // la etapa, asi que el borrado va despues. Al reves, el programa antiguo se
+  // quedaria sin sesiones.
+  it('un programa antiguo conserva sus dias al migrar, y pierde el espejo', () => {
+    const state = {
+      profile: { activeProgramId: null },
+      clients: {}, workoutLog: [],
+      programs: {
+        viejo: {
+          id: 'viejo', owner: 'me', kind: 'program',
+          days: [{ sessionTemplateId: 'tpl_a', label: 'A' }, { sessionTemplateId: 'tpl_b', label: 'B' }],
+        },
+      },
+    };
+
+    rehydrateCallback()(state, undefined);
+
+    const p = state.programs.viejo;
+    expect(p.days).toBeUndefined();
+    expect(p.stages).toHaveLength(1);
+    expect(p.stages[0].days.map((d) => d.sessionTemplateId)).toEqual(['tpl_a', 'tpl_b']);
+    // Y el alcance sigue siendo el mismo, que es lo que sube al entrenador.
+    expect([...programTemplateIds(p)].sort()).toEqual(['tpl_a', 'tpl_b']);
+  });
+
+  // La otra mitad: un `.fitdata` v1/v2 trae `days` y ninguna etapa. Esa lectura
+  // NO se borra con el espejo — es la puerta por la que entran.
+  it('un fichero v1/v2 sin etapas sigue entrando con sus sesiones', () => {
+    useStore.getState().importData({
+      version: '2', exportType: 'program',
+      program: {
+        id: 'prog_v2', name: 'Viejo', mode: 'personal',
+        days: [{ sessionTemplateId: 'tpl_a', label: 'A' }],
+      },
+      sessionTemplates: { tpl_a: { id: 'tpl_a', programId: 'prog_v2', exercises: [] } },
+    }, { program: true }, { silent: true });
+
+    const p = useStore.getState().programs.prog_v2;
+    expect(p.stages).toHaveLength(1);
+    expect(p.stages[0].days.map((d) => d.sessionTemplateId)).toEqual(['tpl_a']);
+    expect([...programTemplateIds(p)]).toEqual(['tpl_a']);
   });
 });

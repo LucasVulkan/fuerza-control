@@ -37,7 +37,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../../../src/utils/progression';
 import { volumeDeltas } from '../../../src/utils/sessionRecap';
 import { computeAdherence, requiresAttention, adherencePct, STATUS } from '../../../src/utils/adherence';
-import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
+import { progressFromBlob, clientStageIndex, stageDays, stageDaysAt, allProgramDays } from '../../../src/utils/stageProgress';
 import { sessionLoads, dailySeries } from '../../../src/utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
@@ -47,17 +47,10 @@ import StageSegBar from '../components/ui/StageSegBar';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getAllProgramDays(p) {
-  if (p?.stages?.length > 0) return p.stages.flatMap((st) => st.days ?? []);
-  return p?.days ?? [];
-}
-
 /** Expected sessions per week = days in the program's CURRENT cycle (active stage). */
 function weeklyTarget(program) {
   if (!program) return 0;
-  const hasStages = (program.stages?.length ?? 0) > 0;
-  const stageIdx  = program.currentStageIndex ?? 0;
-  const days = hasStages ? (program.stages[stageIdx]?.days ?? []) : (program.days ?? []);
+  const days = stageDays(program);
   return days.length;
 }
 
@@ -297,7 +290,7 @@ function AssignedProgramCard({
   const hasStages    = stages.length > 0;
   const stageIdx     = clientStageIndex({ progress }, program);
   const currentStage = hasStages ? stages[stageIdx] : null;
-  const currentDays  = hasStages ? (currentStage?.days ?? []) : (program.days ?? []);
+  const currentDays  = stageDaysAt(program, stageIdx);
   const sessPerCycle = Math.max(1, currentDays.length);
   const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
@@ -852,7 +845,7 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
                     <Text style={[styles.templateOptionName, fromTemplateId === p.id && { color: th.colors.accent }]}>
                       {p.name}
                     </Text>
-                    <Text style={styles.templateOptionMeta}>{p.days?.length ?? 0} sesiones</Text>
+                    <Text style={styles.templateOptionMeta}>{allProgramDays(p).length} sesiones</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1561,9 +1554,7 @@ function ClientListCard({
   const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
   const stageIdx       = clientStageIndex(client, activeProgram);
   const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
-  const currentDays    = hasStages
-    ? (currentStage?.days ?? [])
-    : (activeProgram?.days ?? []);
+  const currentDays    = stageDaysAt(activeProgram, stageIdx);
   const sessPerCycle   = Math.max(1, currentDays.length);
   const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
   // Parado, en cualquiera de sus dos formas — mismo cálculo que el hero, aquí
@@ -2005,14 +1996,14 @@ export default function ClientsScreen() {
   );
 
   const allClientTemplateIds = useMemo(() => {
-    return new Set(clientPrograms.flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId)));
+    return new Set(clientPrograms.flatMap((p) => allProgramDays(p).map((d) => d.sessionTemplateId)));
   }, [clientPrograms]);
 
   const activeClientTemplateIds = useMemo(() => {
     if (!selectedClient?.activeProgramId) return new Set();
     const activeProg = programs[selectedClient.activeProgramId];
     if (!activeProg) return new Set();
-    return new Set(getAllProgramDays(activeProg).map((d) => d.sessionTemplateId));
+    return new Set(allProgramDays(activeProg).map((d) => d.sessionTemplateId));
   }, [selectedClient, programs]);
 
   // All sessions for this client (no scope/period filter) — for ProgressTab.
@@ -2289,12 +2280,12 @@ export default function ClientsScreen() {
   }
 
   function getSessionCount(program) {
-    const ids = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
+    const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
     return clientBaseLog.filter((e) => ids.has(e.sessionTemplateId)).length;
   }
 
   function getLastActivity(program) {
-    const ids = new Set(getAllProgramDays(program).map((d) => d.sessionTemplateId));
+    const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
     const sessions = clientBaseLog.filter((e) => ids.has(e.sessionTemplateId));
     return sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : null;
   }

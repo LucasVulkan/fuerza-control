@@ -131,7 +131,9 @@ export function reidProgramFile(data) {
   const program = {
     ...data.program,
     id:   newProgramId,
-    days: cloneDays(data.program.days),
+    // `days` solo si el fichero lo traía: un programa v4 no lo tiene, y
+    // escribirlo aquí resucitaria el espejo que la fase 3 borro.
+    ...(data.program.days ? { days: cloneDays(data.program.days) } : {}),
     ...(data.program.stages?.length
       ? { stages: data.program.stages.map((st) => ({ ...st, days: cloneDays(st.days) })) }
       : {}),

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, clientStageIndex,
-  withStages, ensureStages, closeOpenStage,
+  withStages, ensureStages, closeOpenStage, stageDays, stageDaysAt, allProgramDays,
 } from './stageProgress';
 
 const CYCLE = ['tpl_a', 'tpl_b', 'tpl_c'];
@@ -209,29 +209,60 @@ describe('withStages', () => {
   const stageA = { id: 'st_a', name: 'A', days: [{ sessionTemplateId: 'tpl_a' }] };
   const stageB = { id: 'st_b', name: 'B', days: [{ sessionTemplateId: 'tpl_b' }] };
 
-  it('mirrors `days` onto the active stage', () => {
+  it('asigna las etapas y el índice activo', () => {
     const p = withStages({ id: 'p1' }, [stageA, stageB], 1);
     expect(p.stages).toHaveLength(2);
     expect(p.currentStageIndex).toBe(1);
-    expect(p.days).toEqual(stageB.days);
   });
 
   it('keeps the index the program already had when none is given', () => {
     const p = withStages({ id: 'p1', currentStageIndex: 1 }, [stageA, stageB]);
     expect(p.currentStageIndex).toBe(1);
-    expect(p.days).toEqual(stageB.days);
   });
 
   it('clamps an index past the end — the trainer may have deleted stages', () => {
     const p = withStages({ id: 'p1', currentStageIndex: 5 }, [stageA]);
     expect(p.currentStageIndex).toBe(0);
-    expect(p.days).toEqual(stageA.days);
   });
 
-  it('never leaves `days` stale after a write to a non-active stage', () => {
-    const edited = { ...stageB, days: [{ sessionTemplateId: 'tpl_new' }] };
-    const p = withStages({ id: 'p1', currentStageIndex: 0, days: stageA.days }, [stageA, edited]);
-    expect(p.days).toEqual(stageA.days);      // sigue espejando la activa
+  // El espejo murió (program-model.md §5): `withStages` ya no escribe `days`, y
+  // por eso no puede derivar. Lo que había aquí era un test de que el espejo NO
+  // se quedaba viejo tras escribir en una etapa que no era la activa.
+  it('no escribe ninguna copia de los días', () => {
+    const p = withStages({ id: 'p1' }, [stageA, stageB], 1);
+    expect(p).not.toHaveProperty('days');
+  });
+});
+
+describe('stageDays / stageDaysAt / allProgramDays', () => {
+  const stageA = { id: 'st_a', name: 'A', days: [{ sessionTemplateId: 'tpl_a' }] };
+  const stageB = { id: 'st_b', name: 'B', days: [{ sessionTemplateId: 'tpl_b' }] };
+  const program = { id: 'p1', stages: [stageA, stageB], currentStageIndex: 1 };
+
+  it('stageDays lee la etapa ACTIVA', () => {
+    expect(stageDays(program)).toEqual(stageB.days);
+  });
+
+  it('sin índice, la primera', () => {
+    expect(stageDays({ stages: [stageA, stageB] })).toEqual(stageA.days);
+  });
+
+  // En el móvil del entrenador, `currentStageIndex` es la etapa que ÉL activó,
+  // no donde está el cliente: por eso hace falta la forma con índice explícito.
+  it('stageDaysAt lee la que se le pida', () => {
+    expect(stageDaysAt(program, 0)).toEqual(stageA.days);
+    expect(stageDaysAt(program, 9)).toEqual([]);   // etapa borrada: lista vacía, no un throw
+  });
+
+  it('allProgramDays recorre TODAS las etapas — el alcance del programa', () => {
+    expect(allProgramDays(program)).toEqual([...stageA.days, ...stageB.days]);
+  });
+
+  it('nada de esto revienta con un programa a medias', () => {
+    expect(stageDays(undefined)).toEqual([]);
+    expect(stageDays({})).toEqual([]);
+    expect(allProgramDays(undefined)).toEqual([]);
+    expect(allProgramDays({ stages: [{ id: 'x' }] })).toEqual([]);
   });
 });
 

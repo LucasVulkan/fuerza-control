@@ -54,6 +54,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
 import { templatesOf } from '../utils/programOwnership';
+import { allProgramDays } from '../../../src/utils/stageProgress';
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
@@ -1047,9 +1048,7 @@ export default function OnboardingScreen() {
         >
           {templateList.map((tpl) => {
             const isSelected = tpl.id === selectedTemplateId;
-            const dayCount   = (tpl.stages?.length > 0
-              ? tpl.stages.flatMap((s) => s.days ?? [])
-              : tpl.days ?? []).length;
+            const dayCount   = allProgramDays(tpl).length;
             return (
               <TouchableOpacity
                 key={tpl.id}

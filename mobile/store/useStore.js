@@ -37,7 +37,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage } from '../../src/utils/stageProgress';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../../src/utils/stageProgress';
 import { applyRx } from '../../src/utils/stageRx';
 import { isStageLocked } from '../../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
@@ -476,12 +476,7 @@ export const useStore = create(
         const { programs, profile } = get();
         const program = programs[programId];
         if (!program) return;
-        const templateIds = new Set();
-        if (program.stages?.length > 0) {
-          program.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
-        } else {
-          program.days.forEach((d) => templateIds.add(d.sessionTemplateId));
-        }
+        const templateIds = programTemplateIds(program);
         const wasActive = profile.activeProgramId === programId;
         set((s) => ({
           programs: {
@@ -2107,16 +2102,13 @@ export const useStore = create(
               }),
             };
           }
-        } else if (ownerProgram && ownerProgramId) {
-          // ── Non-staged program: same rotation, no stage threshold ──────────
-          const tplIds = (ownerProgram.days ?? []).map((d) => d.sessionTemplateId);
-          if (tplIds.includes(activeSession.templateId)) {
-            stageUpdate = {
-              programId: ownerProgramId,
-              ...advanceCycle(ownerProgram, activeSession.templateId, tplIds),
-            };
-          }
         }
+        // Aquí había una segunda rama para programas SIN etapas, que leía el
+        // espejo `program.days`. Era inalcanzable: todo programa del store
+        // tiene etapas —`ensureStages` corre al rehidratar y en las dos puertas
+        // de importación— y los diez caminos de escritura pasan por
+        // `withStages`. Con el espejo borrado habría dejado de contar ciclos en
+        // silencio, que es justo lo que no puede pasar con el progreso.
 
         set((s) => ({
           workoutLog: [...s.workoutLog, logEntry],
@@ -2215,12 +2207,7 @@ export const useStore = create(
         let keep = [];
         if (scope === 'off_program') {
           const active = programs[profile.activeProgramId];
-          const ids = new Set(
-            (active?.stages?.length > 0
-              ? active.stages.flatMap((st) => st.days ?? [])
-              : (active?.days ?? [])
-            ).map((d) => d.sessionTemplateId),
-          );
+          const ids = new Set(allProgramDays(active).map((d) => d.sessionTemplateId));
           // Sin programa activo no hay nada "del programa": no borrar nada a
           // ciegas, que sería equivalente a un borrado total por sorpresa.
           if (ids.size === 0) return 0;
@@ -2447,12 +2434,7 @@ export const useStore = create(
         const program = programs[programId];
         if (!program) return null;
 
-        const tplIds = new Set();
-        if (program.stages?.length > 0) {
-          program.stages.forEach((st) => st.days.forEach((d) => tplIds.add(d.sessionTemplateId)));
-        } else {
-          (program.days ?? []).forEach((d) => tplIds.add(d.sessionTemplateId));
-        }
+        const tplIds = programTemplateIds(program);
         const relTpl = {};
         tplIds.forEach((id) => {
           if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
@@ -3289,19 +3271,12 @@ export const useStore = create(
         };
       },
 
-      /**
-       * Writes a set of cycle counters onto a program, keeping `days` pointed at
-       * the active stage (the same invariant setCurrentStage maintains).
-       */
+      /** Escribe los contadores de ciclo en un programa. */
       _writeProgress: (programId, counters) => {
         const prog = get().programs[programId];
         if (!prog) return;
-        const stageDays = prog.stages?.[counters.currentStageIndex]?.days;
         set((s) => ({
-          programs: {
-            ...s.programs,
-            [programId]: { ...prog, ...counters, ...(stageDays ? { days: stageDays } : {}) },
-          },
+          programs: { ...s.programs, [programId]: { ...prog, ...counters } },
         }));
       },
 
@@ -4032,6 +4007,14 @@ export const useStore = create(
               const staged = ensureStages(p);
               if (staged !== p) state.programs[id] = staged;
             });
+
+            // migración pre-publicación
+            // Muere el espejo `program.days` (`program-model.md` §5). VA DESPUÉS
+            // de `ensureStages`, que es justo quien lo lee para armar la etapa
+            // de un programa antiguo: al revés, esos programas se quedarían sin
+            // sesiones. A partir de aquí los días viven en su etapa y en ningún
+            // otro sitio.
+            Object.values(state.programs).forEach((p) => { delete p.days; });
           }
 
           // Migrate string tags → tagRegistry IDs

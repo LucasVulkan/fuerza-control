@@ -46,10 +46,12 @@ describe('fases de plantilla → etapas', () => {
     expect(total).toBe(8);
   });
 
-  it('`days` sigue espejando la etapa activa', async () => {
+  // Era "`days` sigue espejando la etapa activa". El espejo murió: los días
+  // viven en su etapa y en ningún otro sitio (program-model.md §5).
+  it('el programa no guarda una copia de los días de la etapa', async () => {
     const { program } = await generate();
-    expect(program.days.map((d) => d.sessionTemplateId))
-      .toEqual(program.stages[0].days.map((d) => d.sessionTemplateId));
+    expect(program.days).toBeUndefined();
+    expect(program.stages[0].days.length).toBeGreaterThan(0);
   });
 
   it('cada etapa tiene sus propias plantillas de sesión, encadenadas a la base', async () => {

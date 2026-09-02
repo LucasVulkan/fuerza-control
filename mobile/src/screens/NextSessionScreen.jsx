@@ -16,7 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { clientStageIndex } from '../../../src/utils/stageProgress';
+import { clientStageIndex, stageDaysAt } from '../../../src/utils/stageProgress';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -87,9 +87,8 @@ export default function NextSessionScreen({ navigation, route }) {
   // una etapa que el cliente ya había dejado atrás.
   const templateIds = useMemo(() => {
     if (!activeProgram) return [];
-    const hasStages = (activeProgram.stages?.length ?? 0) > 0;
-    const stageIdx  = clientStageIndex(client, activeProgram);
-    const days = hasStages ? (activeProgram.stages[stageIdx]?.days ?? []) : (activeProgram.days ?? []);
+    // La etapa del CLIENTE, no la que el entrenador tenga activada.
+    const days = stageDaysAt(activeProgram, clientStageIndex(client, activeProgram));
     return days.map((d) => d.sessionTemplateId);
   }, [activeProgram, client]);
 

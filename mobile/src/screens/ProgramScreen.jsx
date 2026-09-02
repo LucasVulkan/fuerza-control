@@ -49,9 +49,7 @@ import { templatesOf } from '../utils/programOwnership';
  * `editor.programSummaryOpen`).
  */
 function templateStats(program) {
-  const stages = program.stages?.length
-    ? program.stages
-    : [{ days: program.days ?? [], durationWeeks: program.durationWeeks ?? null }];
+  const stages = program.stages ?? [];
   return {
     stages:   stages.length,
     cycles:   stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),

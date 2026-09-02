@@ -252,7 +252,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
-  const days       = stage?.days ?? program?.days ?? [];
+  const days       = stage?.days ?? [];
   const sessionIds = days.map((d) => d.sessionTemplateId);
   const stageLabel = stage?.name;
   const canDelete  = sessionIds.length > 1;

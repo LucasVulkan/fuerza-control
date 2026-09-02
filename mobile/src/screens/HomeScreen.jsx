@@ -10,6 +10,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
+import { stageDays, stageDaysAt } from '../../../src/utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
@@ -68,20 +69,14 @@ function relativeTime(ts, t) {
  * Global "week" counter = total sessions logged for this program / sessions-per-cycle.
  * "Semana" in this app = one complete rotation through the session templates.
  */
-function computeWeekNum(program, workoutLog) {
-  const hasStages = (program.stages?.length ?? 0) > 0;
-
-  if (hasStages) {
-    // totalWeeksCompleted is incremented on the program each time a full cycle
-    // is completed, regardless of stage. Stage changes don't reset it.
-    return (program.totalWeeksCompleted ?? 0) + 1;
-  }
-
-  // Non-staged programs: count completed cycles from the workoutLog.
-  const allIds = new Set((program.days ?? []).map((d) => d.sessionTemplateId));
-  const sessionsPerCycle = Math.max(1, program.days?.length ?? 1);
-  const total = workoutLog.filter((e) => allIds.has(e.sessionTemplateId)).length;
-  return Math.floor(total / sessionsPerCycle) + 1;
+function computeWeekNum(program) {
+  // `totalWeeksCompleted` sube en el programa cada vez que se cierra un ciclo
+  // completo, sea cual sea la etapa; cambiar de etapa no lo reinicia.
+  //
+  // Aquí había una segunda rama que contaba ciclos desde el workoutLog para
+  // programas SIN etapas, leyendo el espejo `program.days`. Todo programa tiene
+  // etapas, así que era inalcanzable.
+  return (program.totalWeeksCompleted ?? 0) + 1;
 }
 
 /**
@@ -90,11 +85,7 @@ function computeWeekNum(program, workoutLog) {
  * and how many sessions are in one cycle.
  */
 function computeCycleProgress(program) {
-  const hasStages   = (program.stages?.length ?? 0) > 0;
-  const stageIdx    = program.currentStageIndex ?? 0;
-  const currentDays = hasStages
-    ? (program.stages[stageIdx]?.days ?? [])
-    : (program.days ?? []);
+  const currentDays = stageDays(program);
   const sessionsPerCycle = Math.max(1, currentDays.length);
   const doneIds          = new Set(program.cycleCompletedIds ?? []);
   const doneInCycle      = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
@@ -689,13 +680,11 @@ export default function HomeScreen() {
 
           // Computed values for progress header
           const stageInfo                  = computeStageInfo(activeProgram, t);
-          const weekNum                    = computeWeekNum(activeProgram, workoutLog);
+          const weekNum                    = computeWeekNum(activeProgram);
           const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
 
           // Current session templates in cycle order (handles both flat and staged programs)
-          const currentDays = hasStages
-            ? (activeProgram.stages[stageIdx]?.days ?? [])
-            : (activeProgram.days ?? []);
+          const currentDays = stageDaysAt(activeProgram, stageIdx);
 
           // Trainer name — from the first session template that has one ("by …").
           const programTrainerName = currentDays

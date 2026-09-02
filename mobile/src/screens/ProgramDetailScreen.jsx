@@ -344,14 +344,9 @@ export default function ProgramDetailScreen() {
     [exerciseLibrary, customExercises],
   );
 
-  // `program.days` es el espejo de la etapa ACTIVA, no la lista de días del
-  // programa (stage-planner.md §3.1). Aquí se leen las etapas; el espejo solo
-  // vale de respaldo para programas anteriores a la fase 0 del planificador.
-  const stages = useMemo(() => (
-    program?.stages?.length > 0
-      ? program.stages
-      : [{ id: '_only', name: null, durationWeeks: null, days: program?.days ?? [] }]
-  ), [program]);
+  // Los días viven en su etapa y en ningún otro sitio: el espejo `program.days`
+  // murió (program-model.md §5). Todo programa tiene al menos una etapa.
+  const stages = useMemo(() => program?.stages ?? [], [program]);
 
   const idx   = Math.min(stageIdx, stages.length - 1);
   const stage = stages[idx];

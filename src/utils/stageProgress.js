@@ -25,13 +25,13 @@
 import { generateId } from './formatters';
 
 /**
- * EVERY program owns at least one stage (see `docs/specs/stage-planner.md` §3),
- * and `program.days` is a denormalized MIRROR of the ACTIVE stage's days that a
- * lot of screens read directly.
+ * EVERY program owns at least one stage (`docs/specs/stage-planner.md` §3).
  *
- * Use this for every write that touches `stages`, so the mirror cannot drift.
- * Six writes used to skip it; the drift stayed hidden only because every reader
- * still branched on `hasStages`.
+ * Asigna las etapas y clampa el índice activo. Hasta sep-2026 mantenía además
+ * `program.days`, un espejo desnormalizado de los días de la etapa activa que
+ * media app leía directamente — y que seis escrituras se saltaban. El espejo
+ * murió (`docs/specs/program-model.md` §5): quien quiera esos días los pide con
+ * `stageDays`, que los lee de donde están.
  *
  * @param {object}  program
  * @param {array}   stages              the new stage list
@@ -40,13 +40,33 @@ import { generateId } from './formatters';
 export function withStages(program, stages, currentStageIndex) {
   const raw = currentStageIndex ?? program?.currentStageIndex ?? 0;
   const idx = Math.max(0, Math.min(raw, stages.length - 1));
-  return { ...program, stages, currentStageIndex: idx, days: stages[idx]?.days ?? [] };
+  return { ...program, stages, currentStageIndex: idx };
 }
+
+/** Los días de UNA etapa concreta. */
+export const stageDaysAt = (program, idx) => program?.stages?.[idx]?.days ?? [];
+
+/**
+ * Los días de la etapa activa del programa — el ciclo que toca ahora.
+ *
+ * OJO en el móvil del entrenador: `currentStageIndex` es la etapa que ÉL activó,
+ * no donde está el cliente. Para eso va `stageDaysAt(program, clientStageIndex(...))`.
+ */
+export const stageDays = (program) => stageDaysAt(program, program?.currentStageIndex ?? 0);
+
+/** Todos los días de todas las etapas: el alcance del programa entero. */
+export const allProgramDays = (program) =>
+  (program?.stages ?? []).flatMap((st) => st.days ?? []);
 
 /**
  * Wraps a program created before the model was unified (no `stages`) into the
  * one-stage shape. Idempotent: a program that already has stages comes back
  * untouched.
+ *
+ * Es el ÚNICO sitio que sigue leyendo `program.days`, y a propósito: es la
+ * puerta por la que entra un programa antiguo —del estado persistido o de un
+ * `.fitdata` v1/v2— y de ahí saca los días para armar su primera etapa. Borrar
+ * esta lectura dejaría esos programas sin sesiones.
  *
  * `durationWeeks: null` — "no limit" — is deliberate, and it is what makes the
  * migration behaviour-preserving: a program without stages never had an

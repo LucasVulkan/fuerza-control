@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { stageDays } from './stageProgress';
 import { generateProgram, GOAL_PARAMS } from './programGenerator';
 import { adaptArchetype } from './archetypeAdapter';
 import { rankArchetypes } from '../data/archetypes';
@@ -62,13 +63,15 @@ function checkInvariants(result, answers, normalizedEquipment, archetype) {
   // la velocidad que haga falta. Sólo el camino procedural, que monta el ciclo
   // desde cero, lo deriva de los días — capado a 6 (con 7 el ciclo rota).
   const expectedSessions = archetype ? archetype.days.length : Math.min(answers.daysPerWeek, 6);
-  if (program.days.length !== expectedSessions) {
-    violations.push(`sessions: got ${program.days.length}, expected ${expectedSessions}`);
+  const programDays = stageDays(program);
+  if (programDays.length !== expectedSessions) {
+    violations.push(`sessions: got ${programDays.length}, expected ${expectedSessions}`);
   }
 
   // Modelo unificado (docs/specs/stage-planner.md §3): todo programa nace con
-  // UNA etapa y `program.days` espeja los días de la etapa activa. Las fases
-  // 2..N de una plantilla las materializa el store, no el adaptador.
+  // UNA etapa, y sus días viven SOLO ahí — el espejo `program.days` murió en la
+  // fase 3 de program-model.md. Las fases 2..N de una plantilla las materializa
+  // el store, no el adaptador.
   if ((program.stages?.length ?? 0) !== 1) {
     violations.push(`stages: got ${program.stages?.length ?? 0}, expected 1`);
   } else {
@@ -82,12 +85,12 @@ function checkInvariants(result, answers, normalizedEquipment, archetype) {
     if (program.currentStageIndex !== 0) {
       violations.push(`currentStageIndex: got ${program.currentStageIndex}, expected 0`);
     }
-    const mirrored = program.stages[0].days.map((d) => d.sessionTemplateId).join(',');
-    const days     = program.days.map((d) => d.sessionTemplateId).join(',');
-    if (mirrored !== days) violations.push(`days mirror: [${days}] vs stage [${mirrored}]`);
+    // Ni rastro del espejo: un `days` en el programa vuelve a abrir la puerta
+    // a que alguien lo lea y derive.
+    if (program.days !== undefined) violations.push('program.days sigue existiendo');
   }
 
-  program.days.forEach((d) => {
+  programDays.forEach((d) => {
     const tpl = sessionTemplates[d.sessionTemplateId];
     if (!tpl) { violations.push(`missing template for day ${d.label}`); return; }
 
@@ -178,7 +181,7 @@ describe(`invariantes del generador — matriz representativa (${MATRIX.length} 
       const normalizedEquipment = normalizeEquipment(answers.equipment);
       const result = runOnboarding(answers);
       const violations = checkInvariants(result, answers, normalizedEquipment, result.archetype);
-      totalSessions += result.program.days.length;
+      totalSessions += stageDays(result.program).length;
 
       const real = [];
       violations.forEach((v) => {
@@ -238,8 +241,8 @@ describe('regresión — casos con nombre propio', () => {
       level: 'beginner', discipline: 'standard', distribution: 'full_body',
       daysPerWeek: 3, goal: 'hypertrophy', equipment: ['dumbbells'], limitations: ['none'],
     });
-    expect(result.program.days.length).toBe(3);
-    result.program.days.forEach((d) => {
+    expect(stageDays(result.program).length).toBe(3);
+    stageDays(result.program).forEach((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       expect(tpl.exercises.some((e) => e.isKey)).toBe(true);
     });
@@ -251,7 +254,7 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 3, goal: 'hypertrophy', equipment: ['dumbbells', 'machines', 'cables', 'barbell'],
       limitations: ['shoulder'],
     });
-    const pushDay = result.program.days.find((d) => d.emphasis === 'push');
+    const pushDay = stageDays(result.program).find((d) => d.emphasis === 'push');
     expect(pushDay).toBeTruthy();
     const tpl = result.sessionTemplates[pushDay.sessionTemplateId];
     const limitedKeys = tpl.exercises.filter((e) => e.isKey && e.limitationNote);
@@ -263,8 +266,8 @@ describe('regresión — casos con nombre propio', () => {
       level: 'beginner', discipline: 'standard', distribution: 'full_body',
       daysPerWeek: 3, goal: 'hypertrophy', equipment: [], limitations: ['none'],
     });
-    expect(result.program.days.length).toBe(3);
-    result.program.days.forEach((d) => {
+    expect(stageDays(result.program).length).toBe(3);
+    stageDays(result.program).forEach((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       tpl.exercises.forEach((e) => {
         const def = EXERCISE_LIBRARY[e.exerciseId];
@@ -286,7 +289,7 @@ describe('regresión — casos con nombre propio', () => {
 
     expect(result.archetype).toBeTruthy();
     expect(result.archetype.discipline).toBe('strength');
-    expect(result.program.days.length).toBe(result.archetype.days.length);
+    expect(stageDays(result.program).length).toBe(result.archetype.days.length);
   });
 
   it('arquetipo beginner nativo llega íntegro: 3 keys/día, sin reduceForBeginner', () => {
@@ -295,8 +298,8 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 3, goal: 'hypertrophy',
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
     });
-    expect(result.program.days.length).toBe(3);
-    result.program.days.forEach((d) => {
+    expect(stageDays(result.program).length).toBe(3);
+    stageDays(result.program).forEach((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       expect(tpl.exercises.filter((e) => e.isKey).length).toBe(3);
       expect(tpl.exercises.length).toBe(6);
@@ -309,9 +312,9 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 4, goal: 'hypertrophy',
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
     });
-    expect(result.program.days.length).toBe(4);
+    expect(stageDays(result.program).length).toBe(4);
 
-    const keyIdsByDay = result.program.days.map((d) => {
+    const keyIdsByDay = stageDays(result.program).map((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       expect(tpl.exercises.some((e) => e.isKey)).toBe(true);
       return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
@@ -331,9 +334,9 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 3, goal: 'strength', sessionMinutes: 60,
       equipment: ['dumbbells', 'machines', 'cables', 'barbell', 'pullup_bar', 'ab_wheel'], limitations: ['none'],
     });
-    expect(result.program.days.length).toBe(3);
+    expect(stageDays(result.program).length).toBe(3);
 
-    const keyIdsByDay = result.program.days.map((d) => {
+    const keyIdsByDay = stageDays(result.program).map((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       expect(tpl.exercises.filter((e) => e.isKey).length).toBe(3);
       return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
@@ -350,9 +353,9 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 4, goal: 'hypertrophy',
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
     });
-    expect(resultAdv.program.days.length).toBe(4);
+    expect(stageDays(resultAdv.program).length).toBe(4);
 
-    const keyIdsByDay = resultAdv.program.days.map((d) => {
+    const keyIdsByDay = stageDays(resultAdv.program).map((d) => {
       const tpl = resultAdv.sessionTemplates[d.sessionTemplateId];
       expect(tpl.exercises.some((e) => e.isKey)).toBe(true);
       return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
@@ -371,7 +374,7 @@ describe('regresión — casos con nombre propio', () => {
       daysPerWeek: 4, goal: 'hypertrophy',
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
     });
-    const intKeyIds = resultInt.program.days.flatMap((d) =>
+    const intKeyIds = stageDays(resultInt.program).flatMap((d) =>
       resultInt.sessionTemplates[d.sessionTemplateId].exercises.filter((e) => e.isKey).map((e) => e.exerciseId)
     );
     expect(intKeyIds).not.toContain('bench_press_barbell');
@@ -392,7 +395,7 @@ describe('regresión — casos con nombre propio', () => {
     });
 
     const strengthParams = GOAL_PARAMS.strength;
-    result.program.days.forEach((d) => {
+    stageDays(result.program).forEach((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       tpl.exercises.filter((e) => e.isKey).forEach((e) => {
         const def = EXERCISE_LIBRARY[e.exerciseId];
@@ -425,11 +428,11 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   it('más minutos ⇒ nunca menos ejercicios, y las keys nunca se recortan', () => {
     const byTime = [30, 45, 60, 90].map((sessionMinutes) => generateProgram({ ...base, sessionMinutes }));
 
-    for (let i = 0; i < byTime[0].program.days.length; i++) {
+    for (let i = 0; i < stageDays(byTime[0].program).length; i++) {
       let prevTotal = 0;
       let prevKeys = null;
       for (const result of byTime) {
-        const tpl = result.sessionTemplates[result.program.days[i].sessionTemplateId];
+        const tpl = result.sessionTemplates[stageDays(result.program)[i].sessionTemplateId];
         const keys = tpl.exercises.filter((e) => e.isKey).length;
         expect(tpl.exercises.length).toBeGreaterThanOrEqual(prevTotal);
         if (prevKeys !== null) expect(keys).toBe(prevKeys); // keysPerSession es fijo — el presupuesto solo toca accesorios
@@ -442,9 +445,9 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   it('30 min genera sesiones más cortas (o iguales) que 90 min para el mismo combo', () => {
     const r30 = generateProgram({ ...base, sessionMinutes: 30 });
     const r90 = generateProgram({ ...base, sessionMinutes: 90 });
-    r30.program.days.forEach((d, i) => {
+    stageDays(r30.program).forEach((d, i) => {
       const tpl30 = r30.sessionTemplates[d.sessionTemplateId];
-      const tpl90 = r90.sessionTemplates[r90.program.days[i].sessionTemplateId];
+      const tpl90 = r90.sessionTemplates[stageDays(r90.program)[i].sessionTemplateId];
       expect(tpl30.exercises.length).toBeLessThanOrEqual(tpl90.exercises.length);
     });
   });
@@ -452,9 +455,9 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   it('sessionMinutes ausente se comporta como el default (60)', () => {
     const rDefault = generateProgram(base);
     const r60 = generateProgram({ ...base, sessionMinutes: 60 });
-    rDefault.program.days.forEach((d, i) => {
+    stageDays(rDefault.program).forEach((d, i) => {
       const tplDefault = rDefault.sessionTemplates[d.sessionTemplateId];
-      const tpl60 = r60.sessionTemplates[r60.program.days[i].sessionTemplateId];
+      const tpl60 = r60.sessionTemplates[stageDays(r60.program)[i].sessionTemplateId];
       expect(tplDefault.exercises.length).toBe(tpl60.exercises.length);
     });
   });
@@ -469,7 +472,7 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],
       sessionMinutes: 30,
     });
-    result.program.days.forEach((d) => {
+    stageDays(result.program).forEach((d) => {
       const tpl = result.sessionTemplates[d.sessionTemplateId];
       const keys = tpl.exercises.filter((e) => e.isKey).length;
       const accessories = tpl.exercises.length - keys;

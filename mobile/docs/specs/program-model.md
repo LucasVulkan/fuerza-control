@@ -1,7 +1,7 @@
 # Spec — Modelo de programas: un dueño, un diccionario, sin espejo
 
-> Estado: **FASES 1 Y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
-> dispositivo. Fase 3 sin implementar. Tres fases **independientes**, cada una
+> Estado: **LAS TRES FASES IMPLEMENTADAS** (2-sep-2026), pendientes de prueba
+> en dispositivo. Tres fases **independientes**, cada una
 > desplegable por su cuenta y en este orden. Origen: el §6.1 de
 > [rediseno.md](rediseno.md), extraído a documento propio porque —a diferencia de
 > las fases 1 y 2 de aquella— **esto sí toca pantallas**.
@@ -697,6 +697,54 @@ dispositivo, se limpian los datos de la app. No merece código de migración.
 ---
 
 ## 5. Fase 3 — Muere el espejo `program.days`
+
+> **IMPLEMENTADA** el 2-sep-2026. La regla que la hizo segura, y que conviene
+> entender antes de tocar nada de esto:
+>
+> **Se deja de MANTENER el espejo, pero no de saber LEER un `days` que venga de
+> fuera.** Son dos cosas distintas y confundirlas rompe el protocolo.
+>
+> Siguen leyendo `program.days`, a propósito y con comentario que lo dice:
+> `ensureStages` (es de ahí de donde saca los días para armar la etapa de un
+> programa antiguo), los **dos** `programTemplateIds` (`clientLogs.js` y
+> `exerciseLinks.js`, que se llaman también sobre programas de fichero),
+> `reidProgramFile` y el `getStages` de `buildProgramDiff` (compara contra el
+> programa ENTRANTE). Borrar cualquiera de esas cinco lecturas dejaría sin
+> sesiones a los `.fitdata` v1/v2 que ya existen.
+>
+> **Tres lectores, no uno**, y viven en `stageProgress.js` junto a `withStages`,
+> que es donde está el modelo de etapas:
+>
+> - `stageDays(program)` — la etapa activa del programa.
+> - `stageDaysAt(program, idx)` — **hace falta**: en el móvil del entrenador
+>   `currentStageIndex` es la etapa que él activó, no donde está el cliente. Lo
+>   usan `ClientsScreen` y `NextSessionScreen` con `clientStageIndex`.
+> - `allProgramDays(program)` — todas las etapas: el alcance del programa entero.
+>
+> **La trampa que encontró esta fase**, y es la que justificaba el miedo: en
+> `saveSession` había una segunda rama del contador de ciclo para programas SIN
+> etapas, que leía el espejo. Era inalcanzable —todo programa del store tiene
+> etapas— pero con el espejo borrado habría dejado de contar ciclos **en
+> silencio**: el cliente clavado en la semana 1 para siempre. Se borró la rama.
+>
+> **Lo que NO dependía del espejo, comprobado:** las analíticas de carga.
+> `trainingLoad.js`, `LoadTab` y `getWeekStatuses` trabajan sobre `workoutLog`,
+> no sobre el programa. Del programa sólo sale el ALCANCE ("qué cuenta como del
+> programa"), y eso ya lo calculaba `programTemplateIds` desde las etapas.
+>
+> De propina: `StatsScreen` e `HistoryScreen` tenían cada una su copia de
+> `programTemplateIds` (8 líneas idénticas). Ahora las dos usan la compartida —
+> la misma que decide qué sube el cliente a su entrenador y qué se borra al
+> purgar, así que las tres respuestas ya no pueden discrepar.
+>
+> **Queda un rabo, a propósito:** 14 guardas `hasStages` en `ClientsScreen`,
+> `HistoryScreen` y `HomeScreen`. Ya son siempre ciertas, pero no leen el espejo
+> —sólo miran `stages.length`— y reescribir condiciones de render en tres
+> pantallas por cero ganancia funcional es justo el riesgo que esta fase
+> desaconseja. Se quedan.
+>
+> 1174 tests verdes (eran 1166) y **exactamente los mismos 173 errores de lint
+> que antes**: ni uno nuevo, ni uno menos.
 
 Toda escritura de etapas pasa hoy por `withStages`, cuyo único trabajo extra es
 mantener `program.days = stages[idx].days` para los lectores que leen el espejo
