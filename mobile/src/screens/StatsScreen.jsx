@@ -7,7 +7,7 @@ import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }    from '../../store/useStore';
-import { programTemplateIds as programTemplateIds_ } from '../../../src/utils/clientLogs';
+import { programTemplateIds as programTemplateIds_ } from '../utils/clientLogs';
 import AppHeader       from '../components/AppHeader';
 import ProgressPanel   from '../components/stats/ProgressPanel';
 import { useThemedStyles } from '../useTheme';

@@ -29,7 +29,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import {
   amrapRemaining, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
   buildBlockResult, formatBlockScore,
-} from '../../../../src/utils/conditioningBlocks';
+} from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { useThemedStyles } from '../../useTheme';
 

@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore, normalizeOnboardingAnswers } from './useStore.js';
-import { ARCHETYPES } from '../../src/data/archetypes.js';
+import { ARCHETYPES } from '../src/data/archetypes.js';
 
 // Lo que produce el flujo nuevo: seis respuestas más la progresión, y la
 // `distribution` tomada de la plantilla elegida justo antes de guardar.

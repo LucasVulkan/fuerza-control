@@ -37,9 +37,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useStore, normalizeOnboardingAnswers } from '../../store/useStore';
-import { estimateSessionSec, includesWarmup } from '../../../src/utils/sessionCompression';
-import { rankArchetypes } from '../../../src/data/archetypes';
-import { adaptArchetype } from '../../../src/utils/archetypeAdapter';
+import { estimateSessionSec, includesWarmup } from '../utils/sessionCompression';
+import { rankArchetypes } from '../data/archetypes';
+import { adaptArchetype } from '../utils/archetypeAdapter';
 import { diffAdaptations, computeAdjustments } from '../utils/adaptationDiff';
 import ImportModal from '../components/ImportModal';
 import ClientCodeModal from '../components/ClientCodeModal';
@@ -54,7 +54,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
 import { templatesOf } from '../utils/programOwnership';
-import { allProgramDays } from '../../../src/utils/stageProgress';
+import { allProgramDays } from '../utils/stageProgress';
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 

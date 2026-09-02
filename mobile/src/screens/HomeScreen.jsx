@@ -10,15 +10,15 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, stageDaysAt } from '../../../src/utils/stageProgress';
+import { stageDays, stageDaysAt } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import { MenuRow } from '../components/ui/MenuList';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { formatDate } from '../../../src/utils/formatters';
-import { isStageLocked } from '../../../src/utils/stageLocks';
+import { formatDate } from '../utils/formatters';
+import { isStageLocked } from '../utils/stageLocks';
 import { LockIcon } from '../components/ui/EditorIcons';
 import StageSegBar from '../components/ui/StageSegBar';
 import { getWeekStatuses } from '../utils/weekProgress';

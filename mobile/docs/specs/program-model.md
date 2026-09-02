@@ -683,9 +683,10 @@ sessions: {},
 (En la fase 1 la clave todavía se llama `sessionTemplates`; en la 2 pasa a
 `sessions`.)
 
-`src/data/programs.js` queda como dato de desarrollo (lo usan tests); no se
-importa desde el store. Si hiciera falta una demo, se carga importando un
-`.fitdata`, que es el camino que ya existe.
+`src/data/programs.js` **se borró** con la app web (sep-2026, fase 1 de
+[rediseno.md](rediseno.md) §2): aquí se dijo que "lo usan tests" y era falso —
+su único importador era el store web. Si hiciera falta una demo, se carga
+importando un `.fitdata`, que es el camino que ya existe.
 
 ⚠️ **Vaciar el estado inicial no limpia tu dispositivo.** `programs` y
 `sessionTemplates` están en el `partialize`, así que la semilla lleva persistida

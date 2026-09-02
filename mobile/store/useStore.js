@@ -31,26 +31,26 @@ import {
 } from '../src/services/timerNotification';
 
 // Shared data & utilities (resolved by Metro watchFolders)
-import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
-import { generateId } from '../../src/utils/formatters';
-import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../../src/utils/clientLogs';
+import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
+import { generateId } from '../src/utils/formatters';
+import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../src/utils/clientLogs';
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
-import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../../src/utils/exerciseLinks';
-import { forTimeElapsed, blocksLogFrom } from '../../src/utils/conditioningBlocks';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../../src/utils/stageProgress';
-import { applyRx } from '../../src/utils/stageRx';
-import { isStageLocked } from '../../src/utils/stageLocks';
-import { consumeOverride, overrideStatus } from '../../src/utils/sessionOverride';
-import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../src/utils/backupPayload';
+import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
+import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
+import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
+import { applyRx } from '../src/utils/stageRx';
+import { isStageLocked } from '../src/utils/stageLocks';
+import { consumeOverride, overrideStatus } from '../src/utils/sessionOverride';
+import { buildBackupJson, BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 import { supabase } from '../src/config/supabase';
 import {
   recoverWithTrainerCode, signInAnonymously, loginClientWithIdToken,
   deleteAccount as deleteRemoteAccount, signOut as supabaseSignOut,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
-import { rankArchetypes } from '../../src/data/archetypes';
-import { adaptArchetype } from '../../src/utils/archetypeAdapter';
-import { generateProgram } from '../../src/utils/programGenerator';
+import { rankArchetypes } from '../src/data/archetypes';
+import { adaptArchetype } from '../src/utils/archetypeAdapter';
+import { generateProgram } from '../src/utils/programGenerator';
 
 // Mobile i18n instance
 import i18n from '../src/i18n';
@@ -382,8 +382,9 @@ export const useStore = create(
       // Sin semilla (spec §4.3): `PROGRAMS`/`SESSION_TEMPLATES` metían dos
       // programas de demostración y seis sesiones ajenas en cada instalación —
       // persistidos y viajando en cada backup. Con `owner: 'me'` aparecerían
-      // además en "mis programas". `src/data/programs.js` queda como dato de
-      // desarrollo: lo usan los tests, no el store.
+      // además en "mis programas". `src/data/programs.js` se borró con la app
+      // web (sep-2026): al final no lo importaba nadie más. Para una demo,
+      // importar un `.fitdata`.
       sessionTemplates: {},
       programs: {},
 

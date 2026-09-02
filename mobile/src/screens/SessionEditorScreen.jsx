@@ -27,8 +27,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { resolveProgressionConfig } from '../../../src/utils/progression';
-import { exerciseLinkGroups } from '../../../src/utils/exerciseLinks';
+import { resolveProgressionConfig } from '../utils/progression';
+import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
 import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
@@ -39,8 +39,8 @@ import { SORTABLE_PROPS } from '../components/ui/sortable';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
-import { generateId } from '../../../src/utils/formatters';
-import { defaultBlock } from '../../../src/utils/conditioningBlocks';
+import { generateId } from '../utils/formatters';
+import { defaultBlock } from '../utils/conditioningBlocks';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 

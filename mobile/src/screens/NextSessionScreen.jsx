@@ -16,7 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { clientStageIndex, stageDaysAt } from '../../../src/utils/stageProgress';
+import { clientStageIndex, stageDaysAt } from '../utils/stageProgress';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 

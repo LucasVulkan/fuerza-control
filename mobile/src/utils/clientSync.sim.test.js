@@ -24,7 +24,7 @@ import {
   programTemplateIds,
   splitClientLogEntries,
 } from './clientLogs';
-import { assignActiveProgram } from '../../mobile/src/utils/programOwnership';
+import { assignActiveProgram } from './programOwnership';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));

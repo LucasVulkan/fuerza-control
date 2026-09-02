@@ -28,11 +28,11 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import { ArrowIcon } from '../components/ui/EditorIcons';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
-import { warmupSteps } from '../../../src/utils/warmup';
-import { stageDiff, isEmptyDiff } from '../../../src/utils/programDiff';
+import { warmupSteps } from '../utils/warmup';
+import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
-} from '../../../src/utils/trainingLoad';
+} from '../utils/trainingLoad';
 
 const HEADER_H = 64;
 // Misma escala mínima que las barras de `LoadTab`: sin suelo, un programa de

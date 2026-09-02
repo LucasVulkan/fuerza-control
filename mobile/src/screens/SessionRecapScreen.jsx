@@ -26,9 +26,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
-import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../../../src/utils/sessionRecap';
-import { formatBlockScore, compareBlockResults } from '../../../src/utils/conditioningBlocks';
-import { sessionLoads, dailySeries, rollingMean } from '../../../src/utils/trainingLoad';
+import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../utils/sessionRecap';
+import { formatBlockScore, compareBlockResults } from '../utils/conditioningBlocks';
+import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles, getCardRadii } from '../theme';

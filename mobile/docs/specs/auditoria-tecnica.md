@@ -26,11 +26,13 @@
 > estilo: solo entran fallos que producen un comportamiento incorrecto, y cada
 > uno lleva la condición exacta que lo dispara.
 >
-> **Alcance.** Todo lo de aquí afecta a la app móvil. `src/utils`, `src/data` y
-> `src/locales` cuentan como código del móvil: Metro los resuelve vía
-> `watchFolders` (`mobile/metro.config.js`) y el store los importa
-> directamente. La app web (`src/store`, `src/components`, `src/hooks`) queda
-> **fuera**: tiene los mismos bugs en su copia del store, y no se tocan.
+> **Alcance.** Todo lo de aquí afecta a la app móvil, que desde sep-2026 es la
+> única que hay: la fase 1 de [rediseno.md](rediseno.md) §2 borró la app web y
+> movió `src/utils`, `src/data` y `src/locales` dentro de `mobile/src/`. Las
+> rutas `src/…` de este documento se leen como `mobile/src/…` (y las de
+> `store/useStore.js`, como `mobile/store/useStore.js`); no se reescriben en
+> masa, se corrigen al tocar cada fallo. El párrafo que excluía la app web
+> —"tiene los mismos bugs en su copia del store"— ya no tiene sujeto.
 >
 > **Verificación.** `npx eslint <archivo>` (comparar el recuento contra HEAD) y
 > `npx vitest run` desde la raíz. Los fallos con test propuesto lo indican.
@@ -1862,9 +1864,11 @@ precisamente existe para no perderlos.
 
 Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
 
-1. **La app web** (`src/store`, `src/components`, `src/hooks`). Tiene su propia
-   copia del store con el mismo fallo de [§6](#6) (`src/hooks/useWorkout.js:65`,
-   `src/store/useStore.js:1456`). No se usa.
+1. ~~**La app web**~~ (`src/store`, `src/components`, `src/hooks`). Tenía su
+   propia copia del store con el mismo fallo de [§6](#6)
+   (`src/hooks/useWorkout.js:65`, `src/store/useStore.js:1456`). **Borrada en
+   sep-2026** — fase 1 de [rediseno.md](rediseno.md) §2. El fallo se fue con
+   ella.
 2. **El diseño "la contraseña del entrenador es su código"**. [§8](#8) arregla la
    validación y el almacenamiento en claro, no el modelo.
 3. **`setsState` indexado por `exerciseId`**. [§15](#15) pone un guard; la

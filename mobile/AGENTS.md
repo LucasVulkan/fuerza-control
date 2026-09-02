@@ -12,8 +12,8 @@ Never "the closest thing that already exists in the code".
 Quick pointers:
 - Tokens: `src/theme.js` (spacing/textStyles — spacing already holds Figma's exact
   values) + `src/themes.js` (colours/radius per theme; only touch `formaFit`).
-- i18n lives at the REPO ROOT: `src/locales/{es,en}.json`. Every visible string
-  goes in both.
+- i18n: `src/locales/{es,en}.json` (i.e. `mobile/src/locales/` — the whole app
+  lives under `mobile/` since sep-2026). Every visible string goes in both.
 - Verify with `npx eslint <file>` (compare the count against HEAD — there are
   pre-existing errors, just don't add new ones) and `npx vitest run` from the repo
   root.

@@ -22,9 +22,9 @@ import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
 import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { formatSeconds } from '../../../src/utils/formatters';
-import { defaultBlock } from '../../../src/utils/conditioningBlocks';
-import { lastExerciseRef } from '../../../src/utils/exerciseLinks';
+import { formatSeconds } from '../utils/formatters';
+import { defaultBlock } from '../utils/conditioningBlocks';
+import { lastExerciseRef } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
 

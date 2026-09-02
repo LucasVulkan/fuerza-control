@@ -26,7 +26,7 @@ import {
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
   SETS_TARGET_MIN, SETS_TARGET_MAX,
-} from '../../../../src/utils/trainingLoad';
+} from '../../utils/trainingLoad';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';

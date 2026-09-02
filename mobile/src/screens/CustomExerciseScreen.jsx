@@ -28,7 +28,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { LEGACY_TYPE_MAP } from '../../../src/utils/progression';
+import { LEGACY_TYPE_MAP } from '../utils/progression';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';

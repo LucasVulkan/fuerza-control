@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import es from '../../src/locales/es.json';
-import en from '../../src/locales/en.json';
+import es from './locales/es.json';
+import en from './locales/en.json';
 
 // Language is set to 'es' by default.
 // The store's onRehydrateStorage callback calls i18n.changeLanguage()

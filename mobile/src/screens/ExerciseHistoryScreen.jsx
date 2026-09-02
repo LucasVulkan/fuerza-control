@@ -17,8 +17,8 @@ import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useThemedStyles } from '../useTheme';
-import { formatDate } from '../../../src/utils/formatters';
-import { summarizeSets } from '../../../src/utils/progression';
+import { formatDate } from '../utils/formatters';
+import { summarizeSets } from '../utils/progression';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 

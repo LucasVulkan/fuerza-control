@@ -18,9 +18,9 @@ import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
-import { formatDate } from '../../../src/utils/formatters';
-import { formatBlockScore } from '../../../src/utils/conditioningBlocks';
-import { recapStats } from '../../../src/utils/sessionRecap';
+import { formatDate } from '../utils/formatters';
+import { formatBlockScore } from '../utils/conditioningBlocks';
+import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.

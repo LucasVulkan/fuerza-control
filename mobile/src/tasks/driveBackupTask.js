@@ -13,7 +13,7 @@ import * as SecureStore    from 'expo-secure-store';
 import AsyncStorage        from '@react-native-async-storage/async-storage';
 
 import { uploadBackup, findOrCreateFolder, pruneOldBackups } from '../services/driveService';
-import { buildBackupJson, BACKUP_STORAGE_KEY } from '../../../src/utils/backupPayload';
+import { buildBackupJson, BACKUP_STORAGE_KEY } from '../utils/backupPayload';
 
 export const DRIVE_BACKUP_TASK = 'DRIVE_BACKUP_TASK';
 

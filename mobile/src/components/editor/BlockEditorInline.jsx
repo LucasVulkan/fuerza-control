@@ -29,7 +29,7 @@ import {
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { emomTotalIntervals } from '../../../../src/utils/conditioningBlocks';
+import { emomTotalIntervals } from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';

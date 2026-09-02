@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from './useStore.js';
-import { ARCHETYPES, DEFAULT_PHASES } from '../../src/data/archetypes.js';
+import { ARCHETYPES, DEFAULT_PHASES } from '../src/data/archetypes.js';
 
 const ANSWERS = {
   level: 'intermediate',
@@ -119,7 +119,7 @@ describe('fases de plantilla → etapas', () => {
   it('sin fases declaradas, una sola etapa sin límite — el comportamiento de siempre', async () => {
     const bare = { ...ARCHETYPES[0] };
     delete bare.phases;
-    const { adaptArchetype } = await import('../../src/utils/archetypeAdapter.js');
+    const { adaptArchetype } = await import('../src/utils/archetypeAdapter.js');
     const { program, phases } = adaptArchetype(bare, ANSWERS);
 
     expect(phases).toBeNull();

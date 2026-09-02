@@ -1,5 +1,5 @@
-import { blockEstimatedSec } from '../../../src/utils/conditioningBlocks';
-import { warmupSteps } from '../../../src/utils/warmup';
+import { blockEstimatedSec } from '../utils/conditioningBlocks';
+import { warmupSteps } from '../utils/warmup';
 
 // Transición/montaje por ejercicio o bloque: buscar máquina, montar peso, ajustar.
 const EXERCISE_OVERHEAD_SEC = 120;

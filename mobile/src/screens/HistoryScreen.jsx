@@ -16,7 +16,7 @@ import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { programTemplateIds as programTemplateIds_ } from '../../../src/utils/clientLogs';
+import { programTemplateIds as programTemplateIds_ } from '../utils/clientLogs';
 import AppHeader from '../components/AppHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import DragSheet from '../components/DragSheet';
@@ -24,8 +24,8 @@ import SessionCard from '../components/SessionCard';
 import { ArrowIcon } from '../components/ui/EditorIcons';
 import { spacing, typography, borders, withOpacity, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { volumeDeltas } from '../../../src/utils/sessionRecap';
-import { internalLoad } from '../../../src/utils/trainingLoad';
+import { volumeDeltas } from '../utils/sessionRecap';
+import { internalLoad } from '../utils/trainingLoad';
 
 // ── Calendar constants ─────────────────────────────────────────────────────────
 const CELL_H  = 30;

@@ -36,8 +36,8 @@ import StepField from '../components/ui/StepField';
 import { ArrowIcon, CloseIcon } from '../components/ui/EditorIcons';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ToggleRow } from '../components/ui/EditorRows';
-import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../../../src/utils/stageRx';
-import { clientStageIndex } from '../../../src/utils/stageProgress';
+import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../utils/stageRx';
+import { clientStageIndex } from '../utils/stageProgress';
 
 const HEADER_H = 64;
 

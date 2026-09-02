@@ -18,7 +18,7 @@
  * de las reales de un vistazo por su nombre («… (semilla)»).
  */
 import { writeFileSync } from 'node:fs';
-import { EXERCISE_LIBRARY } from './src/data/exerciseLibrary.js';
+import { EXERCISE_LIBRARY } from './mobile/src/data/exerciseLibrary.js';
 
 const WEEKS = Number(process.argv[2]) || 12;
 const OUT   = 'fc-seed-carga.fitdata';

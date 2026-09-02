@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { programTemplateIds, scopeFilterForUpload } from '../../src/utils/clientLogs';
+import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.

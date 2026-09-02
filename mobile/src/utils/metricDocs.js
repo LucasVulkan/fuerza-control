@@ -27,12 +27,12 @@
  * precisión que la métrica no tiene. Si una métrica no parece tener límite que
  * declarar, casi siempre es que no se ha buscado.
  */
-import { MAX_RELIABLE_REPS } from '../../../src/utils/oneRm';
+import { MAX_RELIABLE_REPS } from '../utils/oneRm';
 import {
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
   MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
   SETS_TARGET_MIN, SETS_TARGET_MAX,
-} from '../../../src/utils/trainingLoad';
+} from '../utils/trainingLoad';
 
 /** Grupos y orden de presentación en Documentación. */
 export const METRIC_GROUPS = [

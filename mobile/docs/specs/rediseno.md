@@ -1,8 +1,9 @@
 # Spec — Rediseño estructural: una sola app, un estado que no se reescribe entero
 
-> Estado: **NO IMPLEMENTADA** (sep 2026). Cuatro fases. Las fases **1 y 2 son
-> ejecutables en frío** desde este documento; las fases 3 y 4 son decisiones de
-> producto que hay que tomar **antes de publicar**, no código.
+> Estado: **fase 1 IMPLEMENTADA** (2-sep-2026, dos commits); fase 2 sin
+> implementar. Cuatro fases. Las fases **1 y 2 son ejecutables en frío** desde
+> este documento; las fases 3 y 4 son decisiones de producto que hay que tomar
+> **antes de publicar**, no código.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
@@ -243,11 +244,14 @@ import { assignActiveProgram } from './programOwnership';
 **Comprobación de que no queda ninguno:**
 
 ```bash
-grep -rn "src/utils\|src/data\|src/locales" mobile --include=*.js --include=*.jsx
+grep -rn "'\(\.\./\)\{2,\}src/" mobile --include=*.js --include=*.jsx
 ```
 
-Debe devolver **cero** resultados (los `.md` de `docs/` sí los mencionan; ver
-§2.5).
+Debe devolver **cero** resultados. Ojo: la comprobación no puede ser
+`grep "src/utils"` a secas —como decía esta spec antes de ejecutarse— porque
+`mobile/store/*` importa `'../src/utils/…'` **por diseño**, y eso es
+`mobile/src/utils`. Lo que tiene que desaparecer son las rutas de **dos o más**
+`../`, que son las únicas que salían del repo.
 
 ### 2.4 Los seis ficheros de configuración que cambian
 

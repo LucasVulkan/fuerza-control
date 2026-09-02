@@ -18,9 +18,9 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
-import { isStageLocked } from '../../../src/utils/stageLocks';
-import { describeRx } from '../../../src/utils/stageRx';
-import { clientStageIndex } from '../../../src/utils/stageProgress';
+import { isStageLocked } from '../utils/stageLocks';
+import { describeRx } from '../utils/stageRx';
+import { clientStageIndex } from '../utils/stageProgress';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
 const HEADER_H = 64;

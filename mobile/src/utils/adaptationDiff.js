@@ -11,7 +11,7 @@
  * material y el nivel, que no se mueven al cambiar de 90 a 45 minutos.
  */
 
-import { LIMITATION_GROUPS } from '../../../src/utils/archetypeAdapter';
+import { LIMITATION_GROUPS } from '../utils/archetypeAdapter';
 
 /**
  * Compara las plantillas de sesión de dos resultados de `adaptArchetype` —
