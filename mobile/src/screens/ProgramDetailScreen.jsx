@@ -384,7 +384,7 @@ export default function ProgramDetailScreen() {
       stageDiff(
         baseSessions.map((s) => s.template),
         sessions.map((s) => s.template),
-        allTemplates: sessionTemplates,
+        sessionTemplates,
       ),
       stageName(stages[0], 0, t),
       t,
