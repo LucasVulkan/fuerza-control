@@ -61,25 +61,30 @@
 | [8](#8) | 🟠 Alta | ✅ `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
-| [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:597` |
-| [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:126` |
+| [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:578` |
+| [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:127` |
 | [13](#13) | 🟡 Media | ✅ Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
-| [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js` |
-| [15](#15) | 🟡 Media | Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:943` |
-| [16](#16) | 🟡 Media | `st.days.forEach` sin guard en 4 sitios | `store/useStore.js:345` |
+| [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js:239` |
+| [15](#15) | 🟡 Media | Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:1090` |
+| [16](#16) | 🟡 Media | `st.days.forEach` sin guard — **se mudó de sitio** | `src/screens/HistoryScreen.jsx:381` |
 | [17](#17) | 🟢 Baja | ✅ `drive_needs_reconnect` se escribe y nadie lo lee | `src/tasks/driveBackupTask.js:50` |
-| [18](#18) | 🟢 Baja | `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2132` |
+| [18](#18) | 🟢 Baja | `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2250` |
 | [19](#19) | 🟢 Baja | ✅ El reintento de Drive re-ejecuta lo ya hecho | `store/useStore.js:2709` |
 | [20](#20) | 🟢 Baja | ✅ Boundary multipart fijo en la subida a Drive | `src/services/driveService.js:34` |
-| [21](#21) | 🟢 Baja | `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:339` |
-| [22](#22) | 🟢 Baja | `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:390` |
-| [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js` |
+| [21](#21) | 🟢 Baja | `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:338` |
+| [22](#22) | 🟢 Baja | `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:389` |
+| [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js:17` |
 | [24](#24) | 🟢 Baja | Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
 
-Rutas relativas a `mobile/` salvo las que empiezan por `supabase/` o `src/utils/`
-(estas últimas están en la raíz del repo, compartidas).
+Rutas relativas a `mobile/` salvo las que empiezan por `supabase/`. Ya no hay
+excepción para `src/utils/`: desde la mudanza de sep-2026 vive también dentro de
+`mobile/`, así que la regla es uniforme.
+
+Las líneas de los fallos **abiertos** se revisaron en sep-2026 tras la mudanza.
+Las de los resueltos son las del momento del diagnóstico y no se persiguen: el
+bloque **Implementado** de cada uno dice dónde quedó.
 
 ---
 
@@ -1108,13 +1113,18 @@ control de que el arreglo no se pasa de destructivo.
 
 ## 11. Un `.fitdata` abre varios modales de importación 🟡 {#11}
 
-**Dónde.** `src/components/AppHeader.jsx:597-608`.
+**Dónde.** `src/components/AppHeader.jsx:578-589` **y**
+`src/screens/OnboardingScreen.jsx:462-468`.
 
-**Por qué falla.** `AppHeader` está montado en cinco pantallas —`HomeScreen:676`,
-`HistoryScreen:526`, `StatsScreen:40`, `ProgramScreen:403` y `:427`,
-`ClientsScreen:2300`, `:2335`, `:2377`, `:2903`— todas dentro del Tab navigator,
-que **mantiene montadas** las pestañas ya visitadas. El efecto corre en cada
-instancia:
+> **Revisado sep-2026 y ha empeorado.** El diagnóstico contaba cinco pantallas
+> con `AppHeader`; ahora son seis (`HomeScreen`, `HistoryScreen`, `StatsScreen`,
+> `ProgramScreen`, `ClientsScreen`, `OnboardingScreen`) **y además
+> `OnboardingScreen` tiene su propia copia del efecto**, escrita después. O sea
+> que hay dos duplicaciones distintas: la de las instancias de `AppHeader` y la
+> del efecto repetido a mano. El arreglo de abajo resuelve las dos.
+
+**Por qué falla.** `AppHeader` va montado en pantallas del Tab navigator, que
+**mantiene montadas** las ya visitadas. El efecto corre en cada instancia:
 
 ```js
 useEffect(() => {
@@ -1135,7 +1145,8 @@ explorador. Al cerrar el modal aparece otro debajo, uno por pestaña montada.
 **Arreglo.** El modal es global: sube a `RootNavigator`, donde ya vive `<Toast />`
 por la misma razón. `AppHeader` conserva `handlePickFile` (el modal desde el
 menú, que sí es local a una interacción) y pierde el efecto de
-`pendingExternalImport`.
+`pendingExternalImport`. **`OnboardingScreen` pierde su copia entera**: con el
+modal global no hay nada que duplicar.
 
 ```jsx
 // src/navigation/RootNavigator.jsx
@@ -1433,11 +1444,31 @@ encarece el cambio.
 
 ## 16. `st.days.forEach` sin guard en cuatro sitios 🟡 {#16}
 
-**Dónde.** `store/useStore.js:345` (`archiveProgram`), `:501` (`deleteClient`),
-`:2371` (`exportProgramWithLog`), `:2438` (`_buildProgramJson`).
+**Dónde (sep-2026).** `src/screens/HistoryScreen.jsx:381` y
+`store/useStore.js:1241` (`removeSessionFromProgram`).
+
+> **Reescrito sep-2026: el fallo no se resolvió, se mudó.** Los cuatro sitios
+> que nombraba el diagnóstico —`archiveProgram`, `deleteClient`,
+> `exportProgramWithLog`, `_buildProgramJson`— **están limpios**: los dos
+> primeros usan ya `programTemplateIds(program)`, que es exactamente el arreglo
+> propuesto aquí abajo, y los otros dos ni siquiera recorren días.
+>
+> Pero el patrón reapareció en dos sitios escritos después, y el helper correcto
+> sigue ahí sin que nadie lo llame en ellos:
+>
+> ```js
+> // HistoryScreen.jsx:381 — etapas del programa activo
+> if (selectedStageIds.has(st.id ?? idx)) st.days.forEach((d) => ids.add(d.sessionTemplateId));
+> // useStore.js:1241 — removeSessionFromProgram
+> days: st.days.filter((d) => d.sessionTemplateId !== templateId),
+> ```
+>
+> Es la lección de arreglar donde convergen los llamantes en vez de donde
+> apunta el dedo: se corrigieron los cuatro señalados y el patrón volvió por
+> otro lado en cuanto se escribió código nuevo.
 
 **Por qué falla.** El resto del proyecto usa `(st.days ?? [])` —
-`src/utils/clientLogs.js:17`, `src/utils/exerciseLinks.js` — pero estos cuatro
+`src/utils/clientLogs.js:15` lo hace dentro de `programTemplateIds`— pero estos
 acceden directo:
 
 ```js
@@ -1451,8 +1482,11 @@ Una etapa sin `days` produce
 idx, updates)` (`:1302`), que acepta un patch arbitrario, o desde un
 `program_json` generado por una versión distinta de la app.
 
-**Arreglo.** Reutilizar el helper que ya existe y hace lo correcto, en vez de
-repetir el recorrido cuatro veces:
+**Arreglo.** Reutilizar el helper que ya existe y hace lo correcto. Para el caso
+de `HistoryScreen` no vale tal cual —filtra por etapas seleccionadas, no por el
+programa entero— así que ahí basta el `?? []`; en `removeSessionFromProgram`
+también, porque construye etapas nuevas y no las lee. El helper original, para
+referencia:
 
 ```js
 import { programTemplateIds } from '../../src/utils/clientLogs';
