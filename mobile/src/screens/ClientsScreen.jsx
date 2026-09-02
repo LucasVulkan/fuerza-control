@@ -40,6 +40,8 @@ import { computeAdherence, requiresAttention, adherencePct, STATUS } from '../..
 import { progressFromBlob, clientStageIndex } from '../../../src/utils/stageProgress';
 import { sessionLoads, dailySeries } from '../../../src/utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
+import { parseImportFile } from '../utils/importFile';
+import { programsOf, templatesOf } from '../utils/programOwnership';
 import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 import StageSegBar from '../components/ui/StageSegBar';
 
@@ -65,17 +67,6 @@ function adherenceColor(th, status) {
   if (status === STATUS.SLIPPING) return th.colors.orange;
   if (status === STATUS.ON_TRACK) return th.colors.green;
   return th.colors.muted; // no_data / muted
-}
-
-function parseImportFile(jsonString) {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.version) return { ok: false, error: 'El archivo no tiene campo "version".' };
-    if (!['1', '2'].includes(String(parsed.version))) return { ok: false, error: `Versión ${parsed.version} no compatible.` };
-    return { ok: true, data: parsed };
-  } catch {
-    return { ok: false, error: 'El archivo no es un JSON válido.' };
-  }
 }
 
 // ── Shared small components ────────────────────────────────────────────────────
@@ -1807,12 +1798,7 @@ export default function ClientsScreen() {
     [exerciseLibrary, customExercises],
   );
 
-  const templatePrograms = useMemo(
-    () => Object.values(programs ?? {})
-      .filter((p) => p.mode === 'template')
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [programs]
-  );
+  const templatePrograms = useMemo(() => templatesOf(programs), [programs]);
 
   const clientCounts = useMemo(() => {
     const all      = Object.values(clients ?? {});
@@ -2008,13 +1994,12 @@ export default function ClientsScreen() {
 
   const selectedClient = selectedClientId ? clients?.[selectedClientId] : null;
 
-  const clientPrograms = useMemo(() => {
-    if (!selectedClient) return [];
-    return (selectedClient.programIds ?? [])
-      .map((id) => programs[id])
-      .filter(Boolean)
-      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  }, [selectedClient, programs]);
+  // Derivada, no guardada: no puede contener ids muertos porque no contiene
+  // ids. De ahí que se fuera el `filter(Boolean)` que había aquí.
+  const clientPrograms = useMemo(
+    () => (selectedClientId ? programsOf(programs, selectedClientId) : []),
+    [selectedClientId, programs],
+  );
 
   const allClientTemplateIds = useMemo(() => {
     return new Set(clientPrograms.flatMap((p) => getAllProgramDays(p).map((d) => d.sessionTemplateId)));
@@ -2254,8 +2239,7 @@ export default function ClientsScreen() {
     const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? t('clients.programFallback');
     confirmReplaceActive(() => {
       const newId = cloneProgramFromTemplate(templateId, {
-        mode: 'managed',
-        clientId: selectedClientId,
+        owner: selectedClientId,
         name: customName.trim() || srcName,
       });
       if (newId) setClientActiveProgram(selectedClientId, newId);
@@ -2273,7 +2257,7 @@ export default function ClientsScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const parsed = parseImportFile(raw);
-      if (!parsed.ok) { Alert.alert('Archivo no válido', parsed.error); return; }
+      if (!parsed.ok) { Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {

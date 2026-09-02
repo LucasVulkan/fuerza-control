@@ -27,7 +27,7 @@ export const BACKUP_STORAGE_KEY = 'fc_tracker_v1';
  */
 export function buildBackupPayload(state = {}) {
   return {
-    version:    '2',
+    version:    '3',
     exportType: 'full',
     exportDate: new Date().toISOString().split('T')[0],
     appName:    'Forma Fit',

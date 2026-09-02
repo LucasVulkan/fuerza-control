@@ -139,7 +139,7 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, on
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
   const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
-  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => p.mode === 'template');
+  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
 
   return (
     <>
@@ -253,7 +253,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   const hasLogData   = (parsedData?.workoutLog ?? []).length > 0;
   const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
   const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
-  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => p.mode === 'template');
+  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
 
   const [sections, setSections] = useState({
     program:         hasPrograms,

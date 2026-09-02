@@ -39,6 +39,7 @@ import { ArrowIcon } from '../components/ui/EditorIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
 import { spacing, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+import { templatesOf } from '../utils/programOwnership';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -356,12 +357,7 @@ export default function ProgramScreen() {
   const shareSpecificProgram     = useStore((s) => s.shareSpecificProgram);
   const showToast                = useStore((s) => s.showToast);
 
-  const templateList = useMemo(
-    () => Object.values(programs ?? {})
-      .filter((p) => p.mode === 'template')
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [programs]
-  );
+  const templateList = useMemo(() => templatesOf(programs), [programs]);
 
   function handleCreate(name, numSessions, durationWeeks) {
     const newId = createEmptyProgram(numSessions, name, 'template', durationWeeks);
@@ -372,18 +368,18 @@ export default function ProgramScreen() {
   function handleDuplicate(programId) {
     const src = programs[programId];
     if (!src) return;
-    cloneProgramFromTemplate(programId, { mode: 'template', name: src.name + t('templates.copyNameSuffix') });
+    cloneProgramFromTemplate(programId, { kind: 'template', name: src.name + t('templates.copyNameSuffix') });
     showToast(t('templates.toastDuplicated'), 2200, 'success');
   }
 
   function handleAssignToClient(clientId, programName) {
     if (!assignTarget) return;
     const newId = cloneProgramFromTemplate(assignTarget, {
-      mode: 'managed', clientId, name: programName,
+      owner: clientId, name: programName,
     });
     if (newId) {
-      // Asignar reemplaza el programa activo del cliente; el anterior se archiva
-      // solo (sigue en programIds pero pierde el activo).
+      // Asignar reemplaza el programa activo del cliente; el anterior sigue
+      // siendo suyo (su `owner` no cambia), sólo pierde el activo.
       setClientActiveProgram(clientId, newId);
       setEditingProgram(newId);
       showToast(t('templates.toastAssigned'), 2200, 'success');

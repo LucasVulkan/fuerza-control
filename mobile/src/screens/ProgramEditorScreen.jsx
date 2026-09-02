@@ -8,6 +8,7 @@ import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { ownerClient } from '../utils/programOwnership';
 import { spacing, textStyles, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
@@ -281,7 +282,7 @@ export default function ProgramEditorScreen({ navigation }) {
   // él activó; el cliente puede haber avanzado por su cuenta. En el del cliente
   // no hay ficha de cliente que consultar y se cae a la del programa, que ahí sí
   // es la suya.
-  const editedClient        = activeProgram.clientId ? clients?.[activeProgram.clientId] : null;
+  const editedClient        = ownerClient(clients, activeProgram);
   const activeStageIdx      = clientStageIndex(editedClient, activeProgram);
   const isStageActive       = selectedStageIdx === activeStageIdx;
   const selectedStageLocked = isStageLocked(activeProgram, selectedStageIdx, clientSync);

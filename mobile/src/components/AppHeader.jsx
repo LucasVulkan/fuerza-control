@@ -16,6 +16,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
+import { parseImportFile } from '../utils/importFile';
+import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
 import TrainerSyncModal      from './TrainerSyncModal';
@@ -50,19 +52,6 @@ function formatClock(date, lang) {
     return `${h12}:${m} ${ampm} · ${WDAYS_EN[dow]} ${MONTHS_EN[mo]} ${d}`;
   }
   return `${String(h).padStart(2, '0')}:${m} · ${WDAYS_ES[dow]} ${d} ${MONTHS_ES[mo]}`;
-}
-
-// ── Parse import file ──────────────────────────────────────────────────────────
-
-function parseImportFile(jsonString) {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.version) return { ok: false, error: 'El archivo no tiene campo "version".' };
-    if (!['1', '2'].includes(String(parsed.version))) return { ok: false, error: `Versión ${parsed.version} no compatible.` };
-    return { ok: true, data: parsed };
-  } catch {
-    return { ok: false, error: 'El archivo no es un JSON válido.' };
-  }
 }
 
 // ── FIT logo (SVG paths) ───────────────────────────────────────────────────────
@@ -221,9 +210,11 @@ function ArchivedProgramsModal({ onClose }) {
   const restoreProgram = useStore((s) => s.restoreProgram);
   const showToast      = useStore((s) => s.showToast);
 
+  // `programsOf` excluye las plantillas: sin eso, una plantilla archivada
+  // pasaría por `restoreProgram` y se convertiría en el programa activo.
   const archivedList = useMemo(
-    () => Object.values(programs ?? {})
-      .filter((p) => p.status === 'archived' && p.mode !== 'managed')
+    () => programsOf(programs, 'me')
+      .filter((p) => p.status === 'archived')
       .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '')),
     [programs],
   );
@@ -333,8 +324,8 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const clientSync  = useStore((s) => s.clientSync);
   const trainerSync = useStore((s) => s.trainerSync);
   const driveBackup = useStore((s) => s.driveBackup);
-  const archivedCount = useStore((s) => Object.values(s.programs ?? {})
-    .filter((p) => p.status === 'archived' && p.mode !== 'managed').length);
+  const archivedCount = useStore((s) => programsOf(s.programs, 'me')
+    .filter((p) => p.status === 'archived').length);
 
   const lang          = profile.language      ?? 'es';
   const unit          = profile.weightUnit    ?? 'kg';
@@ -591,7 +582,7 @@ export default function AppHeader() {
     clearPendingExternalImport();                         // consume immediately
     const parsed = parseImportFile(rawContent);
     if (!parsed.ok) {
-      Alert.alert('Archivo no válido', parsed.error);
+      Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
       return;
     }
     setImportState({ fileName, parsedData: parsed.data });
@@ -611,7 +602,7 @@ export default function AppHeader() {
       });
       const parsed = parseImportFile(raw);
       if (!parsed.ok) {
-        Alert.alert('Archivo no válido', parsed.error);
+        Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
         return;
       }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });

@@ -20,6 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { ownerClient } from '../utils/programOwnership';
 import { spacing, textStyles, borders } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
@@ -402,7 +403,7 @@ export default function ProgramDetailScreen() {
   ), [stages, t]);
 
   // Autoría: el cliente ve de quién es el programa; el entrenador, para quién es.
-  const client   = program?.clientId ? clients?.[program.clientId] : null;
+  const client   = ownerClient(clients, program);
   const byline   = client
     ? t('programView.forClient', { name: client.name })
     : clientSync?.trainerName

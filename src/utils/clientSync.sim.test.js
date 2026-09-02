@@ -24,7 +24,7 @@ import {
   programTemplateIds,
   splitClientLogEntries,
 } from './clientLogs';
-import { assignActiveProgram, archivedProgramIds } from './clientPrograms';
+import { assignActiveProgram } from '../../mobile/src/utils/programOwnership';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -141,7 +141,7 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     state,
     addClient(clientId, name) {
       const { slotId, clientCode } = db.createClientSlot(userId, name);
-      state.clients[clientId] = { id: clientId, name, slotId, programIds: [] };
+      state.clients[clientId] = { id: clientId, name, slotId };
       return clientCode;
     },
     pushProgram(clientId, file) {
@@ -153,6 +153,9 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     // Asigna un programa (modelo de un único activo): lo activa, archiva el
     // anterior y lo sube al slot. Usa la util real assignActiveProgram.
     assignProgram(clientId, file) {
+      // El dueño se estampa al adoptar el archivo, como hacen el store y
+      // `importForClient`: el fichero siempre viaja diciendo `owner: 'me'`.
+      file.program.owner = clientId;
       state.programs[file.program.id] = file;
       state.clients[clientId] = assignActiveProgram(state.clients[clientId], file.program.id);
       this.pushProgram(clientId, file);
@@ -163,6 +166,7 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     // 'merge_log' solo añade sesiones sin tocar el programa.
     importProgram(clientId, file, mode) {
       if (mode === 'replace' || mode === 'replace_log') {
+        file.program.owner = clientId;
         state.programs[file.program.id] = file;
         state.clients[clientId] = assignActiveProgram(state.clients[clientId], file.program.id);
         if (mode === 'replace_log' && file.workoutLog?.length) {
@@ -171,6 +175,14 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
       } else if (mode === 'merge_log') {
         state.clientLogs[clientId] = mergeClientLog(state.clientLogs[clientId] ?? [], file.workoutLog ?? []);
       }
+    },
+    // Los "anteriores" de un cliente: derivados de `owner`, ya no de una lista
+    // guardada. No pueden contener ids muertos porque no contienen ids.
+    archivedFor(clientId) {
+      return Object.values(state.programs)
+        .map((f) => f.program)
+        .filter((p) => p.owner === clientId && p.id !== state.clients[clientId].activeProgramId)
+        .map((p) => p.id);
     },
     // Descarga el historial del cliente y lo fusiona en SU log separado —
     // nunca en el workoutLog personal del entrenador. Append-only por id.
@@ -498,11 +510,12 @@ describe('programa compartido entre dos clientes (lado entrenador)', () => {
     const fileForA = programFile('prog_shared', ['tpl1', 'tpl2']);
 
     // El entrenador ya tiene prog_shared asignado al cliente A.
-    const onTrainer = { prog_shared: { id: 'prog_shared', mode: 'managed', clientId: 'A' } };
+    const onTrainer = { prog_shared: { id: 'prog_shared', owner: 'A', kind: 'program' } };
 
-    // Al asignar el MISMO archivo a B, la regla del store detecta colisión.
+    // Al asignar el MISMO archivo a B, la regla del store detecta colisión:
+    // un campo, no dos que tienen que estar de acuerdo.
     const existing = onTrainer[fileForA.program.id];
-    const collides = existing && !(existing.mode === 'managed' && existing.clientId === 'B');
+    const collides = existing && existing.owner !== 'B';
     expect(collides).toBe(true);
 
     const fileForB = reidProgramFile(fileForA);
@@ -518,12 +531,8 @@ describe('programa compartido entre dos clientes (lado entrenador)', () => {
     const fileB = reidProgramFile(programFile('prog_b', ['tplA1', 'tplA2'])); // mismas plantillas → re-ID
 
     const programs = {
-      prog_a:               fileA.program,
-      [fileB.program.id]:   fileB.program,
-    };
-    const clients = {
-      A: { id: 'A', programIds: ['prog_a'] },
-      B: { id: 'B', programIds: [fileB.program.id] },
+      prog_a:             { ...fileA.program, owner: 'A' },
+      [fileB.program.id]: { ...fileB.program, owner: 'B' },
     };
 
     const [bTpl1] = [...programTemplateIds(fileB.program)];
@@ -532,7 +541,7 @@ describe('programa compartido entre dos clientes (lado entrenador)', () => {
       session('b1', bTpl1,   2),    // de B (plantilla re-ID'd)
     ];
 
-    const { clientEntries } = splitClientLogEntries(mixedLog, clients, programs);
+    const { clientEntries } = splitClientLogEntries(mixedLog, programs);
     expect(clientEntries.A.map((e) => e.id)).toEqual(['a1']);
     expect(clientEntries.B.map((e) => e.id)).toEqual(['b1']);
   });
@@ -550,8 +559,9 @@ describe('Fase 2 — reasignación de programa (un único activo)', () => {
     trainer.assignProgram('ana', programFile('prog_v2', ['tplC', 'tplD']));
     const ana = trainer.state.clients.ana;
     expect(ana.activeProgramId).toBe('prog_v2');
-    expect(archivedProgramIds(ana)).toEqual(['prog_v1']);                 // el anterior, archivado
-    expect(new Set(ana.programIds)).toEqual(new Set(['prog_v1', 'prog_v2'])); // nada perdido
+    expect(trainer.archivedFor('ana')).toEqual(['prog_v1']);   // el anterior, archivado
+    expect(Object.keys(trainer.state.programs))                // nada perdido
+      .toEqual(['prog_v1', 'prog_v2']);
   });
 
   test('el cliente recibe el cambio de programa y conserva su historial', () => {
@@ -600,7 +610,7 @@ describe('Fase 2 — importar programa (replace / replace_log / merge_log)', () 
     trainer.importProgram('ana', programFile('prog_v2', ['tplC', 'tplD']), 'replace');
     const ana = trainer.state.clients.ana;
     expect(ana.activeProgramId).toBe('prog_v2');
-    expect(archivedProgramIds(ana)).toEqual(['prog_v1']);
+    expect(trainer.archivedFor('ana')).toEqual(['prog_v1']);
     expect(trainer.state.clientLogs.ana.map((e) => e.id)).toEqual(['h1']); // historial intacto
   });
 

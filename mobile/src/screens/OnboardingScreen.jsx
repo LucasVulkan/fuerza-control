@@ -52,6 +52,8 @@ import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
 import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
+import { parseImportFile } from '../utils/importFile';
+import { templatesOf } from '../utils/programOwnership';
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
@@ -86,19 +88,6 @@ const totalWeeksOf = (phases) => (phases ?? []).reduce((n, p) => n + (p.duration
 const totalSetsOf  = (exercisesLists) => exercisesLists.reduce(
   (n, exercises) => n + (exercises ?? []).reduce((m, ex) => m + (ex.sets ?? 0), 0), 0,
 );
-
-// ─── Import helper ────────────────────────────────────────────────────────────
-
-function parseImportFile(jsonString) {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.version) return { ok: false, error: 'El archivo no tiene campo "version".' };
-    if (!['1', '2'].includes(String(parsed.version))) return { ok: false, error: `Versión ${parsed.version} no compatible.` };
-    return { ok: true, data: parsed };
-  } catch {
-    return { ok: false, error: 'El archivo no es un JSON válido.' };
-  }
-}
 
 // ─── Brand tag two-tone ───────────────────────────────────────────────────────
 
@@ -453,12 +442,7 @@ export default function OnboardingScreen() {
   const clientSync                 = useStore((s) => s.clientSync);
   const unlinkFromTrainer          = useStore((s) => s.unlinkFromTrainer);
 
-  const templateList = useMemo(
-    () => Object.values(programs ?? {})
-      .filter((p) => p.mode === 'template')
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [programs],
-  );
+  const templateList = useMemo(() => templatesOf(programs), [programs]);
 
   const [mode,               setMode]              = useState(null);
   const [showClientCode,     setShowClientCode]     = useState(false);
@@ -478,7 +462,7 @@ export default function OnboardingScreen() {
     const { rawContent, fileName } = pendingExternalImport;
     clearPendingExternalImport();
     const parsed = parseImportFile(rawContent);
-    if (!parsed.ok) { Alert.alert('Archivo no válido', parsed.error); return; }
+    if (!parsed.ok) { Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
     setImportState({ fileName, parsedData: parsed.data });
   }, [pendingExternalImport]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -657,7 +641,7 @@ export default function OnboardingScreen() {
       });
       const parsed = parseImportFile(raw);
       if (!parsed.ok) {
-        Alert.alert(t('common.error', 'Error'), parsed.error);
+        Alert.alert(t('common.error', 'Error'), t(parsed.errorKey, parsed.errorParams));
         return;
       }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });

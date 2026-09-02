@@ -112,8 +112,8 @@ describe('importData — fallo 2', () => {
   it('no convierte el programa del cliente en programa personal del entrenador', () => {
     useStore.getState().importData(fullBackup(), allSections, { silent: true });
 
-    expect(useStore.getState().programs[managedId].mode).toBe('managed');
-    expect(useStore.getState().programs[managedId].clientId).toBe(clientId);
+    expect(useStore.getState().programs[managedId].owner).toBe(clientId);
+    expect(useStore.getState().programs[managedId].kind).toBe('program');
   });
 
   it('sin la sección de clientes no arrastra sus programas', () => {
@@ -128,10 +128,10 @@ describe('importData — fallo 10, reemplazar plantillas', () => {
   /** Tres plantillas propias, más un programa personal que no debe moverse. */
   const estadoLocal = () => ({
     programs: {
-      tpl_mia_1: { id: 'tpl_mia_1', name: 'Mía 1', mode: 'template', days: [] },
-      tpl_mia_2: { id: 'tpl_mia_2', name: 'Mía 2', mode: 'template', days: [] },
-      tpl_mia_3: { id: 'tpl_mia_3', name: 'Mía 3', mode: 'template', days: [] },
-      prog_mio:  { id: 'prog_mio',  name: 'Mi programa', mode: 'personal', days: [] },
+      tpl_mia_1: { id: 'tpl_mia_1', name: 'Mía 1', owner: 'me', kind: 'template', days: [] },
+      tpl_mia_2: { id: 'tpl_mia_2', name: 'Mía 2', owner: 'me', kind: 'template', days: [] },
+      tpl_mia_3: { id: 'tpl_mia_3', name: 'Mía 3', owner: 'me', kind: 'template', days: [] },
+      prog_mio:  { id: 'prog_mio',  name: 'Mi programa', owner: 'me', kind: 'program', days: [] },
     },
     clients: {}, clientLogs: {}, workoutLog: [],
   });
@@ -148,7 +148,7 @@ describe('importData — fallo 10, reemplazar plantillas', () => {
     },
   });
 
-  const plantillas = () => Object.values(useStore.getState().programs).filter((p) => p.mode === 'template');
+  const plantillas = () => Object.values(useStore.getState().programs).filter((p) => p.kind === 'template');
 
   beforeEach(() => { useStore.setState(estadoLocal()); });
 
@@ -368,5 +368,322 @@ describe('isPro — fallo 9', () => {
 
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
     expect(await useStore.getState().checkProStatus()).toBe(false);
+  });
+});
+
+/**
+ * Modelo de programas — `owner` + `kind` (`docs/specs/program-model.md` §3).
+ *
+ * Cubre lo que el modelo viejo no podía enunciar: un solo dueño, la lista del
+ * cliente derivada, un solo camino de borrado, y la identidad al importar.
+ */
+describe('program-model — owner/kind', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, userPrograms: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  // §3.1 bis: el filtro pasa de negativo (`mode !== 'template'`) a positivo
+  // (`owner === 'me'`), así que un programa sin dueño no aparece en ninguna
+  // pantalla — sin error y sin aviso.
+  it('todo camino de creación deja un dueño', () => {
+    const st    = useStore.getState();
+    const mio   = st.createEmptyProgram(2, 'Mío');
+    const tpl   = st.createEmptyProgram(2, 'Plantilla', 'template');
+    const ajeno = st.createProgramForClient('cli_1', 2, 'Del cliente');
+    const clon  = st.cloneProgramFromTemplate(tpl, { owner: 'cli_1' });
+
+    const { programs } = useStore.getState();
+    [mio, tpl, ajeno, clon].forEach((id) => expect(programs[id].owner).toBeDefined());
+    expect(programs[mio].owner).toBe('me');
+    expect(programs[tpl].kind).toBe('template');
+    expect(programs[ajeno].owner).toBe('cli_1');
+    expect(programs[clon].owner).toBe('cli_1');
+    expect(programs[clon].kind).toBe('program');   // una plantilla clonada a un cliente es un programa
+  });
+
+  it('la plantilla no se convierte en mi programa activo; el programa sí', () => {
+    const tpl = useStore.getState().createEmptyProgram(2, 'Plantilla', 'template');
+    expect(useStore.getState().profile.activeProgramId).toBeNull();
+
+    const mio = useStore.getState().createEmptyProgram(2, 'Mío');
+    expect(useStore.getState().profile.activeProgramId).toBe(mio);
+    expect(mio).not.toBe(tpl);
+  });
+
+  // La fuga del §1.4: `deleteProgram` borraba el programa y dejaba sus `tpl_*`
+  // dentro para siempre, en el estado persistido y en cada `.fitdata`.
+  it('borrar un programa de cliente no deja sesiones huérfanas ni el activo colgando', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+    const pid = useStore.getState().createProgramForClient('cli_1', 3, 'Fuerza');
+    useStore.getState().setClientActiveProgram('cli_1', pid);
+    expect(Object.keys(useStore.getState().sessionTemplates)).toHaveLength(3);
+
+    useStore.getState().deleteProgram(pid);
+
+    const s = useStore.getState();
+    expect(s.programs[pid]).toBeUndefined();
+    expect(Object.keys(s.sessionTemplates)).toEqual([]);
+    expect(s.clients.cli_1.activeProgramId).toBeNull();   // invariante 4
+  });
+
+  // Y las purgas componen: dos programas, dos purgas encadenadas.
+  it('borrar un cliente se lleva sus programas y todas sus sesiones', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+    const p1 = useStore.getState().createProgramForClient('cli_1', 2, 'A');
+    const p2 = useStore.getState().createProgramForClient('cli_1', 2, 'B');
+    expect(Object.keys(useStore.getState().sessionTemplates)).toHaveLength(4);
+
+    useStore.getState().deleteClient('cli_1');
+
+    const s = useStore.getState();
+    expect(s.programs[p1]).toBeUndefined();
+    expect(s.programs[p2]).toBeUndefined();
+    expect(Object.keys(s.sessionTemplates)).toEqual([]);
+    expect(s.clients.cli_1).toBeUndefined();
+  });
+
+  // §3.4 bis, regla 1.
+  it('importar como propio el programa de un cliente hace una COPIA; el cliente conserva el suyo', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+    const pid = useStore.getState().createProgramForClient('cli_1', 2, 'Fuerza');
+    useStore.getState().setClientActiveProgram('cli_1', pid);
+
+    const file = JSON.parse(useStore.getState()._buildProgramJson(pid, false).json);
+    expect(file.version).toBe('3');
+    expect(file.program.owner).toBe('me');          // el fichero no delata al cliente
+    expect(file.program.clientId).toBeUndefined();
+
+    useStore.getState().importData(file, { program: true }, { silent: true });
+
+    const s = useStore.getState();
+    expect(s.programs[pid].owner).toBe('cli_1');           // intacto
+    expect(s.clients.cli_1.activeProgramId).toBe(pid);     // su activo, en pie
+    expect(Object.keys(s.programs)).toHaveLength(2);       // y ahora hay una copia
+    expect(s.profile.activeProgramId).not.toBe(pid);
+  });
+
+  // §3.4 bis, regla 1, la otra mitad: sin nada con que chocar no hay re-ID, y
+  // ése es el caso del móvil nuevo.
+  it('restaurar en un store vacío conserva los ids y el historial enganchado', () => {
+    const file = {
+      version: '3', exportType: 'program_with_log',
+      program: {
+        id: 'prog_x', name: 'Mío', owner: 'me', kind: 'program', status: 'active',
+        currentStageIndex: 0,
+        stages: [{ id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_x', label: 'A' }] }],
+      },
+      sessionTemplates: { tpl_x: { id: 'tpl_x', programId: 'prog_x', exercises: [] } },
+      userPrograms: {}, customExercises: {},
+      workoutLog: [{ id: 'e1', sessionTemplateId: 'tpl_x', timestamp: 1 }],
+    };
+
+    useStore.getState().importData(file, { program: true, log: true }, { silent: true });
+
+    const s = useStore.getState();
+    expect(s.programs.prog_x).toBeDefined();
+    expect(s.sessionTemplates.tpl_x).toBeDefined();
+    expect(s.workoutLog.map((e) => e.sessionTemplateId)).toEqual(['tpl_x']);
+  });
+
+  // §3.4 bis, regla 2. El caso del cliente que recibe su programa por WhatsApp:
+  // sobrescribir en el sitio le traía los contadores del entrenador, a cero.
+  describe('la posición es del atleta, no del emisor', () => {
+    const stages = [
+      { id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_x', label: 'A' }] },
+      { id: 'st_2', name: 'Pico', days: [{ sessionTemplateId: 'tpl_x', label: 'A' }] },
+    ];
+    const local = {
+      id: 'prog_x', name: 'Mío', owner: 'me', kind: 'program', status: 'active', stages,
+      currentStageIndex: 1, cycleCompletedIds: ['tpl_x'], stageWeeksCompleted: 3,
+      totalWeeksCompleted: 9, stageActivatedAt: '2026-08-01',
+    };
+    const incoming = (stageActivatedAt) => ({
+      version: '3', exportType: 'program',
+      program: {
+        id: 'prog_x', name: 'Mío v2', owner: 'me', kind: 'program', status: 'active', stages,
+        currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 0,
+        totalWeeksCompleted: 0, stageActivatedAt,
+      },
+      sessionTemplates: {}, userPrograms: {},
+    });
+
+    it('el programa se actualiza y el ciclo se queda donde estaba', () => {
+      useStore.setState({ programs: { prog_x: local } });
+
+      useStore.getState().importData(incoming('2026-08-01'), { program: true }, { silent: true });
+
+      const p = useStore.getState().programs.prog_x;
+      expect(p.name).toBe('Mío v2');
+      expect(p.currentStageIndex).toBe(1);
+      expect(p.stageWeeksCompleted).toBe(3);
+      expect(p.cycleCompletedIds).toEqual(['tpl_x']);
+      expect(p.totalWeeksCompleted).toBe(9);
+    });
+
+    it('salvo que el entrenador active otra etapa: entonces manda él y empieza de cero', () => {
+      useStore.setState({ programs: { prog_x: local } });
+
+      useStore.getState().importData(incoming('2026-09-02'), { program: true }, { silent: true });
+
+      const p = useStore.getState().programs.prog_x;
+      expect(p.currentStageIndex).toBe(0);
+      expect(p.stageWeeksCompleted).toBe(0);
+      expect(p.cycleCompletedIds).toEqual([]);
+      expect(p.totalWeeksCompleted).toBe(9);   // acumulado de por vida, nunca se reinicia
+    });
+  });
+
+  // El historial de un programa vive en el cajón de su dueño. `_buildProgramJson`
+  // miraba sólo `workoutLog`, así que salía siempre vacío para un cliente.
+  it('exportar el programa de un cliente con historial trae SU historial', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Fuerza');
+    const [tplId] = Object.keys(useStore.getState().sessionTemplates);
+    useStore.setState({
+      clientLogs: { cli_1: [{ id: 'c1', sessionTemplateId: tplId, timestamp: 1 }] },
+      workoutLog: [{ id: 'mia', sessionTemplateId: tplId, timestamp: 2 }],
+    });
+
+    const file = JSON.parse(useStore.getState()._buildProgramJson(pid, true).json);
+
+    expect(file.workoutLog.map((e) => e.id)).toEqual(['c1']);
+  });
+
+  // La migración del estado persistido (§3.1), con `programIds` como autoridad
+  // de reserva para los `managed` sin `clientId` que llegó a haber.
+  it('la migración atribuye por clientId, por programIds y, si no, a mí', () => {
+    const state = {
+      profile:  { activeProgramId: null, secondaryProgramIds: ['x'] },
+      programs: {
+        con_id:    { id: 'con_id',    mode: 'managed', clientId: 'cli_1' },
+        sin_id:    { id: 'sin_id',    mode: 'managed' },
+        plantilla: { id: 'plantilla', mode: 'template' },
+        mio:       { id: 'mio',       mode: 'personal' },
+      },
+      clients:    { cli_1: { id: 'cli_1', programIds: ['con_id', 'sin_id'] } },
+      workoutLog: [],
+    };
+
+    rehydrateCallback()(state, undefined);
+
+    expect(state.programs.con_id.owner).toBe('cli_1');
+    expect(state.programs.sin_id.owner).toBe('cli_1');     // por la lista de su cliente
+    expect(state.programs.plantilla.owner).toBe('me');
+    expect(state.programs.plantilla.kind).toBe('template');
+    expect(state.programs.mio.owner).toBe('me');
+    expect(state.programs.mio.kind).toBe('program');
+    expect(state.programs.mio.mode).toBeUndefined();
+    expect(state.clients.cli_1.programIds).toBeUndefined();
+    expect(state.profile.secondaryProgramIds).toBeUndefined();
+  });
+
+  it('la migración es idempotente', () => {
+    const state = {
+      profile:    { activeProgramId: null },
+      programs:   { p: { id: 'p', owner: 'cli_1', kind: 'program' } },
+      clients:    { cli_1: { id: 'cli_1' } },
+      workoutLog: [],
+    };
+
+    rehydrateCallback()(state, undefined);
+    rehydrateCallback()(state, undefined);
+
+    expect(state.programs.p.owner).toBe('cli_1');
+  });
+});
+
+/**
+ * Compatibilidad con los ficheros que YA existen (v1/v2).
+ *
+ * El exportador viejo escribía `mode: 'personal'` en cada programa suelto pero
+ * se dejaba el `clientId` dentro. Leer el dueño del `clientId` haría que el
+ * `.fitdata` que un entrenador ya mandó a su cliente entrase como programa de
+ * un cliente que en ese móvil no existe: invisible, y sin un error.
+ */
+describe('program-model — ficheros v1/v2', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, userPrograms: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  const v2File = (extra = {}) => ({
+    version: '2', exportType: 'program',
+    program: {
+      id: 'prog_v2', name: 'Del entrenador', mode: 'personal', clientId: 'cli_del_entrenador',
+      days: [{ sessionTemplateId: 'tpl_v2', label: 'A' }],
+      ...extra,
+    },
+    sessionTemplates: { tpl_v2: { id: 'tpl_v2', programId: 'prog_v2', exercises: [] } },
+    userPrograms: {},
+  });
+
+  it('el programa que un entrenador mandó con la app vieja entra como mío', () => {
+    useStore.getState().importData(v2File(), { program: true }, { silent: true });
+
+    const p = useStore.getState().programs.prog_v2;
+    expect(p).toBeDefined();
+    expect(p.owner).toBe('me');
+    expect(p.kind).toBe('program');
+    expect(p.clientId).toBeUndefined();
+    expect(p.stages).toHaveLength(1);            // `ensureStages` por el camino
+    expect(useStore.getState().profile.activeProgramId).toBe('prog_v2');
+  });
+
+  it('en un backup v2, el programa de un cliente sigue siendo suyo', () => {
+    const backup = {
+      version: '2', exportType: 'full',
+      profile: { activeProgramId: null },
+      workoutLog: [], clientLogs: {}, userPrograms: {}, sessionTemplates: {}, customExercises: {},
+      clients: { cli_1: { id: 'cli_1', name: 'Ana', programIds: ['prog_c'], activeProgramId: 'prog_c' } },
+      programs: {
+        prog_c: { id: 'prog_c', name: 'Suyo', mode: 'managed', clientId: 'cli_1', days: [] },
+        tpl_x:  { id: 'tpl_x',  name: 'Plantilla', mode: 'template', days: [] },
+      },
+    };
+
+    useStore.getState().importData(
+      backup, { program: true, clients: true, templates: true }, { silent: true },
+    );
+
+    const s = useStore.getState();
+    expect(s.programs.prog_c.owner).toBe('cli_1');
+    expect(s.programs.tpl_x.kind).toBe('template');
+    expect(s.programs.tpl_x.owner).toBe('me');
+    expect(s.clients.cli_1.programIds).toBeUndefined();   // la lista ya no significa nada
+    expect(s.clients.cli_1.activeProgramId).toBe('prog_c');
+  });
+
+  // La otra puerta de entrada: el entrenador importando el fichero de su cliente.
+  it('importar el fichero de un cliente le pone dueño y etapas', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
+
+    useStore.getState().importForClient('cli_1', v2File(), 'replace');
+
+    const p = useStore.getState().programs.prog_v2;
+    expect(p.owner).toBe('cli_1');
+    expect(p.kind).toBe('program');
+    expect(p.stages).toHaveLength(1);
+    expect(useStore.getState().clients.cli_1.activeProgramId).toBe('prog_v2');
+  });
+
+  it('y si ese id ya es de OTRO cliente, se re-IDifica en vez de compartirse', () => {
+    useStore.setState({
+      clients: { cli_1: { id: 'cli_1', name: 'Ana' }, cli_2: { id: 'cli_2', name: 'Luis' } },
+      programs: { prog_v2: { id: 'prog_v2', name: 'De Ana', owner: 'cli_1', kind: 'program', stages: [] } },
+    });
+
+    useStore.getState().importForClient('cli_2', v2File(), 'replace');
+
+    const s = useStore.getState();
+    expect(s.programs.prog_v2.owner).toBe('cli_1');                    // el de Ana, intacto
+    expect(s.clients.cli_2.activeProgramId).not.toBe('prog_v2');       // Luis tiene el suyo
+    expect(s.programs[s.clients.cli_2.activeProgramId].owner).toBe('cli_2');
   });
 });

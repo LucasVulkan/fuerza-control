@@ -28,6 +28,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { ownerClient } from '../utils/programOwnership';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
@@ -158,7 +159,7 @@ export default function StagePlannerScreen({ navigation, route }) {
 
   const baseIdx    = baseStageIdx(stages);
   const baseStage  = stages[baseIdx];
-  const activeIdx  = clientStageIndex(clients?.[program.clientId], program);
+  const activeIdx  = clientStageIndex(ownerClient(clients, program), program);
   const perCycle   = baseStage?.days?.length ?? 0;
 
   // Una etapa sin límite hace el total indeterminado: se suman las que sí lo

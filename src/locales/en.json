@@ -1337,7 +1337,11 @@
   },
   "months": ["January","February","March","April","May","June","July","August","September","October","November","December"],
   "errors": {
-    "cannotReadFile": "Could not read the file"
+    "cannotReadFile": "Could not read the file",
+    "invalidFile": "Invalid file",
+    "importNoVersion": "The file has no \"version\" field.",
+    "importBadVersion": "Version {{version}} is not supported.",
+    "importBadJson": "The file is not valid JSON."
   },
   "nextSession": {
     "title": "Next session",

@@ -31,7 +31,7 @@ describe('buildBackupPayload', () => {
       'exportType', 'profile', 'programs', 'sessionTemplates', 'userPrograms',
       'version', 'workoutLog',
     ]);
-    expect(payload.version).toBe('2');
+    expect(payload.version).toBe('3');
     expect(payload.exportType).toBe('full');
     expect(payload.programs).toEqual({ p1: { id: 'p1' } });
     expect(payload.clientLogs).toEqual({ cli_1: [{ id: 's2' }] });

@@ -3,13 +3,9 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile } from './client
 
 describe('splitClientLogEntries', () => {
   const programs = {
-    prog_a:  { id: 'prog_a',  clientId: 'cli_1', days: [{ sessionTemplateId: 'tpl_a1' }, { sessionTemplateId: 'tpl_a2' }] },
-    prog_b:  { id: 'prog_b',  clientId: 'cli_2', stages: [{ days: [{ sessionTemplateId: 'tpl_b1' }] }] },
-    prog_me: { id: 'prog_me', days: [{ sessionTemplateId: 'tpl_me' }] },
-  };
-  const clients = {
-    cli_1: { id: 'cli_1', programIds: ['prog_a'] },
-    cli_2: { id: 'cli_2', programIds: ['prog_b'] },
+    prog_a:  { id: 'prog_a',  owner: 'cli_1', days: [{ sessionTemplateId: 'tpl_a1' }, { sessionTemplateId: 'tpl_a2' }] },
+    prog_b:  { id: 'prog_b',  owner: 'cli_2', stages: [{ days: [{ sessionTemplateId: 'tpl_b1' }] }] },
+    prog_me: { id: 'prog_me', owner: 'me',    days: [{ sessionTemplateId: 'tpl_me' }] },
   };
   const workoutLog = [
     { id: 'e1', sessionTemplateId: 'tpl_a1', timestamp: 100 },
@@ -20,21 +16,23 @@ describe('splitClientLogEntries', () => {
   ];
 
   test('routes each entry to its owning client; rest stays personal', () => {
-    const { personalLog, clientEntries } = splitClientLogEntries(workoutLog, clients, programs);
+    const { personalLog, clientEntries } = splitClientLogEntries(workoutLog, programs);
     expect(personalLog.map((e) => e.id)).toEqual(['e2', 'e5']);
     expect(clientEntries.cli_1.map((e) => e.id)).toEqual(['e1', 'e4']);
     expect(clientEntries.cli_2.map((e) => e.id)).toEqual(['e3']);
   });
 
-  test('shared program: the entry is copied to BOTH owning clients', () => {
-    const shared = { ...clients, cli_3: { id: 'cli_3', programIds: ['prog_a'] } };
-    const { clientEntries } = splitClientLogEntries(workoutLog, shared, programs);
+  // Dos programas distintos que comparten plantillas (datos antiguos: hoy el
+  // re-ID lo impide). La entrada va a los dos dueños, no a uno arbitrario.
+  test('shared templates: the entry is copied to BOTH owning clients', () => {
+    const shared = { ...programs, prog_c: { id: 'prog_c', owner: 'cli_3', days: [{ sessionTemplateId: 'tpl_a1' }, { sessionTemplateId: 'tpl_a2' }] } };
+    const { clientEntries } = splitClientLogEntries(workoutLog, shared);
     expect(clientEntries.cli_1.map((e) => e.id)).toEqual(['e1', 'e4']);
     expect(clientEntries.cli_3.map((e) => e.id)).toEqual(['e1', 'e4']);
   });
 
   test('safe on empty / undefined input', () => {
-    expect(splitClientLogEntries(undefined, undefined, undefined))
+    expect(splitClientLogEntries(undefined, undefined))
       .toEqual({ personalLog: [], clientEntries: {} });
   });
 });

@@ -32,10 +32,9 @@ import {
 
 // Shared data & utilities (resolved by Metro watchFolders)
 import { EXERCISE_LIBRARY } from '../../src/data/exerciseLibrary';
-import { SESSION_TEMPLATES, PROGRAMS } from '../../src/data/programs';
 import { generateId } from '../../src/utils/formatters';
-import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from '../../src/utils/clientLogs';
-import { assignActiveProgram, deassignProgram } from '../../src/utils/clientPrograms';
+import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../../src/utils/clientLogs';
+import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../../src/utils/conditioningBlocks';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage } from '../../src/utils/stageProgress';
@@ -118,10 +117,74 @@ function updateLastSetDrops(setsState, exerciseId, updater) {
   return { ...setsState, [exerciseId]: updated };
 }
 
+/**
+ * Un programa que llega de fuera, en la forma que usa el store.
+ *
+ * Sube v1/v2 (`mode` + `clientId`) al modelo `owner`/`kind` y garantiza etapas.
+ * Hay DOS puertas por las que entran programas ajenos —`importData` e
+ * `importForClient`— y las dos pasan por aquí; la segunda, además, reasigna el
+ * dueño después (spec §3.2).
+ */
+function normalizeIncomingProgram(p) {
+  const staged = ensureStages(p);
+  if (staged.owner) return staged;                  // v3
+  const { mode, clientId, ...rest } = staged;       // v1 / v2
+  return {
+    ...rest,
+    // `mode: 'personal'` es una AFIRMACIÓN del emisor ("esto es tuyo") y gana
+    // sobre el `clientId` que el exportador viejo se dejaba dentro del fichero.
+    // Sin esa precedencia, el `.fitdata` v2 que un entrenador ya mandó a su
+    // cliente entraría como programa de un cliente que en ese móvil no existe:
+    // invisible, y sin un solo error por el camino.
+    owner: mode === 'personal' ? 'me' : (clientId ?? 'me'),
+    kind:  mode === 'template' ? 'template' : 'program',
+  };
+}
+
+/**
+ * El trozo de estado con un programa, sus sesiones y —si se pide— su historial
+ * FUERA. Un solo camino de borrado, del que cuelgan `deleteProgram` y
+ * `deleteClient` (spec §3.4).
+ *
+ * Antes cada uno borraba lo que se acordaba, y ninguno de los dos borraba las
+ * sesiones: cada programa o cliente borrado dejaba sus `tpl_*` huérfanos para
+ * siempre en el estado persistido y en cada `.fitdata`.
+ *
+ * COMPONE: para encadenar purgas hay que ir pasando el estado resultante, no
+ * llamar varias veces sobre el mismo `s`.
+ */
+function purgeProgram(s, programId, { deleteHistory = false } = {}) {
+  const program = s.programs[programId];
+  if (!program) return {};
+  const tplIds = programTemplateIds(program);   // Set; recorre TODAS las etapas
+
+  const programs  = { ...s.programs };         delete programs[programId];
+  const sessions  = { ...s.sessionTemplates }; tplIds.forEach((id) => delete sessions[id]);
+  const overrides = { ...s.userPrograms };     tplIds.forEach((id) => delete overrides[id]);
+
+  const ownerId   = program.owner;
+  const isMine    = ownerId === 'me';
+  const clientLog = !isMine ? s.clientLogs[ownerId] : null;
+
+  return {
+    programs,
+    sessionTemplates: sessions,
+    userPrograms:     overrides,
+    ...(deleteHistory && isMine
+      ? { workoutLog: s.workoutLog.filter((e) => !tplIds.has(e.sessionTemplateId)) } : {}),
+    ...(deleteHistory && clientLog
+      ? { clientLogs: { ...s.clientLogs, [ownerId]: clientLog.filter((e) => !tplIds.has(e.sessionTemplateId)) } } : {}),
+    // Invariante 4: nadie se queda apuntando a un programa que ya no existe.
+    ...(!isMine && s.clients[ownerId]?.activeProgramId === programId
+      ? { clients: { ...s.clients, [ownerId]: deassignProgram(s.clients[ownerId]) } } : {}),
+    ...(isMine && s.profile.activeProgramId === programId
+      ? { profile: { ...s.profile, activeProgramId: null } } : {}),
+  };
+}
+
 const INITIAL_PROFILE = {
   name: 'Usuario',
   activeProgramId: null,
-  secondaryProgramIds: [],
   onboardingAnswers: {},
   onboardingCompleted: false,
   setupComplete: false,   // true tras elegir idioma + unidad en SetupScreen
@@ -306,8 +369,13 @@ export const useStore = create(
 
       // Static references (not persisted)
       exerciseLibrary: EXERCISE_LIBRARY,
-      sessionTemplates: SESSION_TEMPLATES,
-      programs: PROGRAMS,
+      // Sin semilla (spec §4.3): `PROGRAMS`/`SESSION_TEMPLATES` metían dos
+      // programas de demostración y seis sesiones ajenas en cada instalación —
+      // persistidos y viajando en cada backup. Con `owner: 'me'` aparecerían
+      // además en "mis programas". `src/data/programs.js` queda como dato de
+      // desarrollo: lo usan los tests, no el store.
+      sessionTemplates: {},
+      programs: {},
 
       // Hydration gate — true once AsyncStorage has been read.
       // NOT persisted. RootNavigator waits for this before rendering.
@@ -435,7 +503,10 @@ export const useStore = create(
             archivedAt: new Date().toISOString().split('T')[0],
           };
         }
-        updated[programId] = { ...program, status: 'active', archivedAt: null, mode: 'personal' };
+        // Sin tocar el dueño: restaurar es cambiar de estado, no de propiedad.
+        // El `mode: 'personal'` que había aquí le robaba el programa a su
+        // cliente, y lo único que lo impedía era un filtro de la pantalla.
+        updated[programId] = { ...program, status: 'active', archivedAt: null };
         set((s) => ({
           programs: updated,
           profile: { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
@@ -445,30 +516,7 @@ export const useStore = create(
       },
 
       deleteProgram: (programId, deleteHistory = false) => {
-        const { programs } = get();
-        const program = programs[programId];
-        const templateIds = new Set();
-        if (program?.stages?.length > 0) {
-          program.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
-        } else {
-          (program?.days ?? []).forEach((d) => templateIds.add(d.sessionTemplateId));
-        }
-        set((s) => {
-          const next = { ...s.programs };
-          delete next[programId];
-          // Managed (client) programs keep their history in clientLogs — clear there too
-          const ownerClientId = program?.clientId;
-          const ownerLog      = ownerClientId ? s.clientLogs[ownerClientId] : null;
-          return {
-            programs: next,
-            workoutLog: deleteHistory
-              ? s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId))
-              : s.workoutLog,
-            clientLogs: deleteHistory && ownerLog
-              ? { ...s.clientLogs, [ownerClientId]: ownerLog.filter((e) => !templateIds.has(e.sessionTemplateId)) }
-              : s.clientLogs,
-          };
-        });
+        set((s) => purgeProgram(s, programId, { deleteHistory }));
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -480,7 +528,7 @@ export const useStore = create(
         const clientBase = {
           id, name: name.trim(),
           createdAt: new Date().toISOString().split('T')[0],
-          programIds: [], activeProgramId: null,
+          activeProgramId: null,
           fullName: '', phone: '', email: '', notes: '',
           bodyWeight: [], billing: [], status: 'active',
           syncCode: null,   // client_code shown to the trainer
@@ -547,29 +595,21 @@ export const useStore = create(
           deleteClientSlot(client.syncSlotId).catch(() => {});
         }
         set((s) => {
-          const nextClients = { ...s.clients };
-          const client = s.clients[clientId];
-          delete nextClients[clientId];
-          // Also remove programs assigned to this client
-          const nextPrograms = { ...s.programs };
-          const templateIds = new Set();
-          (client?.programIds ?? []).forEach((pid) => {
-            const prog = s.programs[pid];
-            if (prog?.stages?.length > 0) {
-              prog.stages.forEach((st) => st.days.forEach((d) => templateIds.add(d.sessionTemplateId)));
-            } else {
-              (prog?.days ?? []).forEach((d) => templateIds.add(d.sessionTemplateId));
-            }
-            delete nextPrograms[pid];
+          // Purga en cadena: cada una sobre el resultado de la anterior, que es
+          // como compone `purgeProgram`.
+          let acc = s;
+          programsOf(s.programs, clientId).forEach((p) => {
+            acc = { ...acc, ...purgeProgram(acc, p.id, { deleteHistory: true }) };
           });
-          // Remove the client's separated history entirely
-          const nextClientLogs = { ...s.clientLogs };
-          delete nextClientLogs[clientId];
+          const clients    = { ...acc.clients };    delete clients[clientId];
+          const clientLogs = { ...acc.clientLogs }; delete clientLogs[clientId];
+          // El `workoutLog` personal ya no se filtra aquí: las entradas de un
+          // cliente viven en `clientLogs`, y las suyas se van con su bucket.
           return {
-            clients: nextClients,
-            programs: nextPrograms,
-            workoutLog: s.workoutLog.filter((e) => !templateIds.has(e.sessionTemplateId)),
-            clientLogs: nextClientLogs,
+            programs:         acc.programs,
+            sessionTemplates: acc.sessionTemplates,
+            userPrograms:     acc.userPrograms,
+            clients, clientLogs,
           };
         });
       },
@@ -690,19 +730,24 @@ export const useStore = create(
         // that's the update flow, and preserves template↔history linkage.
         if (data.program) {
           const existing = get().programs[data.program.id];
-          const collides = existing && !(existing.mode === 'managed' && existing.clientId === clientId);
+          const collides = existing && existing.owner !== clientId;
           if (collides) data = reidProgramFile(data);
         }
 
         // 'replace'     → incoming program becomes the client's ACTIVE program
-        //                 (the previous active stays in programIds = archived).
+        //                 (el anterior sigue siendo suyo, sólo pierde el activo).
         //                 Works even when the incoming id differs from the active.
         // 'replace_log' → same, plus merges the file's sessions into the log.
         if (mode === 'replace' || mode === 'replace_log') {
           if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
           const programId = data.program.id;
           set((s) => ({
-            programs: { ...s.programs, [programId]: { ...data.program, mode: 'managed', clientId } },
+            programs: {
+              ...s.programs,
+              // La segunda puerta de entrada de programas de fuera: normaliza
+              // (v1/v2 → owner/kind, y etapas) y reasigna el dueño.
+              [programId]: { ...normalizeIncomingProgram(data.program), owner: clientId, kind: 'program' },
+            },
             sessionTemplates: { ...s.sessionTemplates, ...(data.sessionTemplates ?? {}) },
             userPrograms: { ...s.userPrograms, ...(data.userPrograms ?? {}) },
             customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
@@ -753,7 +798,7 @@ export const useStore = create(
 
         const program = withStages(
           {
-            id: programId, name: programName.trim(), mode: 'managed', clientId,
+            id: programId, name: programName.trim(), owner: clientId, kind: 'program',
             type: 'primary', status: 'active',
             createdAt: new Date().toISOString().split('T')[0],
             currentWeek: 1,
@@ -765,13 +810,7 @@ export const useStore = create(
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              programIds: [programId, ...(s.clients[clientId]?.programIds ?? [])],
-            },
-          },
+          // Sin lista que mantener: el programa es del cliente por su `owner`.
           ui: { ...s.ui, _editingProgramId: programId },
         }));
         get().navigate('programEditor');
@@ -1053,7 +1092,7 @@ export const useStore = create(
         }));
       },
 
-      createEmptyProgram: (numSessions, programName = 'Mi programa', mode = 'personal', durationWeeks = null) => {
+      createEmptyProgram: (numSessions, programName = 'Mi programa', kind = 'program', durationWeeks = null) => {
         const programId = generateId('prog');
         const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
@@ -1071,7 +1110,7 @@ export const useStore = create(
         }
         const program = withStages(
           {
-            id: programId, name: programName, mode,
+            id: programId, name: programName, owner: 'me', kind,
             type: 'primary', status: 'active',
             createdAt: new Date().toISOString().split('T')[0],
             currentWeek: 1, onboardingSnapshot: { mode: 'manual' },
@@ -1082,9 +1121,9 @@ export const useStore = create(
         set((s) => ({
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
-          profile: mode === 'personal'
-            ? { ...s.profile, activeProgramId: programId, onboardingCompleted: true }
-            : s.profile,
+          profile: kind === 'template'
+            ? s.profile
+            : { ...s.profile, activeProgramId: programId, onboardingCompleted: true },
         }));
         return programId;
       },
@@ -1290,7 +1329,7 @@ export const useStore = create(
         // etapa en 1 ciclo por muchos que lleve hecho el cliente. El contador
         // bueno viaja en el blob de progreso — misma lección que
         // `clientStageIndex` (stage-locks.md §9).
-        const owner    = program.clientId ? clients?.[program.clientId] : null;
+        const owner    = ownerClient(clients, program);
         const progress = progressFromBlob(owner?.progress, program.id);
         const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
         const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
@@ -1361,7 +1400,7 @@ export const useStore = create(
 
         // Misma razón que en `addStageToProgram`: con una etapa abierta delante
         // el cliente no puede salir de ella nunca.
-        const owner    = program.clientId ? clients?.[program.clientId] : null;
+        const owner    = ownerClient(clients, program);
         const progress = progressFromBlob(owner?.progress, program.id);
         const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
         const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
@@ -1538,7 +1577,7 @@ export const useStore = create(
         get().navigate('programPrint');
       },
 
-      cloneProgramFromTemplate: (sourceProgramId, { mode = 'personal', clientId = null, name = null } = {}) => {
+      cloneProgramFromTemplate: (sourceProgramId, { owner = 'me', kind = 'program', name = null } = {}) => {
         const { programs, sessionTemplates, userPrograms } = get();
         const srcProgram = programs[sourceProgramId];
         if (!srcProgram) return null;
@@ -1569,38 +1608,29 @@ export const useStore = create(
         const newProgram = withStages(
           {
             ...stagedSrc, id: newProgramId, name: name ?? stagedSrc.name,
-            mode, status: 'active', archivedAt: null,
+            owner, kind, status: 'active', archivedAt: null,
             createdAt: new Date().toISOString().split('T')[0],
           },
           newStages,
           stagedSrc.currentStageIndex ?? 0,
         );
-        if (clientId) newProgram.clientId = clientId;
-        else delete newProgram.clientId;
-
-        const isManaged = mode === 'managed';
-        const isPersonal = mode === 'personal';
+        const forClient = owner !== 'me';
 
         set((s) => {
           const update = {
             programs: { ...s.programs, [newProgramId]: newProgram },
             sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
           };
-          if (isManaged && clientId) {
-            const existingClient = s.clients[clientId] ?? {};
+          if (forClient) {
+            const existingClient = s.clients[owner] ?? {};
             const hasActiveProgram = !!(existingClient.activeProgramId && s.programs[existingClient.activeProgramId]);
-            // Add program to client's programIds list; set as active if client had none
-            update.clients = {
-              ...s.clients,
-              [clientId]: {
-                ...existingClient,
-                programIds: [newProgramId, ...(existingClient.programIds ?? [])],
-                ...(!hasActiveProgram ? { activeProgramId: newProgramId } : {}),
-              },
-            };
+            // Sin lista que mantener: sólo el activo, y sólo si no tenía.
+            if (!hasActiveProgram) {
+              update.clients = { ...s.clients, [owner]: { ...existingClient, activeProgramId: newProgramId } };
+            }
             // Open editor for the new program
             update.ui = { ...s.ui, _editingProgramId: newProgramId };
-          } else if (isPersonal) {
+          } else if (kind !== 'template') {
             update.profile = { ...s.profile, activeProgramId: newProgramId, onboardingCompleted: true };
           }
           return update;
@@ -2407,76 +2437,22 @@ export const useStore = create(
         }
       },
 
+      // Era una copia literal de `_buildProgramJson` + `exportSpecificProgram`,
+      // con su propio `version: '2'` que nadie actualizó al extraer el helper.
       exportProgramWithLog: async () => {
-        const s = get();
-        const { profile, programs, sessionTemplates, userPrograms, customExercises, workoutLog } = s;
-        const program = programs[profile.activeProgramId];
-        if (!program) { get().showToast('Sin programa activo', 2200, 'error'); return; }
-
-        const tplIds = new Set();
-        if (program.stages?.length > 0) {
-          program.stages.forEach((st) => st.days.forEach((d) => tplIds.add(d.sessionTemplateId)));
-        } else {
-          (program.days ?? []).forEach((d) => tplIds.add(d.sessionTemplateId));
+        const { profile, programs } = get();
+        if (!programs[profile.activeProgramId]) {
+          get().showToast('Sin programa activo', 2200, 'error');
+          return;
         }
-        const relTpl = {}, relUP = {};
-        tplIds.forEach((id) => {
-          if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
-          if (userPrograms[id])     relUP[id]  = userPrograms[id];
-        });
-        const usedExIds = new Set(
-          [...Object.values(relTpl), ...Object.values(relUP)]
-            .flatMap((t) => [
-              ...(t.exercises ?? []).map((e) => e.exerciseId),
-              ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
-            ])
-        );
-        const relCustom = {};
-        Object.entries(customExercises ?? {}).forEach(([id, def]) => {
-          if (usedExIds.has(id)) relCustom[id] = def;
-        });
-
-        const json = JSON.stringify({
-          version: '2', exportType: 'program_with_log',
-          exportDate: new Date().toISOString().split('T')[0],
-          appName: 'Forma Fit',
-          program: { ...program, mode: 'personal', status: 'active' },
-          sessionTemplates: relTpl,
-          userPrograms: relUP,
-          customExercises: relCustom,
-          workoutLog: workoutLog.filter((e) => tplIds.has(e.sessionTemplateId)),
-        }, null, 2);
-
-        const safeName = program.name
-          .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
-          .replace(/\s+/g, '-').toLowerCase();
-        const fileName = safeName + '-con-historial.fitdata';
-        try {
-          if (Platform.OS === 'android') {
-            const SAF   = FileSystem.StorageAccessFramework;
-            const perms = await SAF.requestDirectoryPermissionsAsync();
-            if (!perms.granted) return;
-            const fileUri = await SAF.createFileAsync(
-              perms.directoryUri, fileName, 'application/x-fitdata',
-            );
-            await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
-          } else {
-            const fileUri = FileSystem.documentDirectory + fileName;
-            await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
-          }
-          get().showToast('Archivo exportado');
-        } catch (e) {
-          if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('Error al exportar', 2200, 'error');
-          }
-        }
+        await get().exportSpecificProgram(profile.activeProgramId, true);
       },
 
       // ── Build program JSON payload (shared helper) ──────────────────────────
 
       _buildProgramJson: (programId, withLog = false) => {
         const s = get();
-        const { programs, sessionTemplates, userPrograms, customExercises, workoutLog } = s;
+        const { programs, sessionTemplates, userPrograms, customExercises, workoutLog, clientLogs } = s;
         const program = programs[programId];
         if (!program) return null;
 
@@ -2502,7 +2478,11 @@ export const useStore = create(
         Object.entries(customExercises ?? {}).forEach(([id, def]) => {
           if (usedExIds.has(id)) relCustom[id] = def;
         });
-        const log = withLog ? workoutLog.filter((e) => tplIds.has(e.sessionTemplateId)) : [];
+        // El historial de un programa vive en el cajón de su dueño. Esto miraba
+        // sólo `workoutLog`, así que exportar el programa de un cliente "con
+        // historial" daba un fichero con la lista vacía. Siempre y en silencio.
+        const ownerLog = program.owner === 'me' ? workoutLog : (clientLogs[program.owner] ?? []);
+        const log = withLog ? ownerLog.filter((e) => tplIds.has(e.sessionTemplateId)) : [];
 
         const safeName = program.name
           .replace(/[^a-zA-Z0-9áéíóúñ\s-]/g, '')
@@ -2510,11 +2490,17 @@ export const useStore = create(
 
         return {
           json: JSON.stringify({
-            version: '2',
+            version: '3',
             exportType: withLog ? 'program_with_log' : 'program',
             exportDate: new Date().toISOString().split('T')[0],
             appName: 'Forma Fit',
-            program: { ...program, mode: 'personal', status: 'active' },
+            // El receptor recibe SIEMPRE un programa suyo: `owner` es semántica
+            // del dispositivo, no una identidad global, y esa es la propiedad
+            // que hace que el protocolo con el cliente no necesite nada más.
+            // `kind` se fuerza porque un fichero de programa suelto no tiene
+            // casilla "Plantillas" por la que entrar (`ImportModal` mira
+            // `data.programs`, y aquí va `data.program`).
+            program: { ...program, owner: 'me', kind: 'program', status: 'active' },
             sessionTemplates: relTpl,
             userPrograms: relUP,
             customExercises: relCustom,
@@ -2582,15 +2568,41 @@ export const useStore = create(
       // ── Import ────────────────────────────────────────────────────────────────
 
       importData: (data, sections, { silent = false } = {}) => {
-        // Un backup puede traer programas guardados antes de unificar el modelo
-        // (sin `stages`). Se normalizan aquí, que es el único sitio por el que
-        // entran, y así ninguna de las tres ramas de abajo tiene que saberlo.
+        // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
+        // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
+        // importar como propio el programa de un cliente se lo quita — su ficha
+        // lo lista por `owner`, así que desaparecería de ella y su activo se
+        // quedaría colgando. La condición es "existe Y otro dueño": en un móvil
+        // nuevo no hay nada con que chocar, y la restauración conserva ids,
+        // historial y contadores.
+        if (data.program) {
+          const incoming = normalizeIncomingProgram(data.program);
+          const local    = get().programs[incoming.id];
+          data = { ...data, program: incoming };
+          if (local && local.owner !== incoming.owner) data = reidProgramFile(data);
+        }
+
+        // Un backup puede traer programas de v1/v2 (con `mode`/`clientId`) y sin
+        // `stages`. Se normalizan aquí, y así ninguna de las tres ramas de abajo
+        // tiene que saberlo.
         const allFilePrograms = Object.fromEntries(
           Object.entries({
             ...(data.programs ?? {}),
             ...(data.program ? { [data.program.id]: data.program } : {}),
-          }).map(([id, p]) => [id, ensureStages(p)]),
+          }).map(([id, p]) => [id, normalizeIncomingProgram(p)]),
         );
+        // El programa "suelto" viene de otro dispositivo; los de `data.programs`
+        // son el backup del propio. Sólo al primero se le conserva la posición
+        // del atleta (regla 2): restaurar un backup tiene que devolver lo que
+        // el backup dice.
+        const singleId = data.program?.id ?? null;
+
+        // Tres predicados de UN campo, mutuamente excluyentes por construcción.
+        // Antes cada rama reescribía el `mode` de lo que dejaba pasar para que
+        // no se colara en la de al lado, y un programa podía satisfacer dos.
+        const isMine     = (p) => p.owner === 'me' && p.kind !== 'template';
+        const isTemplate = (p) => p.kind === 'template';
+        const isClients  = (p) => p.owner !== 'me';
 
         set((s) => {
           const updates = {};
@@ -2602,7 +2614,7 @@ export const useStore = create(
           // plantillas viejas dentro, y reemplazar se degradaba a combinar.
           const replacingTemplates = sections.templates && (sections.templatesMode ?? 'merge') === 'replace';
           const basePrograms = replacingTemplates
-            ? Object.fromEntries(Object.entries(s.programs ?? {}).filter(([, p]) => p.mode !== 'template'))
+            ? Object.fromEntries(Object.entries(s.programs ?? {}).filter(([, p]) => !isTemplate(p)))
             : s.programs;
 
           const needsTemplateData = sections.program || sections.clients || sections.templates;
@@ -2613,8 +2625,25 @@ export const useStore = create(
           if (sections.program) {
             const personalPrograms = {};
             Object.entries(allFilePrograms).forEach(([id, p]) => {
-              if (p.mode === 'template' || p.mode === 'managed') return;
-              personalPrograms[id] = { ...p, mode: 'personal', status: 'active' };
+              if (!isMine(p)) return;
+              const incoming = { ...p, status: 'active' };
+              const local    = id === singleId ? s.programs[id] : null;
+              // §3.4 bis, regla 2: la posición es del atleta, no del emisor. Un
+              // programa que llega trae los contadores de quien lo mandó (los
+              // del entrenador, normalmente a cero). El canal conectado ya lo
+              // hacía en `applyPendingProgramUpdate`; aquí lo hereda también
+              // quien importa el fichero a mano — el cliente de WhatsApp perdía
+              // su ciclo y su etapa en cada actualización.
+              personalPrograms[id] = local
+                ? {
+                  ...incoming,
+                  ...mergeProgressOnImport({
+                    blob:           progressBlob(local),
+                    program:        incoming,
+                    lastActivation: local.stageActivatedAt ?? null,
+                  }),
+                }
+                : incoming;
             });
             const savedActiveId = data.profile?.activeProgramId;
             const firstId = (savedActiveId && personalPrograms[savedActiveId])
@@ -2628,8 +2657,7 @@ export const useStore = create(
           if (sections.templates) {
             const templatePrograms = {};
             Object.entries(allFilePrograms).forEach(([id, p]) => {
-              if (p.mode !== 'template') return;
-              templatePrograms[id] = p;
+              if (isTemplate(p)) templatePrograms[id] = p;
             });
             // Las viejas ya están fuera de `basePrograms` si toca reemplazar.
             updates.programs = { ...(updates.programs ?? basePrograms), ...templatePrograms };
@@ -2651,19 +2679,26 @@ export const useStore = create(
             updates.customExercises = { ...s.customExercises, ...(data.customExercises ?? {}) };
           }
           if (sections.clients) {
-            updates.clients = { ...s.clients, ...(data.clients ?? {}) };
-
-            // Un programa `managed` es propiedad de un cliente, igual que su
-            // historial: si el cliente entra, su programa entra con él. Las
-            // otras dos ramas lo descartan a propósito — `program` lo
-            // convertiría en programa personal del entrenador y `templates`
-            // solo acepta `mode: 'template'` — así que sin esto la ficha
-            // restaurada apunta a un id que ya no existe. `needsTemplateData`
-            // ya incluye esta sección, así que sus sessionTemplates entran.
-            const managed = Object.fromEntries(
-              Object.entries(allFilePrograms).filter(([, p]) => p.mode === 'managed'),
+            // Los clientes de un backup v1/v2 traen su `programIds`. Ya no
+            // significa nada —la lista se deriva de `owner`— así que no entra.
+            const incomingClients = Object.fromEntries(
+              Object.entries(data.clients ?? {}).map(([id, c]) => {
+                const rest = { ...c };
+                delete rest.programIds;
+                return [id, rest];
+              }),
             );
-            updates.programs = { ...(updates.programs ?? basePrograms), ...managed };
+            updates.clients = { ...s.clients, ...incomingClients };
+
+            // El programa de un cliente es suyo, igual que su historial: si el
+            // cliente entra, su programa entra con él. Las otras dos ramas lo
+            // descartan a propósito, así que sin esto la ficha restaurada
+            // apunta a un programa que no existe. `needsTemplateData` ya
+            // incluye esta sección, así que sus sessionTemplates entran.
+            const owned = Object.fromEntries(
+              Object.entries(allFilePrograms).filter(([, p]) => isClients(p)),
+            );
+            updates.programs = { ...(updates.programs ?? basePrograms), ...owned };
 
             // Restore per-client histories from backups that include them
             if (data.clientLogs && Object.keys(data.clientLogs).length) {
@@ -2677,10 +2712,9 @@ export const useStore = create(
           // Legacy backups (pre-clientLogs) mixed client entries into workoutLog.
           // Split them out using the final clients + programs of this import.
           if (sections.log && !data.clientLogs) {
-            const finalClients  = updates.clients    ?? s.clients;
             const finalPrograms = updates.programs   ?? s.programs;
             const finalLog      = updates.workoutLog ?? s.workoutLog;
-            const { personalLog, clientEntries } = splitClientLogEntries(finalLog, finalClients, finalPrograms);
+            const { personalLog, clientEntries } = splitClientLogEntries(finalLog, finalPrograms);
             if (Object.keys(clientEntries).length) {
               updates.workoutLog = personalLog;
               const mergedLogs = { ...(updates.clientLogs ?? s.clientLogs) };
@@ -3163,7 +3197,6 @@ export const useStore = create(
                 id,
                 name:         slot.client_name ?? 'Cliente',
                 createdAt:    new Date().toISOString().split('T')[0],
-                programIds:   [],
                 activeProgramId: null,
                 fullName: '', phone: '', email: '', notes: '',
                 bodyWeight: [], billing: [], status: 'active',
@@ -3934,12 +3967,36 @@ export const useStore = create(
             }
           }
 
+          // migración pre-publicación
+          // `owner` + `kind` sustituyen a `mode`, `clientId` y las listas
+          // (`docs/specs/program-model.md` §3.1). Va la PRIMERA: la migración de
+          // `clientLogs` de abajo necesita saber de quién es cada programa, y ya
+          // no lo lee de `programIds`. Idempotente, como las demás.
+          if (state.programs) {
+            // `programIds` sigue existiendo AQUÍ, y es la autoridad de reserva:
+            // un programa con `mode:'managed'` y sin `clientId` (los hubo) sólo
+            // se puede atribuir por la lista de su cliente.
+            const ownerByProgram = {};
+            Object.values(state.clients ?? {}).forEach((c) => {
+              (c.programIds ?? []).forEach((pid) => { ownerByProgram[pid] ??= c.id; });
+            });
+            Object.values(state.programs).forEach((p) => {
+              if (p.owner) return;                            // ya migrado
+              p.owner = p.clientId ?? ownerByProgram[p.id] ?? 'me';
+              p.kind  = p.mode === 'template' ? 'template' : 'program';
+              delete p.mode;
+              delete p.clientId;
+            });
+            Object.values(state.clients ?? {}).forEach((c) => { delete c.programIds; });
+            if (state.profile) delete state.profile.secondaryProgramIds;
+          }
+
           // Migrate: split client entries out of the personal workoutLog (one-time).
           // Runs only when clientLogs doesn't exist yet (first launch after update).
           if (!state.clientLogs) {
             state.clientLogs = {};
             const { personalLog, clientEntries } = splitClientLogEntries(
-              state.workoutLog, state.clients, state.programs,
+              state.workoutLog, state.programs,
             );
             if (Object.keys(clientEntries).length) {
               state.workoutLog = personalLog;

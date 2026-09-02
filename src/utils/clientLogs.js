@@ -25,14 +25,16 @@ export function programTemplateIds(program) {
  * that client's programs. Entries matching several clients (shared program —
  * the ambiguity this migration exists to eliminate) are copied to each.
  * Returns { personalLog, clientEntries: { [clientId]: entries[] } }.
+ *
+ * Los dueños salen de `programs` y no de `clients`: la lista del cliente ya no
+ * se guarda, se deriva de `program.owner`.
  */
-export function splitClientLogEntries(workoutLog, clients, programs) {
+export function splitClientLogEntries(workoutLog, programs) {
   const templateOwners = {}; // templateId → [clientId, ...]
-  Object.values(clients ?? {}).forEach((c) => {
-    (c.programIds ?? []).forEach((pid) => {
-      programTemplateIds(programs?.[pid]).forEach((tid) => {
-        (templateOwners[tid] ??= []).push(c.id);
-      });
+  Object.values(programs ?? {}).forEach((p) => {
+    if (!p.owner || p.owner === 'me') return;
+    programTemplateIds(p).forEach((tid) => {
+      (templateOwners[tid] ??= []).push(p.owner);
     });
   });
   const personalLog   = [];
