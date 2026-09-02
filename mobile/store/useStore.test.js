@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
+import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -36,7 +37,8 @@ vi.mock('../src/config/supabase', () => ({
   supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
 }));
 
-const { useStore } = await import('./useStore.js');
+const { useStore, SESSION_STORAGE_KEY } = await import('./useStore.js');
+const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
 
 /** The callback zustand invokes once the persisted state has been read. */
 const rehydrateCallback = () => useStore.persist.getOptions().onRehydrateStorage();
@@ -47,21 +49,26 @@ describe('onRehydrateStorage — fallo 1', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  it('marca _hasHydrated cuando la lectura de storage falla', () => {
+  // Desde que la sesión en curso vive en su propia clave (`rediseno.md` §3), el
+  // flag baja DENTRO de la promesa que la lee: hay que ceder el turno antes de
+  // comprobarlo. Lo que se sigue exigiendo es lo mismo — que acabe en `true`
+  // pase lo que pase.
+
+  it('marca _hasHydrated cuando la lectura de storage falla', async () => {
     // Zustand llama (undefined, error) por este camino — middleware.js:439.
     rehydrateCallback()(undefined, new Error('storage ilegible'));
 
-    expect(useStore.getState()._hasHydrated).toBe(true);
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
   });
 
-  it('marca _hasHydrated aunque una migración lance', () => {
+  it('marca _hasHydrated aunque una migración lance', async () => {
     const explosivo = { get profile() { throw new Error('estado con forma inesperada'); } };
 
     expect(() => rehydrateCallback()(explosivo, undefined)).not.toThrow();
-    expect(useStore.getState()._hasHydrated).toBe(true);
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
   });
 
-  it('sin estado que rehidratar arranca en Setup, no en Main', () => {
+  it('sin estado que rehidratar arranca en Setup, no en Main', async () => {
     // El store se queda con el estado inicial: mismo caso que una instalación
     // nueva, así que la ruta tiene que ser la del primer arranque.
     useStore.setState({
@@ -70,7 +77,89 @@ describe('onRehydrateStorage — fallo 1', () => {
 
     rehydrateCallback()(undefined, new Error('boom'));
 
-    expect(useStore.getState()._initialRoute).toBe('Setup');
+    await vi.waitFor(() => expect(useStore.getState()._initialRoute).toBe('Setup'));
+  });
+});
+
+describe('sesión en curso fuera del blob — rediseno §3', () => {
+  const SESION = {
+    templateId: 'tpl_1', startedAt: Date.now(), setsState: {}, notes: '',
+    exerciseNotes: {}, adHocExercises: [], freeSessionName: '', freeBlocks: [], blockState: {},
+  };
+
+  beforeEach(() => {
+    useStore.setState({
+      _hasHydrated: false, _initialRoute: 'Main',
+      activeSession: { templateId: null },
+      profile: { ...useStore.getState().profile, setupComplete: true, onboardingCompleted: true },
+    });
+    vi.restoreAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('una sesión guardada en su clave abre en Workout', async () => {
+    vi.spyOn(AsyncStorage, 'getItem').mockResolvedValue(JSON.stringify(SESION));
+
+    rehydrateCallback()({}, undefined);
+
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(SESSION_STORAGE_KEY);
+    expect(useStore.getState().activeSession.templateId).toBe('tpl_1');
+    expect(useStore.getState()._initialRoute).toBe('Workout');
+  });
+
+  it('una sesión de hace más de 12 h se descarta y no abre en Workout', async () => {
+    const vieja = { ...SESION, startedAt: Date.now() - 13 * 60 * 60 * 1000 };
+    vi.spyOn(AsyncStorage, 'getItem').mockResolvedValue(JSON.stringify(vieja));
+    const removeItem = vi.spyOn(AsyncStorage, 'removeItem').mockResolvedValue(undefined);
+
+    rehydrateCallback()({}, undefined);
+
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+    expect(useStore.getState().activeSession.templateId).toBe(null);
+    expect(useStore.getState()._initialRoute).toBe('Main');
+    expect(removeItem).toHaveBeenCalledWith(SESSION_STORAGE_KEY);
+  });
+
+  it('la caducidad alcanza también a la sesión que venía dentro del blob viejo', async () => {
+    // Instalación anterior a este cambio: `activeSession` sigue dentro del blob
+    // principal y el merge de zustand la deja puesta. No hay clave nueva que leer.
+    vi.spyOn(AsyncStorage, 'getItem').mockResolvedValue(null);
+    vi.spyOn(AsyncStorage, 'removeItem').mockResolvedValue(undefined);
+    useStore.setState({ activeSession: { ...SESION, startedAt: Date.now() - 13 * 60 * 60 * 1000 } });
+
+    rehydrateCallback()({}, undefined);
+
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+    expect(useStore.getState().activeSession.templateId).toBe(null);
+  });
+
+  it('la sesión no viaja en el blob persistido', () => {
+    const persistido = useStore.persist.getOptions().partialize(useStore.getState());
+
+    expect(persistido).not.toHaveProperty('activeSession');
+  });
+
+  // Es la mitad que de verdad ahorra el trabajo: sacar `activeSession` del
+  // `partialize` no basta, porque zustand escribe en cada `set()` sin comparar.
+  it('teclear en la sesión no reescribe el blob principal', async () => {
+    const setItem = vi.spyOn(AsyncStorage, 'setItem').mockResolvedValue(undefined);
+
+    // Una escritura de verdad primero, para sembrar la referencia con la que se
+    // compara. Sin esto la siguiente escribiría igual, y el test pasaría por el
+    // motivo equivocado.
+    useStore.setState({ theme: 'unTemaQueNoEstaba' });
+    await vi.waitFor(() =>
+      expect(setItem.mock.calls.some(([k]) => k === BACKUP_STORAGE_KEY)).toBe(true));
+    setItem.mockClear();
+
+    // Dos cambios seguidos de la sesión, como dos teclas en el campo de peso.
+    useStore.setState({ activeSession: { ...SESION, notes: 'a' } });
+    useStore.setState({ activeSession: { ...SESION, notes: 'ab' } });
+    await vi.waitFor(() => expect(setItem).toHaveBeenCalledTimes(2));
+
+    expect(setItem.mock.calls.map(([k]) => k))
+      .toEqual([SESSION_STORAGE_KEY, SESSION_STORAGE_KEY]);
   });
 });
 

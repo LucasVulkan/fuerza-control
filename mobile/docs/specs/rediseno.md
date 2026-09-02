@@ -1,9 +1,8 @@
 # Spec — Rediseño estructural: una sola app, un estado que no se reescribe entero
 
-> Estado: **fase 1 IMPLEMENTADA** (2-sep-2026, dos commits); fase 2 sin
-> implementar. Cuatro fases. Las fases **1 y 2 son ejecutables en frío** desde
-> este documento; las fases 3 y 4 son decisiones de producto que hay que tomar
-> **antes de publicar**, no código.
+> Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
+> dispositivo. Las 3 y 4 son decisiones de producto que hay que tomar **antes de
+> publicar**, no código.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
@@ -22,10 +21,10 @@
 
 ## 0. Qué resuelve y qué no
 
-| Fase | Qué hace | Toca pantallas | Coste |
+| Fase | Qué hace | Toca pantallas | Estado |
 |---|---|---|---|
-| **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | 1 sesión |
-| **2** | Saca la sesión en curso del blob persistido | no | 1 sesión |
+| **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | ✅ 2-sep-2026 |
+| **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
 | **3** | Recortes de features a decidir antes de publicar | sí | decisión |
 | **4** | Terminar Workout y publicar | sí | ya en curso |
 
@@ -68,15 +67,14 @@ dos?".
 
 ### 1.2 Todo el estado es un documento que se reescribe en cada tecla
 
-[mobile/store/useStore.js:3885](../../store/useStore.js) mete bajo **una sola
-clave** de AsyncStorage (`fc_tracker_v1`): `profile`, `workoutLog`,
-`clientLogs` (el historial de *todos* los clientes), `programs`,
-`sessionTemplates`, `userPrograms`, `clients`, `customExercises`,
-`blockPresets`, `tagRegistry`, `driveBackup`, `trainerSync`, `clientSync` y
-`activeSession`.
+El `partialize` del store mete bajo **una sola clave** de AsyncStorage
+(`fc_tracker_v1`): `profile`, `workoutLog`, `clientLogs` (el historial de
+*todos* los clientes), `programs`, `sessionTemplates`, `clients`,
+`customExercises`, `blockPresets`, `tagRegistry`, `driveBackup`, `trainerSync`,
+`clientSync`, `theme` y —hasta la fase 2— `activeSession`.
 
 Y `zustand/persist` **escribe en cada `set()`, sin comparar nada**. Verificado
-en `node_modules/zustand/middleware.js:360`:
+en `mobile/node_modules/zustand/middleware.js:367`:
 
 ```js
 const setItem = () => {
@@ -383,6 +381,20 @@ correcta por aritmética de profundidad, no por magia.
 
 ## 3. Fase 2 — Sacar la sesión en curso del blob
 
+> **Implementada** (2-sep-2026). El diseño de aquí se ejecutó tal cual, con tres
+> desviaciones, todas anotadas en su sitio: la caducidad de 12 h quedó en **una
+> sola comprobación** sobre la sesión resultante en vez de dos ramas (§3.3 d),
+> lo que además cubre un caso que esta spec no veía —la instalación anterior al
+> cambio, que todavía trae la sesión **dentro** del blob—; el borrado de la
+> clave se dejó en manos de la suscripción, que ya lo hacía; y los tests son
+> cinco, no uno (§3.4).
+>
+> La trampa 1 —"nadie muta en sitio los objetos de primer nivel"— **se
+> comprobó**, no se dio por buena: barrido de las 4.100 líneas del store
+> buscando asignaciones y mutaciones de array sobre las trece claves
+> persistidas, incluidos los alias (`const p = get().programs[id]` seguido de
+> `p.x = …`). Cero resultados fuera del bloque de migraciones. Ver §3.5.
+
 ### 3.1 El hecho que obliga al diseño
 
 Lo intuitivo es quitar `activeSession` de `partialize` y ya. **No funciona.**
@@ -468,30 +480,25 @@ useStore.subscribe((s, prev) => {
 });
 ```
 
-**(d) Cargarla al arrancar**, dentro del `finally` de `onRehydrateStorage`
-([useStore.js:4008](../../store/useStore.js)). Es el único punto delicado: la
-lectura es asíncrona y `_initialRoute` depende de si hay sesión abierta, así que
-**el flag de hidratación pasa a levantarse dentro de la promesa**. La garantía
-del fallo 1 se mantiene —`_hasHydrated` acaba en `true` pase lo que pase— porque
-va en el `.finally()` de la cadena:
+**(d) Cargarla al arrancar**, dentro del `finally` de `onRehydrateStorage`. Es
+el único punto delicado: la lectura es asíncrona y `_initialRoute` depende de si
+hay sesión abierta, así que **el flag de hidratación pasa a levantarse dentro de
+la promesa**. La garantía del fallo 1 se mantiene —`_hasHydrated` acaba en
+`true` pase lo que pase— porque va en el `.finally()` de la cadena:
 
 ```js
 } finally {
-  // La caducidad de 12 h vivía en el bloque de migraciones; se muda aquí con
-  // la sesión, que ya no viene en el estado rehidratado por zustand.
   AsyncStorage.getItem(SESSION_STORAGE_KEY)
-    .then((raw) => {
-      if (!raw) return;
-      const session = JSON.parse(raw);
-      const age = Date.now() - (session.startedAt ?? 0);
-      if (session.templateId && age <= 12 * 60 * 60 * 1000) {
-        useStore.setState({ activeSession: session });
-      } else {
-        AsyncStorage.removeItem(SESSION_STORAGE_KEY).catch(() => {});
-      }
-    })
+    .then((raw) => { if (raw) useStore.setState({ activeSession: JSON.parse(raw) }); })
     .catch((e) => console.warn('[rehydrate] sesión en curso ilegible:', e))
     .finally(() => {
+      // La caducidad de 12 h vivía en el bloque de migraciones; se muda aquí
+      // con la sesión, que ya no viene en el estado rehidratado por zustand.
+      const abierta = useStore.getState().activeSession;
+      if (abierta?.templateId
+          && Date.now() - (abierta.startedAt ?? 0) > 12 * 60 * 60 * 1000) {
+        useStore.setState({ activeSession: INITIAL_ACTIVE_SESSION });
+      }
       lastPersisted = null;   // ver trampa 2 en §3.5
       const s = useStore.getState();
       // … el cálculo de initialRoute actual, sin un solo cambio …
@@ -500,7 +507,20 @@ va en el `.finally()` de la cadena:
 }
 ```
 
-### 3.4 El test que cambia
+**Dos desviaciones sobre lo que esta spec proponía**, las dos hacia menos código:
+
+1. **Una sola comprobación de caducidad, sobre la sesión resultante**, en vez de
+   dos ramas dentro del `.then()`. No es sólo más corto: cubre un caso que la
+   versión de dos ramas se dejaba fuera — una instalación **anterior a este
+   cambio** trae `activeSession` dentro del blob principal, el merge de zustand
+   la deja puesta, y como no hay clave nueva que leer el `.then()` no hacía
+   nada. Esa sesión se saltaba la caducidad y podía abrir en Workout tres días
+   después. Evaluando el resultado da igual de dónde venga.
+2. **El borrado de la clave no se escribe aquí.** Vaciar `activeSession` ya
+   dispara la suscripción de (c), que ve el `templateId` a `null` y la quita.
+   Escribirlo además era una segunda llamada a `removeItem` para el mismo fin.
+
+### 3.4 Los tests que cambian
 
 [mobile/store/useStore.test.js](../../store/useStore.test.js) cubre el fallo 1
 llamando al callback y comprobando el flag **en la misma vuelta del event loop**:
@@ -518,19 +538,46 @@ rehydrateCallback()(undefined, new Error('storage ilegible'));
 await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
 ```
 
-`AsyncStorage` está aliasado a `test/native-stub.js`, así que `getItem`
-devuelve lo que devuelva el stub — hay que asegurarse de que resuelve (aunque
-sea a `null`) y no lanza al importarse. **Añadir un cuarto test** al mismo
-`describe`: con una sesión válida en `SESSION_STORAGE_KEY`, `_initialRoute`
-tiene que acabar en `'Workout'`. Es la regresión exacta que este cambio pone en
-riesgo.
+`AsyncStorage` está aliasado a `test/native-stub.js`, cuyo `getItem` resuelve a
+`null`. Como el stub es un objeto normal, `vi.spyOn(AsyncStorage, 'getItem')`
+basta para simular lo que haya en la clave.
+
+Los tres tests de arriba sólo se protegen a sí mismos. El `describe` nuevo
+—**sesión en curso fuera del blob**— son cinco, y cubren lo que este cambio
+pone en riesgo:
+
+| Test | Qué rompería si faltara |
+|---|---|
+| una sesión guardada en su clave abre en Workout | el camino feliz entero: leer, restaurar y enrutar |
+| una sesión de hace más de 12 h se descarta | la caducidad, que cambió de sitio |
+| la caducidad alcanza a la sesión del blob viejo | la desviación 1 de §3.3 (d) |
+| la sesión no viaja en el blob persistido | que alguien la devuelva al `partialize` |
+| **teclear en la sesión no reescribe el blob** | **el ahorro entero** |
+
+El último es el que de verdad hay que tener: siembra una escritura de verdad
+para fijar la referencia con la que se compara, cambia `activeSession` dos veces
+seguidas —dos teclas— y exige que las dos únicas escrituras que salen vayan a
+`SESSION_STORAGE_KEY`. Sin él, alguien puede quitar el corte de escritura de (a)
+sin que ningún test se entere y toda la fase se queda en decorado.
 
 ### 3.5 Trampas
 
 1. **Comparación por referencia, no por contenido.** El corte de escritura de
    (a) asume que nadie muta en sitio los objetos de primer nivel del estado
-   persistido. Es cierto en todo el store salvo en las migraciones de
-   `onRehydrateStorage`, que sí mutan `state` en sitio — de ahí la trampa 2.
+   persistido. **Comprobado, no supuesto**: barrido del store buscando
+   asignaciones (`x.y = …`, `++`, `+=`) y mutaciones de array
+   (`push`/`splice`/`sort`/…) sobre las trece claves persistidas, siguiendo
+   también los alias (`const p = get().programs[id]` y después `p.x = …`). Único
+   resultado, y es un falso positivo: `[...s.workoutLog, …].sort()`, que ordena
+   un array recién creado. Las migraciones de `onRehydrateStorage` sí mutan
+   `state` en sitio — de ahí la trampa 2.
+
+   Conviene ver además **cuánto** se arriesga aquí, porque parece más de lo que
+   es: el corte es todo-o-nada —si *cualquier* clave cambia de referencia, se
+   escribe el estado entero, mutaciones incluidas—, así que una mutación en
+   sitio sólo se perdería si la app muere antes del siguiente `set()` que toque
+   otra clave. Hoy, sin el corte, se perdería igual si muere antes del siguiente
+   `set()` a secas. La ventana se estrecha; no aparece.
 2. **`lastPersisted = null` después de hidratar es obligatorio.** Las
    migraciones (etapas, tags, colores) mutan el estado rehidratado sin cambiar
    sus referencias de primer nivel. Sin ese reset, la primera escritura
@@ -544,14 +591,24 @@ riesgo.
 
 ### 3.6 Verificación
 
-- `npx vitest run` — con los cuatro tests de hidratación en verde.
-- En dispositivo, la prueba que mide lo que se quería arreglar: entrar en una
-  sesión con historial cargado (`npm run seed` → importar sólo Historial) y
-  teclear pesos seguidos. Antes: la escritura del blob en cada tecla. Después:
-  ninguna escritura del blob, y ~5 KB por tecla en la clave de sesión.
+Hecho, con estas cifras:
+
+| Medida | Antes | Después |
+|---|---|---|
+| `vitest` | 37 ficheros / 1.174 tests | **37 / 1.179** (los 5 nuevos) |
+| `eslint .` | 210 (181 errores, 29 warnings) | **210 (181 / 29)** — ni uno nuevo |
+| `expo export --platform android` | empaqueta | **empaqueta** (8,54 MB) |
+
+Pendiente, y sólo se puede hacer en dispositivo:
+
+- La prueba que mide lo que se quería arreglar: entrar en una sesión con
+  historial cargado (`npm run seed` → importar sólo Historial) y teclear pesos
+  seguidos. Antes: la escritura del blob en cada tecla. Después: ninguna
+  escritura del blob, y ~5 KB por tecla en la clave de sesión.
 - Matar la app en mitad de una sesión y reabrirla: tiene que volver al Workout
   con las series ya registradas. Es el comportamiento que estas cuatro piezas
-  podrían romper sin que ningún test lo note.
+  podrían romper sin que ningún test lo note — aunque ahora el primer test del
+  `describe` nuevo lo cubre en frío.
 
 ---
 

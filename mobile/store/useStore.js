@@ -12,7 +12,7 @@
 
 import { Platform, AppState } from 'react-native';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy'; // v19: legacy = readAsStringAsync, EncodingType, cacheDirectory
@@ -313,6 +313,50 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
 
   return lines.length > 0 ? lines : ['Cambios menores en el programa'];
 }
+
+// ─── Persistencia ──────────────────────────────────────────────────────────────
+
+/**
+ * La sesión en curso vive en su propia clave, fuera del blob principal
+ * (`docs/specs/rediseno.md` §3). Antes iba dentro del `partialize`, así que
+ * cada tecla del campo de peso serializaba el estado entero — historial de
+ * todos los clientes incluido, megabytes para un entrenador.
+ */
+export const SESSION_STORAGE_KEY = `${BACKUP_STORAGE_KEY}_session`;
+
+/**
+ * Sustituye a `createJSONStorage(() => AsyncStorage)`, que serializa antes de
+ * que podamos decidir si merece la pena escribir.
+ *
+ * Zustand llama a `setItem` en CADA `set()` sin comparar nada
+ * (`zustand/middleware.js:367`). Con la sesión en curso fuera del `partialize`,
+ * teclear un peso ya no cambia ninguna de estas claves — así que la comparación
+ * superficial de referencias corta la escritura entera, serialización incluida,
+ * que es donde estaba el coste.
+ *
+ * Comparar por referencia y no por contenido es válido porque ninguna acción
+ * del store muta en sitio los objetos de primer nivel del estado persistido:
+ * todas devuelven objetos nuevos. Las únicas que sí mutan son las migraciones
+ * de `onRehydrateStorage` — de ahí el `lastPersisted = null` de después de
+ * hidratar.
+ */
+let lastPersisted = null;
+const persistStorage = {
+  getItem: async (name) => {
+    const raw = await AsyncStorage.getItem(name);
+    return raw ? JSON.parse(raw) : null;
+  },
+  setItem: async (name, value) => {
+    const next = value.state;
+    const keys = Object.keys(next);
+    if (lastPersisted
+        && keys.length === Object.keys(lastPersisted).length
+        && keys.every((k) => next[k] === lastPersisted[k])) return;
+    lastPersisted = next;
+    await AsyncStorage.setItem(name, JSON.stringify(value));
+  },
+  removeItem: (name) => AsyncStorage.removeItem(name),
+};
 
 // ─── Store ─────────────────────────────────────────────────────────────────────
 
@@ -3892,12 +3936,14 @@ export const useStore = create(
       // La tarea de fondo lee esta misma clave para armar el backup, así que
       // vive en el módulo compartido: renombrarla aquí la rompería en silencio.
       name: BACKUP_STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage,
+      // `activeSession` NO está aquí: vive en `SESSION_STORAGE_KEY`. Sacarla no
+      // basta por sí solo — hace falta además el corte de escritura de
+      // `persistStorage`, porque zustand escribe en cada `set()` pase lo que pase.
       partialize: (state) => ({
         profile: state.profile,
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
-        activeSession: state.activeSession,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         programs: state.programs,
@@ -3935,14 +3981,8 @@ export const useStore = create(
             i18n.changeLanguage(state.profile.language);
           }
 
-          // Clear stale active sessions (older than 12h) so the app doesn't
-          // always open on WorkoutScreen after closing mid-session during testing.
-          if (state.activeSession?.templateId) {
-            const age = Date.now() - (state.activeSession.startedAt ?? 0);
-            if (age > 12 * 60 * 60 * 1000) {
-              state.activeSession = INITIAL_ACTIVE_SESSION;
-            }
-          }
+          // La caducidad de 12 h de la sesión en curso se mudó al `finally`,
+          // con la sesión: ya no viene en el estado que rehidrata zustand.
 
           // migración pre-publicación
           // Una sola capa de sesiones (spec §4.2). `userPrograms` era la capa de
@@ -4059,34 +4099,82 @@ export const useStore = create(
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);
         } finally {
-          // Determine the initial screen. We set _hasHydrated + _initialRoute so
-          // RootNavigator can mount the Stack with the correct initialRouteName
-          // without any setTimeout / navigateTo race condition.
-          //
-          // Read the live store, not `state`: on the success path they are the
-          // same object (middleware.js:431 passes get()), and on the failure
-          // path `state` is undefined while the store still holds the initial
-          // state — which routes to Setup, same as a fresh install.
-          const s = useStore.getState();
-          const hasProgram     = s.profile?.activeProgramId && s.programs?.[s.profile.activeProgramId];
-          const setupDone      = s.profile?.setupComplete;
-          const onboardingDone = s.profile?.onboardingCompleted;
+          // La sesión en curso ya no viene en el estado rehidratado: se lee de
+          // su propia clave, y eso es asíncrono. `_initialRoute` depende de si
+          // hay sesión abierta, así que el flag de hidratación baja DENTRO de la
+          // promesa. La garantía del fallo 1 —`_hasHydrated` acaba en `true`
+          // pase lo que pase— se mantiene porque va en el `.finally()` de la
+          // cadena, que corre también si la lectura revienta.
+          AsyncStorage.getItem(SESSION_STORAGE_KEY)
+            .then((raw) => { if (raw) useStore.setState({ activeSession: JSON.parse(raw) }); })
+            .catch((e) => console.warn('[rehydrate] sesión en curso ilegible:', e))
+            .finally(() => {
+              // Caducidad de 12 h, para que la app no abra siempre en Workout
+              // tras cerrarla a mitad de sesión. Vivía en el bloque de
+              // migraciones; se muda aquí con la sesión. Se evalúa la sesión
+              // resultante venga de donde venga: de la clave nueva, o del blob
+              // de una instalación anterior a este cambio, que todavía la trae
+              // dentro y que el merge de zustand deja puesta.
+              const abierta = useStore.getState().activeSession;
+              if (abierta?.templateId
+                  && Date.now() - (abierta.startedAt ?? 0) > 12 * 60 * 60 * 1000) {
+                // Borrar la clave es trabajo de la suscripción de abajo, que ve
+                // el `templateId` a null y la quita. Aquí sólo se vacía.
+                useStore.setState({ activeSession: INITIAL_ACTIVE_SESSION });
+              }
 
-          let initialRoute = 'Main';
-          if (!setupDone && !onboardingDone && !hasProgram) {
-            initialRoute = 'Setup';
-          } else if (!onboardingDone && !hasProgram) {
-            initialRoute = 'Onboarding';
-          } else if (s.activeSession?.templateId) {
-            initialRoute = 'Workout';
-          }
+              // Las migraciones de arriba mutan el estado rehidratado sin
+              // cambiar las referencias de primer nivel. Sin este reset, la
+              // primera escritura posterior las vería "iguales" y las
+              // descartaría, y volverían a ejecutarse en cada arranque. Son
+              // idempotentes, así que no se rompe nada — pero es un silencio
+              // caro de diagnosticar.
+              lastPersisted = null;
 
-          useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
+              // Determine the initial screen. We set _hasHydrated + _initialRoute so
+              // RootNavigator can mount the Stack with the correct initialRouteName
+              // without any setTimeout / navigateTo race condition.
+              //
+              // Read the live store, not `state`: on the success path they are the
+              // same object (middleware.js:431 passes get()), and on the failure
+              // path `state` is undefined while the store still holds the initial
+              // state — which routes to Setup, same as a fresh install.
+              const s = useStore.getState();
+              const hasProgram     = s.profile?.activeProgramId && s.programs?.[s.profile.activeProgramId];
+              const setupDone      = s.profile?.setupComplete;
+              const onboardingDone = s.profile?.onboardingCompleted;
+
+              let initialRoute = 'Main';
+              if (!setupDone && !onboardingDone && !hasProgram) {
+                initialRoute = 'Setup';
+              } else if (!onboardingDone && !hasProgram) {
+                initialRoute = 'Onboarding';
+              } else if (s.activeSession?.templateId) {
+                initialRoute = 'Workout';
+              }
+
+              useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
+            });
         }
       },
     }
   )
 );
+
+// La sesión en curso, persistida por su cuenta. Sólo cuando cambia, y sólo
+// ella: ~5 KB por escritura en vez del blob entero.
+useStore.subscribe((s, prev) => {
+  if (s.activeSession === prev.activeSession) return;
+  if (!s.activeSession?.templateId) {
+    AsyncStorage.removeItem(SESSION_STORAGE_KEY).catch(() => {});
+  } else {
+    // ponytail: una escritura por tecla, pero de ~5 KB en vez de megabytes. Si
+    // en dispositivo se notara, throttle de cola de 500 ms aquí y en ningún
+    // otro sitio.
+    AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(s.activeSession))
+      .catch(() => {});
+  }
+});
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────
 export const selectView         = (s) => s.ui.view;
