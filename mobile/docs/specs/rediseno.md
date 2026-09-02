@@ -116,6 +116,24 @@ lectura mala se lo lleva entero.
 
 ## 2. Fase 1 — Borrar la app web y traer el motor a `mobile/`
 
+> **Revisada contra el código (2-sep-2026).** La mecánica se verificó entera —
+> las tres reglas de §2.3 se simularon sobre las **78** ocurrencias reales y
+> salieron 78/78 correctas— y la spec se parcheó con seis cosas que faltaban:
+> la dependencia inversa de `clientSync.sim.test.js` (§2.3), que
+> `src/data/programs.js` es web-only y se **borra** en vez de moverse (§2.1),
+> `public/` y el `README.md` (§2.1), el `.claude/launch.json` (§2.4), qué es
+> versionado y qué no (§2.1), y los números (30 ficheros, no 28).
+>
+> Motivo de fondo, medido: el store web tiene **53 referencias a `userPrograms`
+> y 38 a `.days`**, las dos cosas que `a851a3c` y `8d9af4d` eliminaron del
+> modelo. La app web ya no compila contra el motor actual. No hay nada que
+> preservar.
+>
+> **Se hace en dos commits**, no en uno: el primero es borrado puro y no toca
+> ni un import (tests verdes, la app arranca igual); el segundo muda el motor.
+> Así hay un punto de bisect limpio entre "se borró la web" y "se movió el
+> motor".
+
 ### 2.1 Qué se borra
 
 ```
@@ -126,16 +144,28 @@ src/App.jsx  src/App.css  src/main.jsx  src/index.css
 src/i18n.js            (el móvil tiene el suyo en mobile/src/i18n.js)
 src/assets/
 src/utils/storage.js   (sólo lo usa el store web)
+src/data/programs.js   (sólo lo usa el store web — ver aviso abajo)
 src/version.js         (no lo importa nadie — comprobado)
 index.html
+public/                (favicon.svg, icons.svg, manifest.json — sólo index.html)
+README.md              (la plantilla de Vite; es la puerta de entrada del repo)
 dist/                  (1,3 MB de build web)
 mockups-home.html
 setup.sh
 ```
 
+⚠️ **`src/data/programs.js` (129 líneas) es web-only.** Su único importador es
+`src/store/useStore.js:18`. Va en el borrado, **no** en el `git mv src/data` de
+§2.2. Dos sitios afirman lo contrario y hay que corregirlos de paso — ver §2.5.
+
+**Qué está versionado y qué no.** `dist/` y `mockups-home.html` están en
+`.gitignore`: borrarlos es limpieza de disco y **no sale en el diff**. Sí están
+versionados —y sí salen— `index.html`, `public/`, `setup.sh` y `README.md`.
+
 `devpanel.mjs`, `seed-load-data.mjs` y `scripts/estado.mjs` **se quedan**:
 `npm run seed` es la única forma de generar historial de prueba para la vista
 de Carga, y `npm run estado` genera `docs/estado.html` desde las specs.
+`devpanel.mjs` sólo lanza `npm test` y comandos de git, así que no se entera.
 
 ### 2.2 Qué se mueve
 
@@ -153,7 +183,11 @@ importa `./slotResolver` y `../data/exerciseLibrary`, y las dos rutas siguen
 siendo válidas después del movimiento porque `utils` y `data` se mueven juntos
 y a la misma profundidad relativa.
 
-### 2.3 Reescritura de imports — 28 ficheros, dos reglas
+### 2.3 Reescritura de imports — 30 ficheros, dos reglas y una excepción
+
+Son **30** ficheros (26 bajo `mobile/src`, 4 bajo `mobile/store`) y **78**
+ocurrencias. Los comandos son GNU: **lánzalos desde Git Bash**, no desde
+PowerShell — no hay `sed -i` ni `xargs` ahí.
 
 La regla general: todo import que hoy sube hasta la raíz del repo (`(../)ⁿ src/`)
 tiene que apuntar ahora a `mobile/src/`, que está **dos niveles por debajo** de
@@ -185,7 +219,26 @@ Resultado esperado por fichero:
 | `mobile/src/screens/HomeScreen.jsx` | `'../../../src/utils/stageLocks'` | `'../utils/stageLocks'` |
 | `mobile/src/components/workout/ExerciseCard.jsx` | `'../../../../src/utils/warmup'` | `'../../utils/warmup'` |
 | `mobile/src/tasks/driveBackupTask.js` | `'../../../src/utils/backupPayload'` | `'../utils/backupPayload'` |
-| `mobile/src/utils/sessionStats.js` | `'../../../src/utils/progression'` | `'./progression'` |
+| `mobile/src/utils/sessionStats.js` | `'../../../src/utils/progression'` | `'../utils/progression'` |
+
+(La última la resuelve el `sed` como `'../utils/progression'`, no como
+`'./progression'`. Las dos apuntan al mismo fichero; no se toca a mano.)
+
+**La excepción — la única dependencia inversa del repo.**
+[src/utils/clientSync.sim.test.js:27](../../../src/utils/clientSync.sim.test.js)
+importa hacia `mobile/`, no desde él:
+
+```js
+import { assignActiveProgram } from '../../mobile/src/utils/programOwnership';
+```
+
+No empieza por `(../)ⁿsrc/`, así que **ninguna de las dos reglas la toca**, y
+después del `git mv` apunta a `mobile/mobile/src/…`. Se arregla a mano, y es lo
+primero que `vitest` cazará si se olvida:
+
+```js
+import { assignActiveProgram } from './programOwnership';
+```
 
 **Comprobación de que no queda ninguno:**
 
@@ -196,7 +249,7 @@ grep -rn "src/utils\|src/data\|src/locales" mobile --include=*.js --include=*.js
 Debe devolver **cero** resultados (los `.md` de `docs/` sí los mencionan; ver
 §2.5).
 
-### 2.4 Los cinco ficheros de configuración que cambian
+### 2.4 Los seis ficheros de configuración que cambian
 
 1. **[mobile/metro.config.js](../../metro.config.js)** — desaparece la razón de
    ser de `watchFolders` y de la ruta de `node_modules` de la raíz:
@@ -220,18 +273,33 @@ Debe devolver **cero** resultados (los `.md` de `docs/` sí los mencionan; ver
    antes de dar la fase por buena**; si fallara, esos tres vuelven a
    `devDependencies` de la raíz.
 
+   Comprobado además: `src/utils`, `src/data` y `src/locales` **no importan ni
+   un solo paquete** (sólo `node:fs`, `node:url` y `vitest` en los tests), y
+   todos los bare specifiers de `mobile/` resuelven dentro de
+   `mobile/node_modules` —incluido `@expo/vector-icons`, que vive anidado en
+   `expo/node_modules`—. Nada dependía del hoist a la raíz. Es el único riesgo
+   que `vitest` **no** ve: se manifiesta al arrancar Metro, no antes.
+
 3. **[vite.config.js](../../../vite.config.js)** — deja de ser configuración de
    build y pasa a ser sólo la de vitest: se cae el plugin de React (ningún test
    importa JSX — comprobado) y se queda el bloque `test` con los alias a
-   `test/native-stub.js`, que siguen siendo indispensables.
+   `test/native-stub.js`, que siguen siendo indispensables. Quitar `vite` de la
+   raíz es seguro: `vitest@4.1.8` lo lleva como dependencia directa.
 
-4. **[seed-load-data.mjs](../../../seed-load-data.mjs):16** —
+4. **[seed-load-data.mjs](../../../seed-load-data.mjs):21** —
    `'./src/data/exerciseLibrary.js'` → `'./mobile/src/data/exerciseLibrary.js'`.
 
-5. **[eslint.config.js](../../../eslint.config.js)** — `globals.browser` y
-   `reactRefresh.configs.vite` existían por la app web. Cambiarlos toca el
-   recuento de errores de todo el repo, así que **va en un commit aparte**, no
-   en éste.
+5. **`.claude/launch.json`** — apunta a `npm run dev` en el puerto 5173, que es
+   el servidor de la app web. Al caer el script queda roto. No está versionado
+   (`.claude/` está en `.gitignore`), así que es limpieza local: borrar la
+   entrada o apuntarla a Expo.
+
+6. **[eslint.config.js](../../../eslint.config.js)** — `globals.browser` y
+   `reactRefresh.configs.vite` existían por la app web. **Recomendación: no
+   tocarlo, ni en este commit ni en otro.** `globals.browser` es lo que le da a
+   React Native `fetch`, `console`, `setTimeout`, `URL` y `atob`; cambiarlo
+   siembra errores por todo el repo a cambio de nada. Si algún día se toca, va
+   solo en su propio commit.
 
 ### 2.5 Documentación que miente después de la fase
 
@@ -242,6 +310,12 @@ Debe devolver **cero** resultados (los `.md` de `docs/` sí los mencionan; ver
   "porque Metro los resuelve vía `watchFolders`". Después de esta fase ya no hay
   nada que explicar: son código del móvil y punto. Y la frase "la app web queda
   fuera: tiene los mismos bugs en su copia del store" deja de tener sujeto.
+- **Dos sitios afirman que `src/data/programs.js` "lo usan los tests"** y es
+  falso — cero importadores fuera del store web, comprobado:
+  [mobile/store/useStore.js:385](../../store/useStore.js) ("queda como dato de
+  desarrollo: lo usan los tests, no el store") y
+  [program-model.md:686](program-model.md). Las dos frases se corrigen en esta
+  fase, porque el fichero desaparece.
 - Las rutas `src/utils/...` que aparecen en las tablas de las specs quedan
   desactualizadas. **No se reescriben en masa**: se corrigen cuando se toque
   cada spec. Vale la pena dejarlo dicho aquí para que nadie piense que son
@@ -251,8 +325,22 @@ Debe devolver **cero** resultados (los `.md` de `docs/` sí los mencionan; ver
 
 ```bash
 npx vitest run                      # 37 ficheros de test, todos verdes
+npx eslint .                        # comparar el recuento contra HEAD
 npx expo start -c                   # Metro arranca sin watchFolders
 ```
+
+Cifras medidas **antes** de la fase, para que el después sea comprobable y no
+una impresión:
+
+| Medida | Antes | Después esperado |
+|---|---|---|
+| `vitest` | 37 ficheros / 1.174 tests | **idéntico** |
+| `eslint .` | 251 problemas (213 errores, 38 warnings) | **211 (182 / 29)** |
+
+Los 40 problemas que caen son exactamente los de los ficheros borrados
+(medido: `npx eslint src/components src/hooks src/store src/App.jsx
+src/main.jsx src/i18n.js src/utils/storage.js` → 40). Cualquier otra cifra
+significa que el movimiento introdujo algo.
 
 Y en el dispositivo: abrir la app, entrar en una sesión, guardarla, y abrir
 Progreso › Carga. Eso ejercita `progression`, `stageProgress`, `trainingLoad` y
@@ -265,6 +353,14 @@ Progreso › Carga. Eso ejercita `progression`, `stageProgress`, `trainingLoad` 
 descuidado sobre `src/i18n` rompe la app entera. Las reglas de §2.3 sólo tocan
 rutas con dos o más `../`, así que ésta no la atrapan — pero conviene mirarla a
 ojo antes de commitear.
+
+La trampa hermana —que un `(../)ⁿsrc/` de dos o más niveles apunte a
+`mobile/src` en vez de a la raíz, cosa que la profundidad por sí sola no
+distingue— **se comprobó y no existe en este árbol**: las 78 ocurrencias
+resuelven a la raíz, y las 14 rutas de una sola `../` (todas en
+`mobile/store/`) son internas y quedan fuera de las reglas. Si el árbol cambia
+antes de ejecutar la fase, hay que volver a comprobarlo: la regla de §2.3 es
+correcta por aritmética de profundidad, no por magia.
 
 ---
 
