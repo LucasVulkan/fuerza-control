@@ -330,21 +330,34 @@ Debe devolver **cero** resultados. Ojo: la comprobación no puede ser
 ```bash
 npx vitest run                      # 37 ficheros de test, todos verdes
 npx eslint .                        # comparar el recuento contra HEAD
-npx expo start -c                   # Metro arranca sin watchFolders
+cd mobile && npx expo export --platform android --clear
 ```
+
+`expo export` en vez de `expo start -c`: **es la única comprobación que ve el
+riesgo de Metro**. `vitest` resuelve con Node y no se entera de que
+`watchFolders` ya no está; `expo start` levanta un servidor y no empaqueta nada
+hasta que un dispositivo se conecta. `export` empaqueta el árbol entero y
+revienta con cualquier import sin resolver. (Escribe `mobile/dist`, que está
+ignorado — borrarlo después.)
 
 Cifras medidas **antes** de la fase, para que el después sea comprobable y no
 una impresión:
 
-| Medida | Antes | Después esperado |
-|---|---|---|
-| `vitest` | 37 ficheros / 1.174 tests | **idéntico** |
-| `eslint .` | 251 problemas (213 errores, 38 warnings) | **211 (182 / 29)** |
+| Medida | Antes | Después esperado | Real |
+|---|---|---|---|
+| `vitest` | 37 ficheros / 1.174 tests | **idéntico** | 37 / 1.174 ✅ |
+| `eslint .` | 251 problemas (213 errores, 38 warnings) | **211 (182 / 29)** | 210 (181 / 29) ✅ |
+| `expo export` | — | empaqueta | 8,54 MB hbc ✅ |
 
 Los 40 problemas que caen son exactamente los de los ficheros borrados
 (medido: `npx eslint src/components src/hooks src/store src/App.jsx
-src/main.jsx src/i18n.js src/utils/storage.js` → 40). Cualquier otra cifra
-significa que el movimiento introdujo algo.
+src/main.jsx src/i18n.js src/utils/storage.js` → 40). Cualquier cifra **por
+encima** significa que el movimiento introdujo algo.
+
+El error de menos (210, no 211) se persiguió hasta el final en vez de darlo por
+bueno: es un `no-undef` de `mobile/metro.config.js`, que perdió su
+`require('path')` al quedarse sin `watchFolders`. Ningún fichero movido cambió
+de recuento — comparado uno a uno con un worktree de `HEAD~1`.
 
 Y en el dispositivo: abrir la app, entrar en una sesión, guardarla, y abrir
 Progreso › Carga. Eso ejercita `progression`, `stageProgress`, `trainingLoad` y
