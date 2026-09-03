@@ -52,6 +52,8 @@ const TEMAS = [
   ['ui',           'Estructura y UI'],
 ];
 const PROGRESOS = ['hecho', 'parcial', 'sin-empezar'];
+/** El valor de la spec es la clave; esto es solo como se lee en pantalla. */
+const ETIQUETA = { hecho: 'Cerrada', parcial: 'A medias', 'sin-empezar': 'Sin empezar' };
 
 /** Ancla ASCII: un `href="#monetización"` funciona, pero se rompe al copiarlo. */
 const slug = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-');
@@ -167,7 +169,7 @@ const resumenSev = ['🔴', '🟠', '🟡', '🟢'].map((s) => {
 const tarjetaSpec = (s) => `<div class="ficha ${s.progreso}">
   <div class="fila">
     <b>${esc(s.titulo)}</b>
-    <span class="chip ${s.progreso}">${esc(s.progreso)}</span>
+    <span class="chip ${s.progreso}">${esc(ETIQUETA[s.progreso])}</span>
   </div>
   <p class="corto">${md(s.corto)}</p>
   <p class="falta"><span>Falta</span> ${md(s.falta)}</p>
@@ -180,8 +182,10 @@ const seccionTema = ([tema, etiqueta]) => {
   if (grupo.length === 0) return '';
   const listos = grupo.filter((s) => s.progreso === 'hecho').length;
   const orden  = (s) => PROGRESOS.indexOf(s.progreso);
-  return `<h2 id="${slug(tema)}">${esc(etiqueta)} <small>${listos}/${grupo.length} cerradas</small></h2>
-  <div class="rejilla">${[...grupo].sort((a, b) => orden(b) - orden(a) || a.titulo.localeCompare(b.titulo)).map(tarjetaSpec).join('')}</div>`;
+  return `<section class="seccion" data-sec="${slug(tema)}">
+  <h2>${esc(etiqueta)} <small>${listos}/${grupo.length} cerradas</small></h2>
+  <div class="rejilla">${[...grupo].sort((a, b) => orden(b) - orden(a) || a.titulo.localeCompare(b.titulo)).map(tarjetaSpec).join('')}</div>
+  </section>`;
 };
 
 const html = `<!doctype html>
@@ -204,10 +208,16 @@ const html = `<!doctype html>
   .cifra small{font-size:16px;color:var(--mut);font-weight:400}
   .barra{height:7px;background:#24272b;border-radius:4px;overflow:hidden;margin:12px 0 8px}
   .barra span{display:block;height:100%;background:var(--acc)}
-  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 4px}
-  .nav a{color:var(--mut);text-decoration:none;border:1px solid var(--bd);border-radius:20px;
-         padding:5px 13px;font-size:13px;background:var(--card)}
-  .nav a:hover{color:var(--tx);border-color:var(--acc)}
+  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px;position:sticky;top:0;
+       background:var(--bg);padding:10px 0;z-index:2}
+  .nav button{color:var(--mut)}
+  .nav button:hover{color:var(--tx);border-color:var(--acc)}
+  .nav button.on{color:#111}
+  .cuenta{display:inline-block;background:var(--pend);color:#111;border-radius:20px;
+          padding:0 6px;font-size:11px;font-weight:700;margin-left:5px}
+  .nav button.on .cuenta{background:#111;color:var(--acc)}
+  .seccion[hidden]{display:none}
+  .seccion h2:first-child{margin-top:26px}
   .tabla-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th{text-align:left;color:var(--mut);font-weight:500;font-size:12px;text-transform:uppercase;
@@ -232,7 +242,7 @@ const html = `<!doctype html>
   .ficha.sin-empezar{border-left-color:#4a4f55}
   .ficha .fila{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px}
   .ficha b{font-size:14px;line-height:1.35}
-  .chip{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;
+  .chip{font-size:10px;letter-spacing:.04em;padding:3px 8px;
         border-radius:20px;white-space:nowrap;background:#24272b;color:var(--mut)}
   .chip.hecho{background:var(--acc);color:#111;font-weight:600}
   .chip.parcial{background:#3a3220;color:var(--pend)}
@@ -262,36 +272,52 @@ const html = `<!doctype html>
     </div>
   </div>
 
-  <div class="nav">
-    ${TEMAS.map(([t, e]) => `<a href="#${slug(t)}">${esc(e)}</a>`).join('')}
-    <a href="#pruebas">Pruebas a mano</a>
-  </div>
+  <nav class="nav">
+    <button class="on" data-sec="todo">Todo</button>
+    ${TEMAS.map(([t, e]) => `<button data-sec="${slug(t)}">${esc(e)}</button>`).join('')}
+    <button data-sec="pruebas">Pruebas a mano <span class="cuenta">${pruebas.length}</span></button>
+  </nav>
 
-  <h2 id="errores">Errores <small>${hechos}/${fallos.length} resueltos — auditoría técnica</small></h2>
-  <div class="filtros">
-    <button data-f="pend">Pendientes</button>
-    <button class="on" data-f="todos">Todos</button>
-    <button data-f="ok">Resueltos</button>
-  </div>
-  <div class="tabla-wrap"><table>
-    <thead><tr><th>#</th><th></th><th>Fallo</th><th>Archivo</th></tr></thead>
-    <tbody>${[...fallos]
-      .sort((a, b) => (a.hecho - b.hecho) || rank(a.sev) - rank(b.sev) || a.num - b.num)
-      .map(filaFallo).join('')}</tbody>
-  </table></div>
+  <section class="seccion" data-sec="errores">
+    <h2>Errores <small>${hechos}/${fallos.length} resueltos — auditoría técnica</small></h2>
+    <div class="filtros">
+      <button data-f="pend">Pendientes</button>
+      <button class="on" data-f="todos">Todos</button>
+      <button data-f="ok">Resueltos</button>
+    </div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>#</th><th></th><th>Fallo</th><th>Archivo</th></tr></thead>
+      <tbody>${[...fallos]
+        .sort((a, b) => (a.hecho - b.hecho) || rank(a.sev) - rank(b.sev) || a.num - b.num)
+        .map(filaFallo).join('')}</tbody>
+    </table></div>
+  </section>
 
-  ${TEMAS.map(seccionTema).join('\n')}
+  ${TEMAS.filter(([t]) => t !== 'errores').map(seccionTema).join('\n')}
 
-  <h2 id="pruebas">Pruebas a mano (${pruebas.length})</h2>
-  <div class="sub">Lo que no se puede comprobar con <code>vitest</code>: los stubs del test
-    son inertes, así que un test verde prueba la lógica, nunca que el lado nativo funcione.</div>
-  ${pruebas.length === 0
-    ? '<div class="sub">Nada pendiente.</div>'
-    : pruebas.map((p) => `<div class="prueba"><b>${esc(p.spec)}</b>${md(p.texto)}</div>`).join('')}
+  <section class="seccion" data-sec="pruebas">
+    <h2>Pruebas a mano <small>${pruebas.length} pendientes</small></h2>
+    <div class="sub">Lo que no se puede comprobar con <code>vitest</code>: los stubs del test
+      son inertes, así que un test verde prueba la lógica, nunca que el lado nativo funcione.</div>
+    ${pruebas.length === 0
+      ? '<div class="sub">Nada pendiente.</div>'
+      : pruebas.map((p) => `<div class="prueba"><b>${esc(p.spec)}</b>${md(p.texto)}</div>`).join('')}
+  </section>
 
   <footer>${esc(commit[0] ?? '')} · ${esc(commit[1] ?? '')} · ${esc((commit[2] ?? '').slice(0, 90))}</footer>
 </main>
 <script>
+  // Pestanas por JS y no anclas de hash: la pagina se abre desde el visor de la
+  // app como data: URL, y ahi una navegacion por #ancla no hace nada.
+  const tabs = document.querySelectorAll('.nav [data-sec]');
+  const secciones = document.querySelectorAll('.seccion');
+  const mostrar = (sec) => {
+    secciones.forEach((s) => { s.hidden = sec !== 'todo' && s.dataset.sec !== sec; });
+    tabs.forEach((t) => t.classList.toggle('on', t.dataset.sec === sec));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  tabs.forEach((t) => { t.onclick = () => mostrar(t.dataset.sec); });
+
   const btns = document.querySelectorAll('[data-f]');
   const filtrar = (modo) => {
     document.querySelectorAll('tbody tr').forEach((tr) => {
@@ -303,6 +329,7 @@ const html = `<!doctype html>
     filtrar(b.dataset.f);
   }; });
   filtrar('todos');
+  mostrar('todo');
 </script>
 </body></html>`;
 
