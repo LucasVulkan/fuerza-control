@@ -438,8 +438,6 @@ export default function OnboardingScreen() {
   const language                   = useStore((s) => s.profile?.language ?? 'es');
   const isPro                      = useStore((s) => s.profile?.isPro ?? false);
   const programs                   = useStore((s) => s.programs);
-  const pendingExternalImport      = useStore((s) => s.pendingExternalImport);
-  const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
   const clientSync                 = useStore((s) => s.clientSync);
   const unlinkFromTrainer          = useStore((s) => s.unlinkFromTrainer);
 
@@ -456,16 +454,11 @@ export default function OnboardingScreen() {
   const [manualSessions,   setManualSessions]  = useState(3);
   const [manualName,       setManualName]      = useState('');
 
-  // Handle .fitdata files opened from the OS file explorer while on this screen.
-  // AppHeader (which normally handles this) is not mounted during onboarding.
-  useEffect(() => {
-    if (!pendingExternalImport) return;
-    const { rawContent, fileName } = pendingExternalImport;
-    clearPendingExternalImport();
-    const parsed = parseImportFile(rawContent);
-    if (!parsed.ok) { Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
-    setImportState({ fileName, parsedData: parsed.data });
-  }, [pendingExternalImport]); // eslint-disable-line react-hooks/exhaustive-deps
+  // El .fitdata abierto desde el explorador lo atiende `ExternalImportModal`,
+  // en `RootNavigator`. La copia que había aquí existía porque `AppHeader` no
+  // está montado durante el onboarding; con el modal global eso deja de
+  // importar, y el cierre del onboarding tras importar un programa lo decide
+  // allí `profile.onboardingCompleted` en vez de qué pantalla montó el modal.
 
 
   const [answers, setAnswers] = useState(DEFAULT_ANSWERS);

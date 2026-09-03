@@ -29,6 +29,7 @@ import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
+import ExternalImportModal   from '../components/ExternalImportModal';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -221,6 +222,9 @@ export default function RootNavigator() {
 
       {/* Global toast — sits above all screens, never blocks touches */}
       <Toast />
+      {/* Global como el toast, y por lo mismo: solo puede haber una
+          importación en curso. Ver el fallo 11 de la auditoría. */}
+      <ExternalImportModal />
     </View>
   );
 }

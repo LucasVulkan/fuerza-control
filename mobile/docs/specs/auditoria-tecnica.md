@@ -105,7 +105,7 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [8](#8) | 🟠 Alta | ✅ `create-trainer-account` sin validación ni rate limit | `supabase/functions/create-trainer-account` |
 | [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
-| [11](#11) | 🟡 Media | Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:578` |
+| [11](#11) | 🟡 Media | ✅ Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:578` |
 | [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:127` |
 | [13](#13) | 🟡 Media | ✅ Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
 | [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js:239` |
@@ -1159,7 +1159,7 @@ control de que el arreglo no se pasa de destructivo.
 
 ---
 
-## 11. Un `.fitdata` abre varios modales de importación 🟡 {#11}
+## 11. Un `.fitdata` abre varios modales de importación 🟡 ✅ {#11}
 
 **Dónde.** `src/components/AppHeader.jsx:578-589` **y**
 `src/screens/OnboardingScreen.jsx:462-468`.
@@ -1207,6 +1207,45 @@ modal global no hay nada que duplicar.
 Efecto secundario: hoy también hay cinco `setInterval` de reloj simultáneos
 (`AppHeader.jsx:582`), uno por instancia, repintando cada 10 s. Ese sigue
 existiendo — es aceptable, pero conviene saberlo.
+
+### ✅ Resuelto (sep-2026)
+
+`src/components/ExternalImportModal.jsx`, montado una sola vez en
+`RootNavigator` junto al `<Toast />`. Las dos copias del efecto fuera:
+`AppHeader` y `OnboardingScreen`.
+
+**La copia del onboarding tenía un motivo declarado**, y conviene no borrarlo
+sin leerlo: *"AppHeader (which normally handles this) is not mounted during
+onboarding"*. Era cierto. Con el modal colgado de la raíz de navegación deja de
+importar quién esté montado, así que el motivo desaparece en vez de ignorarse.
+
+**Lo que costó reconciliar: los dos manejadores no hacían lo mismo.** El de
+`AppHeader` importaba en silencio, daba su propio toast y navegaba a Home; el
+del onboarding importaba con toast del store y llamaba a `finish()`, que además
+suelta al entrenador conservando el programa (`unlinkFromTrainer({ keepProgram:
+true })`) y elige entre `goBack()` y `replace('Main')` según el parámetro
+`fromApp`.
+
+La reconciliación es que **el "qué pasa después" lo decide el estado, no qué
+pantalla montó el modal** — que era justamente lo que obligaba a tener dos
+copias. `profile.onboardingCompleted` distingue los dos casos, y el mapeo es
+exacto: `fromApp` solo llega a `true` cuando el onboarding se abre desde dentro
+de la app, y ahí `onboardingCompleted` ya es `true`. El `unlink` se conserva
+**solo** en el camino de onboarding, para no cambiar de paso el comportamiento
+del otro, que hoy no lo hace.
+
+Lo que **no** se movió: `handlePickFile`, el "importar" del menú. Ese sí es
+local a una interacción concreta, y las dos pantallas conservan su modal para
+él — comprobado que ninguno queda como código muerto.
+
+**Sin test**: es montaje de navegación, y lo que se arregla —cuántas instancias
+reaccionan al mismo archivo— depende de qué pestañas haya visitado el usuario.
+
+**Probar en dispositivo.** Recorrer Inicio → Historial → Clientes y abrir un `.fitdata` desde el explorador: debe salir **un** diálogo, no uno por pestaña visitada. Y repetirlo durante el onboarding, donde antes lo atendía la copia de esa pantalla.
+
+**Lo que sigue abierto:** el reloj. Los seis `setInterval` de `AppHeader`, uno
+por instancia montada, siguen ahí. No se toca porque es otra cosa y es
+aceptable.
 
 ---
 
@@ -2024,7 +2063,7 @@ verificable:
 | **C — sincronización** ✅ | ✅ [5](#5), ✅ [7](#7), ✅ [8](#8) | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
-| **F — UI y limpieza** | [11](#11)ᴿ, [12](#12)ᴿ, ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
+| **F — UI y limpieza** | ✅ [11](#11), [12](#12)ᴿ, ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
 
 La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
 inservible y [2](#2) destruye datos del entrenador en la operación que

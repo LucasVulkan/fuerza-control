@@ -552,8 +552,6 @@ export default function AppHeader() {
   const language                  = useStore((s) => s.profile?.language ?? 'es');
   const pendingUpload             = useStore((s) => s.clientSync?.pendingUpload);
   const uploadHistoryToTrainer    = useStore((s) => s.uploadHistoryToTrainer);
-  const pendingExternalImport     = useStore((s) => s.pendingExternalImport);
-  const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
 
   const [retrying, setRetrying] = useState(false);
 
@@ -574,19 +572,10 @@ export default function AppHeader() {
     return () => clearInterval(id);
   }, []);
 
-  // Watch for files opened externally (intent / share sheet).
-  // App.js reads the file and sets pendingExternalImport; we parse + show modal.
-  useEffect(() => {
-    if (!pendingExternalImport) return;
-    const { rawContent, fileName } = pendingExternalImport;
-    clearPendingExternalImport();                         // consume immediately
-    const parsed = parseImportFile(rawContent);
-    if (!parsed.ok) {
-      Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
-      return;
-    }
-    setImportState({ fileName, parsedData: parsed.data });
-  }, [pendingExternalImport]); // eslint-disable-line react-hooks/exhaustive-deps
+  // El archivo abierto desde fuera lo atiende `ExternalImportModal`, montado
+  // una sola vez en `RootNavigator`: esta cabecera va en seis pantallas y todas
+  // abrían su propio modal (fallo 11). Aquí se queda `handlePickFile`, que sí
+  // es local: el "importar" del menú.
 
   async function handlePickFile() {
     setPicking(true);
