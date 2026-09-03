@@ -82,6 +82,51 @@ línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única 
 del qué, hasta la línea en blanco. La página las junta todas en una lista — es
 lo único que `vitest` no puede cubrir, porque los stubs del test son inertes.
 
+## Cómo mantener esto al día
+
+Tres situaciones. Las tres acaban en `npm run estado`, que **falla** si algo no
+cuadra en vez de generar una página que miente — así que si duda, ejecútalo.
+
+### Al cerrar una fase
+
+1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho`. Esto es lo
+   que manda: es lo que lee la página.
+2. En la **tabla `## Fases`** del documento, su fila recibe el commit y lo que
+   haya que decir (`✅ 0884d09 — …`). Es el registro, no el estado.
+3. Si hace falta comprobarlo a mano en el móvil, se deja un bloque
+   `**Probar en dispositivo.** …` allí donde toque. La página los junta todos.
+4. `npm run estado`.
+
+### Al añadir una fase o una spec nueva
+
+1. `npm run estado` imprime **el siguiente código libre de cada tema**. Se coge
+   ese. Un número **no se reutiliza nunca**, ni aunque se borre la fase que lo
+   tenía: un código de hace tres meses tiene que seguir significando lo mismo.
+2. La spec nueva lleva la cabecera estándar entera (§ *Cabecera estándar*), con
+   al menos una fase, y **cada fase apunta con `§N` a la sección que la cuenta**.
+3. Se añade su fila a la tabla del tema que le toque, más abajo en este archivo.
+4. `npm run estado`.
+
+### Al añadir un fallo a [auditoria-tecnica.md](auditoria-tecnica.md)
+
+1. Fila en el índice de severidad con el número siguiente — es su código `E<nn>`.
+2. Sección `## <n>. Título` con una línea `> En corto:` justo debajo: qué
+   causaba, en cristiano. Sin ella el generador falla.
+3. Al arreglarlo, el ✅ en el índice y un bloque `### ✅ Resuelto` al final de la
+   sección diciendo **en qué se equivocaba el diagnóstico** si se equivocaba. Esa
+   es la parte que ha hecho útil ese documento; el §0 de allí lo explica.
+4. `npm run estado`.
+
+### Lo que el generador comprueba solo
+
+Tema desconocido · falta `En corto` o `Estado` · una spec sin fases · un código
+que no empieza por la letra de su tema · **dos specs con el mismo código** · un
+estado de fase que no es `hecho`/`pendiente`/`aparcado` · una `§` que apunta a
+un encabezado que no existe · un fallo de la auditoría sin `> En corto:`.
+
+Lo que **no** puede comprobar: que la palabra de la cabecera y el ✅ de la tabla
+digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
+
 ## Auditoría de corrección
 
 | Spec | Estado | Coste | Nota |

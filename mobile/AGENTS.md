@@ -18,6 +18,19 @@ Quick pointers:
   pre-existing errors, just don't add new ones) and `npx vitest run` from the repo
   root.
 
+# Specs y estado del proyecto
+
+`docs/specs/` tiene una spec por feature grande y
+[`docs/specs/README.md`](docs/specs/README.md) es su índice. **Léelo antes de
+tocar cualquier spec**: fija la cabecera estándar que llevan todas, los códigos
+con los que se habla de cada cosa (`M02` es la fase 2 de monetización, `E14` el
+fallo 14 de la auditoría) y el procedimiento para cerrar una fase, añadir una
+spec o añadir un fallo.
+
+`npm run estado` regenera `docs/estado.html` —la foto de qué falta y qué
+está hecho— leyéndolo todo de las specs, y **falla** si la cabecera de alguna no
+cuadra. Ejecútalo después de tocar cualquier documento de `docs/specs/`.
+
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before writing any code.

@@ -507,6 +507,15 @@ const html = `<!doctype html>
 </body></html>`;
 
 writeFileSync(SALIDA, html, 'utf8');
+// Buscar a mano el siguiente numero libre es justo como se acaba reutilizando
+// uno: se imprime, y quien anada una fase copia de aqui.
+const libres = TEMAS.map(([t, , letra]) => {
+  const usados = [...vistos.keys(), ...fallos.map((f) => `E${String(f.num).padStart(2, '0')}`)]
+    .filter((c) => c[0] === letra).map((c) => Number(c.slice(1)));
+  return `${letra}${String(Math.max(0, ...usados) + 1).padStart(2, '0')}`;
+});
+console.log(`Siguiente código libre: ${libres.join(' · ')}`);
+
 console.log(`${hechos}/${fallos.length} fallos (E01-E${String(fallos.length).padStart(2, '0')}) `
   + `· ${fasesHechas}/${todasFases.length} fases hechas, ${pendientes} pendientes `
   + `· ${specs.length - 1} documentos · ${pruebas.length} pruebas a mano`);
