@@ -1,9 +1,10 @@
 # Spec — Transparencia de métricas ("¿de dónde sale este número?")
 
 > Tema: entrenamiento
-> Progreso: parcial
 > En corto: Tocar cualquier número de la app y ver de qué fórmula exacta sale. 26 métricas con su ficha.
-> Falta: Fase 3 (extenderlo a workout, recap, historial y lado entrenador), pendiente de decidir si merece la pena.
+> Fase T05 · hecho · Registro `metrics.*` + `metricDocs.js` + apartado en Documentación
+> Fase T06 · hecho · `MetricInfoSheet` + etiquetas tocables en Progreso, ejercicio y Carga
+> Fase T07 · pendiente · Extender a Workout, recap, historial y lado entrenador
 >
 > Estado: **FASES 1 Y 2 IMPLEMENTADAS** (ago 2026) — registro `metrics.*` con
 > las 26 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se

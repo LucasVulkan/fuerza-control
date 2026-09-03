@@ -1,9 +1,10 @@
 # Spec — Modelo de conexión entrenador ↔ cliente
 
 > Tema: conexión
-> Progreso: parcial
 > En corto: Cómo se emparejan entrenador y cliente con un código, y qué pasa al reinstalar, reconectar o cambiar de entrenador. Es el protocolo, no una pantalla.
-> Falta: Solo probar en dispositivo los dos escenarios de (re)conexión. La app y el SQL están desplegados.
+> Fase C01 · hecho · App 1a: store y servicios del modelo de conexión
+> Fase C02 · hecho · App 1b: pantallas de conectar, reconectar y cambiar de entrenador
+> Fase C03 · hecho · SQL desplegado: seis funciones `security definer`, sin `claim_trainer_slots`
 >
 > Estado: **App IMPLEMENTADA (fases 1a y 1b). SQL DESPLEGADO** (ago 2026).
 > Verificado en el servidor: `claim_trainer_slots` ya no existe y las seis

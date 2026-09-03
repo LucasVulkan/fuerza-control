@@ -41,19 +41,29 @@ const RAIZ   = fileURLToPath(new URL('..', import.meta.url));
 const SPECS  = join(RAIZ, 'mobile', 'docs', 'specs');
 const SALIDA = join(RAIZ, 'mobile', 'docs', 'estado.html');
 
-/** Orden y etiqueta de las secciones. El `tema:` de una spec sale de aquí. */
+/**
+ * Orden, etiqueta y LETRA de cada tema. La letra es la primera mitad del código
+ * con el que se habla de una cosa concreta: `E14` es el fallo 14 de la
+ * auditoría, `M02` la segunda fase de monetización. La segunda mitad la asigna
+ * quien escribe la spec; aquí solo se comprueba que no se repita.
+ */
 const TEMAS = [
-  ['errores',      'Errores'],
-  ['monetización', 'Monetización'],
-  ['onboarding',   'Onboarding'],
-  ['programas',    'Programas y editor'],
-  ['entrenamiento', 'Entrenamiento'],
-  ['conexión',     'Entrenador ↔ cliente'],
-  ['ui',           'Estructura y UI'],
+  ['errores',       'Errores',              'E'],
+  ['monetización',  'Monetización',         'M'],
+  ['onboarding',    'Onboarding',           'O'],
+  ['programas',     'Programas y editor',   'P'],
+  ['entrenamiento', 'Entrenamiento',        'T'],
+  ['conexión',      'Entrenador ↔ cliente', 'C'],
+  ['ui',            'Estructura y UI',      'U'],
 ];
-const PROGRESOS = ['hecho', 'parcial', 'sin-empezar'];
+const letraDe = (tema) => TEMAS.find(([t]) => t === tema)?.[2];
+
+const ESTADOS  = ['hecho', 'pendiente', 'aparcado'];
 /** El valor de la spec es la clave; esto es solo como se lee en pantalla. */
-const ETIQUETA = { hecho: 'Cerrada', parcial: 'A medias', 'sin-empezar': 'Sin empezar' };
+const ETIQUETA = {
+  hecho: 'Cerrada', parcial: 'A medias', 'sin-empezar': 'Sin empezar',
+  pendiente: 'Pendiente', aparcado: 'Aparcada',
+};
 
 /** Ancla ASCII: un `href="#monetización"` funciona, pero se rompe al copiarlo. */
 const slug = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-');
@@ -114,38 +124,74 @@ const clave = (lineas, nombre) => {
   return l ? l.slice(nombre.length + 3).trim() : '';
 };
 
+/**
+ * `> Fase M01 · pendiente · Identidad en RevenueCat`
+ *
+ * Solo la cabecera, hasta la linea `> Estado:`: mas abajo la prosa tiene frases
+ * que empiezan por "Fase 3 ..." dentro de la misma cita.
+ */
+const fasesDe = (lineas, f) => lineas
+  .slice(0, Math.max(0, lineas.findIndex((l) => l.startsWith('> Estado:'))))
+  .filter((l) => l.startsWith('> Fase '))
+  .map((l) => {
+    const [codigo, estado, ...resto] = l.slice(7).split('·').map((x) => x.trim());
+    if (!/^[A-Z]\d{2}$/.test(codigo)) throw new Error(`${f}: código de fase "${codigo}" — se espera una letra y dos dígitos, p. ej. M01`);
+    if (!ESTADOS.includes(estado)) throw new Error(`${f}: la fase ${codigo} tiene estado "${estado}". Los válidos: ${ESTADOS.join(', ')}`);
+    const titulo = resto.join('·').trim();
+    if (!titulo) throw new Error(`${f}: la fase ${codigo} no tiene título`);
+    return { codigo, estado, titulo };
+  });
+
 const specs = readdirSync(SPECS)
   .filter((f) => f.endsWith('.md') && f !== 'README.md')
   .map((f) => {
     const texto  = leer(f);
     const lineas = texto.split('\n');
+    const fases  = fasesDe(lineas, f);
     const spec = {
       archivo: f,
       titulo:  (lineas[0] ?? '').replace(/^#\s*(Spec —\s*)?/, '').trim() || basename(f, '.md'),
-      tema:     clave(lineas, 'Tema'),
-      progreso: clave(lineas, 'Progreso'),
-      corto:    clave(lineas, 'En corto'),
-      falta:    clave(lineas, 'Falta'),
-      estado:   clave(lineas, 'Estado'),
-      pruebas:  pruebasDe(texto),
+      tema:    clave(lineas, 'Tema'),
+      corto:   clave(lineas, 'En corto'),
+      estado:  clave(lineas, 'Estado'),
+      pruebas: pruebasDe(texto),
+      fases,
+      // Derivado, no escrito a mano: dos campos menos que se desvíen solos.
+      progreso: fases.every((x) => x.estado === 'hecho') ? 'hecho'
+        : fases.some((x) => x.estado === 'hecho') ? 'parcial' : 'sin-empezar',
     };
-    for (const k of ['tema', 'progreso', 'corto', 'falta', 'estado']) {
+    for (const k of ['tema', 'corto', 'estado']) {
       if (!spec[k]) throw new Error(`${f}: falta la línea "> ${k}:" de la cabecera estándar (ver scripts/estado.mjs)`);
     }
     if (!TEMAS.some(([t]) => t === spec.tema)) {
       throw new Error(`${f}: tema "${spec.tema}" desconocido. Los válidos: ${TEMAS.map(([t]) => t).join(', ')}`);
     }
-    if (!PROGRESOS.includes(spec.progreso)) {
-      throw new Error(`${f}: progreso "${spec.progreso}" desconocido. Los válidos: ${PROGRESOS.join(', ')}`);
+    // La auditoría es la excepción: su unidad son los 26 fallos, no unas fases.
+    if (fases.length === 0 && f !== 'auditoria-tecnica.md') {
+      throw new Error(`${f}: ninguna línea "> Fase ${letraDe(spec.tema) ?? 'X'}NN · estado · título". Toda spec tiene al menos una.`);
     }
+    const ajena = fases.find((x) => x.codigo[0] !== letraDe(spec.tema));
+    if (ajena) throw new Error(`${f}: la fase ${ajena.codigo} no empieza por "${letraDe(spec.tema)}", la letra del tema "${spec.tema}"`);
     return spec;
   });
+
+// Los códigos son la forma de referirse a una fase entre sesiones: si dos
+// specs se pisan, el de ayer deja de significar lo que decía.
+const vistos = new Map();
+for (const s of specs) {
+  for (const { codigo } of s.fases) {
+    if (vistos.has(codigo)) throw new Error(`Código ${codigo} repetido: ${vistos.get(codigo)} y ${s.archivo}`);
+    vistos.set(codigo, s.archivo);
+  }
+}
 
 // ── Datos derivados ───────────────────────────────────────────────────────────
 const hechos   = fallos.filter((f) => f.hecho).length;
 const criticos = fallos.filter((f) => f.sev.includes('🔴'));
 const pruebas  = specs.flatMap((s) => s.pruebas.map((p) => ({ spec: s.titulo, tema: s.tema, texto: p })));
-const porProg  = (p) => specs.filter((s) => s.progreso === p).length;
+const todasFases = specs.flatMap((s) => s.fases);
+const fasesHechas = todasFases.filter((x) => x.estado === 'hecho').length;
+const pendientes  = todasFases.filter((x) => x.estado === 'pendiente').length;
 // `execFileSync` y no `execSync`: en Windows este ultimo pasa por cmd.exe, donde
 // el separador `|` del formato se interpreta como una tuberia.
 const commit   = execFileSync('git', ['log', '-1', '--format=%h|%ad|%s', '--date=short'],
@@ -154,7 +200,7 @@ const commit   = execFileSync('git', ['log', '-1', '--format=%h|%ad|%s', '--date
 const barra = (n, total) => `<div class="barra"><span style="width:${(n / total * 100).toFixed(1)}%"></span></div>`;
 
 const filaFallo = (f) => `<tr class="${f.hecho ? 'ok' : 'pend'}">
-  <td class="num">${f.num}</td>
+  <td class="num"><span class="cod">E${String(f.num).padStart(2, '0')}</span></td>
   <td class="sev">${md(f.sev)}</td>
   <td><div class="tit">${f.hecho ? '<span class="tick">✅</span>' : ''}${md(f.titulo)}</div>
       <div class="corto">${md(f.corto)}</div></td>
@@ -166,24 +212,36 @@ const resumenSev = ['🔴', '🟠', '🟡', '🟢'].map((s) => {
   return `${s} ${g.filter((f) => f.hecho).length}/${g.length}`;
 }).join(' · ');
 
-const tarjetaSpec = (s) => `<div class="ficha ${s.progreso}">
+const filaFase = (x) => `<li class="fase ${x.estado}">
+  <span class="cod">${esc(x.codigo)}</span>
+  <span class="ftit">${md(x.titulo)}</span>
+</li>`;
+
+const tarjetaSpec = (s) => {
+  const hechas = s.fases.filter((x) => x.estado === 'hecho').length;
+  return `<div class="ficha ${s.progreso}">
   <div class="fila">
     <b>${esc(s.titulo)}</b>
     <span class="chip ${s.progreso}">${esc(ETIQUETA[s.progreso])}</span>
   </div>
   <p class="corto">${md(s.corto)}</p>
-  <p class="falta"><span>Falta</span> ${md(s.falta)}</p>
-  ${s.pruebas.length ? `<p class="tienePrueba">🔍 ${s.pruebas.length} prueba${s.pruebas.length > 1 ? 's' : ''} a mano</p>` : ''}
+  <div class="fases"><span class="rot">Fases ${hechas}/${s.fases.length}</span>
+    <ul>${s.fases.map(filaFase).join('')}</ul></div>
+  ${s.pruebas.map((t) => `<details class="prueba-det">
+    <summary>🔍 Prueba a mano</summary><div>${md(t)}</div></details>`).join('')}
   <div class="pie"><code>${esc(s.archivo)}</code></div>
 </div>`;
+};
 
 const seccionTema = ([tema, etiqueta]) => {
   const grupo = specs.filter((s) => s.tema === tema && s.archivo !== 'auditoria-tecnica.md');
   if (grupo.length === 0) return '';
-  const listos = grupo.filter((s) => s.progreso === 'hecho').length;
-  const orden  = (s) => PROGRESOS.indexOf(s.progreso);
+  const fs     = grupo.flatMap((s) => s.fases);
+  const listas = fs.filter((x) => x.estado === 'hecho').length;
+  const rango  = ['hecho', 'parcial', 'sin-empezar'];
+  const orden  = (s) => rango.indexOf(s.progreso);
   return `<section class="seccion" data-sec="${slug(tema)}">
-  <h2>${esc(etiqueta)} <small>${listos}/${grupo.length} cerradas</small></h2>
+  <h2>${esc(etiqueta)} <small>${listas}/${fs.length} fases hechas · ${grupo.length} documento${grupo.length > 1 ? 's' : ''}</small></h2>
   <div class="rejilla">${[...grupo].sort((a, b) => orden(b) - orden(a) || a.titulo.localeCompare(b.titulo)).map(tarjetaSpec).join('')}</div>
   </section>`;
 };
@@ -249,7 +307,25 @@ const html = `<!doctype html>
   .falta{font-size:13px;color:var(--tx);margin:9px 0 0;line-height:1.5}
   .falta span{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
               color:var(--pend);margin-right:6px}
-  .tienePrueba{font-size:12px;color:var(--pend);margin:8px 0 0}
+  .cod{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+       background:#22262b;color:var(--mut);border-radius:4px;padding:2px 5px;letter-spacing:.03em}
+  .fases{margin:11px 0 0}
+  .rot{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+       color:var(--mut);margin-bottom:6px}
+  .fases ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .fase{display:flex;gap:8px;align-items:baseline;font-size:12.5px;line-height:1.45}
+  .fase .ftit{flex:1}
+  .fase.hecho .ftit{color:var(--mut);text-decoration:line-through;text-decoration-color:#3a3f45}
+  .fase.hecho .cod{background:#243016;color:var(--acc)}
+  .fase.pendiente .cod{background:#3a3220;color:var(--pend)}
+  .fase.aparcado{opacity:.55}
+  .prueba-det{margin:11px 0 0;border-top:1px solid #1e2124;padding-top:9px}
+  .prueba-det summary{font-size:12px;color:var(--pend);cursor:pointer;list-style:none}
+  .prueba-det summary::-webkit-details-marker{display:none}
+  .prueba-det summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
+  .prueba-det[open] summary::before{content:'▾ '}
+  .prueba-det div{font-size:12.5px;color:var(--tx);line-height:1.55;margin-top:7px;
+                  border-left:2px solid var(--pend);padding-left:11px}
   .pie{margin-top:11px;padding-top:9px;border-top:1px solid #1e2124;font-size:11px;color:#5f666d}
   .pie .est{display:block;margin-top:5px;line-height:1.45}
   .prueba{border-left:2px solid var(--pend);padding:2px 0 2px 14px;margin:14px 0}
@@ -266,10 +342,11 @@ const html = `<!doctype html>
     <div class="cifra">${hechos}<small> / ${fallos.length} fallos resueltos</small></div>
     ${barra(hechos, fallos.length)}
     <div class="sub" style="margin:0">Críticos ${criticos.filter((f) => f.hecho).length}/${criticos.length} · ${resumenSev}</div>
-    <div class="sub" style="margin:14px 0 0">
-      ${specs.length} specs · ${porProg('hecho')} cerradas · ${porProg('parcial')} a medias ·
-      ${porProg('sin-empezar')} sin empezar · <strong>${pruebas.length} pruebas a mano pendientes</strong>
-    </div>
+    <div class="cifra" style="margin-top:20px">${fasesHechas}<small> / ${todasFases.length} fases de feature hechas</small></div>
+    ${barra(fasesHechas, todasFases.length)}
+    <div class="sub" style="margin:0">${pendientes} pendientes ·
+      ${todasFases.length - fasesHechas - pendientes} aparcadas ·
+      ${specs.length - 1} documentos · <strong>${pruebas.length} pruebas a mano</strong></div>
   </div>
 
   <nav class="nav">
@@ -334,7 +411,7 @@ const html = `<!doctype html>
 </body></html>`;
 
 writeFileSync(SALIDA, html, 'utf8');
-console.log(`${hechos}/${fallos.length} fallos · ${specs.length} specs `
-  + `(${porProg('hecho')} cerradas, ${porProg('parcial')} a medias, ${porProg('sin-empezar')} sin empezar) `
-  + `· ${pruebas.length} pruebas a mano`);
+console.log(`${hechos}/${fallos.length} fallos (E01-E${String(fallos.length).padStart(2, '0')}) `
+  + `· ${fasesHechas}/${todasFases.length} fases hechas, ${pendientes} pendientes `
+  + `· ${specs.length - 1} documentos · ${pruebas.length} pruebas a mano`);
 console.log(SALIDA);

@@ -1,9 +1,10 @@
 # Spec — Generador automático de programas (onboarding)
 
 > Tema: programas
-> Progreso: parcial
 > En corto: El motor que convierte las respuestas del onboarding en un programa. Se validó con 21.600 combinaciones de respuestas.
-> Falta: Nada por sí mismo: su fase C la sustituyó program-templates.md.
+> Fase P04 · hecho · Fase A — arquitectura del generador (`606ccdf`)
+> Fase P05 · hecho · Fase B — correcciones del stress-test de 21.600 combos (`eff1666`)
+> Fase P06 · aparcado · Fase C — arquetipos: sustituida por program-templates (P10-P19)
 >
 > Estado: **diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
 > fusionadas** (`606ccdf` fase A, `eff1666` fase B — ver §4 y §5, marcadas al

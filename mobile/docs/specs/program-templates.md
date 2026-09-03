@@ -1,9 +1,17 @@
 # Spec — Programas por plantilla flexible
 
 > Tema: programas
-> Progreso: parcial
 > En corto: En vez de inventar el programa ejercicio a ejercicio, se parte de plantillas reales que se adaptan a los días, el material y el tiempo de cada uno.
-> Falta: Fase 7 (reglas de integridad) y fase 8, el catálogo: faltan Fuerza-3 intermedio y la tracción sin material.
+> Fase P10 · hecho · Resolvedor de slots
+> Fase P11 · hecho · Escalera de compresión + `DISCIPLINE_RULES`
+> Fase P12 · hecho · Sesiones cortas: presupuesto sin calentamiento y superserie de opuestos
+> Fase P13 · hecho · Normalizador de volumen + `volumeEmphasis`
+> Fase P14 · hecho · Vincular lo repetido en el ciclo
+> Fase P15 · hecho · `phases` → N etapas: las 11 plantillas duran 8-9 semanas
+> Fase P16 · hecho · `rankArchetypes` + retirada del generador procedural
+> Fase P17 · hecho · Onboarding de propuestas (se hizo aparte, ver O02)
+> Fase P18 · pendiente · Reglas de integridad en el harness
+> Fase P19 · pendiente · Catálogo: faltan Fuerza-3 intermedio y la tracción sin material
 >
 > Estado: **fases 1-5 implementadas** (ago 2026, ver §5.2,
 > §5.3, §5.3.1, §5.4, §5.5, §6 y §7); fases 6, 7 y 8 pendientes.

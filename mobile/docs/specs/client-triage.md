@@ -1,9 +1,10 @@
 # Spec — Triaje de clientes (P3)
 
 > Tema: conexión
-> Progreso: sin-empezar
 > En corto: Con 20 clientes la pregunta no es «cuánta carga lleva Ana» sino «a quién miro hoy». Dos banderas en la lista que suben solos los tres clientes que piden atención, usando métricas que ya se calculan.
-> Falta: Entera.
+> Fase C04 · pendiente · Aviso en la fila del listado + cuarto estado del hero
+> Fase C05 · pendiente · `clientAttention.js` + `blockFinished` + pill con contador
+> Fase C06 · pendiente · `isStalled` + pill, calibrado contra la semilla
 >
 > Estado: **spec cerrada, sin implementar** (ago 2026). Sale del análisis de 5
 > palancas (P1-P5) sobre cómo usar las métricas que ya se calculan para

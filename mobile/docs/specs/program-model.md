@@ -1,9 +1,10 @@
 # Spec — Modelo de programas: un dueño, un diccionario, sin espejo
 
 > Tema: programas
-> Progreso: parcial
 > En corto: Limpieza del modelo de datos: cada programa tiene un dueño, las sesiones viven en un solo diccionario y desaparece el espejo de días que se desincronizaba.
-> Falta: Prueba en dispositivo de las tres fases, que tocan pantallas.
+> Fase P07 · hecho · `owner` + `kind`: un dueño por programa, sin sesiones huérfanas
+> Fase P08 · hecho · `sessions`: un solo diccionario de sesiones
+> Fase P09 · hecho · Sin espejo: `program.days` deja de duplicar la etapa activa
 >
 > **Probar en dispositivo.** Un programa propio y uno de cliente abiertos en
 > el editor y en la ficha: que ninguno cambia de dueño, que las sesiones se

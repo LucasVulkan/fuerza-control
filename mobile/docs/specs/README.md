@@ -7,34 +7,63 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 **La foto de todo esto se ve de un vistazo en [`docs/estado.html`](../estado.html)**,
 que se regenera con `npm run estado`. No se edita a mano: lo lee de las specs.
 
+## Códigos
+
+Cada cosa implementable tiene un código de **una letra de tema + dos dígitos**,
+para poder decir "vamos a por la M02" sin ambigüedad:
+
+| Letra | Tema |
+|---|---|
+| `E` | Errores — son los 26 fallos de [auditoria-tecnica.md](auditoria-tecnica.md), `E01`-`E26`, con el número que ya tenían |
+| `M` | Monetización |
+| `O` | Onboarding |
+| `P` | Programas y editor |
+| `T` | Entrenamiento |
+| `C` | Entrenador ↔ cliente |
+| `U` | Estructura y UI |
+
+El número lo asigna quien escribe la spec y **no se reutiliza nunca**, ni aunque
+se borre la fase: un código de hace tres meses tiene que seguir significando lo
+mismo. `npm run estado` falla si dos specs se pisan un código o si una fase usa
+la letra de otro tema.
+
 ## Cabecera estándar de una spec
 
-Las cuatro primeras líneas de la cita de cabecera son **obligatorias** y las lee
-el generador. Si faltan o traen un valor desconocido, `npm run estado` **falla**
-en vez de callarse:
+Es **obligatoria** y la lee el generador. Si falta algo o trae un valor
+desconocido, `npm run estado` **falla** en vez de callarse:
 
 ```markdown
 # Spec — Título
 
-> Tema: programas
-> Progreso: parcial
+> Tema: monetización
 > En corto: Una frase, en cristiano, de qué va la cosa.
-> Falta: Lo que queda por hacer, o "Nada."
+> Fase M01 · pendiente · Identidad en RevenueCat
+> Fase M02 · pendiente · Freemium 2+2 y hoja de elección
 >
-> Estado: **la prosa de siempre**, con el detalle, las fases y los commits.
+> Estado: **la prosa de siempre**, con el detalle, los commits y el coste.
 ```
 
-- **`Tema`** — uno de: `errores` · `monetización` · `onboarding` · `programas` ·
-  `entrenamiento` · `conexión` · `ui`. Es la sección de la página.
-- **`Progreso`** — uno de: `hecho` · `parcial` · `sin-empezar`.
+- **`Tema`** — uno de los siete de la tabla de arriba. Es la sección de la página.
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
-- **`Falta`** — lo que queda, en una línea. Es la columna que se mira.
+- **`Fase <código> · <estado> · <título>`** — una línea por fase, **al menos
+  una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
+  seguimiento: casi nada se implementa de una vez, así que una spec "a medias"
+  no dice nada y "3 de 10 fases" sí.
 - **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
   detalle; la página no la pinta porque no cabe.
 
+**Ya no se escriben a mano `Progreso:` ni `Falta:`**: se derivan de las fases
+—todas hechas ⇒ cerrada, ninguna ⇒ sin empezar, si no a medias— porque eran dos
+campos que se desviaban solos.
+
+Las fases de la cabecera son el **resumen**; la tabla de fases de dentro del
+documento sigue llevando el detalle (coste, dependencias, commit, criterio de
+aceptación). Si cambia una, cambian las dos.
+
 Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propia
-línea `> En corto:` justo bajo el título, por lo mismo.
+línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única sin
+`> Fase`: su unidad son los fallos.
 
 **Pruebas en dispositivo:** se marcan con `**Probar en dispositivo.**` seguido
 del qué, hasta la línea en blanco. La página las junta todas en una lista — es

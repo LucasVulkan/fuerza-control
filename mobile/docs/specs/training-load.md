@@ -1,9 +1,13 @@
 # Spec — Carga de entrenamiento (sRPE, carga interna/externa, panel de Carga)
 
 > Tema: entrenamiento
-> Progreso: parcial
 > En corto: Cuánto trabajo está absorbiendo el atleta: sRPE al terminar la sesión, carga interna y externa, monotonía y una vista de Carga con tendencia y series por grupo muscular.
-> Falta: Fase 6 (objetivo de carga por etapa), aparcada a propósito: pide un campo nuevo en la zona que ya arrastró cuatro bugs.
+> Fase T10 · hecho · `entry.sessionRpe` + peso corporal + UI de recap (`0bda778`)
+> Fase T11 · hecho · `trainingLoad.js` + 52 tests + unificación de tonelaje
+> Fase T12 · hecho · Segmentado EJERCICIOS/CARGA + `LoadTab` con tendencia
+> Fase T13 · hecho · Gráfico esfuerzo vs carga + tarjeta Rendimiento
+> Fase T14 · hecho · Series por grupo muscular
+> Fase T15 · aparcado · `stage.loadTarget`: pide un campo nuevo en la zona de las etapas
 >
 > Estado: **fases 1-5 implementadas, fase 6 APARCADA** (ago 2026) — captura de
 > sRPE y peso corporal en el recap, `src/utils/trainingLoad.js`, vista Carga,

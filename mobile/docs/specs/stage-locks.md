@@ -1,9 +1,15 @@
 # Spec — Bloqueo de etapas (entrenador → cliente)
 
 > Tema: conexión
-> Progreso: parcial
 > En corto: El entrenador puede cerrar una etapa con candado: el cliente sigue entrenando la suya y no entra en la siguiente hasta que se la abran. Desde sep-2026 incluye que el programa del entrenador sea de solo lectura en el móvil del cliente.
-> Falta: Prueba en dispositivo del candado y del bloqueo de edición.
+> Fase C07 · hecho · `stageWeeksCompleted` sustituye a `stageSessionsCompleted` (`0884d09`)
+> Fase C08 · hecho · Blob `progress` en el historial; el entrenador lo espeja (`8d63d9a`)
+> Fase C09 · hecho · Reglas de import + poda del modal de actualización (`e1a4d21`)
+> Fase C10 · hecho · `stage.locked` + `isStageLocked` + guards en el store
+> Fase C11 · hecho · UI cliente: candados en modal y editor (`43b9bab`)
+> Fase C12 · hecho · UI entrenador: los tres estados del hero + desbloquear
+> Fase C13 · hecho · Pull al volver a primer plano + línea de diff de desbloqueo
+> Fase C14 · hecho · El programa del entrenador es de solo lectura en el móvil del cliente
 >
 > Estado: **✅ IMPLEMENTADA, en testeo en dispositivo** (jul 2026). Las 7 fases
 > están en `main`; ver la tabla de §7 para el commit de cada una.

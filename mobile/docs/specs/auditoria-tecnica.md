@@ -1,9 +1,7 @@
 # Spec — Auditoría técnica (agosto 2026)
 
 > Tema: errores
-> Progreso: hecho
 > En corto: Barrido de corrección sobre toda la app móvil: 26 fallos, cada uno con la condición exacta que lo dispara y el arreglo verificado contra el código.
-> Falta: Nada de código. Quedan las pruebas en dispositivo listadas abajo.
 >
 > Estado: **✅ CERRADO. Los 26 fallos resueltos** (sep 2026) — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el

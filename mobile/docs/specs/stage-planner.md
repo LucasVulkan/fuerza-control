@@ -1,9 +1,13 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
 > Tema: programas
-> Progreso: parcial
 > En corto: Una etapa deja de ser un duplicado del programa entero y pasa a ser una regla («mismas sesiones, +1 serie, −5% de peso»), así que hacerlo evolucionar cuesta minutos en vez de reeditar N sesiones a mano.
-> Falta: Fase 5: que el recap sepa que está en una semana de descarga.
+> Fase P24 · hecho · Unificación del modelo + paso de ciclos en los dos modales de creación
+> Fase P25 · hecho · `applyRx` + `templateChainIds` + `addStageToProgram({rx})`
+> Fase P26 · hecho · Switch «principal» + pill KEY, que habilita `scope`
+> Fase P27 · hecho · `progressionHold: deload` en `progression.js`
+> Fase P28 · hecho · Pantalla del planificador
+> Fase P29 · pendiente · Recap consciente de la descarga
 >
 > Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
@@ -298,8 +302,10 @@ Consumidores (**grupo A**, y solo estos):
 ([exerciseLinks.js:50](../../../src/utils/exerciseLinks.js)) ya hace
 exactamente lo que hace falta. Prioridad si un ejercicio está además vinculado:
 **gana el `linkGroup`** (es una decisión explícita del entrenador; la cadena es
-automática).
-
+automática).
+
+
+
 **Cómo quedó al implementar.** Los tres llamantes resolvían la referencia por su
 cuenta y solo el caso vinculado miraba más allá de la plantilla actual, así que
 en vez de parchear cada uno se unificaron en `lastExerciseRef({ workoutLog,
@@ -442,8 +448,10 @@ lo generado.
 - Con esto `rx.scope` (`'all' | 'keys' | 'accessories'`) pasa a ser real.
 
 Feature útil por sí sola (el entrenador ve de un vistazo cuál es el básico del
-día) y es la única dependencia de `scope`.
-
+día) y es la única dependencia de `scope`.
+
+
+
 **`isKey` SÍ entra en `LINKED_CONFIG_KEYS`** (corregido en el QA de la fase 2).
 Se implementó primero al revés, razonando que ser el básico es un papel de ESA
 sesión. El usuario lo rechazó y tiene razón: estar vinculado significa compartir
