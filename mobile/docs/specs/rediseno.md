@@ -4,7 +4,7 @@
 > En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
 > Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/` · §2
 > Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
-> Fase U03 · pendiente · Recortes de features a decidir antes de publicar · §4
+> Fase U03 · aparcado · Recortes de features: sólo se hizo el generador · §4
 > Fase U04 · hecho · Terminar la migración de Workout · §5
 > Fase U05 · aparcado · Publicar — no es de esta spec, ver §6 · §6
 >
@@ -14,7 +14,8 @@
 >
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
 > dispositivo, igual que la 4: **Workout está migrado** (3-sep-2026, §5) y sólo
-> le falta el QA a mano. "Y publicar", que era la otra mitad de la 4, **no era
+> le falta el QA a mano. La 3 se aparca con una sola fila ejecutada —el
+> generador procedural, que era código muerto (§4). "Y publicar", que era la otra mitad de la 4, **no era
 > una fase**: se abrió como U05 y se aparcó el mismo día — ver §6.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
@@ -38,7 +39,7 @@
 |---|---|---|---|
 | **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | ✅ 2-sep-2026 |
 | **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
-| **3** | Recortes de features a decidir antes de publicar | sí | decisión |
+| **3** | Recortes de features a decidir antes de publicar | sí | aparcada 3-sep-2026: hecho el generador, el resto sin decidir |
 | **4** | Termina la migración de UI: Workout, la última pantalla | sí | ✅ 3-sep-2026 |
 | **5** | Publicar | no | aparcada: no era una fase, ver §6 |
 
@@ -626,10 +627,18 @@ Pendiente, y sólo se puede hacer en dispositivo:
 
 ---
 
-## 4. Fase 3 — Decisiones de recorte antes de publicar
+## 4. Fase 3 — Decisiones de recorte antes de publicar (aparcada)
 
 No es código: es la lista de lo que hay que decidir **mientras no haya usuarios
 con datos**, porque después cada uno cuesta el triple.
+
+> **Aparcada (3-sep-2026).** De la tabla se ejecutó una sola fila —el generador
+> procedural—, y era la única que no quitaba nada que el usuario pueda ver:
+> código muerto, no un recorte de producto. Las otras cinco se quedan sin
+> decidir, y la ventaja de partida sigue en pie mientras la app no esté
+> publicada. La candidata que el usuario quiere volver a mirar es
+> **la facturación de clientes**; las demás no están descartadas, simplemente
+> no se han decidido.
 
 | Candidato | Superficie medida | Argumento para quitarlo |
 |---|---|---|
@@ -643,10 +652,8 @@ con datos**, porque después cada uno cuesta el triple.
 Cada línea de esta tabla es una decisión independiente. Ninguna bloquea a las
 fases 1 y 2.
 
-**Decidido (3-sep-2026):** de la tabla se ejecuta **sólo el generador
-procedural**, que además no era un recorte de producto —no quita nada que el
-usuario pueda ver— sino código muerto. Las otras cinco filas siguen siendo
-decisiones abiertas.
+Cada fila se decide sola y ninguna bloquea a las demás: por eso la fase se
+puede aparcar con una hecha y cinco abiertas.
 
 ---
 
@@ -688,7 +695,7 @@ tiene contenido propio: **publicar es la suma de otras fases**, no trabajo.
 
 | Lo que hacía falta para publicar | Dónde se sigue de verdad |
 |---|---|
-| Decidir los recortes | fase 3 de esta spec (§4) |
+| Decidir los recortes | fase 3 de esta spec (§4), aparcada |
 | QA a mano de lo implementado | los bloques `Probar en dispositivo` de cada spec |
 | Papeleo de las dos tiendas y RevenueCat | [monetizacion.md](monetizacion.md) §7 |
 | Política de privacidad publicada en una URL | [monetizacion.md](monetizacion.md) §7 y [app-store-privacidad.md](../app-store-privacidad.md) |
