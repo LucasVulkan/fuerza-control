@@ -5,15 +5,18 @@
 > Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/` · §2
 > Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
 > Fase U03 · pendiente · Recortes de features a decidir antes de publicar · §4
-> Fase U04 · pendiente · Terminar Workout y publicar · §5
+> Fase U04 · hecho · Terminar la migración de Workout · §5
+> Fase U05 · pendiente · Publicar · §6
 >
 > **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
 > mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
 > reabrir la app, ahora que vive fuera del blob persistido.
 >
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
-> dispositivo. De la 4, **Workout ya está migrado** (3-sep-2026, §5); lo que le
-> queda —y toda la 3— es decisión de producto y QA, no código.
+> dispositivo, igual que la 4: **Workout está migrado** (3-sep-2026, §5) y sólo
+> le falta el QA a mano. Lo que era "y publicar" se ha partido en la fase U05
+> (§6), porque no es código: son las decisiones de recorte de la 3 y el papeleo
+> de las tiendas.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
@@ -37,7 +40,8 @@
 | **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | ✅ 2-sep-2026 |
 | **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
 | **3** | Recortes de features a decidir antes de publicar | sí | decisión |
-| **4** | Terminar Workout y publicar | sí | Workout ✅ 3-sep-2026 · publicar pendiente |
+| **4** | Termina la migración de UI: Workout, la última pantalla | sí | ✅ 3-sep-2026 |
+| **5** | Publicar | no | pendiente de la 3 y del papeleo |
 
 Las fases 1 y 2 **no cambian ni una pantalla ni un comportamiento visible**.
 Son las dos únicas de esta lista que se pueden hacer sin decidir nada de
@@ -46,7 +50,7 @@ producto, y las dos que hacen más barato todo lo que venga después.
 Lo que esta spec **no** toca, a propósito: el modelo de programas
 (`programs` / `userPrograms` / `sessionTemplates` / `clients`), el motor de
 plantillas, y el modelo de etapas. Son preguntas abiertas de diseño, no
-mecánica — ver §6.
+mecánica — ver §7.
 
 ---
 
@@ -642,30 +646,30 @@ fases 1 y 2.
 
 ---
 
-## 5. Fase 4 — Terminar Workout y publicar
+## 5. Fase 4 — Terminar la migración de Workout
 
-**Workout ya está migrado** (3-sep-2026): las 5 partes de
+**Hecha (3-sep-2026).** Las 5 partes de
 [workout-screen-migration.md](../workout-screen-migration.md) §11 están cerradas
-y `UI-MIGRATION.md` §1 no deja ninguna pantalla en ⬜. La Parte 5 (timer
-flotante, modal de notas, footer, sesión libre, ad-hoc) no salió de un commit
-propio: cada pieza quedó hecha de paso en otros cambios, y se verificó contra la
-guía al revisar el código. El modal de notas vive ahora en
-`components/workout/NotesModal.jsx`, compartido con la nota de ejercicio.
+y `UI-MIGRATION.md` §1 no deja ninguna pantalla en ⬜: la migración de UI se
+acaba aquí.
+
+La Parte 5 (timer flotante, modal de notas, footer, sesión libre, ad-hoc) no
+salió de un commit propio: cada pieza quedó hecha de paso en otros cambios y
+nadie la marcó. Se revisó el código en sep-2026 y las cinco cumplen su sección
+de la guía, con una desviación deliberada —descartar sesión va en `tint/red50`,
+no en lima, porque es destructivo— y un movimiento: el modal de notas vive ahora
+en `components/workout/NotesModal.jsx`, compartido con la nota de ejercicio.
 
 La auditoría también está cerrada: **26/26**
 ([auditoria-tecnica.md](auditoria-tecnica.md)), no 11 abiertos como decía esta
 sección.
 
-Lo que queda de esta fase **no es UI**:
-
-1. **QA en dispositivo** de lo que sigue "en testeo": las 5 partes de Workout
-   (lista de estados a cubrir en `workout-screen-migration.md` §12), las fases
-   U01/U02 de esta spec, y los dos escenarios de (re)conexión de
-   [client-connection.md](client-connection.md).
-2. **Los recortes de §4** (fase U03): son decisiones de producto que cuestan el
-   triple con usuarios con datos dentro. Se deciden antes de publicar, no después.
-3. **Publicar**: [app-store-privacidad.md](../app-store-privacidad.md) y
-   [checklist-testeo-combinaciones.md](../checklist-testeo-combinaciones.md).
+**Probar en dispositivo.** Las 5 partes de Workout, con la lista de estados de
+`workout-screen-migration.md` §12: serie activa/hecha/vacía, card
+auto-colapsando, dropset, superserie (A1/A2), calentamiento sin referencia,
+coach target, sesión libre, cada tipo de bloque (idle/running/finished), timer de
+descanso, modal de notas arrastrado desde el cuerpo, y la cabecera en scroll=0 y
+colapsada.
 
 No bloqueantes, anotados donde toca: las preguntas abiertas de
 `workout-screen-migration.md` §13 (fondo real de la Exercice Card, badge
@@ -673,7 +677,24 @@ No bloqueantes, anotados donde toca: las preguntas abiertas de
 
 ---
 
-## 6. Lo que esta spec deja abierto a propósito
+## 6. Fase 5 — Publicar
+
+Lo que era la segunda mitad de la fase 4. **No es código**, y por eso no se
+cierra sola: depende de decisiones y de papeleo.
+
+1. **Las decisiones de recorte de la fase 3** (§4). Cada una cuesta el triple
+   con usuarios con datos dentro; la ventaja de partida —la app no está
+   publicada— se gasta el día que se publica.
+2. **QA a mano de todo lo que sigue "en testeo"**: la fase 4 (§5), las fases 1 y
+   2 de esta spec, y los dos escenarios de (re)conexión de
+   [client-connection.md](client-connection.md).
+3. **El papeleo de las tiendas**:
+   [app-store-privacidad.md](../app-store-privacidad.md) y
+   [checklist-testeo-combinaciones.md](../checklist-testeo-combinaciones.md).
+
+---
+
+## 7. Lo que esta spec deja abierto a propósito
 
 Tres preguntas de diseño que no son mecánicas y merecen su propia decisión:
 
