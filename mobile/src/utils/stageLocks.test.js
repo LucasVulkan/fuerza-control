@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isStageLocked } from './stageLocks';
+import { isStageLocked, isTrainerProgram } from './stageLocks';
 
 const program = {
   id: 'prog_1',
@@ -12,6 +12,25 @@ const program = {
   ],
 };
 const linked = { slotId: 'slot_1', trainerProgramIds: ['prog_1'] };
+
+describe('isTrainerProgram', () => {
+  it('es cierto solo para los programas que llegaron del entrenador', () => {
+    expect(isTrainerProgram(program, linked)).toBe(true);
+    expect(isTrainerProgram({ id: 'prog_mio' }, linked)).toBe(false);
+  });
+
+  it('en el movil del entrenador nunca es cierto: no tiene slot', () => {
+    expect(isTrainerProgram(program, { trainerProgramIds: ['prog_1'] })).toBe(false);
+    expect(isTrainerProgram(program, null)).toBe(false);
+  });
+
+  it('un enlace antiguo sin la lista no bloquea nada', () => {
+    // `trainerProgramIds` no existio siempre. Sin lista no se puede afirmar de
+    // quien es el programa, y la eleccion es no restringir — igual que hace
+    // `isStageLocked` desde el principio.
+    expect(isTrainerProgram(program, { slotId: 'slot_1' })).toBe(false);
+  });
+});
 
 describe('isStageLocked', () => {
   it('locks a closed stage ahead of the athlete', () => {

@@ -80,6 +80,14 @@ lint). Va después de `programTemplateIds`/`effectiveTemplateIds`.
 - Prescripción por %1RM (base e1RM ya existe en `src/utils/oneRm.js`).
 - Unificar modelo de guardado (autosave del editor de ejercicio vs botón Guardar
   + snapshot del editor de programa) — decisión de producto.
+- **Sustituir un ejercicio durante el workout**, como sustitución **puntual de
+  esa sesión**: no toca el programa y queda reflejada en el historial (hoy solo
+  se puede desde `SessionEditorScreen`, y `saveSession` no distingue "sustituido"
+  de "saltado + ad-hoc"). Sube de prioridad desde sep-2026: es la vía de
+  adaptación que le queda al cliente conectado ahora que el programa del
+  entrenador es de solo lectura — ver [stage-locks.md](stage-locks.md) §2.1.
+  `replaceExercise` ya existe; lo que falta es el registro en el log y la entrada
+  desde `WorkoutScreen`.
 - Swipe en bordes de SessionEditorScreen como atajo para cambiar de sesión
   (los chips ya cubren la función; `switchSession` ya existe).
 

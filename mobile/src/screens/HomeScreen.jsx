@@ -18,7 +18,7 @@ import { MenuRow } from '../components/ui/MenuList';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
-import { isStageLocked } from '../utils/stageLocks';
+import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { LockIcon } from '../components/ui/EditorIcons';
 import StageSegBar from '../components/ui/StageSegBar';
 import { getWeekStatuses } from '../utils/weekProgress';
@@ -864,10 +864,20 @@ export default function HomeScreen() {
               <View style={styles.section}>
                 <SectionHeader label={t('home.program').toUpperCase()} />
                 <View style={styles.programActions}>
-                  <ProgramBtn
-                    label={t('home.edit')}
-                    onPress={() => navigate('programEditor')}
-                  />
+                  {/* El programa del entrenador no se edita aquí: la edición no
+                      sube por el canal (solo suben historial y contadores) y la
+                      siguiente actualización la reemplaza entera, así que el
+                      botón prometía algo que no pasaba — y de paso el historial
+                      que ve el entrenador quedaba etiquetado con SUS plantillas
+                      mientras el cliente entrenaba otras. Se esconde, como el
+                      candado de etapas: misma regla, mismo predicado.
+                      "Ver programa" sigue ahí, y con flex:1 ocupa el hueco. */}
+                  {!isTrainerProgram(activeProgram, clientSync) && (
+                    <ProgramBtn
+                      label={t('home.edit')}
+                      onPress={() => navigate('programEditor')}
+                    />
+                  )}
                   <ProgramBtn
                     label={t('home.viewProgram')}
                     onPress={() => navigate('programPrint')}

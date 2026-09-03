@@ -18,7 +18,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { ArrowIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
-import { isStageLocked } from '../utils/stageLocks';
+import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
 
@@ -291,9 +291,8 @@ export default function ProgramEditorScreen({ navigation }) {
   // control no aparece (si no, se abriría sus propias etapas). Y solo por
   // delante de donde está — encerrarle fuera de la etapa que entrena no tiene
   // sentido, e `isStageLocked` lo ignoraría igualmente.
-  const isTrainerProgram    = !!clientSync?.slotId
-    && !!clientSync.trainerProgramIds?.includes(activeProgram.id);
-  const canLockStage        = !isTrainerProgram
+  const fromTrainer         = isTrainerProgram(activeProgram, clientSync);
+  const canLockStage        = !fromTrainer
     && selectedStageIdx > 0
     && selectedStageIdx > activeStageIdx;
 

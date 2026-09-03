@@ -28,7 +28,9 @@
 4. Reimportar un programa **no devuelve al cliente a la etapa 1**, salvo que el
    entrenador haya activado otra etapa a propósito — eso **sí** manda (§6.3).
 5. El cliente **tampoco puede saltar a una etapa bloqueada desde el editor de
-   programas** (no solo desde el modal de Home).
+   programas** (no solo desde el modal de Home). **Superado en sep-2026**: el
+   cliente ya no entra al editor de los programas del entrenador (§2.1), así que
+   ese camino desaparece. El guard del store se queda igualmente.
 6. **Un ciclo se cierra al completar las sesiones DISTINTAS del ciclo**
    (A→B→C→D). Repetir una sesión no lo cierra, y **no** se le pregunta nada al
    cliente en el recap (§3.2).
@@ -82,6 +84,56 @@ la misma pantalla sirve a los dos roles sin ramificar.
 ([useStore.js:1285](../../store/useStore.js) y :1306) hacen `return` temprano si
 `isStageLocked`. Es el punto por el que pasan todos los llamantes (Home, editor,
 banner de fin de etapa) — un guard, no cuatro.
+
+### 2.1 El programa del entrenador no se edita en el móvil del cliente (sep 2026)
+
+Misma regla, mismo predicado, un escalón más arriba: **`isTrainerProgram` es
+ahora la base de `isStageLocked`** y de esconder el botón "Editar" de Home
+([HomeScreen.jsx:875](../../src/screens/HomeScreen.jsx)).
+
+```js
+export function isTrainerProgram(program, clientSync) {
+  if (!clientSync?.slotId) return false;                                  // no conectado
+  return !!clientSync.trainerProgramIds?.includes(program?.id);           // y es SUYO
+}
+```
+
+**Por qué.** Editar el programa del entrenador prometía algo que no ocurría:
+
+1. **No sube.** El canal cliente→entrenador lleva historial y contadores de
+   progreso, nunca la estructura del programa
+   ([useStore.js:3611](../../store/useStore.js), `uploadHistoryToTrainer`).
+2. **No dura.** La siguiente actualización del entrenador hace `importData` y
+   reemplaza el programa entero — ver el [§12 de la auditoría](auditoria-tecnica.md#12).
+3. **Y ensuciaba la lectura del entrenador**, que es lo peor de los tres: el
+   historial que sube va etiquetado con los ids de plantilla **del entrenador**.
+   Si el cliente reescribía la sesión A y la entrenaba, el entrenador leía "hizo
+   la sesión A" sobre un plan que no era el ejecutado.
+
+**Alcance.** Se esconde el botón, no se blinda la pantalla — misma filosofía de
+barandilla que el resto del módulo. `SessionEditor` y `StagePlanner` solo se
+alcanzan desde el editor de programa, así que cerrar la puerta cierra los tres.
+
+**Lo que sigue permitido**, porque es progreso y no plan: avanzar de etapa,
+registrar sesiones, `setCurrentStage`, sesión libre, añadir series, saltarse
+ejercicios y añadir ejercicios ad-hoc durante el entreno.
+
+**Lo que se pierde:** sustituir un ejercicio, que vivía solo en
+`SessionEditorScreen`. Queda apuntado en
+[README.md](README.md#pendientes-menores-sin-spec-definir-al-arrancar) moverla al
+workout como **sustitución puntual de esa sesión** —reflejada en el historial y
+sin tocar el programa—, que es donde debió estar siempre: adaptar es del momento
+del entreno, no del plan.
+
+**Acota por programa, no por usuario.** Un cliente conectado puede tener
+programas propios (de antes de conectarse, o plantillas suyas) y esos se siguen
+editando. Por eso el predicado mira `trainerProgramIds` y no solo `slotId`.
+
+**Cabo suelto conocido:** `trainerProgramIds` no existió siempre. En enlaces
+antiguos la lista está vacía y ni el candado ni este bloqueo se aplican. Es el
+mismo agujero que arrastran los candados desde el principio; el día que se tape,
+se tapa para los dos (la subida de historial ya tiene su propio fallback,
+`fallbackProgramId`, en [clientLogs.js:80](../../src/utils/clientLogs.js)).
 
 ## 3. Progreso: propiedad del cliente, replicado al entrenador
 
