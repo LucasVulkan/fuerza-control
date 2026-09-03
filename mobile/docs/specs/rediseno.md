@@ -6,7 +6,7 @@
 > Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
 > Fase U03 · pendiente · Recortes de features a decidir antes de publicar · §4
 > Fase U04 · hecho · Terminar la migración de Workout · §5
-> Fase U05 · pendiente · Publicar · §6
+> Fase U05 · aparcado · Publicar — no es de esta spec, ver §6 · §6
 >
 > **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
 > mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
@@ -14,9 +14,8 @@
 >
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
 > dispositivo, igual que la 4: **Workout está migrado** (3-sep-2026, §5) y sólo
-> le falta el QA a mano. Lo que era "y publicar" se ha partido en la fase U05
-> (§6), porque no es código: son las decisiones de recorte de la 3 y el papeleo
-> de las tiendas.
+> le falta el QA a mano. "Y publicar", que era la otra mitad de la 4, **no era
+> una fase**: se abrió como U05 y se aparcó el mismo día — ver §6.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
@@ -41,7 +40,7 @@
 | **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
 | **3** | Recortes de features a decidir antes de publicar | sí | decisión |
 | **4** | Termina la migración de UI: Workout, la última pantalla | sí | ✅ 3-sep-2026 |
-| **5** | Publicar | no | pendiente de la 3 y del papeleo |
+| **5** | Publicar | no | aparcada: no era una fase, ver §6 |
 
 Las fases 1 y 2 **no cambian ni una pantalla ni un comportamiento visible**.
 Son las dos únicas de esta lista que se pueden hacer sin decidir nada de
@@ -677,20 +676,21 @@ No bloqueantes, anotados donde toca: las preguntas abiertas de
 
 ---
 
-## 6. Fase 5 — Publicar
+## 6. Fase 5 — Publicar (aparcada: no era una fase)
 
-Lo que era la segunda mitad de la fase 4. **No es código**, y por eso no se
-cierra sola: depende de decisiones y de papeleo.
+Era la segunda mitad del título de la fase 4, y al quedarse sola se vio que no
+tiene contenido propio: **publicar es la suma de otras fases**, no trabajo.
 
-1. **Las decisiones de recorte de la fase 3** (§4). Cada una cuesta el triple
-   con usuarios con datos dentro; la ventaja de partida —la app no está
-   publicada— se gasta el día que se publica.
-2. **QA a mano de todo lo que sigue "en testeo"**: la fase 4 (§5), las fases 1 y
-   2 de esta spec, y los dos escenarios de (re)conexión de
-   [client-connection.md](client-connection.md).
-3. **El papeleo de las tiendas**:
-   [app-store-privacidad.md](../app-store-privacidad.md) y
-   [checklist-testeo-combinaciones.md](../checklist-testeo-combinaciones.md).
+| Lo que hacía falta para publicar | Dónde se sigue de verdad |
+|---|---|
+| Decidir los recortes | fase 3 de esta spec (§4) |
+| QA a mano de lo implementado | los bloques `Probar en dispositivo` de cada spec |
+| Papeleo de las dos tiendas y RevenueCat | [monetizacion.md](monetizacion.md) §7 |
+| Política de privacidad publicada en una URL | [monetizacion.md](monetizacion.md) §7 y [app-store-privacidad.md](../app-store-privacidad.md) |
+
+Se deja `aparcado` en vez de borrarse porque el código no se reutiliza: el
+generador da el siguiente libre como el mayor más uno, así que borrar la línea
+volvería a ofrecer `U05` para otra cosa.
 
 ---
 
