@@ -57,9 +57,18 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 —todas hechas ⇒ cerrada, ninguna ⇒ sin empezar, si no a medias— porque eran dos
 campos que se desviaban solos.
 
-Las fases de la cabecera son el **resumen**; la tabla de fases de dentro del
-documento sigue llevando el detalle (coste, dependencias, commit, criterio de
-aceptación). Si cambia una, cambian las dos.
+**Quién manda sobre el estado: la cabecera.** La tabla `## Fases` de dentro del
+documento es otra cosa y por eso no se unifican: es el **registro** de lo que se
+hizo y en qué commit (`✅ 0884d09`), con su coste, sus dependencias y su criterio
+de aceptación. La cabecera es **dónde estamos hoy**. Al cerrar una fase se
+cambian las dos: la palabra en la cabecera y la fila de la tabla con el commit.
+
+No se intenta derivar el estado de esas tablas —sería la opción sin
+duplicación— por dos motivos concretos: hay ocho formatos de tabla distintos
+entre las 19 specs, y varias tienen **más filas que fases** (`program-templates`
+parte la 2 en 2 y 2b, `monetizacion` tiene una fila `—` para el papeleo de las
+stores, que no es código). Forzar un 1:1 perdería información real a cambio de
+un parser frágil.
 
 Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propia
 línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única sin

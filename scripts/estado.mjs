@@ -274,7 +274,8 @@ const html = `<!doctype html>
   .cuenta{display:inline-block;background:var(--pend);color:#111;border-radius:20px;
           padding:0 6px;font-size:11px;font-weight:700;margin-left:5px}
   .nav button.on .cuenta{background:#111;color:var(--acc)}
-  .seccion[hidden]{display:none}
+  .seccion[hidden],.ficha[hidden],.filtros[hidden]{display:none}
+  #filtroFichas{margin:0 0 6px}
   .seccion h2:first-child{margin-top:26px}
   .tabla-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:14px}
@@ -355,6 +356,13 @@ const html = `<!doctype html>
     <button data-sec="pruebas">Pruebas a mano <span class="cuenta">${pruebas.length}</span></button>
   </nav>
 
+  <div class="filtros" id="filtroFichas">
+    <button class="on" data-p="todas">Todas</button>
+    <button data-p="parcial">A medias</button>
+    <button data-p="sin-empezar">Sin empezar</button>
+    <button data-p="hecho">Cerradas</button>
+  </div>
+
   <section class="seccion" data-sec="errores">
     <h2>Errores <small>${hechos}/${fallos.length} resueltos — auditoría técnica</small></h2>
     <div class="filtros">
@@ -381,6 +389,8 @@ const html = `<!doctype html>
       : pruebas.map((p) => `<div class="prueba"><b>${esc(p.spec)}</b>${md(p.texto)}</div>`).join('')}
   </section>
 
+  <p id="vacio" hidden class="sub">Nada con ese filtro en esta seccion.</p>
+
   <footer>${esc(commit[0] ?? '')} · ${esc(commit[1] ?? '')} · ${esc((commit[2] ?? '').slice(0, 90))}</footer>
 </main>
 <script>
@@ -388,12 +398,44 @@ const html = `<!doctype html>
   // app como data: URL, y ahi una navegacion por #ancla no hace nada.
   const tabs = document.querySelectorAll('.nav [data-sec]');
   const secciones = document.querySelectorAll('.seccion');
-  const mostrar = (sec) => {
-    secciones.forEach((s) => { s.hidden = sec !== 'todo' && s.dataset.sec !== sec; });
-    tabs.forEach((t) => t.classList.toggle('on', t.dataset.sec === sec));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const barraFichas = document.getElementById('filtroFichas');
+  const btnsFicha = barraFichas.querySelectorAll('[data-p]');
+  let seccionActiva = 'todo';
+  let estadoFicha = 'todas';
+
+  const pintar = () => {
+    // El filtro de estado solo tiene sentido donde hay fichas: en Errores y en
+    // Pruebas a mano la barra se retira en vez de quedarse sin efecto.
+    const conFichas = seccionActiva !== 'errores' && seccionActiva !== 'pruebas';
+    barraFichas.hidden = !conFichas;
+
+    secciones.forEach((s) => {
+      const suya = seccionActiva === 'todo' || s.dataset.sec === seccionActiva;
+      let visibles = 0;
+      s.querySelectorAll('.ficha').forEach((f) => {
+        const pasa = estadoFicha === 'todas' || f.classList.contains(estadoFicha);
+        f.hidden = !pasa;
+        if (pasa) visibles++;
+      });
+      // Una seccion sin ninguna ficha que pase el filtro se retira entera: su
+      // titulo solo con el contador engana mas que informa.
+      const vacia = s.querySelector('.rejilla') && visibles === 0;
+      s.hidden = !suya || vacia;
+    });
+
+    tabs.forEach((t) => t.classList.toggle('on', t.dataset.sec === seccionActiva));
+    btnsFicha.forEach((b) => b.classList.toggle('on', b.dataset.p === estadoFicha));
+    // Sin esto, filtrar hasta dejarlo todo fuera deja una pagina en blanco que
+    // parece rota en vez de una respuesta.
+    document.getElementById('vacio').hidden = [...secciones].some((s) => !s.hidden);
   };
-  tabs.forEach((t) => { t.onclick = () => mostrar(t.dataset.sec); });
+
+  tabs.forEach((t) => { t.onclick = () => {
+    seccionActiva = t.dataset.sec;
+    pintar();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }; });
+  btnsFicha.forEach((b) => { b.onclick = () => { estadoFicha = b.dataset.p; pintar(); }; });
 
   const btns = document.querySelectorAll('[data-f]');
   const filtrar = (modo) => {
@@ -406,7 +448,7 @@ const html = `<!doctype html>
     filtrar(b.dataset.f);
   }; });
   filtrar('todos');
-  mostrar('todo');
+  pintar();
 </script>
 </body></html>`;
 
