@@ -2,9 +2,9 @@
 
 > Tema: entrenamiento
 > En corto: Series de calentamiento calculadas a partir del peso de trabajo, como pills informativas que no se registran ni cuentan para el volumen.
-> Fase T16 · hecho · `src/utils/warmup.js` + tests (`45a74ee`)
-> Fase T17 · hecho · Editor: bloque Calentamiento con 3 modos (`f04a254`)
-> Fase T18 · hecho · Workout: fila de pills no registradas (rediseño de la fase 3)
+> Fase T16 · hecho · `src/utils/warmup.js` + tests (`45a74ee`) · §6
+> Fase T17 · hecho · Editor: bloque Calentamiento con 3 modos (`f04a254`) · §6
+> Fase T18 · hecho · Workout: fila de pills no registradas (rediseño de la fase 3) · §7
 >
 > Estado: **✅ IMPLEMENTADA, Fase 3 REDISEÑADA (jul 2026)**. Fase 1 — util puro
 > `src/utils/warmup.js` (`45a74ee`). Fase 2 — bloque Calentamiento en

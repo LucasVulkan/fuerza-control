@@ -2,10 +2,10 @@
 
 > Tema: programas
 > En corto: La pantalla que enseña QUÉ es el programa —sesiones, ejercicios, volumen por grupo— sin mezclarlo con en qué semana va el atleta.
-> Fase P20 · hecho · La sesión deja de mentir: superserie, dropset, calentamiento, bloques
-> Fase P21 · hecho · Cabecera y selector: resumen, autoría, chips de etapa
-> Fase P22 · hecho · Volumen y diff: `plannedSetsByGroup`, `stageDiff` y tarjeta de barras
-> Fase P23 · pendiente · Export a PDF — decisión de producto, pediría `expo-print`
+> Fase P20 · hecho · La sesión deja de mentir: superserie, dropset, calentamiento, bloques · §6
+> Fase P21 · hecho · Cabecera y selector: resumen, autoría, chips de etapa · §6
+> Fase P22 · hecho · Volumen y diff: `plannedSetsByGroup`, `stageDiff` y tarjeta de barras · §6
+> Fase P23 · pendiente · Export a PDF — decisión de producto, pediría `expo-print` · §6
 >
 > Estado: **fases 1-3 implementadas** (ago 2026); fase 4 (export a PDF)
 > pendiente de decisión de producto. Origen: conversación

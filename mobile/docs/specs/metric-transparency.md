@@ -2,9 +2,9 @@
 
 > Tema: entrenamiento
 > En corto: Tocar cualquier número de la app y ver de qué fórmula exacta sale. 26 métricas con su ficha.
-> Fase T05 · hecho · Registro `metrics.*` + `metricDocs.js` + apartado en Documentación
-> Fase T06 · hecho · `MetricInfoSheet` + etiquetas tocables en Progreso, ejercicio y Carga
-> Fase T07 · pendiente · Extender a Workout, recap, historial y lado entrenador
+> Fase T05 · hecho · Registro `metrics.*` + `metricDocs.js` + apartado en Documentación · §4
+> Fase T06 · hecho · `MetricInfoSheet` + etiquetas tocables en Progreso, ejercicio y Carga · §4
+> Fase T07 · pendiente · Extender a Workout, recap, historial y lado entrenador · §4
 >
 > Estado: **FASES 1 Y 2 IMPLEMENTADAS** (ago 2026) — registro `metrics.*` con
 > las 26 métricas que la app expone, `metricDocs.js`, el apartado "Cómo se

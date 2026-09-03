@@ -2,9 +2,9 @@
 
 > Tema: programas
 > En corto: Cambiar muchas filas del editor de una vez: el descanso de las 24 filas de un bloque, una serie más a todos los accesorios, o press banca por inclinado en las siete sesiones donde aparece. Lo que en Excel es arrastrar una columna.
-> Fase P01 · pendiente · `bulkEdit.js` + pantalla + alcance sesión/etapa + Series/Reps/Descanso
-> Fase P02 · pendiente · Sustitución masiva reutilizando lista y alcance de la P01
-> Fase P03 · pendiente · Campo Progresión (incremento a la mitad / descarga)
+> Fase P01 · pendiente · `bulkEdit.js` + pantalla + alcance sesión/etapa + Series/Reps/Descanso · §4
+> Fase P02 · pendiente · Sustitución masiva reutilizando lista y alcance de la P01 · §5
+> Fase P03 · pendiente · Campo Progresión (incremento a la mitad / descarga) · §11
 >
 > Estado: **spec cerrada, sin implementar** (ago 2026).
 >

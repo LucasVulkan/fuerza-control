@@ -125,7 +125,28 @@ const clave = (lineas, nombre) => {
 };
 
 /**
- * `> Fase M01 · pendiente · Identidad en RevenueCat`
+ * El texto de una sección del documento, de su encabezado al siguiente del
+ * mismo nivel o superior. Sale en crudo: el markdown se lee bien tal cual y
+ * así las tablas y los bloques de código no dependen de un renderizador.
+ */
+function seccionDe(texto, num) {
+  const lineas = texto.split('\n');
+  const esc = num.replace(/\./g, '\\.');
+  const abre = new RegExp(`^(#{2,5})\\s+${esc}[.\\s]`);
+  const i = lineas.findIndex((l) => abre.test(l));
+  if (i === -1) return null;
+  const nivel = lineas[i].match(/^#+/)[0].length;
+  let j = i + 1;
+  while (j < lineas.length) {
+    const h = lineas[j].match(/^(#{1,5})\s/);
+    if (h && h[1].length <= nivel) break;
+    j++;
+  }
+  return lineas.slice(i, j).join('\n').replace(/\s+$/, '');
+}
+
+/**
+ * `> Fase M01 · pendiente · Identidad en RevenueCat · §3`
  *
  * Solo la cabecera, hasta la linea `> Estado:`: mas abajo la prosa tiene frases
  * que empiezan por "Fase 3 ..." dentro de la misma cita.
@@ -134,12 +155,15 @@ const fasesDe = (lineas, f) => lineas
   .slice(0, Math.max(0, lineas.findIndex((l) => l.startsWith('> Estado:'))))
   .filter((l) => l.startsWith('> Fase '))
   .map((l) => {
-    const [codigo, estado, ...resto] = l.slice(7).split('·').map((x) => x.trim());
+    const trozos = l.slice(7).split('·').map((x) => x.trim());
+    const [codigo, estado] = trozos;
+    const ref = trozos[trozos.length - 1];
     if (!/^[A-Z]\d{2}$/.test(codigo)) throw new Error(`${f}: código de fase "${codigo}" — se espera una letra y dos dígitos, p. ej. M01`);
     if (!ESTADOS.includes(estado)) throw new Error(`${f}: la fase ${codigo} tiene estado "${estado}". Los válidos: ${ESTADOS.join(', ')}`);
-    const titulo = resto.join('·').trim();
+    if (!/^§[\d.]+$/.test(ref)) throw new Error(`${f}: la fase ${codigo} no acaba en "· §N", la sección del documento que la cuenta`);
+    const titulo = trozos.slice(2, -1).join(' · ').trim();
     if (!titulo) throw new Error(`${f}: la fase ${codigo} no tiene título`);
-    return { codigo, estado, titulo };
+    return { codigo, estado, titulo, ref };
   });
 
 const specs = readdirSync(SPECS)
@@ -147,7 +171,13 @@ const specs = readdirSync(SPECS)
   .map((f) => {
     const texto  = leer(f);
     const lineas = texto.split('\n');
-    const fases  = fasesDe(lineas, f);
+    const fases  = fasesDe(lineas, f).map((x) => {
+      const cuerpo = seccionDe(texto, x.ref.slice(1));
+      // Una referencia que ya no existe es un puntero roto: mejor que reviente
+      // aquí que descubrirlo al pulsarla.
+      if (!cuerpo) throw new Error(`${f}: la fase ${x.codigo} apunta a ${x.ref} y ahí no hay ningún encabezado`);
+      return { ...x, cuerpo };
+    });
     const spec = {
       archivo: f,
       titulo:  (lineas[0] ?? '').replace(/^#\s*(Spec —\s*)?/, '').trim() || basename(f, '.md'),
@@ -217,9 +247,11 @@ const resumenSev = ['🔴', '🟠', '🟡', '🟢'].map((s) => {
   return `${s} ${g.filter((f) => f.hecho).length}/${g.length}`;
 }).join(' · ');
 
-const filaFase = (x) => `<li class="fase ${x.estado}">
-  <span class="cod">${esc(x.codigo)}</span>
-  <span class="ftit">${md(x.titulo)}</span>
+const filaFase = (x, archivo) => `<li class="fase ${x.estado}">
+  <details>
+    <summary><span class="cod">${esc(x.codigo)}</span><span class="ftit">${md(x.titulo)}</span></summary>
+    <div class="doc"><span class="ruta-doc">${esc(archivo)} ${esc(x.ref)}</span><pre>${esc(x.cuerpo)}</pre></div>
+  </details>
 </li>`;
 
 const tarjetaSpec = (s) => {
@@ -231,7 +263,7 @@ const tarjetaSpec = (s) => {
   </div>
   <p class="corto">${md(s.corto)}</p>
   <div class="fases"><span class="rot">Fases ${hechas}/${s.fases.length}</span>
-    <ul>${s.fases.map(filaFase).join('')}</ul></div>
+    <ul>${s.fases.map((x) => filaFase(x, s.archivo)).join('')}</ul></div>
   ${s.pruebas.map((t) => `<details class="prueba-det">
     <summary>🔍 Prueba a mano</summary><div>${md(t)}</div></details>`).join('')}
   <div class="pie"><code>${esc(s.archivo)}</code></div>
@@ -296,7 +328,10 @@ const html = `<!doctype html>
   button{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:20px;
          padding:6px 15px;font-size:13px;cursor:pointer;font-family:inherit}
   button.on{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
-  .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  /* La ficha con algo desplegado se lleva la fila entera: el texto del documento
+     no se lee en una columna de 300 px. */
+  .ficha:has(details[open]){grid-column:1/-1}
   .ficha{background:var(--card);border:1px solid var(--bd);border-left-width:3px;
          border-radius:10px;padding:14px 16px}
   .ficha.hecho{border-left-color:var(--acc)}
@@ -317,8 +352,17 @@ const html = `<!doctype html>
   .rot{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
        color:var(--mut);margin-bottom:6px}
   .fases ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
-  .fase{display:flex;gap:8px;align-items:baseline;font-size:12.5px;line-height:1.45}
+  .fase{font-size:12.5px;line-height:1.45}
+  .fase summary{display:flex;gap:8px;align-items:baseline;cursor:pointer;list-style:none}
+  .fase summary::-webkit-details-marker{display:none}
+  .fase summary:hover .ftit{color:var(--tx);text-decoration-color:var(--mut)}
   .fase .ftit{flex:1}
+  .doc{margin:8px 0 10px 6px;border-left:2px solid var(--bd);padding-left:11px}
+  .ruta-doc{display:block;font-size:10.5px;color:#5f666d;margin-bottom:6px;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .doc pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:11.5px;
+           line-height:1.6;color:var(--mut);max-height:340px;overflow:auto;
+           font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   .fase.hecho .ftit{color:var(--mut);text-decoration:line-through;text-decoration-color:#3a3f45}
   .fase.hecho .cod{background:#243016;color:var(--acc)}
   .fase.pendiente .cod{background:#3a3220;color:var(--pend)}

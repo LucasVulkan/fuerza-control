@@ -2,12 +2,12 @@
 
 > Tema: programas
 > En corto: Una etapa deja de ser un duplicado del programa entero y pasa a ser una regla («mismas sesiones, +1 serie, −5% de peso»), así que hacerlo evolucionar cuesta minutos en vez de reeditar N sesiones a mano.
-> Fase P24 · hecho · Unificación del modelo + paso de ciclos en los dos modales de creación
-> Fase P25 · hecho · `applyRx` + `templateChainIds` + `addStageToProgram({rx})`
-> Fase P26 · hecho · Switch «principal» + pill KEY, que habilita `scope`
-> Fase P27 · hecho · `progressionHold: deload` en `progression.js`
-> Fase P28 · hecho · Pantalla del planificador
-> Fase P29 · pendiente · Recap consciente de la descarga
+> Fase P24 · hecho · Unificación del modelo + paso de ciclos en los dos modales de creación · §3
+> Fase P25 · hecho · `applyRx` + `templateChainIds` + `addStageToProgram({rx})` · §4
+> Fase P26 · hecho · Switch «principal» + pill KEY, que habilita `scope` · §5
+> Fase P27 · hecho · `progressionHold: deload` en `progression.js` · §6
+> Fase P28 · hecho · Pantalla del planificador · §7
+> Fase P29 · pendiente · Recap consciente de la descarga · §4.2
 >
 > Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario

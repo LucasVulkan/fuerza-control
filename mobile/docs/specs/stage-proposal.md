@@ -2,11 +2,11 @@
 
 > Tema: programas
 > En corto: Al cerrar una etapa, la app redacta un BORRADOR de la siguiente leyendo las métricas del cliente (adherencia, carga, rendimiento). Nunca automático: el entrenador acepta, edita o descarta.
-> Fase P30 · pendiente · `stageStart`/`stageLog` + `isProgramAuthor` extraído
-> Fase P31 · pendiente · `perfTrend` + `costSignal` + `stageCharacter` + `readClientState`
-> Fase P32 · pendiente · `stageProposal.js` + tests + calibración con la semilla
-> Fase P33 · pendiente · Prellenado del planificador + línea en el hero
-> Fase P34 · pendiente · Entrada en Home + aviso de etapa sin límite + cool-down
+> Fase P30 · pendiente · `stageStart`/`stageLog` + `isProgramAuthor` extraído · §4.1
+> Fase P31 · pendiente · `perfTrend` + `costSignal` + `stageCharacter` + `readClientState` · §4.2
+> Fase P32 · pendiente · `stageProposal.js` + tests + calibración con la semilla · §4.3
+> Fase P33 · pendiente · Prellenado del planificador + línea en el hero · §8
+> Fase P34 · pendiente · Entrada en Home + aviso de etapa sin límite + cool-down · §8
 >
 > Estado: **spec cerrada, sin implementar** (ago 2026). Es la **P4** del análisis
 > de 5 palancas que produjo [stage-planner.md](stage-planner.md) (P1) y

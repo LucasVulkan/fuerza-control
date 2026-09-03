@@ -37,8 +37,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 
 > Tema: monetización
 > En corto: Una frase, en cristiano, de qué va la cosa.
-> Fase M01 · pendiente · Identidad en RevenueCat
-> Fase M02 · pendiente · Freemium 2+2 y hoja de elección
+> Fase M01 · pendiente · Identidad en RevenueCat · §3
+> Fase M02 · pendiente · Freemium 2+2 y hoja de elección · §4
 >
 > Estado: **la prosa de siempre**, con el detalle, los commits y el coste.
 ```
@@ -46,10 +46,14 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 - **`Tema`** — uno de los siete de la tabla de arriba. Es la sección de la página.
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
-- **`Fase <código> · <estado> · <título>`** — una línea por fase, **al menos
-  una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
+- **`Fase <código> · <estado> · <título> · §<sección>`** — una línea por fase,
+  **al menos una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
   seguimiento: casi nada se implementa de una vez, así que una spec "a medias"
   no dice nada y "3 de 10 fases" sí.
+  La **`§`** es la sección de este mismo documento que cuenta esa fase; la
+  página la enseña entera al pulsar la fase, así que no hay que buscarla a mano.
+  Si apunta a un encabezado que no existe, `npm run estado` falla — un puntero
+  roto se descubre al generar y no al pulsarlo.
 - **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
   detalle; la página no la pinta porque no cabe.
 

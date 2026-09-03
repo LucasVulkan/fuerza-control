@@ -2,10 +2,10 @@
 
 > Tema: monetización
 > En corto: Freemium 2+2: el entrenador lleva dos clientes y dos plantillas gratis. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
-> Fase M01 · pendiente · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior)
-> Fase M02 · pendiente · Freemium 2+2: congelado por cliente y hoja de elección
-> Fase M03 · pendiente · Paywall dual + i18n + enlaces legales
-> Fase M04 · pendiente · Invitar cliente nivel 1 + página estática
+> Fase M01 · pendiente · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3
+> Fase M02 · pendiente · Freemium 2+2: congelado por cliente y hoja de elección · §4
+> Fase M03 · pendiente · Paywall dual + i18n + enlaces legales · §5
+> Fase M04 · pendiente · Invitar cliente nivel 1 + página estática · §6
 >
 > Estado: **SIN IMPLEMENTAR** (sep 2026). 4 fases: 0 identidad · 1 freemium ·
 > 2 paywall dual · 3 invitar cliente.

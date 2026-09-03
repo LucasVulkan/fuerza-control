@@ -2,10 +2,10 @@
 
 > Tema: ui
 > En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
-> Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/`
-> Fase U02 · hecho · Sacar la sesión en curso del blob persistido
-> Fase U03 · pendiente · Recortes de features a decidir antes de publicar
-> Fase U04 · pendiente · Terminar Workout y publicar
+> Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/` · §2
+> Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
+> Fase U03 · pendiente · Recortes de features a decidir antes de publicar · §4
+> Fase U04 · pendiente · Terminar Workout y publicar · §5
 >
 > **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
 > mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
