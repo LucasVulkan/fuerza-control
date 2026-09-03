@@ -47,6 +47,50 @@
 > poco evocador. **Los stubs son inertes**: un test verde prueba la lógica pura
 > del store, nunca que el lado nativo funcione.
 
+## 0. Cómo trabajar este documento
+
+**Verifica el diagnóstico contra el código antes de tocar nada.** No es
+formalismo: de los 20 fallos resueltos, **en 7 el arreglo propuesto estaba mal o
+incompleto**. El SQL del §7 no habría reemplazado la función que pretendía; el
+§9 se dejaba cinco sitios; el §6 pedía arreglar código muerto que no llamaba
+nadie; el §8 contaba dos consumidores donde hay doce; el §1 se contradecía entre
+su código de ejemplo y su propio texto; el §16 apuntaba a cuatro sitios que ya
+estaban limpios mientras el patrón había reaparecido en otros dos; y el §26 —el
+más grave de todos— ni siquiera estaba en el barrido.
+
+Aplicar un "**Arreglo:**" tal cual, sin comprobarlo, tiene por histórico **una
+probabilidad de uno entre tres de meter un error nuevo**.
+
+En concreto, antes de implementar cualquier fallo:
+
+1. **Lee el código de hoy**, no el del diagnóstico. Este documento es de
+   ago-2026 y desde entonces la app se movió entera dentro de `mobile/`, se
+   reescribió el onboarding y se ejecutaron `rediseno.md` y `program-model.md`.
+   Cada sección revisada lleva una nota con su fecha; la que no la lleva, no se
+   ha revisado.
+2. **Busca los otros sitios afectados.** Casi siempre hay más de los que dice el
+   apartado. El §16 es el caso de estudio: se arreglaron los cuatro señalados y
+   el patrón volvió por otro lado en cuanto se escribió código nuevo, con el
+   helper correcto al lado sin usar. Si un fallo aparece en N sitios, la
+   pregunta es dónde convergen y si se puede cerrar ahí una sola vez.
+3. **Si el arreglo propuesto no cuadra, dilo antes de implementar** en vez de
+   aplicarlo igual. Varios de los mejores resultados de este documento salieron
+   de descartar el arreglo propuesto: el §3 sin snapshot, el §6 borrando en vez
+   de arreglar, el §7 sin `p_takeover`.
+4. **Verifica**: `npx eslint <archivo>` comparando el recuento **contra HEAD**
+   (hay errores preexistentes; lo que no vale es sumar), y `npx vitest run`
+   desde la raíz.
+5. **Deja el test fallando primero.** Un test que pasa igual con y sin el
+   arreglo no prueba nada — comprobarlo cuesta un `git stash`.
+6. **Escribe el bloque `### ✅ Resuelto`** al final de la sección, y di **en qué
+   se equivocaba el diagnóstico** si se equivocaba. Esa es la parte que ha hecho
+   útil este documento para la siguiente sesión.
+
+`npm run estado` genera `docs/estado.html` con la foto: qué queda, qué está
+pendiente de probar a mano, y el estado de las 19 specs.
+
+---
+
 ## 0. Índice por severidad
 
 | # | Severidad | Título | Archivo principal |
@@ -77,6 +121,10 @@
 | [24](#24) | 🟢 Baja | ✅ Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
+
+**Los seis pendientes están revisados contra el código de sep-2026** y cada uno
+lleva su nota dentro de la sección: 11, 12, 14, 15, 23 y 25. La ᴿ del cuadro de
+tandas marca lo revisado y no implementado.
 
 Rutas relativas a `mobile/` salvo las que empiezan por `supabase/`. Ya no hay
 excepción para `src/utils/`: desde la mudanza de sep-2026 vive también dentro de
@@ -1343,8 +1391,13 @@ comprobar que salen las copias en vez de "no hay ninguna".
 
 ## 14. `advanceCycle` cierra ciclos antes de tiempo 🟡 {#14}
 
-**Dónde.** `src/utils/stageProgress.js`, funciones `advanceCycle` y
+**Dónde.** `src/utils/stageProgress.js:239`, funciones `advanceCycle` y
 `mergeProgressOnImport`.
+
+> **Revisado sep-2026: sigue exactamente igual.** `advanceCycle` mantiene
+> `const cycleIds = new Set(program.cycleCompletedIds ?? [])` sin intersectar
+> con `cycleTplIds`, y el cierre sigue decidiéndose por tamaño. El arreglo
+> propuesto abajo sirve tal cual.
 
 **Por qué falla.** El cierre se decide comparando **tamaños**, no pertenencia:
 
@@ -1390,8 +1443,14 @@ ciclo NO debe cerrarse.
 
 ## 15. Un ejercicio duplicado en la misma sesión comparte estado 🟡 {#15}
 
-**Dónde.** `store/useStore.js:943` (`addExercise`), `:1538` (`startSession`),
+**Dónde.** `store/useStore.js:1090` (`addExercise`), `:1685` (`startSession`),
 `src/screens/ExerciseSelectorScreen.jsx`.
+
+> **Revisado sep-2026: sigue igual, y las dos mitades siguen abiertas.**
+> `addExercise` no comprueba duplicados, `setsState[exerciseId]` sigue indexado
+> por ejercicio y no por posición (`:1685`), y el selector sigue sin filtrar lo
+> que ya está en la sesión — su propio comentario de cabecera lo dice:
+> *"`existingPatterns` sigue llegando por params pero ya no se usa"*.
 
 **Por qué falla.** `setsState` está indexado por `exerciseId`, no por posición:
 
@@ -1754,8 +1813,16 @@ rama de terminado y devuelve `{ interval: total - 1 }` = `-1`. Después,
 `currentMovement(block, -1)` hace `movements[-1 % len]` → `movements[-1]` →
 `undefined`, y el consumidor lee `.exerciseId` de `undefined`.
 
-**Depende de** si `BlockEditorInline` permite bajar el stepper de rondas a 0 —
-hay que comprobarlo. El arreglo es barato en cualquier caso.
+> **Revisado sep-2026, y la pregunta abierta queda contestada: NO, la UI no
+> permite llegar a 0.** El stepper de rondas lleva `min={1}` en sus dos
+> apariciones (`BlockEditorInline.jsx:426` y `:483`), así que desde la app es
+> inalcanzable. `emomTotalIntervals` sigue con `block.rounds ?? 1`, sin cambios.
+>
+> Sigue mereciendo el arreglo, pero por la vía de siempre: **datos de fuera**.
+> Un bloque con `rounds: 0` puede llegar en un `.fitdata` importado o en un
+> `program_json` generado por otra versión. Misma familia que el §16 y el §21 —
+> el dato que rompe no lo genera esta app. Con eso, la severidad 🟢 es correcta
+> y el arreglo de una línea sigue saliendo a cuenta.
 
 **Arreglo.**
 
@@ -1827,6 +1894,10 @@ módulos.
 ---
 
 ## 25. El backup completo no lleva `tagRegistry` ni `blockPresets` 🟡 {#25}
+
+> **Revisado sep-2026: sigue igual.** Nació en esta misma tanda al centralizar
+> el payload en `src/utils/backupPayload.js`, así que su diagnóstico ya se
+> escribió contra el código actual.
 
 **Dónde.** `src/utils/backupPayload.js` (antes, el objeto literal de
 `exportFullBackup` y `performDriveBackup`), contra `partialize`
@@ -1953,7 +2024,7 @@ verificable:
 | **C — sincronización** ✅ | ✅ [5](#5), ✅ [7](#7), ✅ [8](#8) | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
 | **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
-| **F — UI y limpieza** | [11](#11), [12](#12), ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
+| **F — UI y limpieza** | [11](#11)ᴿ, [12](#12)ᴿ, ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
 
 La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
 inservible y [2](#2) destruye datos del entrenador en la operación que
