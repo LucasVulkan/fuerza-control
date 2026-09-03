@@ -21,6 +21,7 @@ import { formatDate } from '../utils/formatters';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { LockIcon } from '../components/ui/EditorIcons';
 import StageSegBar from '../components/ui/StageSegBar';
+import { DocSheet } from '../components/ui/DocPoints';
 import { getWeekStatuses } from '../utils/weekProgress';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
@@ -175,7 +176,7 @@ function CycleDots({ done, total, styles }) {
   );
 }
 
-function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, sessionsPerCycle, onPress }) {
+function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, sessionsPerCycle, onPress, onCycleInfo }) {
   const { t }      = useTranslation();
   const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
@@ -204,7 +205,15 @@ function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, se
         </View>
 
         <View style={styles.bnCycle}>
-          <Text style={styles.bnEyebrow}>{t('home.cycle')}</Text>
+          {/* "Ciclo" es el concepto que más cuesta y este es el sitio donde
+              todo el mundo lo ve a diario: pulsarlo abre la ficha del apartado,
+              no el glosario entero. El disparador es la ETIQUETA y no el bloque
+              (misma regla que `InfoLabel` en Progreso), porque el banner entero
+              ya abre el selector de etapa. Sin ⓘ: sobre el lima el aro no se
+              lee, y la etiqueta ya invita a pulsarla. */}
+          <TouchableOpacity onPress={onCycleInfo} hitSlop={10} activeOpacity={0.7}>
+            <Text style={styles.bnEyebrow}>{t('home.cycle')}</Text>
+          </TouchableOpacity>
           <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
           <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
         </View>
@@ -616,6 +625,7 @@ export default function HomeScreen() {
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
+  const [cycleDoc,    setCycleDoc]    = useState(false);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -716,6 +726,7 @@ export default function HomeScreen() {
                 doneInCycle={doneInCycle}
                 sessionsPerCycle={sessionsPerCycle}
                 onPress={hasStages ? () => setStagePicker(true) : undefined}
+                onCycleInfo={() => setCycleDoc(true)}
               />
 
               <WeekSelector workoutLog={workoutLog} />
@@ -982,6 +993,7 @@ export default function HomeScreen() {
           onClose={() => setArchiveOpen(false)}
         />
       )}
+      <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
       {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
         <StagePickerSheet
           program={activeProgram}

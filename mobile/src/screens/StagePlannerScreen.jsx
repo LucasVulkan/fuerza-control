@@ -29,7 +29,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles } from '../theme';
+import { spacing, textStyles, HEADER_H } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
@@ -39,7 +39,6 @@ import { ToggleRow } from '../components/ui/EditorRows';
 import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
 
-const HEADER_H = 64;
 
 /** Índice de la etapa base: la última sin regla (la última hecha a mano). */
 function baseStageIdx(stages) {

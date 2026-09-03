@@ -198,7 +198,7 @@ const INITIAL_PROFILE = {
   setupComplete: false,   // true tras elegir idioma + unidad en SetupScreen
   goals: [],
   bodyWeight: null,
-  theme: 'dark',
+  theme: 'formaFit',
   // Por defecto NO Pro. Era `true`, y como `checkProStatus` conserva el valor
   // cuando la comprobacion falla —correcto: no se revoca a un cliente de pago
   // por quedarse sin cobertura—, cualquiera sin modulo nativo o con la clave de
@@ -244,6 +244,15 @@ const INITIAL_UI = {
   _blockPickerResult: null,
   homeTab: 'session',
 };
+
+// ─── Sesiones de un ciclo ──────────────────────────────────────────────────────
+// Las letras llegan hasta G: el alta manual permite 7 sesiones por ciclo, el
+// mismo techo que la pregunta de días del onboarding. Los colores de día son 6
+// y se repiten (`% DAY_COLORS.length`), que es como estaba escrito ya.
+// Estaban copiados en las tres acciones que crean sesiones; ahí el índice 6
+// caía en el `?? String(i + 1)` y la séptima sesión se llamaba "7" en vez de "G".
+const DAY_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const DAY_COLORS = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
 
 // ─── Program diff helper ──────────────────────────────────────────────────────
 /**
@@ -1153,8 +1162,8 @@ export const useStore = create(
 
       createEmptyProgram: (numSessions, programName = 'Mi programa', kind = 'program', durationWeeks = null) => {
         const programId = generateId('prog');
-        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const colors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
+        const labels = DAY_LABELS;
+        const colors = DAY_COLORS;
         const newTemplates = {};
         const programDays = [];
         for (let i = 0; i < numSessions; i++) {
@@ -1191,8 +1200,8 @@ export const useStore = create(
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
-        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const dayColors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
+        const labels = DAY_LABELS;
+        const dayColors = DAY_COLORS;
         const targetStageIdx = stageIndex !== null ? stageIndex : (program.currentStageIndex ?? 0);
         const targetDays = program.stages[targetStageIdx]?.days ?? [];
         const i = targetDays.length;
@@ -1218,8 +1227,8 @@ export const useStore = create(
         const { programs, sessionTemplates } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return null;
-        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const dayColors = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
+        const labels = DAY_LABELS;
+        const dayColors = DAY_COLORS;
 
         const stageIdx = program.stages.findIndex((st) => st.days.some((d) => d.sessionTemplateId === templateId));
         if (stageIdx < 0) return null;

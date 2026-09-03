@@ -9,7 +9,7 @@ import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, withOpacity, sheetRowBase, HEADER_H } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
@@ -23,7 +23,6 @@ import { describeRx } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
 
 // SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
-const HEADER_H = 64;
 // Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
 const HEADER_EDIT_W = 16;
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como

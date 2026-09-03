@@ -26,10 +26,10 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TextInput,
   TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet,
+  Alert, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import { Path, G, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -48,8 +48,9 @@ import AdjustSheet from '../components/onboarding/AdjustSheet';
 import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { NavRow } from '../components/ui/EditorRows';
+import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, HEADER_H } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
@@ -90,46 +91,54 @@ const totalSetsOf  = (exercisesLists) => exercisesLists.reduce(
   (n, exercises) => n + (exercises ?? []).reduce((m, ex) => m + (ex.sets ?? 0), 0), 0,
 );
 
-// ─── Brand tag two-tone ───────────────────────────────────────────────────────
-
-function FitLogo({ height = 18 }) {
-  const th = useTheme();
-  const width = height * (378 / 126);
-  return (
-    <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
-      <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={th.colors.accent} />
-      <Path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z" fill={th.colors.accent} />
-      <Path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z" fill={th.colors.accent} />
-    </Svg>
-  );
-}
-
-function BrandTag() {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.brandTag}>
-      <Text style={styles.brandTagForma}>Forma</Text>
-      <View style={{ marginTop: 3 }}><FitLogo height={13} /></View>
-    </View>
-  );
-}
-
 // ─── Tarjeta de modo ──────────────────────────────────────────────────────────
+//
+// Misma anatomía que `QuestionCard` (§4 de onboarding-simple.md: tarjeta de
+// elección, NO lista agrupada), más el icono gris de `MenuList` y la flecha de
+// fila navegable. Los emoji se van con la migración: no hay ni uno en ninguna
+// pantalla ya cerrada.
 
-function ModeCard({ icon, title, desc, onPress, accent = false }) {
+const MODE_ICONS = {
+  auto:     <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />,
+  manual:   <Path d="M12 5v14M5 12h14" />,
+  import:   <Path d="M12 5v14M6 13l6 6 6-6" />,
+  template: <Path d="M4 7h16M4 12h16M4 17h10" />,
+  trainer:  <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>,
+};
+
+// Botón primario del onboarding. La flecha es el `ArrowIcon` de la cabecera
+// —el asset real— y no un "→" de texto: el glifo salía fino y sin centrar.
+function PrimaryBtn({ label, onPress, disabled }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
-      style={[styles.modeCard, accent && styles.modeCardAccent]}
-      onPress={onPress}
-      activeOpacity={0.75}
+      style={[styles.startBtn, disabled && styles.startBtnOff]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.85}
     >
-      <Text style={styles.modeIcon}>{icon}</Text>
+      <Text style={[styles.startBtnText, disabled && styles.startBtnTextOff]}>{label}</Text>
+      <ArrowIcon size={14} color={disabled ? th.colors.mutedLight : th.colors.onAccent} />
+    </TouchableOpacity>
+  );
+}
+
+function ModeCard({ icon, title, desc, badge, onPress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <TouchableOpacity style={styles.modeCard} onPress={onPress} activeOpacity={0.75}>
+      <View style={styles.modeIcon}><RowIcon>{MODE_ICONS[icon]}</RowIcon></View>
       <View style={styles.modeBody}>
-        <Text style={[styles.modeTitle, accent && styles.modeTitleAccent]}>{title}</Text>
+        <View style={styles.modeTitleLine}>
+          <Text style={styles.modeTitle}>{title}</Text>
+          {badge ? (
+            <View style={styles.modeBadge}><Text style={styles.modeBadgeText}>{badge}</Text></View>
+          ) : null}
+        </View>
         <Text style={styles.modeDesc}>{desc}</Text>
       </View>
-      <Text style={styles.modeArrow}>›</Text>
+      <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
     </TouchableOpacity>
   );
 }
@@ -156,9 +165,13 @@ function LimeHeader({ eyebrow, title, onBack, dotsDone }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.limeHeader}>
-      <TouchableOpacity onPress={onBack} hitSlop={10} style={styles.limeHeaderSide} activeOpacity={0.75}>
-        <ArrowIcon size={20} color={th.colors.onAccent} back />
-      </TouchableOpacity>
+      {/* Sin `onBack` el hueco se queda vacío pero ocupa: el título va centrado
+          contra los dos lados, y en la primera apertura no hay atrás. */}
+      {onBack ? (
+        <TouchableOpacity onPress={onBack} hitSlop={10} style={styles.limeHeaderSide} activeOpacity={0.75}>
+          <ArrowIcon size={20} color={th.colors.onAccent} back />
+        </TouchableOpacity>
+      ) : <View style={styles.limeHeaderSide} />}
       <View style={styles.limeHeaderCenter}>
         <Text style={styles.limeHeaderEyebrow} numberOfLines={1}>{eyebrow}</Text>
         <Text style={styles.limeHeaderTitle} numberOfLines={1}>{title}</Text>
@@ -746,6 +759,9 @@ export default function OnboardingScreen() {
           <View>
             <Text style={styles.sectionLabel}>{t('onboarding.preview.cycleSectionLabel', 'Cómo se reparte')}</Text>
             <CycleWeeks templates={uniqueTemplates} daysPerWeek={answers.daysPerWeek} />
+            {/* El dibujo del ciclo sin decir qué es un ciclo no explica nada:
+                misma frase que la pantalla de programa vacío. */}
+            <Text style={[styles.qHint, styles.hintGap]}>{t('onboarding.cycleExplainer')}</Text>
           </View>
 
           <View>
@@ -795,9 +811,7 @@ export default function OnboardingScreen() {
               <TouchableOpacity style={styles.editBtn} onPress={() => confirmProgram(handleEditProgram)} activeOpacity={0.85}>
                 <Text style={styles.editBtnText}>{t('onboarding.preview.edit', 'EDITAR')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.startBtn} onPress={() => confirmProgram(finish)} activeOpacity={0.85}>
-                <Text style={styles.startBtnText}>{t('onboarding.preview.start', 'EMPEZAR →')}</Text>
-              </TouchableOpacity>
+              <PrimaryBtn label={t('onboarding.preview.start')} onPress={() => confirmProgram(finish)} />
             </View>
           </View>
         </View>
@@ -861,49 +875,44 @@ export default function OnboardingScreen() {
     );
   }
 
-  // ── Selector de modo ─────────────────────────────────────────────────────────
+  // ── Selector de modo ─────────────────────────────────────────────────
   if (mode === null) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={styles.modeHeader}>
-          {fromApp && (
-            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backIcon}>
-              <Text style={styles.backIconText}>‹</Text>
-            </TouchableOpacity>
-          )}
-          <BrandTag />
-          <Text style={styles.modeHeadline}>{t('onboarding.newProgram', 'Nuevo programa')}</Text>
-          <Text style={styles.modeSubtitle}>{t('onboarding.howToCreate', '¿Cómo quieres crear tu programa?')}</Text>
-        </View>
+        <LimeHeader
+          eyebrow={t('onboarding.newProgram', 'NUEVO PROGRAMA')}
+          title={t('onboarding.howToCreate')}
+          onBack={fromApp ? () => navigation.goBack() : null}
+        />
 
         <ScrollView
           contentContainerStyle={styles.modeCards}
           showsVerticalScrollIndicator={false}
         >
           <ModeCard
-            icon="🤖"
-            title={t('onboarding.modeAuto', 'Programa automático')}
-            desc={t('onboarding.modeAutoDesc', 'Responde unas preguntas y generamos tu programa personalizado.')}
+            icon="auto"
+            title={t('onboarding.modeAuto')}
+            desc={t('onboarding.modeAutoDesc')}
+            badge={t('onboarding.modeRecommended')}
             onPress={() => setMode('auto')}
-            accent
           />
           <ModeCard
-            icon="✏️"
-            title={t('onboarding.modeManual', 'Programa vacío')}
-            desc={t('onboarding.modeManualDesc', 'Crea un programa en blanco y añade tus propios ejercicios.')}
+            icon="manual"
+            title={t('onboarding.modeManual')}
+            desc={t('onboarding.modeManualDesc')}
             onPress={() => setMode('manual')}
           />
           <ModeCard
-            icon="📥"
-            title={t('onboarding.modeImport', 'Importar archivo')}
-            desc={t('onboarding.modeImportDesc', 'Carga un archivo .json exportado desde Forma Fit.')}
+            icon="import"
+            title={t('onboarding.modeImport')}
+            desc={t('onboarding.modeImportDesc')}
             onPress={handlePickFile}
           />
           {isPro && templateList.length > 0 && (
             <ModeCard
-              icon="📐"
-              title="Cargar plantilla"
-              desc="Crea un programa a partir de una de tus plantillas."
+              icon="template"
+              title={t('onboarding.modeTemplate')}
+              desc={t('onboarding.modeTemplateDesc', { count: templateList.length })}
               onPress={() => {
                 setSelectedTemplateId(null);
                 setTemplateProgramName('');
@@ -912,11 +921,13 @@ export default function OnboardingScreen() {
             />
           )}
           <ModeCard
-            icon="👤"
-            title="Tengo un entrenador"
-            desc="Introduce el código de tu entrenador para recibir tu programa y mantenerlo sincronizado."
+            icon="trainer"
+            title={t('onboarding.modeTrainer')}
+            desc={t('onboarding.modeTrainerDesc')}
             onPress={() => setShowClientCode(true)}
           />
+
+          <Text style={styles.modeFooterHint}>{t('onboarding.modeFooterHint')}</Text>
         </ScrollView>
 
         {importState && (
@@ -937,167 +948,158 @@ export default function OnboardingScreen() {
     );
   }
 
-  // ── Modo manual ──────────────────────────────────────────────────────────────
+  // ── Modo manual ────────────────────────────────────────────────────
   if (mode === 'manual') {
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {/* Cabecera */}
-        <View style={styles.modeHeader}>
-          <BrandTag />
-          <Text style={styles.manualTag}>{t('onboarding.manualProgram', 'PROGRAMA MANUAL')}</Text>
-        </View>
+        <LimeHeader
+          eyebrow={t('onboarding.newProgram', 'NUEVO PROGRAMA')}
+          title={t('onboarding.modeManual')}
+          onBack={() => setMode(null)}
+        />
 
+        {/* Pie y cuerpo dentro del KAV: si no, el teclado tapa los botones y no
+            se puede crear el programa sin cerrarlo antes. */}
+        <KeyboardAvoidingView
+          style={styles.kav}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         <ScrollView
-          contentContainerStyle={styles.manualContent}
+          contentContainerStyle={styles.formBody}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Nombre */}
-          <View style={styles.manualField}>
-            <Text style={styles.fieldLabel}>
-              {t('onboarding.programName', 'NOMBRE DEL PROGRAMA')}
-            </Text>
+          <View>
+            <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
             <TextInput
               style={styles.textInput}
               value={manualName}
               onChangeText={setManualName}
-              placeholder={t('onboarding.programNamePlaceholder', 'Mi programa')}
-              placeholderTextColor={th.colors.muted2}
+              placeholder={t('onboarding.programNamePlaceholder')}
+              placeholderTextColor={th.colors.mutedLight}
               returnKeyType="done"
               autoFocus
             />
           </View>
 
-          {/* Nº de sesiones */}
-          <View style={styles.manualField}>
-            <Text style={styles.fieldLabel}>
-              {t('onboarding.numberOfSessions', 'NÚMERO DE SESIONES')}
-            </Text>
-            <View style={styles.sessionsRow}>
-              {[2, 3, 4, 5, 6].map((n) => (
+          <View>
+            <Text style={styles.sectionLabel}>{t('onboarding.sessionsPerCycle')}</Text>
+            {/* Mismo rango que la pregunta de días (1-7): una sola sesión es un
+                ciclo válido, y siete es el techo en las dos pantallas. */}
+            <View style={styles.dayChipsRow}>
+              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                 <TouchableOpacity
                   key={n}
-                  style={[styles.sessionBtn, manualSessions === n && styles.sessionBtnOn]}
+                  style={[styles.dayChip, manualSessions === n && styles.dayChipOn]}
                   onPress={() => setManualSessions(n)}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.sessionBtnText, manualSessions === n && styles.sessionBtnTextOn]}>
+                  <Text style={[styles.dayChipText, manualSessions === n && styles.dayChipTextOn]}>
                     {n}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.sessionHint}>
-              {t('onboarding.addMoreFromEditor', 'Podrás añadir más desde el editor.')}
+            <Text style={[styles.qHint, styles.hintGap]}>
+              {t('onboarding.emptySessionsHint', { count: manualSessions })}
             </Text>
-          </View>
-
-          {/* Info */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              {t('onboarding.emptySessionsHint', {
-                count: manualSessions,
-                defaultValue: `Se crearán ${manualSessions} sesiones vacías. Añade los ejercicios desde el editor.`,
-              })}
+            <Text style={[styles.qHint, styles.hintGap]}>
+              {t('onboarding.cycleExplainer')}
             </Text>
           </View>
         </ScrollView>
 
-        {/* Botones */}
-        <View style={styles.manualFooter}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => setMode(null)} activeOpacity={0.75}>
-            <Text style={styles.backBtnText}>‹ Atrás</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.createBtn, !manualName.trim() && styles.createBtnOff]}
-            onPress={manualName.trim() ? handleManualCreate : undefined}
-            activeOpacity={manualName.trim() ? 0.85 : 1}
-          >
-            <Text style={[styles.createBtnText, !manualName.trim() && styles.createBtnTextOff]}>
-              {t('onboarding.createAndEdit', 'Crear y editar →')}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.previewFooter}>
+          <View style={styles.previewFooterBtns}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setMode(null)} activeOpacity={0.85}>
+              <Text style={styles.editBtnText}>{t('onboarding.back')}</Text>
+            </TouchableOpacity>
+            <PrimaryBtn
+              label={t('onboarding.createAndEdit')}
+              onPress={handleManualCreate}
+              disabled={!manualName.trim()}
+            />
+          </View>
         </View>
+        </KeyboardAvoidingView>
       </View>
     );
   }
 
-  // ── Modo template picker ─────────────────────────────────────────────────────
+  // ── Modo template picker ───────────────────────────────────────────
   if (mode === 'template_picker') {
     const selectedTpl = selectedTemplateId ? programs[selectedTemplateId] : null;
 
     return (
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={styles.modeHeader}>
-          <BrandTag />
-          <Text style={styles.modeHeadline}>Cargar plantilla</Text>
-          <Text style={styles.modeSubtitle}>Selecciona una plantilla para crear tu programa</Text>
-        </View>
+        <LimeHeader
+          eyebrow={t('onboarding.newProgram', 'NUEVO PROGRAMA')}
+          title={t('onboarding.modeTemplate')}
+          onBack={() => setMode(null)}
+        />
 
+        <KeyboardAvoidingView
+          style={styles.kav}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         <ScrollView
-          contentContainerStyle={styles.tplPickerList}
+          contentContainerStyle={styles.formBody}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {templateList.map((tpl) => {
-            const isSelected = tpl.id === selectedTemplateId;
-            const dayCount   = allProgramDays(tpl).length;
-            return (
-              <TouchableOpacity
-                key={tpl.id}
-                style={[styles.tplPickerCard, isSelected && styles.tplPickerCardActive]}
-                onPress={() => {
-                  setSelectedTemplateId(tpl.id);
-                  setTemplateProgramName(tpl.name);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={styles.tplPickerCardBody}>
-                  <Text style={[styles.tplPickerName, isSelected && styles.tplPickerNameActive]} numberOfLines={1}>
-                    {tpl.name}
-                  </Text>
-                  {dayCount > 0 && (
-                    <Text style={styles.tplPickerMeta}>{dayCount} sesiones por ciclo</Text>
-                  )}
-                </View>
-                {isSelected && <Text style={styles.tplPickerCheck}>✓</Text>}
-              </TouchableOpacity>
-            );
-          })}
+          <View>
+            <Text style={styles.sectionLabel}>{t('onboarding.yourTemplates')}</Text>
+            <View style={styles.qCards}>
+              {templateList.map((tpl) => {
+                const dayCount = allProgramDays(tpl).length;
+                return (
+                  <QuestionCard
+                    key={tpl.id}
+                    title={tpl.name}
+                    subtitle={dayCount > 0 ? t('onboarding.templateMeta', { count: dayCount }) : null}
+                    selected={tpl.id === selectedTemplateId}
+                    onPress={() => {
+                      setSelectedTemplateId(tpl.id);
+                      setTemplateProgramName(tpl.name);
+                    }}
+                  />
+                );
+              })}
+            </View>
+          </View>
 
-          {/* Nombre del programa */}
           {selectedTpl && (
-            <View style={styles.tplNameField}>
-              <Text style={styles.fieldLabel}>NOMBRE DEL PROGRAMA</Text>
+            <View>
+              <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
               <TextInput
                 style={styles.textInput}
                 value={templateProgramName}
                 onChangeText={setTemplateProgramName}
                 placeholder={selectedTpl.name}
-                placeholderTextColor={th.colors.muted2}
+                placeholderTextColor={th.colors.mutedLight}
                 returnKeyType="done"
                 autoCorrect={false}
               />
+              <Text style={[styles.qHint, styles.hintGap]}>
+                {t('onboarding.templateCopyHint')}
+              </Text>
             </View>
           )}
         </ScrollView>
 
-        {/* CTA */}
-        <View style={styles.tplPickerFooter}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => setMode(null)} activeOpacity={0.75}>
-            <Text style={styles.backBtnText}>‹ Atrás</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.createBtn, !selectedTemplateId && styles.createBtnOff]}
-            onPress={handleLoadTemplate}
-            disabled={!selectedTemplateId}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.createBtnText, !selectedTemplateId && styles.createBtnTextOff]}>
-              Crear programa →
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.previewFooter}>
+          <View style={styles.previewFooterBtns}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => setMode(null)} activeOpacity={0.85}>
+              <Text style={styles.editBtnText}>{t('onboarding.back')}</Text>
+            </TouchableOpacity>
+            <PrimaryBtn
+              label={t('onboarding.createProgram')}
+              onPress={handleLoadTemplate}
+              disabled={!selectedTemplateId}
+            />
+          </View>
         </View>
+        </KeyboardAvoidingView>
       </View>
     );
   }
@@ -1206,36 +1208,70 @@ function StepDays({ answers, set_, onNext, onBack }) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
+  // ── Selector de modo (§4: tarjeta de elección + icono y flecha de fila) ────
+  modeCards: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
+  modeCard: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.lg,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  modeIcon:      { width: 20, alignItems: 'center', flexShrink: 0 },
+  modeBody:      { flex: 1, minWidth: 0, gap: 3 },
+  modeTitleLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  modeTitle:     { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  // Badge sólido de las propuestas (`proposalBadge`): marca la ruta por
+  // defecto sin usar el tratamiento accent10/accent50, que significa ELEGIDO.
+  modeBadge: {
+    backgroundColor:   th.colors.accent,
+    borderRadius:      th.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.xs2,
+    flexShrink:        0,
+  },
+  modeBadgeText:  { ...textStyles.spacingTag, color: th.colors.onAccent },
+  modeDesc:       { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
+  modeFooterHint: {
+    ...textStyles.subtitle,
+    color:             th.colors.mutedLight,
+    lineHeight:        18,
+    paddingHorizontal: spacing.xs2,
+    paddingTop:        spacing.sm,
+  },
+
+  // ── Formularios (programa vacío / cargar plantilla) ────────────────────────
+  formBody: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xl },
+  qCards:   { gap: spacing.sm },
+  hintGap:  { marginTop: spacing.md },
+  // Caja de `nameInput` (CustomExerciseScreen) con el texto de 14 ExtraBold de
+  // `MenuList.rowLabel`: en `cardTitle` (16) el nombre se veía enorme.
+  textInput: {
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+    fontFamily:        'Inter_800ExtraBold',
+    fontSize:          14,
+    color:             th.colors.text,
+  },
+
+
   screen: {
     flex:            1,
     backgroundColor: th.colors.bg,
   },
 
   // Brand tag
-  brandTag: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  brandTagForma: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-  },
-  brandTagFit: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1,
-  },
 
   // ── Cabecera lima (§4: ProgramDetailScreen `header` + `CycleDots`) ────────
   limeHeader: {
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    height:            52,
+    height:            HEADER_H,
     marginHorizontal:  spacing.lg,
     marginTop:         spacing.lg,
     backgroundColor:   th.colors.accent,
@@ -1384,11 +1420,12 @@ const makeStyles = (th) => StyleSheet.create({
     color:     th.colors.mutedLight,
     marginTop: 1,
   },
+  kav: { flex: 1, minHeight: 0 },
+  // Sin filete: §4.6 deja los bordes sólo como highlight de acento, y los dos
+  // botones ya se leen como pie.
   previewFooter: {
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.lg,
-    borderTopWidth:    borders.thin,
-    borderTopColor:    th.colors.border,
   },
   previewFooterInner: { gap: spacing.sm },
   changeLaterText: { ...textStyles.subtitle, color: th.colors.mutedLight },
@@ -1404,13 +1441,17 @@ const makeStyles = (th) => StyleSheet.create({
   editBtnText: { ...textStyles.btnAction, color: th.colors.text },
   startBtn: {
     flex:            2,
+    flexDirection:   'row',
+    gap:             spacing.sm,
     backgroundColor: th.colors.accent,
     borderRadius:    th.radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  startBtnText: { ...textStyles.btnAction, fontSize: 14, color: th.colors.onAccent },
+  startBtnText:    { ...textStyles.btnAction, fontSize: 14, color: th.colors.onAccent },
+  startBtnOff:     { backgroundColor: th.colors.surface2 },
+  startBtnTextOff: { color: th.colors.mutedLight },
 
   // Propuestas — tarjeta de plantilla candidata
   proposalCard: {
@@ -1470,177 +1511,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
   loadingDesc: { fontSize: typography.base, color: th.colors.muted, textAlign: 'center' },
 
-  // Mode selector
-  modeHeader: {
-    paddingHorizontal: spacing.xl,
-    paddingTop:        spacing.xl,
-    paddingBottom:     spacing.lg,
-    gap:               4,
-  },
-  backIcon:     { marginBottom: spacing.sm },
-  backIconText: { fontSize: 24, color: th.colors.muted },
-  modeHeadline: {
-    fontSize:      28,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-    lineHeight:    32,
-  },
-  modeSubtitle: { fontSize: typography.base, color: th.colors.muted, marginTop: 4 },
 
-  modeCards: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.sm },
 
-  modeCard: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.lg,
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.xl,
-  },
-  modeCardAccent: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-  },
-  modeIcon:  { fontSize: 28, lineHeight: 32, flexShrink: 0 },
-  modeBody:  { flex: 1, gap: 3 },
-  modeTitle: { fontSize: typography.md, fontWeight: typography.semibold, color: th.colors.text },
-  modeTitleAccent: { color: th.colors.accent },
-  modeDesc:  { fontSize: typography.sm, color: th.colors.muted, lineHeight: typography.sm * 1.5 },
-  modeArrow: { fontSize: 20, color: th.colors.muted, flexShrink: 0 },
-
-  // Manual
-  manualTag: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    marginTop:     2,
-  },
-  manualContent: { padding: spacing.xl, gap: spacing.xxl },
-  manualField:   { gap: spacing.sm },
-  fieldLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-  },
-  textInput: {
-    backgroundColor:   th.colors.surface2,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.md,
-    color:             th.colors.text,
-    fontSize:          typography.md,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  sessionsRow: { flexDirection: 'row', gap: spacing.sm },
-  sessionBtn: {
-    flex:            1,
-    height:          56,
-    borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  sessionBtnOn: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-  },
-  sessionBtnText:   { fontSize: 24, fontWeight: typography.heavy, color: th.colors.muted },
-  sessionBtnTextOn: { color: th.colors.accent },
-  sessionHint: { fontSize: typography.xs, color: th.colors.muted, marginTop: 4 },
-
-  infoBox: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-  },
-  infoText: { fontSize: typography.sm, color: th.colors.muted, lineHeight: typography.sm * 1.6 },
-
-  manualFooter: {
-    flexDirection:     'row',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical:   spacing.lg,
-    borderTopWidth:    borders.thin,
-    borderTopColor:    th.colors.border,
-  },
-  backBtn: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    paddingVertical:   14,
-    paddingHorizontal: spacing.xl,
-    justifyContent:  'center',
-  },
-  backBtnText: { fontSize: typography.base, color: th.colors.text, fontWeight: typography.medium },
-  createBtn: {
-    flex:            1,
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.md,
-    paddingVertical: 14,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  createBtnOff:     { backgroundColor: th.colors.surface2 },
-  createBtnText:    { fontSize: 16, fontWeight: typography.heavy, letterSpacing: 1, color: th.colors.onAccent },
-  createBtnTextOff: { color: th.colors.muted },
 
   // Template picker
-  tplPickerList: {
-    padding:    spacing.lg,
-    gap:        spacing.sm,
-    paddingBottom: spacing.xxl,
-  },
-  tplPickerCard: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             spacing.sm,
-  },
-  tplPickerCardActive: {
-    borderColor:     th.colors.accent,
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  tplPickerCardBody: { flex: 1, minWidth: 0 },
-  tplPickerName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
-  tplPickerNameActive: { color: th.colors.text },
-  tplPickerMeta: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  tplPickerCheck: {
-    fontSize:   typography.base,
-    color:      th.colors.accent,
-    fontWeight: typography.heavy,
-  },
-  tplNameField: {
-    marginTop: spacing.md,
-    gap:       spacing.xs,
-  },
-  tplPickerFooter: {
-    flexDirection:   'row',
-    gap:             spacing.sm,
-    padding:         spacing.lg,
-    paddingBottom:   spacing.xl,
-    borderTopWidth:  borders.thin,
-    borderTopColor:  th.colors.border,
-  },
 });

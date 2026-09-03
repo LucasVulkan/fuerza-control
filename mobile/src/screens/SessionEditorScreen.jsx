@@ -31,7 +31,7 @@ import { resolveProgressionConfig } from '../utils/progression';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, HEADER_H } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
@@ -51,7 +51,6 @@ const ACTION_GAP       = spacing.sm;
 const ACTION_INSET     = spacing.md;
 const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 
-const HEADER_H = 64;
 // Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
 const HEADER_EDIT_W = 16;
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma

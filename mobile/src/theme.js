@@ -62,6 +62,13 @@ export const spacing = {
   xxl: 28,
 };
 
+// ─── Cabecera lima ────────────────────────────────────────────────────────────
+// Alto de la barra accent con eyebrow + título (detalle/editor de programa,
+// editor de sesión, planificador de etapas y onboarding). Estaba copiado como
+// `HEADER_H = 64` en cuatro pantallas y en 52 en el onboarding, que era el raro.
+// 72 sale de QA en dispositivo: a 64 el texto se leía pegado a los dos bordes.
+export const HEADER_H = 72;
+
 // ─── Border radius ────────────────────────────────────────────────────────────
 export const radius = {
   xs:   4,

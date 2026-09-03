@@ -3,8 +3,11 @@
 > Tema: onboarding
 > En corto: El alta del usuario nuevo en tres preguntas y tres portadas, en vez del cuestionario largo. La revisión 1 se rechazó en QA porque no se parecía a la app; esta es la 2.
 > Fase O01 · hecho · Revisión 2: tres preguntas y tres portadas, con la UI de la app · §2
+> Fase O03 · hecho · Las cuatro pantallas que quedaban con la UI vieja · §14
 >
-> Estado: **revisión 2 implementada** (ago 2026), pendiente de prueba en
+> Estado: **revisión 2 implementada** (ago 2026) y **O03 implementada** (3-sep-2026,
+> §14: setup, selector de modo, programa vacío y cargar plantilla), las dos
+> pendientes de prueba en
 > dispositivo. La revisión 1 se implementó y **el QA en dispositivo la rechazó**:
 > el flujo estaba bien, la UI no se parecía a la app. Este documento es la verdad
 > actual y sustituye por completo a la revisión 1.
@@ -77,9 +80,9 @@ la revisión 1).
 
 | Modo | Acción |
 |---|---|
-| `null` — selector inicial (5 tarjetas) | **conservar entero**, emoji incluidos |
-| `'manual'` | conservar |
-| `'template_picker'` | conservar |
+| `null` — selector inicial (5 tarjetas) | conservado en O01; **rehecho en O03** (§14) |
+| `'manual'` | conservado en O01; **rehecho en O03** (§14) |
+| `'template_picker'` | conservado en O01; **rehecho en O03** (§14) |
 | `'auto'` | **se rehace** |
 
 El selector de modo se queda con sus cinco tarjetas, **"Tengo un entrenador"
@@ -88,8 +91,8 @@ incluida**: no es una forma de crear un programa, es una de las varias formas de
 
 Intactos también: `parseImportFile`, `ImportModal`, `handlePickFile`,
 `handleImport`, `ClientCodeModal`, el efecto de `pendingExternalImport`,
-`finish`, `handleEditProgram`, `handleManualCreate`, `handleLoadTemplate`,
-`BrandTag`, `FitLogo`.
+`finish`, `handleEditProgram`, `handleManualCreate`, `handleLoadTemplate`.
+(`BrandTag` y `FitLogo` sí se mueven en O03, §14.)
 
 ### 3.2 Lo que se borra
 
@@ -496,3 +499,121 @@ y **calistenia + 5 días + sólo peso corporal** (donde más sustituye el adapta
 - **Mover el material al perfil.** Es lo lógico (el material es del gimnasio, no
   del programa) pero toca `profile` y la sincronización. La hoja de §7 lo deja
   suficientemente barato como para que no urja.
+
+---
+
+## 14. O03 — las cuatro pantallas que quedaban con la UI vieja
+
+O01 rehizo el modo `auto`. Las otras cuatro seguían con el lenguaje anterior:
+bordes decorativos de tarjeta, emoji, `typography.*` suelto con tamaños a ojo
+(52 / 28 / 24 px), `radius.lg` y flechas escritas con `‹` y `›`.
+
+**Tampoco tienen nodo en Figma**, así que vale la misma regla que en O01: cada
+pieza sale de una pantalla ya cerrada y se cita con fichero. Mockup aprobado por
+el usuario antes de tocar código.
+
+### 14.1 Qué pasa a ser cada pantalla
+
+| Pantalla | Fichero | Ahora |
+|---|---|---|
+| Idioma + unidades | `SetupScreen.jsx` | marca (lockup de `AppHeader` a ×2) · dos `SegmentedControl` con el formato `stepTitle`+`hint` de la hoja de Progresión · CTA `startBtn` |
+| Selector de modo | `OnboardingScreen.jsx`, `mode === null` | `LimeHeader` (sin flecha en la primera apertura) + cinco tarjetas con anatomía `QuestionCard`, `RowIcon` gris a la izquierda y `ArrowIcon` a la derecha |
+| Programa vacío | `mode === 'manual'` | `LimeHeader` · `sectionLabel` + campo · chips `dayChip` **1-7** · dos `hint` · pie `previewFooter` |
+| Cargar plantilla | `mode === 'template_picker'` | `LimeHeader` · `QuestionCard` por plantilla (elegida = `accent10`+`accent50`) · campo de nombre · pie `previewFooter` |
+
+### 14.2 Decisiones
+
+- **`FitLogo` sube a `src/components/ui/FitLogo.jsx`**: estaba copiado literal en
+  `AppHeader.jsx` y en `OnboardingScreen.jsx`, y `SetupScreen` era el tercer uso.
+  `BrandTag` se borra: las tres pantallas que lo pintaban usan ahora `LimeHeader`.
+- **Fuera los emoji.** No hay ni uno en ninguna pantalla migrada. Los iconos de
+  las tarjetas de modo son los `RowIcon` del menú principal (`AppHeader.jsx`),
+  en `mutedLight`.
+- **`RECOMENDADO` es un badge, no una tarjeta pintada.** El tratamiento
+  `accent10` + borde `accent50` significa **elegido** en las tres preguntas; usarlo
+  para "recomendado" en una lista donde nada está elegido lo rompe. El badge
+  sólido es el de las propuestas (`proposalBadge`).
+- **El campo de texto no va en `cardTitle` (16).** Se veía enorme en QA sobre el
+  mockup; usa el 14 ExtraBold de `MenuList.rowLabel`, dentro de la caja de
+  `nameInput` (`surface2`, `radius/sm`, sin borde).
+- **Los botones de sesiones pasan de 2-6 a 1-7**, el mismo rango que la pregunta
+  de días. Obliga a un cambio en el store: `DAY_LABELS` llegaba hasta la F y la
+  séptima sesión se habría llamado "7" (§14.3).
+- **`onBack` opcional en `LimeHeader`**: en la primera apertura no hay atrás, y
+  el hueco se queda vacío pero ocupa, para que el título siga centrado.
+- **Renombrados** (§10 de esta spec, las claves van en los dos idiomas):
+  `Generar automáticamente` → **`Elegir programa`** (el generador procedural se
+  borró en U03: ya no genera nada, elige plantilla y la adapta),
+  `Construir manualmente` → `Programa vacío`, `Importar programa` → `Importar
+  archivo`. Se borran `manualProgram`, `numberOfSessions` y `addMoreFromEditor`.
+
+### 14.3 Qué es un ciclo — el concepto, dicho donde se decide
+
+Petición explícita del usuario: *"quiero dejarlo meridianamente claro a todos los
+usuarios"*. Ya estaba escrito en Documentación (`docs.sections`, apartado
+`cycle`: *"Avanza al completar TODAS sus sesiones, no al acabar la semana"*), y
+el problema no era que faltara sino que nadie entra al glosario. Tres sitios, ni
+uno más:
+
+1. **Programa vacío**, bajo los chips: ahí se elige el tamaño del ciclo.
+2. **El preview**, bajo `CycleWeeks`: es el dibujo del ciclo y no lo explicaba.
+   Los dos usan la misma clave, `onboarding.cycleExplainer`.
+3. **El banner de Home**: pulsar la etiqueta `CICLO` abre una hoja con **ese
+   apartado**, no el glosario entero (corregido en QA: la primera versión
+   navegaba a `Docs`). El disparador es la **etiqueta** y no el bloque —misma
+   regla que `InfoLabel` en Progreso— porque el banner entero ya abre el
+   selector de etapa, y va **sin ⓘ**: sobre el lima el aro no se lee y la
+   etiqueta ya invita a pulsarla. **No** se crea una ficha `metrics.cycle`: un
+   ciclo no es un número calculado, y `MetricInfo.jsx` avisa de que hacer
+   tocable todo lo que tenga un número vacía de significado el icono.
+
+Para eso, dos cambios pequeños:
+
+- `docs.sections` gana un **`id`** por apartado (`session`, `cycle`, `stage`…) en
+  los dos idiomas, que es por donde busca la hoja.
+- **`src/components/ui/DocPoints.jsx`** (nuevo): las viñetas de un apartado, y
+  `DocSheet` —el `DragSheet` que enseña uno solo—. `DocsScreen` pinta las suyas
+  con el mismo componente, para que no diverjan al primer retoque.
+
+### 14.4 Un arreglo de raíz en el store
+
+`DAY_LABELS` / `DAY_COLORS` estaban **copiados en las tres acciones** que crean
+sesiones (`createEmptyProgram`, `addSessionToProgram`, `duplicateSessionInProgram`),
+las tres con `labels[i] ?? String(i + 1)`. Subir el techo a 7 en una sola habría
+dejado las otras dos con el mismo fallo: la séptima sesión llamándose "7" en vez
+de "G". Suben a constantes de módulo, con la G añadida. Los colores siguen siendo
+6 y se repiten, que es como ya estaba escrito (`% DAY_COLORS.length`).
+
+### 14.5 Lo que salió del QA sobre el mockup
+
+Seis correcciones del usuario, ya aplicadas:
+
+1. **El tema por defecto pasa a `formaFit`** (`themes.js` y el estado inicial del
+   store). Estaba en `dark`, que era el tema previo al rediseño.
+2. **La cabecera lima sube a 72** y deja de estar copiada: `HEADER_H` vive en
+   `src/theme.js` y lo usan las cinco pantallas que la tienen (detalle y editor
+   de programa, editor de sesión, planificador de etapas y onboarding). Estaba
+   en 64 en cuatro y en **52** en el onboarding, que era el raro; a 64 el texto
+   seguía leyéndose pegado a los dos bordes.
+3. **La etiqueta `CICLO` abre una hoja, no Documentación entera**, y pierde el
+   ⓘ (§14.3).
+4. **El pie del alta manual pierde el aviso** "El programa se guarda al crearlo"
+   y **el filete divisorio** — §4.6 deja los bordes sólo como highlight de
+   acento, así que se quita de `previewFooter`, que es el mismo pie de las tres
+   pantallas.
+5. **El pie sube con el teclado**: cuerpo y pie van dentro de un
+   `KeyboardAvoidingView` (`padding` en iOS, `height` en Android) en las dos
+   pantallas con campo de texto. Antes el teclado tapaba los botones.
+6. **La flecha de los botones es el `ArrowIcon` de la cabecera**, no un "→" de
+   texto: salía fino y descentrado. Se quita el glifo de las cadenas
+   (`preview.start`, `createAndEdit`, `createProgram`, el CTA de setup) y lo
+   pinta `PrimaryBtn`, que es el botón primario del onboarding en sus tres usos.
+
+### 14.6 Verificación
+
+- `npx vitest run` desde la raíz: **1199 verdes**, los mismos que antes.
+- `npx eslint mobile/src`: mismo recuento que HEAD, sin errores nuevos.
+- Probar en dispositivo: primera apertura entera (idioma → unidades → los cinco
+  caminos del selector), el alta manual con 1 y con 7 sesiones (que la séptima se
+  llame "Sesión G"), cargar plantilla con y sin selección, y el salto de
+  `CICLO` en Home a Documentación.

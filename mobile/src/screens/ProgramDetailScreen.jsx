@@ -21,7 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, borders } from '../theme';
+import { spacing, textStyles, borders, HEADER_H } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -34,7 +34,6 @@ import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../utils/trainingLoad';
 
-const HEADER_H = 64;
 // Misma escala mínima que las barras de `LoadTab`: sin suelo, un programa de
 // 6 series por grupo pinta barras llenas y parece que va sobrado.
 const SETS_SCALE_MIN = 24;

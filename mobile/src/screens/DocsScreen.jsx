@@ -3,7 +3,7 @@
  *
  * Explica la terminología de la app (etapa, ciclo, bloque, dropset…). El texto
  * vive entero en i18n (`docs.sections` en src/locales/{es,en}.json) como una
- * lista de `{ title, points: [] }`: añadir, reordenar o repuntear apartados es
+ * lista de `{ id, title, points: [] }`: añadir, reordenar o repuntear apartados es
  * editar ese array, no esta pantalla.
  *
  * Cada apartado va en viñetas cortas, no en párrafo: la pantalla se consulta
@@ -19,13 +19,13 @@ import { spacing, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { METRIC_GROUPS } from '../utils/metricDocs';
 import MetricDoc from '../components/ui/MetricDoc';
+import DocPoints from '../components/ui/DocPoints';
 
 export default function DocsScreen() {
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
   const navigation = useNavigation();
-
-  const sections = t('docs.sections', { returnObjects: true });
+  const sections   = t('docs.sections', { returnObjects: true });
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
@@ -38,15 +38,10 @@ export default function DocsScreen() {
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>{t('docs.intro')}</Text>
-        {(Array.isArray(sections) ? sections : []).map(({ title, points }) => (
-          <View key={title} style={styles.section}>
+        {(Array.isArray(sections) ? sections : []).map(({ id, title, points }) => (
+          <View key={id} style={styles.section}>
             <Text style={styles.secLabel}>{title}</Text>
-            {(points ?? []).map((point) => (
-              <View key={point} style={styles.pointRow}>
-                <Text style={styles.pointDot}>·</Text>
-                <Text style={styles.pointText}>{point}</Text>
-              </View>
-            ))}
+            <DocPoints points={points} />
           </View>
         ))}
 

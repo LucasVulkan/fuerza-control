@@ -111,61 +111,61 @@
     "title": "Documentación",
     "intro": "Cómo se organiza el entrenamiento en la app y qué significa cada término. Los cuatro primeros —sesión, ciclo, etapa y programa— encajan unos dentro de otros: cada uno agrupa al anterior.",
     "sections": [
-      { "title": "Sesión", "points": [
+      { "id": "session", "title": "Sesión", "points": [
         "Un día de entrenamiento: los ejercicios que haces de una sentada.",
         "Dentro del ciclo se nombran por orden: A, B, C…",
         "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
       ] },
-      { "title": "Ciclo", "points": [
+      { "id": "cycle", "title": "Ciclo", "points": [
         "Grupo de sesiones que se repite una y otra vez. En entrenamiento, el microciclo.",
         "Si entrenas A, B y C, el ciclo es A-B-C; al acabarlo vuelve a empezar por A.",
         "Suele coincidir con los días que entrenas en una semana.",
         "Avanza al completar TODAS sus sesiones, no al acabar la semana.",
         "El orden da igual, y repetir una sesión no cuenta dos veces."
       ] },
-      { "title": "Etapa", "points": [
+      { "id": "stage", "title": "Etapa", "points": [
         "Tramo del programa con un objetivo: acumular volumen, ganar fuerza, afinar. En entrenamiento, el mesociclo.",
         "Se forma con un ciclo y el número de veces que quieres repetirlo.",
         "Cuatro ciclos de A-B-C son A-B-C, A-B-C, A-B-C, A-B-C.",
         "Al completarlos la app te avisa, pero no salta sola a la siguiente.",
         "Son lo que permite que un programa evolucione en vez de repetir siempre lo mismo."
       ] },
-      { "title": "Programa", "points": [
+      { "id": "program", "title": "Programa", "points": [
         "El plan completo de principio a fin: todas sus etapas juntas. En entrenamiento, el macrociclo.",
         "Solo hay uno activo a la vez.",
         "Los demás quedan archivados y puedes recuperarlos cuando quieras."
       ] },
-      { "title": "Bloque", "points": [
+      { "id": "block", "title": "Bloque", "points": [
         "Trabajo de acondicionamiento con reloj en vez de series.",
         "AMRAP: máximas rondas en un tiempo.",
         "EMOM: una tarea por minuto.",
         "For time: un trabajo fijo, lo más rápido posible."
       ] },
-      { "title": "Superserie", "points": [
+      { "id": "superset", "title": "Superserie", "points": [
         "Dos o más ejercicios encadenados sin descanso entre ellos.",
         "El descanso se toma al terminar el último de la cadena."
       ] },
-      { "title": "Dropset", "points": [
+      { "id": "dropset", "title": "Dropset", "points": [
         "Series extra al final de la última serie, bajando el peso sin descansar.",
         "Suman volumen.",
         "No cuentan para PRs ni para la progresión."
       ] },
-      { "title": "Progresión", "points": [
+      { "id": "progression", "title": "Progresión", "points": [
         "La regla que decide el peso de tu próxima sesión.",
         "Automática: sube si cumples el objetivo.",
         "Fija: siempre el mismo incremento.",
         "Submáxima: un porcentaje de tu máximo."
       ] },
-      { "title": "RPE", "points": [
+      { "id": "rpe", "title": "RPE", "points": [
         "Esfuerzo percibido de 1 a 10.",
         "Cuántas repeticiones te habrías dejado en el depósito.",
         "Un RPE 8 son unas 2 repeticiones de margen."
       ] },
-      { "title": "1RM", "points": [
+      { "id": "onerm", "title": "1RM", "points": [
         "El peso máximo estimado para una sola repetición.",
         "No se mide levantándolo: se calcula a partir de tus series."
       ] },
-      { "title": "PR", "points": [
+      { "id": "pr", "title": "PR", "points": [
         "Récord personal en un ejercicio.",
         "Más peso, más repeticiones con el mismo peso, o más volumen que en cualquier sesión anterior."
       ] }
@@ -963,20 +963,30 @@
     "buildingPlan": "Construyendo tu plan personalizado...",
     "appName": "FUERZA & CONTROL",
     "newProgram": "NUEVO PROGRAMA",
-    "howToCreate": "¿Cómo quieres crear tu programa?",
-    "modeAuto": "Generar automáticamente",
-    "modeAutoDesc": "Responde unas preguntas y el sistema crea el programa. Puedes editarlo después.",
-    "modeManual": "Construir manualmente",
-    "modeManualDesc": "Elige cuántas sesiones quieres y añade tus propios ejercicios.",
-    "modeImport": "Importar programa",
-    "modeImportDesc": "Abre un archivo exportado desde esta app.",
-    "manualProgram": "PROGRAMA MANUAL",
+    "howToCreate": "¿Cómo lo creamos?",
+    "modeAuto": "Elegir programa",
+    "modeAutoDesc": "Eliges entre programas ya hechos y lo adaptamos a tus días y tu material.",
+    "modeManual": "Programa vacío",
+    "modeManualDesc": "Montas tú la estructura y añades tus propios ejercicios.",
+    "modeImport": "Importar archivo",
+    "modeImportDesc": "Abre un archivo .fitdata exportado desde Forma Fit.",
+    "modeTemplate": "Cargar plantilla",
+    "modeTemplateDesc": "Parte de una de tus {{count}} plantillas guardadas.",
+    "modeTrainer": "Tengo un entrenador",
+    "modeTrainerDesc": "Introduce su código y recibe el programa ya sincronizado.",
+    "modeRecommended": "RECOMENDADO",
+    "modeFooterHint": "Sea cual sea el camino, luego puedes editarlo todo.",
     "programName": "Nombre del programa",
     "programNamePlaceholder": "Ej: Lucas - Full Body",
-    "numberOfSessions": "Número de sesiones",
-    "addMoreFromEditor": "Podrás añadir más sesiones desde el editor.",
-    "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Añade ejercicios a cada una desde el editor de programa.",
-    "createAndEdit": "Crear y editar →",
+    "sessionsPerCycle": "Sesiones por ciclo",
+    "cycleExplainer": "Un ciclo es tu semana de entrenamiento, con una diferencia: no avanza al llegar el lunes, sino cuando has completado todas sus sesiones.",
+    "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Podrás añadir más, y los ejercicios, desde el editor.",
+    "yourTemplates": "Tus plantillas",
+    "templateMeta": "{{count}} sesiones por ciclo",
+    "templateCopyHint": "La plantilla no se toca: se copia.",
+    "back": "ATRÁS",
+    "createProgram": "CREAR PROGRAMA",
+    "createAndEdit": "CREAR Y EDITAR",
     "stepIndicator": "PASO {{current}} DE {{total}}",
     "identity": {
       "title": "¿Qué buscas?",
@@ -1096,7 +1106,7 @@
       "adjustmentsRow_other": "{{count}} ajustes a tu programa",
       "ready": "✓ TU PROGRAMA",
       "edit": "EDITAR",
-      "start": "EMPEZAR →",
+      "start": "EMPEZAR",
       "exerciseCount": "{{exercises}} ejercicios",
       "setCount": "{{sets}} series",
       "adaptedTitle": "LO QUE HEMOS AJUSTADO",
