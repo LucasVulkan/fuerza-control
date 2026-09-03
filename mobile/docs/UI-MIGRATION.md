@@ -39,7 +39,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
 | **Onboarding** (nivel → qué buscas → días → propuestas → tu programa) | 🟡 sin nodo en Figma — revisión 2: los tres componentes portados del web (`OptionCard`/`OnboardingStep`/`OnboardingProgress`) **borrados**, cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md) | `src/screens/OnboardingScreen.jsx`, `components/onboarding/*` |
-| **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
+| **Workout Screen (el último)** | ✅ 5/5 partes (en testeo) | `src/screens/WorkoutScreen.jsx`, `components/workout/*` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)**, con el desglose parte por parte |
 
 ### HomeView — desglose (completo, 4/4 partes)
 

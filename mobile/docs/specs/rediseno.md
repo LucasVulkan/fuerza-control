@@ -12,12 +12,12 @@
 > reabrir la app, ahora que vive fuera del blob persistido.
 >
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
-> dispositivo. Las 3 y 4 son decisiones de producto que hay que tomar **antes de
-> publicar**, no código.
+> dispositivo. De la 4, **Workout ya está migrado** (3-sep-2026, §5); lo que le
+> queda —y toda la 3— es decisión de producto y QA, no código.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
-> con 15 de 26 fallos cerrados y ninguno crítico pendiente— sino de **estructura**:
+> ya cerrada con los 26 fallos resueltos— sino de **estructura**:
 > por qué encontrar un fallo cuesta lo que cuesta, y qué dos cambios lo bajan.
 >
 > **Ventaja de partida:** la app no está publicada. No hay retrocompatibilidad
@@ -37,7 +37,7 @@
 | **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | ✅ 2-sep-2026 |
 | **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
 | **3** | Recortes de features a decidir antes de publicar | sí | decisión |
-| **4** | Terminar Workout y publicar | sí | ya en curso |
+| **4** | Terminar Workout y publicar | sí | Workout ✅ 3-sep-2026 · publicar pendiente |
 
 Las fases 1 y 2 **no cambian ni una pantalla ni un comportamiento visible**.
 Son las dos únicas de esta lista que se pueden hacer sin decidir nada de
@@ -644,13 +644,32 @@ fases 1 y 2.
 
 ## 5. Fase 4 — Terminar Workout y publicar
 
-Es lo único que queda de la migración de UI
-([UI-MIGRATION.md](../UI-MIGRATION.md), guía dedicada en
-[workout-screen-migration.md](../workout-screen-migration.md)). Los 11 fallos
-que siguen abiertos en la auditoría son medios y bajos.
+**Workout ya está migrado** (3-sep-2026): las 5 partes de
+[workout-screen-migration.md](../workout-screen-migration.md) §11 están cerradas
+y `UI-MIGRATION.md` §1 no deja ninguna pantalla en ⬜. La Parte 5 (timer
+flotante, modal de notas, footer, sesión libre, ad-hoc) no salió de un commit
+propio: cada pieza quedó hecha de paso en otros cambios, y se verificó contra la
+guía al revisar el código. El modal de notas vive ahora en
+`components/workout/NotesModal.jsx`, compartido con la nota de ejercicio.
 
-Hacer las fases 1 y 2 **antes** de esta: son las dos que no tocan pantallas, y
-la 2 se hace sobre el mismo fichero que la migración de Workout no toca.
+La auditoría también está cerrada: **26/26**
+([auditoria-tecnica.md](auditoria-tecnica.md)), no 11 abiertos como decía esta
+sección.
+
+Lo que queda de esta fase **no es UI**:
+
+1. **QA en dispositivo** de lo que sigue "en testeo": las 5 partes de Workout
+   (lista de estados a cubrir en `workout-screen-migration.md` §12), las fases
+   U01/U02 de esta spec, y los dos escenarios de (re)conexión de
+   [client-connection.md](client-connection.md).
+2. **Los recortes de §4** (fase U03): son decisiones de producto que cuestan el
+   triple con usuarios con datos dentro. Se deciden antes de publicar, no después.
+3. **Publicar**: [app-store-privacidad.md](../app-store-privacidad.md) y
+   [checklist-testeo-combinaciones.md](../checklist-testeo-combinaciones.md).
+
+No bloqueantes, anotados donde toca: las preguntas abiertas de
+`workout-screen-migration.md` §13 (fondo real de la Exercice Card, badge
+`isKey`, y la idea aplazada de que las cards nazcan colapsadas).
 
 ---
 
