@@ -21,6 +21,7 @@ para poder decir "vamos a por la M02" sin ambigüedad:
 | `T` | Entrenamiento |
 | `C` | Entrenador ↔ cliente |
 | `U` | Estructura y UI |
+| `A` | Analítica |
 
 El número lo asigna quien escribe la spec y **no se reutiliza nunca**, ni aunque
 se borre la fase: un código de hace tres meses tiene que seguir significando lo
@@ -43,7 +44,7 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 > Estado: **la prosa de siempre**, con el detalle, los commits y el coste.
 ```
 
-- **`Tema`** — uno de los siete de la tabla de arriba. Es la sección de la página.
+- **`Tema`** — uno de los ocho de la tabla de arriba. Es la sección de la página.
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
 - **`Fase <código> · <estado> · <título> · §<sección>`** — una línea por fase,
@@ -154,6 +155,7 @@ digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
 | [stage-planner.md](stage-planner.md) — Planificador de etapas | **fases 0-4 implementadas** (ago 2026); fase 5 (recap consciente de la descarga) pendiente | 🟡 | la etapa pasa de ser una copia a ser una regla. Vacía buena parte de la fase C del generador: 1 arquetipo × escalera = programa periodizado |
 | [program-view.md](program-view.md) — Visualizador de programa | **fases 1-3 implementadas** (ago 2026); fase 4 (export a PDF) pendiente de decisión | 🟢 | la pantalla "Ver programa" estaba en el modelo de datos de mayo: no enseñaba bloques, superseries, dropsets, calentamiento ni etapas. Ahora es un visualizador (no un tracker): resumen del programa, selector de etapas y volumen por grupo y ciclo contra la etapa 1 |
 | [stage-proposal.md](stage-proposal.md) — Propuesta de etapa (P4) | spec cerrada, SIN implementar (ago 2026). 5 fases: 1 ventana de etapa · 2 estado del cliente · 3 reglas · 4 prellenado del planificador · 5 entradas y cool-down | 🟡 | cierra el bucle: el planificador se abre **prellenado** desde las métricas en vez de vacío. **Un cliente vinculado nunca recibe propuesta** — es trabajo del entrenador. Ninguna regla lee `stage.rx`: el carácter de la etapa se mide. Sus fases 1-2 desatascan la fase 6 de training-load y entregan la bandera "Estancado" del triaje |
+| [analitica.md](analitica.md) — Analítica anónima propia | spec cerrada, **en espera deliberada** (sep 2026): se arranca cuando el onboarding deje de moverse, porque la A02 es instrumentarlo. 4 fases: A01 tubería · A02 eventos · A03 pulso · A04 privacidad | 🟢 | Saber si terminan el onboarding, si conectan con entrenador, si vuelven a la semana y **cuánto mejoran**. El plan de marketing pedía Firebase GA4 y se descarta: GA4 no calcula una regresión sobre un historial de entrenamiento, y mete a Google como tercero receptor — adiós al *"no rastreamos"* de [app-store-privacidad.md](../app-store-privacidad.md). En su lugar, **una tabla `app_events` en el Supabase que ya está configurado**: sin dependencia nueva (`expo-crypto` ya está), sin ATT, sin dashboard. `device` es un UUID aleatorio que **no** es el `user.id`, y la tabla no tiene policy de SELECT: la anon key inserta y no lee. La métrica de mejora ya existe (`computeOverallImprovement`) pero vive dentro de `ProgressTab.jsx` sin exportar y **sin una sola prueba**, siendo el número más vendible de la app: A03 la saca a `utils/improvement.js` con la suya. "Programa terminado" **no se mide** — el modelo solo tiene `archived`, que mezcla terminado con abandonado; los separa la adherencia del pulso. **A04 no bloquea el código, bloquea la publicación** |
 | [bulk-edit.md](bulk-edit.md) — Editor masivo + sustitución | spec cerrada, SIN implementar (ago 2026). 3 fases: 1 editor de parámetros · 2 sustitución masiva · 3 campo progresión | 🟡 | lo que un entrenador hace en Excel arrastrando una columna. **Un solo editor**: sesión/etapa es un parámetro cambiable dentro, no dos pantallas. Barata porque `SessionEditorScreen` solo se alcanza desde el editor de programa, y de ahí hereda deshacer y `markProgramDirtyForClients` (§3.1). NO es un `rx`: el absoluto es asignación, no delta |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
