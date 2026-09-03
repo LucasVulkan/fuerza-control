@@ -894,10 +894,24 @@ export const useStore = create(
         return { ...exerciseLibrary, ...customExercises };
       },
 
-      beginEditSession: () => {
+      // Foto de lo que el editor puede tocar, para poder revertirla al cancelar.
+      // Acotada al programa que se edita: clonar los N programas del entrenador
+      // en cada apertura costaba un bloqueo del hilo JS proporcional a su base, y
+      // restaurarlos todos devolvía atrás los que el editor nunca tocó.
+      // `sessionTemplates` sí va entero: el editor crea, borra y renombra
+      // plantillas, y reconstruir por ids qué entra y qué sale cuesta más de lo
+      // que ahorra. Nadie más las escribe mientras el editor está encima salvo
+      // `importData`, que invalida la foto (fallo 12).
+      beginEditSession: (programId) => {
         const { programs, sessionTemplates } = get();
+        const program = programs[programId];
+        if (!program) { set({ _editSnapshot: null }); return; }
         set({
-          _editSnapshot: JSON.parse(JSON.stringify({ programs, sessionTemplates })),
+          _editSnapshot: {
+            programId,
+            program:          JSON.parse(JSON.stringify(program)),
+            sessionTemplates: JSON.parse(JSON.stringify(sessionTemplates)),
+          },
         });
       },
 
@@ -970,6 +984,10 @@ export const useStore = create(
       replaceExercise: (templateId, oldExerciseId, newExerciseId) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
+        // Misma invariante que `addExercise`: sustituir A por uno que ya está en
+        // la sesión también creaba el duplicado (fallo 15). El barrido original
+        // no lo contaba.
+        if (template.exercises.some((ex) => ex.exerciseId === newExerciseId)) return;
         const updatedExercises = template.exercises.map((ex) =>
           ex.exerciseId !== oldExerciseId ? ex : { ...ex, exerciseId: newExerciseId, progressionOverride: null }
         );
@@ -1092,6 +1110,12 @@ export const useStore = create(
         const { exerciseLibrary, customExercises } = get();
         const exDef = exerciseLibrary[exerciseId] ?? customExercises[exerciseId];
         if (!template || !exDef) return;
+        // ponytail: se rechaza en vez de soportarse, como `addAdHocExercise`.
+        // `setsState` va indexado por exerciseId: dos instancias comparten
+        // series, "hecho", notas y borrado (fallo 15). El selector ya no las
+        // ofrece; esto es la invariante donde se escribe. Si algún día hacen
+        // falta (circuitos), la salida es `instanceId`, no relajar esto.
+        if (template.exercises.some((ex) => ex.exerciseId === exerciseId)) return;
         const newExConfig = {
           exerciseId, isKey: false, sets: exDef.sets ?? 3,
           restSec: exDef.restSec ?? 90,
@@ -2629,7 +2653,12 @@ export const useStore = create(
         const isClients  = (p) => p.owner !== 'me';
 
         set((s) => {
-          const updates = {};
+          // La foto del editor de programa queda obsoleta en cuanto esto escribe
+          // `programs`/`sessionTemplates`: cancelar después revertía la
+          // actualización recién aplicada mientras `clientSync.lastProgramImportedAt`
+          // seguía avanzado, así que el entrenador no volvía a ofrecerla nunca.
+          // Sin foto, cancelar simplemente sale (fallo 12).
+          const updates = { _editSnapshot: null };
 
           // "Reemplazar plantillas" define sobre qué conjunto se construye TODO
           // el mapa de programas, así que se decide una sola vez y aquí. Cuando
@@ -2717,6 +2746,18 @@ export const useStore = create(
           }
           if (sections.customExercises) {
             updates.customExercises = { ...s.customExercises, ...(data.customExercises ?? {}) };
+            // Los presets de bloque viajan con la biblioteca personal: son lo
+            // mismo, contenido reutilizable del propio dispositivo, y no valen
+            // una fila más en `ImportModal`. Array, no mapa: se funde por
+            // `presetId` sin duplicar (fallo 25).
+            const presets = data.blockPresets ?? [];
+            if (presets.length) {
+              const known = new Set((s.blockPresets ?? []).map((p) => p.presetId));
+              updates.blockPresets = [
+                ...(s.blockPresets ?? []),
+                ...presets.filter((p) => !known.has(p.presetId)),
+              ];
+            }
           }
           if (sections.clients) {
             // Los clientes de un backup v1/v2 traen su `programIds`. Ya no
@@ -2729,6 +2770,18 @@ export const useStore = create(
               }),
             );
             updates.clients = { ...s.clients, ...incomingClients };
+
+            // Las etiquetas son de los clientes, así que entran con ellos. Sin
+            // esto la ficha restaurada muestra `tag_a1b2c3d4` en vez del nombre.
+            // Fusión por `id`: la copia local gana, que es la que el usuario ve.
+            const incomingTags = data.tagRegistry ?? [];
+            if (incomingTags.length) {
+              const known = new Set((s.tagRegistry ?? []).map((tg) => tg.id));
+              updates.tagRegistry = [
+                ...(s.tagRegistry ?? []),
+                ...incomingTags.filter((tg) => !known.has(tg.id)),
+              ];
+            }
 
             // El programa de un cliente es suyo, igual que su historial: si el
             // cliente entra, su programa entra con él. Las otras dos ramas lo

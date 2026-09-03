@@ -97,10 +97,18 @@ Esta spec quita los tres, con dos entregables:
 ([:419](../../src/screens/ProgramEditorScreen.jsx)). Y ese flujo ya hace, sin
 que nadie más tenga que enterarse:
 
-- toma `_editSnapshot` al entrar (`beginEditSession`, [:112](../../src/screens/ProgramEditorScreen.jsx));
+- toma `_editSnapshot` al entrar (`beginEditSession(editingId)`,
+  [:111](../../src/screens/ProgramEditorScreen.jsx)) — acotado al programa que se
+  edita, más el diccionario de sesiones entero;
 - revierte con `restoreSnapshot()` ([:127](../../src/screens/ProgramEditorScreen.jsx))
   y avisa al salir con `hasUnsavedChanges()` ([:141](../../src/screens/ProgramEditorScreen.jsx));
 - llama a `markProgramDirtyForClients(editingId)` al guardar ([:273](../../src/screens/ProgramEditorScreen.jsx)).
+
+Con **una** salvedad, del [§12 de la auditoría](auditoria-tecnica.md#12):
+`importData` invalida la foto, así que si entra una actualización del entrenador
+mientras el editor está abierto, cancelar deja de revertir y simplemente sale.
+Es lo correcto —el import ya había reemplazado el programa entero— pero significa
+que el deshacer del editor masivo no está garantizado si se importa por debajo.
 
 Por tanto la edición masiva **no necesita deshacer propio, ni una confirmación
 de "esto no tiene vuelta atrás", ni marcar los programas de los clientes**: se

@@ -109,7 +109,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const scrollRef = useAnimatedRef();
 
   useEffect(() => {
-    beginEditSession();
+    beginEditSession(editingId);
   }, []);
 
   useEffect(() => {
@@ -124,14 +124,16 @@ export default function ProgramEditorScreen({ navigation }) {
   const leavingRef = useRef(false);
 
   // Reverts the live edits to the snapshot taken on entry, then clears edit state.
+  // Sin foto no hay nada que revertir: `importData` la borra al escribir encima
+  // (fallo 12), y ahí lo correcto es salir dejando lo que acaba de entrar.
   function restoreSnapshot() {
-    const snapshot = useStore.getState()._editSnapshot;
-    if (snapshot) {
-      useStore.setState({
-        programs: snapshot.programs,
-        sessionTemplates: snapshot.sessionTemplates,
+    const snap = useStore.getState()._editSnapshot;
+    if (snap) {
+      useStore.setState((s) => ({
+        programs: { ...s.programs, [snap.programId]: snap.program },
+        sessionTemplates: snap.sessionTemplates,
         _editSnapshot: null,
-      });
+      }));
     }
     useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
   }
@@ -145,7 +147,7 @@ export default function ProgramEditorScreen({ navigation }) {
     // Los cambios caen en programs[editingId] (la estructura) y en las sesiones.
     // Con un solo diccionario esto compara TODAS las sesiones y no sólo la capa
     // de ediciones: sigue siendo correcto, y sólo corre al intentar salir.
-    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
+    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.program)) return true;
     if (JSON.stringify(st.sessionTemplates) !== JSON.stringify(snap.sessionTemplates)) return true;
     // `nameValue` solo es fuente de verdad mientras el título está en edición;
     // fuera de ahí el nombre se pinta del store y compararlo daría falsos

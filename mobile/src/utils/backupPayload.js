@@ -38,7 +38,12 @@ export function buildBackupPayload(state = {}) {
     programs:         state.programs,
     sessionTemplates: state.sessionTemplates,
     customExercises:  state.customExercises,
+    blockPresets:     state.blockPresets ?? [],
     clients:          state.clients ?? {},
+    // Los clientes guardan IDs de etiqueta (`tag_a1b2c3d4`); el nombre vive sólo
+    // aquí. Sin el registro, un backup restaurado devuelve clientes etiquetados
+    // con códigos sin nombre (fallo 25).
+    tagRegistry:      state.tagRegistry ?? [],
   };
 }
 

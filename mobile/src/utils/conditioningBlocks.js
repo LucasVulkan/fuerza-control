@@ -42,7 +42,10 @@ export function amrapFinished(block, startedAt, now) {
  * empty) EMOM has one interval per round either way.
  */
 export function emomTotalIntervals(block) {
-  const rounds = block.rounds ?? 1;
+  // `?? 1` no cubre el 0: la app no lo genera (los steppers llevan min={1}) pero
+  // un `.fitdata` importado sí, y con total 0 `emomPosition` devuelve interval -1
+  // y `currentMovement` lee movements[-1] → undefined.
+  const rounds = Math.max(1, block.rounds ?? 1);
   const moves  = block.movements?.length ?? 0;
   if (block.emomMode === 'all' || moves <= 1) return rounds;
   return rounds * moves;

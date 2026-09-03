@@ -21,6 +21,20 @@ describe('advanceCycle', () => {
     expect(p.stageWeeksCompleted).toBe(0);
   });
 
+  it('un id que ya no pertenece al ciclo no lo cierra', () => {
+    // El entrenador reestructura la etapa activa sin mover `stageActivatedAt`:
+    // `mergeProgressOnImport` conserva `cycleCompletedIds`, cuyos tpl_* ya no
+    // están en el ciclo nuevo. Contarlos cerraba la semana antes de tiempo.
+    const p = advanceCycle(
+      { cycleCompletedIds: ['tpl_viejo_a', 'tpl_viejo_b'] },
+      'tpl_a',
+      CYCLE,
+      STAGE,
+    );
+    expect(p.stageWeeksCompleted).toBe(0);
+    expect(p.cycleCompletedIds).toEqual(['tpl_a']);   // los muertos se podan
+  });
+
   it('closes the cycle only when every distinct session is done', () => {
     const p = replay(['tpl_a', 'tpl_b', 'tpl_c']);
     expect(p.cycleCompletedIds).toEqual([]);   // rotation reset

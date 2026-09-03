@@ -83,6 +83,15 @@ describe('emomPosition', () => {
     const one = { format: 'emom', intervalSec: 60, rounds: 8, emomMode: 'rotate', movements: [{}] };
     expect(emomTotalIntervals(one)).toBe(8);
   });
+
+  it('rounds: 0 de un fichero importado no produce un intervalo -1', () => {
+    // La app no genera esto (los steppers llevan min={1}), un `.fitdata` sí.
+    const cero = { format: 'emom', intervalSec: 60, rounds: 0, emomMode: 'rotate', movements: [{ exerciseId: 'e1' }, { exerciseId: 'e2' }] };
+    expect(emomTotalIntervals(cero)).toBe(2);
+    const pos = emomPosition(cero, T0, T0 + 10_000_000);
+    expect(pos.interval).toBe(1);
+    expect(currentMovement(cero, pos.interval)).toEqual({ exerciseId: 'e2' });
+  });
 });
 
 describe('forTimeElapsed', () => {

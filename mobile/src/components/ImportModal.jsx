@@ -137,7 +137,11 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, on
   const s = useThemedStyles(makeS);
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
-  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
+  // Los presets de bloque entran por esta casilla (ver `importData`), así que
+  // también la habilitan: un backup con presets y sin ejercicios propios la
+  // dejaba apagada y no había forma de traerlos.
+  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0
+                       || (parsedData?.blockPresets ?? []).length > 0;
   const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
   const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
 
@@ -251,7 +255,8 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   // ── Backup state ──────────────────────────────────────────────────────────
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLogData   = (parsedData?.workoutLog ?? []).length > 0;
-  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0;
+  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0
+                       || (parsedData?.blockPresets ?? []).length > 0;
   const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
   const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
 
