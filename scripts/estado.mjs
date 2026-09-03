@@ -276,11 +276,7 @@ const html = `<!doctype html>
   .nav button{color:var(--mut)}
   .nav button:hover{color:var(--tx);border-color:var(--acc)}
   .nav button.on{color:#111}
-  .cuenta{display:inline-block;background:#2b2f34;color:var(--mut);border-radius:20px;
-          padding:0 7px;font-size:11px;font-weight:700;margin-left:6px;
-          font-variant-numeric:tabular-nums}
-  .cuenta.falta{background:var(--pend);color:#111}
-  .nav button.on .cuenta{background:#111;color:var(--acc)}
+  .cuenta{margin-left:6px;opacity:.6;font-variant-numeric:tabular-nums}
   .seccion[hidden],.ficha[hidden],.filtros[hidden]{display:none}
   #filtroFichas{margin:0 0 6px}
   .seccion h2:first-child{margin-top:26px}
@@ -365,10 +361,9 @@ const html = `<!doctype html>
       const [n, total] = t === 'errores'
         ? [hechos, fallos.length]
         : [fasesDelTema(t).filter((x) => x.estado === 'hecho').length, fasesDelTema(t).length];
-      const falta = total - n;
-      return `<button data-sec="${slug(t)}">${esc(e)} <span class="cuenta${falta ? ' falta' : ''}">${n}/${total}</span></button>`;
+      return `<button data-sec="${slug(t)}">${esc(e)} <span class="cuenta">${n}/${total}</span></button>`;
     }).join('')}
-    <button data-sec="pruebas">Pruebas a mano <span class="cuenta falta">${pruebas.length}</span></button>
+    <button data-sec="pruebas">Pruebas a mano <span class="cuenta">${pruebas.length}</span></button>
   </nav>
 
   <div class="filtros" id="filtroFichas">
