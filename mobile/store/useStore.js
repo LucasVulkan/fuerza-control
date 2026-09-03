@@ -50,7 +50,6 @@ import {
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
-import { generateProgram } from '../src/utils/programGenerator';
 
 // Mobile i18n instance
 import i18n from '../src/i18n';
@@ -475,16 +474,17 @@ export const useStore = create(
       generateAndActivateProgram: async (answers, archetypeId = null) => {
         const normalizedAnswers = normalizeOnboardingAnswers(answers);
 
-        // El ranking nunca devuelve vacío (program-templates.md §7): todo el
-        // mundo recibe una plantilla adaptada. `generateProgram` queda como
-        // relleno por si el catálogo estuviera vacío, no como autor.
+        // El ranking puntúa TODO el catálogo sin filtrar nada
+        // (program-templates.md §7): siempre hay plantilla, así que no hay
+        // rama alternativa. Un catálogo vacío revienta aquí, y es lo que se
+        // quiere: el generador procedural que hacía de relleno se retiró en
+        // rediseno.md §4 porque lo único que conseguía era que un catálogo
+        // roto pasara desapercibido.
         const ranked = rankArchetypes(normalizedAnswers);
         const archetype = (archetypeId
           && ranked.find((r) => r.archetype.id === archetypeId)?.archetype)
-          ?? ranked[0]?.archetype ?? null;
-        const { program, sessionTemplates, phases } = archetype
-          ? adaptArchetype(archetype, normalizedAnswers)
-          : generateProgram(normalizedAnswers);
+          ?? ranked[0].archetype;
+        const { program, sessionTemplates, phases } = adaptArchetype(archetype, normalizedAnswers);
 
         set((s) => ({
           programs: { ...s.programs, [program.id]: program },

@@ -636,12 +636,17 @@ con datos**, porque después cada uno cuesta el triple.
 | **Copia a Drive** (OAuth, refresh token, tarea de fondo, multipart, reintentos) | 1.035 líneas (`DriveBackupScreen` 729 + `driveService` 199 + `driveBackupTask` 107) + 176 en el store | **Seis de los 26 fallos de la auditoría son suyos** (3, 4, 13, 17, 19, 20). Exportar/compartir el `.fitdata` ya cubre el caso, y el backup del sistema operativo cubre el resto |
 | **Facturación de clientes** | ~450 líneas de UI dentro de `ClientsScreen` + 3 acciones de store | Es un CRM dentro de un tracker. El entrenador ya cobra por otro canal |
 | **Métricas de laboratorio** (monotonía, strain, índice de rendimiento, carga interna/externa, base 100) | ~4.100 líneas entre `ProgressTab`, `LoadTab`, `trainingLoad.js` y sus tests | Ninguna cambia lo que haces mañana. La señal está en que hubo que escribir [metric-transparency.md](metric-transparency.md) —**26 fichas explicando fórmulas**— para que se entendieran |
-| **`programGenerator.js` procedural** | 507 líneas + 480 de test | Sustituido por plantilla + adaptación según [program-templates.md](program-templates.md), y sigue importado en el store |
+| ~~**`programGenerator.js` procedural**~~ **BORRADO (3-sep-2026)** | 507 líneas + su rama en el store | Su única llamada viva era "si el catálogo de plantillas está vacío", y el catálogo es un fichero del repo: inalcanzable. `GOAL_PARAMS` se mudó a `archetypeAdapter.js` y el harness de invariantes se llama ya `onboarding.test.js`, corriendo sobre el camino real. Ver [program-generator.md](program-generator.md) y [program-templates.md](program-templates.md) §7.2 |
 | **Modos de progresión** salvo `double` y `none` | ~200 líneas en `progression.js` | 5 tipos × 4 evaluaciones × 3 incrementos, en el camino más caliente de la app, para un catálogo que usa doble progresión en todo |
 | **3 de los 4 temas** | `themes.js` + QA visual ×4 | La app no está publicada y el propio `UI-MIGRATION.md` ya arrastra "revisar contraste del header del theme Earthy" |
 
 Cada línea de esta tabla es una decisión independiente. Ninguna bloquea a las
 fases 1 y 2.
+
+**Decidido (3-sep-2026):** de la tabla se ejecuta **sólo el generador
+procedural**, que además no era un recorte de producto —no quita nada que el
+usuario pueda ver— sino código muerto. Las otras cinco filas siguen siendo
+decisiones abiertas.
 
 ---
 
