@@ -189,6 +189,11 @@ for (const s of specs) {
 const hechos   = fallos.filter((f) => f.hecho).length;
 const criticos = fallos.filter((f) => f.sev.includes('🔴'));
 const pruebas  = specs.flatMap((s) => s.pruebas.map((p) => ({ spec: s.titulo, tema: s.tema, texto: p })));
+/** Fases de un tema, con la auditoría fuera: sus unidades son los 26 fallos. */
+const fasesDelTema = (tema) => specs
+  .filter((s) => s.tema === tema && s.archivo !== 'auditoria-tecnica.md')
+  .flatMap((s) => s.fases);
+
 const todasFases = specs.flatMap((s) => s.fases);
 const fasesHechas = todasFases.filter((x) => x.estado === 'hecho').length;
 const pendientes  = todasFases.filter((x) => x.estado === 'pendiente').length;
@@ -271,8 +276,10 @@ const html = `<!doctype html>
   .nav button{color:var(--mut)}
   .nav button:hover{color:var(--tx);border-color:var(--acc)}
   .nav button.on{color:#111}
-  .cuenta{display:inline-block;background:var(--pend);color:#111;border-radius:20px;
-          padding:0 6px;font-size:11px;font-weight:700;margin-left:5px}
+  .cuenta{display:inline-block;background:#2b2f34;color:var(--mut);border-radius:20px;
+          padding:0 7px;font-size:11px;font-weight:700;margin-left:6px;
+          font-variant-numeric:tabular-nums}
+  .cuenta.falta{background:var(--pend);color:#111}
   .nav button.on .cuenta{background:#111;color:var(--acc)}
   .seccion[hidden],.ficha[hidden],.filtros[hidden]{display:none}
   #filtroFichas{margin:0 0 6px}
@@ -351,9 +358,17 @@ const html = `<!doctype html>
   </div>
 
   <nav class="nav">
-    <button class="on" data-sec="todo">Todo</button>
-    ${TEMAS.map(([t, e]) => `<button data-sec="${slug(t)}">${esc(e)}</button>`).join('')}
-    <button data-sec="pruebas">Pruebas a mano <span class="cuenta">${pruebas.length}</span></button>
+    <button class="on" data-sec="todo">Todo <span class="cuenta">${fasesHechas}/${todasFases.length}</span></button>
+    ${TEMAS.map(([t, e]) => {
+      // El tema de errores cuenta fallos; los demás, fases. Cada pestaña cuenta
+      // lo suyo, que es lo que se quiere saber al mirarla.
+      const [n, total] = t === 'errores'
+        ? [hechos, fallos.length]
+        : [fasesDelTema(t).filter((x) => x.estado === 'hecho').length, fasesDelTema(t).length];
+      const falta = total - n;
+      return `<button data-sec="${slug(t)}">${esc(e)} <span class="cuenta${falta ? ' falta' : ''}">${n}/${total}</span></button>`;
+    }).join('')}
+    <button data-sec="pruebas">Pruebas a mano <span class="cuenta falta">${pruebas.length}</span></button>
   </nav>
 
   <div class="filtros" id="filtroFichas">
