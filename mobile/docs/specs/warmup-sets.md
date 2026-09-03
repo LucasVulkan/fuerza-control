@@ -1,5 +1,10 @@
 # Spec — Series de calentamiento
 
+> Tema: entrenamiento
+> Progreso: hecho
+> En corto: Series de calentamiento calculadas a partir del peso de trabajo, como pills informativas que no se registran ni cuentan para el volumen.
+> Falta: Nada.
+>
 > Estado: **✅ IMPLEMENTADA, Fase 3 REDISEÑADA (jul 2026)**. Fase 1 — util puro
 > `src/utils/warmup.js` (`45a74ee`). Fase 2 — bloque Calentamiento en
 > `ExerciseEditorInline` + duración estimada en `sessionStats.js` (`f04a254`, SIN

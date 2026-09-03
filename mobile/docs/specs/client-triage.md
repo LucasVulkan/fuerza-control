@@ -1,5 +1,10 @@
 # Spec — Triaje de clientes (P3)
 
+> Tema: conexión
+> Progreso: sin-empezar
+> En corto: Con 20 clientes la pregunta no es «cuánta carga lleva Ana» sino «a quién miro hoy». Dos banderas en la lista que suben solos los tres clientes que piden atención, usando métricas que ya se calculan.
+> Falta: Entera.
+>
 > Estado: **spec cerrada, sin implementar** (ago 2026). Sale del análisis de 5
 > palancas (P1-P5) sobre cómo usar las métricas que ya se calculan para
 > programar más rápido; la P1 es [stage-planner.md](stage-planner.md), esta es

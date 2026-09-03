@@ -4,6 +4,42 @@
 cualquier implementador (humano o LLM) pueda ejecutarla sin la conversación
 original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
+**La foto de todo esto se ve de un vistazo en [`docs/estado.html`](../estado.html)**,
+que se regenera con `npm run estado`. No se edita a mano: lo lee de las specs.
+
+## Cabecera estándar de una spec
+
+Las cuatro primeras líneas de la cita de cabecera son **obligatorias** y las lee
+el generador. Si faltan o traen un valor desconocido, `npm run estado` **falla**
+en vez de callarse:
+
+```markdown
+# Spec — Título
+
+> Tema: programas
+> Progreso: parcial
+> En corto: Una frase, en cristiano, de qué va la cosa.
+> Falta: Lo que queda por hacer, o "Nada."
+>
+> Estado: **la prosa de siempre**, con el detalle, las fases y los commits.
+```
+
+- **`Tema`** — uno de: `errores` · `monetización` · `onboarding` · `programas` ·
+  `entrenamiento` · `conexión` · `ui`. Es la sección de la página.
+- **`Progreso`** — uno de: `hecho` · `parcial` · `sin-empezar`.
+- **`En corto`** — para qué sirve esto meses después. El título y el nombre del
+  archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
+- **`Falta`** — lo que queda, en una línea. Es la columna que se mira.
+- **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
+  detalle; la página no la pinta porque no cabe.
+
+Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propia
+línea `> En corto:` justo bajo el título, por lo mismo.
+
+**Pruebas en dispositivo:** se marcan con `**Probar en dispositivo.**` seguido
+del qué, hasta la línea en blanco. La página las junta todas en una lista — es
+lo único que `vitest` no puede cubrir, porque los stubs del test son inertes.
+
 ## Auditoría de corrección
 
 | Spec | Estado | Coste | Nota |

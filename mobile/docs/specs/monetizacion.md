@@ -1,5 +1,10 @@
 # Spec — Monetización: freemium 2+2, pago dual e invitación de clientes
 
+> Tema: monetización
+> Progreso: sin-empezar
+> En corto: Freemium 2+2: el entrenador lleva dos clientes y dos plantillas gratis. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
+> Falta: Las cuatro fases: identidad, freemium, paywall dual e invitar cliente.
+>
 > Estado: **SIN IMPLEMENTAR** (sep 2026). 4 fases: 0 identidad · 1 freemium ·
 > 2 paywall dual · 3 invitar cliente.
 >

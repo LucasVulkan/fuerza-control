@@ -1,5 +1,10 @@
 # Spec — Bloqueo de etapas (entrenador → cliente)
 
+> Tema: conexión
+> Progreso: parcial
+> En corto: El entrenador puede cerrar una etapa con candado: el cliente sigue entrenando la suya y no entra en la siguiente hasta que se la abran. Desde sep-2026 incluye que el programa del entrenador sea de solo lectura en el móvil del cliente.
+> Falta: Prueba en dispositivo del candado y del bloqueo de edición.
+>
 > Estado: **✅ IMPLEMENTADA, en testeo en dispositivo** (jul 2026). Las 7 fases
 > están en `main`; ver la tabla de §7 para el commit de cada una.
 >
@@ -124,6 +129,10 @@ ejercicios y añadir ejercicios ad-hoc durante el entreno.
 workout como **sustitución puntual de esa sesión** —reflejada en el historial y
 sin tocar el programa—, que es donde debió estar siempre: adaptar es del momento
 del entreno, no del plan.
+
+**Probar en dispositivo.** Cliente conectado: en Inicio no aparece "Editar" y sí
+"Ver programa"; entrenar, avanzar de etapa y añadir un ejercicio ad-hoc siguen
+funcionando. Con un programa propio del mismo cliente, "Editar" vuelve a salir.
 
 **Acota por programa, no por usuario.** Un cliente conectado puede tener
 programas propios (de antes de conectarse, o plantillas suyas) y esos se siguen

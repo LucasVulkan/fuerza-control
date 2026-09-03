@@ -1,5 +1,10 @@
 # Spec — Editor masivo de sesión/etapa + sustitución de ejercicios
 
+> Tema: programas
+> Progreso: sin-empezar
+> En corto: Cambiar muchas filas del editor de una vez: el descanso de las 24 filas de un bloque, una serie más a todos los accesorios, o press banca por inclinado en las siete sesiones donde aparece. Lo que en Excel es arrastrar una columna.
+> Falta: Entera.
+>
 > Estado: **spec cerrada, sin implementar** (ago 2026).
 >
 > Qué resuelve: lo que un entrenador hace en Excel arrastrando una columna.

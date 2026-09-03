@@ -1,5 +1,10 @@
 # Spec — Bloques de acondicionamiento (AMRAP / EMOM / For time)
 
+> Tema: entrenamiento
+> Progreso: parcial
+> En corto: Metcons dentro de una sesión —AMRAP, EMOM, for time— como capa aparte de los ejercicios de fuerza: se editan, se guardan como preset, se corren con cronómetro y se puntúan.
+> Falta: La línea de bloques en el detalle del historial (fase 4). Editor, runtime y recap ya están.
+>
 > Estado: **spec cerrada, lista para implementar**. Mockups aprobados por el usuario
 > (workout view AMRAP+EMOM, pantalla de setup). Decisiones de producto ya tomadas —
 > no re-abrirlas sin consultar.

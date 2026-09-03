@@ -1,5 +1,14 @@
 # Spec — Rediseño estructural: una sola app, un estado que no se reescribe entero
 
+> Tema: ui
+> Progreso: parcial
+> En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
+> Falta: Prueba en dispositivo de las fases 1 y 2. Las fases 3 y 4 son decisiones de producto que hay que tomar antes de publicar, no código.
+>
+> **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
+> mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
+> reabrir la app, ahora que vive fuera del blob persistido.
+>
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
 > dispositivo. Las 3 y 4 son decisiones de producto que hay que tomar **antes de
 > publicar**, no código.

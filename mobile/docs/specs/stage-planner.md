@@ -1,5 +1,10 @@
 # Spec — Planificador de etapas (la etapa como regla, no como copia)
 
+> Tema: programas
+> Progreso: parcial
+> En corto: Una etapa deja de ser un duplicado del programa entero y pasa a ser una regla («mismas sesiones, +1 serie, −5% de peso»), así que hacerlo evolucionar cuesta minutos en vez de reeditar N sesiones a mano.
+> Falta: Fase 5: que el recap sepa que está en una semana de descarga.
+>
 > Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más

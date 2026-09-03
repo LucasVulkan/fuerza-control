@@ -1,5 +1,10 @@
 # Spec — Onboarding de propuestas (fase 6 de program-templates)
 
+> Tema: onboarding
+> Progreso: hecho
+> En corto: Tras las tres preguntas, en vez de generar un programa a ciegas, se le enseñan al usuario las plantillas que le encajan ordenadas por ajuste, y elige.
+> Falta: Nada.
+>
 > Estado: **implementada** (ago 2026). Es la **fase 6** de
 > [program-templates.md](program-templates.md) §8, extraída a documento propio
 > porque es la única fase con UI y necesita contexto que aquella spec da por

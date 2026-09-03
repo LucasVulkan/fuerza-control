@@ -1,5 +1,10 @@
 # Spec — Propuesta de etapa (P4)
 
+> Tema: programas
+> Progreso: sin-empezar
+> En corto: Al cerrar una etapa, la app redacta un BORRADOR de la siguiente leyendo las métricas del cliente (adherencia, carga, rendimiento). Nunca automático: el entrenador acepta, edita o descarta.
+> Falta: Entera.
+>
 > Estado: **spec cerrada, sin implementar** (ago 2026). Es la **P4** del análisis
 > de 5 palancas que produjo [stage-planner.md](stage-planner.md) (P1) y
 > [client-triage.md](client-triage.md) (P3). Origen: conversación Opus + usuario

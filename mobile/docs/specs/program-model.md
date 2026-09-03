@@ -1,5 +1,14 @@
 # Spec — Modelo de programas: un dueño, un diccionario, sin espejo
 
+> Tema: programas
+> Progreso: parcial
+> En corto: Limpieza del modelo de datos: cada programa tiene un dueño, las sesiones viven en un solo diccionario y desaparece el espejo de días que se desincronizaba.
+> Falta: Prueba en dispositivo de las tres fases, que tocan pantallas.
+>
+> **Probar en dispositivo.** Un programa propio y uno de cliente abiertos en
+> el editor y en la ficha: que ninguno cambia de dueño, que las sesiones se
+> ven donde tocan y que el historial del cliente sigue en su cajón.
+>
 > Estado: **LAS TRES FASES IMPLEMENTADAS** (2-sep-2026), pendientes de prueba
 > en dispositivo. Tres fases **independientes**, cada una
 > desplegable por su cuenta y en este orden. Origen: el §6.1 de
