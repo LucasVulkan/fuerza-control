@@ -2001,20 +2001,21 @@
       "noClients": "Create a client before recording a payment."
     },
     "newClientModal": {
-      "title": "NEW CLIENT",
+      "title": "New client",
+      "nameLabel": "Name",
       "namePlaceholder": "Client name",
-      "createBtn": "CREATE"
+      "createBtn": "CREATE CLIENT"
     },
     "newProgramModal": {
-      "title": "NEW PROGRAM",
+      "title": "New program",
       "tabBlank": "Blank",
       "tabTemplate": "From template",
+      "nameLabel": "Name",
       "namePlaceholder": "Program name",
       "namePlaceholderOptional": "Name (optional)",
-      "sessionsLabel": "Sessions",
       "templateLabel": "Template",
       "createBtn": "CREATE AND EDIT",
-      "assignBtn": "Assign"
+      "assignBtn": "ASSIGN TEMPLATE"
     },
     "importModal": {
       "title": "IMPORT FILE",

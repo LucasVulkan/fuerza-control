@@ -48,6 +48,7 @@ import AdjustSheet from '../components/onboarding/AdjustSheet';
 import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import NumberChips from '../components/ui/NumberChips';
 import { NavRow } from '../components/ui/EditorRows';
 import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
@@ -57,6 +58,10 @@ import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
 import { templatesOf } from '../utils/programOwnership';
 import { allProgramDays } from '../utils/stageProgress';
+
+// Opciones de "días por semana" y de "sesiones por ciclo": el mismo rango en
+// las dos preguntas — una sola sesión ya es un ciclo válido y siete es el techo.
+const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
 
@@ -983,20 +988,7 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionLabel}>{t('onboarding.sessionsPerCycle')}</Text>
             {/* Mismo rango que la pregunta de días (1-7): una sola sesión es un
                 ciclo válido, y siete es el techo en las dos pantallas. */}
-            <View style={styles.dayChipsRow}>
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <TouchableOpacity
-                  key={n}
-                  style={[styles.dayChip, manualSessions === n && styles.dayChipOn]}
-                  onPress={() => setManualSessions(n)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.dayChipText, manualSessions === n && styles.dayChipTextOn]}>
-                    {n}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <NumberChips values={SESSION_CHOICES} value={manualSessions} onChange={setManualSessions} />
             <Text style={[styles.qHint, styles.hintGap]}>
               {t('onboarding.emptySessionsHint', { count: manualSessions })}
             </Text>
@@ -1170,10 +1162,9 @@ function StepIdentity({ answers, set_, onNext, onBack }) {
   );
 }
 
-// Chips 1-7 (§4: `ProgramDetailScreen.jsx styles.chip`). Ninguno premarcado
-// al entrar — `daysPerWeek: null` en `DEFAULT_ANSWERS`.
+// Chips 1-7 (`NumberChips`). Ninguno premarcado al entrar — `daysPerWeek: null`
+// en `DEFAULT_ANSWERS`.
 function StepDays({ answers, set_, onNext, onBack }) {
-  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const d = answers.daysPerWeek;
 
@@ -1186,18 +1177,11 @@ function StepDays({ answers, set_, onNext, onBack }) {
       hint={t('onboarding.stepDays.cycleHint',
         'Hay programas con más sesiones que días. Su ciclo dura más de una semana — te lo enseñamos en cada uno.')}
     >
-      <View style={styles.dayChipsRow}>
-        {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-          <TouchableOpacity
-            key={n}
-            style={[styles.dayChip, d === n && styles.dayChipOn]}
-            onPress={() => { set_('daysPerWeek', n); onNext(); }}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.dayChipText, d === n && styles.dayChipTextOn]}>{n}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <NumberChips
+        values={SESSION_CHOICES}
+        value={d}
+        onChange={(n) => { set_('daysPerWeek', n); onNext(); }}
+      />
     </QuestionScreen>
   );
 }
@@ -1268,19 +1252,6 @@ const makeStyles = (th) => StyleSheet.create({
   // tinta cambia con la variante de cabecera que esté puesta.
   limeHeaderDots:    { flexDirection: 'row', gap: spacing.sm },
   limeDot:           { width: 7, height: 7, borderRadius: 3.5 },
-
-  // Chips de días 1-7
-  dayChipsRow: { flexDirection: 'row', gap: spacing.sm },
-  dayChip: {
-    flex:            1,
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface,
-  },
-  dayChipOn:      { backgroundColor: th.colors.accent },
-  dayChipText:    { ...textStyles.cardTitle, color: th.colors.mutedLight },
-  dayChipTextOn:  { color: th.colors.onAccent },
 
   // ── Las tres preguntas ─────────────────────────────────────────────────────
   qBody: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },

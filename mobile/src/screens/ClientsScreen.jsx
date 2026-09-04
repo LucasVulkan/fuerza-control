@@ -28,7 +28,10 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
+import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import StepField from '../components/ui/StepField';
+import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
@@ -44,6 +47,9 @@ import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 import StageSegBar from '../components/ui/StageSegBar';
+
+// Sesiones por ciclo — el mismo rango que el alta manual del onboarding.
+const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -750,11 +756,25 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
 
 // ── New program modal ──────────────────────────────────────────────────────────
 
-function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
+/**
+ * Hoja de "nuevo programa" del cliente. Era un `<Modal>` centrado con pestañas,
+ * rejillas de números y botones propios; pasa a `DragSheet`, el único
+ * bottom-sheet de la app (§9 de docs/UI-MIGRATION.md), y a los controles que ya
+ * existen: `SegmentedControl` para elegir origen, `StepField` para los dos
+ * contadores y la fila de "sin límite" del editor de programa.
+ *
+ * Ojo con la etiqueta de las sesiones: el modal viejo decía "SESIONES POR
+ * SEMANA", pero `createProgramForClient` usa ese número para crear las sesiones
+ * distintas del ciclo (A, B, C…), no para repartirlas por semana. Es el mismo
+ * concepto que el onboarding ya llama "sesiones por ciclo".
+ */
+function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
-  const [tab,              setTab]              = useState(templatePrograms.length > 0 ? 'blank' : 'blank');
+  const { t }  = useTranslation();
+
+  const hasTemplates = templatePrograms.length > 0;
+  const [tab,              setTab]              = useState('blank');
   const [name,             setName]             = useState('');
   const [numSessions,      setNumSessions]      = useState(3);
   // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
@@ -762,114 +782,141 @@ function NewProgramModal({ templatePrograms, onCreateBlank, onCreateFromTemplate
   const [fromTemplateId,   setFromTemplateId]   = useState('');
   const [fromTemplateName, setFromTemplateName] = useState('');
 
+  const canCreate = tab === 'blank' ? name.trim().length > 0 : Boolean(fromTemplateId);
+
+  function handleSubmit() {
+    if (!canCreate) return;
+    if (tab === 'blank') onCreateBlank(name, numSessions, durationWeeks);
+    else                 onCreateFromTemplate(fromTemplateId, fromTemplateName);
+  }
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>NUEVO PROGRAMA</Text>
+    <DragSheet
+      visible
+      onClose={onClose}
+      title={t('clients.newProgramModal.title')}
+      action={{ label: t('common.cancel'), onPress: onClose }}
+    >
+      <View style={styles.formSheetBody}>
 
-          {templatePrograms.length > 0 && (
-            <View style={styles.tabRow}>
-              {[{ id: 'blank', label: t('clients.newProgramModal.tabBlank') }, { id: 'template', label: t('clients.newProgramModal.tabTemplate') }].map(({ id, label }) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.tabBtn, tab === id && styles.tabBtnActive]}
-                  onPress={() => setTab(id)}
-                >
-                  <Text style={[styles.tabBtnText, tab === id && styles.tabBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+        {hasTemplates && (
+          <SegmentedControl
+            options={[
+              { id: 'blank',    label: t('clients.newProgramModal.tabBlank')    },
+              { id: 'template', label: t('clients.newProgramModal.tabTemplate') },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        )}
 
-          {tab === 'blank' && (
-            <>
+        {tab === 'blank' ? (
+          <>
+            <View>
+              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
               <TextInput
-                style={styles.input}
-                placeholder="Nombre del programa"
-                placeholderTextColor={th.colors.muted}
+                style={styles.sheetInput}
+                placeholder={t('clients.newProgramModal.namePlaceholder')}
+                placeholderTextColor={th.colors.mutedLight}
                 value={name}
                 onChangeText={setName}
-                autoFocus
                 returnKeyType="done"
               />
-              <Text style={styles.fieldLabel}>SESIONES POR SEMANA</Text>
-              <View style={styles.numRow}>
-                {[2, 3, 4, 5, 6].map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[styles.numBtn, numSessions === n && styles.numBtnActive]}
-                    onPress={() => setNumSessions(n)}
-                  >
-                    <Text style={[styles.numBtnText, numSessions === n && styles.numBtnTextActive]}>{n}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            </View>
 
-              <Text style={styles.fieldLabel}>{t('editor.cyclesQuestion').toUpperCase()}</Text>
-              <Text style={styles.fieldHint}>{t('editor.cyclesExplain')}</Text>
-              <View style={styles.numRow}>
-                {[4, 6, 8, 12].map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[styles.numBtn, durationWeeks === n && styles.numBtnActive]}
-                    onPress={() => setDurationWeeks(n)}
-                  >
-                    <Text style={[styles.numBtnText, durationWeeks === n && styles.numBtnTextActive]}>{n}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={[styles.noLimitRow, durationWeeks === null && styles.noLimitRowActive]}
-                onPress={() => setDurationWeeks(durationWeeks === null ? 4 : null)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.noLimitText, durationWeeks === null && styles.noLimitTextActive]}>
-                  {t('editor.cyclesNoLimit')}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+            <View>
+              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerCycle')}</Text>
+              {/* Los mismos chips y el mismo rango que el alta manual del
+                  onboarding: el rango es corto, así que se ve entero y se
+                  acierta de un toque. */}
+              <NumberChips values={SESSION_CHOICES} value={numSessions} onChange={setNumSessions} />
+            </View>
 
-          {tab === 'template' && (
-            <>
-              <Text style={styles.fieldLabel}>SELECCIONAR PLANTILLA</Text>
-              <ScrollView style={{ maxHeight: 180, marginBottom: spacing.md }} showsVerticalScrollIndicator={false}>
-                {templatePrograms.map((p) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[styles.templateOption, fromTemplateId === p.id && styles.templateOptionActive]}
-                    onPress={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
-                  >
-                    <Text style={[styles.templateOptionName, fromTemplateId === p.id && { color: th.colors.accent }]}>
-                      {p.name}
-                    </Text>
-                    <Text style={styles.templateOptionMeta}>{allProgramDays(p).length} sesiones</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            <View>
+              <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
+              <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
+              {/* "Sin límite" (`durationWeeks: null`) es un booleano, así que
+                  va en la fila de conmutador de la app (`ToggleRow`) y no en
+                  una fila pintada a mano. Va SIEMPRE arriba y el contador
+                  aparece debajo: si se intercambiaran, el conmutador saltaría
+                  de sitio al activarlo. */}
+              <View style={styles.cyclesGroup}>
+                <ToggleRow
+                  label={t('editor.cyclesOpen')}
+                  hint={t('editor.cyclesNoLimit')}
+                  value={durationWeeks == null}
+                  onChange={(on) => setDurationWeeks(on ? null : 4)}
+                />
+                {durationWeeks != null && (
+                  <StepField
+                    horizontal
+                    label={t('editor.stageWeeksUnit')}
+                    value={durationWeeks}
+                    onChange={setDurationWeeks}
+                    min={1}
+                    max={52}
+                  />
+                )}
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+            <View>
+              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.templateLabel')}</Text>
+              <View style={styles.templateList}>
+                {templatePrograms.map((p) => {
+                  const on = fromTemplateId === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[styles.templateRow, on && styles.templateRowOn]}
+                      onPress={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+                        <Text style={[styles.templateRowName, on && styles.templateRowNameOn]} numberOfLines={1}>
+                          {p.name}
+                        </Text>
+                        <Text style={styles.templateRowMeta}>
+                          {t('common.session', { count: allProgramDays(p).length })}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
               <TextInput
-                style={styles.input}
+                style={styles.sheetInput}
                 placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
-                placeholderTextColor={th.colors.muted}
+                placeholderTextColor={th.colors.mutedLight}
                 value={fromTemplateName}
                 onChangeText={setFromTemplateName}
+                returnKeyType="done"
               />
-            </>
-          )}
+            </View>
+          </>
+        )}
 
-          <View style={styles.modalActions}>
-            <GhostBtn label="Cancelar" onPress={onClose} />
-            {tab === 'blank' ? (
-              <AccentBtn label="CREAR" disabled={!name.trim()} onPress={() => name.trim() && onCreateBlank(name, numSessions, durationWeeks)} />
-            ) : (
-              <AccentBtn label="ASIGNAR" disabled={!fromTemplateId} onPress={() => fromTemplateId && onCreateFromTemplate(fromTemplateId, fromTemplateName)} />
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <TouchableOpacity
+          style={[styles.sheetCta, !canCreate && { opacity: 0.4 }]}
+          disabled={!canCreate}
+          onPress={handleSubmit}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.sheetCtaText}>
+            {tab === 'blank'
+              ? t('clients.newProgramModal.createBtn')
+              : t('clients.newProgramModal.assignBtn')}
+          </Text>
+        </TouchableOpacity>
+
+      </View>
+    </DragSheet>
   );
 }
 
@@ -1017,7 +1064,7 @@ function GlobalAddBillingSheet({ clients, lang, onClose }) {
       title={t('clients.billSheet.title')}
       action={{ label: t('common.cancel'), onPress: onClose }}
     >
-      <View style={styles.billSheetBody}>
+      <View style={styles.formSheetBody}>
 
         {/* Cliente — dropdown con buscador, mismo patrón que el desplegable de
             ejercicios de Progress: ancla relativa + menú `position:absolute`
@@ -2897,7 +2944,7 @@ export default function ClientsScreen() {
 
         {/* New program modal */}
         {showNewProgram && (
-          <NewProgramModal
+          <NewProgramSheet
             templatePrograms={templatePrograms}
             onCreateBlank={handleCreateProgram}
             onCreateFromTemplate={handleCreateFromTemplate}
@@ -3380,29 +3427,40 @@ export default function ClientsScreen() {
         </View>
       </DragSheet>
 
-      {/* New client modal */}
-      <Modal visible={showNewClient} transparent animationType="fade" onRequestClose={() => setShowNewClient(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowNewClient(false)} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'center' }}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>NUEVO CLIENTE</Text>
+      {/* Alta de cliente. Era un `<Modal>` centrado con sus propios botones;
+          pasa a `DragSheet` como el resto de la app — la salida vive en el
+          hueco derecho de la cabecera y abajo queda un solo botón, el que
+          avanza. */}
+      <DragSheet
+        visible={showNewClient}
+        onClose={() => setShowNewClient(false)}
+        title={t('clients.newClientModal.title')}
+        action={{ label: t('common.cancel'), onPress: () => setShowNewClient(false) }}
+      >
+        <View style={styles.formSheetBody}>
+          <View>
+            <Text style={styles.sheetLabel}>{t('clients.newClientModal.nameLabel')}</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Nombre del cliente"
-              placeholderTextColor={th.colors.muted}
+              style={styles.sheetInput}
+              placeholder={t('clients.newClientModal.namePlaceholder')}
+              placeholderTextColor={th.colors.mutedLight}
               value={newClientName}
               onChangeText={setNewClientName}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleCreateClient}
             />
-            <View style={styles.modalActions}>
-              <GhostBtn label="Cancelar" onPress={() => setShowNewClient(false)} />
-              <AccentBtn label="CREAR" onPress={handleCreateClient} disabled={!newClientName.trim()} />
-            </View>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          <TouchableOpacity
+            style={[styles.sheetCta, !newClientName.trim() && { opacity: 0.4 }]}
+            disabled={!newClientName.trim()}
+            onPress={handleCreateClient}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.sheetCtaText}>{t('clients.newClientModal.createBtn')}</Text>
+          </TouchableOpacity>
+        </View>
+      </DragSheet>
     </View>
   );
 }
@@ -4797,8 +4855,57 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.xl,
   },
 
+  // ── Piezas comunes de hoja (alta de cliente / nuevo programa) ──
+  // Mismos nombres y valores que las hojas del editor de programa: cuerpo con
+  // gap `space/lg`, etiqueta `spacing-tag` mutedLight en mayúsculas, y campos
+  // sobre `surface` porque el fondo de la hoja YA es `bg`.
+  formSheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  sheetLabel: {
+    ...textStyles.spacingTag,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginBottom:  spacing.sm,
+  },
+  sheetHint: {
+    ...textStyles.subtitle,
+    color:        th.colors.mutedLight,
+    lineHeight:   17,
+    marginBottom: spacing.sm,
+  },
+  sheetInput: {
+    ...textStyles.cardType,
+    color:             th.colors.text,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
+  },
+  // Botón que avanza, al final del cuerpo — mismo que el de la hoja de cobro.
+  sheetCta: {
+    height:          44,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginTop:       spacing.sm,
+  },
+  sheetCtaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  cyclesGroup: { gap: spacing.sm },
+  // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
+  // seleccionado que ya usan las tarjetas del onboarding y las filas activas
+  // del planificador.
+  templateList: { gap: spacing.sm },
+  templateRow:  { ...sheetRowBase(th), backgroundColor: th.colors.surface },
+  templateRowOn: {
+    backgroundColor: th.tint.accent10,
+    borderWidth:     borders.thin,
+    borderColor:     th.tint.accent50,
+  },
+  templateRowName:   { ...textStyles.cardType, color: th.colors.text },
+  templateRowNameOn: { color: th.colors.accent },
+  templateRowMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+
   // ── Hoja de alta de cobro ──
-  billSheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   billSecLabel: {
     ...textStyles.spacingTag,
     textTransform: 'uppercase',
@@ -5034,13 +5141,6 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize: typography.sm,
     color:    th.colors.muted,
   },
-  modalActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    justifyContent: 'flex-end',
-    marginTop:     spacing.xs,
-  },
-
   // ── Import options ──
   importOption: {
     backgroundColor: th.colors.surface2,
@@ -5059,82 +5159,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:     th.colors.muted,
     marginTop: 2,
   },
-
-  // ── New program modal ──
-  tabRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-  },
-  tabBtn: {
-    flex:            1,
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-  },
-  tabBtnActive: {
-    borderColor:     `${th.colors.accent}50`,
-    backgroundColor: `${th.colors.accent}12`,
-  },
-  tabBtnText: { fontSize: typography.sm, color: th.colors.muted },
-  tabBtnTextActive: { color: th.colors.accent },
-
-  numRow: { flexDirection: 'row', gap: spacing.xs },
-  numBtn: {
-    flex:            1,
-    height:          44,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  numBtnActive: {
-    borderColor:     `${th.colors.accent}50`,
-    backgroundColor: `${th.colors.accent}12`,
-  },
-  numBtnText: { fontSize: typography.xl, color: th.colors.text, fontWeight: typography.heavy },
-  numBtnTextActive: { color: th.colors.accent },
-
-  // "Sin límite" — misma anatomía que numBtn pero a ancho completo, porque es
-  // una opción de texto, no una cifra más de la fila.
-  noLimitRow: {
-    marginTop:       spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-  },
-  noLimitRowActive: {
-    borderColor:     `${th.colors.accent}50`,
-    backgroundColor: `${th.colors.accent}12`,
-  },
-  noLimitText:       { fontSize: typography.sm, color: th.colors.muted },
-  noLimitTextActive: { color: th.colors.accent },
-
-  templateOption: {
-    padding:         spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface2,
-    marginBottom:    spacing.xs,
-  },
-  templateOptionActive: {
-    borderColor:     `${th.colors.accent}50`,
-    backgroundColor: `${th.colors.accent}12`,
-  },
-  templateOptionName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  templateOptionMeta: { fontSize: typography.xs, color: th.colors.muted, marginTop: 2 },
 
   // ── Context menu ──
   contextMenu: {

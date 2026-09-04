@@ -2001,20 +2001,21 @@
       "noClients": "Crea un cliente antes de registrar un cobro."
     },
     "newClientModal": {
-      "title": "NUEVO CLIENTE",
+      "title": "Nuevo cliente",
+      "nameLabel": "Nombre",
       "namePlaceholder": "Nombre del cliente",
-      "createBtn": "CREAR"
+      "createBtn": "CREAR CLIENTE"
     },
     "newProgramModal": {
-      "title": "NUEVO PROGRAMA",
+      "title": "Nuevo programa",
       "tabBlank": "Vacío",
       "tabTemplate": "Desde plantilla",
+      "nameLabel": "Nombre",
       "namePlaceholder": "Nombre del programa",
       "namePlaceholderOptional": "Nombre (opcional)",
-      "sessionsLabel": "Sesiones",
       "templateLabel": "Plantilla",
       "createBtn": "CREAR Y EDITAR",
-      "assignBtn": "Asignar"
+      "assignBtn": "ASIGNAR PLANTILLA"
     },
     "importModal": {
       "title": "IMPORTAR ARCHIVO",
