@@ -17,7 +17,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Animated, PanResponder, Platform,
   Modal, KeyboardAvoidingView, Alert,
 } from 'react-native';
@@ -31,10 +31,11 @@ import { resolveProgressionConfig } from '../utils/progression';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, HEADER_H } from '../theme';
+import { spacing, typography, textStyles, borders, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ArrowIcon, MenuIcon, DragIcon, PencilIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, MenuIcon, DragIcon } from '../components/ui/EditorIcons';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
@@ -51,8 +52,6 @@ const ACTION_GAP       = spacing.sm;
 const ACTION_INSET     = spacing.md;
 const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 
-// Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
-const HEADER_EDIT_W = 16;
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
 const CARD_GAP = spacing.sm;
@@ -444,50 +443,21 @@ export default function SessionEditorScreen({ navigation, route }) {
     <SafeAreaView edges={['top']} style={styles.container}>
 
       {/* ── SesionHeader (208:2072) ── */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
-          <ArrowIcon size={20} color={th.colors.onAccent} back />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerEyebrow} numberOfLines={1}>
-            {`${t('editor.sessionEyebrow', { label: template.label ?? '' })}`}
-            {stageLabel ? ` · ${stageLabel}` : ''}
-          </Text>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.headerTitleSpacer} />
-            {editingName ? (
-              <TextInput
-                autoFocus
-                style={styles.headerTitleInput}
-                value={nameValue}
-                onChangeText={setNameValue}
-                onBlur={commitName}
-                onSubmitEditing={commitName}
-                placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
-                returnKeyType="done"
-              />
-            ) : (
-              <Text style={styles.headerTitle} numberOfLines={1} onPress={startEditName} suppressHighlighting>
-                {template.name ?? ''}
-              </Text>
-            )}
-            <TouchableOpacity
-              hitSlop={10}
-              style={styles.headerEditBtn}
-              onPress={() => (editingName ? commitName() : startEditName())}
-            >
-              {editingName
-                ? <CheckIcon  size={16} color={th.colors.onAccent} />
-                : <PencilIcon size={15} color={th.colors.onAccent} />}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={10} style={styles.headerSide}>
-          <MenuIcon size={26} color={th.colors.onAccent} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={`${t('editor.sessionEyebrow', { label: template.label ?? '' })}${stageLabel ? ` · ${stageLabel}` : ''}`}
+        title={template.name ?? ''}
+        renaming={editingName}
+        draft={nameValue}
+        onDraftChange={setNameValue}
+        onRenameStart={startEditName}
+        onRenameCommit={commitName}
+        right={(ink) => (
+          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
+            <MenuIcon size={22} color={ink} />
+          </TouchableOpacity>
+        )}
+      />
 
       <Reanimated.ScrollView
         ref={scrollRef}
@@ -911,48 +881,6 @@ function SheetRow({ label, onPress, danger = false }) {
 
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
-
-  // ── SesionHeader ──
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    height:            HEADER_H,
-    marginHorizontal:  spacing.lg,
-    marginTop:         spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-    overflow:          'hidden',
-  },
-  headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
-  headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  // `text/btn-action` (Black) al tamaño de `spacing-tag` (10) y sin tracking:
-  // sobre el lima el eyebrow pedía más peso, no más aire (QA).
-  headerEyebrow: {
-    ...textStyles.btnAction,
-    fontSize:      10,
-    // Un punto de tracking, a medio camino entre el 0 de `btn-action` y el 2 de
-    // `spacing-tag`: sin nada de aire se leía apretado (QA).
-    letterSpacing: 1,
-    color:         th.colors.muted,
-    textAlign:     'center',
-    textTransform: 'uppercase',
-  },
-  // El lápiz descentraba el nombre: la fila centra el grupo entero, así que
-  // lleva un contrapeso invisible del mismo ancho al otro lado.
-  headerTitleSpacer: { width: HEADER_EDIT_W },
-  headerEditBtn:     { width: HEADER_EDIT_W, alignItems: 'center' },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
-  headerTitle: {
-    ...textStyles.hero,
-    color: th.colors.onAccent, textAlign: 'center', lineHeight: 22, flexShrink: 1,
-  },
-  headerTitleInput: {
-    ...textStyles.hero,
-    color: th.colors.onAccent, textAlign: 'center', lineHeight: 22,
-    padding: 0, flexShrink: 1, minWidth: 80,
-  },
 
   // ── Contenido ──
   scrollContent: {

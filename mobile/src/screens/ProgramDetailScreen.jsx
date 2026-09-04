@@ -21,11 +21,11 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, borders, HEADER_H } from '../theme';
+import { spacing, textStyles, borders } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { ArrowIcon } from '../components/ui/EditorIcons';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
@@ -318,7 +318,6 @@ export default function ProgramDetailScreen() {
   const { t, i18n }  = useTranslation();
   const insets       = useSafeAreaInsets();
   const navigation   = useNavigation();
-  const th           = useTheme();
   const styles       = useThemedStyles(makeStyles);
 
   const ui                   = useStore((s) => s.ui);
@@ -407,15 +406,7 @@ export default function ProgramDetailScreen() {
   if (!program) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
-            <ArrowIcon size={20} color={th.colors.onAccent} back />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{t('programView.eyebrow')}</Text>
-          </View>
-          <View style={styles.headerSide} />
-        </View>
+        <ScreenHeader onBack={() => navigation.goBack()} title={t('programView.eyebrow')} />
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{t('programView.notFound')}</Text>
         </View>
@@ -425,16 +416,11 @@ export default function ProgramDetailScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
-          <ArrowIcon size={20} color={th.colors.onAccent} back />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerEyebrow}>{t('programView.eyebrow')}</Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>{program.name}</Text>
-        </View>
-        <View style={styles.headerSide} />
-      </View>
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('programView.eyebrow')}
+        title={program.name}
+      />
 
       <ScrollView
         style={styles.flex}
@@ -529,28 +515,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.md,
     gap:               spacing.md,
   },
-
-  // Cabecera — mismo patrón que StagePlannerScreen, su pantalla hermana.
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    height:            HEADER_H,
-    marginHorizontal:  spacing.lg,
-    marginTop:         spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-  },
-  headerSide:    { width: 26, alignItems: 'center' },
-  headerCenter:  { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  headerEyebrow: {
-    ...textStyles.btnAction,
-    fontSize:      10,
-    letterSpacing: 1,
-    color:         th.colors.muted,
-  },
-  headerTitle: { ...textStyles.hero, color: th.colors.onAccent, lineHeight: 22, flexShrink: 1 },
 
   // Resumen
   byline: { ...textStyles.subtitle, color: th.colors.mutedLight },

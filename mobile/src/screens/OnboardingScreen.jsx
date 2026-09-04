@@ -47,10 +47,11 @@ import CycleWeeks from '../components/onboarding/CycleWeeks';
 import AdjustSheet from '../components/onboarding/AdjustSheet';
 import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { NavRow } from '../components/ui/EditorRows';
 import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, HEADER_H } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
@@ -161,27 +162,23 @@ function RotatingChevron({ open, size = 12, color }) {
 }
 
 function LimeHeader({ eyebrow, title, onBack, dotsDone }) {
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.limeHeader}>
-      {/* Sin `onBack` el hueco se queda vacío pero ocupa: el título va centrado
-          contra los dos lados, y en la primera apertura no hay atrás. */}
-      {onBack ? (
-        <TouchableOpacity onPress={onBack} hitSlop={10} style={styles.limeHeaderSide} activeOpacity={0.75}>
-          <ArrowIcon size={20} color={th.colors.onAccent} back />
-        </TouchableOpacity>
-      ) : <View style={styles.limeHeaderSide} />}
-      <View style={styles.limeHeaderCenter}>
-        <Text style={styles.limeHeaderEyebrow} numberOfLines={1}>{eyebrow}</Text>
-        <Text style={styles.limeHeaderTitle} numberOfLines={1}>{title}</Text>
-      </View>
-      <View style={styles.limeHeaderDots}>
-        {dotsDone != null && [0, 1, 2].map((i) => (
-          <View key={i} style={[styles.limeDot, i < dotsDone ? styles.limeDotDone : styles.limeDotIdle]} />
-        ))}
-      </View>
-    </View>
+    <ScreenHeader
+      onBack={onBack}
+      eyebrow={eyebrow}
+      title={title}
+      right={dotsDone != null ? (ink) => (
+        <View style={styles.limeHeaderDots}>
+          {[0, 1, 2].map((i) => (
+            <View
+              key={i}
+              style={[styles.limeDot, { backgroundColor: i < dotsDone ? ink : withOpacity(ink, 0.2) }]}
+            />
+          ))}
+        </View>
+      ) : null}
+    />
   );
 }
 
@@ -1266,26 +1263,24 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Brand tag
 
-  // ── Cabecera lima (§4: ProgramDetailScreen `header` + `CycleDots`) ────────
-  limeHeader: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    height:            HEADER_H,
-    marginHorizontal:  spacing.lg,
-    marginTop:         spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-  },
-  limeHeaderSide:    { width: 26, alignItems: 'center' },
-  limeHeaderCenter:  { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  limeHeaderEyebrow: { ...textStyles.btnAction, fontSize: 10, letterSpacing: 1, color: th.colors.muted },
-  limeHeaderTitle:   { ...textStyles.hero, color: th.colors.onAccent, lineHeight: 22 },
-  limeHeaderDots:    { width: 33, flexDirection: 'row', gap: spacing.sm, justifyContent: 'flex-end' },
+  // Los tres puntos de progreso, en el hueco de acciones de `ScreenHeader`. El
+  // color no vive aquí: lo da la cabecera por el render-prop `right`, porque su
+  // tinta cambia con la variante de cabecera que esté puesta.
+  limeHeaderDots:    { flexDirection: 'row', gap: spacing.sm },
   limeDot:           { width: 7, height: 7, borderRadius: 3.5 },
-  limeDotDone:       { backgroundColor: th.colors.onAccent },
-  limeDotIdle:       { backgroundColor: withOpacity(th.colors.onAccent, 0.16) },
+
+  // Chips de días 1-7
+  dayChipsRow: { flexDirection: 'row', gap: spacing.sm },
+  dayChip: {
+    flex:            1,
+    alignItems:      'center',
+    paddingVertical: spacing.sm,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface,
+  },
+  dayChipOn:      { backgroundColor: th.colors.accent },
+  dayChipText:    { ...textStyles.cardTitle, color: th.colors.mutedLight },
+  dayChipTextOn:  { color: th.colors.onAccent },
 
   // ── Las tres preguntas ─────────────────────────────────────────────────────
   qBody: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
@@ -1315,19 +1310,6 @@ const makeStyles = (th) => StyleSheet.create({
   qCardTitle:   { ...textStyles.cardTitle, color: th.colors.text },
   qCardTitleOn: { color: th.colors.accent },
   qCardSubtitle: { ...textStyles.subtitle, color: th.colors.mutedLight },
-
-  // Chips de días 1-7
-  dayChipsRow: { flexDirection: 'row', gap: spacing.sm },
-  dayChip: {
-    flex:            1,
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface,
-  },
-  dayChipOn:      { backgroundColor: th.colors.accent },
-  dayChipText:    { ...textStyles.cardTitle, color: th.colors.mutedLight },
-  dayChipTextOn:  { color: th.colors.onAccent },
 
   // ── Fila de 3 datos (§6.2/§6.3) ────────────────────────────────────────────
   statsRow:         { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
