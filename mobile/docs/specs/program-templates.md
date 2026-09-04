@@ -1,5 +1,18 @@
 # Spec — Programas por plantilla flexible
 
+> Tema: programas
+> En corto: En vez de inventar el programa ejercicio a ejercicio, se parte de plantillas reales que se adaptan a los días, el material y el tiempo de cada uno.
+> Fase P10 · hecho · Resolvedor de slots · §5.2
+> Fase P11 · hecho · Escalera de compresión + `DISCIPLINE_RULES` · §5.3
+> Fase P12 · hecho · Sesiones cortas: presupuesto sin calentamiento y superserie de opuestos · §5.3.1
+> Fase P13 · hecho · Normalizador de volumen + `volumeEmphasis` · §5.4
+> Fase P14 · hecho · Vincular lo repetido en el ciclo · §5.5
+> Fase P15 · hecho · `phases` → N etapas: las 11 plantillas duran 8-9 semanas · §6
+> Fase P16 · hecho · `rankArchetypes` + retirada del generador procedural · §7
+> Fase P17 · hecho · Onboarding de propuestas (se hizo aparte, ver O02) · §8
+> Fase P18 · pendiente · Reglas de integridad en el harness · §9
+> Fase P19 · pendiente · Catálogo: faltan Fuerza-3 intermedio y la tracción sin material · §11
+>
 > Estado: **fases 1-5 implementadas** (ago 2026, ver §5.2,
 > §5.3, §5.3.1, §5.4, §5.5, §6 y §7); fases 6, 7 y 8 pendientes.
 > **La 8 (catálogo) pasa a ser la más urgente**: el ranking destapó que no hay
@@ -296,7 +309,7 @@ existen dentro de la función y se tiran.
 ### 5.2 FASE 1 — Resolvedor de slots 🟢 ✅ IMPLEMENTADA
 
 > Medido sobre la matriz de 528 combos del harness: sesiones cortas **56 → 40**
-> (−29%). El umbral informativo de `programGenerator.test.js` baja de 11% a 9%.
+> (−29%). El umbral informativo de `onboarding.test.js` baja de 11% a 9%.
 >
 > **Hallazgo al implementar, no bloqueante:** los 39 slots tier 1 que siguen sin
 > resolverse son **todos** `back` con `equipment: []`. La biblioteca tiene 43
@@ -794,7 +807,7 @@ factor sobre la banda.
 > El preview lo enseña en portada: *"8 semanas · 3 fases · 3 sesiones por
 > ciclo"*. Si alguna etapa quedara sin límite, no se pinta total — no lo hay.
 >
-> **Invariante del harness relajado.** `programGenerator.test.js` exigía
+> **Invariante del harness relajado.** `onboarding.test.js` exigía
 > `stages[0].durationWeeks === null`. Ahora acepta `null` (plantilla sin fases y
 > camino procedural) **o un entero positivo**; lo que sigue siendo violación es
 > `0`, negativo o `undefined`, que romperían `advanceCycle`. Los valores exactos
@@ -996,9 +1009,15 @@ lógica: `needsBarbell`, `rotates` (`cycleSpeed > 1,25`), `levelStretch`,
 ### 7.2 Retirada del procedural
 
 `generateProgram` deja de ser alternativa: el ranking siempre da un ganador.
-Queda como utilidad interna para huecos que el resolvedor no cubra. **No se borra
-el archivo**, y su harness de invariantes pasa a correr sobre el camino
-arquetipo → adaptador.
+Su harness de invariantes pasa a correr sobre el camino arquetipo → adaptador.
+
+> **Cerrado del todo (sep-2026, rediseno.md §4).** Esta sección decidió "no se
+> borra el archivo, queda como utilidad interna", y lo que se vio en un año es
+> que no cubrió ni un hueco: 507 líneas más su rama en el store que sólo se
+> tocaba si el catálogo estaba vacío, es decir nunca, porque el catálogo es un
+> fichero del repo. `programGenerator.js` se borró; `GOAL_PARAMS`, lo único que
+> le importaba a alguien, vive en `archetypeAdapter.js`; y el harness se llama
+> ya `onboarding.test.js`, que es lo que prueba.
 
 Con esto desaparece el "hallazgo pendiente" de
 [program-generator.md](program-generator.md) §6.1: el ranking penaliza por nivel
@@ -1105,7 +1124,7 @@ hint de ciclo de B4.
 ## 9. FASE 7 — Reglas de integridad 🟢
 
 **Validador, no pipeline** (§2.11). Las reglas se comprueban sobre el resultado,
-en el harness que ya existe (`src/utils/programGenerator.test.js`, que ya recorre
+en el harness que ya existe (`src/utils/onboarding.test.js`, que ya recorre
 matrices de respuestas y afirma invariantes).
 
 | Regla | Estado |

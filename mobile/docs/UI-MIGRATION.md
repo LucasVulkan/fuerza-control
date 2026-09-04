@@ -38,8 +38,8 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
-| **Onboarding** (nivel → qué buscas → días → propuestas → tu programa) | 🟡 sin nodo en Figma — revisión 2: los tres componentes portados del web (`OptionCard`/`OnboardingStep`/`OnboardingProgress`) **borrados**, cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md) | `src/screens/OnboardingScreen.jsx`, `components/onboarding/*` |
-| **Workout Screen (el último)** | ⬜ | `src/screens/WorkoutScreen.jsx`, `ExerciseCard.jsx` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)** |
+| **Onboarding** (setup → modo → tres preguntas → propuestas → tu programa) | ✅ 6/6 pantallas, sin nodo en Figma — cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md) (O01 + O03) | `src/screens/OnboardingScreen.jsx`, `src/screens/SetupScreen.jsx`, `components/onboarding/*` |
+| **Workout Screen (el último)** | ✅ 5/5 partes (en testeo) | `src/screens/WorkoutScreen.jsx`, `components/workout/*` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)**, con el desglose parte por parte |
 
 ### HomeView — desglose (completo, 4/4 partes)
 
@@ -897,19 +897,59 @@ Decisiones propias, por no haber precedente:
   aquí el azul significa siempre entrenador o externo (§4.8).
 - **Botón EDITAR (secundario)** en `surface2` sólido sin borde — la variante ya cerrada en
   HomeView (`EDITAR | VER`).
-- **Emoji del selector de modo** (🤖 ✏️ 📥 📐 👤): la spec deja esa pantalla intacta, así que
-  siguen ahí. El resto de la app migrada no usa emoji como iconos: **inconsistencia
-  conocida, pendiente de decidir**, no se ha tocado a ciegas.
-
-`typography` legada se queda sólo donde la spec deja la pantalla intacta —selector de modo,
-modo manual, picker de plantillas— y en **`BrandTag`**, que comparten los cuatro modos:
-migrarlo restylearía esas tres pantallas.
+- **Los emoji del selector de modo** (🤖 ✏️ 📥 📐 👤) eran la inconsistencia conocida de
+  O01, porque la spec dejaba esa pantalla intacta. **Se fueron en O03** (§ de abajo),
+  junto con la última `typography` legada del fichero.
 
 Esta revisión trae además **dos cambios de motor**, los únicos: `reduceForBeginner`
 (`archetypeAdapter.js`) pasa a devolver lo que quita y lo que añade —`adaptArchetype` gana
 el campo `levelCuts`— y `mobile/src/utils/adaptationDiff.js` calcula qué se llevó el
 presupuesto de tiempo. Sin ellos el panel no podía decir la verdad, que es el punto de la
 pantalla.
+
+### Onboarding · O03 — las cuatro pantallas que faltaban
+
+Sin nodo en Figma, igual que O01. Spec:
+[`specs/onboarding-simple.md`](specs/onboarding-simple.md) §14, con el mockup
+aprobado antes de tocar código.
+
+| Pantalla | Antes | Ahora |
+|---|---|---|
+| Idioma + unidades (`SetupScreen.jsx`) | ni un token de la migración: "Forma Fit" a 52 px, `PickerBtn` propio con borde | lockup real de marca (`FitLogo`) a ×2 · dos `SegmentedControl` con el formato `stepTitle` + `hint` de la hoja de Progresión · CTA `startBtn` |
+| Selector de modo | emoji, `radius.lg`, bordes, `typography.*` suelto, `›` de texto | `LimeHeader` + tarjetas con anatomía `QuestionCard`, `RowIcon` gris y `ArrowIcon` |
+| Programa vacío | botones de 56 px con borde, `infoBox`, `textInput` con borde | `sectionLabel` + campo `surface2` · chips `dayChip` **1-7** · dos `hint` · pie `previewFooter` |
+| Cargar plantilla | `✓` de texto, tarjetas con borde | `QuestionCard` por plantilla (elegida = `accent10` + borde `accent50`) · campo · pie `previewFooter` |
+
+Lo que conviene no volver a romper:
+
+- **`FitLogo` vive en `src/components/ui/FitLogo.jsx`.** Estaba copiado literal en
+  `AppHeader.jsx` y `OnboardingScreen.jsx`; `SetupScreen` era el tercer uso. `BrandTag`
+  se borró: las tres pantallas que lo pintaban usan `LimeHeader`.
+- **`RECOMENDADO` es un badge sólido** (`proposalBadge`), no una tarjeta pintada en
+  `accent10`. Ese tratamiento significa **elegido** en las tres preguntas y en el picker
+  de plantillas; gastarlo en "recomendado" lo vacía.
+- **El campo de texto va a 14 ExtraBold** (`MenuList.rowLabel`) dentro de la caja de
+  `nameInput`. En `cardTitle` (16) el nombre del programa se veía enorme — QA sobre el
+  mockup, mismo caso que los dos ajustes de HomeView: manda el ojo, no el número.
+- **`LimeHeader` acepta `onBack` nulo**: en la primera apertura no hay atrás y el hueco
+  se queda vacío pero ocupa, para que el título siga centrado.
+- **La etiqueta `CICLO` del banner de Home abre una hoja con ese apartado** de
+  Documentación (`DocSheet` de `ui/DocPoints.jsx`), no el glosario entero y sin ⓘ. El
+  disparador es la **etiqueta y no el bloque**, misma regla que `InfoLabel` en Progreso:
+  el banner entero ya abre el selector de etapa. Las viñetas las pinta el mismo
+  `DocPoints` que usa `DocsScreen`, y `docs.sections` lleva un `id` por apartado.
+- **`HEADER_H` vive en `src/theme.js` y vale 72.** Estaba copiado en cuatro pantallas a 64
+  y el onboarding tenía un 52 propio. Sale de QA en dispositivo: a 64 el eyebrow y el
+  título se leían pegados a los bordes de la barra lima.
+- **El pie (`previewFooter`) ya no lleva filete**, y en las dos pantallas con campo de
+  texto va dentro de un `KeyboardAvoidingView` junto al cuerpo — si no, el teclado tapa
+  los botones.
+- **La flecha de los botones primarios es `ArrowIcon`**, no un "→" de texto: el glifo
+  salía fino y descentrado. Lo pinta `PrimaryBtn`, y las cadenas ya no lo llevan.
+- **El tema por defecto es `formaFit`** (`themes.js` + estado inicial del store).
+- **No se creó una ficha `metrics.cycle`.** Un ciclo no es un número calculado, y
+  `MetricInfo.jsx` ya avisa de que hacer tocable todo lo que tenga un número vacía de
+  significado el icono.
 
 ### ⚠️ Reordenar: lo lleva `react-native-sortables`, NO lo montes a mano
 

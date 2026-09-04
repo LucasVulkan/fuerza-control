@@ -1,24 +1,27 @@
 # Spec — Auditoría técnica (agosto 2026)
 
-> Estado: **🔍 DIAGNÓSTICO. 15 fallos resueltos** (ago 2026) — **tandas A, B, C
-> y D cerradas** (1, 2, 3, 4, 5, 7, 8, 9, 10, 13, 17, 19, 20, 26) más el 6.
-> 11 pendientes de 26, ninguno crítico.
+> Tema: errores
+> En corto: Barrido de corrección sobre toda la app móvil: 26 fallos, cada uno con la condición exacta que lo dispara y el arreglo verificado contra el código.
+>
+> Estado: **✅ CERRADO. Los 26 fallos resueltos** (sep 2026) — las seis tandas,
+> A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
+> código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
+> mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
+> un camino de dos) y el §25 (`blockPresets` no es un mapa).
+>
+> Queda pendiente **de prueba en dispositivo**, no de código: los dos escenarios
+> de (re)conexión de [client-connection.md](client-connection.md).
 >
 > La segunda mitad del [fallo 8](#8) —sacar el código del entrenador a
 > SecureStore— queda **descartada a propósito**; el motivo, en su sección.
 >
 > El SQL del modelo de conexión **está desplegado** (ago 2026): comprobado que
 > `claim_trainer_slots` ya no existe y que las seis funciones restantes siguen
-> siendo `security definer`. Falta la prueba en dispositivo de los dos
-> escenarios de (re)conexión — ver [client-connection.md](client-connection.md).
-> El fallo 8 sigue abierto: es la Edge Function, no el SQL.
-> Los arreglos se van aplicando de uno en uno; cada fallo resuelto lleva su
-> bloque **Implementado** al final de la sección.
+> siendo `security definer`.
 >
-> ⚠️ **El [fallo 26](#26) es lo más urgente del documento** y no salió del
-> barrido: apareció al leer SQL que no estaba en el repositorio. Los fallos 5,
-> 7, 8 y 26 se rediseñaron juntos en
-> [client-connection.md](client-connection.md).
+> El [fallo 26](#26) fue el más grave del documento y no salió del barrido:
+> apareció al leer SQL que no estaba en el repositorio. Los fallos 5, 7, 8 y 26
+> se rediseñaron juntos en [client-connection.md](client-connection.md).
 >
 > Barrido de corrección sobre el móvil siguiendo el flujo real
 > (`index.js → App.js → RootNavigator → screens → store → services → utils`) y
@@ -50,16 +53,18 @@
 ## 0. Cómo trabajar este documento
 
 **Verifica el diagnóstico contra el código antes de tocar nada.** No es
-formalismo: de los 20 fallos resueltos, **en 7 el arreglo propuesto estaba mal o
+formalismo: de los 26 fallos, **en 10 el arreglo propuesto estaba mal o
 incompleto**. El SQL del §7 no habría reemplazado la función que pretendía; el
 §9 se dejaba cinco sitios; el §6 pedía arreglar código muerto que no llamaba
 nadie; el §8 contaba dos consumidores donde hay doce; el §1 se contradecía entre
 su código de ejemplo y su propio texto; el §16 apuntaba a cuatro sitios que ya
-estaban limpios mientras el patrón había reaparecido en otros dos; y el §26 —el
-más grave de todos— ni siquiera estaba en el barrido.
+estaban limpios mientras el patrón había reaparecido en otros dos; el §12 no
+arreglaba su propio caso de reproducción y su código de ejemplo usaba un estado
+que ya no existe; el §15 contaba un camino de dos; el §25 llamaba mapa a un
+array; y el §26 —el más grave de todos— ni siquiera estaba en el barrido.
 
 Aplicar un "**Arreglo:**" tal cual, sin comprobarlo, tiene por histórico **una
-probabilidad de uno entre tres de meter un error nuevo**.
+probabilidad de casi dos entre cinco de meter un error nuevo**.
 
 En concreto, antes de implementar cualquier fallo:
 
@@ -76,7 +81,8 @@ En concreto, antes de implementar cualquier fallo:
 3. **Si el arreglo propuesto no cuadra, dilo antes de implementar** en vez de
    aplicarlo igual. Varios de los mejores resultados de este documento salieron
    de descartar el arreglo propuesto: el §3 sin snapshot, el §6 borrando en vez
-   de arreglar, el §7 sin `p_takeover`.
+   de arreglar, el §7 sin `p_takeover`, el §12 invalidando la foto en vez de
+   acotarla y el §15 filtrando la lista en vez de rechazar con un toast.
 4. **Verifica**: `npx eslint <archivo>` comparando el recuento **contra HEAD**
    (hay errores preexistentes; lo que no vale es sumar), y `npx vitest run`
    desde la raíz.
@@ -106,10 +112,10 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [9](#9) | 🟠 Alta | ✅ En iOS todo el mundo es Pro | `src/config/revenuecat.js:13` |
 | [10](#10) | 🟡 Media | ✅ "Reemplazar plantillas" se degrada a "combinar" | `store/useStore.js:2583` |
 | [11](#11) | 🟡 Media | ✅ Un `.fitdata` abre varios modales de importación | `src/components/AppHeader.jsx:578` |
-| [12](#12) | 🟡 Media | Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:127` |
+| [12](#12) | 🟡 Media | ✅ Cancelar el editor revierte cambios ajenos | `src/screens/ProgramEditorScreen.jsx:127` |
 | [13](#13) | 🟡 Media | ✅ Listar/restaurar backups no refresca el token | `src/screens/DriveBackupScreen.jsx:147` |
-| [14](#14) | 🟡 Media | `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js:239` |
-| [15](#15) | 🟡 Media | Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:1090` |
+| [14](#14) | 🟡 Media | ✅ `advanceCycle` cierra ciclos antes de tiempo | `src/utils/stageProgress.js:239` |
+| [15](#15) | 🟡 Media | ✅ Ejercicio duplicado en una sesión comparte estado | `store/useStore.js:1090` |
 | [16](#16) | 🟡 Media | ✅ `st.days.forEach` sin guard — **se mudó de sitio** | `src/screens/HistoryScreen.jsx:381` |
 | [17](#17) | 🟢 Baja | ✅ `drive_needs_reconnect` se escribe y nadie lo lee | `src/tasks/driveBackupTask.js:50` |
 | [18](#18) | 🟢 Baja | ✅ `clearWorkoutLog` borra todo ante un scope desconocido | `store/useStore.js:2250` |
@@ -117,26 +123,26 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [20](#20) | 🟢 Baja | ✅ Boundary multipart fijo en la subida a Drive | `src/services/driveService.js:34` |
 | [21](#21) | 🟢 Baja | ✅ `dailySeries` sin cota superior de días | `src/utils/trainingLoad.js:338` |
 | [22](#22) | 🟢 Baja | ✅ `ownerProgram` leído fuera de la suscripción | `src/screens/WorkoutScreen.jsx:389` |
-| [23](#23) | 🟢 Baja | EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js:17` |
+| [23](#23) | 🟢 Baja | ✅ EMOM con `rounds: 0` produce índice `-1` | `src/utils/conditioningBlocks.js:17` |
 | [24](#24) | 🟢 Baja | ✅ Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
-| [25](#25) | 🟡 Media | El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
+| [25](#25) | 🟡 Media | ✅ El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
 
-**Los seis pendientes están revisados contra el código de sep-2026** y cada uno
-lleva su nota dentro de la sección: 11, 12, 14, 15, 23 y 25. La ᴿ del cuadro de
-tandas marca lo revisado y no implementado.
+Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
+se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
 
 Rutas relativas a `mobile/` salvo las que empiezan por `supabase/`. Ya no hay
 excepción para `src/utils/`: desde la mudanza de sep-2026 vive también dentro de
 `mobile/`, así que la regla es uniforme.
 
-Las líneas de los fallos **abiertos** se revisaron en sep-2026 tras la mudanza.
-Las de los resueltos son las del momento del diagnóstico y no se persiguen: el
-bloque **Implementado** de cada uno dice dónde quedó.
+Las líneas del cuadro son las del momento del diagnóstico y no se persiguen: el
+bloque **Implementado** / **Resuelto** de cada fallo dice dónde quedó.
 
 ---
 
 ## 1. Pantalla negra permanente si falla la rehidratación 🔴 ✅ {#1}
+
+> En corto: Si el estado guardado en el móvil se corrompe, la app arranca en negro y no hay forma de salir desde dentro.
 
 **Dónde.** `store/useStore.js:3757` (`onRehydrateStorage`) y
 `src/navigation/RootNavigator.jsx:130`.
@@ -248,6 +254,8 @@ reproducción de arriba: debe abrir en `Setup`.
 
 ## 2. Restaurar un backup completo pierde los programas de clientes 🔴 ✅ {#2}
 
+> En corto: Restaurar un backup completo devolvía los clientes pero no sus programas: las fichas quedaban apuntando a programas que ya no existían.
+
 **Dónde.** `store/useStore.js:2555-2587` (`importData`), contra
 `store/useStore.js:2325` (`exportFullBackup`) y `:2739` (`performDriveBackup`).
 
@@ -357,6 +365,8 @@ apartado llegó a decir "sin test". Verificado con
 ---
 
 ## 3. La copia programada a Drive no se ejecuta nunca 🟠 ✅ {#3}
+
+> En corto: La copia programada a Drive no llegaba a ejecutarse nunca: la tarea de fondo leía una foto del estado que casi nunca estaba preparada.
 
 **Dónde.** `store/useStore.js:2069` y `:2754`; `src/tasks/driveBackupTask.js:55`.
 
@@ -481,6 +491,8 @@ siguen sin cobertura: son red y módulos nativos.
 
 ## 4. El backup se guarda en SecureStore, que limita a 2048 bytes 🟠 ✅ {#4}
 
+> En corto: El backup se guardaba en SecureStore, que corta a 2048 bytes. Cualquier copia real no cabía.
+
 **Dónde.** `store/useStore.js:2754`.
 
 **Por qué falla.**
@@ -555,6 +567,8 @@ En SecureStore quedan exactamente los tres valores que el apartado pedía dejar:
 ---
 
 ## 5. Carrera en `refreshTrainerSlots` → clientes locales duplicados 🟠 ✅ {#5}
+
+> En corto: Refrescar la lista de clientes dos veces a la vez creaba clientes duplicados en el móvil del entrenador.
 
 **Dónde.** `store/useStore.js:3049-3096`.
 
@@ -673,6 +687,8 @@ contra el código anterior.
 
 ## 6. `getProgressionRecommendation` siempre devuelve `null` 🟠 ✅ {#6}
 
+> En corto: La recomendación de subir peso o repeticiones devolvía siempre nada, por una llamada con los argumentos desplazados. Al mirarlo, resultó ser código que ya no llamaba nadie.
+
 **Dónde.** `store/useStore.js:1891`.
 
 **Por qué falla.** La firma real es
@@ -761,6 +777,8 @@ en `ExerciseCard.jsx:378`.
 ---
 
 ## 7. El código de cliente permite desalojar al cliente real 🟠 ✅ {#7}
+
+> En corto: El código de seis letras del cliente permitía a un desconocido echar de su plaza al cliente real.
 
 **Dónde.** `supabase/secure_trainer_clients.sql`, función `link_client_to_slot`.
 
@@ -853,6 +871,8 @@ Desplegado y verificado en ago 2026.
 ---
 
 ## 8. `create-trainer-account` sin validación ni rate limit 🟠 ✅ {#8}
+
+> En corto: La función que crea cuentas de entrenador no validaba nada ni limitaba los intentos: se podían crear cuentas en masa.
 
 **Dónde.** `supabase/functions/create-trainer-account/index.ts:22-24`.
 
@@ -974,6 +994,8 @@ un riesgo alto por una mejora pequeña, en el orden equivocado.
 
 ## 9. En iOS todo el mundo es Pro 🟠 ✅ {#9}
 
+> En corto: En iOS la comprobación de suscripción daba Pro a todo el mundo.
+
 **Dónde.** `src/config/revenuecat.js:13`, `App.js:163-175`,
 `store/useStore.js:107` y `:3655`.
 
@@ -1079,6 +1101,8 @@ default a `true`.
 
 ## 10. "Reemplazar plantillas" se degrada a "combinar" 🟡 ✅ {#10}
 
+> En corto: Al restaurar un backup, elegir «Reemplazar plantillas» se comportaba como «combinar»: las plantillas viejas no se iban.
+
 **Dónde.** `store/useStore.js:2565` y `:2583`.
 
 **Por qué falla.** La rama de programas asigna `updates.programs` primero:
@@ -1160,6 +1184,8 @@ control de que el arreglo no se pasa de destructivo.
 ---
 
 ## 11. Un `.fitdata` abre varios modales de importación 🟡 ✅ {#11}
+
+> En corto: Abrir un `.fitdata` desde el explorador sacaba varios diálogos de importación a la vez, uno por cada cabecera montada.
 
 **Dónde.** `src/components/AppHeader.jsx:578-589` **y**
 `src/screens/OnboardingScreen.jsx:462-468`.
@@ -1249,7 +1275,9 @@ aceptable.
 
 ---
 
-## 12. Cancelar el editor de programa revierte cambios ajenos 🟡 {#12}
+## 12. Cancelar el editor de programa revierte cambios ajenos 🟡 ✅ {#12}
+
+> En corto: Cancelar el editor devolvía atrás cosas que habían cambiado por otro lado. En el móvil del cliente le hacía perder la actualización de su entrenador, y no se le volvía a ofrecer nunca.
 
 **Dónde.** `src/screens/ProgramEditorScreen.jsx:126-138` y
 `store/useStore.js:751-756`.
@@ -1329,9 +1357,64 @@ proporcional al tamaño de la base del entrenador.
 
 `bulk-edit.md` §5 y §16 documentan este circuito y hay que actualizarlos.
 
+
+### ✅ Resuelto (sep 2026)
+
+`store/useStore.js:905` (`beginEditSession`), `:2661` (`importData`) y
+`src/screens/ProgramEditorScreen.jsx:112,129,150`.
+
+**El arreglo propuesto arriba no arreglaba su propio caso de reproducción.**
+Acotar la foto a `programs[programId]` protege a los *otros* programas, pero la
+reproducción del apartado es sobre el **mismo**: el cliente edita su programa
+activo y lo que llega del entrenador es una actualización de ese programa. Con
+la foto acotada, cancelar lo sigue devolviendo a la versión vieja y
+`clientSync.lastProgramImportedAt` sigue avanzado. La actualización se pierde
+igual.
+
+La causa real no es el alcance de la foto sino su **vigencia**: una foto tomada
+antes de una escritura ajena ya no describe un "antes" al que se pueda volver.
+Así que la escritura la invalida, en el sitio por donde pasan las cuatro rutas
+de entrada de datos (`applyPendingProgramUpdate`, `ImportModal`, el `.fitdata`
+externo y la restauración de backup): una línea en el `set` de `importData`,
+
+```js
+const updates = { _editSnapshot: null };
+```
+
+Sin foto, `restoreSnapshot` no revierte nada y `hasUnsavedChanges` devuelve
+`false`, así que cancelar sale en silencio dejando lo que acaba de entrar — que
+es lo correcto: las ediciones del usuario ya las había borrado el propio import
+al reemplazar el programa entero.
+
+Se aplica **además** el acotado propuesto, por lo segundo que decía el apartado:
+`beginEditSession(programId)` recibe el id y clona un programa en vez de los N
+del entrenador. `sessionTemplates` sigue yendo entero a propósito — el editor
+crea, borra y renombra plantillas, y reconstruir por ids cuáles entran y cuáles
+salen cuesta más de lo que ahorra; con la foto invalidada por `importData` no
+queda ningún escritor concurrente del que protegerse.
+
+Dos cosas más que el diagnóstico daba por buenas y ya no lo eran:
+
+- **`userPrograms` no existe.** Lo fusionó [program-model.md](program-model.md)
+  en el diccionario único `sessionTemplates`. El código de ejemplo del arreglo
+  no compilaba.
+- **El editor es alcanzable para un cliente conectado.** El botón "Editar" de
+  `HomeScreen.jsx:869` no está condicionado, que es lo que hace que el escenario
+  exista. No se toca: editar el programa recibido es una función, no un
+  descuido.
+
+**Tests.** `store/useStore.test.js`, tres casos: la foto acotada, la foto nula
+sin programa y la invalidación al importar con el editor abierto.
+
+**Probar en dispositivo.** Cliente conectado con un programa propio abierto en el
+editor: minimizar, aceptar la actualización del entrenador al volver, y salir del
+editor. La actualización debe seguir aplicada y no debe volver a ofrecerse.
+
 ---
 
 ## 13. Listar y restaurar backups no refresca el token expirado 🟡 ✅ {#13}
+
+> En corto: Listar o restaurar copias de Drive con el token caducado fallaba en vez de renovarlo: decía «no hay copias» cuando sí las había.
 
 **Dónde.** `src/screens/DriveBackupScreen.jsx:147` (`loadFiles`) y `:200`
 (`handleRestoreFile`).
@@ -1428,7 +1511,9 @@ comprobar que salen las copias en vez de "no hay ninguna".
 
 ---
 
-## 14. `advanceCycle` cierra ciclos antes de tiempo 🟡 {#14}
+## 14. `advanceCycle` cierra ciclos antes de tiempo 🟡 ✅ {#14}
+
+> En corto: Las semanas se cerraban antes de tiempo. Se contaba cuántas sesiones llevabas, no cuáles, así que las de una etapa ya reestructurada seguían sumando y te adelantaban de etapa.
 
 **Dónde.** `src/utils/stageProgress.js:239`, funciones `advanceCycle` y
 `mergeProgressOnImport`.
@@ -1478,9 +1563,36 @@ export function advanceCycle(program, templateId, cycleTplIds, { durationWeeks, 
 'tpl_viejo_b']` con `cycleTplIds: ['x','y','z','w','v']`, registrar `x` → el
 ciclo NO debe cerrarse.
 
+
+### ✅ Resuelto (sep 2026)
+
+`src/utils/stageProgress.js:254`, exactamente el arreglo propuesto: intersectar
+con `cycleTplIds` antes de contar.
+
+El diagnóstico era correcto de punta a punta, y la comprobación de los otros
+sitios (regla 2 del §0) sale limpia: los consumidores de `cycleCompletedIds`
+fuera de este módulo —`HomeScreen.jsx:90,785` y `ClientsScreen.jsx:300,1559`—
+preguntan por **pertenencia** (`doneIds.has(...)`), y un id muerto ahí no
+coincide con ninguna sesión del ciclo actual. Contar por tamaño lo hace solo
+`advanceCycle`, así que el arreglo cierra el fallo en un único sitio.
+
+De regalo, la lista se poda: `cycleCompletedIds` sale ya sin los ids muertos, así
+que el estado se autolimpia en la primera sesión registrada tras la
+reestructuración.
+
+Sin riesgo de contar de menos: el único llamante (`store/useStore.js:2171`) sólo
+entra si `stageTplIds.includes(templateId)`, así que `valid` nunca está vacío ni
+le falta el id que se acaba de registrar.
+
+**Test.** `src/utils/stageProgress.test.js`: `['tpl_viejo_a', 'tpl_viejo_b']`
+contra el ciclo `['tpl_a','tpl_b','tpl_c']`, registrar `tpl_a` → la semana NO se
+cierra y la lista queda en `['tpl_a']`.
+
 ---
 
-## 15. Un ejercicio duplicado en la misma sesión comparte estado 🟡 {#15}
+## 15. Un ejercicio duplicado en la misma sesión comparte estado 🟡 ✅ {#15}
+
+> En corto: El mismo ejercicio dos veces en una sesión era en realidad uno solo: compartían series, el «hecho» y el borrado.
 
 **Dónde.** `store/useStore.js:1090` (`addExercise`), `:1685` (`startSession`),
 `src/screens/ExerciseSelectorScreen.jsx`.
@@ -1538,9 +1650,62 @@ por él. Es la deuda estructural más cara del móvil: bloquea circuitos y
 supersets con repetición, y cada consumidor nuevo de `setsState[exerciseId]`
 encarece el cambio.
 
+
+### ✅ Resuelto (sep 2026) — el arreglo barato, con un sitio más
+
+`store/useStore.js:1108` (`addExercise`), `:984` (`replaceExercise`) y
+`src/screens/ExerciseSelectorScreen.jsx:78,142`.
+
+**El apartado contaba un camino y hay dos.** `replaceExercise` sustituye A por B
+sin mirar si B ya está en la sesión, así que "Sustituir" creaba el duplicado
+igual que "Añadir". El selector no lo tapaba: su único filtro era
+`ex.id !== currentExerciseId`.
+
+Los dos caminos salen de la misma pantalla, así que se corta ahí primero: el
+selector calcula lo que ya está en el destino y no lo lista.
+
+```js
+const taken = useMemo(() => {
+  if (blockPicker) return new Set();
+  const tplId = sessionMode ? activeSession.templateId : templateId;
+  return new Set([
+    ...(sessionTemplates[tplId]?.exercises ?? []).map((ex) => ex.exerciseId),
+    ...(sessionMode ? (activeSession.adHocExercises ?? []).map((ex) => ex.exerciseId) : []),
+  ]);
+}, [blockPicker, sessionMode, templateId, sessionTemplates, activeSession]);
+```
+
+Cubre los tres modos de la pantalla: añadir al editor, sustituir en el editor y
+añadir a la sesión en curso (`sessionMode`, que no recibe `templateId` y lo saca
+de `activeSession`). **El picker de bloques queda fuera** a propósito: repetir un
+movimiento dentro de un EMOM es legítimo.
+
+Y la invariante se planta donde se escribe, con un `return` silencioso en
+`addExercise` y en `replaceExercise` — el mismo patrón que ya usaba
+`addAdHocExercise` (`:1837`), que sí comprobaba duplicados desde siempre.
+
+**Se descarta el toast del arreglo propuesto** y con él las dos claves de i18n:
+el selector es multiselección (`handleAddSelected` llama a `addExercise` en
+bucle), así que N duplicados habrían apilado N toasts encima del de "añadidos
+N". Con la lista ya filtrada no hay nada que explicarle al usuario — el
+duplicado no se puede ni elegir.
+
+Sigue fuera de alcance el `instanceId`, como decía el apartado y repite el
+§28.3: esto impide crear duplicados desde la app, no soporta los que puedan
+llegar en un `.fitdata`.
+
+**Tests.** `store/useStore.test.js`: añadir dos veces el mismo ejercicio no lo
+duplica; sustituir por uno que ya está en la sesión, tampoco.
+
+**Probar en dispositivo.** En el selector de ejercicios, los que ya están en la
+sesión no deben aparecer en la lista — ni al añadir ni al sustituir. En el picker
+de un bloque de acondicionamiento sí deben seguir apareciendo.
+
 ---
 
 ## 16. `st.days.forEach` sin guard en cuatro sitios 🟡 ✅ {#16}
+
+> En corto: Una etapa sin lista de días hacía petar la pantalla (historial, ficha de cliente) en vez de ignorarla.
 
 **Dónde (sep-2026).** `src/screens/HistoryScreen.jsx:381` y
 `store/useStore.js:1241` (`removeSessionFromProgram`).
@@ -1634,6 +1799,8 @@ desaparecen también los cuatro `if (program.stages?.length > 0) … else …`.
 
 ## 17. `drive_needs_reconnect` se escribe y nadie lo lee 🟢 ✅ {#17}
 
+> En corto: La tarea de fondo apuntaba «hay que reconectar Drive» en un sitio que no leía nadie, así que el aviso no llegaba nunca al usuario.
+
 **Dónde.** `src/tasks/driveBackupTask.js:50`.
 
 ```js
@@ -1666,6 +1833,8 @@ implementado del [§13](#13), que es donde entró todo el lote de Drive.
 ---
 
 ## 18. `clearWorkoutLog` borra todo ante un scope desconocido 🟢 ✅ {#18}
+
+> En corto: Borrar historial con un ámbito desconocido —un typo, un valor nuevo— borraba TODO el historial en vez de no borrar nada.
 
 **Dónde.** `store/useStore.js:2132`.
 
@@ -1700,6 +1869,8 @@ Tal cual. **Test** en `store/useStore.test.js`: seis scopes desconocidos
 ---
 
 ## 19. El reintento de Drive re-ejecuta lo ya hecho 🟢 ✅ {#19}
+
+> En corto: Si Drive respondía 401 a mitad de la copia, se reintentaba la operación entera y el archivo acababa subido dos veces.
 
 **Dónde.** `store/useStore.js:2709-2722` (`_withDriveToken`).
 
@@ -1744,6 +1915,8 @@ de la limpieza ya no dispara el reintento. Detalle en el [§13](#13).
 
 ## 20. Boundary multipart fijo en la subida a Drive 🟢 ✅ {#20}
 
+> En corto: El separador del envío a Drive era una cadena fija: si alguien la escribía en una nota, la subida se corrompía.
+
 **Dónde.** `src/services/driveService.js:34`.
 
 ```js
@@ -1767,6 +1940,8 @@ const boundary = 'fc_' + Math.random().toString(36).slice(2);
 ---
 
 ## 21. `dailySeries` sin cota superior de días 🟢 ✅ {#21}
+
+> En corto: Una entrada de historial con la fecha corrupta generaba unos 20.000 puntos en las gráficas de carga y dejaba la vista colgada.
 
 **Dónde.** `src/utils/trainingLoad.js:339`.
 
@@ -1809,6 +1984,8 @@ futuros).
 
 ## 22. `ownerProgram` leído fuera de la suscripción del store 🟢 ✅ {#22}
 
+> En corto: La pantalla de entreno leía el programa una sola vez: si llegaba una actualización mientras entrenabas, se quedaba con los datos viejos.
+
 **Dónde.** `src/screens/WorkoutScreen.jsx:390`.
 
 ```js
@@ -1838,7 +2015,9 @@ con la sesión abierta y una actualización entrando por detrás.
 
 ---
 
-## 23. EMOM con `rounds: 0` produce índice `-1` 🟢 {#23}
+## 23. EMOM con `rounds: 0` produce índice `-1` 🟢 ✅ {#23}
+
+> En corto: Un EMOM con 0 rondas —solo posible desde un fichero importado— producía un índice −1 y reventaba al buscar el movimiento.
 
 **Dónde.** `src/utils/conditioningBlocks.js`, `emomTotalIntervals` y
 `emomPosition`.
@@ -1874,9 +2053,26 @@ export function emomTotalIntervals(block) {
 }
 ```
 
+
+### ✅ Resuelto (sep 2026)
+
+`src/utils/conditioningBlocks.js:48`, el arreglo de una línea tal cual:
+`Math.max(1, block.rounds ?? 1)`. Cubre también el negativo, que llega por la
+misma puerta.
+
+`intervalSec: 0` produce el mismo `totalSec = 0` y no se toca: por ese camino
+`emomPosition` devuelve `interval: total - 1`, que con `rounds ≥ 1` ya es un
+índice válido. El `-1` sólo salía del total a cero.
+
+**Test.** `src/utils/conditioningBlocks.test.js`: bloque con `rounds: 0` y dos
+movimientos → 2 intervalos, `emomPosition` devuelve `interval: 1` y
+`currentMovement` el segundo movimiento en vez de `undefined`.
+
 ---
 
 ## 24. Semana de calendario con milisegundos fijos 🟢 ✅ {#24}
+
+> En corto: La semana de calendario se calculaba restando días de 24 h exactas, que se desalinean donde el cambio de hora es a medianoche.
 
 **Dónde.** `src/utils/weekProgress.js:20`.
 
@@ -1932,7 +2128,9 @@ módulos.
 
 ---
 
-## 25. El backup completo no lleva `tagRegistry` ni `blockPresets` 🟡 {#25}
+## 25. El backup completo no lleva `tagRegistry` ni `blockPresets` 🟡 ✅ {#25}
+
+> En corto: El backup no llevaba el catálogo de etiquetas ni los presets de bloques: al restaurar, los clientes volvían etiquetados con códigos sin nombre.
 
 > **Revisado sep-2026: sigue igual.** Nació en esta misma tanda al centralizar
 > el payload en `src/utils/backupPayload.js`, así que su diagnóstico ya se
@@ -1975,9 +2173,45 @@ producto, porque implica una fila más en `ImportModal`.
 carpeta y correo de Drive y credenciales de sincronización, y un `.fitdata` se
 comparte por WhatsApp. `backupPayload.test.js` ya lo vigila.
 
+
+### ✅ Resuelto (sep 2026)
+
+`src/utils/backupPayload.js:41,46`, `store/useStore.js:2756,2780` y
+`src/components/ImportModal.jsx:143`.
+
+**Corrección al diagnóstico: `blockPresets` es un array, no un mapa**
+(`store/useStore.js:393`, `[{ presetId, ...ConditioningBlock }]`). Los dos se
+funden igual, por id y sin duplicar, y **gana la copia local**: es la que el
+usuario está viendo cuando decide importar.
+
+Reparto de casillas, que el apartado dejaba a decisión de producto:
+
+- **`tagRegistry` → `sections.clients`.** Las etiquetas son de los clientes;
+  entran con ellos.
+- **`blockPresets` → `sections.customExercises`.** Son lo mismo que los
+  ejercicios propios —biblioteca personal reutilizable del dispositivo— y así no
+  hace falta una fila más en `ImportModal`. **Sí hizo falta tocar su
+  habilitación**: la fila se apaga con `disabled={!hasCustEx}`, así que un backup
+  con presets y sin ejercicios propios los habría dejado fuera. `hasCustEx`
+  cuenta ahora las dos cosas.
+
+Lo que no entra sigue sin entrar: `backupPayload.test.js` vigila que
+`driveBackup`, `trainerSync` y `clientSync` no aparezcan en el JSON.
+
+**Tests.** `backupPayload.test.js`: la lista de claves pasa de once a trece y el
+estado a medias que lee la tarea de fondo devuelve `[]` en las dos nuevas.
+`useStore.test.js`: cada una entra por su sección, sin duplicar ni pisar lo
+local, y ninguna entra sin ella.
+
+**Probar en dispositivo.** Etiquetar dos clientes y guardar un preset de bloque →
+exportar backup completo → borrar datos → importar con todas las secciones. Las
+etiquetas deben volver con su nombre y el preset debe estar.
+
 ---
 
 ## 26. `claim_trainer_slots` regala la cuenta a cualquiera 🔴 ✅ {#26}
+
+> En corto: Una función del servidor dejaba que cualquiera reclamase los clientes de otro entrenador. Lo más grave del documento, y no salió del barrido: apareció leyendo SQL que no estaba en el repositorio.
 
 > **No salió del barrido original.** Apareció en ago 2026 al pedir el SQL que
 > la app llama pero que no estaba en `supabase/`. Es el fallo más grave del
@@ -2062,12 +2296,12 @@ verificable:
 | **B — Drive** ✅ | ✅ [3](#3), ✅ [4](#4), ✅ [13](#13), ✅ [17](#17), ✅ [19](#19), ✅ [20](#20) | store + `driveBackupTask` + `driveService` + `DriveBackupScreen` |
 | **C — sincronización** ✅ | ✅ [5](#5), ✅ [7](#7), ✅ [8](#8) | store + SQL + Edge Function |
 | **D — monetización** ✅ | ✅ [9](#9) | `config/revenuecat.js`, `App.js`, `INITIAL_PROFILE` |
-| **E — lógica de entreno** | ✅ [6](#6), [14](#14), [15](#15), [23](#23) | `src/utils/*` + store, todo con test |
-| **F — UI y limpieza** | ✅ [11](#11), [12](#12)ᴿ, ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
+| **E — lógica de entreno** ✅ | ✅ [6](#6), ✅ [14](#14), ✅ [15](#15), ✅ [23](#23) | `src/utils/*` + store, todo con test |
+| **F — UI y limpieza** ✅ | ✅ [11](#11), ✅ [12](#12), ✅ [16](#16), ✅ [18](#18), ✅ [21](#21), ✅ [22](#22), ✅ [24](#24) | pantallas + guards |
 
-La tanda A es la que hay que hacer antes de publicar: [1](#1) deja la app
-inservible y [2](#2) destruye datos del entrenador en la operación que
-precisamente existe para no perderlos.
+Cerradas las seis. La tanda A era la que había que hacer antes de publicar:
+[1](#1) dejaba la app inservible y [2](#2) destruía datos del entrenador en la
+operación que precisamente existe para no perderlos.
 
 ## 28. Lo que NO entra en esta spec
 
@@ -2080,8 +2314,11 @@ Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
    ella.
 2. **El diseño "la contraseña del entrenador es su código"**. [§8](#8) arregla la
    validación y el almacenamiento en claro, no el modelo.
-3. **`setsState` indexado por `exerciseId`**. [§15](#15) pone un guard; la
-   reindexación por instancia es un cambio de modelo con su propia spec.
+3. **`setsState` indexado por `exerciseId`**. [§15](#15) impide crear duplicados
+   desde la app; la reindexación por instancia —lo que haría falta para
+   soportarlos, y para circuitos y superseries con repetición— es un cambio de
+   modelo con su propia spec. Un `.fitdata` con el duplicado ya dentro sigue
+   entrando.
 4. **Los cinco `AppHeader` montados a la vez.** [§11](#11) arregla el modal
    duplicado, que es el bug; los cinco relojes de 10 s son coste asumido.
 5. **La duplicación entre `exportFullBackup` y `performDriveBackup`.** [§3](#3)

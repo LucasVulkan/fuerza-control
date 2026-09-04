@@ -1,5 +1,12 @@
 # Spec — Bloques de acondicionamiento (AMRAP / EMOM / For time)
 
+> Tema: entrenamiento
+> En corto: Metcons dentro de una sesión —AMRAP, EMOM, for time— como capa aparte de los ejercicios de fuerza: se editan, se guardan como preset, se corren con cronómetro y se puntúan.
+> Fase T01 · hecho · Datos y utils: `conditioningBlocks.js`, acciones de editor, presets · §3
+> Fase T02 · hecho · Editor: sección BLOQUES en SessionEditorScreen y picker de movimientos · §6
+> Fase T03 · hecho · Runtime: `ConditioningBlockCard`, cronómetro y kill-recovery · §4
+> Fase T04 · pendiente · Historial: falta la línea de bloques en el detalle (recap sí está) · §7
+>
 > Estado: **spec cerrada, lista para implementar**. Mockups aprobados por el usuario
 > (workout view AMRAP+EMOM, pantalla de setup). Decisiones de producto ya tomadas —
 > no re-abrirlas sin consultar.

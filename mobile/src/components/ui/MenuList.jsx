@@ -20,7 +20,7 @@ import { ArrowIcon } from './EditorIcons';
 
 // Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
 // 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
-const ROW_CHEVRON = 10.77;
+export const ROW_CHEVRON = 10.77;
 
 export function RowIcon({ children, color }) {
   const th = useTheme();

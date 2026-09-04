@@ -33,13 +33,13 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { CloseIcon } from '../components/ui/EditorIcons';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ToggleRow } from '../components/ui/EditorRows';
 import { LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
 
-const HEADER_H = 64;
 
 /** Índice de la etapa base: la última sin regla (la última hecha a mano). */
 function baseStageIdx(stages) {
@@ -115,7 +115,6 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
 
 export default function StagePlannerScreen({ navigation, route }) {
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
@@ -199,16 +198,11 @@ export default function StagePlannerScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
-          <ArrowIcon size={20} color={th.colors.onAccent} back />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerEyebrow} numberOfLines={1}>{t('planner.eyebrow')}</Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>{program.name ?? ''}</Text>
-        </View>
-        <View style={styles.headerSide} />
-      </View>
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('planner.eyebrow')}
+        title={program.name ?? ''}
+      />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -315,28 +309,6 @@ export default function StagePlannerScreen({ navigation, route }) {
 
 const makeStyles = (th) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: th.colors.bg },
-
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    height:            HEADER_H,
-    marginHorizontal:  spacing.lg,
-    marginTop:         spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-  },
-  headerSide:    { width: 26, alignItems: 'center' },
-  headerCenter:  { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  headerEyebrow: {
-    ...textStyles.btnAction,
-    fontSize:      10,
-    letterSpacing: 1,
-    color:         th.colors.muted,
-    textTransform: 'uppercase',
-  },
-  headerTitle: { ...textStyles.hero, color: th.colors.onAccent, lineHeight: 22, flexShrink: 1 },
 
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs2 },
 

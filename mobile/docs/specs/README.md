@@ -4,22 +4,148 @@
 cualquier implementador (humano o LLM) pueda ejecutarla sin la conversación
 original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 
+**La foto de todo esto se ve de un vistazo en [`docs/estado.html`](../estado.html)**,
+que se regenera con `npm run estado`. No se edita a mano: lo lee de las specs.
+
+## Códigos
+
+Cada cosa implementable tiene un código de **una letra de tema + dos dígitos**,
+para poder decir "vamos a por la M02" sin ambigüedad:
+
+| Letra | Tema |
+|---|---|
+| `E` | Errores — son los 26 fallos de [auditoria-tecnica.md](auditoria-tecnica.md), `E01`-`E26`, con el número que ya tenían |
+| `M` | Monetización |
+| `O` | Onboarding |
+| `P` | Programas y editor |
+| `T` | Entrenamiento |
+| `C` | Entrenador ↔ cliente |
+| `U` | Estructura y UI |
+| `A` | Analítica |
+
+El número lo asigna quien escribe la spec y **no se reutiliza nunca**, ni aunque
+se borre la fase: un código de hace tres meses tiene que seguir significando lo
+mismo. `npm run estado` falla si dos specs se pisan un código o si una fase usa
+la letra de otro tema.
+
+## Cabecera estándar de una spec
+
+Es **obligatoria** y la lee el generador. Si falta algo o trae un valor
+desconocido, `npm run estado` **falla** en vez de callarse:
+
+```markdown
+# Spec — Título
+
+> Tema: monetización
+> En corto: Una frase, en cristiano, de qué va la cosa.
+> Fase M01 · pendiente · Identidad en RevenueCat · §3
+> Fase M02 · pendiente · Freemium 2+2 y hoja de elección · §4
+>
+> Estado: **la prosa de siempre**, con el detalle, los commits y el coste.
+```
+
+- **`Tema`** — uno de los ocho de la tabla de arriba. Es la sección de la página.
+- **`En corto`** — para qué sirve esto meses después. El título y el nombre del
+  archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
+- **`Fase <código> · <estado> · <título> · §<sección>`** — una línea por fase,
+  **al menos una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
+  seguimiento: casi nada se implementa de una vez, así que una spec "a medias"
+  no dice nada y "3 de 10 fases" sí.
+  La **`§`** es la sección de este mismo documento que cuenta esa fase; la
+  página la enseña entera al pulsar la fase, así que no hay que buscarla a mano.
+  Si apunta a un encabezado que no existe, `npm run estado` falla — un puntero
+  roto se descubre al generar y no al pulsarlo.
+- **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
+  detalle; la página no la pinta porque no cabe.
+
+**Ya no se escriben a mano `Progreso:` ni `Falta:`**: se derivan de las fases
+—todas hechas ⇒ cerrada, ninguna ⇒ sin empezar, si no a medias— porque eran dos
+campos que se desviaban solos.
+
+**Quién manda sobre el estado: la cabecera.** La tabla `## Fases` de dentro del
+documento es otra cosa y por eso no se unifican: es el **registro** de lo que se
+hizo y en qué commit (`✅ 0884d09`), con su coste, sus dependencias y su criterio
+de aceptación. La cabecera es **dónde estamos hoy**. Al cerrar una fase se
+cambian las dos: la palabra en la cabecera y la fila de la tabla con el commit.
+
+No se intenta derivar el estado de esas tablas —sería la opción sin
+duplicación— por dos motivos concretos: hay ocho formatos de tabla distintos
+entre las 19 specs, y varias tienen **más filas que fases** (`program-templates`
+parte la 2 en 2 y 2b, `monetizacion` tiene una fila `—` para el papeleo de las
+stores, que no es código). Forzar un 1:1 perdería información real a cambio de
+un parser frágil.
+
+Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propia
+línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única sin
+`> Fase`: su unidad son los fallos.
+
+**Pruebas en dispositivo:** se marcan con `**Probar en dispositivo.**` seguido
+del qué, hasta la línea en blanco. La página las junta todas en una lista — es
+lo único que `vitest` no puede cubrir, porque los stubs del test son inertes.
+
+## Cómo mantener esto al día
+
+Tres situaciones. Las tres acaban en `npm run estado`, que **falla** si algo no
+cuadra en vez de generar una página que miente — así que si duda, ejecútalo.
+
+### Al cerrar una fase
+
+1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho`. Esto es lo
+   que manda: es lo que lee la página.
+2. En la **tabla `## Fases`** del documento, su fila recibe el commit y lo que
+   haya que decir (`✅ 0884d09 — …`). Es el registro, no el estado.
+3. Si hace falta comprobarlo a mano en el móvil, se deja un bloque
+   `**Probar en dispositivo.** …` allí donde toque. La página los junta todos.
+4. `npm run estado`.
+
+### Al añadir una fase o una spec nueva
+
+1. `npm run estado` imprime **el siguiente código libre de cada tema**. Se coge
+   ese. Un número **no se reutiliza nunca**, ni aunque se borre la fase que lo
+   tenía: un código de hace tres meses tiene que seguir significando lo mismo.
+2. La spec nueva lleva la cabecera estándar entera (§ *Cabecera estándar*), con
+   al menos una fase, y **cada fase apunta con `§N` a la sección que la cuenta**.
+3. Se añade su fila a la tabla del tema que le toque, más abajo en este archivo.
+4. `npm run estado`.
+
+### Al añadir un fallo a [auditoria-tecnica.md](auditoria-tecnica.md)
+
+1. Fila en el índice de severidad con el número siguiente — es su código `E<nn>`.
+2. Sección `## <n>. Título` con una línea `> En corto:` justo debajo: qué
+   causaba, en cristiano. Sin ella el generador falla.
+3. Al arreglarlo, el ✅ en el índice y un bloque `### ✅ Resuelto` al final de la
+   sección diciendo **en qué se equivocaba el diagnóstico** si se equivocaba. Esa
+   es la parte que ha hecho útil ese documento; el §0 de allí lo explica.
+4. `npm run estado`.
+
+### Lo que el generador comprueba solo
+
+Tema desconocido · falta `En corto` o `Estado` · una spec sin fases · un código
+que no empieza por la letra de su tema · **dos specs con el mismo código** · un
+estado de fase que no es `hecho`/`pendiente`/`aparcado` · una `§` que apunta a
+un encabezado que no existe · un fallo de la auditoría sin `> En corto:`.
+
+Lo que **no** puede comprobar: que la palabra de la cabecera y el ✅ de la tabla
+digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
+
 ## Auditoría de corrección
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
-| [auditoria-tecnica.md](auditoria-tecnica.md) — Auditoría técnica (ago 2026) | diagnóstico cerrado. 26 fallos: 3 críticos · 7 altos · 8 medios · 8 bajos — **21 resueltos**, 5 pendientes de **26**, ninguno crítico. El fallo 26 (`claim_trainer_slots` regalaba los clientes de otro entrenador) está **cerrado**: SQL desplegado ago-2026 | 🟡 | No es una feature: es corrección. La **tanda A** ([§27](auditoria-tecnica.md#27-orden-de-trabajo-sugerido)) va antes de publicar — un fallo al rehidratar AsyncStorage deja la app en pantalla negra sin recuperación, y restaurar un backup completo pierde todos los programas de clientes. La tanda B arregla que la copia programada a Drive nunca se ejecute; la D, que en iOS todo el mundo sea Pro |
+| [auditoria-tecnica.md](auditoria-tecnica.md) — Auditoría técnica (ago 2026) | **cerrada** (sep 2026). 26 fallos: 3 críticos · 7 altos · 8 medios · 8 bajos — **los 26 resueltos**, las seis tandas de [§27](auditoria-tecnica.md#27-orden-de-trabajo-sugerido) | ✅ | No es una feature: es corrección. Queda pendiente de **prueba en dispositivo** (no de código) la (re)conexión cliente↔entrenador — ver [client-connection.md](client-connection.md). En 10 de los 26 el arreglo propuesto por el diagnóstico estaba mal o incompleto: cada sección lo dice en su bloque **Resuelto**, que es lo que hace útil el documento |
 
 | [client-connection.md](client-connection.md) — Conexión entrenador ↔ cliente | **app implementada, SQL DESPLEGADO** (ago 2026); falta prueba en dispositivo. Rediseño de los fallos 5, 7, 8 y 26 de la auditoría | 🟠 | La autorización se decidía en cuatro funciones con cuatro criterios, y dos ni estaban en el repo. Una regla única: *nadie se concede a sí mismo un asiento que otro ocupa*. Mapa completo de escenarios de (re)conexión. **El SQL de `supabase/connection_model.sql` y los cambios de la app se despliegan JUNTOS**: `get_slot_by_code` cambia de firma |
 
 | [rediseno.md](rediseno.md) — Rediseño estructural (sep 2026) | **fases 1 y 2 implementadas** (2-sep-2026), pendientes de prueba en dispositivo; 3 recortes antes de publicar · 4 Workout y publicar | 🟢/🟡 | No es corrección de fallos: es de **estructura**, y ninguna de las dos fases tocó una pantalla. La 1 borró 9.825 líneas de app web congelada desde may-2026 con su copia del store, y trajo `src/utils\|data\|locales` dentro de `mobile/`: **ya no hay `src/` en la raíz**. La 2 arregla que **cada tecla del campo de peso serialice el estado entero** (megabytes para un entrenador con clientes): zustand escribe en cada `set()` sin comparar, así que sacar `activeSession` del `partialize` **no basta** — hacen falta las dos mitades. Las dos specs se revisaron contra el código antes de ejecutarlas y las dos tenían huecos: en la 1, `clientSync.sim.test.js` era la única dependencia inversa del repo y ninguna regla de reescritura la tocaba; en la 2, la caducidad de 12 h se saltaba la sesión que venía dentro del blob de una instalación anterior |
 
 | [program-model.md](program-model.md) — Modelo de programas (sep 2026) | **las tres fases implementadas** (2-sep-2026), pendientes de prueba en dispositivo | 🟡 | Sale del §6.1 de [rediseno.md](rediseno.md); **ésta sí toca pantallas**. "De quién es este programa" está escrito hoy en **cuatro sitios** que nadie obliga a estar de acuerdo, y el invariante lo sostiene quien lee: un filtro de UI es lo único que impide que `restoreProgram` le robe el programa a un cliente. La fase 1 cierra además una fuga real — `deleteProgram` y `deleteClient` **no borran las sesiones** (`removeSessionFromProgram` sí), así que cada borrado deja `tpl_*` huérfanos para siempre en el estado y en cada `.fitdata`. Lleva mapa de migración completo y sube el fichero a `version: '3'`. **Revisada contra el código (sep 2026)**: el diagnóstico se confirmó entero y la spec se parcheó con lo que faltaba — `generateAndActivateProgram` no escribe dueño (y `owner` es un test positivo, así que el programa desaparecería de la pantalla), `importForClient` es una **segunda** puerta de entrada de programas de fuera sin `ensureStages` (bloquea la fase 3), `exportProgramWithLog` es una copia literal de `_buildProgramJson` que se borra, y el vaciado de la semilla se adelanta a la fase 1 |
+| [home-sessions.md](home-sessions.md) — La Home gira sobre la sesión (sep 2026) | spec cerrada, SIN implementar. 4 fases: U06 HomeView · U07 `ProgramCard` compartida · U08 `sessionPlan()` · U09 plantillas de sesión libre | 🟢/🟡 | Hoy **las sesiones completadas son lo más llamativo de la lista** (fondo `tint/accent-10` + borde `accent-50`) y la siguiente va sobre `surface` plano igual que las futuras: la jerarquía está invertida. El banner lima deja de ser del programa y pasa a ser la sesión que toca — **el banner desaparece como pieza de Figma** y sus cuatro datos se reparten (§8, pendiente de aprobar). Al bajar el programa al final se descubrió que `AssignedProgramCard` de `ClientsScreen` **ya era esa tarjeta**: se extrae a `ui/ProgramCard` con dos variantes, y de paso rescata el «07» en acento que el rediseño había perdido. La U08 no añade funcionalidad: junta en `sessionPlan()` las **tres cadenas que dan por hecho que entrenas rotando** (rótulo del hero, marcador de fila, contador del rótulo), ninguna de las cuales sabe hoy callarse — y de ahí sale la regla de §5.3: **el tamaño del hero es la confianza de la app**, así que en un modo a la carta no hay hero y manda la lista. §6 contrasta quince formas reales de entrenar: diez encajan hoy, y las dos que parecían no encajar se resuelven duplicando sesiones + `linkGroup` y con la sesión libre, que no toca `cycleCompletedIds` |
 
 ## Specs listas para implementar
 
 | Spec | Estado | Coste | Nota |
 |---|---|---|---|
+| [monetizacion.md](monetizacion.md) — Freemium 2+2, pago dual e invitar clientes | spec cerrada, SIN implementar (sep 2026). 4 fases: 0 identidad · 1 freemium · 2 paywall dual · 3 invitar | 🟢/🟡 | El muro es **todo o nada**: sin Pro no hay ni un cliente ni una plantilla, así que el entrenador no puede probar el producto con lo que hace a diario. Pasa a **2 clientes y 2 plantillas gratis**, y el precio a **anual O pago único** sobre el mismo entitlement — que el código ya soporta entero: `checkProStatus` solo mira `entitlements.active[...]` y el paywall ya itera sobre los paquetes. Al caducar **no se borra nada**: la sincronización se **congela cliente a cliente** (el cliente sigue subiendo, el entrenador no descarga) y los 2 activos los elige él — sale casi gratis porque `uploadHistory` sube el log entero cada vez, así que una sola descarga recupera el backlog, y el contador de "entrenos sin descargar" ya está calculado. Lo caro no es la app (~5 días), es el **contrato de Apps de Pago de Apple**, que es espera pura: empezarlo el día 1. **La fase 0 va primera y no se pospone**: `Purchases.configure` va sin `appUserID`, así que hoy el Pro **no cruza de Android a iPhone** y arreglarlo con compras hechas obliga a reconciliar alias a mano. Descartado con motivo: límite en el servidor (necesitaría webhooks + tabla de entitlements) y deferred deep linking (obligaría a un SDK de atribución que tumba el *"no rastreamos"* de `app-store-privacidad.md`) |
 | [training-load.md](training-load.md) — Carga de entrenamiento | fases 1-5 implementadas + tira de strain (captura, `trainingLoad.js`, vista Carga, esfuerzo vs carga, rendimiento, series por grupo, strain semanal); fase 6 APARCADA | 🟡 | fase 6 (objetivos por etapa) parada: las etapas no guardan fecha de inicio y hay dos definiciones de "semana" en conflicto — ver cabecera de la spec. `npm run seed` genera historial de prueba |
 | [metric-transparency.md](metric-transparency.md) — Ver la fórmula de cada dato | fases 1 y 2 implementadas (26 fichas + 5 gráficos documentados, apartado en Documentación y hoja al tocar el dato) | 🟢 | fase 3 (Workout, Recap, historial, adherencia) pendiente de decidir si merece la pena |
 | [program-generator.md](program-generator.md) — Generador de programas | fases A+B implementadas (`606ccdf`, `eff1666`); **fase C sustituida** por program-templates.md | 🔴 | histórico del diagnóstico y de la cirugía A+B. Su §6.1 (plantillas escritas + decisiones de diseño) sigue vivo |
@@ -30,6 +156,7 @@ original. Reglas transversales en `mobile/AGENTS.md` + memoria del proyecto.
 | [stage-planner.md](stage-planner.md) — Planificador de etapas | **fases 0-4 implementadas** (ago 2026); fase 5 (recap consciente de la descarga) pendiente | 🟡 | la etapa pasa de ser una copia a ser una regla. Vacía buena parte de la fase C del generador: 1 arquetipo × escalera = programa periodizado |
 | [program-view.md](program-view.md) — Visualizador de programa | **fases 1-3 implementadas** (ago 2026); fase 4 (export a PDF) pendiente de decisión | 🟢 | la pantalla "Ver programa" estaba en el modelo de datos de mayo: no enseñaba bloques, superseries, dropsets, calentamiento ni etapas. Ahora es un visualizador (no un tracker): resumen del programa, selector de etapas y volumen por grupo y ciclo contra la etapa 1 |
 | [stage-proposal.md](stage-proposal.md) — Propuesta de etapa (P4) | spec cerrada, SIN implementar (ago 2026). 5 fases: 1 ventana de etapa · 2 estado del cliente · 3 reglas · 4 prellenado del planificador · 5 entradas y cool-down | 🟡 | cierra el bucle: el planificador se abre **prellenado** desde las métricas en vez de vacío. **Un cliente vinculado nunca recibe propuesta** — es trabajo del entrenador. Ninguna regla lee `stage.rx`: el carácter de la etapa se mide. Sus fases 1-2 desatascan la fase 6 de training-load y entregan la bandera "Estancado" del triaje |
+| [analitica.md](analitica.md) — Analítica anónima propia | spec cerrada, **en espera deliberada** (sep 2026): se arranca cuando el onboarding deje de moverse, porque la A02 es instrumentarlo. 4 fases: A01 tubería · A02 eventos · A03 pulso · A04 privacidad | 🟢 | Saber si terminan el onboarding, si conectan con entrenador, si vuelven a la semana y **cuánto mejoran**. El plan de marketing pedía Firebase GA4 y se descarta: GA4 no calcula una regresión sobre un historial de entrenamiento, y mete a Google como tercero receptor — adiós al *"no rastreamos"* de [app-store-privacidad.md](../app-store-privacidad.md). En su lugar, **una tabla `app_events` en el Supabase que ya está configurado**: sin dependencia nueva (`expo-crypto` ya está), sin ATT, sin dashboard. `device` es un UUID aleatorio que **no** es el `user.id`, y la tabla no tiene policy de SELECT: la anon key inserta y no lee. La métrica de mejora ya existe (`computeOverallImprovement`) pero vive dentro de `ProgressTab.jsx` sin exportar y **sin una sola prueba**, siendo el número más vendible de la app: A03 la saca a `utils/improvement.js` con la suya. "Programa terminado" **no se mide** — el modelo solo tiene `archived`, que mezcla terminado con abandonado; los separa la adherencia del pulso. **A04 no bloquea el código, bloquea la publicación** |
 | [bulk-edit.md](bulk-edit.md) — Editor masivo + sustitución | spec cerrada, SIN implementar (ago 2026). 3 fases: 1 editor de parámetros · 2 sustitución masiva · 3 campo progresión | 🟡 | lo que un entrenador hace en Excel arrastrando una columna. **Un solo editor**: sesión/etapa es un parámetro cambiable dentro, no dos pantallas. Barata porque `SessionEditorScreen` solo se alcanza desde el editor de programa, y de ahí hereda deshacer y `markProgramDirtyForClients` (§3.1). NO es un `rx`: el absoluto es asignación, no delta |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
@@ -79,6 +206,14 @@ lint). Va después de `programTemplateIds`/`effectiveTemplateIds`.
 - Prescripción por %1RM (base e1RM ya existe en `src/utils/oneRm.js`).
 - Unificar modelo de guardado (autosave del editor de ejercicio vs botón Guardar
   + snapshot del editor de programa) — decisión de producto.
+- **Sustituir un ejercicio durante el workout**, como sustitución **puntual de
+  esa sesión**: no toca el programa y queda reflejada en el historial (hoy solo
+  se puede desde `SessionEditorScreen`, y `saveSession` no distingue "sustituido"
+  de "saltado + ad-hoc"). Sube de prioridad desde sep-2026: es la vía de
+  adaptación que le queda al cliente conectado ahora que el programa del
+  entrenador es de solo lectura — ver [stage-locks.md](stage-locks.md) §2.1.
+  `replaceExercise` ya existe; lo que falta es el registro en el log y la entrada
+  desde `WorkoutScreen`.
 - Swipe en bordes de SessionEditorScreen como atajo para cambiar de sesión
   (los chips ya cubren la función; `switchSession` ya existe).
 

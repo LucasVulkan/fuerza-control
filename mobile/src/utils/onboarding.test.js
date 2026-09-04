@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { stageDays } from './stageProgress';
-import { generateProgram, GOAL_PARAMS } from './programGenerator';
-import { adaptArchetype } from './archetypeAdapter';
+import { adaptArchetype, GOAL_PARAMS } from './archetypeAdapter';
 import { rankArchetypes } from '../data/archetypes';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
@@ -14,15 +13,16 @@ function normalizeEquipment(equipment) {
 }
 
 /**
- * Replica el camino real. Con el ranking (program-templates.md §7) el
- * procedural ya no es autor: siempre gana una plantilla. Se conserva la rama
- * por si algún día el catálogo estuviera vacío.
+ * Replica el camino real, que desde que existe el ranking
+ * (program-templates.md §7) es uno solo: siempre gana una plantilla y la
+ * adapta. El generador procedural que hacía de relleno se borró en
+ * rediseno.md §4 — si `rankArchetypes` devolviera vacío, esto revienta, que es
+ * exactamente lo que se quiere saber.
  */
 function runOnboarding(answers) {
   const normalized = { ...answers, equipment: normalizeEquipment(answers.equipment) };
-  const archetype = rankArchetypes(normalized)[0]?.archetype ?? null;
-  const result = archetype ? adaptArchetype(archetype, normalized) : generateProgram(normalized);
-  return { ...result, archetype };
+  const archetype = rankArchetypes(normalized)[0].archetype;
+  return { ...adaptArchetype(archetype, normalized), archetype };
 }
 
 function exerciseFitsEquipment(ex, equipment) {
@@ -33,11 +33,11 @@ function exerciseFitsEquipment(ex, equipment) {
 const ALL_EXERCISES = Object.values(EXERCISE_LIBRARY);
 
 /**
- * Excepción aceptable a "≥1 key": el/los grupo(s) que esta emphasis usa como
- * keyGroup en DISTRIBUTION_PATTERNS no tienen NINGÚN ejercicio compuesto que
- * encaje con el equipo dado (p. ej. `back` no tiene ni un solo ejercicio
- * bodyweight-only en toda la librería) — no es un hueco que el generador esté
- * descartando pudiendo llenarlo, es la biblioteca agotada.
+ * Excepción aceptable a "≥1 key": el/los grupo(s) que esta emphasis trata como
+ * principales no tienen NINGÚN ejercicio compuesto que encaje con el equipo
+ * dado (p. ej. `back` no tiene ni un solo ejercicio bodyweight-only en toda la
+ * librería) — no es un hueco que la adaptación esté descartando pudiendo
+ * llenarlo, es la biblioteca agotada.
  */
 const EMPHASIS_KEY_GROUPS = {
   pull: ['back'], push: ['chest', 'shoulders'], legs: ['quads', 'glutes_hamstrings'],
@@ -407,18 +407,16 @@ describe('regresión — casos con nombre propio', () => {
   });
 });
 
-// ─── B5 — presupuesto de tiempo por sesión (trimToTimeBudget) ────────────────
+// ─── B5 — presupuesto de tiempo por sesión (compressSession) ─────────────────
 //
 // No fijamos minutos exactos de duración estimada como assertion: el nº de
-// slots de accesorios lo define DISTRIBUTION_PATTERNS por día (p. ej. los
-// patrones full_body solo listan 3 grupos de accesorio), así que el techo real
-// de ejercicios con tiempo de sobra depende de esos datos, no solo del
-// presupuesto — comprobado a mano: full_body/intermediate/dumbbells+ topa en
-// 5 ejercicios (2 key + 3 acc) a partir de 60 min, no en 6. Lo que SÍ es un
-// invariante garantizado por trimToTimeBudget, y lo que testeamos aquí:
-// monotonía (más tiempo ⇒ nunca menos ejercicios) y que el recorte nunca toca
+// ejercicios de un día lo fija la plantilla, así que el techo real con tiempo
+// de sobra depende de esos datos y no del presupuesto. Lo que SÍ es un
+// invariante de `compressSession`, y lo que se testea aquí de punta a punta
+// (la unidad tiene sus propios tests en `sessionCompression.test.js`):
+// monotonía —más tiempo ⇒ nunca menos ejercicios— y que el recorte nunca toca
 // las keys.
-describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
+describe('B5 — presupuesto de tiempo (compressSession)', () => {
   const base = {
     level: 'intermediate', discipline: 'standard', distribution: 'full_body',
     daysPerWeek: 5, goal: 'hypertrophy',
@@ -426,7 +424,7 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   };
 
   it('más minutos ⇒ nunca menos ejercicios, y las keys nunca se recortan', () => {
-    const byTime = [30, 45, 60, 90].map((sessionMinutes) => generateProgram({ ...base, sessionMinutes }));
+    const byTime = [30, 45, 60, 90].map((sessionMinutes) => runOnboarding({ ...base, sessionMinutes }));
 
     for (let i = 0; i < stageDays(byTime[0].program).length; i++) {
       let prevTotal = 0;
@@ -443,8 +441,8 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   });
 
   it('30 min genera sesiones más cortas (o iguales) que 90 min para el mismo combo', () => {
-    const r30 = generateProgram({ ...base, sessionMinutes: 30 });
-    const r90 = generateProgram({ ...base, sessionMinutes: 90 });
+    const r30 = runOnboarding({ ...base, sessionMinutes: 30 });
+    const r90 = runOnboarding({ ...base, sessionMinutes: 90 });
     stageDays(r30.program).forEach((d, i) => {
       const tpl30 = r30.sessionTemplates[d.sessionTemplateId];
       const tpl90 = r90.sessionTemplates[stageDays(r90.program)[i].sessionTemplateId];
@@ -453,8 +451,8 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
   });
 
   it('sessionMinutes ausente se comporta como el default (60)', () => {
-    const rDefault = generateProgram(base);
-    const r60 = generateProgram({ ...base, sessionMinutes: 60 });
+    const rDefault = runOnboarding(base);
+    const r60 = runOnboarding({ ...base, sessionMinutes: 60 });
     stageDays(rDefault.program).forEach((d, i) => {
       const tplDefault = rDefault.sessionTemplates[d.sessionTemplateId];
       const tpl60 = r60.sessionTemplates[stageDays(r60.program)[i].sessionTemplateId];
@@ -466,7 +464,7 @@ describe('B5 — presupuesto de tiempo (trimToTimeBudget)', () => {
     // max_strength + PPL: rest largo (180s) hace que hasta 30 min sea un
     // presupuesto imposible de cumplir — el recorte debe parar en el suelo,
     // no seguir vaciando la sesión.
-    const result = generateProgram({
+    const result = runOnboarding({
       level: 'intermediate', discipline: 'strength', distribution: 'push_pull_legs',
       daysPerWeek: 3, goal: 'max_strength',
       equipment: ['dumbbells', 'machines', 'cables', 'barbell'], limitations: ['none'],

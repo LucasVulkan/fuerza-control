@@ -251,9 +251,14 @@ export function mergeProgressOnImport({ blob, program, lastActivation = null }) 
  *            totalWeeksCompleted: number, stageAdvancePending: boolean}}
  */
 export function advanceCycle(program, templateId, cycleTplIds, { durationWeeks, isLastStage = false } = {}) {
-  const cycleIds = new Set(program.cycleCompletedIds ?? []);
+  const valid = new Set(cycleTplIds);
+  // Filtrado, no confiado: `cycleCompletedIds` sobrevive a los reajustes de etapa
+  // del entrenador (`mergeProgressOnImport` lo conserva si no hay salto), y un id
+  // que ya no pertenece al ciclo no puede contar para cerrarlo. Los consumidores
+  // de la lista preguntan por pertenencia y no les molestaba; aquí se cuenta.
+  const cycleIds = new Set((program.cycleCompletedIds ?? []).filter((id) => valid.has(id)));
   cycleIds.add(templateId);
-  const cycleClosed = cycleIds.size >= new Set(cycleTplIds).size;
+  const cycleClosed = cycleIds.size >= valid.size;
 
   const stageWeeksCompleted = (program.stageWeeksCompleted ?? 0) + (cycleClosed ? 1 : 0);
   // Once pending, it stays pending until the athlete advances or dismisses it.

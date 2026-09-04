@@ -17,12 +17,21 @@
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { generateId } from './formatters';
-import { GOAL_PARAMS } from './programGenerator';
 import { autoLinkRepeated } from './exerciseLinks';
 import { compressSession } from './sessionCompression';
 import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
 import { normalizeWeeklyVolume } from './weeklyVolume';
+
+// Series/reps/descanso por objetivo. Vivían en `programGenerator.js`, que era
+// quien las escribía primero; al retirarse el procedural (rediseno.md §4) se
+// mudan aquí, su único consumidor.
+export const GOAL_PARAMS = {
+  hypertrophy:  { sets: 3, minReps: 8,  maxReps: 12, restSec: 90  },
+  strength:     { sets: 4, minReps: 5,  maxReps: 8,  restSec: 120 },
+  max_strength: { sets: 5, minReps: 3,  maxReps: 5,  restSec: 180 },
+  endurance:    { sets: 3, minReps: 12, maxReps: 20, restSec: 60  },
+};
 
 // Exportado: el panel de ajustes del onboarding (mobile) lo necesita para
 // decidir qué limitación causó una sustitución dada (spec onboarding-simple
@@ -181,8 +190,8 @@ function reduceForBeginner(exercises, userEquipment) {
 /**
  * Adapta un arquetipo a las respuestas del onboarding.
  *
- * Devuelve `{ program, sessionTemplates }` en el mismo formato que
- * `generateProgram`, más el diagnóstico de la adaptación (spec §5.1):
+ * Devuelve `{ program, sessionTemplates }` —el formato que espera el store—
+ * más el diagnóstico de la adaptación (spec §5.1):
  * `substitutions` (qué cambió y por qué), `unresolved` (slots que la biblioteca
  * no pudo llenar), `overTime` (sesiones que no caben en el presupuesto ni tras
  * la compresión), `weekly` (series semanales por grupo) y `overBudget` (grupos

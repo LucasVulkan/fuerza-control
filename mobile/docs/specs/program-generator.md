@@ -1,6 +1,24 @@
 # Spec — Generador automático de programas (onboarding)
 
-> Estado: **diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
+> Tema: programas
+> En corto: El motor que convierte las respuestas del onboarding en un programa. Se validó con 21.600 combinaciones de respuestas.
+> Fase P04 · hecho · Fase A — arquitectura del generador (`606ccdf`) · §4
+> Fase P05 · hecho · Fase B — correcciones del stress-test de 21.600 combos (`eff1666`) · §5
+> Fase P06 · aparcado · Fase C — arquetipos: sustituida por program-templates (P10-P19) · §6
+>
+> Estado: **documento histórico desde sep-2026.** El motor que describe
+> —`src/utils/programGenerator.js`, el procedural— **ya no existe**: se borró en
+> la fase 3 de [rediseno.md](rediseno.md) §4 cuando se comprobó que su única
+> llamada viva era la rama "si el catálogo de plantillas está vacío" del store,
+> inalcanzable porque el catálogo es un fichero del repo. Hoy el onboarding es
+> siempre plantilla + adaptación ([program-templates.md](program-templates.md)).
+> De aquí sobreviven tres cosas: `GOAL_PARAMS` (mudada a `archetypeAdapter.js`),
+> el harness de invariantes (renombrado a `src/utils/onboarding.test.js`, ahora
+> sobre el camino real) y el diagnóstico, que es por qué se hicieron las
+> plantillas. Las fases A y B siguen `hecho` porque se hicieron; lo que
+> arreglaron ya no está.
+>
+> **Diagnóstico cerrado (Fable, jul 2026). Fases A y B implementadas y
 > fusionadas** (`606ccdf` fase A, `eff1666` fase B — ver §4 y §5, marcadas al
 > final de cada una). **Fase C SUSTITUIDA por
 > [program-templates.md](program-templates.md)** (ago 2026) — ver §6.
@@ -18,7 +36,7 @@
 > 38.000+ sesiones generadas sin ningún ejercicio clave; 4.400+ con menos de 3
 > ejercicios; 1.080 programas con menos días de los pedidos sin aviso. Los
 > fixes de A+B corrigen estas causas — ver harness de 704 tests en
-> `src/utils/programGenerator.test.js`.
+> `src/utils/onboarding.test.js`.
 
 ---
 
@@ -159,7 +177,7 @@ Si `daysPerWeek > patternDays.length`, **ciclar** los patrones (día 4 = patrón
 estructura está bien (frecuencia 2 real); los ejercicios pueden coincidir — no
 es un bug, es entrenar un patrón 2 veces por semana.
 
-### A7 — Tests de invariantes (nuevo `src/utils/programGenerator.test.js`)
+### A7 — Tests de invariantes (nuevo `src/utils/onboarding.test.js`)
 
 Harness de invariantes sobre una matriz representativa (~400-600 combos, no las
 21.600 — vitest debe seguir siendo rápido). Para cada programa generado
@@ -273,7 +291,7 @@ cada sesión:
 
 ### B5 — Tests
 
-Ampliar `programGenerator.test.js`: con `sessionMinutes: 30` ninguna sesión
+Ampliar `onboarding.test.js`: con `sessionMinutes: 30` ninguna sesión
 generada supera ~35 min estimados (margen por el suelo duro) y todas conservan
 ≥1 key; con 90 min salen 6 ejercicios; invariantes existentes intactos con el
 nuevo parámetro presente y ausente (default 60).
@@ -294,7 +312,7 @@ nuevo parámetro presente y ausente (default 60).
 Diseñados en conversación directa Fable+usuario, verificados uno a uno con
 scripts `vite-node` (matching correcto, sustitución segura si falta equipo,
 recorte por tiempo sin tocar keys, frecuencia≥2 en los keys principales) y
-tests de regresión en `programGenerator.test.js`:
+tests de regresión en `onboarding.test.js`:
 
 | Arquetipo | id | Commit |
 |---|---|---|

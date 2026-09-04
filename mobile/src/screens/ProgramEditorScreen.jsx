@@ -16,16 +16,13 @@ import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, DragIcon, PencilIcon, CheckIcon, LockIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, DragIcon, LockIcon } from '../components/ui/EditorIcons';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
-import { isStageLocked } from '../utils/stageLocks';
+import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
 
-// SesionHeader / "Editar Programa" (210:2819) — alto exacto de Figma.
-const HEADER_H = 64;
-// Ancho del botón lápiz/check de la cabecera (y de su contrapeso invisible).
-const HEADER_EDIT_W = 16;
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
@@ -109,7 +106,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const scrollRef = useAnimatedRef();
 
   useEffect(() => {
-    beginEditSession();
+    beginEditSession(editingId);
   }, []);
 
   useEffect(() => {
@@ -124,14 +121,16 @@ export default function ProgramEditorScreen({ navigation }) {
   const leavingRef = useRef(false);
 
   // Reverts the live edits to the snapshot taken on entry, then clears edit state.
+  // Sin foto no hay nada que revertir: `importData` la borra al escribir encima
+  // (fallo 12), y ahí lo correcto es salir dejando lo que acaba de entrar.
   function restoreSnapshot() {
-    const snapshot = useStore.getState()._editSnapshot;
-    if (snapshot) {
-      useStore.setState({
-        programs: snapshot.programs,
-        sessionTemplates: snapshot.sessionTemplates,
+    const snap = useStore.getState()._editSnapshot;
+    if (snap) {
+      useStore.setState((s) => ({
+        programs: { ...s.programs, [snap.programId]: snap.program },
+        sessionTemplates: snap.sessionTemplates,
         _editSnapshot: null,
-      });
+      }));
     }
     useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
   }
@@ -145,7 +144,7 @@ export default function ProgramEditorScreen({ navigation }) {
     // Los cambios caen en programs[editingId] (la estructura) y en las sesiones.
     // Con un solo diccionario esto compara TODAS las sesiones y no sólo la capa
     // de ediciones: sigue siendo correcto, y sólo corre al intentar salir.
-    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.programs[editingId])) return true;
+    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.program)) return true;
     if (JSON.stringify(st.sessionTemplates) !== JSON.stringify(snap.sessionTemplates)) return true;
     // `nameValue` solo es fuente de verdad mientras el título está en edición;
     // fuera de ahí el nombre se pinta del store y compararlo daría falsos
@@ -289,68 +288,27 @@ export default function ProgramEditorScreen({ navigation }) {
   // control no aparece (si no, se abriría sus propias etapas). Y solo por
   // delante de donde está — encerrarle fuera de la etapa que entrena no tiene
   // sentido, e `isStageLocked` lo ignoraría igualmente.
-  const isTrainerProgram    = !!clientSync?.slotId
-    && !!clientSync.trainerProgramIds?.includes(activeProgram.id);
-  const canLockStage        = !isTrainerProgram
+  const fromTrainer         = isTrainerProgram(activeProgram, clientSync);
+  const canLockStage        = !fromTrainer
     && selectedStageIdx > 0
     && selectedStageIdx > activeStageIdx;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.headerSide}>
-          <ArrowIcon size={20} color={th.colors.onAccent} back />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerEyebrow} numberOfLines={1}>
-            {isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
-          </Text>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.headerTitleSpacer} />
-            {editingName ? (
-              <TextInput
-                autoFocus
-                style={styles.headerTitleInput}
-                value={nameValue}
-                onChangeText={setNameValue}
-                onBlur={commitName}
-                onSubmitEditing={commitName}
-                placeholder={t('editor.programNamePlaceholder')}
-                placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
-                returnKeyType="done"
-              />
-            ) : (
-              <Text
-                style={styles.headerTitle}
-                numberOfLines={1}
-                onPress={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
-                suppressHighlighting
-              >
-                {activeProgram.name ?? ''}
-              </Text>
-            )}
-            <TouchableOpacity
-              hitSlop={10}
-              style={styles.headerEditBtn}
-              onPress={() => {
-                if (editingName) commitName();
-                else { setNameValue(activeProgram.name ?? ''); setEditingName(true); }
-              }}
-            >
-              {editingName
-                ? <CheckIcon  size={16} color={th.colors.onAccent} />
-                : <PencilIcon size={15} color={th.colors.onAccent} />}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Hueco: el "···" tenía una sola acción ("añadir etapa") y ahora vive
-            en la hoja del "+", junto al selector de etapas. El espaciador
-            mantiene el título centrado. */}
-        <View style={styles.headerSide} />
-      </View>
+      {/* Sin acción a la derecha: el "···" tenía una sola ("añadir etapa") y
+          ahora vive en la hoja del "+", junto al selector de etapas. */}
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
+        title={activeProgram.name ?? ''}
+        placeholder={t('editor.programNamePlaceholder')}
+        renaming={editingName}
+        draft={nameValue}
+        onDraftChange={setNameValue}
+        onRenameStart={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
+        onRenameCommit={commitName}
+      />
 
       {/* Scrollable content */}
       <Reanimated.ScrollView
@@ -634,63 +592,6 @@ export default function ProgramEditorScreen({ navigation }) {
 
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
-
-  // ── SesionHeader / "Editar Programa" (210:2819) ──
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    height:            HEADER_H,
-    marginHorizontal:  spacing.lg,   // margen de página del frame (x=15)
-    marginTop:         spacing.lg,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    // Figma pide `space/sm`; sube a `space/lg` porque en dispositivo la flecha
-    // y el ⋮ quedaban pegados al borde de la barra.
-    paddingHorizontal: spacing.lg,
-    overflow:          'hidden',
-  },
-  headerSide:   { width: 26, alignItems: 'center', justifyContent: 'center' },
-  headerCenter: { flex: 1, alignItems: 'center', gap: spacing.xs, minWidth: 0 },
-  // Figma pinta el eyebrow en `color/muted` sobre el lima, no en onAccent.
-  // Tipografía `text/btn-action` (Black) al tamaño de `spacing-tag` (10) y sin
-  // tracking: sobre el lima pedía más peso, no más aire (QA).
-  headerEyebrow: {
-    ...textStyles.btnAction,
-    fontSize:      10,
-    // Un punto de tracking, a medio camino entre el 0 de `btn-action` y el 2 de
-    // `spacing-tag`: sin nada de aire se leía apretado (QA).
-    letterSpacing: 1,
-    color:         th.colors.muted,
-    textAlign:     'center',
-    textTransform: 'uppercase',
-  },
-  // El lápiz descentraba el nombre: la fila centra el grupo entero, así que
-  // lleva un contrapeso invisible del mismo ancho al otro lado.
-  headerTitleSpacer: { width: HEADER_EDIT_W },
-  headerEditBtn:     { width: HEADER_EDIT_W, alignItems: 'center' },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    maxWidth:      '100%',
-  },
-  headerTitle: {
-    ...textStyles.hero,
-    color:      th.colors.onAccent,
-    textAlign:  'center',
-    lineHeight: 22,
-    flexShrink: 1,
-  },
-  headerTitleInput: {
-    ...textStyles.hero,
-    color:      th.colors.onAccent,
-    textAlign:  'center',
-    lineHeight: 22,
-    padding:    0,
-    flexShrink: 1,
-    minWidth:   80,
-  },
 
   // ── Contenido ──
   // Padding de página `space/lg` y gap `space/md`, ambos del frame 210:2864.

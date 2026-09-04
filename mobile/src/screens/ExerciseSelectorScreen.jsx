@@ -60,6 +60,8 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const language = useStore((s) => s.profile.language);
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
+  const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const activeSession    = useStore((s) => s.activeSession);
   const addExercise      = useStore((s) => s.addExercise);
   const replaceExercise  = useStore((s) => s.replaceExercise);
   const addAdHocExercise = useStore((s) => s.addAdHocExercise);
@@ -67,6 +69,21 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const showToast        = useStore((s) => s.showToast);
 
   const allLibrary = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
+
+  // Lo que ya está en el destino no se ofrece. `setsState` va indexado por
+  // exerciseId, así que dos instancias del mismo ejercicio comparten series,
+  // "hecho" y borrado (fallo 15). Aquí se corta el único camino por el que la
+  // app podía crearlas: añadir y también SUSTITUIR por uno que ya está.
+  // El picker de bloques queda fuera: ahí repetir movimiento es legítimo.
+  const taken = useMemo(() => {
+    if (blockPicker) return new Set();
+    const tplId = sessionMode ? activeSession.templateId : templateId;
+    return new Set([
+      ...(sessionTemplates[tplId]?.exercises ?? []).map((ex) => ex.exerciseId),
+      ...(sessionMode ? (activeSession.adHocExercises ?? []).map((ex) => ex.exerciseId) : []),
+    ]);
+  }, [blockPicker, sessionMode, templateId, sessionTemplates, activeSession]);
+
   const currentDef = currentExerciseId ? allLibrary[currentExerciseId] : null;
 
   // Multi-select only when ADDING (replace/block-picker modes stay a single pick).
@@ -122,7 +139,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allExercises
-      .filter((ex) => ex.id !== currentExerciseId)
+      .filter((ex) => ex.id !== currentExerciseId && !taken.has(ex.id))
       .filter((ex) => !q || [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase().includes(q))
       .filter((ex) => !patternGroup || GROUP_OF_PATTERN[ex.pattern] === patternGroup)
       .filter((ex) => !groupFilter.length || muscleGroupIdsOf(ex).some((id) => groupFilter.includes(id)))
@@ -130,7 +147,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
       .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'))
       .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, language]);
+  }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, taken, language]);
 
   const renderItem = ({ item: ex }) => {
     const isSel = multiSelect && selectedIds.includes(ex.id);

@@ -13,13 +13,13 @@
  * Mentir sobre el tiempo es peor que pasarse de él.
  *
  * El `tier` se lee del exConfig si está (lo pone `adaptArchetype`, y no sale de
- * ahí: al `sessionTemplate` va sin él) y si no se deriva de `isKey` — el camino
- * procedural no tiene tier 2.
+ * ahí: al `sessionTemplate` va sin él) y si no se deriva de `isKey`.
  *
- * Este módulo unifica a propósito la estimación de tiempo que `programGenerator`
- * y `archetypeAdapter` duplicaban de forma deliberada. La duplicación se
- * mantenía porque la fórmula era de tres líneas; con una escalera de seis
- * peldaños y una tabla por disciplina, dos copias divergen seguro.
+ * Este módulo unificó la estimación de tiempo que el generador procedural y
+ * `archetypeAdapter` duplicaban a propósito. El procedural ya no existe
+ * (rediseno.md §4), pero la unificación se queda: la fórmula pasó de tres
+ * líneas a una escalera de seis peldaños con tabla por disciplina, y ahí dos
+ * copias divergen seguro.
  */
 
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';

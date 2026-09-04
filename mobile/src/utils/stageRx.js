@@ -46,8 +46,9 @@ export const DEFAULT_RX = {
  *
  * Por qué dos de las tres llevan `scope`: sin alcance, un peldaño de
  * intensificación empujaría los curls a 5-9 repeticiones, y eso contradice una
- * regla que el propio generador ya aplica — "uniarticulares siempre con
- * parámetros de hipertrofia" (`programGenerator.js`). El rango corto es de los
+ * regla que la adaptación de plantillas ya respeta: el objetivo se aplica sólo
+ * a los keys, los accesorios se quedan con el rango de la plantilla
+ * (`archetypeAdapter.js`, `buildExConfig`). El rango corto es de los
  * básicos; los accesorios viven en 8-15 haga el bloque lo que haga. Y al revés
  * en volumen: las series extra van a los accesorios, no a la sentadilla pesada.
  *

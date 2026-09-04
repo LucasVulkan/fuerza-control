@@ -214,6 +214,116 @@ describe('importData — fallo 2', () => {
   });
 });
 
+describe('importData — fallo 25, etiquetas y presets de bloque', () => {
+  beforeEach(() => {
+    useStore.setState({
+      tagRegistry:  [{ id: 'tag_local', name: 'Local' }],
+      blockPresets: [{ presetId: 'pre_local', format: 'amrap' }],
+      clients: {}, customExercises: {},
+    });
+  });
+
+  const backup = () => ({
+    clients:      { cli_1: { id: 'cli_1', name: 'Ana', tags: ['tag_1'] } },
+    tagRegistry:  [{ id: 'tag_local', name: 'Pisado?' }, { id: 'tag_1', name: 'Lesionado' }],
+    blockPresets: [{ presetId: 'pre_local', format: 'x' }, { presetId: 'pre_1', format: 'emom' }],
+  });
+
+  it('las etiquetas entran con los clientes, sin duplicar ni pisar las locales', () => {
+    useStore.getState().importData(backup(), { clients: true }, { silent: true });
+
+    expect(useStore.getState().tagRegistry).toEqual([
+      { id: 'tag_local', name: 'Local' },
+      { id: 'tag_1', name: 'Lesionado' },
+    ]);
+  });
+
+  it('los presets entran con la biblioteca personal', () => {
+    useStore.getState().importData(backup(), { customExercises: true }, { silent: true });
+
+    expect(useStore.getState().blockPresets).toEqual([
+      { presetId: 'pre_local', format: 'amrap' },
+      { presetId: 'pre_1', format: 'emom' },
+    ]);
+  });
+
+  it('sin su sección no entra ninguno de los dos', () => {
+    useStore.getState().importData(backup(), { program: true }, { silent: true });
+
+    expect(useStore.getState().tagRegistry).toHaveLength(1);
+    expect(useStore.getState().blockPresets).toHaveLength(1);
+  });
+});
+
+describe('addExercise / replaceExercise — fallo 15', () => {
+  beforeEach(() => {
+    useStore.setState({
+      sessionTemplates: {
+        t1: { id: 't1', name: 'A', exercises: [{ exerciseId: 'ex_a', sets: 3, order: 1 }] },
+      },
+      exerciseLibrary: { ex_a: { id: 'ex_a' }, ex_b: { id: 'ex_b' } },
+      customExercises: {},
+    });
+  });
+
+  it('añadir el mismo ejercicio dos veces no lo duplica', () => {
+    useStore.getState().addExercise('t1', 'ex_a');
+
+    expect(useStore.getState().sessionTemplates.t1.exercises).toHaveLength(1);
+  });
+
+  it('sustituir por uno que ya está en la sesión tampoco', () => {
+    useStore.getState().addExercise('t1', 'ex_b');
+    useStore.getState().replaceExercise('t1', 'ex_b', 'ex_a');
+
+    const ids = useStore.getState().sessionTemplates.t1.exercises.map((ex) => ex.exerciseId);
+    expect(ids).toEqual(['ex_a', 'ex_b']);
+  });
+});
+
+describe('beginEditSession / importData — fallo 12', () => {
+  beforeEach(() => {
+    useStore.setState({
+      _editSnapshot: null,
+      programs: {
+        prog_a: { id: 'prog_a', name: 'A', owner: 'me', kind: 'program', stages: [] },
+        prog_b: { id: 'prog_b', name: 'B', owner: 'me', kind: 'program', stages: [] },
+      },
+      sessionTemplates: {},
+    });
+  });
+
+  it('la foto se acota al programa que se edita', () => {
+    useStore.getState().beginEditSession('prog_a');
+
+    const snap = useStore.getState()._editSnapshot;
+    expect(snap.programId).toBe('prog_a');
+    expect(snap.program.name).toBe('A');
+    expect(snap.programs).toBeUndefined();   // ya no se clonan todos
+  });
+
+  it('sin programa no deja una foto a medias', () => {
+    useStore.getState().beginEditSession('prog_inexistente');
+
+    expect(useStore.getState()._editSnapshot).toBeNull();
+  });
+
+  it('importar mientras el editor está abierto invalida la foto', () => {
+    // El cliente acepta la actualización del entrenador con el editor abierto.
+    // Si la foto sobrevive, cancelar devuelve el programa a la versión vieja
+    // mientras `lastProgramImportedAt` ya avanzó: la actualización se pierde.
+    useStore.getState().beginEditSession('prog_a');
+    useStore.getState().importData(
+      { program: { id: 'prog_a', name: 'A v2', owner: 'me', kind: 'program', stages: [] } },
+      { program: true },
+      { silent: true },
+    );
+
+    expect(useStore.getState()._editSnapshot).toBeNull();
+    expect(useStore.getState().programs.prog_a.name).toBe('A v2');
+  });
+});
+
 describe('importData — fallo 10, reemplazar plantillas', () => {
   /** Tres plantillas propias, más un programa personal que no debe moverse. */
   const estadoLocal = () => ({

@@ -526,7 +526,7 @@ Claves i18n nuevas (es+en): `blocks.roundDone`, `removeRound`, `partialHint`,
 
 ---
 
-## 7. Timer de descanso flotante (`RestTimerFloat` en `WorkoutScreen.jsx`)
+## 7. Timer de descanso flotante (`RestTimerFloat` en `WorkoutScreen.jsx`) — HECHO (Parte 5)
 
 No está en Figma → **restyle por analogía** (§0.3): tokens/colores FormaFit (fondo `surface`,
 borde `borderCard`, `radius/lg`, anillo de progreso en `accent`, texto `text`), misma forma
@@ -535,7 +535,7 @@ cambia la lógica (`restTimer` del store, `PanResponder`, slide in/out).
 
 ---
 
-## 8. Modal de notas (`NotesModal` en `WorkoutScreen.jsx`)
+## 8. Modal de notas — HECHO (Parte 5), ahora en `src/components/workout/NotesModal.jsx`
 
 - **Restyle FormaFit** + **drag-to-close** (§0.6). Reutiliza `src/components/DragSheet.jsx` (ya
   implementa backdrop que se desvanece con el arrastre, spring-in, umbral `dy>120 || vy>0.8`) o
@@ -549,7 +549,7 @@ cambia la lógica (`restTimer` del store, `PanResponder`, slide in/out).
 
 ---
 
-## 9. Footer, "Añadir ejercicio", sesión libre
+## 9. Footer, "Añadir ejercicio", sesión libre — HECHO (Parte 5)
 
 - **`GUARDAR SESIÓN`**: botón primario lima full-width (`text/btn-action`/hero sobre `onAccent`),
   `radius/md`. **`Descartar sesión`**: sólo texto, lima, uppercase, tracking amplio, centrado.
@@ -597,7 +597,28 @@ Orden real (se optó por la alternativa: calentar con la Parte 2 antes que la ca
 4. ✅ **Parte 4 — Bloques AMRAP/EMOM/for-time** (`ConditioningBlockCard`, EN TESTEO) — contra
    el HTML `formfit-workout-v12-amrap-emom.html`, no contra las variantes `Exercice Card`.
    Detalle completo y decisiones del usuario en §6.1 (léela antes de retocar la tarjeta).
-5. ⬜ **Parte 5 — Timer flotante, modal de notas (drag-from-body), footer, sesión libre, ad-hoc.**
+5. ✅ **Parte 5 — Timer flotante, modal de notas, footer, sesión libre, ad-hoc** (EN TESTEO) —
+   no salió de un commit propio: cada pieza quedó cerrada de paso en otros cambios, y al
+   revisar el código en sep-2026 las cinco cumplen su sección de esta guía. Dónde está cada una:
+   - **Timer flotante** (§7): `RestTimerFloat` en `WorkoutScreen.jsx` — `surface` + `borderCard`
+     + `radius/lg`, anillo `accent`, botón skip con `tint/accent`; gesto (swipe derecha) y
+     lógica de `restTimer` intactos. Tokens desde `032081e`.
+   - **Modal de notas** (§8): extraído a `src/components/workout/NotesModal.jsx` (lo comparten
+     la nota de sesión y la de ejercicio). Drag-to-close **desde el cuerpo y desde el backdrop**
+     con el patrón de dos `PanResponder` del modal de detalle de Progreso, `statusBarTranslucent`
+     + `navigationBarTranslucent`, `KeyboardAvoidingView` propio. Cerrado en `2eaf966`.
+   - **Footer** (§9): `GUARDAR SESIÓN` primario lima full-width + `Descartar sesión` como
+     `Tertiary buttom` sólo texto, uppercase, `spacingTag`. **Desviación deliberada del spec:**
+     el descartar va en `tint/red50`, no en lima — es destructivo (`5c584ad`).
+   - **Añadir** (§9): mismo botón outline que el editor de sesión (`210:2784`); en sesión libre
+     abre la hoja ejercicio/bloque en vez de ir directo al selector (`2eaf966`).
+   - **Sesión libre** (§9): el input de nombre vive dentro del header lima nuevo
+     (`freeNameInputHeader`, misma `textStyles.hero` que el título) y el banner pasó a texto
+     suelto en `mutedLight` — sin caja, es contexto y no un aviso. Ad-hoc y bloques creados en
+     la libre continúan la numeración por hueco de la pantalla.
+
+**La pantalla queda migrada: 5/5 partes.** Lo que sigue abierto es QA en dispositivo (§12) y las
+preguntas no bloqueantes de §13.
 
 ---
 

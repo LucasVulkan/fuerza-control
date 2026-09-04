@@ -176,7 +176,7 @@ export const THEMES = {
 /** Ordered list for theme pickers. */
 export const THEME_LIST = [THEMES.dark, THEMES.midnight, THEMES.earthy, THEMES.space, THEMES.formaFit];
 
-export const DEFAULT_THEME = 'dark';
+export const DEFAULT_THEME = 'formaFit';
 
 // ─── CSS-var resolver (theme-aware) ───────────────────────────────────────────
 // The shared data layer stores session colours as CSS-var strings (e.g.

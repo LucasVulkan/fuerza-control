@@ -1,12 +1,26 @@
 # Spec — Rediseño estructural: una sola app, un estado que no se reescribe entero
 
+> Tema: ui
+> En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
+> Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/` · §2
+> Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
+> Fase U03 · aparcado · Recortes de features: sólo se hizo el generador · §4
+> Fase U04 · hecho · Terminar la migración de Workout · §5
+> Fase U05 · aparcado · Publicar — no es de esta spec, ver §6 · §6
+>
+> **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
+> mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
+> reabrir la app, ahora que vive fuera del blob persistido.
+>
 > Estado: **fases 1 y 2 IMPLEMENTADAS** (2-sep-2026), pendientes de prueba en
-> dispositivo. Las 3 y 4 son decisiones de producto que hay que tomar **antes de
-> publicar**, no código.
+> dispositivo, igual que la 4: **Workout está migrado** (3-sep-2026, §5) y sólo
+> le falta el QA a mano. La 3 se aparca con una sola fila ejecutada —el
+> generador procedural, que era código muerto (§4). "Y publicar", que era la otra mitad de la 4, **no era
+> una fase**: se abrió como U05 y se aparcó el mismo día — ver §6.
 >
 > Origen: análisis de arquitectura sobre el repo completo (sep 2026). No es una
 > auditoría de corrección —esa es [auditoria-tecnica.md](auditoria-tecnica.md),
-> con 15 de 26 fallos cerrados y ninguno crítico pendiente— sino de **estructura**:
+> ya cerrada con los 26 fallos resueltos— sino de **estructura**:
 > por qué encontrar un fallo cuesta lo que cuesta, y qué dos cambios lo bajan.
 >
 > **Ventaja de partida:** la app no está publicada. No hay retrocompatibilidad
@@ -25,8 +39,9 @@
 |---|---|---|---|
 | **1** | Borra la app web y trae el motor compartido dentro de `mobile/` | no | ✅ 2-sep-2026 |
 | **2** | Saca la sesión en curso del blob persistido | no | ✅ 2-sep-2026 |
-| **3** | Recortes de features a decidir antes de publicar | sí | decisión |
-| **4** | Terminar Workout y publicar | sí | ya en curso |
+| **3** | Recortes de features a decidir antes de publicar | sí | aparcada 3-sep-2026: hecho el generador, el resto sin decidir |
+| **4** | Termina la migración de UI: Workout, la última pantalla | sí | ✅ 3-sep-2026 |
+| **5** | Publicar | no | aparcada: no era una fase, ver §6 |
 
 Las fases 1 y 2 **no cambian ni una pantalla ni un comportamiento visible**.
 Son las dos únicas de esta lista que se pueden hacer sin decidir nada de
@@ -35,7 +50,7 @@ producto, y las dos que hacen más barato todo lo que venga después.
 Lo que esta spec **no** toca, a propósito: el modelo de programas
 (`programs` / `userPrograms` / `sessionTemplates` / `clients`), el motor de
 plantillas, y el modelo de etapas. Son preguntas abiertas de diseño, no
-mecánica — ver §6.
+mecánica — ver §7.
 
 ---
 
@@ -612,38 +627,86 @@ Pendiente, y sólo se puede hacer en dispositivo:
 
 ---
 
-## 4. Fase 3 — Decisiones de recorte antes de publicar
+## 4. Fase 3 — Decisiones de recorte antes de publicar (aparcada)
 
 No es código: es la lista de lo que hay que decidir **mientras no haya usuarios
 con datos**, porque después cada uno cuesta el triple.
+
+> **Aparcada (3-sep-2026).** De la tabla se ejecutó una sola fila —el generador
+> procedural—, y era la única que no quitaba nada que el usuario pueda ver:
+> código muerto, no un recorte de producto. Las otras cinco se quedan sin
+> decidir, y la ventaja de partida sigue en pie mientras la app no esté
+> publicada. La candidata que el usuario quiere volver a mirar es
+> **la facturación de clientes**; las demás no están descartadas, simplemente
+> no se han decidido.
 
 | Candidato | Superficie medida | Argumento para quitarlo |
 |---|---|---|
 | **Copia a Drive** (OAuth, refresh token, tarea de fondo, multipart, reintentos) | 1.035 líneas (`DriveBackupScreen` 729 + `driveService` 199 + `driveBackupTask` 107) + 176 en el store | **Seis de los 26 fallos de la auditoría son suyos** (3, 4, 13, 17, 19, 20). Exportar/compartir el `.fitdata` ya cubre el caso, y el backup del sistema operativo cubre el resto |
 | **Facturación de clientes** | ~450 líneas de UI dentro de `ClientsScreen` + 3 acciones de store | Es un CRM dentro de un tracker. El entrenador ya cobra por otro canal |
 | **Métricas de laboratorio** (monotonía, strain, índice de rendimiento, carga interna/externa, base 100) | ~4.100 líneas entre `ProgressTab`, `LoadTab`, `trainingLoad.js` y sus tests | Ninguna cambia lo que haces mañana. La señal está en que hubo que escribir [metric-transparency.md](metric-transparency.md) —**26 fichas explicando fórmulas**— para que se entendieran |
-| **`programGenerator.js` procedural** | 507 líneas + 480 de test | Sustituido por plantilla + adaptación según [program-templates.md](program-templates.md), y sigue importado en el store |
+| ~~**`programGenerator.js` procedural**~~ **BORRADO (3-sep-2026)** | 507 líneas + su rama en el store | Su única llamada viva era "si el catálogo de plantillas está vacío", y el catálogo es un fichero del repo: inalcanzable. `GOAL_PARAMS` se mudó a `archetypeAdapter.js` y el harness de invariantes se llama ya `onboarding.test.js`, corriendo sobre el camino real. Ver [program-generator.md](program-generator.md) y [program-templates.md](program-templates.md) §7.2 |
 | **Modos de progresión** salvo `double` y `none` | ~200 líneas en `progression.js` | 5 tipos × 4 evaluaciones × 3 incrementos, en el camino más caliente de la app, para un catálogo que usa doble progresión en todo |
 | **3 de los 4 temas** | `themes.js` + QA visual ×4 | La app no está publicada y el propio `UI-MIGRATION.md` ya arrastra "revisar contraste del header del theme Earthy" |
 
 Cada línea de esta tabla es una decisión independiente. Ninguna bloquea a las
 fases 1 y 2.
 
----
-
-## 5. Fase 4 — Terminar Workout y publicar
-
-Es lo único que queda de la migración de UI
-([UI-MIGRATION.md](../UI-MIGRATION.md), guía dedicada en
-[workout-screen-migration.md](../workout-screen-migration.md)). Los 11 fallos
-que siguen abiertos en la auditoría son medios y bajos.
-
-Hacer las fases 1 y 2 **antes** de esta: son las dos que no tocan pantallas, y
-la 2 se hace sobre el mismo fichero que la migración de Workout no toca.
+Cada fila se decide sola y ninguna bloquea a las demás: por eso la fase se
+puede aparcar con una hecha y cinco abiertas.
 
 ---
 
-## 6. Lo que esta spec deja abierto a propósito
+## 5. Fase 4 — Terminar la migración de Workout
+
+**Hecha (3-sep-2026).** Las 5 partes de
+[workout-screen-migration.md](../workout-screen-migration.md) §11 están cerradas
+y `UI-MIGRATION.md` §1 no deja ninguna pantalla en ⬜: la migración de UI se
+acaba aquí.
+
+La Parte 5 (timer flotante, modal de notas, footer, sesión libre, ad-hoc) no
+salió de un commit propio: cada pieza quedó hecha de paso en otros cambios y
+nadie la marcó. Se revisó el código en sep-2026 y las cinco cumplen su sección
+de la guía, con una desviación deliberada —descartar sesión va en `tint/red50`,
+no en lima, porque es destructivo— y un movimiento: el modal de notas vive ahora
+en `components/workout/NotesModal.jsx`, compartido con la nota de ejercicio.
+
+La auditoría también está cerrada: **26/26**
+([auditoria-tecnica.md](auditoria-tecnica.md)), no 11 abiertos como decía esta
+sección.
+
+**Probar en dispositivo.** Las 5 partes de Workout, con la lista de estados de
+`workout-screen-migration.md` §12: serie activa/hecha/vacía, card
+auto-colapsando, dropset, superserie (A1/A2), calentamiento sin referencia,
+coach target, sesión libre, cada tipo de bloque (idle/running/finished), timer de
+descanso, modal de notas arrastrado desde el cuerpo, y la cabecera en scroll=0 y
+colapsada.
+
+No bloqueantes, anotados donde toca: las preguntas abiertas de
+`workout-screen-migration.md` §13 (fondo real de la Exercice Card, badge
+`isKey`, y la idea aplazada de que las cards nazcan colapsadas).
+
+---
+
+## 6. Fase 5 — Publicar (aparcada: no era una fase)
+
+Era la segunda mitad del título de la fase 4, y al quedarse sola se vio que no
+tiene contenido propio: **publicar es la suma de otras fases**, no trabajo.
+
+| Lo que hacía falta para publicar | Dónde se sigue de verdad |
+|---|---|
+| Decidir los recortes | fase 3 de esta spec (§4), aparcada |
+| QA a mano de lo implementado | los bloques `Probar en dispositivo` de cada spec |
+| Papeleo de las dos tiendas y RevenueCat | [monetizacion.md](monetizacion.md) §7 |
+| Política de privacidad publicada en una URL | [monetizacion.md](monetizacion.md) §7 y [app-store-privacidad.md](../app-store-privacidad.md) |
+
+Se deja `aparcado` en vez de borrarse porque el código no se reutiliza: el
+generador da el siguiente libre como el mayor más uno, así que borrar la línea
+volvería a ofrecer `U05` para otra cosa.
+
+---
+
+## 7. Lo que esta spec deja abierto a propósito
 
 Tres preguntas de diseño que no son mecánicas y merecen su propia decisión:
 

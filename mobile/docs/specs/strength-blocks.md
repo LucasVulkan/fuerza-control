@@ -1,5 +1,10 @@
 # Spec — Dropset y Superserie (mundo fuerza)
 
+> Tema: entrenamiento
+> En corto: Dropset (series inmediatas bajando peso) y superserie (dos ejercicios encadenados sin descanso) en el mundo fuerza, reutilizando la tarjeta de ejercicio de siempre.
+> Fase T08 · hecho · Dropset: datos, toggle de editor, sub-filas y filtros de contabilidad · §1
+> Fase T09 · hecho · Superserie: flag, agrupado, `SupersetBlock` y regla de descanso · §2
+>
 > Estado: **decisiones de producto tomadas, detalle de UX de agrupado a validar
 > al implementar**. Mockups aprobados (`workout_view_superset_dropset`). Ambas
 > features viven en el mundo FUERZA: reutilizan ExerciseCard/SetRow y el motor de
