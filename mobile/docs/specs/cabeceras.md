@@ -1,0 +1,270 @@
+# Spec — Cabeceras de pantalla: una sola, y fuera de la banda accent
+
+> Tema: ui
+> En corto: La barra lima de las cabeceras estaba copiada cinco veces y se caía con nombres reales; pasa a un componente único sobre el fondo de la app, y de paso los dos últimos modales de Clientes pasan a hoja.
+> Fase U10 · hecho · Cabecera única, fuera de la banda accent, y las dos hojas que faltaban en Clientes · §2
+>
+> Estado: **implementada y PROBADA EN DISPOSITIVO** (4-sep-2026). Tres commits
+> —`0ca9dd5` cabecera, `a0d49bc` Workout, `cd61d02` hojas de Clientes— dentro
+> del merge `7188ca4`. No quedan pruebas a mano pendientes de esta fase.
+>
+> Origen: no hay nodo de Figma para esto. La cabecera de Figma (`SesionHeader`,
+> `110:3692`) es justo la que se sustituye — ver §4, que explica en qué se cae
+> el mock al recibir el contenido que la app genera de verdad. El diseño se
+> eligió sobre seis variantes maquetadas con nombres reales del generador.
+>
+> **Balance:** −331/+71 líneas en las cinco pantallas de la cabecera, y las dos
+> hojas de Clientes se quedan sin siete grupos de estilos propios.
+>
+> **Verificación:** `npx vitest run` desde la raíz (1199/1199) y `npx eslint
+> src/` comparando el recuento contra HEAD — hay 168 errores preexistentes, la
+> regla es no añadir ninguno. Se comprobó commit a commit.
+
+---
+
+## 0. Qué resuelve y qué no
+
+| Pieza | Qué hace | Toca pantallas |
+|---|---|---|
+| `ui/ScreenHeader.jsx` | La cabecera de detalle/editor, una sola vez | detalle y editor de programa, editor de sesión, planificador de etapas, onboarding |
+| Cabecera de Workout | El mismo lenguaje, componente aparte | Workout |
+| `ui/NumberChips.jsx` | Los chips de número del onboarding, extraídos | onboarding (×2), hoja de nuevo programa |
+| Hojas de Clientes | Los dos últimos `<Modal>` centrados pasan a `DragSheet` | Clientes |
+
+Lo que esta spec **no** toca, a propósito: las cabeceras de las pestañas
+principales (`AppHeader`, que es otro componente y otro problema: marca y menú,
+no navegación), ni las cabeceras simples de las pantallas de ajustes
+(`DocsScreen`, `DriveBackupScreen`, `TrainerConnectionScreen`…), que son un
+título y ya — no tienen ceja, ni acciones, ni nombre editable.
+
+---
+
+## 1. Por qué se cambia: la barra lima se caía en tres sitios a la vez
+
+La cabecera anterior era una barra `accent` flotante (margen 15, radio, alto
+fijo 72, título centrado entre un chevron y un `⋮`). Los tres problemas solo se
+ven con contenido real: `mobile/src/data/archetypes.js` genera nombres como
+**"Full Body · Hipertrofia · Barra libre"** y **"Empuje vertical, tracción y
+pierna anterior"**, de 43 caracteres. Con "Hipertrofia · Pull" no se nota nada.
+
+### 1.1 Ancho
+
+Con el chevron a un lado y el `⋮` al otro, al título le quedaban ~250 px de los
+345 disponibles, a 20 px de cuerpo. Cortaba a mitad de palabra casi siempre, y
+truncar a la primera palabra no distingue "Full Body · Hipertrofia" de "Full
+Body · Hipertrofia · Barra libre".
+
+Había además un `headerTitleSpacer` invisible del ancho del lápiz, cuyo único
+trabajo era que el título centrado no se descentrara — y que le robaba ancho al
+nombre para conseguirlo.
+
+### 1.2 Contraste
+
+La ceja salía de `colors.muted`: un gris definido contra el fondo oscuro, pero
+pintado encima del accent. Medido con WCAG sobre los cinco temas:
+
+| Tema | ceja `muted` sobre `accent` | ceja `accent` sobre `bg` (hoy) |
+|---|---|---|
+| dark | 4.01 | 17.75 |
+| midnight | **2.35** | 9.93 |
+| earthy | **1.66** | 2.40 |
+| space | **3.29** | 17.17 |
+| formaFit | 5.47 | 11.83 |
+
+En `earthy` era invisible. La regla general que sale de aquí está en §3.
+
+### 1.3 Presupuesto de acento
+
+Una losa lima arriba compite con el lima de los datos: el número de ejercicio,
+el borde de la caja Resumen, el segmento activo del control. El acento se
+gastaba antes de llegar al contenido, que es donde significa algo.
+
+### 1.4 Cinco copias ya divergidas
+
+`uppercase` sí/no, `overflow` sí/no, `justifyContent` sí/no, el lado de 26 px
+contra 33 del onboarding —que hacía que su título no estuviera centrado nunca— y
+el estado "programa no encontrado" de `ProgramDetailScreen` pintando la ceja con
+el estilo del título, que saltaba al cargar.
+
+---
+
+## 2. Fase U10 — lo que se hizo
+
+### 2.1 `ui/ScreenHeader.jsx`
+
+Sobre el fondo de la app, a sangre, sin alto fijo:
+
+- **Fila de ceja:** chevron `accent` (15) + ceja + acciones (lápiz, `⋮`, puntos
+  del onboarding), todo alineado entre sí.
+- **Ceja:** `spacing-tag` a 11 px, tracking 2.4, color `accent`. Fuerza
+  mayúsculas en la caja porque las cadenas vienen mezcladas del JSON:
+  `programView.eyebrow` ya es `"PROGRAMA"` pero `planner.eyebrow` es
+  `"Planificar"` y `editor.sessionEyebrow` es `"Sesión B"`.
+- **Título:** `text/hero` a 25 px, interlineado 26, tracking −0.5, color `text`,
+  **a dos líneas**.
+- **Regla `accent` de 5 px** a sangre, que ancla la cabecera al contenido.
+  Exportada como `HEADER_RULE_H` porque Workout la necesita.
+- `paddingTop: space/xxl`, que es lo que separa la cabecera de la barra de
+  estado.
+
+La solidez la da la masa tipográfica y la regla, no el bloque de color.
+
+`right` acepta un nodo **o una función que recibe el color de tinta**. El `⋮`
+del editor de sesión y los puntos del onboarding necesitan uno u otro según
+sobre qué se pinte la cabecera, y así probar otra cabecera es un cambio de un
+solo archivo. No es especulativo: es lo que permitió montar la variante F
+entera y volver a ésta sin tocar ninguna pantalla (§4).
+
+El estado de renombrar (`renaming`/`draft`) se queda **en la pantalla**, no
+dentro del componente: `ProgramEditorScreen` lo mira desde `hasUnsavedChanges()`
+para avisar al salir.
+
+Se fueron con la barra: `HEADER_H` de `theme.js` (sin consumidores — ya no hay
+alto fijo), el contrapeso invisible del lápiz y los espaciadores de 26 px de las
+tres pantallas sin acción a la derecha.
+
+### 2.2 La cabecera de Workout
+
+**Comparte el estilo, no el código.** `ScreenHeader` no vale ahí porque esa
+cabecera es sticky, colapsa con el scroll y lleva un reloj que repinta cada
+segundo. Lo que viaja es el lenguaje y la constante del grosor de la regla.
+
+Dos ajustes que pide su contexto y que la separan de las de los editores:
+
+- **Título a una línea.** Es sticky y se come pantalla durante todo el entreno;
+  la identidad la lleva la ceja ("SESIÓN A · 07:36"), así que ahí puede truncar.
+- **Aire superior animado**, `space/xxl` desplegada y `space/lg` colapsada, con
+  el mismo progreso que el crossfade. Fijo en 28 habría hecho que la cabecera
+  colapsada arrastrase ese vacío para siempre.
+
+**Los puntos de progreso pasan a ser la regla.** Es la única decisión
+interpretativa de la fase: la regla tenía que estar de todas formas, así que el
+progreso se monta encima —un segmento por ejercicio o bloque, lleno en `accent`
+y pendiente al 25%— en vez de pedir fila propia. Se lee igual, sobrevive al
+colapso sin duplicarse en las dos capas, y `flex: 1` por segmento sustituye los
+tres saltos de gap que había que mantener a mano según hubiera 7, 12 o más
+unidades.
+
+De paso se borró `HeaderArrow`, que era una recopia local del mismo path SVG que
+`ArrowIcon`.
+
+### 2.3 Las dos hojas de Clientes
+
+Los dos últimos `<Modal>` centrados de la pestaña. Lo pide el propio
+`DragSheet.jsx`: *"úsalo para CUALQUIER modal nuevo, es el patrón único de la
+app, no montes otro por tu cuenta"*.
+
+Nuevo programa dejaba de reutilizar casi todo. Cada control tenía ya su
+equivalente en el repo:
+
+| Antes, a mano | Ahora |
+|---|---|
+| `tabRow` + `tabBtn` | `SegmentedControl` |
+| rejilla `numBtn` de 2 a 6 | `NumberChips` |
+| rejilla `numBtn` de 4/6/8/12 | `StepField`, 1-52 |
+| `noLimitRow` | `ToggleRow` — es un booleano |
+| `templateOption` | filas `sheetRowBase` con el tinte accent |
+| `GhostBtn` + `AccentBtn` | cancelar en la cabecera de la hoja, un solo CTA abajo |
+
+`ui/NumberChips.jsx` sale a componente porque iba por su tercer sitio: la
+pregunta de días por semana y el alta manual del onboarding lo tenían escrito
+entero cada uno. **El reparto con `StepField`**: chips cuando el rango es corto
+y se ve entero de un vistazo, stepper cuando no caben pintadas todas las
+opciones.
+
+El conmutador de "sin límite" va **siempre arriba** y el contador aparece
+debajo. Al revés, activarlo movería de sitio la fila que acabas de tocar.
+
+Tres cosas que salieron al mover el código:
+
+- **La etiqueta de sesiones estaba mal.** Decía "SESIONES POR SEMANA", pero
+  `createProgramForClient` usa ese número para crear las sesiones distintas del
+  ciclo (A, B, C…), no para repartirlas por semana. Pasa a
+  `onboarding.sessionsPerCycle`, con el mismo rango 1-7 del alta manual.
+- **Los textos estaban en castellano a pelo** ("NUEVO CLIENTE", "Cancelar",
+  "SELECCIONAR PLANTILLA", "sesiones"…) aunque las claves i18n existían sin
+  usarse. Ahora salen del JSON, con los títulos en caja de frase para que
+  coincidan con las otras hojas ("Nueva entrada", "Etapa").
+- **`billSheetBody` pasa a `formSheetBody`** y sirve a las tres hojas de
+  formulario, en vez de un nombre de cuerpo por hoja.
+
+El alta de cliente **sí** abre el teclado al entrar: el único campo es texto, la
+hoja sube con él y queda bien. Es la excepción a la costumbre de la app, que no
+usa `autoFocus` en hojas.
+
+---
+
+## 3. Las reglas que quedan
+
+Son el motivo de escribir esto: sin ellas, la próxima pantalla vuelve a romperlo.
+
+1. **Cualquier texto sobre un bloque `accent` deriva de `onAccent`, nunca de los
+   tokens `muted*`.** Los `muted*` están definidos contra el fondo oscuro; sobre
+   un color saturado no se leen como jerarquía sino como suciedad, y el
+   contraste depende del tema (§1.2). Si hace falta jerarquía dentro del bloque,
+   antes que rebajar el color conviene sacar el texto del bloque — que es
+   exactamente lo que hace esta cabecera.
+2. **Una cabecera de detalle/editor es `ScreenHeader`.** Si la pantalla necesita
+   algo que no hace (sticky, colapso, un reloj), se copia el *lenguaje* y se
+   importan sus constantes, como Workout — no se copia el componente.
+3. **El grosor de la regla vive en `HEADER_RULE_H`**, exportado. No dos cincos
+   sueltos.
+4. **Chips contra stepper:** `NumberChips` si el rango es corto y cabe entero,
+   `StepField` si no.
+5. **Modal nuevo = `DragSheet`.** Ya estaba escrito en su cabecera; esta fase
+   gastó los dos últimos incumplimientos.
+
+---
+
+## 4. Lo que se descartó, y por qué
+
+Se maquetaron seis variantes sobre la paleta y la tipografía reales. Tres
+pasaron el primer corte (B, D, F) y se llevaron a las cinco pantallas con
+nombres del generador. Ahí se decidieron solas:
+
+- **B — bloque partido** (columna negra de volver, costura dura negro/lima).
+  La más contundente de las tres, y la que menos sitio deja al dato: el bloque
+  de volver (52) más el del menú (44) se comen 96 px de los 345, así que el
+  título tiene que bajar a 19 px. La que parecía más maciza era la que menos
+  ancho daba.
+- **F — solo título** (pastilla negra de volver, sin ceja, título a 27 px).
+  Pierde información en el editor de sesión: la ceja dice `SESIÓN B ·
+  INTENSIFICACIÓN` y ni la letra ni la etapa están en ningún otro sitio de la
+  pantalla. Y la pastilla dice a dónde vuelves, no dónde estás, así que en el
+  editor de sesión pone "← EDITAR PROGRAMA" mientras editas una sesión. Es la
+  única de las tres que necesita que le expliques la regla.
+  Se llegó a implementar entera para verla en el móvil, y se descartó ahí.
+- **D — la elegida.** Es la única que no negocia nada en las cinco pantallas:
+  lápiz, `⋮` y puntos del onboarding caben en la misma fila de ceja sin mover el
+  título, y el título tiene el ancho entero. Efecto no previsto que se confirmó
+  en dispositivo: al quitar la masa lima de arriba, el lima de los datos deja de
+  competir y empieza a leerse como jerarquía.
+
+El chevron flotando en medio de un bloque de color —que es lo que hacía la
+cabecera de Figma— era el detalle que delataba lenguaje de navbar de iOS en una
+app que no lo es. Las tres variantes lo resuelven dándole superficie propia o
+quitándolo; D lo mantiene pero fuera del bloque, alineado con la ceja.
+
+---
+
+## 5. Lo que queda abierto
+
+**El accent de `earthy`.** Da 2.40:1 contra su propio fondo (`#6a9458` sobre
+`#dbd5c8`). Esta cabecera **no lo introduce** —es el mismo par que ya usan
+`statValue`, `summaryTag` y `rowNum` en toda la app— pero cualquier texto
+pequeño en accent es flojo ahí hasta que se oscurezca el accent de ese tema. Es
+un arreglo de paleta, no de cabecera, y toca todas las pantallas.
+
+**El borde de la barra de estado.** La cabecera arranca por debajo porque el
+inset lo siguen poniendo las pantallas (`SafeAreaView edges={['top']}`). Si
+alguna vez se quiere que el fondo llegue al borde físico, es meter `insets.top`
+dentro de `ScreenHeader` y sacar ese borde de las cinco. No se hizo porque con
+la variante D no se nota: su fondo es el mismo `bg` que hay encima.
+
+---
+
+## Fases
+
+| Fase | Qué | Estado |
+|---|---|---|
+| **U10** | Cabecera única fuera de la banda accent (§2.1), mismo lenguaje en Workout (§2.2), las dos hojas de Clientes (§2.3) | ✅ `0ca9dd5` · `a0d49bc` · `cd61d02` (merge `7188ca4`) — 4-sep-2026, probada en dispositivo |
