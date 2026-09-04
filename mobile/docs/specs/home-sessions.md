@@ -213,8 +213,8 @@ alineado en las cuatro filas, y de paso **aguanta tres caracteres** sin tocar
 nada — ver §5.2.
 
 **Extracción:** la lista sale a `ui/GroupedList` (grupo + fila + las dos
-anatomías de contenido), porque a partir de aquí la usan la Home, la ficha de
-cliente, Progreso y los menús.
+anatomías de contenido), porque a partir de aquí la usan la Home, Progreso y
+los menús. **En la ficha de cliente NO se usa** — ver §4.6.
 
 ---
 
@@ -292,12 +292,69 @@ clientes sigue siendo una **ficha con «Preparar»** en `accent-10`. El acento
 marca la acción principal de cada pantalla, y en clientes esa acción se hace una
 vez por semana: un hero ahí estaría gritando.
 
-Lo que sí sube de la Home a clientes: el marcador de letra y **las filas
-agrupadas del ciclo entero**, para que el entrenador vea qué lleva hecho su
-cliente sin abrir el historial. Al tocarlas debe abrirse la sesión **para
-prepararla, no para entrenarla**.
+Lo que sí sube de la Home a clientes es solo el **marcador de letra**. La lista
+agrupada no: ver §4.6.
 
-### 4.5 Extracción
+### 4.5 En la ficha de cliente NO va la lista de sesiones
+
+Se probó a bajarle la lista agrupada del ciclo entero y se descartó: **el
+entrenador no puede pulsar esas sesiones** —no va a entrenarlas—, así que cuatro
+filas de dos líneas solo empujaban hacia abajo lo único que sí va a tocar, que
+son los ajustes del programa.
+
+En su lugar, **una línea dentro de la tarjeta**, en la variante `client` y solo
+en ella (en la Home el ciclo ya es la lista de sesiones de arriba):
+
+```
+ETAPA 2 · VOLUMEN                        Ciclo 3 de 4
+▰▰▰▱                                      ← StageSegBar
+CICLO 07                              2 de 5 sesiones
+A✓   B✓   C   D   E
+```
+
+Repite exactamente la gramática del bloque de etapa que tiene encima: rótulo
+`spacingTag`/`mutedLight` a la izquierda con el dato en `text`, meta `subtitle`
+empujada a la derecha, y debajo lo visual. Etapa → barra segmentada; ciclo →
+las letras.
+
+| Estado | Tratamiento |
+|---|---|
+| Hecha | Letra en `muted` + check lima de 9 px |
+| La que toca | Letra en `accent` — es la misma que sale grande en «Próxima sesión» |
+| Pendiente | Letra en `mutedLight` |
+
+Sin la lista, **el pie EDITAR / VER / ⋯ y la ficha de «Preparar» entran en la
+primera pantalla sin scroll**, que era el objetivo. El tab de Programa acaba con
+tres piezas y ninguna suelta: tarjeta, ficha y su nota.
+
+### 4.6 Las pestañas: `ui/TabBar`, no `SegmentedControl`
+
+**Ya existe y ya está montado** (`ui/TabBar.jsx`, usado en
+`ClientsScreen.jsx:2465`). No es trabajo de esta spec; se anota aquí porque la
+maqueta lo dibujaba mal —como un grupo de píldoras— y porque la distinción
+importa y su cabecera ya la explica:
+
+- El **`SegmentedControl`** es un control de **filtro**: una píldora que flota
+  SOBRE su fondo (`surface2`, `radius.full`, highlight deslizante en `accent`).
+- El **`TabBar`** es **navegación**: un recorte de la banda HACIA el contenido.
+  La pestaña activa toma `colors.bg` con las dos esquinas de arriba a
+  `radius.md` y se funde con su tab.
+
+Que no se parezcan es el punto: dentro de la misma pantalla conviven los dos —
+las pestañas navegan, y dentro de cada tab hay controles segmentados que
+filtran.
+
+**El acento va en el TEXTO, nunca en el fondo.** Pintar el fondo de accent
+deshace la fusión, y además gastaría lima en «en qué pestaña estoy», que en este
+rediseño significa otra cosa (§1.1).
+
+Dos condiciones que la banda impone y que hay que respetar al tocar esa
+pantalla: **sin borde inferior** (el corte lo marca el escalón `surface` sobre
+`bg`, y un borde obligaría a la pestaña a interrumpirlo) y **sin
+`paddingBottom`** en el contenedor de las pestañas, porque la activa tiene que
+llegar al borde de la banda. El aire de debajo lo pone cada tab.
+
+### 4.7 Extracción
 
 Sacar `AssignedProgramCard` a `components/ui/ProgramCard.jsx` quedándose **solo
 con la tarjeta** (cabecera, cuerpo, etapa, 3 cajas, pie). Los avisos de bloqueo
@@ -502,7 +559,8 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | 2 | **El nombre del programa no se ve al abrir** | Consecuencia directa de bajar la tarjeta al final. La única forma de tenerlo arriba *y* la tarjeta abajo es duplicar el nombre en una línea fina de cabecera |
 | 3 | **El radio** | La `ProgramCard` va a `radius.lg` (18) y las filas de sesión a `md` (10). O se igualan, o se acepta que la tarjeta es de otro rango — en clientes hoy conviven así y no chirría |
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
-| 5 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
+| 5 | **¿Basta la línea de ciclo en clientes?** | §4.5 la reduce a `A✓ B✓ C D E`. Si al usarlo falta saber CUÁNDO se hizo cada una, el sitio es el historial del cliente, que ya está a una pestaña — no devolver la lista a esta pantalla |
+| 6 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
 
 ---
 
@@ -511,7 +569,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | Fase | Qué | Coste | Estado |
 |---|---|---|---|
 | **U06** | Rediseño de la HomeView: hero, filas planas, semana desnuda, tarjeta al final (§3) | medio | pendiente |
-| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta (§4) | medio | pendiente |
+| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, y el ciclo en una línea de la ficha de cliente (§4) | medio | pendiente |
 | **U08** | `sessionPlan()` — se hace **dentro de U06**, no después (§5) | media tarde | pendiente |
 | **U09** | Plantillas de sesión libre (§7) | bajo | pendiente |
 
