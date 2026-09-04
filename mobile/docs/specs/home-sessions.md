@@ -142,12 +142,50 @@ Estados del hero:
 |---|---|---|---|
 | Siguiente | `Siguiente` | ejercicios · min · última vez | `EMPEZAR` |
 | En curso | `En curso` | `3 de 6 ejercicios · empezada hace 42 min` | `CONTINUAR` |
-| Ciclo cerrado | `Ciclo 07 completo` · tag `5 / 5` | «Vuelves a la Sesión A · Empuje pesado» | `EMPEZAR SESIÓN A`, sin relleno acento |
 | **Sin hero** | — | — | — (§5.3) |
 
-El estado «ciclo cerrado» **suelta el acento** (`surface2` + borde `border`,
-botón con borde `accent-50` y texto `accent`): es la única pantalla del día que
-no pide entrenar, y darle un respiro al lima tiene valor.
+Son **tres y no más**. Ver §3.2.1: el «ciclo cerrado» que había aquí no existe.
+
+#### 3.2.1 No hay estado de «ciclo cerrado» — y la sesión A nunca lo lleva
+
+Una versión anterior de esta spec daba un cuarto estado al hero: «Ciclo 07
+completo · 5/5 · EMPEZAR SESIÓN A». **Es imposible**, y además rompía una cosa:
+si la A siempre viniera envuelta en «ciclo completado», la sesión A no tendría
+nunca su hero normal.
+
+El flujo real, leído en `advanceCycle` (`src/utils/stageProgress.js`):
+
+```js
+const cycleClosed = cycleIds.size >= valid.size;
+return {
+  cycleCompletedIds:   cycleClosed ? [] : [...cycleIds],   // ← se vacía aquí
+  stageWeeksCompleted: (…) + (cycleClosed ? 1 : 0),
+  totalWeeksCompleted: (…) + (cycleClosed ? 1 : 0),
+  …
+};
+```
+
+Guardar la quinta sesión **cierra el ciclo y lo vacía en la misma escritura**.
+Nunca hay un momento con las cinco hechas: al volver a la Home el contador dice
+«0 de 5 este ciclo», la tarjeta dice `CICLO 08`, y **A es el hero normal, con su
+rótulo «Siguiente» y su botón EMPEZAR**. Igual que cualquier otro día.
+
+Consecuencias, y las tres importan:
+
+1. **La sesión A no tiene un tratamiento especial.** Ni ella ni ninguna: el
+   hero depende del papel, no de la letra.
+2. **El «has cerrado el ciclo» es del recap**, no de la Home. Es un momento,
+   no un estado — cuando el usuario vuelve, ya está en el siguiente.
+3. **El único «algo terminó» que persiste en la Home es la ETAPA**
+   (`stageAdvancePending`), y ya está implementado: el banner de
+   `HomeScreen.jsx:738`, con sus dos variantes (etapa completada / siguiente
+   bloqueada por el entrenador). Va **encima** del hero y no lo sustituye —
+   la sesión que toca sigue siendo la que toca. Su botón va en outline
+   (`accent-50` + texto `accent`), no relleno, para no competir con EMPEZAR.
+
+⚠️ Es la tercera vez en este proyecto que una suposición sobre los datos se cuela
+en una spec propia sin verificarla contra el código. Se detectó en QA de maqueta,
+no antes de escribirla.
 
 ### 3.3 Las filas de las demás sesiones
 
