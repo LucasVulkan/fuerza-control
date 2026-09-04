@@ -2,7 +2,7 @@
 
 > Tema: ui
 > En corto: El banner lima deja de ser del programa y pasa a ser la sesión que toca; el programa baja a una tarjeta que se comparte con la ficha de cliente, y las tres frases que dan por hecho que entrenas rotando salen de la pantalla a una función.
-> Fase U06 · pendiente · Rediseño de la HomeView: hero, filas planas, semana desnuda · §3
+> Fase U06 · pendiente · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
 > Fase U07 · pendiente · `ProgramCard` compartida con `ClientsScreen` · §4
 > Fase U08 · pendiente · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
 > Fase U09 · pendiente · Plantillas de sesión libre · §7
@@ -151,36 +151,70 @@ no pide entrenar, y darle un respiro al lima tiene valor.
 
 ### 3.3 Las filas de las demás sesiones
 
-Un solo bloque agrupado, `gap: 1` sobre `hair` para el filete, `radius.md`,
-`overflow: hidden`. Cada fila: `padding: 13px spacing.lg`, `gap: spacing.md`.
+**Es la lista agrupada que la app ya tiene**, la de la lista de ejercicios de
+Progreso (`ProgressTab.jsx`, `exRow` + `getCardRadii`) y la de `ui/MenuList`.
+No se inventa nada: filas sueltas con `gap: spacing.xs` (2 px de fondo de
+pantalla entre ellas) y **radios asimétricos por posición** — la primera
+redondea arriba a `radius.md` y abajo a `xs`, la última al revés, las del medio
+a `xxs`. El grupo se lee como un bloque sin necesitar una caja que lo contenga.
 
 ```
-[A]  Empuje pesado                    hace 3 días   ✓
-[D]  Empuje volumen        Adaptada · ~44 min        ›
+┌ A   Empuje pesado                              ✓ ┐   ← md md / xs xs
+│     Completada hace 3 días · 5 ejercicios        │
+├ B   Tirón pesado                               ✓ ┤   ← xxs
+│     Completada ayer · 5 ejercicios               │
+├ D   Empuje volumen                             › ┤
+│     Adaptada · 5 ejercicios · ~44 min            │
+├ E   Tirón volumen                              › ┤   ← xxs xs / md md
+└     5 ejercicios · ~40 min                       ┘
 ```
+
+Anatomía: la de `exRow`, más el hueco de marcador que `MenuRow` ya reserva para
+el icono.
 
 | Elemento | Regla |
 |---|---|
-| **Marcador** | Ancho fijo 20 px, `Inter_900Black` 13, tracking .5. Pendiente → `lima`; hecha → `muted`. **Sin caja, sin fondo, sin borde** |
-| Nombre | `Inter_800ExtraBold` 13. Pendiente → `text`; hecha → `mutedLight` en peso 500 |
-| Meta | 11 px peso 500 en `muted`. Hecha → cuándo; pendiente → ejercicios y minutos |
-| «Adaptada» | **Texto en `tint.blue70` dentro de la meta**, no una pastilla |
-| Acción | Ancho 16, a la derecha: check lima (hecha) o chevron `muted` (pendiente) |
+| Fila | `backgroundColor: surface`, `padding: spacing.md spacing.lg`, `gap: spacing.lg`, `overflow: hidden` + `getCardRadii(th, isFirst, isLast)` |
+| **Marcador** | Ancho fijo **20 px** (el hueco de icono de `MenuRow`), `Inter_900Black` 13, tracking .5. Pendiente → `lima`; hecha → `muted`. **Sin caja, sin fondo, sin borde** |
+| Nombre | `textStyles.cardType` en `text` — **el mismo color en hecha y en pendiente** |
+| Subtítulo | `textStyles.tag` en `mutedLight`, `gap: spacing.xs` bajo el nombre. Hecha → «Completada hace 3 días · 5 ejercicios»; pendiente → «5 ejercicios · ~44 min» |
+| «Adaptada» | **Texto en `tint.blue70` al principio del subtítulo**, no una pastilla |
+| Acción | A la derecha: check lima (hecha) o el chevron `›` de 18 px de `exRow` (pendiente) |
 
-Tres rondas de corrección llegaron aquí, así que conviene no deshacerlas:
+Lo que aporta sobre la versión con filete que había antes:
 
-1. Primero el check ocupaba un hueco reservado a la izquierda que en las filas
-   pendientes **no lo llenaba nada**. Se fue a la derecha, con el chevron —
-   que además es la regla de Figma para las Sesion Cards: la zona de acción
-   siempre acaba en el mismo punto sea cual sea su contenido.
-2. Luego el marcador era un chip de 24×24 con fondo `accent-10` (pendiente) o
-   transparente con borde (hecha). El usuario lo rechazó: **«cambios de fondo
-   raros»**. Fuera la caja; el color de la letra basta.
-3. Y la pastilla azul de ADAPTADA pasó a ser texto. Menos ruido, y el azul
-   sigue significando entrenador.
+- **El filete gris desaparece.** Era un elemento que no significaba nada y que
+  no existe en ninguna otra lista de la app. Los 2 px de separación son fondo
+  de pantalla, no una línea.
+- **La fila es de dos líneas**, así que cada sesión dice lo que es sin pelear
+  por el espacio horizontal. Antes «hace 3 días» iba apretado contra el borde
+  derecho.
+- **Conexiones entra en el mismo grupo** con la otra anatomía de la misma lista
+  (`MenuRow`: etiqueta 14, sub 11, estado con punto a la derecha), así que la
+  pantalla acaba con **un solo tipo de lista repetido dos veces**.
 
-El ancho fijo de 20 px es lo que mantiene el borde izquierdo alineado en las
-cuatro filas, y de paso **aguanta tres caracteres** sin tocar nada — ver §5.2.
+Decisiones de estado ya cerradas — conviene no deshacerlas:
+
+1. El check estaba a la izquierda ocupando un hueco que en las filas pendientes
+   **no llenaba nada**. Se fue a la derecha, con el chevron — que además es la
+   regla de Figma para las Sesion Cards: la zona de acción siempre acaba en el
+   mismo punto sea cual sea su contenido.
+2. El marcador fue un chip de 24×24 con fondo `accent-10` (pendiente) o borde
+   (hecha). El usuario lo rechazó: **«cambios de fondo raros»**. Fuera la caja;
+   el color de la letra basta.
+3. La pastilla azul de ADAPTADA pasó a ser texto. Menos ruido, y el azul sigue
+   significando entrenador.
+4. **El nombre no cambia de color** entre hecha y pendiente. Lo que distingue
+   es el marcador, el icono de la derecha y lo que dice el subtítulo. Menos
+   variación, y la lista se lee como una sola cosa.
+
+El ancho fijo de 20 px del marcador es lo que mantiene el borde izquierdo
+alineado en las cuatro filas, y de paso **aguanta tres caracteres** sin tocar
+nada — ver §5.2.
+
+**Extracción:** la lista sale a `ui/GroupedList` (grupo + fila + las dos
+anatomías de contenido), porque a partir de aquí la usan la Home, la ficha de
+cliente, Progreso y los menús.
 
 ---
 
@@ -448,9 +482,11 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 2. **El acento cambia de dueño.** En Figma el borde acento marca la sesión
    completada; aquí el relleno acento marca la siguiente y las completadas se
    quedan solo con el check.
-3. **Las sesiones restantes van agrupadas**, con filete entre ellas y radio solo
-   en las esquinas del bloque. Figma pide cinco tarjetas independientes de 81 px
-   con radio completo y gap de 10.
+3. **Las sesiones restantes usan la lista agrupada.** Figma pide cinco tarjetas
+   independientes de 81 px con radio completo y gap de 10; aquí van con
+   `gap: spacing.xs` y radios por posición. No es una forma inventada —es el
+   patrón que ya usan Progreso, los menús y la lista de clientes— pero **en
+   esta pantalla el mock pide el otro**.
 4. **La sesión siguiente sale de la lista.** El orden A→F se respeta dentro de
    la lista, pero la elegida ya no está en ella.
 5. **La sección `PROGRAMA` del final se elimina**: sus acciones bajan al pie de
@@ -466,6 +502,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | 2 | **El nombre del programa no se ve al abrir** | Consecuencia directa de bajar la tarjeta al final. La única forma de tenerlo arriba *y* la tarjeta abajo es duplicar el nombre en una línea fina de cabecera |
 | 3 | **El radio** | La `ProgramCard` va a `radius.lg` (18) y las filas de sesión a `md` (10). O se igualan, o se acepta que la tarjeta es de otro rango — en clientes hoy conviven así y no chirría |
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
+| 5 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
 
 ---
 
@@ -490,3 +527,4 @@ antes/después de cada corrección:
 - **La Home reordenada** (4 rondas de corrección, con antes/después de cerca): <https://claude.ai/code/artifact/b7448110-37f8-4390-98ff-772b74d68259>
 - **Una tarjeta, dos pantallas** (la convergencia con `ClientsScreen`): <https://claude.ai/code/artifact/a124dafa-aae0-48ad-ba0c-104b869788d5>
 - **Cuando el orden no importa** (los quince modos de entrenar): <https://claude.ai/code/artifact/4587736e-02a0-464a-aeed-203906a04754>
+- **La Home, montada** — **la referencia buena**: la pantalla entera con los componentes finales, la lista agrupada, la ficha de cliente, los tres estados del hero (incluido el modo sin hero) y el inventario de qué componente sale de dónde: <https://claude.ai/code/artifact/a9a04c00-d471-4034-a20b-4bb6795784bc>
