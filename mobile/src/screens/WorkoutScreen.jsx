@@ -8,13 +8,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, useAnimatedRef,
 } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
+import { HEADER_RULE_H } from '../components/ui/ScreenHeader';
+import { ArrowIcon } from '../components/ui/EditorIcons';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
@@ -116,47 +118,28 @@ function HeaderCompactSummary({ startedAt, title, styles }) {
   );
 }
 
-// Icons/Arrow (98:137) — chevron path, redibujado con react-native-svg (mismo
-// enfoque que el Chevron de SetRow.jsx). Figma lo rota 180°; replicamos la
-// rotación porque el glifo es simétrico y el resultado final coincide.
-function HeaderArrow({ size, th }) {
-  const big = size >= 24;
+// Progreso de la sesión — la regla accent que cierra la cabecera, partida en
+// una unidad por ejercicio/bloque: completa en accent pleno, pendiente al 25%.
+//
+// Antes eran discos sueltos dentro de la banda lima, y necesitaban su propia
+// fila en las dos cabeceras. Al adoptar el estilo de `ScreenHeader` la regla ya
+// tenía que estar ahí de todas formas, así que el progreso se monta encima en
+// vez de pedir sitio aparte: se lee igual, sobrevive al colapso sin duplicarse
+// y deja de competir por el ancho con el título y los iconos.
+//
+// `flex:1` por segmento en vez de ancho fijo: con 4 unidades o con 20 el ancho
+// se reparte solo, sin los tres saltos de gap que había que mantener a mano.
+function ProgressRule({ units, th, styles }) {
+  if (units.length === 0) return <View style={styles.rule} />;
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg
-        width={big ? 12 : 7.385}
-        height={big ? 20 : 12.308}
-        viewBox="0 0 12 20"
-        fill="none"
-        style={{ transform: [{ rotate: '180deg' }] }}
-      >
-        <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={th.colors.onAccent} />
-      </Svg>
-    </View>
-  );
-}
-
-// Puntos de progreso — ambos estados son discos SÓLIDOS, sin outline:
-// completo = onAccent pleno; pendiente = onAccent al 25%, que sobre la banda
-// lima del header se lee como una lima más oscura y apagada (valor del
-// Exercise Card Spec §6). >7 unidades encoge el gap en vez de hacer wrap/scroll
-// (decisión de esta implementación). `size` es común a las dos cabeceras.
-function ProgressDots({ units, th, styles, size = 6 }) {
-  if (units.length === 0) return null;
-  const gap = units.length <= 7 ? spacing.sm : units.length <= 12 ? spacing.xs2 : spacing.xs;
-  return (
-    <View style={[styles.dotsRow, { gap }]}>
+    <View style={styles.ruleRow}>
       {units.map((u) => (
         <View
           key={u.id}
-          style={{
-            width:  size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: u.done
-              ? th.colors.onAccent
-              : withOpacity(th.colors.onAccent, 0.25),
-          }}
+          style={[
+            styles.ruleSeg,
+            { backgroundColor: u.done ? th.colors.accent : withOpacity(th.colors.accent, 0.25) },
+          ]}
         />
       ))}
     </View>
@@ -170,20 +153,23 @@ const RING_RADIUS    = 26;
 const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS; // ≈ 163.4
 const SWIPE_THRESHOLD = 80;
 
-// SesionHeader (110:3692) — grande 64px / colapsada 36.71px (valores exactos
-// de Figma, no tokenizados).
-const HEADER_GRANDE_H  = 64;
-const HEADER_COMPACT_H = 36.71;
+// Altos de la banda de cabecera (sin contar la regla). La grande sube de 64 a
+// 68 porque el título pasa de 20 a 25px; la compacta se redondea a 38.
+const HEADER_GRANDE_H  = 68;
+const HEADER_COMPACT_H = 38;
 const HEADER_COMPACT_ON  = 48; // scrollY a partir del cual colapsa
 const HEADER_COMPACT_OFF = 24; // scrollY por debajo del cual vuelve a grande
 
-// Alto fijo de la fila del eyebrow y de la fila de dots en la cabecera grande —
-// iguales a propósito para que el título quede exactamente centrado (la mitad
-// superior del bloque eyebrow+título+dots debe pesar igual que la inferior).
+// Alto fijo de la fila de la ceja. Ya no hay que igualarlo al de los dots (el
+// progreso vive en la regla), pero el título deja de saltar entre montajes si
+// la ceja no depende del leading que Inter Black decida.
 const HEADER_ROW_H = 14;
 
-// Puntos de progreso — mismo tamaño en las 2 cabeceras (pedido explícito).
-const DOT_SIZE = 8;
+// Aire sobre la cabecera: `space/xxl` desplegada, `space/lg` colapsada. Va
+// animado con el mismo progreso que el crossfade — dejarlo fijo en xxl haría
+// que la cabecera colapsada arrastrase 28px de vacío permanente.
+const HEADER_PAD_TOP_GRANDE  = spacing.xxl;
+const HEADER_PAD_TOP_COMPACT = spacing.lg;
 
 // Fundido del contenido bajo la cabecera sticky (evita el corte seco al hacer scroll).
 const SCROLL_FADE_H = 20;
@@ -317,6 +303,10 @@ export default function WorkoutScreen() {
   }, [compact, compactProgress]);
   const headerBarAnimStyle = useAnimatedStyle(() => ({
     height: HEADER_GRANDE_H + (HEADER_COMPACT_H - HEADER_GRANDE_H) * compactProgress.value,
+  }));
+  const headerWrapAnimStyle   = useAnimatedStyle(() => ({
+    paddingTop: HEADER_PAD_TOP_GRANDE
+      + (HEADER_PAD_TOP_COMPACT - HEADER_PAD_TOP_GRANDE) * compactProgress.value,
   }));
   const grandeLayerAnimStyle  = useAnimatedStyle(() => ({ opacity: 1 - compactProgress.value }));
   const compactLayerAnimStyle = useAnimatedStyle(() => ({ opacity: compactProgress.value }));
@@ -573,49 +563,47 @@ export default function WorkoutScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header — sticky, fuera del ScrollView, 2 estados con crossfade (§4) */}
-      <View style={styles.headerWrap}>
+      <Reanimated.View style={[styles.headerWrap, headerWrapAnimStyle]}>
         <Reanimated.View style={[styles.headerBar, headerBarAnimStyle]}>
           {/* Grande */}
           <Reanimated.View
             pointerEvents={compact ? 'none' : 'auto'}
             style={[styles.headerLayerGrande, grandeLayerAnimStyle]}
           >
-            <TouchableOpacity onPress={handleGoBack} hitSlop={10}>
-              <HeaderArrow size={26} th={th} />
-            </TouchableOpacity>
-            <View style={styles.grandeCenter}>
+            <View style={styles.grandeTopRow}>
+              <TouchableOpacity onPress={handleGoBack} hitSlop={14}>
+                <ArrowIcon size={15} color={th.colors.accent} back />
+              </TouchableOpacity>
               <HeaderEyebrow startedAt={activeSession.startedAt} label={sessionLabel} styles={styles} />
-              {isFree ? (
-                <TextInput
-                  style={styles.freeNameInputHeader}
-                  value={activeSession.freeSessionName ?? ''}
-                  onChangeText={updateFreeSessionName}
-                  placeholder={t('freeSession.namePlaceholder')}
-                  placeholderTextColor={withOpacity(th.colors.onAccent, 0.4)}
-                  returnKeyType="done"
-                  maxLength={60}
-                  textAlign="center"
+              <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={14}>
+                <NoteIcon
+                  size={22}
+                  color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
                 />
-              ) : (
-                <Text style={styles.grandeTitle} numberOfLines={1}>{titleText}</Text>
-              )}
-              <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
-              <NoteIcon
-                size={24}
-                color={hasSessionNotes ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5)}
+            {isFree ? (
+              <TextInput
+                style={styles.freeNameInputHeader}
+                value={activeSession.freeSessionName ?? ''}
+                onChangeText={updateFreeSessionName}
+                placeholder={t('freeSession.namePlaceholder')}
+                placeholderTextColor={th.colors.mutedLight}
+                returnKeyType="done"
+                maxLength={60}
               />
-            </TouchableOpacity>
+            ) : (
+              <Text style={styles.grandeTitle} numberOfLines={1}>{titleText}</Text>
+            )}
           </Reanimated.View>
 
-          {/* Compacta — todo el ancho, gap equidistante (space-between) */}
+          {/* Compacta — una fila: atrás, resumen con el reloj, notas */}
           <Reanimated.View
             pointerEvents={compact ? 'auto' : 'none'}
             style={[styles.headerLayerCompact, compactLayerAnimStyle]}
           >
-            <TouchableOpacity onPress={handleGoBack} hitSlop={10}>
-              <HeaderArrow size={16} th={th} />
+            <TouchableOpacity onPress={handleGoBack} hitSlop={14}>
+              <ArrowIcon size={13} color={th.colors.accent} back />
             </TouchableOpacity>
             <View style={styles.compactTextWrap}>
               <HeaderCompactSummary
@@ -624,23 +612,25 @@ export default function WorkoutScreen() {
                 styles={styles}
               />
             </View>
-            <ProgressDots units={dotUnits} th={th} styles={styles} size={DOT_SIZE} />
             <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
               <NoteIcon
-                size={24}
-                color={hasSessionNotes ? th.colors.onAccent : withOpacity(th.colors.onAccent, 0.5)}
+                size={22}
+                color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
               />
             </TouchableOpacity>
           </Reanimated.View>
         </Reanimated.View>
-      </View>
+
+        {/* La regla cierra la cabecera en los dos estados y lleva el progreso. */}
+        <ProgressRule units={dotUnits} th={th} styles={styles} />
+      </Reanimated.View>
 
       {/* Exercise list */}
       <View style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + spacing.lg + HEADER_GRANDE_H + spacing.md}
+        keyboardVerticalOffset={insets.top + HEADER_PAD_TOP_GRANDE + HEADER_GRANDE_H + HEADER_RULE_H + spacing.md}
       >
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
@@ -953,24 +943,35 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
   },
 
-  // Header — SesionHeader (110:3692), 2 estados (§4)
+  // Header — mismo lenguaje que `ScreenHeader` (fondo de la app, ceja accent,
+  // título grande a la izquierda, regla accent abajo), pero componente propio:
+  // este es sticky, colapsa con el scroll y lleva un reloj vivo, así que no
+  // puede reutilizar aquel. Lo que se comparte es el estilo, no el código.
+  //
+  // A sangre: el margen lateral pasa a padding de las capas, para que la regla
+  // llegue a los dos bordes de la pantalla. `paddingTop` lo pone la animación.
   headerWrap: {
-    marginHorizontal: spacing.lg,  // margen lateral de página (x=15 en el frame Figma)
-    marginTop:        spacing.lg,  // y=15 bajo el safe-area
-    marginBottom:     spacing.md,  // gap header→contenido, confirmado en ambos estados
+    backgroundColor: th.colors.bg,
+    marginBottom:    spacing.md,  // gap header→contenido
   },
   headerBar: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.md,
-    overflow:        'hidden',
+    overflow: 'hidden',
   },
+  // Columna, no fila: la flecha y el icono de notas van en la MISMA fila que la
+  // ceja, y el título ocupa el ancho entero debajo — igual que `ScreenHeader`.
+  // En fila (flecha | ceja+título | notas) los iconos se centraban contra el
+  // bloque de dos líneas y quedaban a media altura entre ceja y título.
   headerLayerGrande: {
     position:          'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    flexDirection:      'row',
-    alignItems:         'center',
-    paddingHorizontal:  spacing.md,
-    gap:                spacing.sm,
+    justifyContent:    'center',
+    paddingHorizontal:  spacing.lg,
+  },
+  grandeTopRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.md,
+    marginBottom:  spacing.sm,
   },
   // Compacta: sin gap fijo — justifyContent:'space-between' reparte el espacio
   // sobrante en partes iguales entre los 4 elementos (flecha/texto/dots/notas),
@@ -980,51 +981,55 @@ const makeStyles = (th) => StyleSheet.create({
     top: 0, left: 0, right: 0, bottom: 0,
     flexDirection:      'row',
     alignItems:         'center',
-    justifyContent:     'space-between',
-    paddingHorizontal:  spacing.md,
+    paddingHorizontal:  spacing.lg,
+    gap:                spacing.md,
   },
-  grandeCenter: {
-    flex:       1,
-    alignItems: 'center',
-  },
-  // Alto fijo (HEADER_ROW_H) igual al de dotsRow — el título queda exactamente
-  // centrado sólo si eyebrow y dots pesan lo mismo por encima/debajo suyo.
+  // Misma ceja que `ScreenHeader`: `spacing-tag` a 11 con tracking 2.4, en
+  // accent sobre el fondo de la app. Aquí lleva además el reloj concatenado.
   eyebrowText: {
     ...textStyles.spacingTag,
-    color:         th.colors.onAccent,
-    textAlign:     'center',
+    fontSize:      11,
+    letterSpacing: 2.4,
+    color:         th.colors.accent,
     textTransform: 'uppercase',
     lineHeight:    HEADER_ROW_H,
+    flex:          1,
+    minWidth:      0,
   },
-  // lineHeight explícito y ajustado (no el "normal" del font, que en Inter Black
-  // añade bastante más aire del necesario) — acerca el título a eyebrow/dots.
+  // Una línea, no dos como en los editores: la cabecera es sticky y se come
+  // pantalla durante todo el entreno. La identidad de la sesión la lleva la
+  // ceja ("SESIÓN A · 07:36"), así que el nombre puede truncar aquí.
   grandeTitle: {
     ...textStyles.hero,
-    color:      th.colors.onAccent,
-    textAlign:  'center',
-    lineHeight: 22,
+    fontSize:      25,
+    lineHeight:    26,
+    letterSpacing: -0.5,
+    color:         th.colors.text,
   },
   freeNameInputHeader: {
     ...textStyles.hero,
-    color:      th.colors.onAccent,
-    textAlign:  'center',
-    padding:    0,
-    alignSelf:  'stretch',
-    lineHeight: 22,
+    fontSize:      25,
+    lineHeight:    26,
+    letterSpacing: -0.5,
+    color:         th.colors.text,
+    padding:       0,
+    alignSelf:     'stretch',
   },
-  // flexShrink (no flex:1) + minWidth:0: en la compacta, el texto cede ancho a
-  // los demás elementos y trunca (numberOfLines=1) en vez de acaparar el hueco
-  // que deja justifyContent:'space-between'.
-  compactTextWrap: { flexShrink: 1, minWidth: 0 },
+  // flex:1 + minWidth:0: el resumen ocupa el hueco entre la flecha y las notas
+  // y trunca ahí (numberOfLines=1) en vez de empujar al icono fuera.
+  compactTextWrap: { flex: 1, minWidth: 0 },
+  // Colapsada el resumen es lo único que queda del título, así que sube de
+  // `btn-action` (12) a `cardTitle` (16 Black) para seguir leyéndose como tal.
   compactSummary: {
-    ...textStyles.btnAction,
-    color: th.colors.onAccent,
+    ...textStyles.cardTitle,
+    color: th.colors.text,
   },
-  dotsRow: {
-    height:        HEADER_ROW_H,
-    flexDirection: 'row',
-    alignItems:    'center',
-  },
+  // Regla accent de cierre, igual que en `ScreenHeader`. `ruleRow` es la misma
+  // regla partida en segmentos de progreso; el hueco de 2px deja ver el fondo
+  // y con muchas unidades la lee como una regla discontinua, no como dots.
+  rule:    { height: HEADER_RULE_H, backgroundColor: th.colors.accent },
+  ruleRow: { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
+  ruleSeg: { flex: 1, height: HEADER_RULE_H },
   scrollFade: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
