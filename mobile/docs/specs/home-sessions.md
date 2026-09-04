@@ -295,64 +295,67 @@ vez por semana: un hero ahí estaría gritando.
 Lo que sí sube de la Home a clientes es solo el **marcador de letra**. La lista
 agrupada no: ver §4.6.
 
-### 4.5 En la ficha de cliente NO va la lista de sesiones
+### 4.5 En la ficha de cliente NO hay sesiones
 
-Se probó a bajarle la lista agrupada del ciclo entero y se descartó: **el
-entrenador no puede pulsar esas sesiones** —no va a entrenarlas—, así que cuatro
-filas de dos líneas solo empujaban hacia abajo lo único que sí va a tocar, que
-son los ajustes del programa.
+Ni la lista agrupada ni un resumen. **El entrenador no puede pulsar esas
+sesiones** —no va a entrenarlas— así que cualquier cosa que las pinte solo
+empuja hacia abajo lo único que sí va a tocar, que son los ajustes del programa.
 
-En su lugar, **una línea dentro de la tarjeta**, en la variante `client` y solo
-en ella (en la Home el ciclo ya es la lista de sesiones de arriba):
+Se probaron las dos y se descartaron las dos:
 
-```
-ETAPA 2 · VOLUMEN                        Ciclo 3 de 4
-▰▰▰▱                                      ← StageSegBar
-CICLO 07                              2 de 5 sesiones
-A✓   B✓   C   D   E
-```
+1. La **lista agrupada** entera, la misma que la Home. Cuatro filas de dos
+   líneas ocupando media pantalla para algo que no se pulsa.
+2. Una **línea de resumen** dentro de la tarjeta (`A✓ B✓ C D E`). Cabía, pero
+   sobraba: **la barra de etapa ya rellena su segmento actual con la fracción
+   de sesiones hechas del ciclo**, así que el dato estaba dicho dos veces, y
+   «Próxima sesión», que va justo debajo, dice por dónde va la clienta.
 
-Repite exactamente la gramática del bloque de etapa que tiene encima: rótulo
-`spacingTag`/`mutedLight` a la izquierda con el dato en `text`, meta `subtitle`
-empujada a la derecha, y debajo lo visual. Etapa → barra segmentada; ciclo →
-las letras.
+El tab de Programa queda con **tres piezas y ninguna suelta**: la tarjeta con
+sus ajustes, la ficha de «Preparar» y su nota. Entra sin scroll, que era el
+objetivo.
 
-| Estado | Tratamiento |
+### 4.6 Las pestañas pierden la banda
+
+`ui/TabBar` **existe y está en uso** (`ClientsScreen.jsx:2465`), pero hay que
+restilarlo. Su diseño actual son pestañas clásicas: la activa toma `colors.bg`
+con las esquinas de arriba redondeadas y **se funde con el contenido**, lo que
+obliga a que lo de arriba sea una banda de otro color (`detailNavBand`, sobre
+`surface`).
+
+Ese es el problema: la pantalla pasa de **header negro → banda gris → contenido
+negro**, y una banda gris no existe en ningún otro sitio de la app. El recurso
+es correcto y está bien argumentado en la cabecera del componente, pero paga un
+fondo que el resto del producto no usa.
+
+**Pestañas nuevas, sobre `bg`:**
+
+| Pieza | Valor |
 |---|---|
-| Hecha | Letra en `muted` + check lima de 9 px |
-| La que toca | Letra en `accent` — es la misma que sale grande en «Próxima sesión» |
-| Pendiente | Letra en `mutedLight` |
+| Track | `colors.surface`, `radius.md`, `padding: 3`, `gap: 3` |
+| Pestaña | `flex: 1`, `padding: 9px 2px`, `radius.sm`, `textStyles.cardType` en `mutedLight` |
+| Activa | fondo `colors.surface2`, texto en `colors.text` |
+| Animación | la píldora **desliza** a la nueva posición, igual que el `SegmentedControl` |
 
-Sin la lista, **el pie EDITAR / VER / ⋯ y la ficha de «Preparar» entran en la
-primera pantalla sin scroll**, que era el objetivo. El tab de Programa acaba con
-tres piezas y ninguna suelta: tarjeta, ficha y su nota.
+Con esto la pantalla entera va sobre `bg`: cabecera, nombre, pestañas y
+contenido. Desaparecen la banda y las dos condiciones que imponía (sin borde
+inferior, sin `paddingBottom`).
 
-### 4.6 Las pestañas: `ui/TabBar`, no `SegmentedControl`
+**La regla que sustituye a la de la banda, y es más simple:**
 
-**Ya existe y ya está montado** (`ui/TabBar.jsx`, usado en
-`ClientsScreen.jsx:2465`). No es trabajo de esta spec; se anota aquí porque la
-maqueta lo dibujaba mal —como un grupo de píldoras— y porque la distinción
-importa y su cabecera ya la explica:
+> El `SegmentedControl` de filtro lleva el highlight en **`accent`**; las
+> pestañas de navegación lo llevan **neutro**. En una pantalla con los dos, la
+> píldora lima es siempre el filtro.
 
-- El **`SegmentedControl`** es un control de **filtro**: una píldora que flota
-  SOBRE su fondo (`surface2`, `radius.full`, highlight deslizante en `accent`).
-- El **`TabBar`** es **navegación**: un recorte de la banda HACIA el contenido.
-  La pestaña activa toma `colors.bg` con las dos esquinas de arriba a
-  `radius.md` y se funde con su tab.
+Los dos siguen sin parecerse —track `surface2` y `radius.full` contra `surface`
+y `radius.md`— y siguen conviviendo: las pestañas navegan entre sub-pantallas,
+y dentro de cada una hay segmentados que filtran. Lo que cambia es **de dónde
+sale la diferencia**: antes del fondo sobre el que flotaban, ahora del color del
+highlight, que además encaja con §1.1 — el acento marca acción, no en qué
+pestaña estás.
 
-Que no se parezcan es el punto: dentro de la misma pantalla conviven los dos —
-las pestañas navegan, y dentro de cada tab hay controles segmentados que
-filtran.
-
-**El acento va en el TEXTO, nunca en el fondo.** Pintar el fondo de accent
-deshace la fusión, y además gastaría lima en «en qué pestaña estoy», que en este
-rediseño significa otra cosa (§1.1).
-
-Dos condiciones que la banda impone y que hay que respetar al tocar esa
-pantalla: **sin borde inferior** (el corte lo marca el escalón `surface` sobre
-`bg`, y un borde obligaría a la pestaña a interrumpirlo) y **sin
-`paddingBottom`** en el contenedor de las pestañas, porque la activa tiene que
-llegar al borde de la banda. El aire de debajo lo pone cada tab.
+⚠️ **Coste real:** `TabBar.jsx` está implementado, probado y en uso, y su
+cabecera documenta el motivo que aquí se cae. Hay que reescribir componente y
+comentario, no solo la maqueta.
 
 ### 4.7 Extracción
 
@@ -559,8 +562,9 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | 2 | **El nombre del programa no se ve al abrir** | Consecuencia directa de bajar la tarjeta al final. La única forma de tenerlo arriba *y* la tarjeta abajo es duplicar el nombre en una línea fina de cabecera |
 | 3 | **El radio** | La `ProgramCard` va a `radius.lg` (18) y las filas de sesión a `md` (10). O se igualan, o se acepta que la tarjeta es de otro rango — en clientes hoy conviven así y no chirría |
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
-| 5 | **¿Basta la línea de ciclo en clientes?** | §4.5 la reduce a `A✓ B✓ C D E`. Si al usarlo falta saber CUÁNDO se hizo cada una, el sitio es el historial del cliente, que ya está a una pestaña — no devolver la lista a esta pantalla |
-| 6 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
+| 5 | **¿Se echan de menos las sesiones en clientes?** | §4.5 las quita del todo. Si al usarlo falta saber qué lleva hecho, el sitio es el historial del cliente, que está a una pestaña — no devolverlas a esta pantalla |
+| 6 | **Ancho de las pestañas** | Cuatro etiquetas a `cardType` (12 px, tracking 1.2) dejan ~82 px por celda: «Historial» entra justo. Si en dispositivo se corta, bajar el tracking solo de las pestañas, no el tamaño |
+| 7 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
 
 ---
 
@@ -569,7 +573,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | Fase | Qué | Coste | Estado |
 |---|---|---|---|
 | **U06** | Rediseño de la HomeView: hero, filas planas, semana desnuda, tarjeta al final (§3) | medio | pendiente |
-| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, y el ciclo en una línea de la ficha de cliente (§4) | medio | pendiente |
+| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, ficha de cliente sin sesiones y restyle de `ui/TabBar` sin banda (§4) | medio | pendiente |
 | **U08** | `sessionPlan()` — se hace **dentro de U06**, no después (§5) | media tarde | pendiente |
 | **U09** | Plantillas de sesión libre (§7) | bajo | pendiente |
 
