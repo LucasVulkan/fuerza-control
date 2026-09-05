@@ -646,6 +646,20 @@ El botón vive en el **recap**, como acción secundaria encima de `LISTO`.
 un segundo toque. Guardarla dos veces daría dos plantillas idénticas y ninguna
 forma de distinguirlas.
 
+**Y si la sesión SALIÓ de una plantilla, se puede actualizar esa.** Es el caso
+normal: abres la plantilla, le cambias un par de cosas por el camino y quieres
+que se queden. Sin esto, cada retoque fundaba una copia y acababas con tres
+«Corta de reserva» sin saber cuál es la buena. El recap ofrece las dos salidas,
+con «Actualizar «Corta»» al doble de ancho que «Guardar como nueva» — la
+actualización es lo que se espera, la copia es la excepción. Sin plantilla de
+origen, o si se borró mientras tanto, vuelve el botón único.
+
+Actualizar **conserva el `presetId`**, así que la plantilla no se mueve de sitio
+en la lista; y si le quitaste el nombre a la sesión se queda con el que ya tenía.
+La sesión recuerda su origen en `freePresetId`, que viaja al log porque el recap
+trabaja sobre la entrada y no sobre la sesión, que a esas alturas ya está
+reseteada.
+
 ⚠️ **El recap es un momento, no un estado** — el mismo aviso del §3.2.1. Si el
 usuario lo pasa de largo, la sesión queda en el historial y la plantilla se
 pierde. Se acepta a propósito: el segundo hogar permanente sería un `⋯` en la
