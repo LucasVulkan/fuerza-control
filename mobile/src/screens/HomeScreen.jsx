@@ -217,7 +217,7 @@ function HeroChevron({ size = 13, color = LIMA }) {
   );
 }
 
-function Hero({ label, tag, name, meta, cta, onPress }) {
+function Hero({ label, marker, name, meta, cta, onPress, a11yLabel }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
@@ -225,13 +225,19 @@ function Hero({ label, tag, name, meta, cta, onPress }) {
       onPress={onPress}
       activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${name}, ${meta}`}
+      accessibilityLabel={a11yLabel}
     >
-      <View style={styles.heroTop}>
-        <Text style={styles.heroFlag}>{label}</Text>
-        <Text style={styles.heroTag}>{tag}</Text>
+      <Text style={styles.heroFlag}>{label}</Text>
+      {/* El marcador delante del nombre, no una etiqueta "SESIÓN A" arriba a la
+          derecha: el tag era la pieza que menos trabajaba del hero —repetía con
+          dos palabras lo que la lista dice con una letra— y sobre el lima, en
+          10 px al 50%, apenas se leía. El patrón ya existe en la app: la ficha
+          de "Próxima sesión" de clientes es esta misma línea (letra + nombre).
+          La letra va al 55% para prefijar, no para competir con el nombre. */}
+      <View style={styles.heroNameRow}>
+        <Text style={styles.heroMarker}>{marker}</Text>
+        <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
       </View>
-      <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
       <Text style={styles.heroMeta} numberOfLines={2}>{meta}</Text>
       {/* La pieza más pesada del hero, y así debe seguir. */}
       <View style={styles.heroBtn}>
@@ -620,11 +626,14 @@ export default function HomeScreen() {
                 {heroDay && (
                   <Hero
                     label={plan.heroLabel}
-                    tag={t('workout.sessionLabel', { label: heroDay.template.label ?? '' }).toUpperCase()}
+                    marker={heroDay.template.label ?? ''}
                     name={heroDay.template.name ?? ''}
                     meta={heroMeta}
                     cta={heroIsActive ? t('home.btnContinue') : t('home.btnStart')}
                     onPress={() => requestStart(heroDay.templateId, true)}
+                    // La letra sola basta en pantalla, pero en voz alta no dice
+                    // nada: el lector se queda con "SESIÓN C" entero.
+                    a11yLabel={`${plan.heroLabel}, ${t('workout.sessionLabel', { label: heroDay.template.label ?? '' })}, ${heroDay.template.name ?? ''}, ${heroMeta}`}
                   />
                 )}
 
@@ -886,7 +895,6 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.lg,
     padding:         spacing.lg,
   },
-  heroTop:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
   heroFlag: {
     fontFamily:    'Inter_900Black',
     fontSize:      10,
@@ -894,20 +902,27 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     color:         th.colors.onAccent,
   },
-  heroTag: {
-    ...textStyles.spacingTag,
-    color:      withOpacity(th.colors.onAccent, 0.5),
-    marginLeft: 'auto',
-  },
-  // 22 px: el cuerpo que ya usan el número de ciclo y los valores de `StatsRow`,
-  // no un tamaño inventado.
-  heroName: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      22,
-    lineHeight:    22 * 1.1,
-    letterSpacing: -0.22,
-    color:         th.colors.onAccent,
+  // 20 px: el cuerpo de `text/hero`, el mismo que el nombre del programa y el
+  // número de ciclo de la tarjeta. Empezó en 27, bajó a 22 y acabó aquí — que es
+  // además el token, no un tamaño intermedio inventado.
+  heroNameRow: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+    gap:           spacing.sm2,
     marginTop:     spacing.md,
+  },
+  heroMarker: {
+    ...textStyles.hero,
+    letterSpacing: 0.5,
+    color:         withOpacity(th.colors.onAccent, 0.55),
+    flexShrink:    0,
+  },
+  heroName: {
+    ...textStyles.hero,
+    lineHeight:    20 * 1.1,
+    letterSpacing: -0.2,
+    color:         th.colors.onAccent,
+    flexShrink:    1,
   },
   // `space/sm` y no `md`: nombre y meta se leen como un bloque.
   heroMeta: {

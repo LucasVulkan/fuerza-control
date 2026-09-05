@@ -123,14 +123,24 @@ Valores exactos, ya afinados en dos rondas:
 | Pieza | Valor |
 |---|---|
 | Contenedor | `colors.accent` (#aae216, el relleno sólido — **no** el lima #b8ff00), `radius.lg`, `padding: spacing.lg` |
-| Fila superior | rótulo a la izquierda (`Inter_900Black` 10, tracking 2.2, `onAccent`) · tag «SESIÓN C» a la derecha (`Inter_800ExtraBold` 10, tracking 2, `onAccent` al 50%) |
-| Nombre | **22 px** `Inter_900Black`, line-height 1.1, `marginTop: spacing.md` |
+| Fila superior | solo el rótulo (`Inter_900Black` 10, tracking 2.2, `onAccent`). El tag «SESIÓN C» de la derecha se cayó en QA — ver abajo |
+| Nombre | marcador + nombre en una línea, `alignItems: baseline`, `gap: spacing.sm2`, `marginTop: spacing.md`. Los dos a `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.1); el marcador va en `onAccent` al 55% y tracking .5, el nombre sólido y con tracking −0.2 |
 | Meta | 12 px `Inter_600SemiBold`, `onAccent` al 62%, **`marginTop: spacing.sm`** |
 | Botón | `onAccent` sólido, `radius.md`, `padding: 15px spacing.lg`, `marginTop: spacing.lg`; texto `btnAction` en **lima** + chevron |
 
-El nombre empezó en 27 px y bajó a 22 a petición del usuario: 22 es el cuerpo
-que ya usan el número de ciclo del banner y los valores de `StatsRow`, no un
-tamaño inventado. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
+El nombre empezó en 27 px, bajó a 22 y acabó en 20 —dos correcciones del
+usuario, la segunda ya sobre el dispositivo—. 20 es además el token `text/hero`:
+el mismo cuerpo que el nombre de programa y el número de ciclo de la
+`ProgramCard`, no un tamaño intermedio inventado.
+
+**El tag «SESIÓN C» desaparece y su letra se va delante del nombre.** Arriba a la
+derecha, en 10 px al 50% sobre el lima, no se leía; y era la pieza que menos
+trabajaba del hero, porque decía con dos palabras lo que la lista dice con una
+letra. Subirlo a negro sólido lo arreglaba pero dejaba dos negros del mismo peso
+peleándose en la misma fila con el rótulo. La línea «letra + nombre» **no es
+nueva**: es la de la ficha de «Próxima sesión» de clientes (`apNextLetter` +
+`apNextName`). El lector de pantalla sí recibe «SESIÓN C» entero, que en voz alta
+una letra suelta no dice nada. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
 nombre y meta se lean como un bloque. **El botón no se toca**: es la pieza más
 pesada del hero y así debe seguir.
 
@@ -215,8 +225,8 @@ el icono.
 |---|---|
 | Fila | `backgroundColor: surface`, `padding: spacing.md spacing.lg`, `gap: spacing.lg`, `overflow: hidden` + `getCardRadii(th, isFirst, isLast)` |
 | **Marcador** | Ancho fijo **20 px** (el hueco de icono de `MenuRow`), `Inter_900Black` 13, tracking .5. Pendiente → `lima`; hecha → `muted`. **Sin caja, sin fondo, sin borde** |
-| Nombre | `textStyles.cardType` en `text` — **el mismo color en hecha y en pendiente** |
-| Subtítulo | `textStyles.tag` en `mutedLight`, `gap: spacing.xs` bajo el nombre. Hecha → «Completada hace 3 días · 5 ejercicios»; pendiente → «5 ejercicios · ~44 min» |
+| Nombre | `textStyles.cardType` a **13 px** en `text` — **el mismo color en hecha y en pendiente** |
+| Subtítulo | `textStyles.tag` a **11 px** en `mutedLight`, `gap: spacing.xs` bajo el nombre. Hecha → «Completada hace 3 días · 5 ejercicios»; pendiente → «5 ejercicios · ~44 min» |
 | «Adaptada» | **Texto en `tint.blue70` al principio del subtítulo**, no una pastilla |
 | Acción | A la derecha: check lima (hecha) o el chevron `›` de 18 px de `exRow` (pendiente) |
 
@@ -611,7 +621,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
 | 5 | **¿Se echan de menos las sesiones en clientes?** | §4.5 las quita del todo. Si al usarlo falta saber qué lleva hecho, el sitio es el historial del cliente, que está a una pestaña — no devolverlas a esta pantalla |
 | 6 | **Ancho de las pestañas** | Cuatro etiquetas a `cardType` (12 px, tracking 1.2) dejan ~82 px por celda: «Historial» entra justo. Si en dispositivo se corta, bajar el tracking solo de las pestañas, no el tamaño |
-| 7 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso: 12 px con **tracking 1.2**. En nombres de ejercicio funciona; en «Empuje volumen» queda más espaciado de lo esperable. Fiel al patrón — si no convence, bajar el tracking solo aquí y anotarlo |
+| 7 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso, con **tracking 1.2**. El tamaño ya subió a 13/11 en QA (a 12/10 la fila se quedaba pequeña al lado del hero); el tracking sigue sin tocar, y en «Empuje volumen» queda más espaciado de lo esperable. Si no convence, bajarlo solo aquí y anotarlo |
 
 ---
 

@@ -216,9 +216,13 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 0.5,
     color:         th.colors.mutedLight,
   },
-  groupedMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  groupedTitle: { ...textStyles.cardType, color: th.colors.text },
-  groupedSub:   { ...textStyles.tag, color: th.colors.mutedLight },
+  groupedMeta: { flex: 1, minWidth: 0, gap: spacing.xs },
+  // Un punto por encima de `cardType`/`tag`, que es lo que hereda de `exRow`:
+  // ahí los nombres son de ejercicio y aquí de sesión, y a 12/10 la fila se
+  // quedaba pequeña al lado del hero. Sigue por debajo de `MenuRow` (14/11), que
+  // es la otra anatomía de esta misma lista.
+  groupedTitle: { ...textStyles.cardType, fontSize: 13, color: th.colors.text },
+  groupedSub:   { ...textStyles.tag, fontSize: 11, color: th.colors.mutedLight },
   rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
   rowMeta:     { flex: 1, minWidth: 0 },
   // 14px ExtraBold sin tracking: no hay token de Figma para este tamaño
