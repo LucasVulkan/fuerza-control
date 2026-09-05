@@ -235,7 +235,7 @@ function Hero({ label, marker, name, meta, cta, onPress, a11yLabel }) {
           de "Próxima sesión" de clientes es esta misma línea (letra + nombre).
           La letra va al 55% para prefijar, no para competir con el nombre. */}
       <View style={styles.heroNameRow}>
-        <Text style={styles.heroMarker}>{marker}</Text>
+        {!!marker && <Text style={styles.heroMarker}>{`${marker} ·`}</Text>}
         <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
       </View>
       <Text style={styles.heroMeta} numberOfLines={2}>{meta}</Text>
@@ -911,16 +911,24 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm2,
     marginTop:     spacing.md,
   },
+  // Marcador y separador en la MISMA tinta que el nombre: al 55% sobre el lima
+  // se leía gris y apagado, que era justo lo que se venía a arreglar. El punto
+  // a media altura es lo que hace de prefijo — la jerarquía la pone el orden,
+  // no una tinta más floja.
   heroMarker: {
     ...textStyles.hero,
+    lineHeight:    20 * 1.05,
     letterSpacing: 0.5,
-    color:         withOpacity(th.colors.onAccent, 0.55),
+    color:         th.colors.onAccent,
     flexShrink:    0,
   },
+  // `Inter_900Black` es el peso más alto que carga la app (App.js), así que a
+  // 20 px lo único que queda para ganar cuerpo es apretar: tracking a −0.5 e
+  // interlineado a 1.05 densan el bloque sin tocar el tamaño.
   heroName: {
     ...textStyles.hero,
-    lineHeight:    20 * 1.1,
-    letterSpacing: -0.2,
+    lineHeight:    20 * 1.05,
+    letterSpacing: -0.5,
     color:         th.colors.onAccent,
     flexShrink:    1,
   },

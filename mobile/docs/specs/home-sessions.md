@@ -124,7 +124,7 @@ Valores exactos, ya afinados en dos rondas:
 |---|---|
 | Contenedor | `colors.accent` (#aae216, el relleno sólido — **no** el lima #b8ff00), `radius.lg`, `padding: spacing.lg` |
 | Fila superior | solo el rótulo (`Inter_900Black` 10, tracking 2.2, `onAccent`). El tag «SESIÓN C» de la derecha se cayó en QA — ver abajo |
-| Nombre | marcador + nombre en una línea, `alignItems: baseline`, `gap: spacing.sm2`, `marginTop: spacing.md`. Los dos a `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.1); el marcador va en `onAccent` al 55% y tracking .5, el nombre sólido y con tracking −0.2 |
+| Nombre | «C · Nombre» en una línea, `alignItems: baseline`, `gap: spacing.sm2`, `marginTop: spacing.md`. Los dos a `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05) y los dos en `onAccent` **sólido**; el marcador lleva su punto a media altura y tracking .5, el nombre tracking −0.5 |
 | Meta | 12 px `Inter_600SemiBold`, `onAccent` al 62%, **`marginTop: spacing.sm`** |
 | Botón | `onAccent` sólido, `radius.md`, `padding: 15px spacing.lg`, `marginTop: spacing.lg`; texto `btnAction` en **lima** + chevron |
 
@@ -140,7 +140,17 @@ letra. Subirlo a negro sólido lo arreglaba pero dejaba dos negros del mismo pes
 peleándose en la misma fila con el rótulo. La línea «letra + nombre» **no es
 nueva**: es la de la ficha de «Próxima sesión» de clientes (`apNextLetter` +
 `apNextName`). El lector de pantalla sí recibe «SESIÓN C» entero, que en voz alta
-una letra suelta no dice nada. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
+una letra suelta no dice nada.
+
+El marcador se probó primero en `onAccent` al 55%, para prefijar sin competir con
+el nombre, y sobre el lima se leyó **gris y apagado** — el mismo defecto que se
+venía a arreglar. Va en la misma tinta sólida que el nombre, y quien hace de
+prefijo es el punto a media altura, no una tinta más floja.
+
+⚠️ **`Inter_900Black` es el peso más alto que carga la app** (App.js), así que a
+20 px no hay nada más pesado que pedirle al nombre. Lo que queda para ganar
+cuerpo es apretar —tracking −0.5, interlineado 1.05—, y si aun así se quiere más
+peso el único camino es subir otra vez el tamaño. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
 nombre y meta se lean como un bloque. **El botón no se toca**: es la pieza más
 pesada del hero y así debe seguir.
 
