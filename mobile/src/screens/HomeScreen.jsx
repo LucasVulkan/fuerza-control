@@ -234,10 +234,10 @@ function Hero({ label, marker, name, meta, cta, onPress, a11yLabel }) {
           10 px al 50%, apenas se leía. El patrón ya existe en la app: la ficha
           de "Próxima sesión" de clientes es esta misma línea (letra + nombre).
           La letra va al 55% para prefijar, no para competir con el nombre. */}
-      <View style={styles.heroNameRow}>
-        {!!marker && <Text style={styles.heroMarker}>{`${marker} ·`}</Text>}
-        <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
-      </View>
+      <Text style={styles.heroName} numberOfLines={2}>
+        {!!marker && <Text style={styles.heroMarker}>{`${marker} · `}</Text>}
+        {name}
+      </Text>
       <Text style={styles.heroMeta} numberOfLines={2}>{meta}</Text>
       {/* La pieza más pesada del hero, y así debe seguir. */}
       <View style={styles.heroBtn}>
@@ -905,22 +905,19 @@ const makeStyles = (th) => StyleSheet.create({
   // 20 px: el cuerpo de `text/hero`, el mismo que el nombre del programa y el
   // número de ciclo de la tarjeta. Empezó en 27, bajó a 22 y acabó aquí — que es
   // además el token, no un tamaño intermedio inventado.
-  heroNameRow: {
-    flexDirection: 'row',
-    alignItems:    'baseline',
-    gap:           spacing.sm2,
-    marginTop:     spacing.md,
-  },
   // Marcador y separador en la MISMA tinta que el nombre: al 55% sobre el lima
   // se leía gris y apagado, que era justo lo que se venía a arreglar. El punto
   // a media altura es lo que hace de prefijo — la jerarquía la pone el orden,
   // no una tinta más floja.
+  //
+  // Va DENTRO del `Text` del nombre, no en una fila aparte: con dos `Text` y un
+  // `gap` la separación se sumaba dos veces (el espacio tipográfico antes del
+  // punto y los 8 px del gap después) y el punto quedaba flotando. Anidado,
+  // separa solo la tipografía.
   heroMarker: {
     ...textStyles.hero,
-    lineHeight:    20 * 1.05,
     letterSpacing: 0.5,
     color:         th.colors.onAccent,
-    flexShrink:    0,
   },
   // `Inter_900Black` es el peso más alto que carga la app (App.js), así que a
   // 20 px lo único que queda para ganar cuerpo es apretar: tracking a −0.5 e
@@ -930,7 +927,7 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight:    20 * 1.05,
     letterSpacing: -0.5,
     color:         th.colors.onAccent,
-    flexShrink:    1,
+    marginTop:     spacing.md,
   },
   // `space/sm` y no `md`: nombre y meta se leen como un bloque.
   heroMeta: {

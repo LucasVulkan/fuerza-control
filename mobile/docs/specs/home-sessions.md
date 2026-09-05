@@ -124,7 +124,7 @@ Valores exactos, ya afinados en dos rondas:
 |---|---|
 | Contenedor | `colors.accent` (#aae216, el relleno sólido — **no** el lima #b8ff00), `radius.lg`, `padding: spacing.lg` |
 | Fila superior | solo el rótulo (`Inter_900Black` 10, tracking 2.2, `onAccent`). El tag «SESIÓN C» de la derecha se cayó en QA — ver abajo |
-| Nombre | «C · Nombre» en una línea, `alignItems: baseline`, `gap: spacing.sm2`, `marginTop: spacing.md`. Los dos a `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05) y los dos en `onAccent` **sólido**; el marcador lleva su punto a media altura y tracking .5, el nombre tracking −0.5 |
+| Nombre | «C · Nombre» en **un solo `Text`**, con el marcador anidado dentro; `marginTop: spacing.md`, `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05) y `onAccent` **sólido** en los dos. El marcador lleva tracking .5 y su punto a media altura; el nombre, tracking −0.5 |
 | Meta | 12 px `Inter_600SemiBold`, `onAccent` al 62%, **`marginTop: spacing.sm`** |
 | Botón | `onAccent` sólido, `radius.md`, `padding: 15px spacing.lg`, `marginTop: spacing.lg`; texto `btnAction` en **lima** + chevron |
 
@@ -146,6 +146,11 @@ El marcador se probó primero en `onAccent` al 55%, para prefijar sin competir c
 el nombre, y sobre el lima se leyó **gris y apagado** — el mismo defecto que se
 venía a arreglar. Va en la misma tinta sólida que el nombre, y quien hace de
 prefijo es el punto a media altura, no una tinta más floja.
+
+Y va **anidado en el `Text` del nombre**, no en una fila con `gap`: con dos `Text`
+la separación se sumaba dos veces —el espacio tipográfico antes del punto más los
+8 px del gap después— y el punto quedaba flotando lejos del nombre. Anidado,
+separa solo la tipografía.
 
 ⚠️ **`Inter_900Black` es el peso más alto que carga la app** (App.js), así que a
 20 px no hay nada más pesado que pedirle al nombre. Lo que queda para ganar
