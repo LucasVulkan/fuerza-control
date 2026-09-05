@@ -658,6 +658,16 @@ una afordancia para un caso que quizá no aparece. Si aparece, ese es el sitio.
 bloques y el nombre. **Los pesos y las reps registradas no** — eso es el log.
 La plantilla es el plan, no lo que hiciste.
 
+Al implementarlo apareció que **esa configuración no existía**: el `exConfig` de
+un ejercicio añadido sobre la marcha se inventaba en cada render con los valores
+por defecto de la biblioteca, así que la línea «4 × 8–12 · 90 s» de la tarjeta
+era un dato que nadie podía cambiar y que la plantilla no podía congelar. Se
+arregló en el mismo sitio donde se ve (commit b5424d5): la entrada ad-hoc lleva
+su `config`, la línea de objetivo es su disparador —el dato es el disparador,
+como la etiqueta CICLO de la Home— y detrás hay una hoja con el bloque VOLUMEN
+del editor y nada más. Nada de progresión, calentamiento ni vinculación: en una
+sesión libre no hay siguiente sesión a la que progresar.
+
 **Dónde:** `freeSessionPresets`, array propio device-global, **no en
 `sessionTemplates`**. Ese mapa lo referencian los días de las etapas; una
 plantilla libre metida ahí sería una sesión sin dueño, y aparecería en todo lo
