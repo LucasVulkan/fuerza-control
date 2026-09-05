@@ -31,7 +31,7 @@ import { formatBlockScore, compareBlockResults } from '../utils/conditioningBloc
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, textStyles, getCardRadii } from '../theme';
+import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
@@ -114,6 +114,11 @@ export default function SessionRecapScreen({ navigation, route }) {
   const customExercises  = useStore((s) => s.customExercises);
   const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
   const setSessionFeedback = useStore((s) => s.setSessionFeedback);
+  const saveFreeSessionPreset = useStore((s) => s.saveFreeSessionPreset);
+  const showToast          = useStore((s) => s.showToast);
+  // Una plantilla por sesión: guardada, el botón se queda diciéndolo. Guardarla
+  // dos veces daría dos plantillas idénticas y ninguna forma de saberlo.
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const entry = workoutLog.find((e) => e.id === entryId);
 
@@ -513,6 +518,28 @@ export default function SessionRecapScreen({ navigation, route }) {
           </View>
         ) : null}
 
+        {/* Guardar como plantilla — solo la sesión libre, y solo aquí: al
+            empezarla no sabes si merece guardarse, al acabarla sí
+            (docs/specs/home-sessions.md §7.3). Secundario, que el primario es
+            salir. */}
+        {isFree && (
+          <TouchableOpacity
+            style={[styles.tplBtn, templateSaved && styles.tplBtnDone]}
+            onPress={() => {
+              saveFreeSessionPreset(entry);
+              setTemplateSaved(true);
+              showToast(t('freeSession.templateSaved'), 2200, 'success');
+            }}
+            disabled={templateSaved}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+          >
+            <Text style={styles.tplBtnText}>
+              {templateSaved ? t('freeSession.templateSaved') : t('freeSession.saveAsTemplate')}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Done */}
         <TouchableOpacity
           style={styles.doneBtn}
@@ -722,6 +749,19 @@ const makeStyles = (th) => StyleSheet.create({
   chipText: { ...textStyles.tag, color: th.colors.accent, fontVariant: ['tabular-nums'] },
 
   noteText: { ...textStyles.subtitle, color: th.colors.mutedLight, fontStyle: 'italic' },
+
+  // Secundario del par: mismo alto y radio que LISTO, en outline — el relleno
+  // accent es del botón que cierra la pantalla.
+  tplBtn: {
+    borderRadius:    th.radius.sm,
+    borderWidth:     borders.thin,
+    borderColor:     th.tint.accent50,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+    marginTop:       spacing.md,
+  },
+  tplBtnDone:  { borderColor: th.colors.border },
+  tplBtnText:  { ...textStyles.btnAction, color: th.colors.accent },
 
   doneBtn: {
     backgroundColor: th.colors.accent,

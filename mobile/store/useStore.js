@@ -37,6 +37,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
+import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
@@ -399,6 +400,10 @@ export const useStore = create(
       tagRegistry: [],   // [{ id, name }] — global tag list
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
+      // [{ presetId, name, exercises: [{exerciseId, sets}], blocks }] — mismo
+      // trato que `blockPresets`: copias congeladas del PLAN de una sesión libre
+      // (docs/specs/home-sessions.md §7).
+      freeSessionPresets: [],
       _editSnapshot: null,
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
@@ -1107,6 +1112,21 @@ export const useStore = create(
         set((s) => ({ blockPresets: (s.blockPresets ?? []).filter((p) => p.presetId !== presetId) }));
       },
 
+      // Plantillas de sesión libre — se congelan desde una entrada YA guardada
+      // del historial (el recap es quien las ofrece), no desde la sesión en
+      // curso: al empezar no sabes si merece guardarse, al acabarla sí.
+      saveFreeSessionPreset: (entry) => {
+        const preset = { presetId: generateId('fpre'), ...presetFromEntry(entry) };
+        set((s) => ({ freeSessionPresets: [...(s.freeSessionPresets ?? []), preset] }));
+        return preset.presetId;
+      },
+
+      deleteFreeSessionPreset: (presetId) => {
+        set((s) => ({
+          freeSessionPresets: (s.freeSessionPresets ?? []).filter((p) => p.presetId !== presetId),
+        }));
+      },
+
       // Transient handoff for the block movement picker: ExerciseSelectorScreen
       // writes the pick here instead of calling addExercise when navigated with
       // `blockPicker: true`; BlockEditorInline consumes it in a useEffect and clears it.
@@ -1726,7 +1746,9 @@ export const useStore = create(
         get().navigate('workout');
       },
 
-      startFreeSession: () => {
+      // Con `preset` arranca desde una plantilla: mismos ejercicios y bloques,
+      // series vacías. Sin él, en blanco como siempre.
+      startFreeSession: (preset) => {
         set({
           activeSession: {
             templateId: '__free__',
@@ -1734,10 +1756,8 @@ export const useStore = create(
             startedAt: Date.now(),
             notes: '',
             exerciseNotes: {},
-            adHocExercises: [],
-            freeSessionName: '',
-            freeBlocks: [],
             blockState: {},
+            ...freeSessionFromPreset(preset, () => generateId('blk')),
           },
           ui: { ...get().ui, view: 'workout' },
         });
@@ -2765,6 +2785,14 @@ export const useStore = create(
               updates.blockPresets = [
                 ...(s.blockPresets ?? []),
                 ...presets.filter((p) => !known.has(p.presetId)),
+              ];
+            }
+            const freePresets = data.freeSessionPresets ?? [];
+            if (freePresets.length) {
+              const known = new Set((s.freeSessionPresets ?? []).map((p) => p.presetId));
+              updates.freeSessionPresets = [
+                ...(s.freeSessionPresets ?? []),
+                ...freePresets.filter((p) => !known.has(p.presetId)),
               ];
             }
           }
@@ -4016,6 +4044,7 @@ export const useStore = create(
         clientLogs: state.clientLogs,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
+        freeSessionPresets: state.freeSessionPresets,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,

@@ -369,6 +369,8 @@ export default function HomeScreen() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
   const [cycleDoc,    setCycleDoc]    = useState(false);
+  const [freeSheet,   setFreeSheet]   = useState(false);
+  const [freeTpls,    setFreeTpls]    = useState(false);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -382,6 +384,8 @@ export default function HomeScreen() {
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
   const startFreeSession     = useStore((s) => s.startFreeSession);
+  const freeSessionPresets   = useStore((s) => s.freeSessionPresets);
+  const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
   const navigate             = useStore((s) => s.navigate);
   const clientSync           = useStore((s) => s.clientSync);
   const archiveProgram       = useStore((s) => s.archiveProgram);
@@ -401,6 +405,51 @@ export default function HomeScreen() {
     if (activeProgram) archiveProgram(activeProgram.id, clearHistory);
     setArchiveOpen(false);
   }
+
+  // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
+  const confirmDiscardActive = (onConfirm) => {
+    Alert.alert(
+      t('workout.discardConfirm'),
+      undefined,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
+      ],
+    );
+  };
+
+  const startFree = (preset) => {
+    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession(preset)); return; }
+    startFreeSession(preset);
+  };
+
+  // La hoja de "nueva / desde plantilla" SOLO existe cuando hay plantillas: sin
+  // ninguna, el botón va directo a la sesión en blanco como siempre. Misma regla
+  // que la fila de presets del editor de sesión, y la del hero (§5.3) en otra
+  // pieza — la interfaz no promete lo que no tiene.
+  const handleFreePress = () => {
+    if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
+    if ((freeSessionPresets ?? []).length > 0) { setFreeSheet(true); return; }
+    startFree(null);
+  };
+
+  const freePresetMeta = (preset) => [
+    t('freeSession.templateExercises', { count: preset.exercises?.length ?? 0 }),
+    (preset.blocks?.length ?? 0) > 0
+      ? t('freeSession.templateBlocks', { count: preset.blocks.length })
+      : null,
+  ].filter(Boolean).join(' · ');
+
+  const confirmDeleteFreePreset = (preset) => {
+    Alert.alert(
+      t('freeSession.deleteTemplate'),
+      t('freeSession.deleteTemplateConfirm', { name: preset.name ?? t('freeSession.templateUnnamed') }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('freeSession.deleteTemplate'), style: 'destructive', onPress: () => deleteFreePreset(preset.presetId) },
+      ],
+    );
+  };
 
   // ── Los 3 datos de la tarjeta de programa ────────────────────────────────────
   // Las mismas tres cifras que el entrenador ve del cliente, calculadas aquí del
@@ -501,19 +550,6 @@ export default function HomeScreen() {
           });
           const heroDay = plan.heroTemplateId ? byId.get(plan.heroTemplateId) : null;
           const heroIsActive = !!heroDay && activeSession.templateId === heroDay.templateId;
-
-          // Starting anything (a session card or the free session) while one is
-          // already in progress used to silently discard it — now it warns first.
-          const confirmDiscardActive = (onConfirm) => {
-            Alert.alert(
-              t('workout.discardConfirm'),
-              undefined,
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
-              ],
-            );
-          };
 
           // Starting a session out of rotation is easy to do by accident —
           // confirm before starting anything that isn't the one that toca.
@@ -677,11 +713,7 @@ export default function HomeScreen() {
                 {/* Sesión libre */}
                 <TouchableOpacity
                   style={styles.freeSessionBtn}
-                  onPress={() => {
-                    if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
-                    if (activeSession.templateId) { confirmDiscardActive(startFreeSession); return; }
-                    startFreeSession();
-                  }}
+                  onPress={handleFreePress}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                 >
@@ -814,6 +846,60 @@ export default function HomeScreen() {
         />
       )}
       <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
+
+      {/* ── Sesión libre: en blanco o desde plantilla (§7.2) ── */}
+      {freeSheet && (
+        <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
+          <View style={styles.sheetGroup}>
+            <MenuRow
+              isFirst
+              label={t('freeSession.startBlank')}
+              sub={t('freeSession.startBlankDesc')}
+              subLines={0}
+              minHeight={62}
+              onPress={() => { setFreeSheet(false); startFree(null); }}
+            />
+            <MenuRow
+              isLast
+              label={t('freeSession.startFromTemplate')}
+              sub={t('freeSession.startFromTemplateDesc')}
+              subLines={0}
+              minHeight={62}
+              onPress={() => { setFreeSheet(false); setFreeTpls(true); }}
+            />
+          </View>
+        </DragSheet>
+      )}
+
+      {freeTpls && (
+        <DragSheet visible onClose={() => setFreeTpls(false)} title={t('freeSession.templatesTitle')}>
+          <View style={styles.sheetGroup}>
+            {freeSessionPresets.map((preset, i) => (
+              <MenuRow
+                key={preset.presetId}
+                isFirst={i === 0}
+                isLast={i === freeSessionPresets.length - 1}
+                label={preset.name ?? t('freeSession.templateUnnamed')}
+                sub={freePresetMeta(preset)}
+                minHeight={62}
+                onPress={() => { setFreeTpls(false); startFree(preset); }}
+                // La ✕ por fila, como en el selector de presets de bloque: la
+                // plantilla se borra donde se elige, que es donde estorba.
+                control={(
+                  <TouchableOpacity
+                    onPress={() => confirmDeleteFreePreset(preset)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('freeSession.deleteTemplate')}
+                  >
+                    <Text style={styles.freeTplRemove}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            ))}
+          </View>
+        </DragSheet>
+      )}
       {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
         <StagePickerSheet
           program={activeProgram}
@@ -1046,6 +1132,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
+  freeTplRemove:  { ...textStyles.cardType, color: th.colors.muted },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },
