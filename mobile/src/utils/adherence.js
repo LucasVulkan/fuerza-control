@@ -90,6 +90,18 @@ export function requiresAttention(status) {
 }
 
 /**
+ * Adherence procedural status → theme color. Vive aquí y no en la pantalla que
+ * lo estrenó porque la `ProgramCard` lo pinta en las dos: el atleta ve de sí
+ * mismo la misma cifra, con el mismo color, que su entrenador ve de él.
+ */
+export function adherenceColor(th, status) {
+  if (status === STATUS.AT_RISK)  return th.colors.red;
+  if (status === STATUS.SLIPPING) return th.colors.orange;
+  if (status === STATUS.ON_TRACK) return th.colors.green;
+  return th.colors.muted; // no_data / muted
+}
+
+/**
  * Adherencia como porcentaje: sesiones registradas frente a las esperadas en
  * una ventana móvil de `weeks` semanas.
  *

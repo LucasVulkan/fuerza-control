@@ -39,14 +39,14 @@ import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } f
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
-import { computeAdherence, requiresAttention, adherencePct, STATUS } from '../utils/adherence';
+import { computeAdherence, requiresAttention, adherencePct, adherenceColor, STATUS } from '../utils/adherence';
 import { progressFromBlob, clientStageIndex, stageDays, stageDaysAt, allProgramDays } from '../utils/stageProgress';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
-import StageSegBar from '../components/ui/StageSegBar';
+import ProgramCard from '../components/ui/ProgramCard';
 
 // Sesiones por ciclo — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
@@ -58,14 +58,6 @@ function weeklyTarget(program) {
   if (!program) return 0;
   const days = stageDays(program);
   return days.length;
-}
-
-/** Adherence procedural status → theme color. */
-function adherenceColor(th, status) {
-  if (status === STATUS.AT_RISK)  return th.colors.red;
-  if (status === STATUS.SLIPPING) return th.colors.orange;
-  if (status === STATUS.ON_TRACK) return th.colors.green;
-  return th.colors.muted; // no_data / muted
 }
 
 // ── Shared small components ────────────────────────────────────────────────────
@@ -260,15 +252,6 @@ function UploadIcon({ size = 12, color }) {
   );
 }
 
-// Track de la barra de etapas, sin token propio (mismo caso que el #b8ff00 y el
-// #81a71e del banner de Home): `surface2` no se veía y `mutedLight` competía con
-// el relleno. Es el punto medio exacto entre los dos.
-const STAGE_TRACK = '#545454';
-
-// Una caja de dato mide ~86px en un móvil estrecho: el texto se encoge antes de
-// truncarse. Mismo recurso que las Progress cards.
-const FIT = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 };
-
 // ── Tarjeta de programa asignado (tab de Programa) ──────────────────────────────
 // Pinta el bloque entero del tab: los avisos que te paran, la tarjeta de dos
 // colores (nombre + ciclo · barra de etapa · adherencia/ritmo/carga), la fila de
@@ -280,10 +263,9 @@ function AssignedProgramCard({
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
 }) {
-  const { t, i18n } = useTranslation();
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const isEs = i18n.language?.startsWith('es');
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ── Mesocycle position ──
@@ -340,10 +322,6 @@ function AssignedProgramCard({
   // ── Real pace ──
   const paceRaw     = adherence?.recentPerWeek ?? 0;
   const paceHasData = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
-  const paceRounded = Math.round(paceRaw * 2) / 2;
-  const paceRateStr = Number.isInteger(paceRounded)
-    ? String(paceRounded)
-    : paceRounded.toFixed(1).replace('.', isEs ? ',' : '.');
   // La adherencia es el único de los 3 datos que emite un veredicto, así que es
   // el único que se colorea cuando pide atención.
   const attnColor = adherence && requiresAttention(adherence.status)
@@ -406,102 +384,41 @@ function AssignedProgramCard({
         </View>
       )}
 
-      {/* ── Tarjeta de programa asignado ──
-          Dos colores como la tarjeta de ejercicio del workout: cabecera en
-          surface2, cuerpo en surface. */}
-      <View style={styles.apCard}>
-
-        <View style={styles.apHead}>
-          <View style={styles.apHeadName}>
-            <Text style={styles.apEyebrow}>{t('clients.assignedProgram')}</Text>
-            <Text style={styles.apName} numberOfLines={1}>{program.name}</Text>
-          </View>
-          <View style={styles.apHeadCycle}>
-            <Text style={styles.apEyebrowRight}>{t('home.cycle')}</Text>
-            <Text style={styles.apCycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.apBody}>
-          {showStageBar && (
-            <View style={styles.apStage}>
-              <View style={styles.apStageRow}>
-                <Text style={styles.apStageName} numberOfLines={1}>
-                  {t('home.stageDefault', { n: stageIdx + 1 })}
-                  {currentStage?.name
-                    ? <Text style={styles.apStageOwnName}>{` · ${currentStage.name}`}</Text>
-                    : null}
-                </Text>
-                <Text style={styles.apStageMeta}>
-                  {t('home.cycleProgress', { current: weekInStage, total: stageWeeks })}
-                </Text>
-              </View>
-              {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a
-                  la fracción de sesiones hechas, los futuros vacíos. Misma
-                  lectura que los puntos de la cabecera, del mismo dato. */}
-              <StageSegBar
-                ratios={Array.from({ length: stageWeeks }, (_, i) => (
-                  stageEnded ? 1
-                    : i < weekInStage - 1 ? 1
-                    : i === weekInStage - 1 ? doneInCycle / sessPerCycle
-                    : 0
-                ))}
-                trackColor={STAGE_TRACK}
-                fillColor={th.colors.accent}
-              />
-              {/* Terminó la etapa y no ha avanzado. Puede ser decisión suya o
-                  tuya ("hazme un ciclo más"), así que se informa sin alarmar —
-                  el naranja se reserva para cuando NO puede avanzar. */}
-              {stageDone && !nextLocked && (
-                <Text style={styles.apStageMeta}>
-                  {t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Las 3 cajas se reparten el ancho a partes iguales, así que en un
-              móvil estrecho quedan ~86px de contenido: valor y etiqueta llevan
-              `adjustsFontSizeToFit` (mismo recurso que las Progress cards) para
-              que ninguna se parta ni se trunque. */}
-          <View style={[styles.apStats, !showStageBar && { marginTop: 0 }]}>
-            <View style={styles.apStat}>
-              <Text style={[styles.apStatVal, attnColor && { color: attnColor }]} {...FIT}>
-                {adherence4w != null ? adherence4w : '—'}
-                {adherence4w != null && <Text style={styles.apStatUnit}>%</Text>}
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statAdherence')}</Text>
-            </View>
-            <View style={styles.apStat}>
-              <Text style={styles.apStatVal} {...FIT}>
-                {paceHasData ? paceRateStr : '—'}
-                <Text style={styles.apStatUnit}> {t('clients.cyclesPerWeek')}</Text>
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statPace')}</Text>
-            </View>
-            <View style={styles.apStat}>
-              <Text style={styles.apStatVal} {...FIT}>
-                {loadPct != null ? `${loadPct > 0 ? '+' : ''}${loadPct}` : '—'}
-                {loadPct != null && <Text style={styles.apStatUnit}>%</Text>}
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statLoad')}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* ── Acciones del programa ── */}
-      <View style={styles.apActions}>
-        <TouchableOpacity style={[styles.apBtn, { flex: 1 }]} onPress={onEdit} activeOpacity={0.85}>
-          <Text style={styles.apBtnText} numberOfLines={1}>{t('clients.editProgram')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.apBtn, { flex: 1 }]} onPress={onView} activeOpacity={0.85}>
-          <Text style={styles.apBtnText} numberOfLines={1}>{t('clients.viewProgram')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.apBtn, styles.apBtnIcon]} onPress={() => setMenuOpen(true)} activeOpacity={0.85}>
-          <Text style={styles.apBtnIconText}>⋯</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
+          convergían sin saberlo (docs/specs/home-sessions.md §4). El pie de
+          acciones va DENTRO, que es el único cambio real de la convergencia. */}
+      <ProgramCard
+        variant="client"
+        name={program.name}
+        cycleNum={cycleNum}
+        stage={showStageBar && {
+          label:       t('home.stageDefault', { n: stageIdx + 1 }),
+          name:        currentStage?.name,
+          weekInStage,
+          totalWeeks:  stageWeeks,
+        }}
+        stageRatios={showStageBar
+          ? Array.from({ length: stageWeeks }, (_, i) => (
+              stageEnded ? 1
+                : i < weekInStage - 1 ? 1
+                : i === weekInStage - 1 ? doneInCycle / sessPerCycle
+                : 0
+            ))
+          : null}
+        // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
+        // ("hazme un ciclo más"), así que se informa sin alarmar — el naranja se
+        // reserva para cuando NO puede avanzar.
+        stageNote={stageDone && !nextLocked
+          ? t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })
+          : null}
+        adherence={adherence4w}
+        adherenceColor={attnColor}
+        pace={paceHasData ? paceRaw : null}
+        loadPct={loadPct}
+        onEdit={onEdit}
+        onView={onView}
+        onMore={() => setMenuOpen(true)}
+      />
 
       {/* ── Próxima sesión — sección propia ── */}
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
@@ -2445,25 +2362,22 @@ export default function ClientsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
 
-        {/* Banda de navegación: cabecera y pestañas comparten fondo y cierran con
-            un borde. Lo que va DENTRO de la banda navega, lo que va sobre `bg`
-            filtra — así las pestañas no se confunden con los controles
-            segmentados de filtro que viven dentro de cada tab, sin necesidad de
-            pintarlas distinto. */}
-        <View style={styles.detailNavBand}>
-          {/* ‹ · nombre · última actividad, todo en una línea */}
-          <View style={styles.detailHeader}>
-            <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
-              <Text style={styles.backIcon}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
-            {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
-          </View>
+        {/* Sin banda: cabecera, pestañas y contenido van los tres sobre `bg`.
+            Lo que distingue estas pestañas de los controles segmentados que
+            filtran dentro de cada tab ya no es el fondo sobre el que flotan sino
+            el color del highlight — la píldora lima es siempre el filtro
+            (docs/specs/home-sessions.md §4.6). */}
+        {/* ‹ · nombre · última actividad, todo en una línea */}
+        <View style={styles.detailHeader}>
+          <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
+          {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
+        </View>
 
-          {/* Tabs */}
-          <View style={styles.detailTabs}>
-            <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
-          </View>
+        <View style={styles.detailTabs}>
+          <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
         </View>
 
         {/* ── Tab: Programas ── */}
@@ -4167,12 +4081,6 @@ const makeStyles = (th) => StyleSheet.create({
   // Legacy action button stubs
 
   // ── Detail header ──
-  // Sin borde inferior: la pestaña activa cruza esa línea para fundirse con su
-  // contenido, así que el corte lo marca el escalón de fondo (banda `surface`
-  // sobre página `bg`) y no una raya que la pestaña tendría que interrumpir.
-  detailNavBand: {
-    backgroundColor: th.colors.surface,
-  },
   detailHeader: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4205,8 +4113,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.muted,
     flexShrink: 0,
   },
-  // SIN `paddingBottom`: la pestaña activa tiene que llegar hasta el borde de la
-  // banda para fundirse con el contenido. El aire de debajo lo pone cada tab.
   detailTabs: {
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
@@ -4234,114 +4140,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.lg,
   },
 
-  // ── Tarjeta de programa asignado ─────────────────────────────────────────────
-  // Dos colores como la tarjeta de ejercicio del workout: cabecera surface2,
-  // cuerpo surface. Los 14/16 de padding son los de esa tarjeta (spec v6), no
-  // hay token para ellos.
-  apCard: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
-    overflow:        'hidden',
-  },
-  apHead: {
-    flexDirection:     'row',
-    alignItems:        'flex-start',
-    gap:               spacing.md,
-    backgroundColor:   th.colors.surface2,
-    paddingVertical:   14,
-    paddingHorizontal: 16,
-  },
-  apHeadName:  { flex: 1, minWidth: 0 },
-  apHeadCycle: { flexShrink: 0, alignItems: 'flex-end' },
-  // Misma tipografía que el banner de Home (`bnEyebrow`/`bnProgName`/`bnCicloNum`):
-  // es el mismo bloque de información, solo que sobre oscuro en vez de sobre lima.
-  apEyebrow: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-  },
-  // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
-  // no mete en el ancho medido, así que alineado a la derecha se comía la "O"
-  // de CICLO. El padding lo absorbe y el margen negativo devuelve la alineación.
-  apEyebrowRight: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    paddingRight:  spacing.xs,
-    marginRight:   -spacing.xs,
-  },
-  apName: {
-    ...textStyles.hero,
-    color:     th.colors.text,
-    marginTop: -spacing.xs,
-  },
-  apCycleNum: {
-    ...textStyles.hero,
-    color:       th.colors.accent,
-    marginTop:   -spacing.xs,
-    fontVariant: ['tabular-nums'],
-  },
-
-  apBody: {
-    paddingTop:        14,
-    paddingHorizontal: 16,
-    paddingBottom:     16,
-  },
-  apStage: { gap: spacing.sm },
-  // Misma línea que `bnStageLabels` del banner: nombre trackeado a la izquierda,
-  // posición pequeña empujada a la derecha.
-  apStageRow: {
-    flexDirection: 'row',
-    alignItems:    'baseline',
-    gap:           spacing.sm2,
-  },
-  apStageName: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    flexShrink:    1,
-  },
-  // "ETAPA 1" se queda de etiqueta; el nombre propio de la etapa es el dato.
-  apStageOwnName: { color: th.colors.text },
-  apStageMeta: {
-    ...textStyles.subtitle,
-    color:      th.colors.mutedLight,
-    marginLeft: 'auto',
-  },
-  apStats: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.lg,
-  },
-  apStat: {
-    flex:              1,
-    minWidth:          0,
-    backgroundColor:   th.colors.bg,
-    borderRadius:      th.radius.md,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  apStatVal: {
-    ...textStyles.cardTitle,
-    color:       th.colors.text,
-    fontVariant: ['tabular-nums'],
-  },
-  apStatUnit: {
-    ...textStyles.subtitle,
-    color: th.colors.mutedLight,
-  },
-  apStatKey: {
-    ...textStyles.spacingTag,
-    color:     th.colors.muted,
-    marginTop: 3,
-  },
-
   // Botones Secondary (variante real de Figma: surface2 sólido, sin borde).
-  apActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm2,
-    marginTop:     spacing.sm2,
-  },
   apBtn: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4364,16 +4163,6 @@ const makeStyles = (th) => StyleSheet.create({
   // del Secondary apenas se separa del fondo. Relleno accent al 10%, que es el
   // lenguaje que ya usa la app para "esto lleva a algo editable".
   apBtnAccent: { backgroundColor: th.tint.accent10 },
-  apBtnIcon: {
-    width:             44,
-    paddingHorizontal: 0,
-  },
-  apBtnIconText: {
-    fontSize:   16,
-    fontWeight: '900',
-    color:      th.colors.mutedLight,
-    lineHeight: 18,
-  },
 
   // ── Próxima sesión ──
   apSectionLabel: {

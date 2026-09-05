@@ -62,12 +62,18 @@ export function Section({ title, children }) {
   );
 }
 
-/** Punto + texto de estado. `tone`: 'on' | 'warn' | 'off'. */
-export function Status({ tone, label }) {
+/**
+ * Punto + texto de estado. `tone`: 'on' | 'warn' | 'off'.
+ *
+ * `color` pinta punto y texto con un color propio, para los estados que ya
+ * tienen el suyo en el resto de la app (Drive en verde, entrenador en azul) y
+ * que en lima dirían otra cosa.
+ */
+export function Status({ tone, label, color }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const dot    = tone === 'on' ? th.colors.accent     : tone === 'warn' ? th.colors.orange : th.colors.muted;
-  const text   = tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent;
+  const dot    = color ?? (tone === 'on' ? th.colors.accent     : tone === 'warn' ? th.colors.orange : th.colors.muted);
+  const text   = color ?? (tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent);
   return (
     <View style={styles.status}>
       <View style={[styles.statusDot, { backgroundColor: dot }]} />
@@ -136,6 +142,46 @@ export function MenuRow({
   );
 }
 
+/**
+ * La OTRA anatomía de la misma lista: la de la lista de ejercicios de Progreso
+ * (`exRow`). Mismo grupo, mismos radios y mismo `gap` que `MenuRow` — cambia lo
+ * que va dentro: marcador de texto en el hueco de 20 px del icono, nombre a
+ * `cardType` (12) en vez de 14, subtítulo a `tag` (10) en vez de 11.
+ *
+ * El marcador va SIN caja: chip con fondo/borde se probó y el usuario lo
+ * rechazó ("cambios de fondo raros"); el color de la letra basta. Los 20 px
+ * fijos son lo que mantiene el borde izquierdo alineado en todas las filas, y
+ * de paso aguantan tres caracteres (`LUN`) sin tocar nada.
+ *
+ * `right` es la zona de acción, que siempre acaba en el mismo punto sea cual
+ * sea su contenido (regla de Figma para las Sesion Cards).
+ */
+export function GroupedRow({
+  marker, markerColor, title, subtitle, right, onPress, isFirst, isLast,
+  accessibilityLabel,
+}) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const Wrap   = onPress ? TouchableOpacity : View;
+  const press  = onPress
+    ? { onPress, activeOpacity: 0.72, accessibilityRole: 'button', accessibilityLabel }
+    : null;
+  return (
+    <Wrap style={[styles.row, styles.groupedRow, getCardRadii(th, isFirst, isLast)]} {...press}>
+      {marker != null && (
+        <Text style={[styles.groupedMarker, markerColor ? { color: markerColor } : null]} numberOfLines={1}>
+          {marker}
+        </Text>
+      )}
+      <View style={styles.groupedMeta}>
+        <Text style={styles.groupedTitle} numberOfLines={1}>{title}</Text>
+        {!!subtitle && <Text style={styles.groupedSub} numberOfLines={1}>{subtitle}</Text>}
+      </View>
+      {right}
+    </Wrap>
+  );
+}
+
 const makeStyles = (th) => StyleSheet.create({
   section:      { marginBottom: spacing.xl },
   sectionLabel: {
@@ -157,6 +203,22 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   rowDisabled: { opacity: 0.45 },
+
+  // Anatomía "Progreso" (`GroupedRow`): el mismo contenedor con el padding de
+  // `exRow` y el nombre/subtítulo un punto más pequeños.
+  groupedRow:    { paddingVertical: spacing.md, overflow: 'hidden' },
+  groupedMarker: {
+    width:         20,
+    flexShrink:    0,
+    textAlign:     'center',
+    fontFamily:    'Inter_900Black',
+    fontSize:      13,
+    letterSpacing: 0.5,
+    color:         th.colors.mutedLight,
+  },
+  groupedMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
+  groupedTitle: { ...textStyles.cardType, color: th.colors.text },
+  groupedSub:   { ...textStyles.tag, color: th.colors.mutedLight },
   rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
   rowMeta:     { flex: 1, minWidth: 0 },
   // 14px ExtraBold sin tracking: no hay token de Figma para este tamaño
