@@ -599,6 +599,67 @@ lo que la hace útil aquí y no debe cambiar.
 
 Es independiente del resto de la spec: se puede hacer antes, después o nunca.
 
+### 7.1 No hay que diseñarlo: la app ya lo resolvió un nivel más abajo
+
+Los **presets de bloque** de acondicionamiento son este mismo problema con otro
+tamaño, y están hechos y en uso. U09 es esa forma a nivel de sesión, no un
+diseño nuevo:
+
+| Pieza | Presets de bloque (hoy) | Plantillas de sesión libre (U09) |
+|---|---|---|
+| Almacén | `blockPresets: []` en `useStore.js` — copias **congeladas**, device-global, fuera del sync, dentro del backup | igual, array propio |
+| Crear | botón al final del editor de bloque (`BlockEditorInline.jsx`) + toast | §7.3 |
+| Usar | la hoja de «añadir» gana una fila **solo si hay al menos uno**, y esa fila abre una segunda hoja con la lista | §7.2 |
+| Borrar | una `✕` por fila en esa segunda hoja, con confirmación | igual |
+
+`saveBlockPreset` le quita el `id` al bloque y le pone un `presetId` nuevo:
+insertar un preset **copia**, no referencia. La plantilla de sesión hace lo
+mismo.
+
+### 7.2 Abrir: la hoja solo existe cuando hay algo que ofrecer
+
+Pulsar `＋ SESIÓN LIBRE` abre una hoja de dos opciones —**nueva** o **desde
+plantilla**— y la segunda abre la lista.
+
+**Con cero plantillas la hoja no aparece**: el botón va directo a la sesión
+libre en blanco, exactamente como hoy. Es la misma regla que gobierna la fila de
+presets del editor (`blockPresets.length > 0 &&`), y tiene dos consecuencias
+buenas: quien no use plantillas nunca ve un paso de más, y la hoja no puede
+ofrecer una lista vacía.
+
+Es además la regla del hero (§5.3) aplicada a otra pieza: **la interfaz no
+promete lo que no tiene**.
+
+### 7.3 Guardar: en el recap, no en el workout
+
+El botón vive en el **recap**, como acción secundaria encima de `LISTO`.
+
+1. Al empezar una sesión libre no sabes si merece guardarse; al acabarla, sí.
+   El editor de bloque puede poner su botón abajo porque acabas de terminar de
+   *editarlo* — el recap es ese mismo momento para una sesión libre.
+2. El pie del workout es un par ya decidido (GUARDAR primario · Descartar
+   secundario) y un tercer botón ahí compite con el guardado.
+3. El recap ya es una pantalla que te **pide** algo (el RPE), no un informe, así
+   que tiene sitio para una acción sin cambiar de naturaleza.
+
+⚠️ **El recap es un momento, no un estado** — el mismo aviso del §3.2.1. Si el
+usuario lo pasa de largo, la sesión queda en el historial y la plantilla se
+pierde. Se acepta a propósito: el segundo hogar permanente sería un `⋯` en la
+entrada de historial, y hoy esa tarjeta no tiene ninguno, así que sería estrenar
+una afordancia para un caso que quizá no aparece. Si aparece, ese es el sitio.
+
+### 7.4 Qué se congela, y dónde vive
+
+**Qué:** los ejercicios con su configuración (series, rangos, descansos), los
+bloques y el nombre. **Los pesos y las reps registradas no** — eso es el log.
+La plantilla es el plan, no lo que hiciste.
+
+**Dónde:** un array propio device-global, **no en `sessionTemplates`**. Ese mapa
+lo referencian los días de las etapas; una plantilla libre metida ahí sería una
+sesión sin dueño, y aparecería en todo lo que recorre plantillas. Como
+`blockPresets`: fuera del canal del entrenador (es tuya, no la programa nadie) y
+dentro de `backupPayload`.
+
 ---
 
 ## 8. Lo que se aparta de Figma — pendiente de aprobar
