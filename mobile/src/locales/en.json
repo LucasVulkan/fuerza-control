@@ -1762,7 +1762,7 @@
     "toastCreated": "Exercise created"
   },
   "programCard": {
-    "eyebrowSelf": "Program",
+    "eyebrowSelf": "Your program",
     "eyebrowClient": "Assigned program",
     "statAdherence": "Adherence",
     "statPace": "Pace",

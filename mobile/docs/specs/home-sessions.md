@@ -304,7 +304,7 @@ clientes vive donde debe, arriba a la derecha, a 20 px en `accent`.
 ```
 ┌ surface · radius.lg · overflow hidden ─────────────┐
 │ apHead — surface2, py 14 px 16                     │
-│   PROGRAMA                              CICLO      │  spacingTag mutedLight
+│   TU PROGRAMA                           CICLO      │  spacingTag mutedLight
 │   Hipertrofia AF                           07      │  hero 20 · text / accent
 │   ● por Marcos Ruiz                                │  ← solo variante self
 │ apBody — pt 14 px 16 pb 16                         │
@@ -323,7 +323,7 @@ Dos variantes:
 
 | | `self` (Home) | `client` (ficha de cliente) |
 |---|---|---|
-| Eyebrow | `Programa` | `Programa asignado` |
+| Eyebrow | `Tu programa` | `Programa asignado` |
 | Línea de autoría | `● por {entrenador}` en **azul**, solo si el programa viene de uno | no existe — el entrenador *es* el autor |
 
 **El azul es la regla de siempre**: azul = entrenador, sin excepciones. Sin
