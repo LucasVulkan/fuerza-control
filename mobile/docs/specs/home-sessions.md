@@ -2,9 +2,9 @@
 
 > Tema: ui
 > En corto: El banner lima deja de ser del programa y pasa a ser la sesión que toca; el programa baja a una tarjeta que se comparte con la ficha de cliente, y las tres frases que dan por hecho que entrenas rotando salen de la pantalla a una función.
-> Fase U06 · pendiente · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
-> Fase U07 · pendiente · `ProgramCard` compartida con `ClientsScreen` · §4
-> Fase U08 · pendiente · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
+> Fase U06 · hecho · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
+> Fase U07 · hecho · `ProgramCard` compartida con `ClientsScreen` · §4
+> Fase U08 · hecho · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
 > Fase U09 · pendiente · Plantillas de sesión libre · §7
 >
 > **Probar en dispositivo.** El acento pasa a estar en pantalla todos los días
@@ -16,10 +16,11 @@
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
-> Estado: **ninguna fase implementada** (sep 2026). Sale de una sesión de
+> Estado: **U06, U07 y U08 implementadas** (sep 2026, commit 97ae57d), a falta
+> de las dos pruebas en dispositivo de arriba. Queda U09. Sale de una sesión de
 > diseño Opus + usuario sobre la zona de sesiones de la Home: seis rondas de
 > maquetas, cada corrección del usuario sobre la anterior. Las decisiones están
-> cerradas y los valores son exactos; lo que falta es escribirlo.
+> cerradas y los valores son exactos; lo que faltaba era escribirlo.
 >
 > Depende de que la Home ya esté migrada a FormaFit (lo está, ver
 > `docs/UI-MIGRATION.md`) y de `AssignedProgramCard`, que ya existe y está
@@ -250,9 +251,11 @@ El ancho fijo de 20 px del marcador es lo que mantiene el borde izquierdo
 alineado en las cuatro filas, y de paso **aguanta tres caracteres** sin tocar
 nada — ver §5.2.
 
-**Extracción:** la lista sale a `ui/GroupedList` (grupo + fila + las dos
-anatomías de contenido), porque a partir de aquí la usan la Home, Progreso y
-los menús. **En la ficha de cliente NO se usa** — ver §4.6.
+**Extracción:** la fila sale a `ui/MenuList` como `GroupedRow`, **no a un
+`ui/GroupedList` nuevo**: el grupo, el `gap: spacing.xs` y `getCardRadii` ya
+vivían ahí, y CONEXIONES es la otra anatomía (`MenuRow`) de esa misma lista, así
+que un archivo aparte habría duplicado el contenedor para no compartir nada.
+**En la ficha de cliente NO se usa** — ver §4.5.
 
 ---
 
@@ -400,8 +403,14 @@ comentario, no solo la maqueta.
 Sacar `AssignedProgramCard` a `components/ui/ProgramCard.jsx` quedándose **solo
 con la tarjeta** (cabecera, cuerpo, etapa, 3 cajas, pie). Los avisos de bloqueo
 y la sección de próxima sesión se quedan en `ClientsScreen`: son del tab, no de
-la tarjeta. Extraer también las filas de sesión, que ahora usan las dos
-pantallas.
+la tarjeta. Las filas de sesión NO se comparten — en la ficha de cliente no hay
+sesiones (§4.5), así que la lista agrupada solo la usa la Home.
+
+Dos accesos que vivían en el banner se mudan a las piezas equivalentes de la
+tarjeta, y solo en la variante `self`: la etiqueta **CICLO** abre la ficha del
+apartado (era ya el disparador en el banner) y el **bloque de etapa** abre el
+selector (era el `onPress` del banner entero). En la ficha de cliente no hay
+nada que elegir desde ahí, así que ninguna de las dos es pulsable.
 
 ---
 
@@ -596,7 +605,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 
 | # | Pregunta | Contexto |
 |---|---|---|
-| 1 | **¿EDITAR se pinta con programa de entrenador?** | Hoy `HomeScreen` lo oculta a propósito con `isTrainerProgram`: la edición no sube por el canal y la siguiente actualización reemplazaría el programa entero. Los mocks lo pintan siempre. Si la regla sigue, VER ocupa el pie completo en ese caso |
+| 1 | ~~**¿EDITAR se pinta con programa de entrenador?**~~ **Resuelto al implementar: no.** | La regla sigue —la edición no sube por el canal y la siguiente actualización reemplazaría el programa entero—, así que `ProgramCard` recibe `onEdit: undefined` y VER ocupa el pie junto al `⋯` |
 | 2 | **El nombre del programa no se ve al abrir** | Consecuencia directa de bajar la tarjeta al final. La única forma de tenerlo arriba *y* la tarjeta abajo es duplicar el nombre en una línea fina de cabecera |
 | 3 | **El radio** | La `ProgramCard` va a `radius.lg` (18) y las filas de sesión a `md` (10). O se igualan, o se acepta que la tarjeta es de otro rango — en clientes hoy conviven así y no chirría |
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
@@ -610,9 +619,9 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 
 | Fase | Qué | Coste | Estado |
 |---|---|---|---|
-| **U06** | Rediseño de la HomeView: hero, filas planas, semana desnuda, tarjeta al final (§3) | medio | pendiente |
-| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, ficha de cliente sin sesiones y restyle de `ui/TabBar` sin banda (§4) | medio | pendiente |
-| **U08** | `sessionPlan()` — se hace **dentro de U06**, no después (§5) | media tarde | pendiente |
+| **U06** | Rediseño de la HomeView: hero, lista agrupada, semana desnuda, tarjeta al final (§3) | medio | ✅ 97ae57d |
+| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, ficha de cliente sin sesiones y restyle de `ui/TabBar` sin banda (§4) | medio | ✅ 97ae57d |
+| **U08** | `sessionPlan()` — se hizo **dentro de U06**, no después (§5) | media tarde | ✅ 97ae57d |
 | **U09** | Plantillas de sesión libre (§7) | bajo | pendiente |
 
 ---
