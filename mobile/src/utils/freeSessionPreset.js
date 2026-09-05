@@ -62,6 +62,9 @@ export function presetFromEntry(entry) {
 export function freeSessionFromPreset(preset, newId) {
   const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
   return {
+    // De qué plantilla salió: es lo que permite ofrecer "actualizarla" al
+    // acabar, en vez de obligar a guardar una copia por cada retoque.
+    freePresetId:    preset?.presetId ?? null,
     freeSessionName: preset?.name ?? '',
     adHocExercises: (preset?.exercises ?? []).map((ex) => {
       const config = pickTarget(ex);

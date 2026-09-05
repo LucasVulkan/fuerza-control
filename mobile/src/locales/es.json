@@ -751,6 +751,9 @@
     "templateBlocks_other": "{{count}} bloques",
     "saveAsTemplate": "Guardar como plantilla",
     "templateSaved": "Plantilla guardada",
+    "updateTemplate": "Actualizar «{{name}}»",
+    "templateUpdated": "Plantilla actualizada",
+    "saveAsNew": "Guardar como nueva",
     "deleteTemplate": "Borrar plantilla",
     "deleteTemplateConfirm": "Se borrará «{{name}}». Las sesiones que ya hiciste con ella no se tocan.",
     "historyLabel": "Sesión libre"

@@ -751,6 +751,9 @@
     "templateBlocks_other": "{{count}} blocks",
     "saveAsTemplate": "Save as template",
     "templateSaved": "Template saved",
+    "updateTemplate": "Update \"{{name}}\"",
+    "templateUpdated": "Template updated",
+    "saveAsNew": "Save as new",
     "deleteTemplate": "Delete template",
     "deleteTemplateConfirm": "\"{{name}}\" will be deleted. The sessions you already did with it are untouched.",
     "historyLabel": "Free session"

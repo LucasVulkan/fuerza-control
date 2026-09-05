@@ -114,11 +114,13 @@ export default function SessionRecapScreen({ navigation, route }) {
   const customExercises  = useStore((s) => s.customExercises);
   const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
   const setSessionFeedback = useStore((s) => s.setSessionFeedback);
-  const saveFreeSessionPreset = useStore((s) => s.saveFreeSessionPreset);
+  const saveFreeSessionPreset   = useStore((s) => s.saveFreeSessionPreset);
+  const updateFreeSessionPreset = useStore((s) => s.updateFreeSessionPreset);
+  const freeSessionPresets      = useStore((s) => s.freeSessionPresets);
   const showToast          = useStore((s) => s.showToast);
   // Una plantilla por sesión: guardada, el botón se queda diciéndolo. Guardarla
   // dos veces daría dos plantillas idénticas y ninguna forma de saberlo.
-  const [templateSaved, setTemplateSaved] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(null); // null | 'new' | 'updated'
 
   const entry = workoutLog.find((e) => e.id === entryId);
 
@@ -162,6 +164,10 @@ export default function SessionRecapScreen({ navigation, route }) {
   };
 
   const isFree = entry.sessionTemplateId === '__free__';
+  // La plantilla de la que salió esta sesión, si salió de una y sigue existiendo.
+  const sourcePreset = entry.freePresetId
+    ? (freeSessionPresets ?? []).find((p) => p.presetId === entry.freePresetId) ?? null
+    : null;
   const template = !isFree ? sessionTemplates[entry.sessionTemplateId] : null;
   const program  = template?.programId ? programs[template.programId] : null;
   const stageName = program?.stages?.length
@@ -521,23 +527,52 @@ export default function SessionRecapScreen({ navigation, route }) {
         {/* Guardar como plantilla — solo la sesión libre, y solo aquí: al
             empezarla no sabes si merece guardarse, al acabarla sí
             (docs/specs/home-sessions.md §7.3). Secundario, que el primario es
-            salir. */}
+            salir.
+
+            Si la sesión SALIÓ de una plantilla, lo normal es que los retoques
+            de hoy quieran ir a esa plantilla, no fundar una copia: manda
+            "actualizar" y "guardar como nueva" se queda al lado, más estrecha.
+            Si la plantilla se borró mientras tanto, no hay nada que actualizar
+            y vuelve el botón único. */}
         {isFree && (
-          <TouchableOpacity
-            style={[styles.tplBtn, templateSaved && styles.tplBtnDone]}
-            onPress={() => {
-              saveFreeSessionPreset(entry);
-              setTemplateSaved(true);
-              showToast(t('freeSession.templateSaved'), 2200, 'success');
-            }}
-            disabled={templateSaved}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-          >
-            <Text style={styles.tplBtnText}>
-              {templateSaved ? t('freeSession.templateSaved') : t('freeSession.saveAsTemplate')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.tplRow}>
+            {!!sourcePreset && (
+              <TouchableOpacity
+                style={[styles.tplBtn, { flex: 2 }, templateSaved && styles.tplBtnDone]}
+                onPress={() => {
+                  updateFreeSessionPreset(sourcePreset.presetId, entry);
+                  setTemplateSaved('updated');
+                  showToast(t('freeSession.templateUpdated'), 2200, 'success');
+                }}
+                disabled={!!templateSaved}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+              >
+                <Text style={styles.tplBtnText} numberOfLines={1}>
+                  {templateSaved === 'updated'
+                    ? t('freeSession.templateUpdated')
+                    : t('freeSession.updateTemplate', { name: sourcePreset.name ?? t('freeSession.templateUnnamed') })}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.tplBtn, { flex: 1 }, templateSaved && styles.tplBtnDone]}
+              onPress={() => {
+                saveFreeSessionPreset(entry);
+                setTemplateSaved('new');
+                showToast(t('freeSession.templateSaved'), 2200, 'success');
+              }}
+              disabled={!!templateSaved}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.tplBtnText} numberOfLines={1}>
+                {templateSaved === 'new'
+                  ? t('freeSession.templateSaved')
+                  : sourcePreset ? t('freeSession.saveAsNew') : t('freeSession.saveAsTemplate')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Done */}
@@ -752,13 +787,19 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Secundario del par: mismo alto y radio que LISTO, en outline — el relleno
   // accent es del botón que cierra la pantalla.
+  tplRow: {
+    flexDirection: 'row',
+    gap:           spacing.sm2,
+  },
   tplBtn: {
     borderRadius:    th.radius.sm,
     borderWidth:     borders.thin,
     borderColor:     th.tint.accent50,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-    marginTop:       spacing.md,
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems:        'center',
+    justifyContent:    'center',
+    marginTop:         spacing.md,
   },
   tplBtnDone:  { borderColor: th.colors.border },
   tplBtnText:  { ...textStyles.btnAction, color: th.colors.accent },

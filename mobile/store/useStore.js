@@ -220,6 +220,7 @@ const INITIAL_ACTIVE_SESSION = {
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
+  freePresetId: null,  // plantilla de la que salió la sesión libre, si salió de una
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
 };
@@ -1119,6 +1120,24 @@ export const useStore = create(
         const preset = { presetId: generateId('fpre'), ...presetFromEntry(entry) };
         set((s) => ({ freeSessionPresets: [...(s.freeSessionPresets ?? []), preset] }));
         return preset.presetId;
+      },
+
+      /**
+       * Reescribe una plantilla con lo que se acaba de hacer, conservando su
+       * `presetId` — así no se mueve de sitio en la lista y las sesiones que ya
+       * salieron de ella siguen apuntando a la misma.
+       *
+       * El nombre lo manda la sesión si tiene uno; si se lo quitaste, se queda
+       * el que tenía la plantilla en vez de dejarla sin nombre.
+       */
+      updateFreeSessionPreset: (presetId, entry) => {
+        set((s) => ({
+          freeSessionPresets: (s.freeSessionPresets ?? []).map((p) => {
+            if (p.presetId !== presetId) return p;
+            const next = presetFromEntry(entry);
+            return { ...next, presetId, name: next.name ?? p.name };
+          }),
+        }));
       },
 
       deleteFreeSessionPreset: (presetId) => {
@@ -2140,6 +2159,10 @@ export const useStore = create(
             id:                generateId('log'),
             sessionTemplateId: '__free__',
             sessionName:       activeSession.freeSessionName?.trim() || null,
+            // De qué plantilla salió — el recap trabaja sobre la entrada, no
+            // sobre la sesión (que a estas alturas ya está reseteada), y sin
+            // esto no podría ofrecer actualizarla.
+            ...(activeSession.freePresetId ? { freePresetId: activeSession.freePresetId } : {}),
             timestamp:         Date.now(),
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',

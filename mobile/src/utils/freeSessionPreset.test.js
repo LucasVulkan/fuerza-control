@@ -50,14 +50,19 @@ describe('presetFromEntry', () => {
 describe('freeSessionFromPreset', () => {
   it('monta series vacías y bloques con id nuevo', () => {
     let n = 0;
-    const session = freeSessionFromPreset(presetFromEntry(ENTRY), () => `blk_new_${++n}`);
+    const session = freeSessionFromPreset({ presetId: 'fpre_1', ...presetFromEntry(ENTRY) }, () => `blk_new_${++n}`);
     expect(session.freeSessionName).toBe('Corta de reserva');
+    expect(session.freePresetId).toBe('fpre_1');
     expect(session.adHocExercises[0].setsState).toHaveLength(2);
     expect(session.adHocExercises[0].setsState[0]).toEqual({ weight: '', reps: '', time: '', done: false });
     expect(session.adHocExercises[0].config).toBeUndefined();
     expect(session.adHocExercises[1].config).toEqual({ minReps: 6, maxReps: 8, restSec: 120 });
     expect(session.freeBlocks[0].id).toBe('blk_new_1');
     expect(session.freeBlocks[0].format).toBe('amrap');
+  });
+
+  it('una sesión en blanco no viene de ninguna plantilla', () => {
+    expect(freeSessionFromPreset(undefined, () => 'x').freePresetId).toBeNull();
   });
 
   it('cada serie es un objeto propio — rellenar una no rellena las demás', () => {
