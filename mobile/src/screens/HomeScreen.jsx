@@ -217,7 +217,7 @@ function HeroChevron({ size = 13, color = LIMA }) {
   );
 }
 
-function Hero({ label, marker, name, meta, cta, onPress, a11yLabel }) {
+function Hero({ label, session, name, meta, cta, onPress, a11yLabel }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
@@ -227,17 +227,16 @@ function Hero({ label, marker, name, meta, cta, onPress, a11yLabel }) {
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
     >
-      <Text style={styles.heroFlag}>{label}</Text>
-      {/* El marcador delante del nombre, no una etiqueta "SESIÓN A" arriba a la
-          derecha: el tag era la pieza que menos trabajaba del hero —repetía con
-          dos palabras lo que la lista dice con una letra— y sobre el lima, en
-          10 px al 50%, apenas se leía. El patrón ya existe en la app: la ficha
-          de "Próxima sesión" de clientes es esta misma línea (letra + nombre).
-          La letra va al 55% para prefijar, no para competir con el nombre. */}
-      <Text style={styles.heroName} numberOfLines={2}>
-        {!!marker && <Text style={styles.heroMarker}>{`${marker} · `}</Text>}
-        {name}
+      {/* "SIGUIENTE · SESIÓN C" es la línea "ETAPA 2 · VOLUMEN" de la tarjeta de
+          programa: papel a media tinta, dato en tinta sólida, punto a media
+          altura entre los dos. El marcador vive aquí y no delante del nombre —
+          ni como tag suelto arriba a la derecha, que en 10 px al 50% sobre el
+          lima no se leía— y así el nombre se queda con su línea entera. */}
+      <Text style={styles.heroFlag} numberOfLines={1}>
+        {label}
+        {!!session && <Text style={styles.heroFlagSession}>{` · ${session}`}</Text>}
       </Text>
+      <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
       <Text style={styles.heroMeta} numberOfLines={2}>{meta}</Text>
       {/* La pieza más pesada del hero, y así debe seguir. */}
       <View style={styles.heroBtn}>
@@ -626,13 +625,13 @@ export default function HomeScreen() {
                 {heroDay && (
                   <Hero
                     label={plan.heroLabel}
-                    marker={heroDay.template.label ?? ''}
+                    session={heroDay.template.label
+                      ? t('workout.sessionLabel', { label: heroDay.template.label })
+                      : null}
                     name={heroDay.template.name ?? ''}
                     meta={heroMeta}
                     cta={heroIsActive ? t('home.btnContinue') : t('home.btnStart')}
                     onPress={() => requestStart(heroDay.templateId, true)}
-                    // La letra sola basta en pantalla, pero en voz alta no dice
-                    // nada: el lector se queda con "SESIÓN C" entero.
                     a11yLabel={`${plan.heroLabel}, ${t('workout.sessionLabel', { label: heroDay.template.label ?? '' })}, ${heroDay.template.name ?? ''}, ${heroMeta}`}
                   />
                 )}
@@ -895,30 +894,21 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.lg,
     padding:         spacing.lg,
   },
+  // El rótulo lleva las dos cosas, como la línea de etapa de la tarjeta: el papel
+  // ("SIGUIENTE", "EN CURSO") a media tinta porque es la etiqueta, y la sesión en
+  // tinta sólida porque es el dato.
   heroFlag: {
     fontFamily:    'Inter_900Black',
     fontSize:      10,
     letterSpacing: 2.2,
     textTransform: 'uppercase',
-    color:         th.colors.onAccent,
+    color:         withOpacity(th.colors.onAccent, 0.62),
   },
+  heroFlagSession: { color: th.colors.onAccent },
   // 20 px: el cuerpo de `text/hero`, el mismo que el nombre del programa y el
   // número de ciclo de la tarjeta. Empezó en 27, bajó a 22 y acabó aquí — que es
   // además el token, no un tamaño intermedio inventado.
-  // Marcador y separador en la MISMA tinta que el nombre: al 55% sobre el lima
-  // se leía gris y apagado, que era justo lo que se venía a arreglar. El punto
-  // a media altura es lo que hace de prefijo — la jerarquía la pone el orden,
-  // no una tinta más floja.
   //
-  // Va DENTRO del `Text` del nombre, no en una fila aparte: con dos `Text` y un
-  // `gap` la separación se sumaba dos veces (el espacio tipográfico antes del
-  // punto y los 8 px del gap después) y el punto quedaba flotando. Anidado,
-  // separa solo la tipografía.
-  heroMarker: {
-    ...textStyles.hero,
-    letterSpacing: 0.5,
-    color:         th.colors.onAccent,
-  },
   // `Inter_900Black` es el peso más alto que carga la app (App.js), así que a
   // 20 px lo único que queda para ganar cuerpo es apretar: tracking a −0.5 e
   // interlineado a 1.05 densan el bloque sin tocar el tamaño.

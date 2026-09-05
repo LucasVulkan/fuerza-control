@@ -123,8 +123,8 @@ Valores exactos, ya afinados en dos rondas:
 | Pieza | Valor |
 |---|---|
 | Contenedor | `colors.accent` (#aae216, el relleno sólido — **no** el lima #b8ff00), `radius.lg`, `padding: spacing.lg` |
-| Fila superior | solo el rótulo (`Inter_900Black` 10, tracking 2.2, `onAccent`). El tag «SESIÓN C» de la derecha se cayó en QA — ver abajo |
-| Nombre | «C · Nombre» en **un solo `Text`**, con el marcador anidado dentro; `marginTop: spacing.md`, `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05) y `onAccent` **sólido** en los dos. El marcador lleva tracking .5 y su punto a media altura; el nombre, tracking −0.5 |
+| Fila superior | «SIGUIENTE · SESIÓN C» en un solo `Text` (`Inter_900Black` 10, tracking 2.2, uppercase): el papel en `onAccent` al 62%, la sesión en `onAccent` sólido. El tag suelto de la derecha se cayó en QA — ver abajo |
+| Nombre | línea limpia, sin prefijo: `marginTop: spacing.md`, `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05, tracking −0.5) en `onAccent` sólido |
 | Meta | 12 px `Inter_600SemiBold`, `onAccent` al 62%, **`marginTop: spacing.sm`** |
 | Botón | `onAccent` sólido, `radius.md`, `padding: 15px spacing.lg`, `marginTop: spacing.lg`; texto `btnAction` en **lima** + chevron |
 
@@ -133,24 +133,22 @@ usuario, la segunda ya sobre el dispositivo—. 20 es además el token `text/her
 el mismo cuerpo que el nombre de programa y el número de ciclo de la
 `ProgramCard`, no un tamaño intermedio inventado.
 
-**El tag «SESIÓN C» desaparece y su letra se va delante del nombre.** Arriba a la
-derecha, en 10 px al 50% sobre el lima, no se leía; y era la pieza que menos
-trabajaba del hero, porque decía con dos palabras lo que la lista dice con una
-letra. Subirlo a negro sólido lo arreglaba pero dejaba dos negros del mismo peso
-peleándose en la misma fila con el rótulo. La línea «letra + nombre» **no es
-nueva**: es la de la ficha de «Próxima sesión» de clientes (`apNextLetter` +
-`apNextName`). El lector de pantalla sí recibe «SESIÓN C» entero, que en voz alta
-una letra suelta no dice nada.
+**El tag «SESIÓN C» de la derecha desaparece: la sesión se dice en el rótulo.**
+Arriba a la derecha, en 10 px al 50% sobre el lima, no se leía; y era la pieza que
+menos trabajaba del hero, porque ocupaba una esquina para decir una letra.
 
-El marcador se probó primero en `onAccent` al 55%, para prefijar sin competir con
-el nombre, y sobre el lima se leyó **gris y apagado** — el mismo defecto que se
-venía a arreglar. Va en la misma tinta sólida que el nombre, y quien hace de
-prefijo es el punto a media altura, no una tinta más floja.
+Tres intentos hasta dar con el sitio, y los dos primeros se anotan porque los dos
+parecían razonables:
 
-Y va **anidado en el `Text` del nombre**, no en una fila con `gap`: con dos `Text`
-la separación se sumaba dos veces —el espacio tipográfico antes del punto más los
-8 px del gap después— y el punto quedaba flotando lejos del nombre. Anidado,
-separa solo la tipografía.
+1. **La letra delante del nombre**, al 55% para prefijar sin competir. Sobre el
+   lima se leyó **gris y apagada** — el mismo defecto que se venía a arreglar.
+2. **La letra delante del nombre en tinta sólida**, con el punto a media altura
+   de separador. Se lee, pero le come el arranque de la línea al nombre, que es
+   lo único que el hero tiene que decir a media distancia.
+3. **La sesión dentro del rótulo**: `SIGUIENTE · SESIÓN C`. Es exactamente la
+   línea `ETAPA 2 · VOLUMEN` de la `ProgramCard` —papel a media tinta, dato en
+   tinta sólida, punto a media altura entre los dos— así que no estrena forma
+   ninguna, y **el nombre recupera su línea entera**.
 
 ⚠️ **`Inter_900Black` es el peso más alto que carga la app** (App.js), así que a
 20 px no hay nada más pesado que pedirle al nombre. Lo que queda para ganar
@@ -166,8 +164,8 @@ Estados del hero:
 
 | Estado | Rótulo | Meta | Botón |
 |---|---|---|---|
-| Siguiente | `Siguiente` | ejercicios · min · última vez | `EMPEZAR` |
-| En curso | `En curso` | `3 de 6 ejercicios · empezada hace 42 min` | `CONTINUAR` |
+| Siguiente | `Siguiente · Sesión C` | ejercicios · min · última vez | `EMPEZAR` |
+| En curso | `En curso · Sesión C` | `3 de 6 ejercicios · empezada hace 42 min` | `CONTINUAR` |
 | **Sin hero** | — | — | — (§5.3) |
 
 Son **tres y no más**. Ver §3.2.1: el «ciclo cerrado» que había aquí no existe.
