@@ -29,6 +29,7 @@ import { defaultBlock } from '../utils/conditioningBlocks';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
+import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -280,13 +281,15 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 export default function WorkoutScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { t }      = useTranslation();
+  const { t, i18n } = useTranslation();
   const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
 
   const [notesOpen, setNotesOpen] = useState(false);
   // Sesión libre: añadir/editar bloques sin pasar por el editor de sesión.
   const [addSheetOpen, setAddSheetOpen]   = useState(false);
+  // Ejercicio ad-hoc cuya línea de objetivo se ha pulsado.
+  const [editingAdHoc, setEditingAdHoc]   = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
   const blockScrollRef = useAnimatedRef();
 
@@ -346,6 +349,8 @@ export default function WorkoutScreen() {
   const updateAdHocSet        = useStore((s) => s.updateAdHocSet);
   const toggleAdHocSetDone    = useStore((s) => s.toggleAdHocSetDone);
   const addAdHocSet           = useStore((s) => s.addAdHocSet);
+  const setAdHocConfig        = useStore((s) => s.setAdHocConfig);
+  const setAdHocSets          = useStore((s) => s.setAdHocSets);
   const updateFreeSessionName = useStore((s) => s.updateFreeSessionName);
   const setExerciseNote       = useStore((s) => s.setExerciseNote);
   const addBlockToSession     = useStore((s) => s.addBlockToSession);
@@ -703,6 +708,9 @@ export default function WorkoutScreen() {
           {/* Ad-hoc exercises added during this session — continúan la numeración */}
           {(activeSession.adHocExercises ?? []).map((adHoc, adHocIdx) => {
             const def = allExercises[adHoc.exerciseId];
+            // Los valores por defecto siguen saliendo de la biblioteca; encima
+            // va lo que el usuario haya tocado en la hoja de objetivo. `sets`
+            // no se guarda: es `setsState.length` y punto.
             const adHocConfig = {
               exerciseId: adHoc.exerciseId,
               sets:       adHoc.setsState.length,
@@ -710,6 +718,7 @@ export default function WorkoutScreen() {
               maxReps:    def?.maxReps ?? 12,
               restSec:    def?.restSec ?? 90,
               isKey:      false,
+              ...(adHoc.config ?? {}),
             };
             return (
               <ExerciseCard
@@ -725,6 +734,7 @@ export default function WorkoutScreen() {
                 }
                 onToggleDone={(setIdx) => handleAdHocToggleDone(adHoc.exerciseId, setIdx)}
                 onAddSet={() => addAdHocSet(adHoc.exerciseId)}
+                onEditTarget={() => setEditingAdHoc(adHoc.exerciseId)}
                 clientNote={activeSession.exerciseNotes?.[adHoc.exerciseId] ?? ''}
                 onClientNoteChange={(text) => setExerciseNote(adHoc.exerciseId, text)}
               />
@@ -813,6 +823,25 @@ export default function WorkoutScreen() {
           </TouchableOpacity>
         </View>
       </DragSheet>
+
+      {/* Objetivo de un ejercicio añadido sobre la marcha. Se cierra solo si el
+          ejercicio desaparece (borrado desde la propia tarjeta). */}
+      {(() => {
+        const ex = (activeSession.adHocExercises ?? []).find((a) => a.exerciseId === editingAdHoc);
+        if (!ex) return null;
+        const def = allExercises[ex.exerciseId];
+        return (
+          <AdHocTargetSheet
+            def={def}
+            name={def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : ex.exerciseId}
+            sets={ex.setsState.length}
+            config={ex.config}
+            onSets={(n) => setAdHocSets(ex.exerciseId, n)}
+            onConfig={(patch) => setAdHocConfig(ex.exerciseId, patch)}
+            onClose={() => setEditingAdHoc(null)}
+          />
+        );
+      })()}
 
       {/* Editor del bloque de la sesión libre — el mismo inline que el editor de
           sesión. `GestureHandlerRootView` propio: un Modal de RN monta en otra

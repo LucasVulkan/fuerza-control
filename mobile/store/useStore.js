@@ -1916,6 +1916,58 @@ export const useStore = create(
         return { changed: true, done: !prevDone };
       },
 
+      /**
+       * Configuración de un ejercicio ad-hoc — reps/tiempo objetivo y descanso.
+       *
+       * Hasta aquí no había NINGUNA: `WorkoutScreen` se inventaba el `exConfig`
+       * en cada render con los valores por defecto de la biblioteca, así que no
+       * existía sitio donde escribir un cambio. Ahora la entrada lleva el suyo,
+       * y lo que no se toca sigue saliendo del `def` (patch parcial, no una
+       * copia entera de la configuración por defecto).
+       *
+       * `sets` NO vive aquí: es `setsState.length` y punto. Dos fuentes para el
+       * mismo número se separan en cuanto alguien pulsa "añadir serie".
+       */
+      setAdHocConfig: (exerciseId, patch) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: (s.activeSession.adHocExercises ?? []).map((ex) =>
+              ex.exerciseId !== exerciseId ? ex : { ...ex, config: { ...(ex.config ?? {}), ...patch } }
+            ),
+          },
+        }));
+      },
+
+      /**
+       * Cambia CUÁNTAS series tiene un ejercicio ad-hoc. Nunca por debajo de las
+       * que ya tienen algo registrado: bajar el contador es planificar, no
+       * borrar lo hecho.
+       */
+      setAdHocSets: (exerciseId, n) => {
+        const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: (s.activeSession.adHocExercises ?? []).map((ex) => {
+              if (ex.exerciseId !== exerciseId) return ex;
+              const withData = ex.setsState.reduce(
+                (last, set, i) => (set.weight !== '' || set.reps !== '' || set.time !== '' || set.done ? i + 1 : last),
+                0,
+              );
+              const target = Math.max(1, withData, Math.min(20, n));
+              if (target === ex.setsState.length) return ex;
+              return {
+                ...ex,
+                setsState: target < ex.setsState.length
+                  ? ex.setsState.slice(0, target)
+                  : [...ex.setsState, ...Array.from({ length: target - ex.setsState.length }, emptySet)],
+              };
+            }),
+          },
+        }));
+      },
+
       addAdHocSet: (exerciseId) => {
         set((s) => ({
           activeSession: {
@@ -2093,8 +2145,12 @@ export const useStore = create(
             notes:             activeSession.notes ?? '',
             bodyWeight:        null,
             ...(freeBlocksLog.length > 0 ? { blocks: freeBlocksLog } : {}),
+            // La config va al log porque es lo que la plantilla congela (§7.4):
+            // sin ella, repetir una sesión libre recuperaba los ejercicios pero
+            // no el objetivo que les habías puesto.
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
+              ...(a.config ?? {}),
               ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
             })),
           };
@@ -2176,6 +2232,7 @@ export const useStore = create(
             ...exercises,
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
               exerciseId: adHoc.exerciseId, isAdHoc: true, sets: adHoc.setsState,
+              ...(adHoc.config ?? {}),
               ...exNote(adHoc.exerciseId),
             })),
           ],

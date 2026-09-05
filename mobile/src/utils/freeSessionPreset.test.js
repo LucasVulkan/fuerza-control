@@ -9,7 +9,8 @@ const ENTRY = {
       { weight: '60', reps: '10', time: '', done: true },
       { weight: '60', reps: '8',  time: '', done: true },
     ] },
-    { exerciseId: 'row', isAdHoc: true, sets: [{ weight: '40', reps: '12', time: '', done: true }] },
+    { exerciseId: 'row', isAdHoc: true, minReps: 6, maxReps: 8, restSec: 120,
+      sets: [{ weight: '40', reps: '12', time: '', done: true }] },
   ],
   blocks: [
     { blockId: 'blk_1', format: 'amrap', name: 'Final', capSec: 600, intervalSec: null,
@@ -23,8 +24,9 @@ describe('presetFromEntry', () => {
     const preset = presetFromEntry(ENTRY);
     expect(preset.name).toBe('Corta de reserva');
     expect(preset.exercises).toEqual([
+      // Sin objetivo propio: al montarla vuelve a salir de la biblioteca.
       { exerciseId: 'bench', sets: 2 },
-      { exerciseId: 'row',   sets: 1 },
+      { exerciseId: 'row',   sets: 1, minReps: 6, maxReps: 8, restSec: 120 },
     ]);
     expect(preset.blocks[0].format).toBe('amrap');
     expect(preset.blocks[0].movements).toEqual([{ exerciseId: 'burpee', reps: 10 }]);
@@ -52,6 +54,8 @@ describe('freeSessionFromPreset', () => {
     expect(session.freeSessionName).toBe('Corta de reserva');
     expect(session.adHocExercises[0].setsState).toHaveLength(2);
     expect(session.adHocExercises[0].setsState[0]).toEqual({ weight: '', reps: '', time: '', done: false });
+    expect(session.adHocExercises[0].config).toBeUndefined();
+    expect(session.adHocExercises[1].config).toEqual({ minReps: 6, maxReps: 8, restSec: 120 });
     expect(session.freeBlocks[0].id).toBe('blk_new_1');
     expect(session.freeBlocks[0].format).toBe('amrap');
   });

@@ -696,6 +696,7 @@
     "discardConfirm": "¿Descartar la sesión en curso? Los datos introducidos se perderán.",
     "sessionSaved": "Sesión guardada",
     "sessionNotes": "NOTAS DE SESIÓN",
+    "adHocTargetHint": "Solo para esta sesión. Los ejercicios añadidos sobre la marcha no se guardan en el programa.",
     "notesPlaceholder": "Anota cómo fue el entreno, sensaciones, ajustes para la próxima vez...",
     "notesSavedWith": "Se guarda con la sesión al pulsar GUARDAR SESIÓN.",
     "addedLabel": "Añadido · Esta sesión",

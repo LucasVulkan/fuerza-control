@@ -1297,3 +1297,41 @@ describe('clearWorkoutLog — fallo 18', () => {
     expect(useStore.getState().workoutLog).toHaveLength(2);
   });
 });
+
+describe('setAdHocSets — bajar el contador no borra lo registrado', () => {
+  const setAdHoc = (setsState) => useStore.setState({
+    activeSession: {
+      ...useStore.getState().activeSession,
+      templateId: '__free__',
+      adHocExercises: [{ exerciseId: 'bench', setsState }],
+    },
+  });
+  const sets = () => useStore.getState().activeSession.adHocExercises[0].setsState;
+  const empty = () => ({ weight: '', reps: '', time: '', done: false });
+
+  it('sube añadiendo series vacías', () => {
+    setAdHoc([empty()]);
+    useStore.getState().setAdHocSets('bench', 4);
+    expect(sets()).toHaveLength(4);
+    expect(sets()[3]).toEqual(empty());
+  });
+
+  it('baja recortando por el final mientras no haya datos', () => {
+    setAdHoc([empty(), empty(), empty(), empty()]);
+    useStore.getState().setAdHocSets('bench', 2);
+    expect(sets()).toHaveLength(2);
+  });
+
+  it('nunca por debajo de la última serie con algo dentro', () => {
+    // 3 series, la tercera hecha: bajar a 1 dejaría el trabajo fuera del log.
+    setAdHoc([{ ...empty(), reps: '10' }, empty(), { ...empty(), done: true }]);
+    useStore.getState().setAdHocSets('bench', 1);
+    expect(sets()).toHaveLength(3);
+  });
+
+  it('el mínimo es 1 aunque no haya nada registrado', () => {
+    setAdHoc([empty(), empty()]);
+    useStore.getState().setAdHocSets('bench', 0);
+    expect(sets()).toHaveLength(1);
+  });
+});

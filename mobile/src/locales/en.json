@@ -696,6 +696,7 @@
     "discardConfirm": "Discard current session? All entered data will be lost.",
     "sessionSaved": "Session saved",
     "sessionNotes": "SESSION NOTES",
+    "adHocTargetHint": "This session only. Exercises added on the fly are not saved to the program.",
     "notesPlaceholder": "Note how the session went, feelings, adjustments for next time...",
     "notesSavedWith": "Saved with the session when you press SAVE SESSION.",
     "addedLabel": "Added · This session",

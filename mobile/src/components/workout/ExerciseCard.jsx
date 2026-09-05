@@ -133,6 +133,7 @@ export default function ExerciseCard({
   overrideEx,
   activeSetIndex = -1,
   hideAddSetBtn = false,   // superset: un único botón compartido debajo del grupo (WorkoutScreen)
+  onEditTarget,            // solo los ad-hoc: la línea de objetivo abre su hoja (ver abajo)
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -433,8 +434,18 @@ export default function ExerciseCard({
       {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
           llevaba una fila entera en cuanto el nombre era largo. Va delante del
           objetivo, en la misma línea, separado por punto medio. */}
+      {/* La línea de objetivo es el disparador de su propia edición cuando hay
+          algo que editar — que hoy son solo los ejercicios añadidos sobre la
+          marcha (`onEditTarget`). En los de plantilla sigue siendo texto: ahí
+          el plan es del programa y se cambia en el editor de sesión, no en
+          mitad del entreno. Misma regla que la etiqueta CICLO de la Home: el
+          disparador es el dato, no un icono al lado. */}
       {(targetLabel || exConfig.tempo || exConfig.isKey) ? (
-        <Text style={styles.target} numberOfLines={2}>
+        <Text
+          style={[styles.target, onEditTarget && styles.targetEditable]}
+          numberOfLines={2}
+          onPress={onEditTarget}
+          suppressHighlighting={!onEditTarget}>
           {exConfig.isKey ? <Text style={styles.keyInline}>{t('common.keyExercise')}</Text> : null}
           {exConfig.isKey && (targetLabel || exConfig.tempo) ? ' · ' : ''}
           {targetLabel}
@@ -996,6 +1007,14 @@ const makeStyles = (th) => StyleSheet.create({
   keyInline: {
     color:      th.colors.accent,
     fontWeight: typography.bold,
+  },
+  // Editable: subrayado punteado, que es lo que dice "esto se toca" sin meter
+  // un botón en una tarjeta que no tiene ninguno.
+  targetEditable: {
+    color:                    th.colors.accent,
+    textDecorationLine:       'underline',
+    textDecorationStyle:      'dotted',
+    textDecorationColor:      th.tint.accent50,
   },
   target: {
     fontFamily:  'Inter_600SemiBold',
