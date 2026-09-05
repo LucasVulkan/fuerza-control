@@ -5,7 +5,7 @@
 > Fase U06 · hecho · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
 > Fase U07 · hecho · `ProgramCard` compartida con `ClientsScreen` · §4
 > Fase U08 · hecho · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
-> Fase U09 · pendiente · Plantillas de sesión libre · §7
+> Fase U09 · hecho · Plantillas de sesión libre · §7
 >
 > **Probar en dispositivo.** El acento pasa a estar en pantalla todos los días
 > (antes marcaba «programa activo», ahora «te toca entrenar»). Hay que mirar si
@@ -16,8 +16,8 @@
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
-> Estado: **U06, U07 y U08 implementadas** (sep 2026, commit 97ae57d), a falta
-> de las dos pruebas en dispositivo de arriba. Queda U09. Sale de una sesión de
+> Estado: **todas las fases implementadas** (sep 2026, U06/U07/U08 en 97ae57d y
+> U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. Sale de una sesión de
 > diseño Opus + usuario sobre la zona de sesiones de la Home: seis rondas de
 > maquetas, cada corrección del usuario sobre la anterior. Las decisiones están
 > cerradas y los valores son exactos; lo que faltaba era escribirlo.
@@ -642,6 +642,10 @@ El botón vive en el **recap**, como acción secundaria encima de `LISTO`.
 3. El recap ya es una pantalla que te **pide** algo (el RPE), no un informe, así
    que tiene sitio para una acción sin cambiar de naturaleza.
 
+**Una plantilla por sesión**: guardada, el botón se queda diciéndolo y no acepta
+un segundo toque. Guardarla dos veces daría dos plantillas idénticas y ninguna
+forma de distinguirlas.
+
 ⚠️ **El recap es un momento, no un estado** — el mismo aviso del §3.2.1. Si el
 usuario lo pasa de largo, la sesión queda en el historial y la plantilla se
 pierde. Se acepta a propósito: el segundo hogar permanente sería un `⋯` en la
@@ -654,11 +658,17 @@ una afordancia para un caso que quizá no aparece. Si aparece, ese es el sitio.
 bloques y el nombre. **Los pesos y las reps registradas no** — eso es el log.
 La plantilla es el plan, no lo que hiciste.
 
-**Dónde:** un array propio device-global, **no en `sessionTemplates`**. Ese mapa
-lo referencian los días de las etapas; una plantilla libre metida ahí sería una
-sesión sin dueño, y aparecería en todo lo que recorre plantillas. Como
-`blockPresets`: fuera del canal del entrenador (es tuya, no la programa nadie) y
-dentro de `backupPayload`.
+**Dónde:** `freeSessionPresets`, array propio device-global, **no en
+`sessionTemplates`**. Ese mapa lo referencian los días de las etapas; una
+plantilla libre metida ahí sería una sesión sin dueño, y aparecería en todo lo
+que recorre plantillas. Como `blockPresets`: fuera del canal del entrenador (es
+tuya, no la programa nadie) y dentro de `backupPayload`, del que viaja con la
+biblioteca personal en la importación.
+
+Las dos funciones que deciden qué entra y qué no son puras y viven en
+`utils/freeSessionPreset.js`, fuera del store: `presetFromEntry` congela,
+`freeSessionFromPreset` vuelve a montar. Lo que hay que acertar es exactamente
+eso, así que se prueba solo.
 
 ---
 
@@ -706,7 +716,7 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 | **U06** | Rediseño de la HomeView: hero, lista agrupada, semana desnuda, tarjeta al final (§3) | medio | ✅ 97ae57d |
 | **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, ficha de cliente sin sesiones y restyle de `ui/TabBar` sin banda (§4) | medio | ✅ 97ae57d |
 | **U08** | `sessionPlan()` — se hizo **dentro de U06**, no después (§5) | media tarde | ✅ 97ae57d |
-| **U09** | Plantillas de sesión libre (§7) | bajo | pendiente |
+| **U09** | Plantillas de sesión libre (§7) | bajo | ✅ 94e77f6 |
 
 ---
 
