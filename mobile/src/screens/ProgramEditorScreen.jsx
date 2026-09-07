@@ -238,7 +238,14 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleAddStage() {
-    addStageToProgram(editingId);
+    // Copia la etapa que está seleccionada en el segmentado, no la última: si
+    // estás mirando una etapa, esa es la que quieres continuar.
+    // Duración también de la de origen; `?? 4` porque una etapa abierta (sin
+    // límite) no se copia como abierta — misma regla que `duplicateStageInProgram`.
+    addStageToProgram(editingId, {
+      sourceStageIdx: selectedStageIdx,
+      durationWeeks: selectedStage?.durationWeeks ?? 4,
+    });
     // La etapa nueva va al final: su índice es el tamaño de antes de añadirla.
     setSelectedStageIdx(activeProgram?.stages?.length ?? 1);
     showToast(t('editor.toastStageAdded'), 2200, 'success');
@@ -284,12 +291,15 @@ export default function ProgramEditorScreen({ navigation }) {
   const activeStageIdx      = clientStageIndex(editedClient, activeProgram);
   const isStageActive       = selectedStageIdx === activeStageIdx;
   const selectedStageLocked = isStageLocked(activeProgram, selectedStageIdx, clientSync);
-  // Poner y quitar candados es cosa del entrenador: en el móvil del cliente el
-  // control no aparece (si no, se abriría sus propias etapas). Y solo por
-  // delante de donde está — encerrarle fuera de la etapa que entrena no tiene
-  // sentido, e `isStageLocked` lo ignoraría igualmente.
+  // Poner y quitar candados es cosa del entrenador sobre el programa de UN
+  // cliente: en el móvil del cliente el control no aparece (si no, se abriría
+  // sus propias etapas) y en un programa propio no pinta nada — no hay nadie a
+  // quien cerrarle la etapa. Y solo por delante de donde está — encerrarle
+  // fuera de la etapa que entrena no tiene sentido, e `isStageLocked` lo
+  // ignoraría igualmente.
   const fromTrainer         = isTrainerProgram(activeProgram, clientSync);
   const canLockStage        = !fromTrainer
+    && !!editedClient
     && selectedStageIdx > 0
     && selectedStageIdx > activeStageIdx;
 
@@ -418,7 +428,7 @@ export default function ProgramEditorScreen({ navigation }) {
           <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
             <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
             <Text style={styles.menuRowHint}>
-              {t('editor.addStageHint', { name: activeProgram.stages[activeProgram.stages.length - 1]?.name ?? '' })}
+              {t('editor.addStageHint', { name: selectedStage?.name ?? '' })}
             </Text>
           </View>
           <ArrowIcon size={14} color={th.colors.mutedLight} />
