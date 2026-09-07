@@ -283,10 +283,10 @@ function chipTime(prog, doneSets, totalSets, minTime, maxTime, t) {
   if (allHitMax) {
     const inc  = computeIncrement(maxTime, prog.increment);
     const next = maxTime + inc;
-    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), suggestedWeight: null, suggestedTime: next };
+    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit'), suggestedWeight: null, suggestedTime: next };
   }
   if (allOk) {
-    return { type: 'hold', icon: '→', msg: t('progression.time_allOk', { min: minTime, max: maxTime }), suggestedWeight: null, suggestedTime: maxTime };
+    return { type: 'hold', icon: '→', msg: t('progression.time_allOk', { min: minTime, max: maxTime }), why: t('progression.why_timeInRange'), suggestedWeight: null, suggestedTime: maxTime };
   }
   return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: minTime, max: maxTime }), suggestedWeight: null, suggestedTime: null };
 }
@@ -308,14 +308,14 @@ function chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t) {
   if (result === 'advance') {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = maxW + inc;
-    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: t('progression.why_allHit'), suggestedWeight: next, suggestedTime: null };
   }
   if (result === 'retreat' && maxW > 0) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = Math.max(0, maxW - inc);
-    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), suggestedWeight: next, suggestedTime: null };
+    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), why: t('progression.why_belowMin'), suggestedWeight: next, suggestedTime: null };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), suggestedWeight: maxW || null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: t('progression.why_holdReps'), suggestedWeight: maxW || null, suggestedTime: null };
 }
 
 function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) {
@@ -345,22 +345,24 @@ function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) 
   if (allHitMax && (!rpeGate || rpeGate.avg <= rpeGate.target)) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = maxW + inc;
-    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: t('progression.why_allHit'), suggestedWeight: next, suggestedTime: null };
   }
   if (rpeGate && rpeGate.avg > 9.5 && maxW > 0) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = Math.max(0, maxW - inc);
-    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), suggestedWeight: next, suggestedTime: null };
+    // Aqui se baja por RPE, no por reps: el motivo no puede decir "no llegaste
+    // al minimo" cuando el usuario si completo las series, solo que a tope.
+    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), why: t('progression.why_rpeHigh'), suggestedWeight: next, suggestedTime: null };
   }
   if (mostHitMin) {
-    return { type: 'hold', icon: '→', msg: t('progression.normal_mostHit', { weightStr }), suggestedWeight: maxW || null, suggestedTime: null };
+    return { type: 'hold', icon: '→', msg: t('progression.normal_mostHit', { weightStr }), why: t('progression.why_holdReps'), suggestedWeight: maxW || null, suggestedTime: null };
   }
   if (struggling && maxW > 0) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = Math.max(0, maxW - inc);
-    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), suggestedWeight: next, suggestedTime: null };
+    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), why: t('progression.why_belowMin'), suggestedWeight: next, suggestedTime: null };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), suggestedWeight: maxW || null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: t('progression.why_holdReps'), suggestedWeight: maxW || null, suggestedTime: null };
 }
 
 function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps, maxReps, t) {
@@ -377,20 +379,20 @@ function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps
     const msg  = next === 0
       ? t('progression.decrease_lastAssist', { assist: assistance })
       : t('progression.decrease_allHit', { next });
-    return { type: 'up', icon: '⬆', msg, suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg, why: t('progression.why_allHit'), suggestedWeight: next, suggestedTime: null };
   }
   if (allHitMax && assistance === 0) {
-    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), suggestedWeight: 0, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: t('progression.why_allHit'), suggestedWeight: 0, suggestedTime: null };
   }
   if (mostHitMin) {
-    return { type: 'hold', icon: '→', msg: t('progression.decrease_mostHit', { assistStr }), suggestedWeight: assistance || null, suggestedTime: null };
+    return { type: 'hold', icon: '→', msg: t('progression.decrease_mostHit', { assistStr }), why: t('progression.why_holdReps'), suggestedWeight: assistance || null, suggestedTime: null };
   }
   if (struggling && assistance < 999) {
     const inc  = computeIncrement(assistance, prog.increment);
     const next = assistance + inc;
-    return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), suggestedWeight: next, suggestedTime: null };
+    return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t('progression.why_belowMin'), suggestedWeight: next, suggestedTime: null };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), suggestedWeight: assistance || null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: t('progression.why_holdReps'), suggestedWeight: assistance || null, suggestedTime: null };
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────
@@ -429,7 +431,7 @@ export function getProgression(exConfig, def, lastSets, t) {
     const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
     return {
       type: 'hold', reason: 'deload', icon: '→',
-      msg: t('progression.deload_hold', { weightStr }),
+      msg: t('progression.deload_hold', { weightStr }), why: t('progression.why_deload'),
       suggestedWeight: maxW || null, suggestedTime: null,
     };
   }

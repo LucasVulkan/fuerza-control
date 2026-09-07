@@ -380,29 +380,49 @@ export default function ExerciseCard({
     catch { return null; }
   })();
 
-  // ── ProgressionLine (spec §4.1) — solo tipografía: dir + detail ─────────────
-  // `dir` sale de progression.type; `detail` es el salto numérico ("60 → 62.5 kg"),
-  // calculado con el valor tope de la última sesión y la sugerencia del motor de
-  // progresión. Sin sugerencia numérica (progresión por reps) cae al mensaje largo.
-  const progDetail = (() => {
-    if (!progression) return null;
+  // ── ProgressionLine (spec §4.1) — solo tipografía: dir + destino + salto ────
+  // `dir` sale de progression.type. El detalle NO es un rango: "7.5 → 2.5 kg" no
+  // dice si bajas A 2.5 o RESTAS 2.5, y encima su flecha compite con la de `dir`.
+  // Se parte en dos: `target` es el peso al que vas (la instrucción) y `delta` es
+  // el salto respecto a la última sesión, en pastilla aparte y en gris para que no
+  // pelee con el acento. Sin sugerencia numérica (progresión por reps) cae al
+  // mensaje largo, y ahí el label pierde la preposición ("Subir", no "Subir a").
+  // `why` es el porque en una linea gris debajo: solo acompana a la instruccion
+  // numerica -- con el mensaje largo sobra, porque ese mensaje YA es el motivo.
+  const { progTarget, progDelta, progWhy } = (() => {
+    if (!progression) return {};
     const sets = lastExercise?.sets ?? [];
+    const signed = (n) => `${n > 0 ? '+' : '−'}${Math.abs(n)}`;
     if (progression.suggestedWeight != null) {
-      const curKg   = Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
-      const cur     = curKg > 0 ? toDisplay(curKg) : null;
-      const next    = toDisplay(progression.suggestedWeight);
-      return cur != null && cur !== next
-        ? `${cur} → ${next} ${weightLabel}`
-        : `${next} ${weightLabel}`;
+      const curKg = Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
+      const cur   = curKg > 0 ? toDisplay(curKg) : null;
+      const next  = toDisplay(progression.suggestedWeight);
+      return {
+        progTarget: `${next} ${weightLabel}`,
+        progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
+        progWhy:    progression.why ?? null,
+      };
     }
     if (progression.suggestedTime != null) {
       const cur  = Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
       const next = progression.suggestedTime;
-      return cur > 0 && cur !== next ? `${cur} → ${next} s` : `${next} s`;
+      return {
+        progTarget: `${next} s`,
+        progDelta:  cur > 0 && cur !== next ? signed(next - cur) : null,
+        progWhy:    progression.why ?? null,
+      };
     }
-    return progression.msg;
+    return { progTarget: progression.msg, progDelta: null, progWhy: null };
   })();
   const PROG_ARROW = { up: '↑', hold: '→', down: '↓' };
+  // "Subir a 62.5 kg" solo tiene sentido con un número detrás: con el mensaje
+  // largo de la progresión por reps vuelve al label sin preposición.
+  const progKey = (() => {
+    if (!progression) return null;
+    const base = progression.reason === 'deload' ? 'deload' : progression.type;
+    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null;
+    return numeric && base !== 'hold' ? `${base}To` : base;
+  })();
 
   const targetLabel = buildTarget(def, exConfig, t)
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
@@ -616,18 +636,26 @@ export default function ExerciseCard({
 
           {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
           {!hasCoachTarget && progression ? (
-            <View style={styles.progLine}>
-              <Text style={[
-                styles.progDir,
-                progression.type === 'hold' && styles.progDirHold,
-                // La descarga no es un mantenimiento más: es una instrucción
-                // del bloque, y se lee antes si no comparte color con el gris
-                // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
-                progression.reason === 'deload' && styles.progDirDeload,
-              ]}>
-                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.reason === 'deload' ? 'deload' : progression.type}`, '')}`}
-              </Text>
-              {progDetail ? <Text style={styles.progDetail}>{progDetail}</Text> : null}
+            <View style={styles.progBlock}>
+              <View style={styles.progLine}>
+                <Text style={[
+                  styles.progDir,
+                  progression.type === 'hold' && styles.progDirHold,
+                  // La descarga no es un mantenimiento más: es una instrucción
+                  // del bloque, y se lee antes si no comparte color con el gris
+                  // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
+                  progression.reason === 'deload' && styles.progDirDeload,
+                ]}>
+                  {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progKey}`, '')}`}
+                </Text>
+                {progTarget ? <Text style={styles.progDetail}>{progTarget}</Text> : null}
+                {progDelta ? (
+                  <View style={styles.progDeltaPill}>
+                    <Text style={styles.progDeltaText}>{progDelta}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {progWhy ? <Text style={styles.progWhy}>{progWhy}</Text> : null}
             </View>
           ) : null}
 
@@ -1055,12 +1083,22 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // §4.1 ProgressionLine — solo tipografía, sin fondo ni chip.
+  progBlock: {
+    paddingBottom: 12,
+  },
   progLine: {
     flexDirection: 'row',
     alignItems:    'baseline',
     gap:           8,
     paddingTop:    2,
-    paddingBottom: 12,
+  },
+  // El motivo es contexto, no instruccion: gris, minuscula y sin punto para que
+  // se lea despues del que, no antes.
+  progWhy: {
+    fontFamily: 'Inter_400Regular',
+    fontSize:   12,
+    color:      th.colors.muted,
+    marginTop:  5,
   },
   progDir: {
     fontFamily:    'Inter_900Black',
@@ -1085,11 +1123,26 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
   },
   progDetail: {
-    flex:        1,
+    flexShrink:  1,
     fontFamily:  'Inter_700Bold',
     fontSize:    12,
     fontWeight:  '700',
     color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  // El salto va en pastilla gris, no en acento: dos amarillos en la misma línea
+  // se disputan la mirada y el destino deja de ser lo primero que se lee.
+  progDeltaPill: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    999,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+  },
+  progDeltaText: {
+    fontFamily:  'Inter_700Bold',
+    fontSize:    11,
+    fontWeight:  '700',
+    color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
 
