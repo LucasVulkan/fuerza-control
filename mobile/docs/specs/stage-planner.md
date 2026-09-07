@@ -8,6 +8,7 @@
 > Fase P27 · hecho · `progressionHold: deload` en `progression.js` · §6
 > Fase P28 · hecho · Pantalla del planificador · §7
 > Fase P29 · pendiente · Recap consciente de la descarga · §4.2
+> Fase P30 · pendiente · Rediseño del planificador: el plan y la hoja de añadir · §14
 >
 > Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
@@ -525,6 +526,10 @@ mantener; pero un ejercicio sin progresión sigue sin chip.
 
 ## 7. FASE 4 — La pantalla de planificador 🔴 ✅ IMPLEMENTADA
 
+> ⚠️ **Esta sección describe la pantalla tal como quedó en ago 2026. La §14 la
+> rediseña** (entrada, hoja de añadir, campos editables). Al implementar, manda
+> la §14; esta se queda como registro de por qué cada pieza está donde está.
+
 ### 7.1 Por qué pantalla propia y no el `StageSelector`
 
 | Control | Para qué | Escala |
@@ -748,9 +753,12 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 | 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | ✅ **IMPLEMENTADA** — no se puede ver en el móvil hasta la fase 4: nada escribe `hold` hasta que el planificador cree un peldaño de descarga |
 | 4 | Pantalla de planificador (§7) | 🔴 | ✅ **IMPLEMENTADA** — `StagePlannerScreen`, entrada por la hoja del `+`; la escalera se aplica al momento, sin borrador |
 | 5 | *(futuro)* Grupo B: recap consciente de la descarga (§4.2) | 🟡 | — |
+| 6 | Rediseño del planificador: el plan y la hoja de añadir (§14) | 🟡 | ⬜ **PENDIENTE** — solo UI + `stageRx.js`; cero store |
 
 Las fases 0-3 aportan valor solas y son entregables por separado. La 4 es la
-que convierte todo lo anterior en una herramienta.
+que convierte todo lo anterior en una herramienta. La 6 la hace legible y
+flexible: la 4 dejó un configurador rígido con la lista de etapas actuales
+disfrazada de borrador.
 
 ## 12. Las otras cuatro palancas del análisis (contexto, no alcance)
 
@@ -794,3 +802,230 @@ motor reactivo por ejercicio.
 - Reglas de fidelidad visual: `mobile/docs/UI-MIGRATION.md` — el planificador
   es pantalla nueva sin nodo de Figma ⇒ tokens y primitivas existentes, no
   inventar.
+
+---
+
+## 14. FASE 6 — Rediseño del planificador: el plan y la hoja de añadir 🟡
+
+> Origen: revisión con el usuario (sep 2026) de la pantalla que dejó la fase 4
+> (§7). Nada del modelo cambia: `applyRx`, la materialización y la cadena
+> `derivedFrom` se quedan exactamente como están. Esto es **UI y un poco de
+> `stageRx.js`**; no se toca el store.
+
+### 14.1 Los cuatro síntomas
+
+1. **La lista de etapas se lee como "lo que voy a añadir".** Llegas al
+   planificador pulsando el `+` → *Planificar bloque*, así que lo primero que
+   ves —tus etapas actuales— parece un carrito de la compra. Es un problema de
+   camino de entrada, no de estilo.
+2. **`ladderId` significa dos cosas a la vez**: el preset que pulsaste y qué
+   campos son editables (`LADDER_FIELDS[ladderId]`). De ahí sale toda la
+   rigidez — todas las etapas del mismo tipo, la descarga como interruptor
+   global, mínimo 1 etapa de trabajo, máximo 4.
+3. **No se puede añadir una descarga sola**, y la descarga es lo único que
+   escribe `progressionHold`, o sea el identificador de "ignora la progresión".
+4. **La base es una constante disfrazada de regla** (la última etapa sin `rx`).
+   Como no se puede tocar, hay que explicarla con dos frases de texto
+   (`planner.baseHint` y `planner.baseLine`).
+
+### 14.2 Decisiones cerradas con el usuario (no re-litigar)
+
+1. **La pantalla es el plan del programa**, no un asistente. Entras a mirar lo
+   que hay; añadir es una acción dentro de ella.
+2. **Nada de insertar en medio ni reordenar.** Todo se añade al final. Si
+   quieres una descarga después de la etapa 2, la añades antes de montar la 4 y
+   la 5. Esto mantiene intacto `currentStageIndex` del cliente y todo
+   `stage-locks`.
+3. **Sin máximo de etapas.** Cada uno monta el bloque que quiere. (Deroga el
+   tope de §7.3, que además dejó de tener sentido cuando el número de peldaños
+   pasó a ser editable.)
+4. **Todas las variables editables en todos los tipos de escalera.** El tipo
+   solo decide con qué valores viene prerrellenado. `LADDER_FIELDS` desaparece.
+5. **`incrementScale` no se expone.** Es un mando que no se entiende de un
+   vistazo ("el incremento de la progresión, a la mitad"). Lo pone el preset de
+   Intensidad y se **lee** en la línea de resumen, que ya lo escribe hoy.
+6. **"Sin progresión" no es un interruptor de una etapa de trabajo.** En ese
+   contexto no se entiende a qué se refiere. La única vía a una descarga es el
+   botón `+ descarga`, que crea una etapa prerrellenada y editable como
+   cualquier otra. Consecuencia asumida: una etapa de trabajo no se convierte
+   en descarga a posteriori; la quitas y añades descarga.
+7. **Los ciclos no se editan en la hoja de añadir.** Reparto limpio: **la hoja
+   decide qué cambia, el plan decide cuánto dura.** Las etapas nacen con sus
+   ciclos por defecto (4 las de trabajo, 1 la descarga) y se ajustan en la fila
+   del plan, donde el stepper de ciclos ya es el control principal.
+8. **La etapa en curso no lleva fondo `accent10`.** En el resto de la app ese
+   fondo significa "seleccionado" y aquí leía como selección. Lleva la etiqueta
+   EN CURSO y el contador "N de M hechos" en la línea de ciclos. Las etapas ya
+   hechas sí van atenuadas: eso es estado, no selección.
+9. **Un solo objetivo de toque por fila.** Borrar nunca vive al lado de
+   duplicar ni de desplegar.
+10. **`repsShift` desplaza el rango, no lo acorta** (8-12 con −3 ⇒ 5-9). El
+    código ya lo hace bien; lo que miente es la descripción del preset de
+    Intensidad. Se corrige el texto.
+
+### 14.3 El modelo de variables, después de esto
+
+| Variable | Dónde se edita | Rango |
+|---|---|---|
+| `durationWeeks` (ciclos) | **fila del plan** | 1-52 o "sin límite" |
+| `setsDelta` (series) | tarjeta de etapa, hoja de añadir | −3…+3 |
+| `repsShift` (reps) | tarjeta de etapa | −6…+6 |
+| `restPct` (descanso) | tarjeta de etapa | −50…+100, paso 5 |
+| `scope` (aplicar a) | tarjeta de etapa | Todo · Básicos · Accesorios |
+| `incrementScale` | **no editable** — lo pone el preset, se lee en el resumen | 1 · 0.5 |
+| `progressionHold` | **no editable** — es lo que significa que la etapa sea de tipo descarga | null · `'deload'` |
+| `name` | hoja "Etapa" del plan | texto |
+
+Los suelos de `applyRx` (1 serie, 1 rep, 15 s de descanso) no se tocan: son los
+que hacen seguro ampliar los rangos.
+
+### 14.4 Pantalla del plan (`StagePlannerScreen`)
+
+```
+‹ PLAN
+Fuerza Base
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌──────────────────────────────────┐
+│ PLAN                             │
+│ 4 ETAPAS · 12 CICLOS             │
+│ 3 sesiones por ciclo             │
+└──────────────────────────────────┘
+ETAPAS
+  1  Acumulación              ✓        ← atenuada
+     4 ciclos · hecha
+  2  Acumulación 2     EN CURSO
+     +1 serie
+     Ciclos · 2 de 4 hechos     − 4 +
+  3  Intensificación
+     −3 reps en básicos · +25% descanso
+     Ciclos                     − 3 +
+                     [ + AÑADIR ETAPAS ]
+```
+
+- **Entrada:** el `+` del `StageSelector` navega directo aquí. La hoja de dos
+  filas del editor (`addOpen`, *Añadir etapa* / *Planificar bloque*)
+  **desaparece**, y con ella `handleAddStage`. Ya no hay bifurcación: llegas al
+  plan, y desde el plan se añade. (Deroga §7.4, que puso ahí la bifurcación.)
+- **La fila tiene un solo control**: el stepper de ciclos. Fuera la X de
+  borrar, fuera el `TextInput` del nombre (y con él el problema de `key` por
+  índice) y fuera cualquier icono de duplicar.
+- **Tocar la fila abre una hoja "Etapa"**: nombre, *Duplicar* y *Eliminar* (con
+  la confirmación de hoy). Duplicar llama a `addStageToProgram({ sourceStageIdx
+  })`, que **añade al final**, no detrás de la fila tocada (§14.2.2); el hint
+  de la fila lo dice.
+- **Estado por fila**: `idx < activeIdx` ⇒ atenuada, ✓ y "N ciclos · hecha";
+  `idx === activeIdx` ⇒ etiqueta EN CURSO y la línea de ciclos con "N de M
+  hechos", tomando `stageWeeksCompleted` del mismo sitio del que
+  `clientStageIndex` toma el índice (blob de progreso del cliente propietario;
+  si no hay propietario, el del programa); el resto, normales.
+- **El botón lleva `+`** y el texto en plural: es lo que convierte la pantalla
+  en "esto es tu programa, y aquí se le añade".
+- **Fuera `planner.baseHint`**: la base ya no es una constante que haya que
+  explicar, es un control en la hoja.
+
+### 14.5 Hoja de añadir etapas
+
+```
+Añadir etapas
+┌ Parte de la etapa        Acumulación ▾ ┐
+EMPEZAR CON
+[ Volumen ][ Intensidad ][ Accesorios ][ Vacío ]
+  5  Acumulación 1
+     +1 serie
+  6  Acumulación 2
+     +2 series
+  7  Descarga
+     −1 serie · sin progresión
+  [ + trabajo ]        [ + descarga ]
+           [ AÑADIR 3 ETAPAS ]
+```
+
+- **La numeración continúa la del plan** (5, 6, 7 si el programa tiene 4). Es
+  lo que hace que se lea "estas se suman a las de detrás" sin escribirlo, y es
+  también la señal honesta de que van al final.
+- **`Parte de la etapa` es un selector**, no una frase. Por defecto la última
+  etapa sin `rx` (`baseStageIdx`, el comportamiento de hoy) y se puede elegir
+  cualquiera. ⚠️ Elegir la base elige **de qué se copia**, no dónde cae:
+  `addStageLadder` añade al final pase lo que pase.
+- **`EMPEZAR CON` rellena la lista entera**, incluida la opción **Vacío** (lista
+  en blanco). No es un modo: después de pulsarlo todo es editable y el preset ya
+  no manda.
+- **Tarjeta plegada** = número, nombre y la línea de `describeRx`; si la regla
+  no cambia nada, "sin cambios" (una copia literal de la base, que es el caso de
+  *duplicar*). **Tocar la tarjeta la despliega**; no hay chevron aparte.
+- **Tarjeta desplegada** = Series, Reps, Descanso, Aplicar a y, tras un
+  separador, **Quitar esta etapa** en rojo. En una descarga, además, una línea
+  fija "Sin progresión mientras dure" — no es un control (§14.2.6).
+- **`+ trabajo` / `+ descarga`** añaden una etapa al final de la lista. La de
+  descarga viene con `−1 serie`, `progressionHold: 'deload'` y 1 ciclo.
+- El botón de aplicar **dice cuántas etapas añade** y no está cuando la lista
+  está vacía.
+- Fuera: el stepper *Etapas de trabajo*, el toggle *Terminar con descarga*, el
+  stepper de ciclos por peldaño y `planner.baseLine`.
+
+### 14.6 Trabajo en `stageRx.js`
+
+Ningún cambio en `applyRx`, `isNoopRx`, `describeRx` ni `scaleIncrement`.
+
+- **`LADDER_FIELDS` y `DELOAD_FIELDS` → `RX_FIELDS`**, una sola lista para todas
+  las etapas: `setsDelta` (−3…3, `scoped`), `repsShift` (−6…6, `scoped`),
+  `restPct` (−50…100, paso 5). `fieldLabelKey` se queda igual. Los comentarios
+  de rango de `DEFAULT_RX` se actualizan a estos números.
+- **`buildRungs(ladderId, count, withDeload)` → `buildRungs(ladderId)`**:
+  devuelve la lista por defecto del preset (2 de trabajo + descarga, con los
+  valores de hoy) y `[]` para `'blank'`. `LADDER_IDS` pasa a
+  `['linear','intensification','volume','blank']`.
+- **`newRung(kind)`** nuevo: la etapa que crean los botones — `+ trabajo` ⇒
+  `{ kind:'work', durationWeeks:4, rx:{} }`, `+ descarga` ⇒ el `DELOAD_RUNG` de
+  hoy, clonado.
+- **El nombre se calcula por orden dentro de su tipo, no por índice de lista.**
+  Hoy `rungName` usa `i + 1`, y con una descarga en medio la siguiente etapa de
+  trabajo se llamaría "Acumulación 3" siendo la segunda. `n` = posición entre
+  las etapas `kind: 'work'`. Con el preset `'blank'`, nombre genérico
+  (`planner.rungNames.blank` = "Etapa {{n}}").
+- El test que recorre cada peldaño de cada escalera y comprueba que la clave
+  i18n resultante existe en los dos locales **se mantiene**, ahora contra
+  `RX_FIELDS` × los tres alcances.
+
+### 14.7 i18n
+
+Nuevas: `planner.addStagesTitle`, `planner.fromStage`, `planner.startWith`,
+`planner.ladders.blank`, `planner.ladderDesc.blank`, `planner.rungNames.blank`,
+`planner.addWork`, `planner.addDeload`, `planner.removeRung`,
+`planner.noChanges`, `planner.deloadFixedLine`, `planner.applyCount` (con
+plurales), `planner.fields.scope` y sus tres opciones, `planner.stageDone`,
+`planner.cyclesProgress` ("{{done}} de {{total}} hechos"),
+`planner.stageSheetTitle`, `planner.duplicate`, `planner.duplicateHint`.
+
+Se corrige `planner.ladderDesc.intensification` — "acorta el rango" ⇒ "baja el
+rango" (§14.2.10), en los dos locales.
+
+Se borran: `planner.baseHint`, `planner.baseLine`, `planner.rungCount`,
+`planner.withDeload`, `planner.withDeloadHint`, `editor.addSheetTitle`,
+`editor.addStage`, `editor.addStageHint`, `editor.planBlock`,
+`editor.planBlockHint`.
+
+⚠️ Los locales se editan **clave a clave, a mano**; nunca con `json.dump`, que
+reformatea el archivo entero.
+
+### 14.8 Casos borde (QA)
+
+| Caso | Resultado esperado |
+|---|---|
+| Preset *Vacío* y aplicar sin añadir nada | El botón no está; nunca se llama a `addStageLadder` con `[]` |
+| Solo una descarga | Se crea 1 etapa con `progressionHold: 'deload'` y 1 ciclo |
+| Descarga en medio de la lista | La etapa de trabajo siguiente se llama con `n` = 2, no 3 |
+| Base = una etapa derivada (con `rx`) | Permitido: los deltas se aplican sobre los `exConfig` ya materializados de esa etapa, que es lo que el usuario ve |
+| Base = la etapa en curso del cliente | Permitido; no toca su progreso, las nuevas van al final |
+| Programa de 1 sola etapa | La fila no se puede borrar (como hoy); duplicar y añadir sí |
+| Etapa con `durationWeeks: null` en el plan | Fila con "sin límite" y su botón, como hoy; el total sigue siendo "12+" |
+| Tocar el stepper de ciclos | NO abre la hoja "Etapa" |
+| Cambiar de preset con la lista ya editada | Se regenera entera (comportamiento de hoy, asumido) |
+| Etapa de trabajo sin ningún delta | Resumen "sin cambios"; se crea como copia literal de la base |
+
+### 14.9 Qué NO tocar
+
+Además de todo lo de §10: **este rediseño no escribe una línea de store**.
+`addStageLadder` y `addStageToProgram` no cambian de firma ni de
+comportamiento — siguen añadiendo al final y siguen cerrando la etapa abierta
+con `closeOpenStage`.
