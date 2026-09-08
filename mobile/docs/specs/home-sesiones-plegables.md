@@ -2,8 +2,8 @@
 
 > Tema: ui
 > En corto: Las sesiones dejan de ser «un hero + una lista» y pasan a ser una única lista de filas plegables; la que toca hoy es una de ellas, en lima, con la letra grande y su botón puesto, y todas se abren al tocarlas para enseñar los ejercicios.
-> Fase U12 · pendiente · Cimientos: tokens de texto y `targetLabel()` extraído · §4
-> Fase U13 · pendiente · La lista plegable: filas, tarjeta de hoy, desplegable y botones · §5
+> Fase U12 · hecho · Cimientos: tokens de texto y `targetLabel()` extraído · §4
+> Fase U13 · hecho · La lista plegable: filas, tarjeta de hoy, desplegable y botones · §5
 >
 > **Probar en dispositivo.** La mancha de lima crece al desplegar la sesión de
 > hoy (~150 px cerrada → ~320 px abierta con siete ejercicios). En pantalla de
@@ -16,11 +16,17 @@
 > no da un salto brusco — es lo único de la animación que no se puede juzgar
 > sobre la maqueta.
 >
-> Estado: **sin implementar** (sep 2026). Sale de una sesión de diseño Opus +
+> Estado: **las dos fases implementadas** (sep 2026, `f2f79f0`), a falta de las
+> dos pruebas en dispositivo de arriba. Sale de una sesión de diseño Opus +
 > usuario sobre la Home: siete rondas de maquetas y un prototipo funcional, cada
-> ronda corrigiendo la anterior. Las decisiones están cerradas, los valores son
-> exactos y hay un prototipo que se puede tocar (§12). Lo que faltaba era
-> escribirlo.
+> ronda corrigiendo la anterior.
+>
+> Los valores de §4.2 y §5 son los que quedaron **después de verlo en el móvil**,
+> que corrigió cuatro cosas que la maqueta daba por buenas: la lista del hero se
+> pintaba con tinta invertida y salía negra sobre negro; los radios por posición
+> (`getCardRadii`) no valen cuando cualquier fila puede crecer; la flecha de
+> desplegar no informaba de nada; y la tipografía se leía más floja que en el
+> mock — con `Inter_900Black` de techo, lo único que queda es cuerpo y tracking.
 >
 > **Reemplaza** la §3.2 (el hero) y la §3.3 (las filas) de
 > [home-sessions.md](home-sessions.md), que quedan como registro de lo que hubo.
@@ -597,8 +603,8 @@ componente con el orden de los hijos invertido.
 
 | Fase | Qué | Coste | Estado |
 |---|---|---|---|
-| **U12** | Cimientos: cuatro tokens de Inter en `textStyles`, `targetLabel()` extraído a `utils/prescription.js` con su test, y `sessionPlan()` devolviendo todas las filas con `isHero` (§4). **Sin fuentes nuevas** (§4.1) | bajo | ⬜ |
-| **U13** | La lista plegable: `SessionRow`, tarjeta de hoy, desplegable, tres botones, acordeón, animación, i18n y borrado del `Hero` (§5) | medio | ⬜ |
+| **U12** | Cimientos: cuatro tokens de Inter en `textStyles`, `targetLabel()` extraído a `utils/prescription.js` con su test, y `sessionPlan()` devolviendo todas las filas con `isHero` (§4). **Sin fuentes nuevas** (§4.1) | bajo | ✅ f2f79f0 |
+| **U13** | La lista plegable: `SessionRow`, tarjeta de hoy, desplegable, tres botones, acordeón, animación, i18n y borrado del `Hero` (§5) | medio | ✅ f2f79f0 |
 
 ---
 
