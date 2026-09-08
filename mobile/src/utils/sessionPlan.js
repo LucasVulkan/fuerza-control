@@ -20,9 +20,9 @@
  * @param {string}   [args.activeTemplateId]  Sesión a medias, si la hay.
  * @param {Function} args.t                   i18n.
  * @returns {{
- *   heroTemplateId: string|null,  // null ⇒ no se pinta hero
+ *   heroTemplateId: string|null,  // null ⇒ ninguna fila es la destacada
  *   heroLabel:      string|null,
- *   rows:           Array<{ templateId: string, marker: string, isDone: boolean }>,
+ *   rows:           Array<{ templateId: string, marker: string, isDone: boolean, isHero: boolean }>,
  *   subtitle:       string|null,  // null ⇒ no se pinta contador
  * }}
  */
@@ -40,17 +40,18 @@ export function sessionPlan({ days = [], cycleCompletedIds, activeTemplateId, t 
   return {
     heroTemplateId: hero?.templateId ?? null,
     heroLabel:      hero == null ? null : t(active ? 'home.sessionActive' : 'home.sessionNext'),
-    // El hero SALE de la lista: las demás conservan su orden alfabético, así
-    // que ninguna cambia de sitio al completarse.
-    rows: days
-      .filter((d) => d.templateId !== hero?.templateId)
-      .map((d) => ({
-        templateId: d.templateId,
-        // Cadena corta, no "la letra": los 20 px del hueco de marcador aguantan
-        // tres caracteres sin que nada se rompa (no hay caja que reventar).
-        marker:     d.label ?? '',
-        isDone:     doneIds.has(d.templateId),
-      })),
+    // El hero YA NO sale de la lista: la pantalla las pinta todas en orden de
+    // ciclo y a la que toca le da otra escala en su propio hueco
+    // (docs/specs/home-sesiones-plegables.md §4.4). Que se mueva al completarse
+    // es justo lo que se quiere decir: has avanzado un puesto.
+    rows: days.map((d) => ({
+      templateId: d.templateId,
+      // Cadena corta, no "la letra": el hueco de marcador aguanta tres
+      // caracteres sin que nada se rompa (no hay caja que reventar).
+      marker:     d.label ?? '',
+      isDone:     doneIds.has(d.templateId),
+      isHero:     d.templateId === hero?.templateId,
+    })),
     subtitle: days.length ? t('home.cycleCount', { done, total: days.length }) : null,
   };
 }

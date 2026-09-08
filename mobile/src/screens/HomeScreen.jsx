@@ -4,6 +4,11 @@ import {
   StyleSheet, Alert,
 } from 'react-native';
 import Svg, { Path, G } from 'react-native-svg';
+// Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
+// anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
+// del acordeón de `SessionCard`; ningún `Animated.Value` persiguiendo alturas
+// desde JS.
+import Reanimated, { LinearTransition, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +18,7 @@ import { stageDays, stageDaysAt } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
-import { MenuRow, GroupedRow, Status, RowIcon } from '../components/ui/MenuList';
+import { MenuRow, Status, RowIcon } from '../components/ui/MenuList';
 import ProgramCard from '../components/ui/ProgramCard';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -24,6 +29,7 @@ import { DocSheet } from '../components/ui/DocPoints';
 import { getWeekStatuses } from '../utils/weekProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
+import { targetLabel, exerciseName } from '../utils/prescription';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
@@ -193,21 +199,16 @@ function WeekSelector({ workoutLog }) {
   );
 }
 
-// ── Hero ───────────────────────────────────────────────────────────────────────
+// ── Sesiones ──────────────────────────────────────────────────────────────
 //
-// La sesión que toca, y el ÚNICO elemento en color de la pantalla: a partir de
-// aquí `accent` significa "esto es lo siguiente" y nada más (§1.1 de la spec).
-// Las completadas conservan el check lima y pierden el fondo y el borde que las
-// hacían lo más llamativo de la lista.
+// Una sola lista en orden de ciclo. Cada sesión es una fila plegable y la que
+// toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
+// botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
+// (docs/specs/home-sesiones-plegables.md §5).
 //
-// No es una tarjeta más: se EXTRAE de la lista. Las demás conservan su orden
-// alfabético, así que ninguna cambia de sitio al completarse.
-//
-// Solo tiene tres estados —Siguiente, En curso, y no existir— y los tres los
-// decide `sessionPlan`. El "ciclo cerrado" que rondó el diseño no puede darse:
-// guardar la última sesión cierra el ciclo y lo vacía en la misma escritura
-// (`advanceCycle`), así que al volver a la Home ya estás en el siguiente y la A
-// es un hero normal. Ver §3.2.1.
+// El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
+// elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
+// mirar una sesión sin empezarla.
 
 function HeroChevron({ size = 13, color = LIMA }) {
   return (
@@ -217,34 +218,177 @@ function HeroChevron({ size = 13, color = LIMA }) {
   );
 }
 
-function Hero({ label, session, name, meta, cta, onPress, a11yLabel }) {
+/**
+ * Los ejercicios de la sesión, tal cual se los va a encontrar dentro.
+ *
+ * Deliberadamente sosa —Inter en caja baja, sin filetes y sin lima— para que la
+ * cabecera siga siendo lo que canta (§5.4). Los bloques de acondicionamiento van
+ * detrás de los ejercicios, con su formato donde las series y sin la pastilla de
+ * color del editor, que aquí sería un cuarto acento.
+ */
+function ExerciseLines({ template, allExercises }) {
+  const { t, i18n } = useTranslation();
+  const styles    = useThemedStyles(makeStyles);
+  const exercises = template.exercises ?? [];
+  const blocks    = template.blocks ?? [];
+
+  const line = (key, idx, name, right) => (
+    <View key={key} style={styles.exRow}>
+      <Text style={styles.exIdx}>{idx}</Text>
+      <Text style={styles.exName} numberOfLines={1}>{name}</Text>
+      <Text style={styles.exTarget}>{right}</Text>
+    </View>
+  );
+
+  return (
+    <>
+      {exercises.map((ex, i) => {
+        const def = allExercises[ex.exerciseId];
+        return line(
+          `${ex.exerciseId}-${i}`,
+          i + 1,
+          exerciseName(def, i18n.language, ex.exerciseId),
+          targetLabel(def, ex, t, { compact: true }),
+        );
+      })}
+      {blocks.map((block, i) => line(
+        `block-${i}`,
+        exercises.length + i + 1,
+        block.name ?? t(`blocks.formats.${block.format}`),
+        t(`blocks.formats.${block.format}`).toUpperCase(),
+      ))}
+    </>
+  );
+}
+
+/**
+ * Una sesión cualquiera: 60 px cerrada, y al abrirse los ejercicios y SU botón
+ * —en contorno, no en relleno—. Que el botón solo exista abierta es lo que dice
+ * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
+ */
+function SessionRow({
+  marker, name, meta, done, adapted, open,
+  cta, onToggle, onStart, a11yLabel, children,
+}) {
+  const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <TouchableOpacity
-      style={styles.hero}
-      onPress={onPress}
-      activeOpacity={0.9}
-      accessibilityRole="button"
-      accessibilityLabel={a11yLabel}
-    >
-      {/* "SIGUIENTE · SESIÓN C" es la línea "ETAPA 2 · VOLUMEN" de la tarjeta de
-          programa: papel a media tinta, dato en tinta sólida, punto a media
-          altura entre los dos. El marcador vive aquí y no delante del nombre —
-          ni como tag suelto arriba a la derecha, que en 10 px al 50% sobre el
-          lima no se leía— y así el nombre se queda con su línea entera. */}
-      <Text style={styles.heroFlag} numberOfLines={1}>
-        {label}
-        {!!session && <Text style={styles.heroFlagSession}>{` · ${session}`}</Text>}
-      </Text>
-      <Text style={styles.heroName} numberOfLines={2}>{name}</Text>
-      <Text style={styles.heroMeta} numberOfLines={2}>{meta}</Text>
-      {/* La pieza más pesada del hero, y así debe seguir. */}
-      <View style={styles.heroBtn}>
-        <Text style={styles.heroBtnText}>{cta}</Text>
-        <HeroChevron />
-      </View>
-    </TouchableOpacity>
+    <Reanimated.View layout={LinearTransition.duration(240)} style={styles.sesCard}>
+      <TouchableOpacity
+        style={styles.sesHead}
+        onPress={onToggle}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
+      >
+        <Text style={[styles.sesGlyph, done && styles.sesGlyphDone]}>{marker}</Text>
+        <Text style={[styles.sesName, done && styles.sesNameDone]} numberOfLines={1}>{name}</Text>
+        {!!adapted && <Text style={styles.rowAdapted}>{t('home.adapted')}</Text>}
+        <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
+        {done && <CheckIcon size={14} color={LIMA} />}
+      </TouchableOpacity>
+
+      {open && (
+        <Reanimated.View
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(150)}
+          style={styles.sesBody}
+        >
+          <View style={styles.sesBodyRule} />
+          {children}
+          <TouchableOpacity
+            style={styles.sesBtn}
+            onPress={onStart}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={cta}
+          >
+            <Text style={styles.sesBtnText}>{cta}</Text>
+            <HeroChevron color={th.colors.accent} />
+          </TouchableOpacity>
+        </Reanimated.View>
+      )}
+    </Reanimated.View>
   );
+}
+
+/**
+ * La que toca hoy: la misma fila en lima y a otra escala. Es la ÚNICA pieza en
+ * color de la pantalla, así que dentro el acento pasa a ser el negro —letra,
+ * raya y series— y el botón se invierte (§1.1).
+ *
+ * El botón vive en el pie y no dentro del desplegable: abrir la tarjeta crece
+ * por dentro y no lo mueve de sitio.
+ */
+function TodayCard({
+  marker, flag, name, meta, open, cta, onToggle, onStart, a11yLabel, children,
+}) {
+  const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Reanimated.View layout={LinearTransition.duration(240)} style={styles.today}>
+      <TouchableOpacity
+        style={styles.todayHead}
+        onPress={onToggle}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
+      >
+        {/* La letra se empareja con el NOMBRE, no con el bloque entero: son la
+            misma cosa dicha de dos maneras. Por eso el rótulo sale fuera y se
+            queda a ancho completo —alineado con la raya, la meta y el botón— y
+            la letra y el nombre forman su propia línea, apoyados en el mismo
+            suelo. Sin un solo margen a ojo: se recoloca solo si el nombre rompe
+            a dos líneas. Ver §5.2.1. */}
+        <Text style={styles.todayFlag} numberOfLines={1}>{flag}</Text>
+        <View style={styles.todayHeadRow}>
+          {!!marker && <Text style={styles.todayGlyph}>{marker}</Text>}
+          <Text style={styles.todayName} numberOfLines={2}>{name}</Text>
+        </View>
+        <View style={styles.todayRule} />
+        <Text style={styles.todayMeta} numberOfLines={1}>{meta}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <Reanimated.View
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(150)}
+          style={styles.todayBox}
+        >
+          {children}
+        </Reanimated.View>
+      )}
+
+      <View style={styles.todayFoot}>
+        <TouchableOpacity
+          style={styles.todayBtn}
+          onPress={onStart}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={cta}
+        >
+          <Text style={styles.todayBtnText}>{cta}</Text>
+          <HeroChevron />
+        </TouchableOpacity>
+      </View>
+    </Reanimated.View>
+  );
+}
+
+/**
+ * El texto del botón dice A DÓNDE LLEVA, con el nombre de la sesión dentro.
+ * Sin letra (una plantilla sin `label`) cae a la forma corta: la interfaz no
+ * promete lo que no tiene.
+ */
+function startCta(t, label, { active, done }) {
+  if (active) return label ? t('home.btnContinueSession', { label }) : t('home.btnContinue');
+  if (done)   return label ? t('home.btnRepeatSession',   { label }) : t('home.btnRepeat');
+  return label ? t('home.btnStartSession', { label }) : t('home.btnStart');
 }
 
 // ── Hojas del programa (archivar / elegir etapa) ───────────────────────────────
@@ -371,6 +515,9 @@ export default function HomeScreen() {
   const [cycleDoc,    setCycleDoc]    = useState(false);
   const [freeSheet,   setFreeSheet]   = useState(false);
   const [freeTpls,    setFreeTpls]    = useState(false);
+  // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
+  // recuerda al volver — es una preferencia de un segundo, no un ajuste.
+  const [openId,      setOpenId]      = useState(null);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -548,48 +695,35 @@ export default function HomeScreen() {
             activeTemplateId:  activeSession.templateId,
             t,
           });
-          const heroDay = plan.heroTemplateId ? byId.get(plan.heroTemplateId) : null;
-          const heroIsActive = !!heroDay && activeSession.templateId === heroDay.templateId;
-
-          // Starting a session out of rotation is easy to do by accident —
-          // confirm before starting anything that isn't the one that toca.
-          const confirmOutOfOrder = (templateId, marker) => {
-            Alert.alert(
-              t('home.startOutOfOrderTitle', { label: t('workout.sessionLabel', { label: marker }) }),
-              t('home.startOutOfOrderDesc'),
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                { text: t('home.btnStart'), onPress: () => startSession(templateId) },
-              ],
-            );
-          };
-
-          const requestStart = (templateId, isHero, marker) => {
+          // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
+          // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
+          // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
+          // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
+          const requestStart = (templateId) => {
             if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
             if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
-            if (!isHero) { confirmOutOfOrder(templateId, marker); return; }
             startSession(templateId);
           };
 
-          // Meta del hero: los dos primeros datos salen de `sessionStats`, que ya
-          // existe; el tercero es cuándo fue la última vez.
-          let heroMeta = '';
-          if (heroDay) {
-            if (heroIsActive) {
-              const exs  = heroDay.template.exercises ?? [];
+          // La meta de la tarjeta de hoy: los dos primeros datos salen de
+          // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
+          // vez. Con la sesión a medias cambia entera — cuánto llevas y desde
+          // cuándo, que es lo único que importa para volver a ella.
+          const todayMeta = (day) => {
+            if (activeSession.templateId === day.templateId) {
+              const exs  = day.template.exercises ?? [];
               const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
-              heroMeta = t('home.heroMetaActive', {
+              return t('home.heroMetaActive', {
                 done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '',
               });
-            } else {
-              const stats = sessionStats(heroDay.template, allExercises);
-              const rel   = relativeTime(heroDay.lastSession?.timestamp, t);
-              heroMeta = [
-                t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
-                rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
-              ].join(' · ');
             }
-          }
+            const stats = sessionStats(day.template, allExercises);
+            const rel   = relativeTime(day.lastSession?.timestamp, t);
+            return [
+              t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
+              rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
+            ].join(' · ');
+          };
 
           return (
             <>
@@ -658,54 +792,69 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {heroDay && (
-                  <Hero
-                    label={plan.heroLabel}
-                    session={heroDay.template.label
-                      ? t('workout.sessionLabel', { label: heroDay.template.label })
-                      : null}
-                    name={heroDay.template.name ?? ''}
-                    meta={heroMeta}
-                    cta={heroIsActive ? t('home.btnContinue') : t('home.btnStart')}
-                    onPress={() => requestStart(heroDay.templateId, true)}
-                    a11yLabel={`${plan.heroLabel}, ${t('workout.sessionLabel', { label: heroDay.template.label ?? '' })}, ${heroDay.template.name ?? ''}, ${heroMeta}`}
-                  />
-                )}
-
-                {/* Las demás, en la lista agrupada que la app ya usa en Progreso
-                    y en los menús: filas sueltas con 2 px de fondo de pantalla
-                    entre ellas y radios por posición. Orden fijo A→F, así que
-                    ninguna cambia de sitio al completarse. */}
-                <View style={[styles.group, heroDay && styles.groupAfterHero]}>
-                  {plan.rows.map((row, i) => {
+                {/* Todas las sesiones, en orden de ciclo: la que toca es una
+                    más, en su hueco y a otra escala. NO es la lista agrupada de
+                    Progreso: cada sesión es una tarjeta suelta con su radio
+                    entero, porque cualquiera de ellas puede crecer. */}
+                <View style={styles.group}>
+                  {plan.rows.map((row) => {
                     const day = byId.get(row.templateId);
                     if (!day) return null;
+                    const open   = openId === row.templateId;
+                    const active = activeSession.templateId === row.templateId;
+                    const name   = day.template.name ?? '';
+                    const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
+                    const toggle = () => setOpenId(open ? null : row.templateId);
+                    const start  = () => requestStart(row.templateId);
+                    const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
+                    const lines  = (
+                      <ExerciseLines template={day.template} allExercises={allExercises} />
+                    );
+
+                    if (row.isHero) {
+                      return (
+                        <TodayCard
+                          key={row.templateId}
+                          marker={row.marker}
+                          flag={plan.heroLabel}
+                          name={name}
+                          meta={todayMeta(day)}
+                          open={open}
+                          cta={cta}
+                          onToggle={toggle}
+                          onStart={start}
+                          a11yLabel={`${plan.heroLabel}, ${a11y}`}
+                        >
+                          {lines}
+                        </TodayCard>
+                      );
+                    }
+
                     const stats = sessionStats(day.template, allExercises);
                     const rel   = relativeTime(day.lastSession?.timestamp, t);
-                    const meta  = row.isDone && rel
-                      ? t('home.rowDone', { rel: rel.toLowerCase(), count: stats.exercises })
-                      : t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes });
-                    // "Adaptada" es TEXTO al principio del subtítulo, no una
-                    // pastilla: menos ruido, y el azul sigue significando
-                    // entrenador.
-                    const adapted = !!clientSync.pendingOverrides?.[row.templateId];
                     return (
-                      <GroupedRow
+                      <SessionRow
                         key={row.templateId}
-                        isFirst={i === 0}
-                        isLast={i === plan.rows.length - 1}
                         marker={row.marker}
-                        markerColor={row.isDone ? th.colors.muted : LIMA}
-                        title={day.template.name ?? ''}
-                        subtitle={adapted
-                          ? <><Text style={styles.rowAdapted}>{t('home.adapted')}</Text>{` · ${meta}`}</>
-                          : meta}
-                        right={row.isDone
-                          ? <CheckIcon size={16} color={LIMA} />
-                          : <Text style={styles.rowChevron}>›</Text>}
-                        onPress={() => requestStart(row.templateId, false, row.marker)}
-                        accessibilityLabel={`${t('workout.sessionLabel', { label: row.marker })}, ${day.template.name ?? ''}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`}
-                      />
+                        name={name}
+                        // Hecha: cuándo fue. Pendiente: cuánto dura. Cuántos
+                        // ejercicios tiene está un toque más abajo, con los
+                        // ejercicios de verdad.
+                        meta={row.isDone && rel
+                          ? rel.toLowerCase()
+                          : t('home.rowMinutes', { minutes: stats.minutes })}
+                        done={row.isDone}
+                        // "Adaptada" es texto, no una pastilla: menos ruido, y el
+                        // azul sigue significando entrenador.
+                        adapted={!!clientSync.pendingOverrides?.[row.templateId]}
+                        open={open}
+                        cta={cta}
+                        onToggle={toggle}
+                        onStart={start}
+                        a11yLabel={a11y}
+                      >
+                        {lines}
+                      </SessionRow>
                     );
                   })}
                 </View>
@@ -972,67 +1121,155 @@ const makeStyles = (th) => StyleSheet.create({
   weekDotTrained: { backgroundColor: LIMA },
   weekDotIdle:    { backgroundColor: th.colors.muted },
 
-  // ── Hero ─────────────────────────────────────────────────────────────────────
-  // El relleno sólido `accent` (#aae216), no el lima #b8ff00 — que es el color
-  // de la tinta de dentro del botón.
-  hero: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.lg,
-  },
-  // El rótulo lleva las dos cosas, como la línea de etapa de la tarjeta: el papel
-  // ("SIGUIENTE", "EN CURSO") a media tinta porque es la etiqueta, y la sesión en
-  // tinta sólida porque es el dato.
-  heroFlag: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      10,
-    letterSpacing: 2.2,
-    textTransform: 'uppercase',
-    color:         withOpacity(th.colors.onAccent, 0.62),
-  },
-  heroFlagSession: { color: th.colors.onAccent },
-  // 20 px: el cuerpo de `text/hero`, el mismo que el nombre del programa y el
-  // número de ciclo de la tarjeta. Empezó en 27, bajó a 22 y acabó aquí — que es
-  // además el token, no un tamaño intermedio inventado.
+  // ── Lista de sesiones ───────────────────────────────────────────────────
+  // Los cuerpos y los huecos salen de la sesión de diseño
+  // (docs/specs/home-sesiones-plegables.md §5), no de Figma: donde no hay token
+  // —14, 12, 11— va el número exacto de la spec.
   //
-  // `Inter_900Black` es el peso más alto que carga la app (App.js), así que a
-  // 20 px lo único que queda para ganar cuerpo es apretar: tracking a −0.5 e
-  // interlineado a 1.05 densan el bloque sin tocar el tamaño.
-  heroName: {
-    ...textStyles.hero,
-    lineHeight:    20 * 1.05,
-    letterSpacing: -0.5,
-    color:         th.colors.onAccent,
-    marginTop:     spacing.md,
+  // Tarjetas sueltas, no una lista agrupada: cualquiera se despliega, así que
+  // todas llevan su radio entero. El aire va DENTRO de la tarjeta (60 px de
+  // alto) y no entre ellas: separadas y estrechas parecían una persiana, y
+  // juntas y altas se leen como fichas.
+  group: { gap: spacing.xs2 },
+
+  sesCard: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    overflow:        'hidden',
   },
-  // `space/sm` y no `md`: nombre y meta se leen como un bloque.
-  heroMeta: {
-    fontFamily:    'Inter_600SemiBold',
-    fontSize:      12,
-    lineHeight:    12 * 1.35,
-    letterSpacing: 0.3,
-    color:         withOpacity(th.colors.onAccent, 0.62),
-    marginTop:     spacing.sm,
-  },
-  heroBtn: {
+  sesHead: {
     flexDirection:     'row',
     alignItems:        'center',
-    justifyContent:    'space-between',
-    backgroundColor:   th.colors.onAccent,
-    borderRadius:      th.radius.md,
-    paddingVertical:   15,
-    paddingHorizontal: spacing.lg,
-    marginTop:         spacing.lg,
+    gap:               12,
+    height:            60,
+    paddingHorizontal: 14,
   },
-  heroBtnText: { ...textStyles.btnAction, color: LIMA },
+  // `includeFontPadding: false` aquí y en la letra grande: es lo que deja que la
+  // caja del texto valga lo que dice `lineHeight` y no lo que Android le suma
+  // por su cuenta — sin eso, la letra no cae donde se la centra.
+  sesGlyph: {
+    ...textStyles.sessionGlyph,
+    lineHeight:         22,
+    includeFontPadding: false,
+    width:              26,
+    color:              LIMA,
+  },
+  sesGlyphDone: { color: th.colors.muted },
+  sesName:      { ...textStyles.sessionName, flex: 1, color: th.colors.text },
+  sesNameDone:  { color: th.colors.mutedLight },
+  sesMeta:      { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: th.colors.muted },
+  rowAdapted:   { fontFamily: 'Inter_800ExtraBold', fontSize: 11, color: th.tint.blue70 },
 
-  // ── Lista agrupada ───────────────────────────────────────────────────────────
-  // Los 2 px de separación son fondo de pantalla, no un filete: el grupo se lee
-  // como un bloque por los radios, no por una línea que no significa nada.
-  group:          { gap: spacing.xs },
-  groupAfterHero: { marginTop: spacing.md },
-  rowChevron:     { fontSize: 18, fontWeight: '900', color: th.colors.mutedLight, marginLeft: spacing.sm },
-  rowAdapted:     { color: th.tint.blue70, fontFamily: 'Inter_800ExtraBold' },
+  sesBody: { paddingHorizontal: 14, paddingTop: spacing.xs, paddingBottom: 14 },
+  // La raya de la cabecera de hoy, apagada: separa sin contar nada.
+  sesBodyRule: {
+    height:          2,
+    borderRadius:    2,
+    backgroundColor: th.tint.accent50,
+    marginBottom:    spacing.sm2,
+  },
+  // Contorno y no relleno: el lima sólido es de la que toca (§1.1).
+  sesBtn: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    borderWidth:    borders.thin,
+    borderColor:    th.colors.accent,
+    borderRadius:   th.radius.md,
+    padding:        14,
+    marginTop:      12,
+  },
+  // 13 y no los 12 de `btnAction`: el botón es lo que hay que pulsar y a 12 se
+  // quedaba por debajo del resto de la tarjeta.
+  sesBtnText: { ...textStyles.btnAction, fontSize: 13, letterSpacing: 0.4, color: th.colors.accent },
+
+  // ── La que toca hoy ─────────────────────────────────────────────────
+  // La única pieza en color de la pantalla, así que dentro el acento es el
+  // negro: letra, raya y series. El botón se invierte.
+  today: {
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
+    overflow:        'hidden',
+    // La de hoy respira el doble que las demás por arriba y por abajo: es la
+    // pieza grande y pegada a sus vecinas se leía como parte de la misma lista.
+    marginVertical:  spacing.xs2,
+  },
+  todayHead: {
+    paddingTop:        14,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     11,
+  },
+  // `flex-end` y no `center`: la letra se apoya en la misma línea de suelo que
+  // el nombre. Centrada tampoco quedaba mal, pero a media altura no está
+  // alineada con nada y se lee como un descuadre.
+  todayHeadRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginTop: spacing.sm },
+  todayGlyph: {
+    ...textStyles.sessionGlyphXL,
+    lineHeight:         28,
+    includeFontPadding: false,
+    width:              26,
+    color:              th.colors.onAccent,
+  },
+  todayFlag: {
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      9,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color:         withOpacity(th.colors.onAccent, 0.55),
+  },
+  todayName: {
+    ...textStyles.sessionNameXL,
+    lineHeight: 25,
+    color:      th.colors.onAccent,
+    flex:       1,
+  },
+  todayRule: {
+    height:          2,
+    borderRadius:    2,
+    backgroundColor: withOpacity(th.colors.onAccent, 0.85),
+    marginTop:       11,
+  },
+  todayMeta: {
+    marginTop:     spacing.md,
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color:         withOpacity(th.colors.onAccent, 0.55),
+  },
+  // 6 px a los lados y no 15: el lima queda de FILO, no de marco, y la tarjeta
+  // se sigue leyendo como una sola pieza. El pie lleva el mismo margen.
+  todayBox: {
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
+    marginHorizontal:  spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical:   9,
+  },
+  todayFoot: {
+    paddingTop:        11,
+    paddingHorizontal: spacing.sm,
+    paddingBottom:     spacing.sm,
+  },
+  todayBtn: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    backgroundColor: th.colors.onAccent,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+  },
+  todayBtnText: { ...textStyles.btnAction, fontSize: 13, letterSpacing: 0.4, color: LIMA },
+
+  // ── Los ejercicios de la sesión desplegada ──────────────────────────────
+  // Sosos a propósito: caja baja, sin filetes y sin lima. Dentro de la tarjeta
+  // el acento ya lo gastan la raya y el botón; un tercero repetido siete veces
+  // le quita fuerza justo a lo que hay que pulsar (§5.4).
+  exRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.xs2 },
+  exIdx:  { fontFamily: 'Inter_600SemiBold', fontSize: 10, width: 11, color: th.colors.muted },
+  exName: { fontFamily: 'Inter_500Medium', fontSize: 13, letterSpacing: 0.1, flex: 1, color: th.colors.text },
+  exTarget: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: th.colors.mutedLight },
+
 
   // ── Banner de etapa terminada ─────────────────────────────────────────────────
   // Sobre `surface` y con los dos botones en outline: el relleno lima es del

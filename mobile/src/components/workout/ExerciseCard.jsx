@@ -38,6 +38,7 @@ import { getProgression } from '../../utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
+import { targetLabel as buildTarget } from '../../utils/prescription';
 import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, typography, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -79,35 +80,6 @@ export function NoteIcon({ size = 21, color }) {
       />
     </Svg>
   );
-}
-
-// ── buildTarget ───────────────────────────────────────────────────────────────
-
-function buildTarget(def, exConfig, t) {
-  if (!def) return '';
-  const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
-  const model      = def.progressionModel;
-  const sets       = exConfig.sets ?? 0;
-  const minReps    = exConfig.minReps ?? def.minReps;
-  const maxReps    = exConfig.maxReps ?? def.maxReps;
-  const minTime    = exConfig.minTime ?? def.minTime;
-  const maxTime    = exConfig.maxTime ?? def.maxTime;
-  const unilateral = (exConfig.isUnilateral ?? def.isUnilateral)
-    ? ` ${t('workout.perSide', 'por lado')}`
-    : '';
-
-  if (model === 'submax') return `${sets} × ${t('workout.submax', 'submáx')}`;
-
-  if (inputType === 'reps') {
-    const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
-    return `${sets} × ${r} reps${unilateral}`;
-  }
-  if (inputType === 'time' || inputType === 'weight_time') {
-    return `${sets} × ${minTime}–${maxTime} s${unilateral}`;
-  }
-  // weight_reps (default)
-  const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
-  return `${sets} × ${r} reps${unilateral}`;
 }
 
 // ── ExerciseCard ──────────────────────────────────────────────────────────────

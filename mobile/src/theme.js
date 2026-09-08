@@ -116,6 +116,20 @@ export const textStyles = {
   spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
   smallBold:  { fontFamily: 'Inter_600SemiBold',  fontSize: 8,  fontWeight: '600', letterSpacing: 1.12 }, // text/SmallBold — labels 8px (etapa, entrenador, contadores)
   btnAction:  { fontFamily: 'Inter_900Black',     fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
+
+  // Sesiones de la Home (docs/specs/home-sesiones-plegables.md §4.2). La letra
+  // y el nombre a dos escalas: fila y tarjeta de hoy. Las maquetas los llevaban
+  // en Barlow Condensed y se rediseñaron a Inter para no cargar dos familias
+  // más por una pantalla — de ahí el tracking negativo, que es lo que compensa
+  // el ancho de la Inter Black a estos cuerpos.
+  // `Inter_900Black` es el peso más alto que carga la app, así que cuando algo
+  // «pide más bold» lo único que queda es cuerpo y tracking: subir el tamaño y
+  // apretar densa la mancha sin cambiar de fuente. Es la misma nota que ya
+  // llevaba `heroName` en la HomeView.
+  sessionGlyph:   { fontFamily: 'Inter_900Black', fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },  // letra de fila
+  sessionGlyphXL: { fontFamily: 'Inter_900Black', fontSize: 34, fontWeight: '900', letterSpacing: -1.6 },  // letra de la sesión de hoy
+  sessionName:    { fontFamily: 'Inter_900Black', fontSize: 16, fontWeight: '900', letterSpacing: -0.2 },  // nombre de fila
+  sessionNameXL:  { fontFamily: 'Inter_900Black', fontSize: 24, fontWeight: '900', letterSpacing: -0.8 },  // nombre de la sesión de hoy
 };
 
 // ─── Border widths ────────────────────────────────────────────────────────────

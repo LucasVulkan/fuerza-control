@@ -16,6 +16,15 @@
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
+> **Superada en parte (sep 2026).** El hero (§3.2) y las filas de las demás
+> sesiones (§3.3) los reemplaza
+> [home-sesiones-plegables.md](home-sesiones-plegables.md): una sola lista de
+> filas plegables, la de hoy en lima dentro de la lista. Lo de aquí queda como
+> registro de lo que hubo y del porqué. **El resto de esta spec sigue vigente**:
+> la semana (§3.1), la `ProgramCard` (§4), `sessionPlan()` (§5 — cambia solo en
+> que ya no saca el hero de `rows`), los modos de entrenar (§6) y las plantillas
+> de sesión libre (§7).
+>
 > Estado: **todas las fases implementadas** (sep 2026, U06/U07/U08 en 97ae57d y
 > U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. Sale de una sesión de
 > diseño Opus + usuario sobre la zona de sesiones de la Home: seis rondas de
