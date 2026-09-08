@@ -8,7 +8,7 @@ import Svg, { Path, G } from 'react-native-svg';
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
 // del acordeón de `SessionCard`; ningún `Animated.Value` persiguiendo alturas
 // desde JS.
-import Reanimated, { LinearTransition, FadeIn, FadeOut } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeIn, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -195,6 +195,40 @@ function WeekSelector({ workoutLog }) {
       <View style={styles.weekDots}>
         {days.map(({ status }, i) => <WeekDot key={i} status={status} styles={styles} />)}
       </View>
+// Duración del plegado. La comparten la tarjeta (su propio alto), el pie de la
+// de hoy y las tarjetas vecinas: si no coinciden, el movimiento se ve por
+// partes.
+const FOLD_MS = 240;
+
+/**
+ * Salida del desplegable: **encoge además de desvanecerse**.
+ *
+ * `FadeOut` a secas no vale. Reanimated saca la vista del flujo y la pinta fuera
+ * del recorte de su tarjeta, así que no la clipa nadie: la lista de ejercicios
+ * se desvanecía entera en su sitio en vez de plegarse. En las filas normales
+ * colaba porque el desplegable es el último hijo y la tarjeta encoge justo por
+ * encima; en la de hoy, con el botón debajo, se veía a la primera.
+ *
+ * La opacidad va más rápida que el alto para que el contenido no siga ahí
+ * cuando la caja ya casi no existe.
+ */
+function collapseOut(values) {
+  'worklet';
+  return {
+    initialValues: {
+      opacity: 1,
+      height:  values.currentHeight,
+      width:   values.currentWidth,
+      originX: values.currentOriginX,
+      originY: values.currentOriginY,
+    },
+    animations: {
+      height:  withTiming(0, { duration: FOLD_MS }),
+      opacity: withTiming(0, { duration: FOLD_MS * 0.6 }),
+    },
+  };
+}
+
     </View>
   );
 }
@@ -274,7 +308,7 @@ function SessionRow({
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <Reanimated.View layout={LinearTransition.duration(240)} style={styles.sesCard}>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.sesCard}>
       <TouchableOpacity
         style={styles.sesHead}
         onPress={onToggle}
@@ -294,7 +328,7 @@ function SessionRow({
       {open && (
         <Reanimated.View
           entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(150)}
+          exiting={collapseOut}
           style={styles.sesBody}
         >
           <View style={styles.sesBodyRule} />
@@ -329,7 +363,7 @@ function TodayCard({
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
   return (
-    <Reanimated.View layout={LinearTransition.duration(240)} style={styles.today}>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.today}>
       <TouchableOpacity
         style={styles.todayHead}
         onPress={onToggle}
@@ -357,14 +391,17 @@ function TodayCard({
       {open && (
         <Reanimated.View
           entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(150)}
+          exiting={collapseOut}
           style={styles.todayBox}
         >
           {children}
         </Reanimated.View>
       )}
 
-      <View style={styles.todayFoot}>
+      {/* Con `layout` propio: el pie es el único hermano que se mueve al
+          plegar, y sin él Reanimated le quita el hueco de golpe — el botón
+          saltaba a su sitio mientras la tarjeta seguía encogiendo. */}
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.todayFoot}>
         <TouchableOpacity
           style={styles.todayBtn}
           onPress={onStart}
@@ -375,7 +412,7 @@ function TodayCard({
           <Text style={styles.todayBtnText}>{cta}</Text>
           <HeroChevron />
         </TouchableOpacity>
-      </View>
+      </Reanimated.View>
     </Reanimated.View>
   );
 }
@@ -824,6 +861,7 @@ export default function HomeScreen() {
                           onToggle={toggle}
                           onStart={start}
                           a11yLabel={`${plan.heroLabel}, ${a11y}`}
+                </Reanimated.View>
                         >
                           {lines}
                         </TodayCard>
@@ -859,7 +897,10 @@ export default function HomeScreen() {
                   })}
                 </View>
 
-                {/* Sesión libre */}
+                {/* Sesión libre. Con `layout` porque al plegar una sesión sube
+                    o baja: sin él daba el salto de golpe mientras la tarjeta
+                    seguía animando. Lo mismo la tarjeta de programa. */}
+                <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
                 <TouchableOpacity
                   style={styles.freeSessionBtn}
                   onPress={handleFreePress}
@@ -872,12 +913,13 @@ export default function HomeScreen() {
                       : t('freeSession.btn')}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </Reanimated.View>
 
               {/* ── El programa, al final ── la misma tarjeta que la ficha de
-                  cliente. Mantener pulsada la etapa ya no existe: el ⋯ del pie
-                  abre el archivado y la barra de etapa lleva al selector. */}
-              <View style={styles.programBlock}>
+                  cliente. Aquí no lleva pie: pulsar el nombre abre el
+                  visualizador (y de ahí se edita y se archiva) y pulsar la
+                  etapa abre el selector. */}
+              <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.programBlock}>
                 <ProgramCard
                   variant="self"
                   name={activeProgram.name}
@@ -1160,7 +1202,7 @@ const makeStyles = (th) => StyleSheet.create({
   sesMeta:      { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: th.colors.muted },
   rowAdapted:   { fontFamily: 'Inter_800ExtraBold', fontSize: 11, color: th.tint.blue70 },
 
-  sesBody: { paddingHorizontal: 14, paddingTop: spacing.xs, paddingBottom: 14 },
+  sesBody: { paddingHorizontal: 14, paddingTop: spacing.xs, paddingBottom: 14, overflow: 'hidden' },
   // La raya de la cabecera de hoy, apagada: separa sin contar nada.
   sesBodyRule: {
     height:          2,
@@ -1175,6 +1217,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth:    borders.thin,
     borderColor:    th.colors.accent,
+    overflow:          'hidden',
     borderRadius:   th.radius.md,
     padding:        14,
     marginTop:      12,

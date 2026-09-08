@@ -50,7 +50,7 @@ Una anatomía, dos escalas, cuatro estados.
 ┌ A   Empuje                           ayer ✓ ┐   60 px · hecha
 ├ B   Tirón                         hace 3 d ✓ ┤   60 px · hecha
 │ ┌─────────────────────────────────────┐   │
-│ │ HOY TE TOCA                           │   │
+│ │ MI ENTRENO DE HOY                     │   │
 │ │ C  Pierna y core                      │   │   tarjeta lima
 │ │ ───────────────────────────────────   │   │   ~148 px cerrada
 │ │    7 EJERCICIOS · 55 MIN · HACE 6 D   │   │
@@ -292,7 +292,7 @@ línea.
 cosa dicha de dos maneras —«C» y «Pierna y core»—, así que van en la misma línea:
 
 ```
-HOY TE TOCA                 ← rótulo, a ancho completo
+MI ENTRENO DE HOY           ← rótulo, a ancho completo
 C  Pierna y core            ← la letra y el nombre, sobre el mismo suelo
 ────────────────────────
 7 EJERCICIOS · 55 MIN · …
@@ -336,8 +336,12 @@ rompe a dos líneas la letra vuelve a quedarse arriba. `alignItems: 'center'`
 que pinta lo que escribe otro.
 
 El rótulo de `sessionPlan` cambia de palabras, no de mecanismo:
-`home.sessionNext` pasa de **«Siguiente»** a **«Hoy te toca»** y
-`home.sessionActive` se queda en **«En curso»** (§7).
+Los dos rótulos van **en primera persona** y son pareja: `home.sessionNext`
+pasa de «Siguiente» a **«Mi entreno de hoy»** y `home.sessionActive` de «En
+curso» a **«Continuar entreno»** (§7). Ninguno usa la palabra «sesión»: la letra
+grande ya dice **C** y el botón dice EMPEZAR SESIÓN C — repetirla arriba no
+añade nada, y para quien abre la app por primera vez «entreno» es su palabra,
+no la del sistema.
 
 ### 5.3 El desplegable
 
@@ -470,6 +474,36 @@ El `layout` de la tarjeta anima el cambio de alto; el contenido entra y sale con
 opacidad. **No** se persigue el alto con un `Animated.Value` de RN core — es
 justo la mezcla que la app ya dejó atrás (memoria del proyecto y `SessionCard`).
 
+**Todo lo que se mueve al plegar necesita su propio `layout`.** Es la regla que
+más veces se pisa: Reanimated anima el alto de la tarjeta que lo declara, pero a
+sus hermanos los recoloca Yoga al instante salvo que ellos también lo pidan. Y el
+desplegable sale del flujo **de golpe**, así que el salto se ve entero. Llevan
+`layout`, por tanto:
+
+- el **pie de la tarjeta de hoy** (el botón), único hermano por debajo del
+  desplegable;
+- las **tarjetas vecinas**, que ya lo tienen por ser `SessionRow`/`TodayCard`;
+- el **botón de sesión libre** y la **tarjeta de programa**, que viven debajo de
+  la lista entera y suben o bajan con cualquier pliegue.
+
+Las cuatro duraciones salen de una sola constante (`FOLD_MS`), o el movimiento se
+ve por partes.
+
+**Y el desplegable sale con una animación propia, no con `FadeOut`.** Reanimated
+pinta la vista que sale **fuera del recorte de su tarjeta**, así que no la clipa
+nadie: con solo opacidad, la lista de ejercicios se desvanecía entera en su sitio
+en vez de plegarse. La salida (`collapseOut`) anima **el alto a 0** además de la
+opacidad, y la opacidad va más rápida (0,6 × `FOLD_MS`) para que el contenido no
+siga ahí cuando la caja ya casi no existe. La caja necesita su
+`overflow: 'hidden'` para recortarse a sí misma mientras encoge.
+
+En las filas normales el `FadeOut` colaba porque el desplegable es el último hijo
+y la tarjeta encoge justo por encima; en la de hoy, con el botón debajo, se veía
+a la primera. Las dos usan ahora la misma salida.
+
+Se nota sobre todo **al cerrar**. Al abrir, el fade de entrada tapa el salto de
+lo que hay debajo; al cerrar no hay nada que lo tape.
+
 No hay nada más animado: la flecha de desplegar no existe (§5.3.1), así que el
 alto y la opacidad son todo el movimiento de la pantalla.
 
@@ -528,11 +562,12 @@ Cambian de texto (misma clave):
 
 | Clave | Antes | Ahora |
 |---|---|---|
-| `home.sessionNext` | `Siguiente` | `Hoy te toca` |
+| `home.sessionNext` | `Siguiente` | `Mi entreno de hoy` |
+| `home.sessionActive` | `En curso` | `Continuar entreno` |
 | `home.sessions` | `Sesiones` | `Tus sesiones` |
 
 Se quedan como están: `home.btnStart`, `home.btnContinue` (fallback sin letra),
-`home.cycleCount`, `home.sessionActive`, `home.adapted`, `home.sessionMeta`,
+`home.cycleCount`, `home.adapted`, `home.sessionMeta`,
 `home.rowDone`.
 
 ---
