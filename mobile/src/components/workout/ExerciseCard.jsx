@@ -646,7 +646,8 @@ export default function ExerciseCard({
                   // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
                   progression.reason === 'deload' && styles.progDirDeload,
                 ]}>
-                  {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progKey}`, '')}`}
+                  <Text style={styles.progArrow}>{PROG_ARROW[progression.type] ?? '→'}</Text>
+                  {` ${t(`workout.progression.${progKey}`, '')}`}
                 </Text>
                 {progTarget ? <Text style={styles.progDetail}>{progTarget}</Text> : null}
                 {progDelta ? (
@@ -1097,8 +1098,9 @@ const makeStyles = (th) => StyleSheet.create({
   progWhy: {
     fontFamily: 'Inter_400Regular',
     fontSize:   12,
-    color:      th.colors.muted,
-    marginTop:  5,
+    lineHeight: 15,
+    color:      th.colors.mutedLight,
+    marginTop:  1,
   },
   progDir: {
     fontFamily:    'Inter_900Black',
@@ -1107,6 +1109,16 @@ const makeStyles = (th) => StyleSheet.create({
     letterSpacing: 1.1,
     color:         th.colors.accent,
     textTransform: 'uppercase',
+    // La flecha arrastra su propio hueco a la izquierda (side bearing), asi que
+    // el trazo arranca 2px dentro y la linea de motivo, que empieza a ras,
+    // parecia mas pegada al borde. Se compensa tirando de la fila, no metiendo
+    // sangria al motivo: asi las dos siguen colgando del mismo margen.
+    marginLeft:    -2,
+  },
+  // Flecha algo mas grande que el label: a 11px se perdia contra el texto en
+  // negra. Anidada, hereda el color del estado (acento / azul / gris).
+  progArrow: {
+    fontSize: 14,
   },
   progDirDeload: {
     color: th.colors.blue,
