@@ -119,9 +119,13 @@ export default function StageSelector({ stages, value, onChange, onAdd }) {
       ) : (
         segments
       )}
-      <TouchableOpacity style={styles.add} onPress={onAdd} activeOpacity={0.75} hitSlop={6}>
-        <Text style={styles.addText}>+</Text>
-      </TouchableOpacity>
+      {/* Sin `onAdd` no se pinta: el visualizador de programa usa este mismo
+          control para mirar etapas, y ahí no se crea ninguna. */}
+      {!!onAdd && (
+        <TouchableOpacity style={styles.add} onPress={onAdd} activeOpacity={0.75} hitSlop={6}>
+          <Text style={styles.addText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

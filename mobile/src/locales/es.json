@@ -2119,6 +2119,7 @@
     "statSessions": "SESIONES",
     "cyclesOpen": "∞",
     "stageFallback": "Etapa {{n}}",
+    "editBtn": "EDITAR PROGRAMA",
     "notFound": "Programa no encontrado",
     "emptySession": "Sin ejercicios",
     "volumeTitle": "SERIES POR GRUPO Y CICLO",

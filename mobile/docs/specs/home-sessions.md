@@ -16,14 +16,14 @@
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
-> **Superada en parte (sep 2026).** El hero (§3.2) y las filas de las demás
-> sesiones (§3.3) los reemplaza
-> [home-sesiones-plegables.md](home-sesiones-plegables.md): una sola lista de
-> filas plegables, la de hoy en lima dentro de la lista. Lo de aquí queda como
-> registro de lo que hubo y del porqué. **El resto de esta spec sigue vigente**:
-> la semana (§3.1), la `ProgramCard` (§4), `sessionPlan()` (§5 — cambia solo en
-> que ya no saca el hero de `rows`), los modos de entrenar (§6) y las plantillas
-> de sesión libre (§7).
+> **Superada en parte (sep 2026) por dos specs**, que se llevan cuatro §: el
+> hero (§3.2) y las filas de las demás sesiones (§3.3) van a
+> [home-sesiones-plegables.md](home-sesiones-plegables.md), y la anatomía de la
+> tarjeta con su pie de acciones (§4.2, §4.3, §4.7) a
+> [program-card.md](program-card.md). Queda como registro. **El resto sigue
+> vigente**: la semana (§3.1), el hallazgo de la convergencia y lo que la tarjeta
+> deja distinto a propósito (§4.1, §4.4-§4.6), `sessionPlan()` (§5 — cambia solo
+> en que ya no saca el hero de `rows`), los modos (§6) y la sesión libre (§7).
 >
 > Estado: **todas las fases implementadas** (sep 2026, U06/U07/U08 en 97ae57d y
 > U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. Sale de una sesión de
@@ -292,6 +292,13 @@ que un archivo aparte habría duplicado el contenedor para no compartir nada.
 ---
 
 ## 4. Fase U07 — `ProgramCard` compartida
+
+> ⚠️ **La anatomía de abajo (§4.2), su pie de acciones (§4.3) y la extracción
+> (§4.7) están superadas por [program-card.md](program-card.md)** (sep 2026): la
+> tarjeta perdió la banda de dos tonos, las cajas de las cifras y el pie, y la
+> `StageSegBar` que se cita aquí está borrada. Lo que sigue vigente de esta fase
+> es el **hallazgo** —que las dos pantallas ya tenían la misma tarjeta— y lo que
+> se decidió dejar distinto entre ellas (§4.4-§4.6).
 
 ### 4.1 El hallazgo
 

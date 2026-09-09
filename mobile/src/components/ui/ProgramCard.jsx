@@ -1,67 +1,116 @@
 /**
- * ProgramCard — el programa, su etapa y sus tres cifras, en una sola tarjeta.
+ * ProgramCard — el programa, dónde vas y sus tres cifras, en una sola tarjeta.
  *
  * Sale de `AssignedProgramCard` (tab de Programa de la ficha de cliente), que
- * ya era esta tarjeta: mismo bloque nombre + ciclo, misma `StageSegBar`, mismas
+ * ya era esta tarjeta: mismo bloque nombre + ciclo, misma barra de etapa, mismas
  * acciones. Las dos pantallas convergían sin saberlo, así que ahora la
  * comparten (docs/specs/home-sessions.md §4).
  *
- * Solo la TARJETA: los avisos de bloqueo y la sección de próxima sesión se
- * quedan en `ClientsScreen`, que son del tab y no de la tarjeta.
+ * ── Una sola superficie ────────────────────────────────────────────────────
  *
- * Dos colores como la tarjeta de ejercicio del workout: cabecera `surface2`,
- * cuerpo `surface`. Los 14/16 de padding son los de esa tarjeta, no hay token.
+ * Antes la cabecera iba en `surface2` y el cuerpo en `surface`, como la tarjeta
+ * de ejercicio del workout. La banda separaba bien pero metía un segundo color
+ * en una tarjeta que ya tiene lima, azul y tres grises de texto: ahora la
+ * tarjeta es UNA superficie y lo que separa nombre de etapa es un filete de 1px
+ * a sangre. El resto de la jerarquía la hace el aire.
+ *
+ * ── Dos zonas pulsables, no un pie de botones ──────────────────────────────
+ *
+ * El pie EDITAR/VER murió en la Home: la zona del nombre lleva al visualizador
+ * (y de ahí se edita) y la zona de etapa abre el selector. Son dos objetivos
+ * distintos dentro de la misma tarjeta, así que cada uno se ilumina por su
+ * cuenta al pulsarlo — si se iluminara la tarjeta entera nadie aprendería que
+ * son dos sitios. El chevron va pegado a la ceja y no al nombre: dice que la
+ * tarjeta se pulsa sin competir con el título.
+ *
+ * El pie sigue existiendo para la ficha de cliente, donde la tarjeta NO es
+ * navegable (es el contenido del tab) y el "⋯" guarda las diez acciones del
+ * entrenador. Se pinta solo si llega alguna de sus tres funciones.
+ *
+ * ── Progreso: barra de etapas + puntos de ciclo ────────────────────────────
+ *
+ * Dos preguntas, dos objetos. La barra es el PROGRAMA entero: un tramo por
+ * etapa, de ancho proporcional a sus ciclos, con las cumplidas en lima apagado
+ * y la de ahora en lima sólido. Los puntos son los CICLOS de la etapa actual,
+ * que son tres o cuatro y se cuentan de un vistazo. Antes ambas cosas
+ * compartían una sola barra de ciclos y no había forma de saber por dónde ibas
+ * del programa.
  *
  * Dos variantes:
- *   · `self`   (Home)    — eyebrow "Programa" y, si el programa viene de un
+ *   · `self`   (Home)    — eyebrow "Tu programa" y, si el programa viene de un
  *                          entrenador, la línea "● por Fulano" en AZUL. Sin
  *                          entrenador detrás la línea no existe y la tarjeta
  *                          encoge: no se rellena con "creado por ti".
  *   · `client` (ficha)   — eyebrow "Programa asignado"; aquí el entrenador ES
  *                          el autor, así que no hay línea de autoría.
- *
- * El pie de acciones va DENTRO de la tarjeta, no suelto debajo: sueltos podían
- * leerse como acciones de pantalla y no del programa.
  */
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import StageSegBar from './StageSegBar';
 
-// Track de la barra de etapas, sin token propio (mismo caso que el #b8ff00 de
-// la Home): `surface2` no se veía y `mutedLight` competía con el relleno. Es el
-// punto medio exacto entre los dos.
-const STAGE_TRACK = '#545454';
+// El padding de la tarjeta de ejercicio del workout, que es de donde salió esta
+// tarjeta. No cae en ningún token de `space/*`.
+const PAD = 16;
 
-// Una caja de dato mide ~86px en un móvil estrecho: el texto se encoge antes de
-// truncarse. Mismo recurso que las Progress cards.
+// Una caja de dato mide ~100px en un móvil estrecho: el texto se encoge antes
+// de truncarse. Mismo recurso que las Progress cards.
 const FIT = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 };
 
 /**
- * El bloque de etapa es pulsable solo donde lleva a algún sitio: en la Home
- * abre el selector de etapa (el gesto que antes vivía en el banner), y en la
- * ficha de cliente no hay nada que elegir desde aquí.
+ * Zona pulsable de la tarjeta. Se tiñe de `surface2` al pulsar y vuelve al
+ * fondo de la tarjeta al soltar — nada de cambios en seco (regla general del
+ * rediseño). Sin `onPress` es una `View` normal y no hay nada que animar.
  */
-function StageWrap({ onPress, style, children }) {
+function PressZone({ onPress, style, accessibilityLabel, children }) {
+  const th = useTheme();
+  const [pressed, setPressed] = useState(false);
+  const p = useSharedValue(0);
+
+  // Los worklets solo pueden capturar valores serializables — `th` lleva
+  // funciones dentro, así que se extraen los colores a strings sueltos
+  // (mismo motivo que en `EditorRows`).
+  const tintColors = [th.colors.surface, th.colors.surface2];
+
+  // Entra rápido y sale despacio: el dedo ya está encima cuando se ilumina, y
+  // al soltar la marca tiene que durar lo justo para verse.
+  useEffect(() => {
+    p.value = withTiming(pressed ? 1 : 0, { duration: pressed ? 90 : 160 });
+  }, [pressed, p]);
+
+  const tint = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(p.value, [0, 1], tintColors),
+  }));
+
   if (!onPress) return <View style={style}>{children}</View>;
+
   return (
-    <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.7} accessibilityRole="button">
-      {children}
-    </TouchableOpacity>
+    <Pressable
+      onPress={onPress}
+      onPressIn={()  => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Reanimated.View style={[style, tint]}>{children}</Reanimated.View>
+    </Pressable>
   );
 }
 
 export default function ProgramCard({
   variant = 'self',
   name, cycleNum, trainerName,
-  stage, stageRatios, stageNote,
+  stage, stages, stageIdx = 0, stageNote,
   adherence, adherenceColor, pace, loadPct,
-  onEdit, onView, onMore, onCycleInfo, onStagePress,
+  onPress, onStagePress, onCycleInfo,
+  onEdit, onView, onMore,
 }) {
   const { t, i18n } = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEs   = i18n.language?.startsWith('es');
 
@@ -74,14 +123,27 @@ export default function ProgramCard({
       ? String(paceRounded)
       : paceRounded.toFixed(1).replace('.', isEs ? ',' : '.');
 
+  // Con una sola etapa no hay nada que situar: la barra mediría el programa
+  // entero contra sí mismo.
+  const showBar  = (stages?.length ?? 0) > 1;
+  // Sin techo de ciclos no hay puntos que contar (etapa abierta).
+  const showPips = stage?.totalWeeks != null;
+  const hasFoot  = !!(onEdit || onView || onMore);
+
   return (
     <View style={styles.card}>
 
-      <View style={styles.head}>
+      {/* ── Zona de nombre — lleva al programa ── */}
+      <PressZone style={styles.head} onPress={onPress} accessibilityLabel={name}>
         <View style={styles.headName}>
-          <Text style={styles.eyebrow}>
-            {variant === 'client' ? t('programCard.eyebrowClient') : t('programCard.eyebrowSelf')}
-          </Text>
+          <View style={styles.eyebrowRow}>
+            <Text style={styles.eyebrow}>
+              {variant === 'client' ? t('programCard.eyebrowClient') : t('programCard.eyebrowSelf')}
+            </Text>
+            {/* La única señal de que la tarjeta se pulsa. Pegado a la ceja y en
+                `muted`: al lado del nombre competiría con él. */}
+            {!!onPress && <Text style={styles.eyebrowChevron}>›</Text>}
+          </View>
           <Text style={styles.name} numberOfLines={1}>{name}</Text>
           {/* Azul = entrenador, sin excepciones. */}
           {variant === 'self' && !!trainerName && (
@@ -106,90 +168,116 @@ export default function ProgramCard({
           )}
           <Text style={styles.cycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
         </View>
-      </View>
+      </PressZone>
 
-      <View style={styles.body}>
-        {stage && (
-          <StageWrap style={styles.stage} onPress={onStagePress}>
-            <View style={styles.stageRow}>
-              <Text style={styles.stageName} numberOfLines={1}>
-                {stage.label}
-                {stage.name && stage.name !== stage.label
-                  ? <Text style={styles.stageOwnName}>{` · ${stage.name}`}</Text>
-                  : null}
-              </Text>
-              <Text style={styles.stageMeta}>
-                {stage.totalWeeks == null
-                  ? t('home.cycleProgressOpen', { current: stage.weekInStage })
-                  : t('home.cycleProgress', { current: stage.weekInStage, total: stage.totalWeeks })}
-              </Text>
-            </View>
-            {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a
-                la fracción de sesiones hechas del ciclo, los futuros vacíos.
-                Sin techo de ciclos no hay tira que dibujar. */}
-            {!!stageRatios?.length && (
-              <StageSegBar ratios={stageRatios} trackColor={STAGE_TRACK} fillColor={th.colors.accent} />
+      {/* Lo que hacía la banda de color, con una línea de 1px a sangre. */}
+      {!!stage && <View style={styles.rule} />}
+
+      {/* ── Zona de etapa — abre el selector ── */}
+      {!!stage && (
+        <PressZone
+          style={styles.stage}
+          onPress={onStagePress}
+          accessibilityLabel={t('home.selectStage')}
+        >
+          <View style={styles.stageRow}>
+            <Text style={styles.stageName} numberOfLines={1}>
+              <Text style={styles.stageLabel}>{stage.label}</Text>
+              {stage.name && stage.name !== stage.label ? ` ${stage.name}` : ''}
+            </Text>
+            {/* Un punto por ciclo de la etapa; el ciclo en curso ya cuenta como
+                encendido, que es lo que dice el número grande de la cabecera. */}
+            {showPips && (
+              <View style={styles.pips}>
+                {Array.from({ length: stage.totalWeeks }, (_, i) => (
+                  <View key={i} style={[styles.pip, i < stage.weekInStage && styles.pipOn]} />
+                ))}
+              </View>
             )}
-            {!!stageNote && <Text style={styles.stageMeta}>{stageNote}</Text>}
-          </StageWrap>
-        )}
+          </View>
 
-        {/* Las 3 cajas se reparten el ancho a partes iguales, así que en un móvil
-            estrecho quedan ~86px de contenido: valor y etiqueta llevan
-            `adjustsFontSizeToFit` para que ninguna se parta ni se trunque. */}
-        <View style={[styles.stats, !stage && { marginTop: 0 }]}>
-          <View style={styles.stat}>
-            {/* La adherencia es el único de los 3 que emite un veredicto, así
-                que es el único que se colorea cuando pide atención. */}
-            <Text style={[styles.statVal, adherenceColor && { color: adherenceColor }]} {...FIT}>
-              {adherence != null ? adherence : '—'}
-              {adherence != null && <Text style={styles.statUnit}>%</Text>}
-            </Text>
-            <Text style={styles.statKey} {...FIT}>{t('programCard.statAdherence')}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statVal} {...FIT}>
-              {paceStr ?? '—'}
-              <Text style={styles.statUnit}> {t('programCard.cyclesPerWeek')}</Text>
-            </Text>
-            <Text style={styles.statKey} {...FIT}>{t('programCard.statPace')}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statVal} {...FIT}>
-              {loadPct != null ? `${loadPct > 0 ? '+' : ''}${loadPct}` : '—'}
-              {loadPct != null && <Text style={styles.statUnit}>%</Text>}
-            </Text>
-            <Text style={styles.statKey} {...FIT}>{t('programCard.statLoad')}</Text>
-          </View>
+          {/* Un tramo por etapa, de ancho proporcional a sus ciclos. La etapa
+              abierta (sin techo) pesa 1 para no comerse la barra. */}
+          {showBar && (
+            <View style={styles.bar}>
+              {stages.map((s, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.seg,
+                    { flex: Math.max(1, s.cycles ?? 1) },
+                    i <  stageIdx && styles.segDone,
+                    i === stageIdx && styles.segNow,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+
+          {!!stageNote && <Text style={styles.stageNote}>{stageNote}</Text>}
+        </PressZone>
+      )}
+
+      {/* ── Las 3 cifras ── sin caja: el aire ya las separa y tres rectángulos
+          rellenos eran el ruido más caro de la tarjeta. */}
+      <View style={[styles.stats, !stage && styles.statsAlone]}>
+        <View style={styles.stat}>
+          {/* La adherencia es el único de los 3 que emite un veredicto, así
+              que es el único que se colorea cuando pide atención. */}
+          <Text style={[styles.statVal, adherenceColor && { color: adherenceColor }]} {...FIT}>
+            {adherence != null ? adherence : '—'}
+            {adherence != null && <Text style={styles.statUnit}>%</Text>}
+          </Text>
+          <Text style={styles.statKey} {...FIT}>{t('programCard.statAdherence')}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={styles.statVal} {...FIT}>
+            {paceStr ?? '—'}
+            <Text style={styles.statUnit}> {t('programCard.cyclesPerWeek')}</Text>
+          </Text>
+          <Text style={styles.statKey} {...FIT}>{t('programCard.statPace')}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={styles.statVal} {...FIT}>
+            {loadPct != null ? `${loadPct > 0 ? '+' : ''}${loadPct}` : '—'}
+            {loadPct != null && <Text style={styles.statUnit}>%</Text>}
+          </Text>
+          <Text style={styles.statKey} {...FIT}>{t('programCard.statLoad')}</Text>
         </View>
       </View>
 
-      {/* Pie: tres celdas divididas por el mismo filete que cierra el cuerpo.
-          Sin `onEdit` (programa de entrenador en la Home) VER ocupa el hueco. */}
-      <View style={styles.foot}>
-        {!!onEdit && (
-          <TouchableOpacity style={styles.footCell} onPress={onEdit} activeOpacity={0.7} accessibilityRole="button">
-            <Text style={styles.footText} numberOfLines={1}>{t('programCard.edit')}</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.footCell, !!onEdit && styles.footDivider]}
-          onPress={onView}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-        >
-          <Text style={styles.footText} numberOfLines={1}>{t('programCard.view')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.footCell, styles.footIcon, styles.footDivider]}
-          onPress={onMore}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={t('home.moreOptions')}
-        >
-          <Text style={styles.footIconText}>⋯</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Pie: solo donde la tarjeta no es navegable (ficha de cliente). Sin
+          `onEdit` VER ocupa el hueco. */}
+      {hasFoot && (
+        <View style={styles.foot}>
+          {!!onEdit && (
+            <TouchableOpacity style={styles.footCell} onPress={onEdit} activeOpacity={0.7} accessibilityRole="button">
+              <Text style={styles.footText} numberOfLines={1}>{t('programCard.edit')}</Text>
+            </TouchableOpacity>
+          )}
+          {!!onView && (
+            <TouchableOpacity
+              style={[styles.footCell, !!onEdit && styles.footDivider]}
+              onPress={onView}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Text style={styles.footText} numberOfLines={1}>{t('programCard.view')}</Text>
+            </TouchableOpacity>
+          )}
+          {!!onMore && (
+            <TouchableOpacity
+              style={[styles.footCell, styles.footIcon, (!!onEdit || !!onView) && styles.footDivider]}
+              onPress={onMore}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('home.moreOptions')}
+            >
+              <Text style={styles.footIconText}>⋯</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -201,20 +289,26 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:        'hidden',
   },
 
+  // ── Zona de nombre ──────────────────────────────────────────────────────────
   head: {
-    flexDirection:     'row',
-    alignItems:        'flex-start',
-    gap:               spacing.md,
-    backgroundColor:   th.colors.surface2,
-    paddingVertical:   14,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.md,
+    padding:       PAD,
   },
-  headName:  { flex: 1, minWidth: 0 },
-  headCycle: { flexShrink: 0, alignItems: 'flex-end' },
+  headName:   { flex: 1, minWidth: 0 },
+  headCycle:  { flexShrink: 0, alignItems: 'flex-end' },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
   eyebrow: {
     ...textStyles.spacingTag,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
+  },
+  eyebrowChevron: {
+    fontFamily: 'Inter_900Black',
+    fontSize:   11,
+    lineHeight: 12,
+    color:      th.colors.muted,
   },
   // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
   // no mete en el ancho medido, así que alineado a la derecha se comía la "O"
@@ -242,42 +336,46 @@ const makeStyles = (th) => StyleSheet.create({
   byText: { ...textStyles.subtitle, color: th.colors.mutedLight, flexShrink: 1 },
   byName: { ...textStyles.cardType, letterSpacing: 0, color: th.colors.blue },
 
-  body: {
-    paddingTop:        14,
-    paddingHorizontal: 16,
-    paddingBottom:     16,
-  },
-  stage:    { gap: spacing.sm },
+  rule: { height: borders.thin, backgroundColor: th.colors.border },
+
+  // ── Zona de etapa ───────────────────────────────────────────────────────────
+  stage:    { paddingHorizontal: PAD, paddingTop: PAD, paddingBottom: PAD },
   stageRow: {
     flexDirection: 'row',
-    alignItems:    'baseline',
+    alignItems:    'center',
     gap:           spacing.sm2,
   },
-  stageName: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    flexShrink:    1,
+  // 13px como los nombres de sesión de `MenuList` (`GroupedRow`): esto es un
+  // nombre, no una etiqueta, y en `spacingTag` mayúsculo competía con la ceja.
+  stageName:  { ...textStyles.cardType, fontSize: 13, color: th.colors.text, flexShrink: 1 },
+  stageLabel: { color: th.colors.accent },
+
+  pips: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginLeft: 'auto', flexShrink: 0 },
+  pip:  { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.border },
+  pipOn: { backgroundColor: th.colors.accent },
+
+  bar: { flexDirection: 'row', gap: spacing.xs2, marginTop: spacing.md },
+  seg: {
+    height:          spacing.sm,
+    borderRadius:    spacing.sm / 2,
+    backgroundColor: th.colors.border,
   },
-  // "ETAPA 1" se queda de etiqueta; el nombre propio de la etapa es el dato.
-  stageOwnName: { color: th.colors.text },
-  stageMeta: {
-    ...textStyles.subtitle,
-    color:      th.colors.mutedLight,
-    marginLeft: 'auto',
-  },
+  segDone: { backgroundColor: th.tint.accent50 },
+  segNow:  { backgroundColor: th.colors.accent },
+
+  stageNote: { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.sm2 },
+
+  // ── Cifras ──────────────────────────────────────────────────────────────────
   stats: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.lg,
+    flexDirection:     'row',
+    gap:               spacing.sm,
+    paddingHorizontal: PAD,
+    paddingBottom:     PAD,
+    marginTop:         spacing.sm,
   },
-  stat: {
-    flex:            1,
-    minWidth:        0,
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-  },
+  // Sin etapa encima, el aire lo tiene que poner la fila de cifras.
+  statsAlone: { marginTop: 0, paddingTop: spacing.sm },
+  stat:       { flex: 1, minWidth: 0 },
   statVal: {
     ...textStyles.cardTitle,
     color:       th.colors.text,
@@ -289,10 +387,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   statKey: {
     ...textStyles.spacingTag,
-    color:     th.colors.muted,
-    marginTop: 3,
+    color:         th.colors.muted,
+    textTransform: 'uppercase',
+    marginTop:     spacing.xs2,
   },
 
+  // ── Pie (solo ficha de cliente) ─────────────────────────────────────────────
   foot: {
     flexDirection:  'row',
     borderTopWidth: borders.thin,

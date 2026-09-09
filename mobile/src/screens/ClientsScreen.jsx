@@ -279,14 +279,12 @@ function AssignedProgramCard({
   const stageIdx     = clientStageIndex({ progress }, program);
   const currentStage = hasStages ? stages[stageIdx] : null;
   const currentDays  = stageDaysAt(program, stageIdx);
-  const sessPerCycle = Math.max(1, currentDays.length);
   const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
   // ── Next session in the rotation ── first one NOT done this cycle. By
   // template, not by position: an index breaks as soon as the client trains out
   // of rotation order.
   const doneIds     = new Set(mine?.cycleCompletedIds ?? program.cycleCompletedIds ?? []);
-  const doneInCycle = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
   const nextDayIdx  = currentDays.findIndex((d) => !doneIds.has(d.sessionTemplateId));
   const nextDay     = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
   const nextTpl     = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
@@ -397,14 +395,11 @@ function AssignedProgramCard({
           weekInStage,
           totalWeeks:  stageWeeks,
         }}
-        stageRatios={showStageBar
-          ? Array.from({ length: stageWeeks }, (_, i) => (
-              stageEnded ? 1
-                : i < weekInStage - 1 ? 1
-                : i === weekInStage - 1 ? doneInCycle / sessPerCycle
-                : 0
-            ))
-          : null}
+        // La barra pinta el PROGRAMA: un tramo por etapa, de ancho proporcional
+        // a sus ciclos. Los puntos de dentro de la etapa los saca la tarjeta de
+        // `stage.weekInStage`/`totalWeeks`.
+        stages={stages.map((s) => ({ cycles: s.durationWeeks }))}
+        stageIdx={stageIdx}
         // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
         // ("hazme un ciclo más"), así que se informa sin alarmar — el naranja se
         // reserva para cuando NO puede avanzar.

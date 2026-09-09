@@ -213,6 +213,13 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
 - **Tarjeta de programa asignado** — dos colores, como la tarjeta de ejercicio
   del workout: cabecera `surface2` (padding 14/16, los del spec v6 de
   `ExerciseCard`, sin token) y cuerpo `surface`, todo en `radius/lg`.
+  > ⚠️ **Superado (sep 2026) por [`specs/program-card.md`](specs/program-card.md).**
+  > La tarjeta es hoy **una sola superficie** —los dos tonos se caen, y lo que
+  > separa nombre de etapa es un filete de 1px a sangre—, las cifras pierden su
+  > caja y `StageSegBar` está **borrada**: el progreso lo pintan una barra de
+  > etapas (tramos proporcionales a sus ciclos) y unos puntos de ciclo. Lo que
+  > sigue vigente de este bloque es la tipografía y las razones de cada valor.
+
   - **Misma tipografía que el banner de Home**, que es el mismo bloque de
     información sobre otro fondo: eyebrows `text/spacing-tag` en `mutedLight` y
     uppercase (`bnEyebrow`), nombre y nº de ciclo a `text/hero` con el
@@ -223,8 +230,9 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
   - El eyebrow de la derecha necesita `paddingRight` + `marginRight` negativo:
     el tracking de `spacing-tag` deja hueco DETRÁS de la última letra que RN no
     mete en el ancho medido, y alineado a la derecha se comía la "O" de CICLO.
-  - Barra de etapas: **`StageSegBar` extraída de `HomeScreen` a
-    `ui/StageSegBar.jsx`** y compartida. Aquí sobre oscuro (fill `accent`, track
+  - Barra de etapas (**pieza retirada**, ver el aviso de arriba):
+    **`StageSegBar` extraída de `HomeScreen` a `ui/StageSegBar.jsx`** y
+    compartida. Aquí sobre oscuro (fill `accent`, track
     **`#545454` literal**, `STAGE_TRACK` — `surface2` no se veía y `mutedLight`
     competía con el relleno, así que es el punto medio entre los dos; mismo caso
     de "color sin token" que el `#b8ff00`/`#81a71e` del banner). En el banner el

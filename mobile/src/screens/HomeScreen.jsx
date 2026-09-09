@@ -23,7 +23,7 @@ import ProgramCard from '../components/ui/ProgramCard';
 import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
-import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
+import { isStageLocked } from '../utils/stageLocks';
 import { LockIcon } from '../components/ui/EditorIcons';
 import { DocSheet } from '../components/ui/DocPoints';
 import { getWeekStatuses } from '../utils/weekProgress';
@@ -97,18 +97,6 @@ function computeWeekNum(program) {
   return (program.totalWeeksCompleted ?? 0) + 1;
 }
 
-/**
- * How many DISTINCT sessions have actually been completed in the current cycle
- * (via `program.cycleCompletedIds` — which templates, not a position count),
- * and how many sessions are in one cycle.
- */
-function computeCycleProgress(program) {
-  const currentDays = stageDays(program);
-  const sessionsPerCycle = Math.max(1, currentDays.length);
-  const doneIds          = new Set(program.cycleCompletedIds ?? []);
-  const doneInCycle      = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
-  return { doneInCycle, sessionsPerCycle };
-}
 
 /**
  * Data for the stage block of the program card (null when there is nothing
@@ -134,17 +122,14 @@ function computeStageInfo(program, t) {
   const cyclesDone       = program.stageWeeksCompleted ?? 0;
   const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
   // "Estoy en el ciclo N" y "he terminado los N" caen los dos en el mismo
-  // `weekInStage` por el clamp, y se pintan distinto: terminada, la tira va
-  // llena entera. Sin esto, cerrar una etapa en los ciclos ya hechos (al añadir
-  // la siguiente) dejaba el último segmento vacío y parecía faltar un ciclo.
-  const stageComplete    = totalWeeks != null && cyclesDone >= totalWeeks;
+  // `weekInStage` por el clamp, que es justo lo que quieren los puntos de la
+  // tarjeta: terminada la etapa, se encienden todos.
   const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:    defaultLabel,
     stageName:     stage.name ?? defaultLabel,
     weekInStage,
     totalWeeks,
-    stageComplete,
   };
 }
 
@@ -195,6 +180,21 @@ function WeekSelector({ workoutLog }) {
       <View style={styles.weekDots}>
         {days.map(({ status }, i) => <WeekDot key={i} status={status} styles={styles} />)}
       </View>
+    </View>
+  );
+}
+
+// ── Sesiones ──────────────────────────────────────────────────────────────
+//
+// Una sola lista en orden de ciclo. Cada sesión es una fila plegable y la que
+// toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
+// botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
+// (docs/specs/home-sesiones-plegables.md §5).
+//
+// El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
+// elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
+// mirar una sesión sin empezarla.
+
 // Duración del plegado. La comparten la tarjeta (su propio alto), el pie de la
 // de hoy y las tarjetas vecinas: si no coinciden, el movimiento se ve por
 // partes.
@@ -228,21 +228,6 @@ function collapseOut(values) {
     },
   };
 }
-
-    </View>
-  );
-}
-
-// ── Sesiones ──────────────────────────────────────────────────────────────
-//
-// Una sola lista en orden de ciclo. Cada sesión es una fila plegable y la que
-// toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
-// botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
-// (docs/specs/home-sesiones-plegables.md §5).
-//
-// El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
-// elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
-// mirar una sesión sin empezarla.
 
 function HeroChevron({ size = 13, color = LIMA }) {
   return (
@@ -428,47 +413,19 @@ function startCta(t, label, { active, done }) {
   return label ? t('home.btnStartSession', { label }) : t('home.btnStart');
 }
 
-// ── Hojas del programa (archivar / elegir etapa) ───────────────────────────────
+// ── Hoja de elegir etapa ───────────────────────────────────────────────────────
 //
-// Las dos eran `Modal` propios con su backdrop, su título y su "Cancelar".
-// Pasan a `DragSheet` + las filas de `ui/MenuList`, que es lo que manda §9 de
+// Era un `Modal` propio con su backdrop, su título y su "Cancelar". Pasa a
+// `DragSheet` + las filas de `ui/MenuList`, que es lo que manda §9 de
 // docs/UI-MIGRATION.md: un solo bottom-sheet en toda la app y un solo tipo de
 // fila. `background` en `bg` porque las filas van en `surface` y sobre la hoja
 // (también `surface`) se fundirían. La salida es la propia cabecera de la hoja,
 // así que no hay botón de cancelar.
-
-function ArchiveSheet({ programName, onConfirm, onClose }) {
-  const { t }  = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <DragSheet visible onClose={onClose} title={t('home.archiveModal.title')}>
-      <Text style={styles.sheetIntro}>
-        <Text style={styles.sheetIntroName}>{programName}</Text>
-        {'\n'}{t('home.archiveModal.desc')}
-      </Text>
-      <View style={styles.sheetGroup}>
-        <MenuRow
-          isFirst
-          label={t('home.archiveModal.keepHistory')}
-          sub={t('home.archiveModal.keepHistoryDesc')}
-          subLines={0}
-          minHeight={62}
-          onPress={() => onConfirm(false)}
-        />
-        <MenuRow
-          isLast
-          label={t('home.archiveModal.clearHistory')}
-          labelColor={th.tint.red50}
-          sub={t('home.archiveModal.clearHistoryDesc')}
-          subLines={0}
-          minHeight={62}
-          onPress={() => onConfirm(true)}
-        />
-      </View>
-    </DragSheet>
-  );
-}
+//
+// Archivar el programa vivía aquí al lado, colgando del "⋯" del pie de la
+// tarjeta. Sin pie, se mudó al "⋯" de la cabecera del visualizador
+// (`ProgramDetailScreen`), que es donde están ahora todas las acciones del
+// programa.
 
 function StagePickerSheet({ program, onSelect, onClose }) {
   const { t }      = useTranslation();
@@ -547,7 +504,6 @@ export default function HomeScreen() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const [archiveOpen, setArchiveOpen] = useState(false);
   const [stagePicker, setStagePicker] = useState(false);
   const [cycleDoc,    setCycleDoc]    = useState(false);
   const [freeSheet,   setFreeSheet]   = useState(false);
@@ -572,7 +528,6 @@ export default function HomeScreen() {
   const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
   const navigate             = useStore((s) => s.navigate);
   const clientSync           = useStore((s) => s.clientSync);
-  const archiveProgram       = useStore((s) => s.archiveProgram);
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
   const setCurrentStage      = useStore((s) => s.setCurrentStage);
@@ -584,11 +539,6 @@ export default function HomeScreen() {
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],
   );
-
-  function handleArchiveConfirm(clearHistory) {
-    if (activeProgram) archiveProgram(activeProgram.id, clearHistory);
-    setArchiveOpen(false);
-  }
 
   // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
   const confirmDiscardActive = (onConfirm) => {
@@ -709,7 +659,6 @@ export default function HomeScreen() {
 
           const stageInfo                  = computeStageInfo(activeProgram, t);
           const weekNum                    = computeWeekNum(activeProgram);
-          const { doneInCycle }            = computeCycleProgress(activeProgram);
 
           // Current session templates in cycle order.
           const currentDays = stageDaysAt(activeProgram, stageIdx);
@@ -861,7 +810,6 @@ export default function HomeScreen() {
                           onToggle={toggle}
                           onStart={start}
                           a11yLabel={`${plan.heroLabel}, ${a11y}`}
-                </Reanimated.View>
                         >
                           {lines}
                         </TodayCard>
@@ -913,7 +861,8 @@ export default function HomeScreen() {
                       : t('freeSession.btn')}
                   </Text>
                 </TouchableOpacity>
-              </Reanimated.View>
+                </Reanimated.View>
+              </View>
 
               {/* ── El programa, al final ── la misma tarjeta que la ficha de
                   cliente. Aquí no lleva pie: pulsar el nombre abre el
@@ -931,25 +880,16 @@ export default function HomeScreen() {
                     weekInStage: stageInfo.weekInStage,
                     totalWeeks:  stageInfo.totalWeeks,
                   }}
-                  stageRatios={stageInfo?.totalWeeks != null
-                    ? Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
-                        stageInfo.stageComplete ? 1
-                          : i < stageInfo.weekInStage - 1 ? 1
-                          : i === stageInfo.weekInStage - 1 ? doneInCycle / Math.max(1, sessionsPerCycle)
-                          : 0
-                      ))
-                    : null}
+                  // La barra pinta el PROGRAMA: un tramo por etapa, de ancho
+                  // proporcional a sus ciclos. La etapa abierta no tiene techo
+                  // y la tarjeta le da el peso mínimo.
+                  stages={activeProgram.stages?.map((s) => ({ cycles: s.durationWeeks }))}
+                  stageIdx={stageIdx}
                   adherence={adherence4w}
                   adherenceColor={requiresAttention(adherence.status) ? adherenceColor(th, adherence.status) : null}
                   pace={adherence.status === STATUS.NO_DATA ? null : adherence.recentPerWeek}
                   loadPct={loadPct}
-                  // El programa del entrenador no se edita aquí: la edición no
-                  // sube por el canal (solo suben historial y contadores) y la
-                  // siguiente actualización la reemplaza entera, así que el botón
-                  // prometía algo que no pasaba. Sin él, VER ocupa el pie.
-                  onEdit={isTrainerProgram(activeProgram, clientSync) ? undefined : () => navigate('programEditor')}
-                  onView={() => navigate('programPrint')}
-                  onMore={() => setArchiveOpen(true)}
+                  onPress={() => navigate('programPrint')}
                   // Los dos accesos que vivían en el banner se mudan a las
                   // piezas equivalentes de la tarjeta: la etiqueta CICLO abre la
                   // ficha del apartado (es el concepto que más cuesta y este es
@@ -958,7 +898,7 @@ export default function HomeScreen() {
                   onCycleInfo={() => setCycleDoc(true)}
                   onStagePress={hasStages ? () => setStagePicker(true) : undefined}
                 />
-              </View>
+              </Reanimated.View>
             </>
           );
         })() : (
@@ -1029,13 +969,6 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Modals */}
-      {archiveOpen && (
-        <ArchiveSheet
-          programName={activeProgram?.name}
-          onConfirm={handleArchiveConfirm}
-          onClose={() => setArchiveOpen(false)}
-        />
-      )}
       <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
 
       {/* ── Sesión libre: en blanco o desde plantilla (§7.2) ── */}
@@ -1217,7 +1150,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth:    borders.thin,
     borderColor:    th.colors.accent,
-    overflow:          'hidden',
     borderRadius:   th.radius.md,
     padding:        14,
     marginTop:      12,
@@ -1285,6 +1217,7 @@ const makeStyles = (th) => StyleSheet.create({
   todayBox: {
     backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
+    overflow:          'hidden',
     marginHorizontal:  spacing.sm,
     paddingHorizontal: 12,
     paddingVertical:   9,
