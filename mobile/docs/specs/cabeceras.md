@@ -3,10 +3,17 @@
 > Tema: ui
 > En corto: La barra lima de las cabeceras estaba copiada cinco veces y se caía con nombres reales; pasa a un componente único sobre el fondo de la app, y de paso los dos últimos modales de Clientes pasan a hoja.
 > Fase U10 · hecho · Cabecera única, fuera de la banda accent, y las dos hojas que faltaban en Clientes · §2
+> Fase U11 · hecho · La cabecera pasa a barra: gris arriba, nombre debajo, regla segmentada · §6
 >
-> Estado: **implementada y PROBADA EN DISPOSITIVO** (4-sep-2026). Tres commits
-> —`0ca9dd5` cabecera, `a0d49bc` Workout, `cd61d02` hojas de Clientes— dentro
-> del merge `7188ca4`. No quedan pruebas a mano pendientes de esta fase.
+> Estado: **U10 implementada y PROBADA EN DISPOSITIVO** (4-sep-2026): tres
+> commits —`0ca9dd5` cabecera, `a0d49bc` Workout, `cd61d02` hojas de Clientes—
+> dentro del merge `7188ca4`.
+>
+> **U11 implementada, pendiente de prueba en dispositivo** (7-sep-2026). El
+> título de 25px y la regla lima de 5px de U10 se leían antes que el contenido
+> en las tres pantallas donde más contenido hay; §6 cuenta las ocho variantes
+> que se maquetaron y por qué gana ésta. De paso se cae el colapso en dos
+> estados de Workout: sin título grande no hay nada que colapsar.
 >
 > Origen: no hay nodo de Figma para esto. La cabecera de Figma (`SesionHeader`,
 > `110:3692`) es justo la que se sustituye — ver §4, que explica en qué se cae
@@ -89,6 +96,9 @@ el estilo del título, que saltaba al cargar.
 ---
 
 ## 2. Fase U10 — lo que se hizo
+
+> **Ojo:** §2 es el registro de U10. Lo que hoy hay en el código es lo de §6 —
+> la barra— y no el título de 25px que se describe aquí.
 
 ### 2.1 `ui/ScreenHeader.jsx`
 
@@ -207,8 +217,9 @@ Son el motivo de escribir esto: sin ellas, la próxima pantalla vuelve a romperl
 2. **Una cabecera de detalle/editor es `ScreenHeader`.** Si la pantalla necesita
    algo que no hace (sticky, colapso, un reloj), se copia el *lenguaje* y se
    importan sus constantes, como Workout — no se copia el componente.
-3. **El grosor de la regla vive en `HEADER_RULE_H`**, exportado. No dos cincos
-   sueltos.
+3. **La regla es `HeaderRule`**, exportada junto a su grosor (`HEADER_RULE_H`).
+   Segmentada si la pantalla tiene algo que contar, hairline si no; no dos
+   implementaciones sueltas ni dos treses a mano.
 4. **Chips contra stepper:** `NumberChips` si el rango es corto y cabe entero,
    `StepField` si no.
 5. **Modal nuevo = `DragSheet`.** Ya estaba escrito en su cabecera; esta fase
@@ -263,8 +274,89 @@ la variante D no se nota: su fondo es el mismo `bg` que hay encima.
 
 ---
 
+## 6. U11 — de título grande a barra
+
+U10 quitó la losa lima y dejó una cabecera de ceja + título de 25px Black +
+regla lima de 5px. Funciona, pero en el editor de programa, el onboarding y el
+entreno —las tres pantallas con más contenido— **la cabecera se lee antes que el
+contenido**. Dos motivos concretos, los dos medibles:
+
+- **Masa tipográfica.** 25px Black con interlineado 26 es más tinta que
+  cualquier cosa de la pantalla, incluido el nombre del ejercicio que estás
+  haciendo (17px).
+- **Presupuesto de acento otra vez.** La ceja en `accent` más la regla de 5px
+  son dos usos de lima antes de llegar al primer dato.
+
+Y una tercera cosa que no era de peso sino de affordance: **el chevron dibuja
+9px de ancho**. Tiene `hitSlop` de sobra, pero nada dibujado dice que se pulse.
+
+### 6.1 Lo que se maquetó
+
+Ocho variantes a tamaño real con la paleta, la tipografía y los **nombres que
+genera `archetypes.js`** — que es lo que tumbó ya dos cabeceras (§1.1). En dos
+rondas: cuatro direcciones (barra fija, título grande que colapsa, losa de
+`surface`, barra + tira de estado) y, con lo que salió de la primera, cuatro
+correcciones. Las descartadas y el porqué:
+
+| Variante | Por qué no |
+|---|---|
+| Barra fija con título centrado y `‹ Programas` | La aritmética la mata: la etiqueta del destino ocupa 80 de los 345, y **centrar recorta por los dos lados a la vez** — al título le quedan ~180 (26 caracteres) para nombres de 43 |
+| Título grande que colapsa (patrón iOS) | Resuelve el ancho pero mantiene la masa: 112 de alto en reposo y animación en tres pantallas para volver justo a la barra que se elige aquí. Camino largo al mismo sitio |
+| Losa sobre `surface` con la tira de contexto | La mejor separación cabecera/contenido de las ocho, pero ~130 de alto y obliga a subir el selector de etapas fuera del scroll. Queda anotada por si alguna vez hace falta el estado fijo arriba |
+| Barra + tira de estado en `surface2` | Dos bandas que mantener alineadas en tres pantallas, y la acción principal en la tira compite con el CTA del final del scroll |
+| Todo en una línea (`EDITAR PROGRAMA · Fuerza 4 días`) | La más baja y la más limpia, pero **ata el ancho del nombre a la longitud de la cadena de identidad**: "EDITAR PROGRAMA" con tracking 2.4 se come 142 de los 286 y deja ~17 caracteres. Volvería a caerse sola en cuanto alguien escriba una ceja larga en el JSON |
+
+### 6.2 La elegida
+
+Una barra de **56** de alto, alineada a la izquierda:
+
+- **Botón de volver en caja** de 32×32, `radius.md`, sobre `surface2`, con el
+  chevron `accent` de 15. Sin etiqueta de destino: lo que dice "esto se pulsa" es
+  la caja, y la etiqueta costaba 80px de ancho del nombre. Es el **único accent
+  del cromo**.
+- **Ceja arriba, en `mutedLight`** (`card-type` tal cual: 12 / 800 / +1.2,
+  mayúsculas). Es "dónde estás", y va primero porque es el orden en que se lee:
+  primero te sitúas, luego lees qué es esto. Es el token de los tags "SESIÓN X",
+  que son esta misma clase de etiqueta; a 10 no aguantaba ir primero.
+- **Nombre debajo**, Inter ExtraBold 16, tracking −0.2, `text`, **una línea**.
+  16 es el tamaño de `text/Exercice`: a 14 el nombre pesaba menos que el propio
+  contenido de la pantalla. Con 286 disponibles caben ~32 caracteres, y los que
+  se pasen truncan a propósito — el número de caracteres va a limitarse al
+  crear. Dos líneas se descartaron porque harían que la barra cambiase de alto
+  según el programa que abras.
+- **Acciones a la derecha en `mutedLight`** — el render-prop `right` ahora
+  recibe esa tinta, no el accent.
+- **`HeaderRule`**: la regla de cierre, exportada. Con `progress` (un booleano
+  por unidad) sale partida en segmentos de 3px, lleno en `accent` y pendiente al
+  25%; sin él, hairline de 1px de `border`. Un segmento por ejercicio en el
+  entreno y **uno por pregunta en el onboarding**, que es lo que sustituye a los
+  tres puntos del hueco de acciones. Por eso la ceja del onboarding se queda
+  sólo con "NUEVO PROGRAMA": el "2 de 3" ya está dibujado.
+
+### 6.3 Lo que se cae con ella
+
+- **El colapso en dos estados de Workout, entero.** Existía porque la cabecera
+  desplegada medía 68 y se comía pantalla durante todo el entreno. La barra mide
+  poco más que la compacta (56 contra 38), así que se van el crossfade, la histéresis, las
+  dos capas, el `onScroll` y las seis constantes de alto. Se queda `HEADER_H`,
+  que sólo sirve para el desplazamiento del teclado.
+- **El fundido de 20px bajo la cabecera** (`SCROLL_FADE_H` y su gradiente SVG).
+  Tapaba el corte seco del contenido con la cabecera colapsada; sin colapso no
+  hay nada que tapar, y **la regla ya marca el límite** — que es justamente la
+  frontera cabecera/contenido que se busca.
+- **`ProgressRule` de WorkoutScreen**, que pasa a ser `HeaderRule`, y los tres
+  puntos del onboarding con sus dos estilos.
+
+**Probar en dispositivo.** Las tres pantallas con datos reales: que el nombre
+largo trunque y no empuje al icono de notas fuera, que la regla del onboarding
+avance al pasar de pregunta, y que el teclado del campo de peso siga dejando la
+fila activa visible en Workout (cambió `keyboardVerticalOffset`).
+
+---
+
 ## Fases
 
 | Fase | Qué | Estado |
 |---|---|---|
 | **U10** | Cabecera única fuera de la banda accent (§2.1), mismo lenguaje en Workout (§2.2), las dos hojas de Clientes (§2.3) | ✅ `0ca9dd5` · `a0d49bc` · `cd61d02` (merge `7188ca4`) — 4-sep-2026, probada en dispositivo |
+| **U11** | La cabecera pasa a barra de 56 (§6.2), `HeaderRule` compartida, y fuera el colapso de Workout (§6.3) | ✅ 7-sep-2026 — pendiente de prueba en dispositivo |

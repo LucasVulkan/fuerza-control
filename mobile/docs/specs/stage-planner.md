@@ -8,7 +8,7 @@
 > Fase P27 · hecho · `progressionHold: deload` en `progression.js` · §6
 > Fase P28 · hecho · Pantalla del planificador · §7
 > Fase P29 · pendiente · Recap consciente de la descarga · §4.2
-> Fase P30 · pendiente · Rediseño del planificador: el plan y la hoja de añadir · §14
+> Fase P35 · pendiente · Rediseño del planificador: el plan y la hoja de añadir · §14
 >
 > Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario

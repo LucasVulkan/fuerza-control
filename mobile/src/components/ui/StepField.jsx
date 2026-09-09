@@ -22,31 +22,41 @@ import { useThemedStyles } from '../../useTheme';
 //     que usan las hojas, donde el alto vertical es caro.
 // ─── Tres reglas del stepper, cerradas en QA. No romperlas. ──────────────────
 //
-// 1. **El ± siempre lleva fondo propio** (`surface2`), distinto del de la caja.
-//    Nunca transparente: sin caja no se lee como botón.
-// 2. **La caja nunca se funde con lo que la rodea.** De ahí `dark`: la caja va
-//    sobre `surface` por defecto y sobre `bg` con `dark`. Se usa `dark` cuando
-//    el contenedor ya es `surface` (una tarjeta) y NO se usa cuando el
-//    contenedor es `bg`, o volvería a fundirse. El cuerpo de una hoja es `bg`
-//    desde que `DragSheet` unificó el fondo de los modales: ahí va SIN `dark`.
+// 1. **El fondo lo lleva el NÚMERO, no el ±.** La zona del valor va en una celda
+//    `bg` —la misma que las celdas del grid de series del entreno (`SetRow`)— y
+//    eso es lo que dice "esto se escribe". Los ± van sin caja, sostenidos por el
+//    acento pleno. Antes era al revés (± en `surface2`, valor transparente) y
+//    con ocho ajustes seguidos en la hoja del planificador el resultado eran
+//    veinticuatro rectángulos idénticos.
+// 2. **La celda del valor SIEMPRE cae sobre `surface`**, o desaparece. De ahí
+//    `flat`: sin él la caja del control es `surface` y la celda contrasta; con
+//    él la caja no se pinta y el contenedor es quien pone el `surface` (una
+//    tarjeta de peldaño, una fila de etapa). Usar `flat` SOLO dentro de algo ya
+//    pintado en `surface`. El cuerpo de una hoja es `bg` desde que `DragSheet`
+//    unificó los modales: ahí va SIN `flat`.
 // 3. **La caja llega hasta el título.** El label va SIEMPRE por la prop `label`,
 //    nunca pintado fuera por el llamante: el fondo tiene que cubrir el título y
-//    los controles, no solo los ±.
+//    los controles, no solo los ±. Con `flat` lo cubre la tarjeta de dentro.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
-// Separación entre los ± y la zona del número, en la variante Horizontal.
-// 26 dejaba los botones a 120 px y el control parecía tres piezas sueltas; 10
-// se quedó corto. 14 es el punto medio del QA.
-const STEP_GAP  = 14;
+// Separación entre los ± y la celda del número, en la variante Horizontal. El
+// QA cerró 14 cuando los ± tenían caja propia y el valor no; con la celda del
+// valor pintada la referencia se invierte y los ± tienen que quedar pegados a
+// ella o parecen dos glifos sueltos en mitad de la fila.
+const STEP_GAP  = spacing.xs2;
 const GLYPH_W   = 13;   // largo de la barra del − / +
-const GLYPH_T   = 2;    // grosor
+const GLYPH_T   = 2;    // grosor — sin caja detrás, súbelo si se queda flojo en pantalla
 // Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
 // o los botones ± bailan de una fila a otra (QA). Subido de 68 a 76 y el input
 // de dentro de 44 a 52 porque un valor de 4 caracteres ("6.75") se cortaba por
 // la izquierda: el `width` del TextInput recorta, no crece.
 const VALUE_W   = 76;
 const VALUE_INPUT_W = 52;
+// Radio de la celda del valor. La celda de `SetRow` es 44×r11; a 34 de alto la
+// proporción sale en 8. No es `radius.sm` a propósito: la celda tiene que
+// leerse como la del entreno, no como una caja más de la hoja.
+const VALUE_R   = 8;
 
-export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
+export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
@@ -95,7 +105,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   );
 
   return (
-    <View style={[horizontal ? sf.cardHorizontal : sf.card, dark && sf.cardDark]}>
+    <View style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
       <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
       {controls}
     </View>
@@ -123,7 +133,15 @@ const makeSf = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
   },
-  cardDark: { backgroundColor: th.colors.bg },
+  // `flat`: la caja no se pinta y el contenedor pone el `surface` que la celda
+  // del valor necesita debajo. Sin inset horizontal, para que la fila ocupe todo
+  // el ancho de la tarjeta que la contiene.
+  flat:           { backgroundColor: 'transparent' },
+  flatHorizontal: {
+    backgroundColor:   'transparent',
+    paddingHorizontal: 0,
+    paddingVertical:   spacing.xs2,
+  },
 
   label:           { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
   labelHorizontal: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
@@ -131,13 +149,12 @@ const makeSf = (th) => StyleSheet.create({
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
 
+  // Sin fondo (regla 1) pero conservando los 34×34 de área táctil.
   stepBtn: {
-    width:           STEP_BTN,
-    height:          STEP_BTN,
-    borderRadius:    th.radius.xs,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
+    width:          STEP_BTN,
+    height:         STEP_BTN,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   // El − y el + van dibujados con Views y con las coordenadas puestas a mano
   // (no con glifos ni con centrado automático): así quedan clavados en el
@@ -150,16 +167,19 @@ const makeSf = (th) => StyleSheet.create({
     left:            (STEP_BTN - GLYPH_W) / 2,
     top:             (STEP_BTN - GLYPH_T) / 2,
     borderRadius:    GLYPH_T / 2,
-    backgroundColor: th.tint.accent50,
+    backgroundColor: th.colors.accent,
   },
   glyphBarV: { transform: [{ rotate: '90deg' }] },
 
   valueWrap: {
-    width:          VALUE_W,
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'center',
-    gap:            spacing.xs2,
+    width:           VALUE_W,
+    height:          STEP_BTN,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             spacing.xs2,
+    backgroundColor: th.colors.bg,
+    borderRadius:    VALUE_R,
   },
   valueInput: {
     width:              VALUE_INPUT_W,

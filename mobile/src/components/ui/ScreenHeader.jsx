@@ -7,28 +7,26 @@
  * estado "no encontrado" de ProgramDetail pintando la ceja con el estilo del
  * título). Esta es la única copia.
  *
- * ── Por qué ya no es una barra accent ──────────────────────────────────────
+ * ── Por qué es una barra y no un título grande ─────────────────────────────
  *
- * La barra lima flotante (margen 15, radio, alto fijo 72, título centrado) se
- * cayó en tres sitios a la vez, y los tres se ven en cuanto entra contenido
- * real — los arquetipos generan nombres como "Full Body · Hipertrofia · Barra
- * libre" y "Empuje vertical, tracción y pierna anterior" (43 caracteres):
+ * Antes de esto fue una barra lima flotante (se cayó: ver §1 de
+ * `docs/specs/cabeceras.md`) y después un título de 25px Black con una regla
+ * lima de 5px debajo. Lo segundo funcionaba, pero la cabecera se leía antes que
+ * el contenido en las tres pantallas donde más contenido hay. Se maquetaron
+ * ocho variantes con nombres reales del generador (`docs/specs/cabeceras.md`
+ * §6) y ésta es la que gana:
  *
- * 1. **Ancho.** Con el chevron a un lado y el ⋮ al otro al título le quedaban
- *    ~250px a 20px de cuerpo: cortaba a mitad de palabra casi siempre. Aquí el
- *    título ocupa el ancho entero y admite dos líneas, así que cabe.
- * 2. **Contraste.** La ceja salía de `colors.muted`, un gris definido contra el
- *    fondo oscuro pero pintado encima del accent: 1.66:1 en `earthy`, 2.35:1 en
- *    `midnight`, 3.29:1 en `space`. Sobre el fondo de la app la ceja va en
- *    `accent`, que es el par que la app ya usa en todas partes.
- * 3. **Presupuesto de acento.** Una losa lima arriba compite con el lima de los
- *    datos (el número de ejercicio, el borde del Resumen, el segmento activo).
- *    Reducido a una regla de 5px, el acento vuelve a significar algo cuando
- *    aparece en el contenido.
- *
- * La solidez la da la masa tipográfica (25px Black, interlineado 1.06, tracking
- * negativo) y la regla que ancla la cabecera al contenido, no el bloque de
- * color.
+ * - **Una fila de 56.** La identidad va arriba en `mutedLight` y el nombre
+ *   debajo en blanco: primero te sitúas, luego lees qué es esto. La cabecera
+ *   deja de tener masa tipográfica propia y el contenido manda.
+ * - **Alineada a la izquierda, y el botón de volver sin destino escrito.** Un
+ *   `‹ Programas` centrando el título le dejaba ~180px de los 345 —26
+ *   caracteres— y los arquetipos generan nombres de 43. Sin etiqueta y a la
+ *   izquierda, el nombre dispone de 286 (~32 a 16px). Lo que hace que el
+ *   botón se lea como botón es su caja, no la palabra.
+ * - **El acento se gasta una sola vez**, en el chevron. La ceja pasa a gris y
+ *   la regla de 5px a `HeaderRule`: segmentada donde hay algo que contar
+ *   (pasos del onboarding, ejercicios del entreno) y hairline donde no.
  */
 
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
@@ -37,24 +35,55 @@ import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { ArrowIcon, PencilIcon, CheckIcon } from './EditorIcons';
 
-// Alto de la regla accent. Fuera de la escala de `space/*` a propósito: es un
-// grosor óptico, no un hueco — a 2px se lee como borde y a 10 como franja.
-// Se exporta porque la cabecera de WorkoutScreen no puede reutilizar este
-// componente (es sticky y colapsa) pero sí tiene que llevar la misma regla.
-export const HEADER_RULE_H = 5;
-// Ancho del chevron (`ArrowIcon` dibuja size*0.6 de ancho): es también el del
-// hueco que ocupa cuando no hay atrás, para que la ceja no salte entre pasos
-// del onboarding.
-const BACK_W = 15 * 0.6;
+// Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
+// un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
+// no puede reutilizar este componente (es sticky y lleva un reloj vivo) pero sí
+// tiene que llevar la misma regla.
+export const HEADER_RULE_H = 3;
+// Lado del botón de volver. Es también el ancho del hueco que ocupa cuando no
+// hay atrás, para que el título no salte entre pasos del onboarding.
+const BACK_BTN = 32;
+
+/**
+ * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
+ * partida en segmentos: lleno en `accent`, pendiente al 25%. Sin él, una
+ * hairline de 1px.
+ *
+ * Un segmento por unidad y `flex: 1`: con 3 pasos o con 20 ejercicios el ancho
+ * se reparte solo. El hueco de 2px la lee como regla discontinua y no como
+ * puntos, que es lo que la separa de unos dots de progreso.
+ */
+export function HeaderRule({ progress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
+  if (!progress?.length) return <View style={styles.hairline} />;
+
+  return (
+    <View style={styles.ruleRow}>
+      {progress.map((done, i) => (
+        <View
+          key={i}
+          style={[
+            styles.ruleSeg,
+            { backgroundColor: done ? th.colors.accent : withOpacity(th.colors.accent, 0.25) },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function ScreenHeader({
   onBack,
   eyebrow,
   title,
-  // Nodo, o función que recibe el color de tinta de la cabecera. Lo segundo
+  // Nodo, o función que recibe el color de tinta de las acciones. Lo segundo
   // porque la tinta depende de sobre qué se pinta la cabecera, y así probar
   // otra variante sigue siendo un cambio de un solo archivo.
   right,
+  // Un booleano por unidad para la regla segmentada (ver `HeaderRule`).
+  progress,
   // Título editable: con `onRenameStart` aparece el lápiz y el título es
   // pulsable. El estado (`renaming`/`draft`) se queda en la pantalla porque el
   // editor de programa lo mira para avisar de cambios sin guardar al salir.
@@ -68,117 +97,131 @@ export default function ScreenHeader({
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const editable = typeof onRenameStart === 'function';
-  // Sobre el fondo de la app la tinta de la cabecera es el accent, no `onAccent`.
-  const ink      = th.colors.accent;
+  // Las acciones van en gris: el único accent del cromo es el chevron.
+  const ink      = th.colors.mutedLight;
 
   return (
     <>
       <View style={styles.header}>
-        <View style={styles.topRow}>
-          {onBack
-            ? (
-              <TouchableOpacity onPress={onBack} hitSlop={14} activeOpacity={0.6}>
-                <ArrowIcon size={15} color={th.colors.accent} back />
-              </TouchableOpacity>
-            )
-            : <View style={styles.backSpacer} />}
+        {onBack
+          ? (
+            <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={10} activeOpacity={0.7}>
+              <ArrowIcon size={15} color={th.colors.accent} back />
+            </TouchableOpacity>
+          )
+          : <View style={styles.backSpacer} />}
 
-          {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : <View style={styles.grow} />}
+        <View style={styles.mid}>
+          {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
 
-          {(editable || right) && (
-            <View style={styles.actions}>
-              {editable && (
-                <TouchableOpacity hitSlop={12} onPress={renaming ? onRenameCommit : onRenameStart}>
-                  {renaming
-                    ? <CheckIcon  size={17} color={th.colors.accent} />
-                    : <PencilIcon size={15} color={th.colors.accent} />}
-                </TouchableOpacity>
-              )}
-              {typeof right === 'function' ? right(ink) : right}
-            </View>
+          {renaming ? (
+            <TextInput
+              autoFocus
+              style={styles.titleInput}
+              value={draft}
+              onChangeText={onDraftChange}
+              onBlur={onRenameCommit}
+              onSubmitEditing={onRenameCommit}
+              placeholder={placeholder}
+              placeholderTextColor={withOpacity(th.colors.mutedLight, 0.6)}
+              returnKeyType="done"
+            />
+          ) : (
+            <Text
+              style={styles.title}
+              // Una línea: a 16px caben ~32 caracteres. Los nombres que se
+              // pasan truncan a propósito —van a limitarse por número de
+              // caracteres—; partirlos en dos haría que la barra cambiase de
+              // alto según el programa que abras.
+              numberOfLines={1}
+              onPress={editable ? onRenameStart : undefined}
+              suppressHighlighting
+            >
+              {title ?? ''}
+            </Text>
           )}
         </View>
 
-        {renaming ? (
-          <TextInput
-            autoFocus
-            style={styles.titleInput}
-            value={draft}
-            onChangeText={onDraftChange}
-            onBlur={onRenameCommit}
-            onSubmitEditing={onRenameCommit}
-            placeholder={placeholder}
-            placeholderTextColor={withOpacity(th.colors.mutedLight, 0.6)}
-            returnKeyType="done"
-          />
-        ) : (
-          <Text
-            style={styles.title}
-            // Dos líneas: un nombre de arquetipo no cabe en una y truncarlo a
-            // la primera palabra no distingue "Full Body · Hipertrofia" de
-            // "Full Body · Hipertrofia · Barra libre".
-            numberOfLines={2}
-            onPress={editable ? onRenameStart : undefined}
-            suppressHighlighting
-          >
-            {title ?? ''}
-          </Text>
+        {(editable || right) && (
+          <View style={styles.actions}>
+            {editable && (
+              <TouchableOpacity hitSlop={12} onPress={renaming ? onRenameCommit : onRenameStart}>
+                {renaming
+                  ? <CheckIcon  size={17} color={th.colors.accent} />
+                  : <PencilIcon size={15} color={ink} />}
+              </TouchableOpacity>
+            )}
+            {typeof right === 'function' ? right(ink) : right}
+          </View>
         )}
       </View>
 
-      <View style={styles.rule} />
+      <HeaderRule progress={progress} />
     </>
   );
 }
 
 const makeStyles = (th) => StyleSheet.create({
+  // Una fila, no una columna: el bloque ceja+nombre es tan bajo que los iconos
+  // se alinean con él sin quedar a media altura, que era el motivo de que la
+  // versión anterior los subiera a una fila aparte.
   header: {
     backgroundColor:   th.colors.bg,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
     paddingHorizontal: spacing.lg,
-    // `space/xxl`, un escalón por encima del `xl` que pedía el mockup: pegada
-    // a la barra de estado la cabecera se leía como si se hubiera desbordado.
-    paddingTop:        spacing.xxl,
-    paddingBottom:     spacing.lg,
+    // `space/md` arriba y abajo dan los 56 de alto con el bloque de dos líneas
+    // dentro. La cabecera anterior necesitaba `xxl` porque su título de 25px
+    // pegado a la barra de estado se leía como desbordado; una barra de 56 no.
+    paddingVertical:   spacing.md,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.md,
-    marginBottom:  spacing.md,
+  backBtn: {
+    width:           BACK_BTN,
+    height:          BACK_BTN,
+    borderRadius:    th.radius.md,
+    // El mismo material que las celdas del entreno: lo que dice "esto se pulsa"
+    // es la caja, no el glifo — el chevron suelto dibujaba 9px de ancho.
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  backSpacer: { width: BACK_W },
-  grow:       { flex: 1 },
+  backSpacer: { width: BACK_BTN },
+  mid:        { flex: 1, minWidth: 0 },
   actions:    { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  // `spacing-tag` un punto más grande: a 10px el tracking de 2 lo deshacía.
-  // La caja fuerza mayúsculas porque las cadenas vienen mezcladas: unas ya están
-  // en caja alta en el JSON (`programView.eyebrow` → "PROGRAMA") y otras no
-  // (`planner.eyebrow` → "Planificar", `editor.sessionEyebrow` → "Sesión B").
-  // Antes cada copia de la cabecera decidía por su cuenta y no coincidían.
+  // `card-type` tal cual (12 / 800 / +1.2), el token de los tags "SESIÓN X" —
+  // que son exactamente este tipo de etiqueta. A 10 la ceja no aguantaba ser lo
+  // primero que se lee. La caja fuerza mayúsculas porque las
+  // cadenas vienen mezcladas: unas ya están en caja alta en el JSON
+  // (`programView.eyebrow` → "PROGRAMA") y otras no (`planner.eyebrow` →
+  // "Planificar", `editor.sessionEyebrow` → "Sesión B"). Antes cada copia de la
+  // cabecera decidía por su cuenta y no coincidían.
   eyebrow: {
-    ...textStyles.spacingTag,
-    fontSize:      11,
-    letterSpacing: 2.4,
-    color:         th.colors.accent,
+    ...textStyles.cardType,
+    color:         th.colors.mutedLight,
     textTransform: 'uppercase',
-    flex:          1,
-    minWidth:      0,
   },
-  // `text/hero` subido de talla con el interlineado por debajo de 1.1 y tracking
-  // negativo: la solidez sale de la masa de tinta, no del tamaño suelto.
+  // 16 ExtraBold con tracking negativo: el tamaño de `text/Exercice`, la línea
+  // con más peso de la barra. Muy por debajo de los 25px Black de antes, pero a
+  // 14 el nombre pesaba menos que el propio contenido.
   title: {
-    ...textStyles.hero,
-    fontSize:      25,
-    lineHeight:    26,
-    letterSpacing: -0.5,
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      16,
+    fontWeight:    '800',
+    letterSpacing: -0.2,
     color:         th.colors.text,
+    marginTop:     spacing.xs,
   },
   titleInput: {
-    ...textStyles.hero,
-    fontSize:      25,
-    lineHeight:    26,
-    letterSpacing: -0.5,
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      16,
+    fontWeight:    '800',
+    letterSpacing: -0.2,
     color:         th.colors.text,
+    marginTop:     spacing.xs,
     padding:       0,
   },
-  rule: { height: HEADER_RULE_H, backgroundColor: th.colors.accent },
+  hairline: { height: 1, backgroundColor: th.colors.border },
+  ruleRow:  { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
+  ruleSeg:  { flex: 1, height: HEADER_RULE_H },
 });

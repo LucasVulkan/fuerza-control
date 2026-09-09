@@ -52,7 +52,7 @@ import NumberChips from '../components/ui/NumberChips';
 import { NavRow } from '../components/ui/EditorRows';
 import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, typography, textStyles, borders, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
@@ -167,22 +167,15 @@ function RotatingChevron({ open, size = 12, color }) {
 }
 
 function LimeHeader({ eyebrow, title, onBack, dotsDone }) {
-  const styles = useThemedStyles(makeStyles);
   return (
     <ScreenHeader
       onBack={onBack}
       eyebrow={eyebrow}
       title={title}
-      right={dotsDone != null ? (ink) => (
-        <View style={styles.limeHeaderDots}>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={[styles.limeDot, { backgroundColor: i < dotsDone ? ink : withOpacity(ink, 0.2) }]}
-            />
-          ))}
-        </View>
-      ) : null}
+      // El paso ya no son tres puntos en el hueco de acciones: es la regla que
+      // cierra la cabecera, partida en un segmento por pregunta. Por eso la ceja
+      // se queda sólo con "NUEVO PROGRAMA" — el "2 de 3" está dibujado.
+      progress={dotsDone != null ? [0, 1, 2].map((i) => i < dotsDone) : undefined}
     />
   );
 }
@@ -1246,12 +1239,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Brand tag
-
-  // Los tres puntos de progreso, en el hueco de acciones de `ScreenHeader`. El
-  // color no vive aquí: lo da la cabecera por el render-prop `right`, porque su
-  // tinta cambia con la variante de cabecera que esté puesta.
-  limeHeaderDots:    { flexDirection: 'row', gap: spacing.sm },
-  limeDot:           { width: 7, height: 7, borderRadius: 3.5 },
 
   // ── Las tres preguntas ─────────────────────────────────────────────────────
   qBody: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },

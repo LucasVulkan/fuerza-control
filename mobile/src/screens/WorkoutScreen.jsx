@@ -8,14 +8,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
-import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing, useAnimatedRef,
-} from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
+import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
-import { HEADER_RULE_H } from '../components/ui/ScreenHeader';
+import { HEADER_RULE_H, HeaderRule } from '../components/ui/ScreenHeader';
 import { ArrowIcon } from '../components/ui/EditorIcons';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
@@ -95,55 +93,18 @@ function useElapsedText(startedAt) {
     : `${mm}:${String(ss).padStart(2, '0')}`;
 }
 
-// ── Session header (sticky, 2 states) ─────────────────────────────────────────
-// Grande: eyebrow "SESIÓN A · 07:36" + título + dots. Compacta: una fila
-// "07:36 · Nombre" + dots. El reloj vive DENTRO de estos 2 componentes (no en
-// WorkoutScreen) para que el tick de 1s sólo repinte el texto pequeño, no toda
-// la pantalla.
+// ── Ceja de la cabecera ───────────────────────────────────────────────────────
+// "SESIÓN A · 07:36", con el reloj en accent. Vive en su propio componente (no
+// en WorkoutScreen) para que el tick de 1s sólo repinte este texto y no toda la
+// pantalla.
 
 function HeaderEyebrow({ startedAt, label, styles }) {
   const elapsed = useElapsedText(startedAt);
   return (
     <Text style={styles.eyebrowText} numberOfLines={1}>
-      {elapsed ? `${label} · ${elapsed}` : label}
+      {label}
+      {elapsed ? <Text style={styles.eyebrowClock}>{` · ${elapsed}`}</Text> : null}
     </Text>
-  );
-}
-
-function HeaderCompactSummary({ startedAt, title, styles }) {
-  const elapsed = useElapsedText(startedAt);
-  return (
-    <Text style={styles.compactSummary} numberOfLines={1}>
-      {elapsed ? `${elapsed} · ${title}` : title}
-    </Text>
-  );
-}
-
-// Progreso de la sesión — la regla accent que cierra la cabecera, partida en
-// una unidad por ejercicio/bloque: completa en accent pleno, pendiente al 25%.
-//
-// Antes eran discos sueltos dentro de la banda lima, y necesitaban su propia
-// fila en las dos cabeceras. Al adoptar el estilo de `ScreenHeader` la regla ya
-// tenía que estar ahí de todas formas, así que el progreso se monta encima en
-// vez de pedir sitio aparte: se lee igual, sobrevive al colapso sin duplicarse
-// y deja de competir por el ancho con el título y los iconos.
-//
-// `flex:1` por segmento en vez de ancho fijo: con 4 unidades o con 20 el ancho
-// se reparte solo, sin los tres saltos de gap que había que mantener a mano.
-function ProgressRule({ units, th, styles }) {
-  if (units.length === 0) return <View style={styles.rule} />;
-  return (
-    <View style={styles.ruleRow}>
-      {units.map((u) => (
-        <View
-          key={u.id}
-          style={[
-            styles.ruleSeg,
-            { backgroundColor: u.done ? th.colors.accent : withOpacity(th.colors.accent, 0.25) },
-          ]}
-        />
-      ))}
-    </View>
   );
 }
 
@@ -154,26 +115,14 @@ const RING_RADIUS    = 26;
 const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS; // ≈ 163.4
 const SWIPE_THRESHOLD = 80;
 
-// Altos de la banda de cabecera (sin contar la regla). La grande sube de 64 a
-// 68 porque el título pasa de 20 a 25px; la compacta se redondea a 38.
-const HEADER_GRANDE_H  = 68;
-const HEADER_COMPACT_H = 38;
-const HEADER_COMPACT_ON  = 48; // scrollY a partir del cual colapsa
-const HEADER_COMPACT_OFF = 24; // scrollY por debajo del cual vuelve a grande
-
-// Alto fijo de la fila de la ceja. Ya no hay que igualarlo al de los dots (el
-// progreso vive en la regla), pero el título deja de saltar entre montajes si
-// la ceja no depende del leading que Inter Black decida.
-const HEADER_ROW_H = 14;
-
-// Aire sobre la cabecera: `space/xxl` desplegada, `space/lg` colapsada. Va
-// animado con el mismo progreso que el crossfade — dejarlo fijo en xxl haría
-// que la cabecera colapsada arrastrase 28px de vacío permanente.
-const HEADER_PAD_TOP_GRANDE  = spacing.xxl;
-const HEADER_PAD_TOP_COMPACT = spacing.lg;
-
-// Fundido del contenido bajo la cabecera sticky (evita el corte seco al hacer scroll).
-const SCROLL_FADE_H = 20;
+// Alto de la barra de cabecera, sin la regla: `space/md` arriba y abajo más el
+// bloque de ceja + nombre. Sólo se usa para el desplazamiento del teclado.
+//
+// Aquí había además cuatro constantes de colapso (grande/compacta y los dos
+// umbrales de histéresis): la cabecera desplegada medía 68 y la compacta 38, y
+// el crossfade entre las dos justificaba su existencia. Con la barra de 56 ya no
+// hay nada que colapsar — se fueron con él.
+const HEADER_H = 56;
 
 function RestTimerFloat({ timer, onStop, bottomOffset }) {
   const { t }      = useTranslation();
@@ -292,36 +241,6 @@ export default function WorkoutScreen() {
   const [editingAdHoc, setEditingAdHoc]   = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
   const blockScrollRef = useAnimatedRef();
-
-  // Cabecera sticky — 2 estados con histéresis (§4.2 de la guía): compacta a
-  // partir de HEADER_COMPACT_ON, vuelve a grande por debajo de HEADER_COMPACT_OFF.
-  // El crossfade usa Reanimated; se salta la animación en el montaje inicial
-  // (mismo patrón que SegmentedControl.jsx).
-  const [compact, setCompact] = useState(false);
-  const compactProgress   = useSharedValue(0);
-  const compactMountedRef = useRef(false);
-  useEffect(() => {
-    if (!compactMountedRef.current) { compactMountedRef.current = true; return; }
-    compactProgress.value = withTiming(compact ? 1 : 0, { duration: 200, easing: Easing.inOut(Easing.ease) });
-  }, [compact, compactProgress]);
-  const headerBarAnimStyle = useAnimatedStyle(() => ({
-    height: HEADER_GRANDE_H + (HEADER_COMPACT_H - HEADER_GRANDE_H) * compactProgress.value,
-  }));
-  const headerWrapAnimStyle   = useAnimatedStyle(() => ({
-    paddingTop: HEADER_PAD_TOP_GRANDE
-      + (HEADER_PAD_TOP_COMPACT - HEADER_PAD_TOP_GRANDE) * compactProgress.value,
-  }));
-  const grandeLayerAnimStyle  = useAnimatedStyle(() => ({ opacity: 1 - compactProgress.value }));
-  const compactLayerAnimStyle = useAnimatedStyle(() => ({ opacity: compactProgress.value }));
-  const scrollFadeAnimStyle   = useAnimatedStyle(() => ({ opacity: compactProgress.value }));
-  function handleHeaderScroll(e) {
-    const y = e.nativeEvent.contentOffset.y;
-    setCompact((prev) => {
-      if (!prev && y > HEADER_COMPACT_ON) return true;
-      if (prev && y < HEADER_COMPACT_OFF) return false;
-      return prev;
-    });
-  }
 
   // Store state
   const activeSession      = useStore((s) => s.activeSession);
@@ -567,26 +486,19 @@ export default function WorkoutScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header — sticky, fuera del ScrollView, 2 estados con crossfade (§4) */}
-      <Reanimated.View style={[styles.headerWrap, headerWrapAnimStyle]}>
-        <Reanimated.View style={[styles.headerBar, headerBarAnimStyle]}>
-          {/* Grande */}
-          <Reanimated.View
-            pointerEvents={compact ? 'none' : 'auto'}
-            style={[styles.headerLayerGrande, grandeLayerAnimStyle]}
-          >
-            <View style={styles.grandeTopRow}>
-              <TouchableOpacity onPress={handleGoBack} hitSlop={14}>
-                <ArrowIcon size={15} color={th.colors.accent} back />
-              </TouchableOpacity>
-              <HeaderEyebrow startedAt={activeSession.startedAt} label={sessionLabel} styles={styles} />
-              <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={14}>
-                <NoteIcon
-                  size={22}
-                  color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
-                />
-              </TouchableOpacity>
-            </View>
+      {/* Header — sticky, fuera del ScrollView. Mismo lenguaje que
+          `ScreenHeader` (barra de 56, ceja gris con el nombre debajo, botón de
+          volver en caja, regla segmentada) pero componente propio: aquí la ceja
+          lleva un reloj que repinta cada segundo y el título de una sesión
+          libre es un campo de texto. */}
+      <View style={styles.headerWrap}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backBtn} hitSlop={10} activeOpacity={0.7}>
+            <ArrowIcon size={15} color={th.colors.accent} back />
+          </TouchableOpacity>
+
+          <View style={styles.headerMid}>
+            <HeaderEyebrow startedAt={activeSession.startedAt} label={sessionLabel} styles={styles} />
             {isFree ? (
               <TextInput
                 style={styles.freeNameInputHeader}
@@ -598,51 +510,33 @@ export default function WorkoutScreen() {
                 maxLength={60}
               />
             ) : (
-              <Text style={styles.grandeTitle} numberOfLines={1}>{titleText}</Text>
+              <Text style={styles.headerTitle} numberOfLines={1}>{titleText}</Text>
             )}
-          </Reanimated.View>
+          </View>
 
-          {/* Compacta — una fila: atrás, resumen con el reloj, notas */}
-          <Reanimated.View
-            pointerEvents={compact ? 'auto' : 'none'}
-            style={[styles.headerLayerCompact, compactLayerAnimStyle]}
-          >
-            <TouchableOpacity onPress={handleGoBack} hitSlop={14}>
-              <ArrowIcon size={13} color={th.colors.accent} back />
-            </TouchableOpacity>
-            <View style={styles.compactTextWrap}>
-              <HeaderCompactSummary
-                startedAt={activeSession.startedAt}
-                title={titleText || (isFree ? t('freeSession.namePlaceholder') : '')}
-                styles={styles}
-              />
-            </View>
-            <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={10}>
-              <NoteIcon
-                size={22}
-                color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
-              />
-            </TouchableOpacity>
-          </Reanimated.View>
-        </Reanimated.View>
+          <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={12}>
+            <NoteIcon
+              size={22}
+              color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
+            />
+          </TouchableOpacity>
+        </View>
 
-        {/* La regla cierra la cabecera en los dos estados y lleva el progreso. */}
-        <ProgressRule units={dotUnits} th={th} styles={styles} />
-      </Reanimated.View>
+        {/* La regla que cierra la cabecera lleva el progreso: un segmento por
+            ejercicio o bloque. Misma pieza que el paso del onboarding. */}
+        <HeaderRule progress={dotUnits.map((u) => u.done)} />
+      </View>
 
       {/* Exercise list */}
-      <View style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + HEADER_PAD_TOP_GRANDE + HEADER_GRANDE_H + HEADER_RULE_H + spacing.md}
+        keyboardVerticalOffset={insets.top + HEADER_H + HEADER_RULE_H + spacing.md}
       >
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          onScroll={handleHeaderScroll}
-          scrollEventThrottle={16}
         >
           {/* Free session info text */}
           {isFree && <Text style={styles.freeInfoText}>{t('freeSession.infoText')}</Text>}
@@ -776,22 +670,6 @@ export default function WorkoutScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Fundido bajo la cabecera sticky — evita el corte seco del contenido al
-          hacer scroll, visible sólo cuando la cabecera está colapsada (mismo
-          progreso 0↔1 que el crossfade del header). */}
-      <Reanimated.View pointerEvents="none" style={[styles.scrollFade, scrollFadeAnimStyle]}>
-        <Svg width="100%" height={SCROLL_FADE_H}>
-          <Defs>
-            <SvgLinearGradient id="scrollFade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={th.colors.bg} stopOpacity={1} />
-              <Stop offset="1" stopColor={th.colors.bg} stopOpacity={0} />
-            </SvgLinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height={SCROLL_FADE_H} fill="url(#scrollFade)" />
-        </Svg>
-      </Reanimated.View>
-      </View>
 
       {/* Notes modal */}
       <NotesModal
@@ -972,97 +850,64 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.accent,
   },
 
-  // Header — mismo lenguaje que `ScreenHeader` (fondo de la app, ceja accent,
-  // título grande a la izquierda, regla accent abajo), pero componente propio:
-  // este es sticky, colapsa con el scroll y lleva un reloj vivo, así que no
-  // puede reutilizar aquel. Lo que se comparte es el estilo, no el código.
+  // Header — mismo lenguaje que `ScreenHeader` (barra de 56 sobre el fondo de
+  // la app, ceja gris, nombre debajo, botón de volver en caja y regla
+  // segmentada), pero componente propio: éste lleva un reloj vivo y el nombre
+  // editable de la sesión libre. Lo que se comparte es el estilo y `HeaderRule`,
+  // no el componente.
   //
-  // A sangre: el margen lateral pasa a padding de las capas, para que la regla
-  // llegue a los dos bordes de la pantalla. `paddingTop` lo pone la animación.
+  // El wrap existe para que la regla llegue a sangre a los dos bordes mientras
+  // la fila mantiene su margen lateral, y para el gap con el contenido.
   headerWrap: {
     backgroundColor: th.colors.bg,
     marginBottom:    spacing.md,  // gap header→contenido
   },
-  headerBar: {
-    overflow: 'hidden',
+  header: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
   },
-  // Columna, no fila: la flecha y el icono de notas van en la MISMA fila que la
-  // ceja, y el título ocupa el ancho entero debajo — igual que `ScreenHeader`.
-  // En fila (flecha | ceja+título | notas) los iconos se centraban contra el
-  // bloque de dos líneas y quedaban a media altura entre ceja y título.
-  headerLayerGrande: {
-    position:          'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent:    'center',
-    paddingHorizontal:  spacing.lg,
+  backBtn: {
+    width:           32,
+    height:          32,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  grandeTopRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.md,
-    marginBottom:  spacing.sm,
-  },
-  // Compacta: sin gap fijo — justifyContent:'space-between' reparte el espacio
-  // sobrante en partes iguales entre los 4 elementos (flecha/texto/dots/notas),
-  // ocupando todo el ancho de la cabecera.
-  headerLayerCompact: {
-    position:          'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    flexDirection:      'row',
-    alignItems:         'center',
-    paddingHorizontal:  spacing.lg,
-    gap:                spacing.md,
-  },
-  // Misma ceja que `ScreenHeader`: `spacing-tag` a 11 con tracking 2.4, en
-  // accent sobre el fondo de la app. Aquí lleva además el reloj concatenado.
+  headerMid: { flex: 1, minWidth: 0 },
+  // Misma ceja que `ScreenHeader`: `card-type` tal cual, en `mutedLight`.
+  // Aquí lleva además el reloj, que sí va en accent — es un dato vivo, y es el
+  // único sitio de la pantalla donde se lee el tiempo de sesión.
   eyebrowText: {
-    ...textStyles.spacingTag,
-    fontSize:      11,
-    letterSpacing: 2.4,
-    color:         th.colors.accent,
+    ...textStyles.cardType,
+    color:         th.colors.mutedLight,
     textTransform: 'uppercase',
-    lineHeight:    HEADER_ROW_H,
-    flex:          1,
-    minWidth:      0,
   },
-  // Una línea, no dos como en los editores: la cabecera es sticky y se come
-  // pantalla durante todo el entreno. La identidad de la sesión la lleva la
-  // ceja ("SESIÓN A · 07:36"), así que el nombre puede truncar aquí.
-  grandeTitle: {
-    ...textStyles.hero,
-    fontSize:      25,
-    lineHeight:    26,
-    letterSpacing: -0.5,
+  eyebrowClock: {
+    color:         th.colors.accent,
+    letterSpacing: 0,
+    fontVariant:   ['tabular-nums'],
+  },
+  headerTitle: {
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      16,
+    fontWeight:    '800',
+    letterSpacing: -0.2,
     color:         th.colors.text,
+    marginTop:     spacing.xs,
   },
   freeNameInputHeader: {
-    ...textStyles.hero,
-    fontSize:      25,
-    lineHeight:    26,
-    letterSpacing: -0.5,
+    fontFamily:    'Inter_800ExtraBold',
+    fontSize:      16,
+    fontWeight:    '800',
+    letterSpacing: -0.2,
     color:         th.colors.text,
+    marginTop:     spacing.xs,
     padding:       0,
     alignSelf:     'stretch',
-  },
-  // flex:1 + minWidth:0: el resumen ocupa el hueco entre la flecha y las notas
-  // y trunca ahí (numberOfLines=1) en vez de empujar al icono fuera.
-  compactTextWrap: { flex: 1, minWidth: 0 },
-  // Colapsada el resumen es lo único que queda del título, así que sube de
-  // `btn-action` (12) a `cardTitle` (16 Black) para seguir leyéndose como tal.
-  compactSummary: {
-    ...textStyles.cardTitle,
-    color: th.colors.text,
-  },
-  // Regla accent de cierre, igual que en `ScreenHeader`. `ruleRow` es la misma
-  // regla partida en segmentos de progreso; el hueco de 2px deja ver el fondo
-  // y con muchas unidades la lee como una regla discontinua, no como dots.
-  rule:    { height: HEADER_RULE_H, backgroundColor: th.colors.accent },
-  ruleRow: { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
-  ruleSeg: { flex: 1, height: HEADER_RULE_H },
-  scrollFade: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height:   SCROLL_FADE_H,
   },
   // Texto explicativo de la sesión libre: sin caja, tipografía de la app
   // (text/subtitle) y en mutedLight — es contexto, no un aviso.

@@ -99,7 +99,7 @@ function StageRow({ stage, index, isActive, canDelete, onRename, onCycles, onDel
         </TouchableOpacity>
       ) : (
         <StepField
-          horizontal dark
+          horizontal flat
           label={t('editor.stageWeeksUnit')}
           value={stage.durationWeeks}
           onChange={onCycles}
@@ -279,7 +279,7 @@ export default function StagePlannerScreen({ navigation, route }) {
             <View key={i} style={styles.rungCard}>
               <Text style={styles.rungName}>{rungName(rung, i)}</Text>
               <StepField
-                horizontal dark
+                horizontal flat
                 label={t('editor.stageWeeksUnit')}
                 value={rung.durationWeeks}
                 onChange={(v) => patchRung(i, { durationWeeks: v })}
@@ -289,7 +289,7 @@ export default function StagePlannerScreen({ navigation, route }) {
               {(rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[ladderId]).map((f) => (
                 <StepField
                   key={f.key}
-                  horizontal dark
+                  horizontal flat
                   label={t(fieldLabelKey(f, rung.rx.scope))}
                   value={rung.rx[f.key] ?? 0}
                   onChange={(v) => patchRung(i, { rx: { [f.key]: v } })}
