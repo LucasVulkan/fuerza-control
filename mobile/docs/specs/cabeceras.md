@@ -354,9 +354,63 @@ fila activa visible en Workout (cambió `keyboardVerticalOffset`).
 
 ---
 
+## 7. U16 — el límite de 20 caracteres
+
+§6 dejó escrito que el nombre "va a limitarse al crear" y calculó ~32 sobre el
+ancho de la barra. El número que manda no es ése: la sesión de hoy de la Home
+va a 24px Black **sin `numberOfLines`**, así que a partir de ~20 la tarjeta
+crece una línea y empuja lo de debajo. **`NAME_MAX = 20`** (`src/utils/names.js`)
+es lo que cabe en una línea en todas las pantallas a la vez.
+
+**Al escribir.** `ui/NameField.jsx` envuelve el input que ya había —no trae caja
+propia: las hojas usan `sheetInput` y el onboarding `textInput`, que no son el
+mismo token— le reserva 44px a la derecha y cuelga ahí el contador (`smallBold`,
+`mutedLight`, rojo si se pasa). Va en los seis campos donde se teclea un nombre:
+plantilla nueva y nombre de la copia al asignar (`ProgramScreen`), programa en
+blanco y desde plantilla (`ClientsScreen`), nombre manual y copia de plantilla
+(`OnboardingScreen`). El séptimo es la propia cabecera, que no puede llevar
+`NameField`: el input llega hasta las acciones y la barra es de 56, así que el
+contador se pinta **en el hueco de acciones y sólo mientras renombras**.
+
+**`maxLength` es `max(NAME_MAX, longitud actual)`, no 20.** En Android un `value`
+más largo que `maxLength` se recorta al editar, y hay nombres de antes del
+límite —importados, del entrenador, de programas viejos— que no son del usuario
+para perderlos sin avisar. Con el máximo abierto a lo que ya hay, esos nombres
+se acortan pero no se alargan, y en cuanto bajan de 20 vuelve a mandar el
+límite. El contador enseña `37/20` en rojo mientras tanto: dice la verdad en vez
+de bloquear.
+
+**Y los nombres que reparte la app.** El límite no vale nada si el generador
+entrega nombres de 43: abrir el lápiz enseñaría `43/20` sin haber escrito nada.
+Los 26 nombres de `src/data/archetypes.js` que se pasaban están reescritos, y un
+test lo sostiene (`src/utils/names.test.js`).
+
+- **Programas**: los que no caben pierden el **objetivo**, no la variante.
+  "Hipertrofia" lo comparten 9 de los 11 arquetipos y el `summary` de la tarjeta
+  de propuesta ya lo cuenta; lo que distingue una plantilla de otra en la lista
+  es la variante. `Full Body · Hipertrofia · Barra libre` → `Full Body · Barra`,
+  `Push / Pull / Legs · Hipertrofia` → `PPL · 6 días` (y su hermana a `PPL · 3
+  días`, que además pone las dos en el mismo eje).
+- **Sesiones**: se quedan con los dos patrones que mandan en el día — el resto
+  ya está en la lista de ejercicios, que se ve justo debajo del nombre en todas
+  las pantallas donde aparece. `Empuje vertical, tracción y pierna anterior` →
+  `Empuje · pierna`. De paso cae "Tirón", que no estaba en el vocabulario del
+  resto de plantillas: ahora todas dicen "Tracción".
+- **Copias**: `copyName()` recorta la base y **nunca el sufijo** — sin `(copia)`
+  dos filas seguidas no se distinguen, que es justo lo que la copia necesita
+  decir. `Full Body · Barra` → `Full Body (copia)`.
+
+**Lo que se queda fuera.** El nombre de **etapa** (`Etapa 1`, el campo de la hoja
+de ajustes) no lleva límite: no es un programa ni una sesión y no aparece en la
+tarjeta de hoy. Y las **entradas de fuera** —importar, sync del entrenador— no
+se capan al entrar: se muestran enteras y sólo se pueden acortar al editarlas.
+
+---
+
 ## Fases
 
 | Fase | Qué | Estado |
 |---|---|---|
 | **U10** | Cabecera única fuera de la banda accent (§2.1), mismo lenguaje en Workout (§2.2), las dos hojas de Clientes (§2.3) | ✅ `0ca9dd5` · `a0d49bc` · `cd61d02` (merge `7188ca4`) — 4-sep-2026, probada en dispositivo |
 | **U11** | La cabecera pasa a barra de 56 (§6.2), `HeaderRule` compartida, y fuera el colapso de Workout (§6.3) | ✅ 7-sep-2026 — pendiente de prueba en dispositivo |
+| **U16** | `NAME_MAX = 20` al escribir (§7), contador en el campo, y los nombres de arquetipo reescritos para caber | ✅ 9-sep-2026 — pendiente de prueba en dispositivo |

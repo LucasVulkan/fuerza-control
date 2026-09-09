@@ -24,7 +24,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TextInput,
+  View, Text, ScrollView,
   TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -49,6 +49,7 @@ import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import NumberChips from '../components/ui/NumberChips';
+import NameField from '../components/ui/NameField';
 import { NavRow } from '../components/ui/EditorRows';
 import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
@@ -966,13 +967,11 @@ export default function OnboardingScreen() {
         >
           <View>
             <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
-            <TextInput
+            <NameField
               style={styles.textInput}
               value={manualName}
               onChangeText={setManualName}
               placeholder={t('onboarding.programNamePlaceholder')}
-              placeholderTextColor={th.colors.mutedLight}
-              returnKeyType="done"
               autoFocus
             />
           </View>
@@ -1053,13 +1052,11 @@ export default function OnboardingScreen() {
           {selectedTpl && (
             <View>
               <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
-              <TextInput
+              <NameField
                 style={styles.textInput}
                 value={templateProgramName}
                 onChangeText={setTemplateProgramName}
                 placeholder={selectedTpl.name}
-                placeholderTextColor={th.colors.mutedLight}
-                returnKeyType="done"
                 autoCorrect={false}
               />
               <Text style={[styles.qHint, styles.hintGap]}>

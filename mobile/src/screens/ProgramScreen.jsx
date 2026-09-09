@@ -25,7 +25,7 @@
 import { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  TextInput, StyleSheet,
+  StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
@@ -35,6 +35,7 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import StepField from '../components/ui/StepField';
+import NameField from '../components/ui/NameField';
 import { ArrowIcon } from '../components/ui/EditorIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
 import { spacing, textStyles, sheetRowBase } from '../theme';
@@ -116,7 +117,6 @@ function SheetRow({ label, onPress, danger = false }) {
 
 function CreateSheet({ visible, onClose, onCreate }) {
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
@@ -141,13 +141,11 @@ function CreateSheet({ visible, onClose, onCreate }) {
       action={{ label: t('common.cancel'), onPress: onClose }}
     >
       <View style={styles.sheetBody}>
-        <TextInput
+        <NameField
           style={styles.sheetInput}
           value={name}
           onChangeText={setName}
           placeholder={t('templates.newModal.namePlaceholder')}
-          placeholderTextColor={th.colors.mutedLight}
-          returnKeyType="done"
         />
 
         <View>
@@ -274,13 +272,11 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
             enseña el placeholder. */}
         <View>
           <Text style={styles.sheetLabel}>{t('templates.assignModal.programNameLabel')}</Text>
-          <TextInput
+          <NameField
             style={styles.sheetInput}
             placeholder={program.name}
-            placeholderTextColor={th.colors.mutedLight}
             value={customName}
             onChangeText={setCustomName}
-            returnKeyType="done"
           />
         </View>
 

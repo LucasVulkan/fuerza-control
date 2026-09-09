@@ -33,6 +33,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import { NAME_MAX } from '../../utils/names';
 import { ArrowIcon, PencilIcon, CheckIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
@@ -97,6 +98,7 @@ export default function ScreenHeader({
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const editable = typeof onRenameStart === 'function';
+  const draftLen = (draft ?? '').length;
   // Las acciones van en gris: el único accent del cromo es el chevron.
   const ink      = th.colors.mutedLight;
 
@@ -125,14 +127,17 @@ export default function ScreenHeader({
               placeholder={placeholder}
               placeholderTextColor={withOpacity(th.colors.mutedLight, 0.6)}
               returnKeyType="done"
+              // Ver `utils/names.js`: el máximo se abre a lo que ya hay para no
+              // recortar en Android un nombre largo de antes del límite.
+              maxLength={Math.max(NAME_MAX, draftLen)}
             />
           ) : (
             <Text
               style={styles.title}
-              // Una línea: a 16px caben ~32 caracteres. Los nombres que se
-              // pasan truncan a propósito —van a limitarse por número de
-              // caracteres—; partirlos en dos haría que la barra cambiase de
-              // alto según el programa que abras.
+              // Una línea: a 16px caben ~32 caracteres. Escribir está
+              // limitado a `NAME_MAX` (20), pero lo guardado de antes puede ser
+              // más largo y trunca a propósito: partirlo en dos haría que la
+              // barra cambiase de alto según el programa que abras.
               numberOfLines={1}
               onPress={editable ? onRenameStart : undefined}
               suppressHighlighting
@@ -144,6 +149,14 @@ export default function ScreenHeader({
 
         {(editable || right) && (
           <View style={styles.actions}>
+            {/* El contador vive en el hueco de acciones y no dentro del input:
+                el input llega hasta aquí y la barra es de 56, no hay sitio para
+                una caja propia. Sólo mientras renombras. */}
+            {editable && renaming && (
+              <Text style={[styles.count, draftLen > NAME_MAX && styles.countOver]}>
+                {draftLen}/{NAME_MAX}
+              </Text>
+            )}
             {editable && (
               <TouchableOpacity hitSlop={12} onPress={renaming ? onRenameCommit : onRenameStart}>
                 {renaming
@@ -221,6 +234,12 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:     spacing.xs,
     padding:       0,
   },
+  count: {
+    ...textStyles.smallBold,
+    color:       th.colors.mutedLight,
+    fontVariant: ['tabular-nums'],
+  },
+  countOver: { color: th.colors.red },
   hairline: { height: 1, backgroundColor: th.colors.border },
   ruleRow:  { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
   ruleSeg:  { flex: 1, height: HEADER_RULE_H },

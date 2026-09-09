@@ -20,6 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken, listBackups, downloadBackup } from '../src/services/driveService';
 import { GOOGLE_CLIENT_ID } from '../src/config/google';
+import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc } from '../src/services/supabaseSync';
@@ -1284,7 +1285,7 @@ export const useStore = create(
           id: tplId,
           programId,
           label,
-          name: `${src.name ?? 'Sesión'} (copia)`,
+          name: copyName(src.name ?? 'Sesión'),
           color: dayColors[i % dayColors.length],
           // The copy starts unlinked — otherwise edits to it would propagate
           // back to the original through the link group.

@@ -60,7 +60,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'fullbody_hypertrophy_intermediate',
-    name: 'Full Body · Hipertrofia',
+    name: 'Full Body · 3 días',
     summary: 'Todo el cuerpo en cada sesión, tres sesiones que rotan. Cada patrón vuelve dos veces por semana.',
     tags: ['full_body', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
@@ -71,7 +71,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Tracción, empuje horizontal y cadera',
+        name: 'Tracción · cadera',
         color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
@@ -85,7 +85,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Empuje vertical, tracción y pierna anterior',
+        name: 'Empuje · pierna',
         color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
@@ -99,7 +99,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'C',
-        name: 'Tracción, empuje inclinado y cadera',
+        name: 'Tracción · inclinado',
         color: 'var(--day3)',
         emphasis: 'pull',
         exercises: [
@@ -119,7 +119,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'fullbody_hypertrophy_advanced',
-    name: 'Full Body · Hipertrofia · Barra libre',
+    name: 'Full Body · Barra',
     summary: 'Full body con los básicos de barra en el centro. Para quien ya tiene la técnica.',
     tags: ['full_body', 'hypertrophy', 'advanced'],
     discipline: 'standard', distribution: 'full_body',
@@ -129,7 +129,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Tracción, empuje horizontal y cadera',
+        name: 'Tracción · cadera',
         color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
@@ -144,7 +144,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Empuje vertical, tracción y pierna anterior',
+        name: 'Empuje · pierna',
         color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
@@ -159,7 +159,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'C',
-        name: 'Tracción, empuje inclinado y cadera',
+        name: 'Tracción · inclinado',
         color: 'var(--day3)',
         emphasis: 'pull',
         exercises: [
@@ -181,7 +181,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'fullbody_hypertrophy_beginner',
-    name: 'Full Body · Hipertrofia · Iniciación',
+    name: 'Full Body · Inicio',
     summary: 'Todo el cuerpo en cada sesión, con movimientos guiados y fáciles de aprender.',
     tags: ['full_body', 'hypertrophy', 'beginner'],
     discipline: 'standard',
@@ -192,7 +192,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Tracción vertical, empuje y pierna',
+        name: 'Tracción · pierna',
         color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
@@ -206,7 +206,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Cadera, empuje vertical y tracción horizontal',
+        name: 'Cadera · empuje',
         color: 'var(--day2)',
         emphasis: 'push',
         exercises: [
@@ -220,7 +220,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'C',
-        name: 'Tracción, empuje inclinado y sentadilla',
+        name: 'Empuje · sentadilla',
         color: 'var(--day3)',
         emphasis: 'pull',
         exercises: [
@@ -241,7 +241,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'upperlower_hypertrophy_intermediate',
-    name: 'Upper/Lower · Hipertrofia',
+    name: 'Upper/Lower',
     summary: 'Tren superior y tren inferior alternados. Cada básico dos veces por semana.',
     tags: ['upper_lower', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
@@ -314,7 +314,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'upperlower_hypertrophy_advanced',
-    name: 'Upper/Lower · Hipertrofia · Barra libre',
+    name: 'Upper/Lower · Barra',
     summary: 'Superior e inferior alternados, con barra libre en los principales.',
     tags: ['upper_lower', 'hypertrophy', 'advanced'],
     discipline: 'standard',
@@ -421,7 +421,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Cuerpo completo · horizontal',
+        name: 'Completo horizontal',
         color: 'var(--day1)',
         emphasis: 'full',
         exercises: [
@@ -435,7 +435,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Cuerpo completo · vertical',
+        name: 'Completo vertical',
         color: 'var(--day2)',
         emphasis: 'full',
         exercises: [
@@ -477,7 +477,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'ppl3_hypertrophy_intermediate',
-    name: 'Push / Pull / Legs · 3 días',
+    name: 'PPL · 3 días',
     summary: 'Empuje, tracción y pierna, cada uno una vez por semana.',
     tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
@@ -558,7 +558,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'ppl6_hypertrophy_intermediate',
-    name: 'Push / Pull / Legs · Hipertrofia',
+    name: 'PPL · 6 días',
     summary: 'Empuje, tracción y pierna, cada uno dos veces por semana.',
     tags: ['push_pull_legs', 'hypertrophy', 'intermediate'],
     discipline: 'standard',
@@ -665,7 +665,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Sentadilla, banca y remo',
+        name: 'Sentadilla y banca',
         color: 'var(--day1)',
         emphasis: 'squat_bench_row',
         exercises: [
@@ -679,7 +679,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Peso muerto, press militar y sentadilla pausada',
+        name: 'Peso muerto y press',
         color: 'var(--day2)',
         emphasis: 'deadlift_ohp',
         exercises: [
@@ -693,7 +693,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'C',
-        name: 'Sentadilla, banca y remo',
+        name: 'Sentadilla y banca',
         color: 'var(--day3)',
         emphasis: 'squat_bench_row',
         exercises: [
@@ -713,7 +713,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'glutes_hypertrophy_intermediate',
-    name: 'Glúteo Prioritario · Hipertrofia',
+    name: 'Glúteo prioritario',
     summary: 'Glúteo e isquios en el centro de las tres sesiones, con pierna anterior de apoyo.',
     tags: ['glutes_focus', 'hypertrophy', 'intermediate'],
     discipline: 'glutes_legs', distribution: 'full_body',
@@ -728,7 +728,7 @@ export const ARCHETYPES = [
     days: [
       {
         label: 'A',
-        name: 'Glúteo e isquios prioritario',
+        name: 'Glúteo e isquios',
         color: 'var(--day1)',
         emphasis: 'glutes',
         exercises: [
@@ -742,7 +742,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'B',
-        name: 'Pierna anterior y empuje',
+        name: 'Pierna y empuje',
         color: 'var(--day2)',
         emphasis: 'legs_push',
         exercises: [
@@ -756,7 +756,7 @@ export const ARCHETYPES = [
       },
       {
         label: 'C',
-        name: 'Glúteo, isquios y hombro',
+        name: 'Glúteo y hombro',
         color: 'var(--day3)',
         emphasis: 'glutes_shoulders',
         exercises: [
@@ -776,7 +776,7 @@ export const ARCHETYPES = [
   // ─────────────────────────────────────────────────────────────────────────
   {
     id: 'calisthenics_functional_intermediate',
-    name: 'Calistenia · Funcional',
+    name: 'Calistenia funcional',
     summary: 'Peso corporal, core y agarre. Fuerza relativa y control del cuerpo.',
     tags: ['functional', 'endurance', 'intermediate'],
     discipline: 'calisthenics', distribution: 'full_body',

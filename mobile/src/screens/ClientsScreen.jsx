@@ -31,6 +31,7 @@ import DragSheet from '../components/DragSheet';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
+import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
@@ -726,13 +727,11 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
           <>
             <View>
               <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <TextInput
+              <NameField
                 style={styles.sheetInput}
                 placeholder={t('clients.newProgramModal.namePlaceholder')}
-                placeholderTextColor={th.colors.mutedLight}
                 value={name}
                 onChangeText={setName}
-                returnKeyType="done"
               />
             </View>
 
@@ -802,13 +801,11 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
 
             <View>
               <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <TextInput
+              <NameField
                 style={styles.sheetInput}
                 placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
-                placeholderTextColor={th.colors.mutedLight}
                 value={fromTemplateName}
                 onChangeText={setFromTemplateName}
-                returnKeyType="done"
               />
             </View>
           </>
