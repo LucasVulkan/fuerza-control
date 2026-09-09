@@ -21,7 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeIn, FadeOutUp } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -36,7 +36,7 @@ import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
@@ -47,6 +47,7 @@ import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
+import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import ProgramCard from '../components/ui/ProgramCard';
 
 // Sesiones por ciclo — el mismo rango que el alta manual del onboarding.
@@ -98,19 +99,6 @@ function FilterChip({ label, active, onPress, count }) {
   );
 }
 
-function AccentBtn({ label, onPress, small, disabled }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.accentBtn, small && styles.accentBtnSmall, disabled && { opacity: 0.4 }]}
-      onPress={disabled ? undefined : onPress}
-      activeOpacity={0.85}
-    >
-      <Text style={[styles.accentBtnText, small && styles.accentBtnTextSmall]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 function GhostBtn({ label, onPress, danger }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -123,19 +111,67 @@ function GhostBtn({ label, onPress, danger }) {
 
 // ── Status dot ─────────────────────────────────────────────────────────────────
 
-// ── Accordion (for Info tab sections) ─────────────────────────────────────────
+// ── Sección plegable de Info ──────────────────────────────────────────────────
 
-function Accordion({ label, open, onToggle, children }) {
+/**
+ * Categoría de la pestaña Info: una tarjeta `surface` con el título a la
+ * izquierda y **su resumen a la derecha**.
+ *
+ * El resumen es lo que justifica el componente. El acordeón anterior eran
+ * rótulos a sangre con separadores de 1px: con todo cerrado —que es como se
+ * entra— la pantalla no decía nada, cuatro etiquetas y cuatro flechas. Aquí
+ * cada cabecera lleva el dato que resume su sección (estado, nombre completo,
+ * último peso, pendiente de cobro, conexión), así que Info se lee sin abrir
+ * nada y solo se despliega lo que se va a tocar.
+ *
+ * El plegado es el mismo de las sesiones de la Home, y a propósito:
+ * `LinearTransition` en la tarjeta y `collapseOut` en el cuerpo, que encoge
+ * además de desvanecerse.
+ */
+function InfoSection({ title, summary, tone, open, onToggle, children }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const toneColor = tone === 'accent' ? th.colors.accent
+    : tone === 'green'  ? th.colors.green
+    : tone === 'orange' ? th.colors.orange
+    : th.colors.mutedLight;
   return (
-    <View style={styles.accordion}>
-      <TouchableOpacity style={styles.accordionHeader} onPress={onToggle} activeOpacity={0.7}>
-        <Text style={styles.accordionLabel}>{label}</Text>
-        <Text style={[styles.accordionArrow, open && { transform: [{ rotate: '180deg' }] }]}>▾</Text>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.infoSec}>
+      <TouchableOpacity
+        style={styles.infoSecHead}
+        onPress={onToggle}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <Text style={styles.infoSecTitle}>{title}</Text>
+        <Text style={[styles.infoSecSum, { color: toneColor }]} numberOfLines={1}>{summary ?? ''}</Text>
+        <View style={open ? styles.infoSecChevOpen : null}>
+          <ChevronDown size={12} color={open ? th.colors.accent : th.colors.muted} />
+        </View>
       </TouchableOpacity>
-      {open && <View style={styles.accordionBody}>{children}</View>}
-    </View>
+      {open && (
+        <Reanimated.View entering={FadeIn.duration(180)} exiting={collapseOut} style={styles.infoSecBody}>
+          {/* Filete a sangre: separa cabecera y cuerpo sin meter una segunda
+              superficie, el mismo recurso que la tarjeta de programa. */}
+          <View style={styles.infoSecRule} />
+          {children}
+        </Reanimated.View>
+      )}
+    </Reanimated.View>
   );
+}
+
+/**
+ * Fila de la lista agrupada de Info (`getCardRadii`): el patrón denso que ya
+ * usan Progreso y el menú principal. Sustituye a los campos con borde propio —
+ * la etiqueta ocupa un ancho fijo a la izquierda y el valor escribe al lado,
+ * sin caja dentro de la caja.
+ */
+function InfoRow({ isFirst, isLast, children }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return <View style={[styles.infoRow, getCardRadii(th, isFirst, isLast)]}>{children}</View>;
 }
 
 // ── Exercise mini-card (progress tab) ─────────────────────────────────────────
@@ -480,7 +516,7 @@ function SheetRow({ label, onPress, danger }) {
  * `onDismiss` solo lo pasa el tab de Programa: si nunca vas a conectar a ese
  * cliente, la tarjeta se queda ahí para siempre sin nada que hacer.
  */
-function ClientCodeBlock({ client, showToast, onDismiss }) {
+function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -523,7 +559,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
 
   if (!client.syncSlotId) {
     return (
-      <View style={styles.codeCard}>
+      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
         <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
         <Text style={styles.codeExplain}>{t('clients.keyTab.noSlot')}</Text>
         <TouchableOpacity
@@ -556,7 +592,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
 
   if (!client.syncCode) {
     return (
-      <View style={styles.codeCard}>
+      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
         <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
         <Text style={styles.codeExplain}>{t('clients.keyTab.connectedNoCode')}</Text>
       {onDismiss && (
@@ -569,7 +605,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
   }
 
   return (
-    <View style={styles.codeCard}>
+    <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
       <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
       <Text style={styles.codeExplain}>{t('clients.codeCard.explain', { name: client.name })}</Text>
       <View style={styles.codeRow}>
@@ -838,6 +874,17 @@ function toIsoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Días completos desde una fecha `AAAA-MM-DD`. Vive fuera del componente a
+ * propósito: mirar el reloj dentro de un render —aunque sea dentro de un
+ * `useMemo`— es justo lo que prohíbe la regla de pureza de react-hooks.
+ */
+function daysSinceIso(iso) {
+  const [y, m, d] = (iso ?? '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return Math.max(0, Math.round((Date.now() - new Date(y, m - 1, d)) / 86400000));
+}
+
 /** '2026-07-14' → '14 jul' (con año si `withYear` o si no es el año en curso). */
 function formatBillDate(iso, lang, withYear = false) {
   const [y, m, d] = (iso ?? '').split('-').map(Number);
@@ -927,8 +974,13 @@ function BillDateSheet({ value, lang, onPick, onClose }) {
  * Hoja de alta de cobro. Antes era un `<Modal>` propio; pasa a `DragSheet`, que es
  * el único bottom-sheet de la app (§9 de docs/UI-MIGRATION.md). La salida vive en
  * el hueco derecho de la cabecera y abajo queda un solo botón, el que avanza.
+ *
+ * Con `lockedClientId` es la misma hoja sin el selector de cliente: así la
+ * pestaña Info del cliente da de alta un cobro con esta hoja en vez de con el
+ * formulario propio que tenía —dos campos de fecha tecleados a mano y ningún
+ * calendario—, que era la misma pantalla peor hecha.
  */
-function GlobalAddBillingSheet({ clients, lang, onClose }) {
+function GlobalAddBillingSheet({ clients, lang, lockedClientId, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -940,7 +992,7 @@ function GlobalAddBillingSheet({ clients, lang, onClose }) {
     [clients]
   );
 
-  const [clientId,  setClientId]  = useState('');
+  const [clientId,  setClientId]  = useState(lockedClientId ?? '');
   const [date,      setDate]      = useState(() => toIsoDate(new Date()));
   const [concept,   setConcept]   = useState('');
   const [amount,    setAmount]    = useState('');
@@ -977,8 +1029,9 @@ function GlobalAddBillingSheet({ clients, lang, onClose }) {
 
         {/* Cliente — dropdown con buscador, mismo patrón que el desplegable de
             ejercicios de Progress: ancla relativa + menú `position:absolute`
-            colgando de `top:'100%'`, que FLOTA sobre los campos de abajo. */}
-        <View style={styles.billDropField}>
+            colgando de `top:'100%'`, que FLOTA sobre los campos de abajo.
+            Abierta desde la ficha de un cliente no hay nada que elegir. */}
+        <View style={[styles.billDropField, !!lockedClientId && { display: 'none' }]}>
           <Text style={styles.billSecLabel}>{t('clients.billSheet.client')}</Text>
           {clientList.length === 0 ? (
             <Text style={styles.billEmpty}>{t('clients.billSheet.noClients')}</Text>
@@ -1686,7 +1739,8 @@ function ClientListCard({
 export default function ClientsScreen() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const billLang = i18n.language?.startsWith('en') ? 'en' : 'es';
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -1710,7 +1764,6 @@ export default function ClientsScreen() {
   const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
   const shareSpecificProgram   = useStore((s) => s.shareSpecificProgram);
   const setClientActiveProgram = useStore((s) => s.setClientActiveProgram);
-  const addClientBilling       = useStore((s) => s.addClientBilling);
   const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
   const removeClientBilling    = useStore((s) => s.removeClientBilling);
   const addClientBodyWeight    = useStore((s) => s.addClientBodyWeight);
@@ -1805,18 +1858,20 @@ export default function ClientsScreen() {
   // List pull-to-refresh
   const [refreshingList, setRefreshingList] = useState(false);
 
-  // Detail - info accordion
-  const [openSections,  setOpenSections]  = useState({ status: false, personal: true, weight: false, billing: false });
+  // Detail - secciones plegables de Info. Todas cerradas al entrar: con el
+  // resumen en cada cabecera, la pantalla ya se lee sin abrir ninguna.
+  const [openSections,  setOpenSections]  = useState({ status: false, personal: false, weight: false, billing: false, connection: false });
+  // El campo de etiqueta nueva solo aparece al pedirlo, para que la fila de
+  // pills no lleve siempre un input detrás sin usar.
+  const [addingTag,     setAddingTag]     = useState(false);
 
   // Detail - body weight
-  const [weightDate,  setWeightDate]  = useState(new Date().toISOString().split('T')[0]);
-  const [weightValue, setWeightValue] = useState('');
+  const [weightDate,   setWeightDate]   = useState(() => toIsoDate(new Date()));
+  const [weightValue,  setWeightValue]  = useState('');
+  const [showWeightCal, setShowWeightCal] = useState(false);
 
-  // Detail - billing
-  const [billDate,    setBillDate]    = useState(new Date().toISOString().split('T')[0]);
-  const [billConcept, setBillConcept] = useState('');
-  const [billAmount,  setBillAmount]  = useState('');
-  const [billStatus,  setBillStatus]  = useState('pending');
+  // Detail - alta de cobro (la hoja de la facturación global, con el cliente puesto)
+  const [addingBill,  setAddingBill]  = useState(false);
 
   // Detail - key tab
 
@@ -1991,6 +2046,46 @@ export default function ClientsScreen() {
     if (!m28) return null;
     return Math.round((m7 / m28 - 1) * 100);
   }, [clientBaseLog, allExercises, selectedClientId]);
+
+  // ── Resúmenes de las cabeceras de Info ─────────────────────────────────────
+  // Se entra a Info con todo cerrado, así que cada cabecera tiene que contar su
+  // sección de un vistazo. Todo sale de datos ya guardados; va en un memo
+  // porque el del peso mira el reloj, y eso no puede pasar en cada render.
+  const infoSummaries = useMemo(() => {
+    if (!selectedClient) return {};
+    const status  = selectedClient.status ?? 'active';
+    const tagged  = (selectedClient.tags ?? []).length;
+    const weights = selectedClient.bodyWeight ?? [];       // ordenado por fecha
+    const lastW   = weights[weights.length - 1];
+    const bills   = selectedClient.billing ?? [];
+    const pending = bills.reduce((a, b) => a + (b.status === 'paid' ? 0 : (b.amount ?? 0)), 0);
+
+    let weight = null;
+    if (lastW) {
+      const days = daysSinceIso(lastW.date);
+      const when = days == null ? null
+        : days === 0 ? t('dayCard.today')
+        : days === 1 ? t('dayCard.yesterday')
+        : t('dayCard.daysAgo', { count: days });
+      weight = [`${lastW.weight} kg`, when].filter(Boolean).join(' · ');
+    }
+
+    return {
+      status: [
+        t(`clients.status${status === 'paused' ? 'Paused' : status === 'inactive' ? 'Inactive' : 'Active'}`),
+        tagged ? t('clients.filterTagsCount', { count: tagged }) : null,
+      ].filter(Boolean).join(' · '),
+      statusTone: status === 'active' ? 'green' : status === 'paused' ? 'orange' : null,
+      personal:   selectedClient.fullName || selectedClient.phone || selectedClient.email || null,
+      weight,
+      billing:     bills.length === 0 ? null
+        : pending > 0 ? `${pending.toFixed(2)}€ ${t('clients.pendingLabel').toLowerCase()}`
+        : t('clients.info.upToDate'),
+      billingTone: pending > 0 ? 'orange' : null,
+      connection:     selectedClient.syncLinked ? t('clients.info.connected') : t('clients.info.notConnected'),
+      connectionTone: selectedClient.syncLinked ? null : 'accent',
+    };
+  }, [selectedClient, t]);
 
   const filteredLog = useMemo(() => {
     let log = scopeFilter === 'active'
@@ -2261,13 +2356,16 @@ export default function ClientsScreen() {
     setWeightValue('');
   }
 
-  function handleAddBilling() {
-    if (!billConcept.trim() || !billAmount || !billDate) return;
-    addClientBilling(selectedClientId, {
-      date: billDate, concept: billConcept.trim(),
-      amount: parseFloat(billAmount), status: billStatus,
-    });
-    setBillConcept(''); setBillAmount(''); setBillStatus('pending');
+  // Crear etiqueta y asignarla de una vez: se crea desde la ficha del cliente
+  // al que se le va a poner, así que quedarse sin asignar nunca es lo que se
+  // quería. Estaba duplicada en el `onSubmitEditing` y en el botón.
+  function handleCreateTag() {
+    const name = newTag.trim();
+    setNewTag('');
+    setAddingTag(false);
+    if (!name || allTags.some((tag) => tag.name.toLowerCase() === name.toLowerCase())) return;
+    const newId = createTag(name);
+    updateClientInfo(selectedClientId, { tags: [...(selectedClient?.tags ?? []), newId] });
   }
 
   // ── PRO gate ───────────────────────────────────────────────────────────────
@@ -2318,7 +2416,7 @@ export default function ClientsScreen() {
             setView('detail');
             handleSelectClient(id);
             setActiveTab('info');
-            setOpenSections({ personal: false, weight: false, billing: true });
+            setOpenSections({ status: false, personal: false, weight: false, billing: true, connection: false });
           }}
         />
       </View>
@@ -2549,168 +2647,167 @@ export default function ClientsScreen() {
         )}
 
         {/* ── Tab: Info ── */}
+        {/* Cinco categorías plegables, cada una con su resumen en la cabecera.
+            El código de conexión pasa a ser una más: aquí es consulta, no
+            trámite — el trámite lo lleva el tab de Programa mientras el cliente
+            no ha canjeado el código. */}
         {activeTab === 'info' && (
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <ScrollView
-              contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
+              contentContainerStyle={[styles.infoTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}
               keyboardShouldPersistTaps="handled"
             >
-              {/* El código de conexión vive aquí de forma permanente (en el tab
-                  de Programa solo aparece mientras el cliente no lo ha canjeado). */}
-              <View style={styles.infoCodeWrap}>
-                <ClientCodeBlock client={selectedClient} showToast={showToast} />
-              </View>
-
               {/* ── Estado ── */}
-              <Accordion
-                label="Estado"
+              <InfoSection
+                title={t('clients.statusLabel')}
+                summary={infoSummaries.status}
+                tone={infoSummaries.statusTone}
                 open={openSections.status}
                 onToggle={() => setOpenSections((s) => ({ ...s, status: !s.status }))}
               >
-                {/* Status buttons */}
-                <View style={{ marginBottom: spacing.md }}>
-                  <View style={styles.statusRow}>
-                    {[
-                      { id: 'active',   label: t('clients.statusActive'),   color: th.colors.green },
-                      { id: 'paused',   label: t('clients.statusPaused'),   color: th.colors.orange },
-                      { id: 'inactive', label: t('clients.statusInactive'), color: th.colors.red },
-                    ].map(({ id, label, color }) => {
-                      const isSel = (selectedClient.status ?? 'active') === id;
+                <View style={styles.stRow}>
+                  {[
+                    // El activo se tiñe con el 10% de su propio color, no con un
+                    // borde. Verde y no acento: es el mismo verde con el que
+                    // `adherenceColor` pinta "al día" en la tarjeta de cliente.
+                    { id: 'active',   label: t('clients.statusActive'),   color: th.colors.green,  tint: withOpacity(th.colors.green, 0.1) },
+                    { id: 'paused',   label: t('clients.statusPaused'),   color: th.colors.orange, tint: withOpacity(th.colors.orange, 0.1) },
+                    { id: 'inactive', label: t('clients.statusInactive'), color: th.colors.red,    tint: withOpacity(th.colors.red, 0.1) },
+                  ].map(({ id, label, color, tint }) => {
+                    const isSel = (selectedClient.status ?? 'active') === id;
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        style={[styles.stBtn, isSel && { backgroundColor: tint }]}
+                        onPress={() => updateClientInfo(selectedClientId, { status: id })}
+                        activeOpacity={0.75}
+                      >
+                        {isSel && <View style={[styles.stDot, { backgroundColor: color }]} />}
+                        <Text style={[styles.stBtnText, isSel && { color }]} numberOfLines={1}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>{t('clients.filterTags')}</Text>
+                  <View style={styles.tagRow}>
+                    {allTags.map(({ id, name }) => {
+                      const active = (selectedClient.tags ?? []).includes(id);
                       return (
                         <TouchableOpacity
                           key={id}
-                          style={[styles.statusBtn, { borderColor: isSel ? color : th.colors.border, backgroundColor: isSel ? `${color}18` : th.colors.surface2 }]}
-                          onPress={() => updateClientInfo(selectedClientId, { status: id })}
+                          style={[styles.tagPill, active && styles.tagPillOn]}
+                          onPress={() => {
+                            const current = selectedClient.tags ?? [];
+                            updateClientInfo(selectedClientId, {
+                              tags: active ? current.filter((tid) => tid !== id) : [...current, id],
+                            });
+                          }}
+                          activeOpacity={0.75}
                         >
-                          {isSel && <View style={[styles.statusDot, { backgroundColor: color }]} />}
-                          <Text style={[styles.statusBtnText, { color: isSel ? color : th.colors.muted }]}>{label}</Text>
+                          <Text style={[styles.tagPillText, active && styles.tagPillTextOn]}>{name}</Text>
                         </TouchableOpacity>
                       );
                     })}
+                    {!addingTag && (
+                      <TouchableOpacity style={styles.tagPill} onPress={() => setAddingTag(true)} activeOpacity={0.75}>
+                        <Text style={[styles.tagPillText, styles.tagPillTextOn]}>＋ {t('clients.info.newTag')}</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                </View>
 
-                {/* Tags */}
-                <View style={{ marginBottom: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>ETIQUETAS</Text>
-                  {allTags.length > 0 && (
-                    <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
-                      {allTags.map(({ id, name }) => {
-                        const active = (selectedClient.tags ?? []).includes(id);
-                        return (
-                          <TouchableOpacity
-                            key={id}
-                            style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
-                            onPress={() => {
-                              const current = selectedClient.tags ?? [];
-                              updateClientInfo(selectedClientId, {
-                                tags: active ? current.filter((tid) => tid !== id) : [...current, id],
-                              });
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
-                            <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
-                              {name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                  {addingTag && (
+                    <View style={styles.addRow}>
+                      <TextInput
+                        style={[styles.fld, { flex: 1 }]}
+                        placeholder={t('clients.info.newTagPlaceholder')}
+                        placeholderTextColor={th.colors.muted}
+                        value={newTag}
+                        onChangeText={setNewTag}
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={handleCreateTag}
+                      />
+                      <TouchableOpacity
+                        style={[styles.plusBtn, !newTag.trim() && { opacity: 0.4 }]}
+                        onPress={newTag.trim() ? handleCreateTag : undefined}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.plusBtnText}>＋</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
-                  {/* Inline create (escape hatch) */}
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Crear nueva etiqueta…"
-                      placeholderTextColor={th.colors.muted}
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      returnKeyType="done"
-                      onSubmitEditing={() => {
-                        const t = newTag.trim();
-                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
-                        const newId = createTag(t);
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
-                        setNewTag('');
-                      }}
-                    />
-                    <AccentBtn
-                      label="＋"
-                      small
-                      disabled={!newTag.trim()}
-                      onPress={() => {
-                        const t = newTag.trim();
-                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
-                        const newId = createTag(t);
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
-                        setNewTag('');
-                      }}
-                    />
-                  </View>
-                  <Text style={styles.fieldHint}>Toca para asignar · Escribe para crear nueva</Text>
+                  <Text style={styles.infoHint}>{t('clients.info.tagsHint')}</Text>
                 </View>
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Personal data ── */}
-              <Accordion
-                label="Datos personales"
+              {/* ── Datos personales ── */}
+              <InfoSection
+                title={t('clients.personalData')}
+                summary={infoSummaries.personal}
                 open={openSections.personal}
                 onToggle={() => setOpenSections((s) => ({ ...s, personal: !s.personal }))}
               >
-                {/* Fields */}
-                {[
-                  { key: 'name',     label: t('clients.fieldNameAlias'),                       placeholder: 'Lucas' },
-                  { key: 'fullName', label: t('clients.fieldFullName').toUpperCase(),          placeholder: 'Lucas García Martínez' },
-                  { key: 'phone',    label: 'TELÉFONO',         placeholder: '+34 600 000 000' },
-                  { key: 'email',    label: 'EMAIL',            placeholder: 'lucas@email.com' },
-                ].map(({ key, label, placeholder }) => (
-                  <View key={key} style={{ marginBottom: spacing.sm }}>
-                    <Text style={styles.fieldLabel}>{label}</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={placeholder}
-                      placeholderTextColor={th.colors.muted}
-                      defaultValue={selectedClient[key] ?? ''}
-                      onEndEditing={(e) => updateClientInfo(selectedClientId, { [key]: e.nativeEvent.text })}
-                      returnKeyType="done"
-                    />
-                  </View>
-                ))}
+                <View style={styles.group}>
+                  {[
+                    { key: 'name',     label: t('clients.fieldNameAlias'), placeholder: 'Lucas' },
+                    { key: 'fullName', label: t('clients.fieldFullName'),  placeholder: 'Lucas García Martínez' },
+                    { key: 'phone',    label: t('clients.fieldPhone'),     placeholder: '+34 600 000 000' },
+                    { key: 'email',    label: t('clients.fieldEmail'),     placeholder: 'lucas@email.com' },
+                  ].map(({ key, label, placeholder }, i, arr) => (
+                    <InfoRow key={key} isFirst={i === 0} isLast={i === arr.length - 1}>
+                      <Text style={styles.infoRowKey} numberOfLines={1}>{label}</Text>
+                      <TextInput
+                        style={styles.infoRowInput}
+                        placeholder={placeholder}
+                        placeholderTextColor={th.colors.muted}
+                        defaultValue={selectedClient[key] ?? ''}
+                        onEndEditing={(e) => updateClientInfo(selectedClientId, { [key]: e.nativeEvent.text })}
+                        returnKeyType="done"
+                      />
+                    </InfoRow>
+                  ))}
+                </View>
 
-                {/* Notes */}
-                <View style={{ marginBottom: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>NOTAS</Text>
+                <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>{t('clients.fieldNotes')}</Text>
                   <TextInput
-                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                    placeholder="Notas sobre el cliente…"
+                    style={styles.notesBox}
+                    placeholder={t('clients.notesPlaceholder')}
                     placeholderTextColor={th.colors.muted}
                     multiline
                     defaultValue={selectedClient.notes ?? ''}
                     onEndEditing={(e) => updateClientInfo(selectedClientId, { notes: e.nativeEvent.text })}
                   />
-                  <Text style={styles.fieldHint}>Se guarda al perder el foco</Text>
+                  <Text style={styles.infoHint}>{t('clients.notesSavedHint')}</Text>
                 </View>
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Body weight ── */}
-              <Accordion
-                label="Peso corporal"
+              {/* ── Peso corporal ── */}
+              <InfoSection
+                title={t('clients.bodyWeight')}
+                summary={infoSummaries.weight}
                 open={openSections.weight}
                 onToggle={() => setOpenSections((s) => ({ ...s, weight: !s.weight }))}
               >
                 <View style={styles.addRow}>
+                  {/* La fecha abre el calendario que ya usa el alta de cobro, no
+                      un teclado para escribir AAAA-MM-DD a mano. */}
+                  <TouchableOpacity
+                    style={[styles.fldBtn, { flex: 1 }]}
+                    onPress={() => setShowWeightCal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.fldBtnText} numberOfLines={1}>{formatBillDate(weightDate, billLang, true)}</Text>
+                    <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                      stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+                    </Svg>
+                  </TouchableOpacity>
                   <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Fecha (AAAA-MM-DD)"
-                    placeholderTextColor={th.colors.muted}
-                    value={weightDate}
-                    onChangeText={setWeightDate}
-                    returnKeyType="next"
-                  />
-                  <TextInput
-                    style={[styles.input, { width: 80, textAlign: 'center' }]}
-                    placeholder="Peso"
+                    style={[styles.fld, { width: 86, textAlign: 'center' }]}
+                    placeholder="kg"
                     placeholderTextColor={th.colors.muted}
                     keyboardType="decimal-pad"
                     value={weightValue}
@@ -2718,131 +2815,147 @@ export default function ClientsScreen() {
                     returnKeyType="done"
                     onSubmitEditing={handleAddWeight}
                   />
-                  <AccentBtn label="＋" onPress={handleAddWeight} disabled={!weightValue} small />
+                  <TouchableOpacity
+                    style={[styles.plusBtn, !weightValue && { opacity: 0.4 }]}
+                    onPress={weightValue ? handleAddWeight : undefined}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.plusBtnText}>＋</Text>
+                  </TouchableOpacity>
                 </View>
+
                 {(selectedClient.bodyWeight ?? []).length === 0 ? (
-                  <Text style={styles.emptyText}>Sin datos de peso</Text>
+                  <Text style={styles.infoEmpty}>{t('clients.noWeightData')}</Text>
                 ) : (
-                  <View style={styles.weightList}>
-                    {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry) => (
-                      <View key={entry.date} style={styles.weightRow}>
-                        <Text style={styles.weightDate}>{entry.date}</Text>
-                        <Text style={styles.weightVal}>{entry.weight} kg</Text>
+                  <View style={styles.group}>
+                    {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry, i, arr) => (
+                      <InfoRow key={entry.date} isFirst={i === 0} isLast={i === arr.length - 1}>
+                        <Text style={styles.rowDate}>{formatBillDate(entry.date, billLang, true)}</Text>
+                        <Text style={styles.rowValue}>{entry.weight} kg</Text>
                         <TouchableOpacity onPress={() => removeClientBodyWeight(selectedClientId, entry.date)} hitSlop={8}>
-                          <Text style={styles.deleteIcon}>✕</Text>
+                          <Text style={styles.rowDelete}>✕</Text>
                         </TouchableOpacity>
-                      </View>
+                      </InfoRow>
                     ))}
                   </View>
                 )}
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Billing ── */}
-              <Accordion
-                label="Facturación"
+              {/* ── Facturación ── */}
+              <InfoSection
+                title={t('clients.billing')}
+                summary={infoSummaries.billing}
+                tone={infoSummaries.billingTone}
                 open={openSections.billing}
                 onToggle={() => setOpenSections((s) => ({ ...s, billing: !s.billing }))}
               >
                 {(selectedClient.billing ?? []).length > 0 && (() => {
-                  const total   = (selectedClient.billing ?? []).reduce((a, b) => a + (b.amount ?? 0), 0);
-                  const paid    = (selectedClient.billing ?? []).filter((b) => b.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
+                  const bills = selectedClient.billing ?? [];
+                  const total = bills.reduce((a, b) => a + (b.amount ?? 0), 0);
+                  const paid  = bills.filter((b) => b.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
                   return (
-                    <View style={[styles.billingRow, { marginBottom: spacing.md }]}>
+                    // Las mismas tres tarjetas que la facturación global, en
+                    // `bg`: aquí el contenedor ya es `surface` y en `surface`
+                    // no se verían.
+                    <View style={styles.billTilesRow}>
                       {[
-                        { label: 'FACTURADO', value: `${total.toFixed(2)}€`,         color: th.colors.text },
-                        { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,          color: th.colors.green },
-                        { label: 'PENDIENTE', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? th.colors.orange : th.colors.muted },
+                        { label: t('clients.billedLabel'),   value: total,        color: th.colors.text },
+                        { label: t('clients.receivedLabel'), value: paid,         color: th.colors.green },
+                        { label: t('clients.pendingLabel'),  value: total - paid, color: (total - paid) > 0 ? th.colors.orange : th.colors.mutedLight },
                       ].map(({ label, value, color }) => (
-                        <View key={label} style={styles.billingTile}>
-                          <Text style={styles.billingTileLabel}>{label}</Text>
-                          <Text style={[styles.billingTileValue, { color }]}>{value}</Text>
+                        <View key={label} style={[styles.billTile, { backgroundColor: th.colors.bg }]}>
+                          <Text style={styles.billTileLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                            {label}
+                          </Text>
+                          <Text style={[styles.billTileValue, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                            {value.toFixed(2)}€
+                          </Text>
                         </View>
                       ))}
                     </View>
                   );
                 })()}
 
-                {/* Add entry */}
-                <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Fecha (AAAA-MM-DD)"
-                      placeholderTextColor={th.colors.muted}
-                      value={billDate}
-                      onChangeText={setBillDate}
-                      returnKeyType="next"
-                    />
-                    <TextInput
-                      style={[styles.input, { width: 90, textAlign: 'center' }]}
-                      placeholder="0.00"
-                      placeholderTextColor={th.colors.muted}
-                      keyboardType="decimal-pad"
-                      value={billAmount}
-                      onChangeText={setBillAmount}
-                      returnKeyType="next"
-                    />
-                  </View>
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Concepto"
-                      placeholderTextColor={th.colors.muted}
-                      value={billConcept}
-                      onChangeText={setBillConcept}
-                      returnKeyType="done"
-                      onSubmitEditing={handleAddBilling}
-                    />
-                    <TouchableOpacity
-                      style={[styles.billStatusBtnForm, billStatus === 'paid' && styles.billStatusBtnPaid]}
-                      onPress={() => setBillStatus((s) => s === 'paid' ? 'pending' : 'paid')}
-                    >
-                      <Text style={[styles.billStatusText, billStatus === 'paid' && styles.billStatusTextPaid]}>
-                        {billStatus === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-                      </Text>
-                    </TouchableOpacity>
-                    <AccentBtn label="＋" onPress={handleAddBilling} disabled={!billConcept.trim() || !billAmount} small />
-                  </View>
-                </View>
+                {/* El alta es la MISMA hoja que la facturación global, con el
+                    cliente ya puesto: allí ya hay calendario, importe, concepto
+                    y estado. El formulario que había aquí era esa hoja peor
+                    hecha, con las dos fechas tecleadas a mano. */}
+                <TouchableOpacity style={styles.apBtn} onPress={() => setAddingBill(true)} activeOpacity={0.85}>
+                  <Text style={styles.apBtnGlyph}>+</Text>
+                  <Text style={styles.apBtnText}>{t('clients.billSheet.title')}</Text>
+                </TouchableOpacity>
 
                 {(selectedClient.billing ?? []).length === 0 ? (
-                  <Text style={styles.emptyText}>Sin entradas de facturación</Text>
+                  <Text style={styles.infoEmpty}>{t('clients.noBillingData')}</Text>
                 ) : (
-                  <View style={styles.weightList}>
-                    {(selectedClient.billing ?? []).map((entry) => (
-                      <View key={entry.id} style={[styles.billEntry, { marginBottom: 0 }]}>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.billConcept} numberOfLines={1}>{entry.concept}</Text>
-                          <Text style={styles.billDate}>{entry.date}</Text>
-                        </View>
-                        <Text style={styles.billAmount}>{entry.amount?.toFixed(2)}€</Text>
-                        <TouchableOpacity
-                          style={[styles.billStatusBtn, entry.status === 'paid' && styles.billStatusBtnPaid]}
-                          onPress={() => updateClientBillingStatus(selectedClientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
-                        >
-                          <Text style={[styles.billStatusText, entry.status === 'paid' && styles.billStatusTextPaid]}>
-                            {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => Alert.alert('Eliminar entrada', '¿Eliminar esta entrada de facturación?', [
-                          { text: 'Cancelar', style: 'cancel' },
-                          { text: 'Eliminar', style: 'destructive', onPress: () => removeClientBilling(selectedClientId, entry.id) },
-                        ])} hitSlop={8}>
-                          <Text style={styles.deleteIcon}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
+                  <>
+                    <View style={styles.group}>
+                      {(selectedClient.billing ?? []).map((entry, i, arr) => {
+                        const paid = entry.status === 'paid';
+                        // Mismo verde y mismas etiquetas que la pill de la
+                        // facturación global: es el mismo dato en dos sitios.
+                        const c = paid ? th.colors.green : th.colors.orange;
+                        return (
+                          <InfoRow key={entry.id} isFirst={i === 0} isLast={i === arr.length - 1}>
+                            {/* Borrar es pulsación larga sobre la fila: con la
+                                pill de estado ya puesta, un ✕ al lado dejaba dos
+                                dianas pegadas de 20px y la mitad de las veces se
+                                pulsaba la que no era. */}
+                            <TouchableOpacity
+                              style={styles.billMain}
+                              activeOpacity={1}
+                              onLongPress={() => Alert.alert(
+                                t('clients.menuDelete'),
+                                t('clients.billDeleteConfirm'),
+                                [
+                                  { text: t('common.cancel'), style: 'cancel' },
+                                  { text: t('clients.menuDelete'), style: 'destructive', onPress: () => removeClientBilling(selectedClientId, entry.id) },
+                                ],
+                              )}
+                            >
+                              <Text style={styles.rowValue} numberOfLines={1}>{entry.concept}</Text>
+                              <Text style={styles.billMainDate}>{formatBillDate(entry.date, billLang)}</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.billAmount}>{entry.amount?.toFixed(2)}€</Text>
+                            <TouchableOpacity
+                              style={[styles.billPill, { backgroundColor: withOpacity(c, 0.12) }]}
+                              onPress={() => updateClientBillingStatus(selectedClientId, entry.id, paid ? 'pending' : 'paid')}
+                              activeOpacity={0.75}
+                              hitSlop={8}
+                            >
+                              <Text style={[styles.billPillText, { color: c }]}>
+                                {paid ? t('clients.statusPaid') : t('clients.billPending')}
+                              </Text>
+                            </TouchableOpacity>
+                          </InfoRow>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.infoHint}>{t('clients.info.billHint')}</Text>
+                  </>
                 )}
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Danger zone ── */}
-              <TouchableOpacity
-                style={styles.deleteClientBtn}
-                onPress={() => handleDeleteClient(selectedClientId)}
-                activeOpacity={0.8}
+              {/* ── Conexión ── */}
+              <InfoSection
+                title={t('clients.info.connection')}
+                summary={infoSummaries.connection}
+                tone={infoSummaries.connectionTone}
+                open={openSections.connection}
+                onToggle={() => setOpenSections((s) => ({ ...s, connection: !s.connection }))}
               >
-                <Text style={styles.deleteClientBtnText}>{t('clients.deleteClientTitle')}</Text>
+                <ClientCodeBlock client={selectedClient} showToast={showToast} flat />
+              </InfoSection>
+
+              {/* Eliminar cliente: terciario, como el resto de salidas que no se
+                  pulsan a diario. La caja roja de antes pesaba más en la
+                  pantalla que cualquiera de las secciones que tiene encima. */}
+              <TouchableOpacity
+                style={styles.infoDanger}
+                onPress={() => handleDeleteClient(selectedClientId)}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.infoDangerText}>{t('clients.deleteClientTitle')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -2855,6 +2968,25 @@ export default function ClientsScreen() {
             onCreateBlank={handleCreateProgram}
             onCreateFromTemplate={handleCreateFromTemplate}
             onClose={() => setShowNewProgram(false)}
+          />
+        )}
+
+        {/* Calendario del peso y alta de cobro — las dos hojas que la pestaña
+            Info comparte con la facturación global. */}
+        {showWeightCal && (
+          <BillDateSheet
+            value={weightDate}
+            lang={billLang}
+            onPick={(iso) => { setWeightDate(iso); setShowWeightCal(false); }}
+            onClose={() => setShowWeightCal(false)}
+          />
+        )}
+        {addingBill && (
+          <GlobalAddBillingSheet
+            clients={clients}
+            lang={billLang}
+            lockedClientId={selectedClientId}
+            onClose={() => setAddingBill(false)}
           />
         )}
 
@@ -4037,38 +4169,6 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.onAccent,
   },
 
-  // Legacy stubs — kept so detail view still compiles
-  cTagRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  // Selectable tags in info tab
-  cTagSelectable: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
-    borderRadius:      th.radius.full,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-  },
-  cTagSelectableActive: {
-    backgroundColor: `${th.colors.accent}14`,
-    borderColor:     `${th.colors.accent}40`,
-  },
-  cTagSelectableTick: {
-    fontSize:   typography.xs,
-    color:      th.colors.accent,
-    fontWeight: typography.bold,
-  },
-  cTagSelectableText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  cTagSelectableTextActive: { color: th.colors.accent },
 
   // Legacy action button stubs
 
@@ -4220,6 +4320,10 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.spacingTag,
     color: th.colors.accent,
   },
+  // Dentro de la sección Conexión de Info la tarjeta ya está dentro de otra
+  // `surface`: se queda con su contenido y suelta fondo, radio y padding, que
+  // los pone la sección.
+  codeCardFlat: { backgroundColor: 'transparent', borderRadius: 0, padding: 0 },
   codeExplain: {
     ...textStyles.subtitle,
     color:      th.colors.mutedLight,
@@ -4263,11 +4367,6 @@ const makeStyles = (th) => StyleSheet.create({
   codeDismissText: {
     ...textStyles.cardType,
     color: th.colors.mutedLight,
-  },
-  infoCodeWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.sm,
   },
 
   // ── Active program hero ──
@@ -4405,39 +4504,8 @@ const makeStyles = (th) => StyleSheet.create({
   exMiniDate: { fontSize: typography.xs, color: th.colors.muted },
   exMiniVal:  { fontSize: typography.xs, color: th.colors.text, fontWeight: typography.medium },
 
-  // ── Info tab ──
-  accordion: {
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  accordionHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  accordionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  accordionArrow: { fontSize: 16, color: th.colors.muted },
-  accordionBody:  { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
-
-  fieldLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    marginBottom:  spacing.xs,
-    marginTop:     spacing.xs,
-    fontWeight:    typography.bold,
-  },
-  fieldHint: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-    marginTop: 4,
-  },
+  // El único `input` que queda del estilo antiguo: el renombrado de etiqueta
+  // del filtro de la lista, que no es parte de esta migración.
   input: {
     backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
@@ -4448,92 +4516,184 @@ const makeStyles = (th) => StyleSheet.create({
     color:             th.colors.text,
     fontSize:          typography.base,
   },
-  statusRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
+
+  // ══ Info — categorías plegables ═════════════════════════════════════════════
+  // Cinco tarjetas `surface` con resumen en la cabecera. Dentro no hay ni un
+  // borde: los campos son la lista agrupada, las etiquetas y los estados son
+  // pills tintadas y las cifras van en cajas `bg`.
+
+  infoTabContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    gap:               spacing.md,
   },
-  statusBtn: {
+  infoSec: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
+    overflow:        'hidden',
+  },
+  infoSecHead: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    minHeight:         52,
+    paddingHorizontal: spacing.lg,
+  },
+  infoSecTitle: {
+    ...textStyles.cardType,
+    textTransform: 'uppercase',
+    color:         th.colors.text,
+  },
+  // Ocupa el hueco que deja el título aunque esté vacío: si no, el galón se
+  // pega al rótulo en las secciones sin resumen y las cabeceras no casan.
+  infoSecSum: {
+    ...textStyles.subtitle,
+    flex:      1,
+    textAlign: 'right',
+  },
+  infoSecChevOpen: { transform: [{ rotate: '180deg' }] },
+  infoSecBody: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.lg,
+    gap:               spacing.lg,
+    overflow:          'hidden',
+  },
+  // Filete a sangre: sale del padding de la tarjeta por los dos lados.
+  infoSecRule: {
+    height:           borders.thin,
+    backgroundColor:  th.colors.border,
+    marginHorizontal: -spacing.lg,
+  },
+
+  infoBlock: { gap: spacing.sm },
+  infoLabel: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+  },
+  infoHint:  { ...textStyles.tag, color: th.colors.muted, lineHeight: 14 },
+  infoEmpty: { ...textStyles.subtitle, color: th.colors.muted },
+
+  // ── Estado: tres botones sin borde, el activo tintado con su propio color ──
+  stRow: { flexDirection: 'row', gap: spacing.sm },
+  stBtn: {
     flex:            1,
-    paddingVertical: spacing.sm,
+    height:          38,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    alignItems:      'center',
+    backgroundColor: th.colors.surface2,
     flexDirection:   'row',
+    alignItems:      'center',
     justifyContent:  'center',
-    gap:             4,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusBtnText: { fontSize: typography.xs, fontWeight: typography.medium },
-
-  addRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginBottom:  spacing.xs,
-  },
-
-  // ── Weight list ──
-  weightList: {
-    borderRadius:  th.radius.sm,
-    borderWidth:   borders.thin,
-    borderColor:   th.colors.borderCard,
-    overflow:      'hidden',
-  },
-  weightRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    padding:         spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
     gap:             spacing.sm,
   },
-  weightDate: { flex: 1, fontSize: typography.sm, color: th.colors.muted },
-  weightVal:  { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  deleteIcon: { fontSize: typography.sm, color: th.colors.muted, padding: 4 },
+  stDot:     { width: 6, height: 6, borderRadius: 3 },
+  stBtnText: { ...textStyles.cardType, textTransform: 'uppercase', color: th.colors.mutedLight },
 
-  deleteClientBtn: {
-    marginHorizontal: spacing.xl,
-    marginTop:        spacing.xl,
-    marginBottom:     spacing.md,
-    paddingVertical:  spacing.md,
-    borderRadius:     th.radius.sm,
-    backgroundColor:  `${th.colors.red}15`,
-    borderWidth:      borders.thin,
-    borderColor:      `${th.colors.red}40`,
-    alignItems:       'center',
+  // ── Etiquetas ──
+  tagRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tagPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+    borderRadius:      th.radius.full,
+    backgroundColor:   th.colors.surface2,
   },
-  deleteClientBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.red,
-  },
+  tagPillOn:     { backgroundColor: th.tint.accent10 },
+  // Mismo cuerpo y mismo peso encendida o apagada: si cambiara, la pill
+  // cambiaría de ancho al asignarla y la fila entera daría un salto.
+  tagPillText:   { ...textStyles.cardType, color: th.colors.mutedLight },
+  tagPillTextOn: { color: th.colors.accent },
 
-  // ── Billing tiles ──
-  billingRow: { flexDirection: 'row', gap: spacing.xs },
-  billingTile: {
-    flex:            1,
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
+  // ── Lista agrupada (campos, pesos, facturas) ──
+  group:   { gap: spacing.xs },
+  infoRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    minHeight:         44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm,
+    backgroundColor:   th.colors.surface2,
+  },
+  infoRowKey: {
+    ...textStyles.spacingTag,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+    width:         74,
+  },
+  // El campo ES la fila: sin caja propia, sin padding y sin altura mínima
+  // propia, que la pone la fila.
+  infoRowInput: {
+    ...textStyles.cardType,
+    flex:    1,
+    color:   th.colors.text,
+    padding: 0,
+  },
+  rowDate:   { ...textStyles.subtitle, color: th.colors.mutedLight, flex: 1 },
+  rowValue:  { ...textStyles.cardType, color: th.colors.text },
+  rowDelete: { ...textStyles.cardType, color: th.colors.muted },
+
+  // ── Fila de alta (peso, etiqueta nueva) ──
+  addRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  fld: {
+    ...textStyles.cardType,
+    height:            44,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    color:             th.colors.text,
+  },
+  // Mismo campo, pero abre una hoja en vez de un teclado (la fecha del peso).
+  // Repite la caja de `fld` en vez de componerse con ella: `fld` lleva estilos
+  // de texto y esto es una `View`, que no los admite.
+  fldBtn: {
+    height:            44,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.sm,
+  },
+  fldBtnText: { ...textStyles.cardType, color: th.colors.text, flex: 1 },
+  plusBtn: {
+    width:           44,
+    height:          44,
     borderRadius:    th.radius.sm,
-    padding:         spacing.sm,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
+    justifyContent:  'center',
   },
-  billingTileLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    marginBottom:  3,
+  plusBtnText: { ...textStyles.cardTitle, color: th.colors.onAccent },
+
+  notesBox: {
+    ...textStyles.subtitle,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.md,
+    padding:           spacing.md,
+    minHeight:         88,
+    textAlignVertical: 'top',
+    color:             th.colors.text,
+    lineHeight:        18,
   },
-  billingTileValue: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
+
+  // Las cifras de facturación reutilizan `billTilesRow`/`billTile*` de la
+  // facturación global, solo repintadas en `bg`.
+
+  billMain:     { flex: 1, minWidth: 0 },
+  billMainDate: { ...textStyles.tag, color: th.colors.muted, marginTop: spacing.xs },
+  billAmount:   { ...textStyles.cardType, color: th.colors.text },
+  // La pill de estado es la de la facturación global (`billPill`, más abajo).
+
+  infoDanger: {
+    height:         44,
+    alignItems:     'center',
+    justifyContent: 'center',
+    marginTop:      spacing.sm,
   },
+  infoDangerText: { ...textStyles.cardType, color: th.colors.red },
 
   // ══ Facturación global — pantalla migrada ═══════════════════════════════════
-  // Los estilos `billing*` / `billEntry` / `billStatus*` de arriba y abajo siguen
-  // siendo los del detalle de cliente, que NO está migrado: no los toques aquí.
 
   // Cabecera: ‹ + título hero + ＋, misma geometría que el header de la lista.
   billHeader: {
@@ -4810,75 +4970,7 @@ const makeStyles = (th) => StyleSheet.create({
   calDayText:    { ...textStyles.cardType, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  // ── Billing entries ──
-  billEntry: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    marginBottom:    spacing.xs,
-  },
-  billConcept: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  billDate: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
-  billAmount: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  // Pill style for existing entries (compact)
-  billStatusBtn: {
-    borderWidth:       borders.thin,
-    borderColor:       `${th.colors.orange}50`,
-    backgroundColor:   `${th.colors.orange}10`,
-    borderRadius:      th.radius.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   3,
-  },
-  // Taller variant for the ADD form toggle (matches input height)
-  billStatusBtnForm: {
-    borderWidth:       borders.thin,
-    borderColor:       `${th.colors.orange}50`,
-    backgroundColor:   `${th.colors.orange}10`,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.sm,
-  },
-  billStatusBtnPaid: {
-    borderColor:     `${th.colors.green}50`,
-    backgroundColor: `${th.colors.green}10`,
-  },
-  billStatusText: {
-    fontSize: typography.xs,
-    color:    th.colors.orange,
-  },
-  billStatusTextPaid: { color: th.colors.green },
-
   // ── Buttons ──
-  accentBtn: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-  },
-  accentBtnSmall: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-  },
-  accentBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
-  accentBtnTextSmall: { fontSize: typography.base, letterSpacing: 0.5 },
   ghostBtn: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,

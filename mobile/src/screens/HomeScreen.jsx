@@ -8,7 +8,7 @@ import Svg, { Path, G } from 'react-native-svg';
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
 // del acordeón de `SessionCard`; ningún `Animated.Value` persiguiendo alturas
 // desde JS.
-import Reanimated, { LinearTransition, FadeIn, withTiming } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import { formatDate } from '../utils/formatters';
 import { isStageLocked } from '../utils/stageLocks';
 import { LockIcon } from '../components/ui/EditorIcons';
 import { DocSheet } from '../components/ui/DocPoints';
+import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import { getWeekStatuses } from '../utils/weekProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
@@ -194,40 +195,6 @@ function WeekSelector({ workoutLog }) {
 // El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
 // elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
 // mirar una sesión sin empezarla.
-
-// Duración del plegado. La comparten la tarjeta (su propio alto), el pie de la
-// de hoy y las tarjetas vecinas: si no coinciden, el movimiento se ve por
-// partes.
-const FOLD_MS = 240;
-
-/**
- * Salida del desplegable: **encoge además de desvanecerse**.
- *
- * `FadeOut` a secas no vale. Reanimated saca la vista del flujo y la pinta fuera
- * del recorte de su tarjeta, así que no la clipa nadie: la lista de ejercicios
- * se desvanecía entera en su sitio en vez de plegarse. En las filas normales
- * colaba porque el desplegable es el último hijo y la tarjeta encoge justo por
- * encima; en la de hoy, con el botón debajo, se veía a la primera.
- *
- * La opacidad va más rápida que el alto para que el contenido no siga ahí
- * cuando la caja ya casi no existe.
- */
-function collapseOut(values) {
-  'worklet';
-  return {
-    initialValues: {
-      opacity: 1,
-      height:  values.currentHeight,
-      width:   values.currentWidth,
-      originX: values.currentOriginX,
-      originY: values.currentOriginY,
-    },
-    animations: {
-      height:  withTiming(0, { duration: FOLD_MS }),
-      opacity: withTiming(0, { duration: FOLD_MS * 0.6 }),
-    },
-  };
-}
 
 function HeroChevron({ size = 13, color = LIMA }) {
   return (

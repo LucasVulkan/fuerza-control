@@ -26,7 +26,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Copia en Drive** | ✅ | `src/screens/DriveBackupScreen.jsx` |
 | **Modales de conexión** (código / Google / modo sync) | ✅ | `ClientCodeModal.jsx`, `ClientGoogleLinkModal.jsx`, `TrainerSyncModal.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ (tarjeta **rehecha**, ver desglose) | `src/screens/ClientsScreen.jsx` |
-| **Ficha de cliente** (header + tabs + tab de Programa) | ✅ (Historial/Progreso/Info **sin migrar**, ver desglose) | `src/screens/ClientsScreen.jsx` |
+| **Ficha de cliente** (header + tabs + Programa + **Info**) | ✅ (Historial y Progreso heredan sus paneles ya migrados) | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
@@ -197,9 +197,10 @@ Divergencias conscientes respecto al mock:
 ### Ficha de cliente — desglose (header, tabs y tab de Programa)
 
 **No hay frame de Figma**: la referencia es un HTML que mandó el usuario
-(`formfit-v21-Clienteficha.html`) más su lista de 8 puntos. Solo entran la vista
-general y el **tab de Programa** — Historial, Progreso e Info se quedan como
-estaban (Info se rehará entero después, y ahí es donde vive ya el código).
+(`formfit-v21-Clienteficha.html`) más su lista de 8 puntos. Este bloque cubre la
+vista general y el **tab de Programa**; Historial y Progreso heredan paneles ya
+migrados (`SessionCard`, `ProgressPanel`) y **Info tiene su propio desglose más
+abajo**.
 
 - **Cabecera, en UNA línea**: `‹` en caja 34×34 `surface2` + nombre a
   `text/hero` + la última actividad (`hace 2 días`, `text/subtitle` `muted`) a la
@@ -290,6 +291,70 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
 
 Pendiente: el `⋯` de la cabecera que dibuja el HTML se ha dejado **fuera** —
 todas sus acciones son ya pestañas o están en el `⋯` del programa.
+
+### Ficha de cliente › Info — desglose
+
+**Sin nodo en Figma.** Maqueta previa en
+[`mockups/client-info.html`](mockups/client-info.html), aprobada antes de tocar
+código. Misma funcionalidad que antes; lo que cambia es cómo se presenta.
+
+- **Cada categoría es una tarjeta plegable con resumen vivo** (`InfoSection`):
+  `surface`, `radius/lg`, título a `text/card-type` en mayúsculas a la izquierda
+  y **el dato que resume la sección a la derecha**. Es lo que justifica el
+  componente: el acordeón anterior eran rótulos a sangre con separadores de 1px
+  y, con todo cerrado —que es como se entra—, la pantalla no decía nada.
+  Los cinco resúmenes salen de datos ya guardados (`infoSummaries`, memoizado):
+  estado + nº de etiquetas · `fullName` (o teléfono, o email) · último peso y su
+  antigüedad · pendiente de cobro · conectado o no.
+  - El tono del resumen es semántico y escaso: accent si pide acción (`Sin
+    conectar`) o describe lo normal (`Activo`), naranja si hay dinero pendiente,
+    `mutedLight` el resto.
+  - `Date.now()` no puede vivir en un render, ni dentro de un `useMemo`
+    (`react-hooks/purity`): la antigüedad del peso la calcula `daysSinceIso()`,
+    a nivel de módulo.
+- **Plegado**: `LinearTransition` en la tarjeta + `collapseOut` en el cuerpo.
+  `collapseOut` **se extrae de `HomeScreen` a `ui/collapseOut.js`** y lo comparten
+  las dos pantallas — mismo `FOLD_MS`, para que dos plegados de la app no se
+  muevan distinto. Sale del flujo y encoge además de desvanecerse; `FadeOut` a
+  secas no clipa y el contenido se queda flotando.
+- **Filete a sangre** entre cabecera y cuerpo (1px `border`, `marginHorizontal`
+  negativo), el mismo recurso que la tarjeta de programa: separa sin meter una
+  segunda superficie.
+- **Fuera todos los bordes del tab.** Los campos de datos personales pasan a la
+  **lista agrupada** (`getCardRadii`, gap `space/xs`) y el `TextInput` **es** la
+  fila: etiqueta `spacing-tag` a ancho fijo de 74 y el valor al lado, sin caja
+  dentro de la caja. Por eso `fieldNameAlias` pasa de `NOMBRE / ALIAS` a `Alias`
+  y `fieldFullName` de `Nombre completo` a `Nombre`: a 10px con tracking 2, las
+  etiquetas largas no caben en la columna.
+- **Estado**: tres botones `surface2` sin borde; el activo se tiñe con el 10% de
+  su color y saca su punto. El del acento usa `tint.accent10`, que en formaFit no
+  es el acento con alfa sino su propio valor.
+- **Etiquetas**: pills `radius/full` sin borde, `tint/accent-10` + texto accent
+  al asignarlas. Mismo cuerpo y mismo peso encendidas y apagadas, si no la pill
+  cambiaría de ancho al tocarla. El campo de etiqueta nueva ya no está siempre
+  puesto: lo abre una pill `＋ Nueva`.
+- **Facturación**: las tres cifras van en cajas `bg` `radius/md`, la misma
+  anatomía que los tres datos de la tarjeta de programa asignado
+  (`adjustsFontSizeToFit` incluido, que a tercios quedan ~86px).
+  - **El alta la hace la hoja que ya existía**: `GlobalAddBillingSheet` acepta
+    `lockedClientId` y esconde su selector de cliente. El formulario que tenía
+    Info era esa misma hoja peor hecha —dos fechas tecleadas a mano y sin
+    calendario—, así que se borra entero. Igual la fecha del peso, que ahora abre
+    el `BillDateSheet` de la facturación global.
+  - La **pill de estado es la de la facturación global** (`billPill`), con su
+    verde y sus mismas etiquetas: es el mismo dato en dos sitios.
+  - Borrar una entrada pasa a **pulsación larga** sobre la fila: con la pill de
+    estado ya puesta, un ✕ al lado dejaba dos dianas pegadas de 20px.
+- **`ClientCodeBlock` es ahora una sección más** ("Conexión"), con una prop
+  `flat` que le quita fondo, radio y padding cuando ya vive dentro de otra
+  `surface`. En el tab de Programa sigue igual que estaba.
+- **Eliminar cliente** deja de ser una caja roja —pesaba más que cualquiera de
+  las secciones de encima— y es un terciario de texto al pie.
+- **i18n**: las claves de este tab llevaban tiempo en `es.json`/`en.json` sin
+  usarse (el JSX tenía el castellano incrustado). Se conectan todas, se les
+  quitan los emojis heredados de la web a `personalData` / `bodyWeight` /
+  `billing`, y se añade `clients.info.*` para lo nuevo.
+- De paso mueren `AccentBtn` y 38 claves de estilo que este cambio dejó sin uso.
 
 ### Progreso › pestaña Carga — desglose
 
@@ -1254,6 +1319,13 @@ listas ni controles nuevos.
   último: al revés que el primero. Implementado como helper `getCardRadii(th, isFirst, isLast)`
   en `ProgressTab.jsx`. Se usa en listas densas de datos/config, **no** en listas de
   navegación (Clientes, History y HomeView usan tarjetas independientes con radio completo).
+- **Tarjeta plegable** (Home y ficha de cliente): `Reanimated.View` con
+  `layout={LinearTransition.duration(FOLD_MS)}` en la tarjeta y el cuerpo montado
+  solo mientras está abierta, con `entering={FadeIn}` y
+  **`exiting={collapseOut}`** — `src/components/ui/collapseOut.js`. `FadeOut` a
+  secas NO vale: Reanimated saca la vista del flujo y no la clipa nadie, así que
+  el contenido se desvanece en su sitio en vez de plegarse. `FOLD_MS` es
+  compartido a propósito.
 - **Barra de búsqueda estándar**: `surface2`, `radius/sm`, altura 42, lupa a la izquierda
   (mutedLight) y "✕" a la derecha que aparece al escribir. Los botones cuadrados
   adyacentes (filtro, "+") miden 42×42 para casar con ella.
