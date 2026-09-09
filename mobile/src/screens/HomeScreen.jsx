@@ -494,6 +494,7 @@ export default function HomeScreen() {
   const freeSessionPresets   = useStore((s) => s.freeSessionPresets);
   const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
   const navigate             = useStore((s) => s.navigate);
+  const setPrintingProgram   = useStore((s) => s.setPrintingProgram);
   const clientSync           = useStore((s) => s.clientSync);
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
@@ -856,7 +857,10 @@ export default function HomeScreen() {
                   adherenceColor={requiresAttention(adherence.status) ? adherenceColor(th, adherence.status) : null}
                   pace={adherence.status === STATUS.NO_DATA ? null : adherence.recentPerWeek}
                   loadPct={loadPct}
-                  onPress={() => navigate('programPrint')}
+                  // Se fija SIEMPRE el programa que se va a mirar: `_viewingProgramId`
+                  // es global, y entrar sin fijarlo dejaba ver el último que se abrió
+                  // (una plantilla, el de un cliente) en vez del propio.
+                  onPress={() => setPrintingProgram(activeProgram.id)}
                   // Los dos accesos que vivían en el banner se mudan a las
                   // piezas equivalentes de la tarjeta: la etiqueta CICLO abre la
                   // ficha del apartado (es el concepto que más cuesta y este es

@@ -120,6 +120,15 @@ export default function ProgramEditorScreen({ navigation }) {
 
   const leavingRef = useRef(false);
 
+  // `_editingProgramId` es global y sale sucio: salir sin cambios no pasa por
+  // `restoreSnapshot` y el id se quedaba puesto, así que quien entrase después
+  // por el fallback —Onboarding— heredaba este programa. Se suelta al
+  // desmontar, no antes: hacerlo con la pantalla en pantalla la repintaría con
+  // otro programa durante la animación de salida.
+  useEffect(() => () => {
+    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
+  }, []);
+
   // Reverts the live edits to the snapshot taken on entry, then clears edit state.
   // Sin foto no hay nada que revertir: `importData` la borra al escribir encima
   // (fallo 12), y ahí lo correcto es salir dejando lo que acaba de entrar.

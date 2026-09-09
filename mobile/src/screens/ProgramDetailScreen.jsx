@@ -14,7 +14,7 @@
  * peldaños de una escalera. Con la etapa 1 seleccionada no hay nada que
  * comparar y esas tres cosas desaparecen.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -325,7 +325,6 @@ export default function ProgramDetailScreen() {
   const th           = useTheme();
   const styles       = useThemedStyles(makeStyles);
 
-  const ui                   = useStore((s) => s.ui);
   const programs             = useStore((s) => s.programs);
   const profile              = useStore((s) => s.profile);
   const clients              = useStore((s) => s.clients);
@@ -345,7 +344,18 @@ export default function ProgramDetailScreen() {
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
-  const programId = ui._viewingProgramId ?? profile.activeProgramId;
+  // El visualizador mira UN programa: el que le dan al abrirlo. Se congela en
+  // el montaje y se suelta al salir. Releer el global en cada render era lo que
+  // dejaba entrar el programa del anterior —una plantilla, el de un cliente—
+  // cuando alguien navegaba aquí sin fijarlo; los programas no se cruzan.
+  const [programId] = useState(() => {
+    const s = useStore.getState();
+    return s.ui._viewingProgramId ?? s.profile.activeProgramId;
+  });
+  useEffect(() => () => {
+    useStore.setState((s) => ({ ui: { ...s.ui, _viewingProgramId: null } }));
+  }, []);
+
   const program   = programs[programId];
 
   const allExercises = useMemo(
