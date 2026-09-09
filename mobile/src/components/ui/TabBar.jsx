@@ -8,16 +8,15 @@
  * pantalla entera va sobre `bg` y la banda desaparece
  * (docs/specs/home-sessions.md §4.6).
  *
- * Sigue sin ser `SegmentedControl` con otra piel, pero la diferencia ya no sale
- * del fondo sobre el que flotan sino del color del highlight:
+ * Sigue sin ser `SegmentedControl` con otra piel: track `surface2` y
+ * `radius.full` allí, `surface` y `radius.md` aquí.
  *
- *   > El `SegmentedControl` de filtro lleva el highlight en `accent`; las
- *   > pestañas de navegación lo llevan NEUTRO. En una pantalla con los dos, la
- *   > píldora lima es siempre el filtro.
- *
- * Encaja con la regla del acento: marca acción, no en qué pestaña estás. Los
- * dos siguen sin parecerse — track `surface2` y `radius.full` allí, `surface` y
- * `radius.md` aquí.
+ * ⚠️ **La píldora activa va en `accent`.** Nació neutra —la regla de
+ * `specs/home-sessions.md` §4.6 reservaba el lima para los segmentados de
+ * filtro—, pero en QA sobre la ficha de cliente el usuario la quiso en acento:
+ * la pestaña en la que estás es el dato más importante de la cabecera y en
+ * `surface2` casi no se veía. La diferencia con el segmentado la siguen
+ * llevando el track y el radio, que es donde estaba de verdad.
  *
  * Va sin padding propio: lo coloca quien lo usa.
  */
@@ -109,7 +108,7 @@ const makeStyles = (th) => StyleSheet.create({
     top:             PAD,
     bottom:          PAD,
     borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
+    backgroundColor: th.colors.accent,
   },
   tab: {
     flex:              1,
@@ -118,5 +117,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
   },
   label:       { ...textStyles.cardType, color: th.colors.mutedLight },
-  labelActive: { color: th.colors.text },
+  labelActive: { color: th.colors.onAccent },
 });

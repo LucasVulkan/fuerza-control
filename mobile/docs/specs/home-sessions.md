@@ -426,6 +426,13 @@ inferior, sin `paddingBottom`).
 > pestañas de navegación lo llevan **neutro**. En una pantalla con los dos, la
 > píldora lima es siempre el filtro.
 
+> ⚠️ **Revertido en QA (sep-2026).** La píldora de `TabBar` pasa a `accent` con
+> el texto en `onAccent`: probada en la ficha de cliente, en `surface2` la
+> pestaña activa casi no se distinguía, y en qué pestaña estás es el dato que
+> manda en esa cabecera. La diferencia con el segmentado se queda donde ya
+> estaba de verdad —track `surface` + `radius.md` contra `surface2` +
+> `radius.full`—, que era el otro argumento de este mismo apartado.
+
 Los dos siguen sin parecerse —track `surface2` y `radius.full` contra `surface`
 y `radius.md`— y siguen conviviendo: las pestañas navegan entre sub-pantallas,
 y dentro de cada una hay segmentados que filtran. Lo que cambia es **de dónde
