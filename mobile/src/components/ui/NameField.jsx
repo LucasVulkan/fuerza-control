@@ -12,7 +12,7 @@
  * nombres de antes del límite —importados, del entrenador, de arquetipos
  * viejos— que no son del usuario para perderlos sin avisar. Con el máximo
  * abierto a lo que ya hay, esos nombres se pueden acortar pero no alargar, y en
- * cuanto bajan de 20 vuelve a mandar el límite.
+ * cuanto bajan del límite vuelve a mandar él.
  */
 
 import { View, Text, TextInput, StyleSheet } from 'react-native';
@@ -22,7 +22,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { NAME_MAX } from '../../utils/names';
 
 // Hueco que se le quita al input para que el texto no pase por debajo del
-// contador: el propio contador ("20/20" en `smallBold`) más su margen.
+// contador: el propio contador ("25/25" en `smallBold`) más su margen.
 const COUNT_ROOM = 44;
 
 export default function NameField({ style, value, ...rest }) {

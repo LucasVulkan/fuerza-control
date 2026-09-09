@@ -135,7 +135,7 @@ export default function ScreenHeader({
             <Text
               style={styles.title}
               // Una línea: a 16px caben ~32 caracteres. Escribir está
-              // limitado a `NAME_MAX` (20), pero lo guardado de antes puede ser
+              // limitado a `NAME_MAX` (25), pero lo guardado de antes puede ser
               // más largo y trunca a propósito: partirlo en dos haría que la
               // barra cambiase de alto según el programa que abras.
               numberOfLines={1}

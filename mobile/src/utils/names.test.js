@@ -13,8 +13,13 @@ describe('copyName', () => {
     expect(copyName('x'.repeat(60)).length).toBeLessThanOrEqual(NAME_MAX);
   });
 
-  it('recorta la base y conserva el sufijo, sin separador colgando', () => {
-    expect(copyName('Full Body · Barra')).toBe('Full Body (copia)');
+  it('recorta la base y conserva el sufijo, sin palabra partida', () => {
+    expect(copyName('Upper/Lower · Barra')).toBe('Upper/Lower (copia)');
+    expect(copyName('Glúteo prioritario')).toBe('Glúteo (copia)');
+  });
+
+  it('corta seco cuando la primera palabra ya no cabe', () => {
+    expect(copyName('Supercalifragilistico')).toBe('Supercalifragilis (copia)');
   });
 
   it('aguanta vacío y nulo', () => {

@@ -354,13 +354,14 @@ fila activa visible en Workout (cambió `keyboardVerticalOffset`).
 
 ---
 
-## 7. U16 — el límite de 20 caracteres
+## 7. U16 — el límite de 25 caracteres
 
 §6 dejó escrito que el nombre "va a limitarse al crear" y calculó ~32 sobre el
-ancho de la barra. El número que manda no es ése: la sesión de hoy de la Home
-va a 24px Black **sin `numberOfLines`**, así que a partir de ~20 la tarjeta
-crece una línea y empuja lo de debajo. **`NAME_MAX = 20`** (`src/utils/names.js`)
-es lo que cabe en una línea en todas las pantallas a la vez.
+ancho de la barra. Ese es el techo. El suelo lo pone otra pantalla: la sesión de
+hoy de la Home va a 24px Black **sin `numberOfLines`**, y ahí sólo caben ~20 en
+una línea. **`NAME_MAX = 25`** (`src/utils/names.js`) se queda entre las dos: un
+nombre en lo alto del rango puede partir la tarjeta de hoy en dos líneas, y ese
+es el precio aceptado por dejar sitio a escribir algo que se entienda.
 
 **Al escribir.** `ui/NameField.jsx` envuelve el input que ya había —no trae caja
 propia: las hojas usan `sheetInput` y el onboarding `textInput`, que no son el
@@ -372,16 +373,16 @@ blanco y desde plantilla (`ClientsScreen`), nombre manual y copia de plantilla
 `NameField`: el input llega hasta las acciones y la barra es de 56, así que el
 contador se pinta **en el hueco de acciones y sólo mientras renombras**.
 
-**`maxLength` es `max(NAME_MAX, longitud actual)`, no 20.** En Android un `value`
+**`maxLength` es `max(NAME_MAX, longitud actual)`, no 25.** En Android un `value`
 más largo que `maxLength` se recorta al editar, y hay nombres de antes del
 límite —importados, del entrenador, de programas viejos— que no son del usuario
 para perderlos sin avisar. Con el máximo abierto a lo que ya hay, esos nombres
-se acortan pero no se alargan, y en cuanto bajan de 20 vuelve a mandar el
-límite. El contador enseña `37/20` en rojo mientras tanto: dice la verdad en vez
-de bloquear.
+se acortan pero no se alargan, y en cuanto bajan del límite vuelve a mandar él.
+El contador enseña `37/25` en rojo mientras tanto: dice la verdad en vez de
+bloquear.
 
 **Y los nombres que reparte la app.** El límite no vale nada si el generador
-entrega nombres de 43: abrir el lápiz enseñaría `43/20` sin haber escrito nada.
+entrega nombres de 43: abrir el lápiz enseñaría `43/25` sin haber escrito nada.
 Los 26 nombres de `src/data/archetypes.js` que se pasaban están reescritos, y un
 test lo sostiene (`src/utils/names.test.js`).
 
@@ -396,9 +397,17 @@ test lo sostiene (`src/utils/names.test.js`).
   las pantallas donde aparece. `Empuje vertical, tracción y pierna anterior` →
   `Empuje · pierna`. De paso cae "Tirón", que no estaba en el vocabulario del
   resto de plantillas: ahora todas dicen "Tracción".
+
+El catálogo se reescribió con 20 en la mano y se queda como está aunque el
+límite acabara en 25: a 25 volverían **algunos** de los originales
+(`Full Body · Hipertrofia`, 23) y no otros (`Full Body · Hipertrofia · Barra
+libre`, 37), y la familia quedaría a medias —unas con objetivo y otras sin él—,
+que es peor que el esquema entero. Los 5 caracteres de más son para lo que
+escriba el usuario.
 - **Copias**: `copyName()` recorta la base y **nunca el sufijo** — sin `(copia)`
   dos filas seguidas no se distinguen, que es justo lo que la copia necesita
-  decir. `Full Body · Barra` → `Full Body (copia)`.
+  decir. El corte se lleva la palabra que parta por la mitad: `Upper/Lower ·
+  Barra` → `Upper/Lower (copia)`, no `Upper/Lower · Bar (copia)`.
 
 **Lo que se queda fuera.** El nombre de **etapa** (`Etapa 1`, el campo de la hoja
 de ajustes) no lleva límite: no es un programa ni una sesión y no aparece en la
@@ -413,4 +422,4 @@ se capan al entrar: se muestran enteras y sólo se pueden acortar al editarlas.
 |---|---|---|
 | **U10** | Cabecera única fuera de la banda accent (§2.1), mismo lenguaje en Workout (§2.2), las dos hojas de Clientes (§2.3) | ✅ `0ca9dd5` · `a0d49bc` · `cd61d02` (merge `7188ca4`) — 4-sep-2026, probada en dispositivo |
 | **U11** | La cabecera pasa a barra de 56 (§6.2), `HeaderRule` compartida, y fuera el colapso de Workout (§6.3) | ✅ 7-sep-2026 — pendiente de prueba en dispositivo |
-| **U16** | `NAME_MAX = 20` al escribir (§7), contador en el campo, y los nombres de arquetipo reescritos para caber | ✅ 9-sep-2026 — pendiente de prueba en dispositivo |
+| **U16** | `NAME_MAX = 25` al escribir (§7), contador en el campo, y los nombres de arquetipo reescritos para caber | ✅ 9-sep-2026 — pendiente de prueba en dispositivo |
