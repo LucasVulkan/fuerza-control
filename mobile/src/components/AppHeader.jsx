@@ -28,7 +28,7 @@ import { PencilIcon }   from './ui/EditorIcons';
 import { Section, MenuRow, Status, RowIcon } from './ui/MenuList';
 import FitLogo from './ui/FitLogo';
 import { formatWhen } from '../utils/formatWhen';
-import { spacing, typography, textStyles, borders } from '../theme';
+import { spacing, textStyles, borders, lh } from '../theme';
 import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -691,12 +691,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Fecha — Inter Bold 10px, tracking 0.4, mutedLight (Figma)
   clockText: {
-    flex:          1,
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    color:         th.colors.mutedLight,
-    textAlign:     'center',
-    letterSpacing: 0.4,
+    ...textStyles.caps,
+    flex:      1,
+    color:     th.colors.mutedLight,
+    textAlign: 'center',
   },
   menuBtn: {
     padding:  spacing.xs,
@@ -713,10 +711,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   pendingBannerText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.orange,
     textAlign:  'center',
-    lineHeight: typography.xs * 1.5,
+    lineHeight: lh(textStyles.label.fontSize),
   },
 
   // ── Bloque de identidad ─────────────────────────────────────────────────────
@@ -731,25 +729,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   meWho:     { flex: 1, minWidth: 0 },
   meNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  // 17px Black con tracking -0.01em: no hay token de Figma para este tamaño.
-  meName: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      17,
-    letterSpacing: -0.17,
-    color:         th.colors.text,
-    flexShrink:    1,
-  },
+  meName: { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   meNameEmpty: { color: th.colors.mutedLight },
-  meNameInput: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      17,
-    letterSpacing: -0.17,
-    color:         th.colors.text,
-    padding:       0,
-  },
+  meNameInput: { ...textStyles.itemTitle, color: th.colors.text, padding: 0 },
   meRole: {
-    fontFamily:    'Inter_600SemiBold',
-    fontSize:      12,
+    ...textStyles.label,
     color:         th.colors.mutedLight,
     marginTop:     spacing.xs,
   },
@@ -762,12 +746,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:   'center',
     flexShrink:       0,
   },
-  planText: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    letterSpacing: 0.88,
-    color:         th.colors.accent,
-  },
+  planText: { ...textStyles.caps, fontFamily: 'Inter_900Black', color: th.colors.accent },
 
   // Segmentado pequeño dentro de la fila (unidades / idioma)
   segWrap: { width: 104, flexShrink: 0 },
@@ -784,7 +763,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:  'transparent',
   },
   chipStripe: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 13 },
-  themeName:  { ...textStyles.tag, color: th.colors.muted },
+  themeName:  { ...textStyles.label, color: th.colors.muted },
   themeNameActive: { fontFamily: 'Inter_900Black', color: th.colors.accent },
 
   // Archived programs modal
@@ -805,16 +784,11 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.xl,
     gap:             spacing.md,
   },
-  archivedTitle: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.muted,
-    letterSpacing: 2,
-  },
+  archivedTitle: { ...textStyles.caps, color: th.colors.muted },
   archivedEmpty: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
+    ...textStyles.label,
+    color:           th.colors.muted,
+    textAlign:       'center',
     paddingVertical: spacing.md,
   },
   archivedRow: {
@@ -825,16 +799,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
     gap:             spacing.sm,
   },
-  archivedName: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  archivedDate: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
+  archivedName: { ...textStyles.body,  color: th.colors.text },
+  archivedDate: { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
   restoreBtn: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs + 2,
@@ -843,11 +809,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       `${th.colors.accent}40`,
   },
-  restoreBtnText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
+  restoreBtnText: { ...textStyles.label, color: th.colors.accent },
   archivedCloseBtn: {
     paddingVertical: spacing.md,
     borderRadius:    th.radius.sm,
@@ -855,9 +817,5 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  archivedCloseBtnText: {
-    fontSize:   typography.base,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  archivedCloseBtnText: { ...textStyles.body, color: th.colors.muted },
 });

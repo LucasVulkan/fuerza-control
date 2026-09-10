@@ -20,7 +20,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import DragSheet from '../components/DragSheet';
 import SessionCard from '../components/SessionCard';
 import { ArrowIcon } from '../components/ui/EditorIcons';
-import { spacing, typography, borders, withOpacity, textStyles, sheetRowBase } from '../theme';
+import { spacing, borders, withOpacity, textStyles, sheetRowBase, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { volumeDeltas } from '../utils/sessionRecap';
 import { internalLoad } from '../utils/trainingLoad';
@@ -256,14 +256,9 @@ const makeCal = (th) => StyleSheet.create({
   },
   navBtn:     { padding: 4 },
   navBtnOff:  { opacity: 0.25 },
-  navIcon:    { fontSize: 24, color: th.colors.muted, lineHeight: 28 },
+  navIcon:    { ...textStyles.title, color: th.colors.muted, lineHeight: 28 },
   navIconOff: { color: th.colors.muted2 },
-  monthLabel: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-  },
+  monthLabel: { ...textStyles.labelStrong, color: th.colors.text },
 
   // Day-of-week header
   header: {
@@ -274,11 +269,9 @@ const makeCal = (th) => StyleSheet.create({
   // Subida de brillo y peso: en muted2 a 9 px la fila de días se perdía y el
   // calendario quedaba sin sus ejes.
   hDay: {
-    textAlign:     'center',
-    fontSize:      10,
-    fontWeight:    typography.heavy,
-    color:         th.colors.mutedLight,
-    letterSpacing: 1.2,
+    ...textStyles.caps,
+    textAlign: 'center',
+    color:     th.colors.mutedLight,
   },
 
   // Grid
@@ -299,13 +292,15 @@ const makeCal = (th) => StyleSheet.create({
   // la carga y pintarlo encima destruiría el dato que el mapa existe para dar.
   cellSel:   { borderWidth: 2, borderColor: th.colors.text },
 
-  dayNum:       { fontSize: 10, color: th.colors.muted2 },
+  // La celda mide 30 y el número sube de 10 a 12 (suelo de la escala): entra
+  // holgado y el calendario deja de pedir que lo mires de cerca.
+  dayNum:       { ...textStyles.label, color: th.colors.muted2 },
   // Mismo color y mismo peso en los cuatro escalones: lo que ordena los días es
   // el fondo, no el número, y verlo cambiar de color a mitad de escala se leía
   // como otro estado más.
-  dayNumOnHeat: { color: th.colors.text,   fontWeight: typography.bold },
-  dayNumNoRpe:  { color: th.colors.accent, fontWeight: typography.bold },
-  dayNumToday:  { color: th.colors.accent,   fontWeight: typography.medium },
+  dayNumOnHeat: { color: th.colors.text,   fontFamily: 'Inter_700Bold' },
+  dayNumNoRpe:  { color: th.colors.accent, fontFamily: 'Inter_700Bold' },
+  dayNumToday:  { color: th.colors.accent },
 
   // ── Leyenda del mapa de calor ──
   legend: {
@@ -314,7 +309,7 @@ const makeCal = (th) => StyleSheet.create({
     gap:           spacing.xs2,
     marginTop:     spacing.sm,
   },
-  legendLabel:  { ...textStyles.tag, color: th.colors.muted },
+  legendLabel:  { ...textStyles.label, color: th.colors.muted },
   legendScale:  { flexDirection: 'row', gap: 2 },
   legendSwatch: { width: 12, height: 12, borderRadius: th.radius.xs - 1 },
   legendSpacer: { flex: 1 },
@@ -602,14 +597,14 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuBtnGlyph: { ...textStyles.cardTitle, color: th.colors.text, marginTop: -6 },
+  menuBtnGlyph: { ...textStyles.itemTitle, color: th.colors.text, marginTop: -6 },
 
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
   sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between' },
-  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
   sheetHint: {
-    ...textStyles.tag, color: th.colors.mutedLight,
+    ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,
   },
 
@@ -637,17 +632,13 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  stagePillText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  stagePillText: { ...textStyles.label, color: th.colors.muted },
   stagePillTextActive: { color: th.colors.accent },
   stagePillReset: {
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs,
   },
-  stagePillResetText: { fontSize: typography.xs, color: th.colors.muted },
+  stagePillResetText: { ...textStyles.label, color: th.colors.muted },
 
   // List — la lista va a sangre (el calendario de la cabecera lleva sus propios
   // bordes de lado a lado), así que el margen lateral lo pone cada tarjeta.
@@ -665,10 +656,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   emptyIcon: { fontSize: 32 },
   emptyText: {
-    fontSize:   typography.base,
+    ...textStyles.body,
     color:      th.colors.muted,
     textAlign:  'center',
-    lineHeight: typography.base * 1.7,
+    lineHeight: lh(textStyles.body.fontSize),
   },
 
   // ── Date filter chip ─────────────────────────────────────────────────────────
@@ -682,20 +673,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
     backgroundColor:   withOpacity(th.colors.accent, 0.06),
   },
-  dateFilterLabel: {
-    flex:       1,
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
+  dateFilterLabel: { ...textStyles.label, flex: 1, color: th.colors.accent },
   dateFilterClose: {
     padding:         4,
     borderRadius:    th.radius.sm,
     backgroundColor: withOpacity(th.colors.accent, 0.12),
   },
-  dateFilterCloseText: {
-    fontSize:   typography.xs,
-    color:      th.colors.accent,
-    fontWeight: typography.bold,
-  },
+  dateFilterCloseText: { ...textStyles.labelStrong, color: th.colors.accent },
 });

@@ -33,7 +33,7 @@ import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase, getCardRadii } from '../theme';
+import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
@@ -1244,7 +1244,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
       <ScrollView contentContainerStyle={styles.billBody} showsVerticalScrollIndicator={false}>
 
         {/* Tarjetas resumen — mismo tratamiento que las de Progress (statTile),
-            con el valor a `card-title` en vez de `hero`: caben más dígitos. */}
+            con el valor a `itemTitle` en vez de `title`: caben más dígitos. */}
         <View style={styles.billTilesRow}>
           {[
             { label: t('clients.billedLabel'),   value: total,   color: th.colors.text },
@@ -3524,7 +3524,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // "CLIENTES" en color texto, el contador en accent (mismo tamaño hero)
   listTitle: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.text,
     flexShrink: 1,
   },
@@ -3566,7 +3566,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'center',
   },
   hdrNewBtnText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.onAccent,
   },
   // Connectivity status dot (on the cloud icon button)
@@ -3593,21 +3593,15 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     paddingHorizontal: 3,
   },
-  filterBadgeText: {
-    fontSize:   9,
-    fontWeight: typography.heavy,
-    color:      th.colors.onAccent,
-  },
+  filterBadgeText: { ...textStyles.caps, color: th.colors.onAccent },
   // Unified filter sheet
   filterSheetBody: {
     gap:           spacing.lg,
     paddingBottom: spacing.sm,
   },
   filterSecTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
-    letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
@@ -3626,12 +3620,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     flexShrink:      0,
   },
-  tagAddBtnText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   24,
-    lineHeight: 26,
-    color:      th.colors.onAccent,
-  },
+  tagAddBtnText: { ...textStyles.title, lineHeight: 26, color: th.colors.onAccent },
   // Lista de etiquetas — mismo listed-item que el dropdown de Progress, pero
   // sin fondo (más legible sobre la superficie del sheet)
   tagListBox: {
@@ -3653,11 +3642,11 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
-  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.text },
+  dropCheckMark:   { ...textStyles.label, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
+  dropItemText:    { flex: 1, ...textStyles.body, color: th.colors.text },
   dropItemTextSel: { color: th.colors.text },
   tagEmptyText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.colors.mutedLight,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.xs,
@@ -3665,10 +3654,7 @@ const makeStyles = (th) => StyleSheet.create({
   tagActionBtn: {
     padding: spacing.xs,
   },
-  tagActionText: {
-    fontSize: 14,
-    color:    th.colors.mutedLight,
-  },
+  tagActionText: { ...textStyles.body, color: th.colors.mutedLight },
   tagSelectArea: {
     flex:          1,
     flexDirection: 'row',
@@ -3682,10 +3668,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  filterClearBtnText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  filterClearBtnText: { ...textStyles.label, color: th.colors.muted },
   // Row 2: Search + Filter (gap space/sm)
   searchRow: {
     flexDirection:     'row',
@@ -3715,7 +3698,7 @@ const makeStyles = (th) => StyleSheet.create({
   searchInput: {
     flex:    1,
     padding: 0,
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:   th.colors.text,
   },
   // Botón "✕" para limpiar el texto del buscador (aparece al escribir)
@@ -3723,7 +3706,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingLeft: spacing.xs2,
   },
   searchClearText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color: th.colors.mutedLight,
   },
 
@@ -3749,7 +3732,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   attnPillText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
   },
   attnPillBadge: {
     borderRadius:      th.radius.full,
@@ -3761,7 +3744,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   attnPillBadgeText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     fontFamily: 'Inter_700Bold',
   },
   // Tag pills aplicadas — pill seleccionada del lenguaje nuevo: relleno accent
@@ -3779,11 +3762,11 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   tagRowPillText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.onAccent,
   },
   tagRowPillX: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:      th.colors.onAccent,
     lineHeight: 14,
   },
@@ -3803,11 +3786,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     withOpacity(th.colors.accent, 0.4),
     backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
-  chipText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  chipText: { ...textStyles.label, color: th.colors.muted },
   chipTextActive: { color: th.colors.accent },
   chipCountBadge: {
     marginLeft:      4,
@@ -3816,7 +3795,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  chipCountText: { fontSize: typography.xs, color: th.colors.muted },
+  chipCountText: { ...textStyles.label, color: th.colors.muted },
   chipCountBadgeActive: { backgroundColor: withOpacity(th.colors.accent, 0.15) },
   chipCountTextActive: { color: th.colors.accent },
 
@@ -3834,16 +3813,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   emptyIcon: { fontSize: 32 },
-  emptyTitle: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.text,
-  },
+  emptyTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   emptyBody: {
-    fontSize:    typography.sm,
-    color:       th.colors.muted,
-    textAlign:   'center',
-    lineHeight:  typography.sm * 1.6,
+    ...textStyles.body,
+    color:        th.colors.muted,
+    textAlign:    'center',
+    lineHeight:   lh(textStyles.body.fontSize),
     marginBottom: spacing.lg,
   },
   proBtn: {
@@ -3853,25 +3828,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
     marginTop:       spacing.xs,
   },
-  proBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
-  },
+  proBtnText: { ...textStyles.button, color: th.colors.bg },
   hideTabBtn: {
     marginTop:         spacing.sm,
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  hideTabBtnText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
-  },
+  hideTabBtnText: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
   emptyText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
+    ...textStyles.label,
+    color:           th.colors.muted,
+    textAlign:       'center',
     paddingVertical: spacing.xl,
   },
 
@@ -3899,12 +3866,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignSelf:       'center',
     marginBottom:    spacing.sm,
   },
-  infoSheetName: {
-    fontSize:   typography.md,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    marginBottom: spacing.xs,
-  },
+  infoSheetName: { ...textStyles.itemTitle, color: th.colors.text, marginBottom: spacing.xs },
   infoCodeRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -3919,22 +3881,12 @@ const makeStyles = (th) => StyleSheet.create({
     padding:           spacing.md,
     gap:               3,
   },
-  infoCodeLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1,
-  },
-  infoCodeText: {
-    fontSize:      typography.md,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 3,
-  },
-  infoCodeSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
+  infoCodeLabel: { ...textStyles.caps, color: th.colors.accent },
+  // Un codigo de emparejamiento: se lee caracter a caracter, asi que el aire es
+  // funcional. A 16 y no a los 22 de `code` porque comparte fila con el boton
+  // de copiar.
+  infoCodeText: { ...textStyles.code, fontSize: 16, color: th.colors.text },
+  infoCodeSub:  { ...textStyles.label, color: th.colors.muted },
   infoCopyBtn: {
     width:           44,
     height:          44,
@@ -3945,7 +3897,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  infoCopyBtnText: { fontSize: 20 },
+  infoCopyBtnText: { fontSize: 18 },
   infoSheetBtnAccent: {
     backgroundColor:   withOpacity(th.colors.accent, 0.08),
     borderWidth:       borders.thin,
@@ -3955,11 +3907,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
   },
-  infoSheetBtnTextAccent: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
+  infoSheetBtnTextAccent: { ...textStyles.body, color: th.colors.accent },
 
   // ── Key tab ───────────────────────────────────────────────────────────────────
 
@@ -3980,23 +3928,23 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
   },
   cName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:    th.colors.text,
     flex:     1,
     minWidth: 0,
   },
   cStreak: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
   cCycle: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
   cCycleNum: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
@@ -4014,8 +3962,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.md,
     backgroundColor:   withOpacity(th.colors.blue, 0.12),
   },
-  pendingTitle: { ...textStyles.cardType, color: th.colors.text },
-  pendingSub:   { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs },
+  pendingTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  pendingSub:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   // Misma geometría que los CTA de la tarjeta de cliente
   pendingBtn: {
     backgroundColor: th.colors.blue,
@@ -4023,7 +3971,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     flexShrink:      0,
   },
-  pendingBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  pendingBtnText: { ...textStyles.button, color: th.colors.onAccent },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',
@@ -4036,16 +3984,8 @@ const makeStyles = (th) => StyleSheet.create({
   actionRowNext: {
     backgroundColor: withOpacity(th.colors.blue, 0.08),
   },
-  actionLabel: {
-    flex:       1,
-    fontSize:   typography.md,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  actionChevron: {
-    fontSize: 18,
-    color:    th.colors.muted2,
-  },
+  actionLabel:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  actionChevron: { ...textStyles.heading, color: th.colors.muted2 },
   actionBadge: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.full,
@@ -4055,11 +3995,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'center',
     paddingHorizontal: 6,
   },
-  actionBadgeText: {
-    fontSize:   11,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-  },
+  actionBadgeText: { ...textStyles.labelStrong, color: th.colors.onAccent },
   // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
   // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
   // el botón va centrado contra el alto real.
@@ -4074,11 +4010,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Línea de programa: nombre en card-type, etapa en subtitle, los dos mutedLight
   cProgLine: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.mutedLight,
   },
   cStageLine: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color: th.colors.mutedLight,
   },
   // Línea de aviso (sustituye a la de programa) — punto + texto en naranja
@@ -4095,7 +4031,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:      0,
   },
   cAvisoText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:      th.colors.orange,
     flexShrink: 1,
   },
@@ -4109,12 +4045,12 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 0,
   },
   cPaceNum: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
   cPaceUnit: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color: th.colors.mutedLight,
   },
   cDots: {
@@ -4132,7 +4068,7 @@ const makeStyles = (th) => StyleSheet.create({
   cDotFull:  { backgroundColor: th.colors.accent },
   cDotEmpty: { backgroundColor: th.colors.muted },
   cLast: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
@@ -4149,7 +4085,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
   },
   cUnreviewedText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.text,
   },
   // CTA — geometría del componente "Buttons" de Figma
@@ -4162,7 +4098,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:    0,
   },
   cCtaText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.onAccent,
   },
 
@@ -4186,19 +4122,18 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   backIcon: {
-    fontSize:   20,
-    fontWeight: '900',
+    ...textStyles.title,
     color:      th.colors.mutedLight,
     lineHeight: 22,
     marginTop:  -2,
   },
   detailName: {
     flex: 1,
-    ...textStyles.hero,
+    ...textStyles.title,
     color: th.colors.text,
   },
   detailLast: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.muted,
     flexShrink: 0,
   },
@@ -4241,11 +4176,11 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   apBtnText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.text,
   },
   apBtnGlyph: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.accent,
   },
   // "Preparar" va dentro de una tarjeta `surface`, y sobre ella el `surface2`
@@ -4255,7 +4190,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Próxima sesión ──
   apSectionLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:        th.colors.mutedLight,
     marginTop:    spacing.xl,
     marginBottom: spacing.sm2,
@@ -4270,20 +4205,20 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         16,
   },
   apNextLetter: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color: th.colors.accent,
   },
   apNextName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color: th.colors.text,
   },
   apNextMeta: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.colors.mutedLight,
     marginTop: 2,
   },
   apNextHint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.muted,
     lineHeight: 15,
     marginLeft: spacing.xs2,
@@ -4297,12 +4232,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   sheetRow: sheetRowBase(th),
   sheetRowText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     flex:  1,
     color: th.colors.text,
   },
   sheetRowArrow: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.mutedLight,
   },
 
@@ -4314,7 +4249,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm2,
   },
   codeTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.accent,
   },
   // Dentro de la sección Conexión de Info la tarjeta ya está dentro de otra
@@ -4322,7 +4257,7 @@ const makeStyles = (th) => StyleSheet.create({
   // los pone la sección.
   codeCardFlat: { backgroundColor: 'transparent', borderRadius: 0, padding: 0 },
   codeExplain: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     lineHeight: 17,
   },
@@ -4339,11 +4274,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
-  codeText: {
-    ...textStyles.hero,
-    color:         th.colors.text,
-    letterSpacing: 3,
-  },
+  codeText: { ...textStyles.code, color: th.colors.text },
   codeCopyBtn: {
     width:           44,
     height:          44,
@@ -4362,7 +4293,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:   -spacing.md,
   },
   codeDismissText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.mutedLight,
   },
 
@@ -4385,13 +4316,13 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
   },
   lockTag: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.orange,
   },
   lockText: {
-    fontSize:   typography.sm,
+    ...textStyles.body,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.45,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   lockBtn: {
     backgroundColor:   th.colors.orange,
@@ -4401,7 +4332,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
   },
   lockBtnText: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.bg,
   },
 
@@ -4415,15 +4346,8 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     gap:             spacing.xs,
   },
-  noActiveTitle: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
-  noActiveSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
-  },
+  noActiveTitle: { ...textStyles.body,  color: th.colors.muted },
+  noActiveSub:   { ...textStyles.label, color: th.colors.muted2 },
 
   // ── Previous (archived) programs ──
   archRow: {
@@ -4437,24 +4361,12 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     backgroundColor: `${th.colors.surface}80`,
   },
-  archName: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
-  archMeta: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted2,
-    marginTop: 2,
-  },
+  archName: { ...textStyles.body,  color: th.colors.muted },
+  archMeta: { ...textStyles.label, color: th.colors.muted2, marginTop: 2 },
   archIcon: {
     padding: spacing.xs,
   },
-  archDots: {
-    fontSize:  typography.base,
-    color:     th.colors.muted2,
-    width:     18,
-    textAlign: 'center',
-  },
+  archDots: { ...textStyles.body, color: th.colors.muted2, width: 18, textAlign: 'center' },
 
   // ── Exercise mini card ──
   exMiniCard: {
@@ -4470,20 +4382,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:     'center',
     padding:        spacing.md,
   },
-  exMiniName: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  exMiniLast: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  exMiniArrow: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  exMiniName:  { ...textStyles.label, color: th.colors.text },
+  exMiniLast:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
+  exMiniArrow: { ...textStyles.label, color: th.colors.muted },
   exMiniBody: {
     paddingHorizontal: spacing.md,
     paddingBottom:     spacing.md,
@@ -4498,8 +4399,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  exMiniDate: { fontSize: typography.xs, color: th.colors.muted },
-  exMiniVal:  { fontSize: typography.xs, color: th.colors.text, fontWeight: typography.medium },
+  exMiniDate: { ...textStyles.label, color: th.colors.muted },
+  exMiniVal:  { ...textStyles.label, color: th.colors.text },
 
   // El único `input` que queda del estilo antiguo: el renombrado de etiqueta
   // del filtro de la lista, que no es parte de esta migración.
@@ -4510,8 +4411,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
+    ...textStyles.body,
     color:             th.colors.text,
-    fontSize:          typography.base,
   },
 
   // ══ Info — categorías plegables ═════════════════════════════════════════════
@@ -4537,14 +4438,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   infoSecTitle: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     textTransform: 'uppercase',
     color:         th.colors.text,
   },
   // Ocupa el hueco que deja el título aunque esté vacío: si no, el galón se
   // pega al rótulo en las secciones sin resumen y las cabeceras no casan.
   infoSecSum: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     flex:      1,
     textAlign: 'right',
   },
@@ -4564,12 +4465,12 @@ const makeStyles = (th) => StyleSheet.create({
 
   infoBlock: { gap: spacing.sm },
   infoLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
   },
-  infoHint:  { ...textStyles.tag, color: th.colors.muted, lineHeight: 14 },
-  infoEmpty: { ...textStyles.subtitle, color: th.colors.muted },
+  infoHint:  { ...textStyles.label, color: th.colors.muted, lineHeight: 14 },
+  infoEmpty: { ...textStyles.body, color: th.colors.muted },
 
   // ── Estado: tres botones sin borde, el activo tintado con su propio color ──
   stRow: { flexDirection: 'row', gap: spacing.sm },
@@ -4584,7 +4485,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   stDot:     { width: 6, height: 6, borderRadius: 3 },
-  stBtnText: { ...textStyles.cardType, textTransform: 'uppercase', color: th.colors.mutedLight },
+  stBtnText: { ...textStyles.labelStrong, textTransform: 'uppercase', color: th.colors.mutedLight },
 
   // ── Etiquetas ──
   tagRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -4597,7 +4498,7 @@ const makeStyles = (th) => StyleSheet.create({
   tagPillOn:     { backgroundColor: th.tint.accent10 },
   // Mismo cuerpo y mismo peso encendida o apagada: si cambiara, la pill
   // cambiaría de ancho al asignarla y la fila entera daría un salto.
-  tagPillText:   { ...textStyles.cardType, color: th.colors.mutedLight },
+  tagPillText:   { ...textStyles.labelStrong, color: th.colors.mutedLight },
   tagPillTextOn: { color: th.colors.accent },
 
   // ── Lista agrupada (campos, pesos, facturas) ──
@@ -4612,7 +4513,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.surface2,
   },
   infoRowKey: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
     width:         74,
@@ -4620,19 +4521,19 @@ const makeStyles = (th) => StyleSheet.create({
   // El campo ES la fila: sin caja propia, sin padding y sin altura mínima
   // propia, que la pone la fila.
   infoRowInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     flex:    1,
     color:   th.colors.text,
     padding: 0,
   },
-  rowDate:   { ...textStyles.subtitle, color: th.colors.mutedLight, flex: 1 },
-  rowValue:  { ...textStyles.cardType, color: th.colors.text },
-  rowDelete: { ...textStyles.cardType, color: th.colors.muted },
+  rowDate:   { ...textStyles.body, color: th.colors.mutedLight, flex: 1 },
+  rowValue:  { ...textStyles.labelStrong, color: th.colors.text },
+  rowDelete: { ...textStyles.labelStrong, color: th.colors.muted },
 
   // ── Fila de alta (peso, etiqueta nueva) ──
   addRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   fld: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     height:            44,
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
@@ -4652,7 +4553,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'space-between',
     gap:               spacing.sm,
   },
-  fldBtnText: { ...textStyles.cardType, color: th.colors.text, flex: 1 },
+  fldBtnText: { ...textStyles.labelStrong, color: th.colors.text, flex: 1 },
   plusBtn: {
     width:           44,
     height:          44,
@@ -4661,10 +4562,10 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  plusBtnText: { ...textStyles.cardTitle, color: th.colors.onAccent },
+  plusBtnText: { ...textStyles.itemTitle, color: th.colors.onAccent },
 
   notesBox: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.md,
     padding:           spacing.md,
@@ -4678,8 +4579,8 @@ const makeStyles = (th) => StyleSheet.create({
   // facturación global, solo repintadas en `bg`.
 
   billMain:     { flex: 1, minWidth: 0 },
-  billMainDate: { ...textStyles.tag, color: th.colors.muted, marginTop: spacing.xs },
-  billAmount:   { ...textStyles.cardType, color: th.colors.text },
+  billMainDate: { ...textStyles.label, color: th.colors.muted, marginTop: spacing.xs },
+  billAmount:   { ...textStyles.labelStrong, color: th.colors.text },
   // La pill de estado es la de la facturación global (`billPill`, más abajo).
 
   infoDanger: {
@@ -4688,7 +4589,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'center',
     marginTop:      spacing.sm,
   },
-  infoDangerText: { ...textStyles.cardType, color: th.colors.red },
+  infoDangerText: { ...textStyles.labelStrong, color: th.colors.red },
 
   // ══ Facturación global — pantalla migrada ═══════════════════════════════════
 
@@ -4702,7 +4603,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingBottom:     spacing.sm,
   },
   billHeaderTitle: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.text,
     flex:       1,
   },
@@ -4714,7 +4615,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Tarjetas resumen — `statTile` de Progress con el valor a `card-title`
-  // (Black 16) en vez de `hero` (Black 20): son importes, no contadores de 1-3
+  // (`itemTitle`, Black 16) en vez de `title` (Black 22): son importes, no contadores de 1-3
   // dígitos. `adjustsFontSizeToFit` cubre los que aun así no entren.
   billTilesRow: { flexDirection: 'row', gap: spacing.md },
   billTile: {
@@ -4729,14 +4630,14 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:          'hidden',
   },
   billTileValue: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     textAlign:   'center',
     fontVariant: ['tabular-nums'],
   },
   // La etiqueta va ARRIBA de la cifra y en `mutedLight`: aquí nombra el dato,
   // no lo remata (al revés que en las cards de Progress).
   billTileLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
     textAlign:     'center',
@@ -4760,20 +4661,20 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.md,
   },
   billCardName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:      th.colors.text,
     flexShrink: 1,
   },
   // Importe a `card-type` (12) y no a `card-title` (16): es el mismo peso que el
   // número de "Ciclo NN" en la tarjeta de cliente, y deja el nombre de titular.
   billCardAmount: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     flexShrink:  0,
     fontVariant: ['tabular-nums'],
   },
   billCardMeta: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     flexShrink: 1,
   },
@@ -4785,9 +4686,9 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.xs,
     flexShrink:        0,
   },
-  billPillText: { ...textStyles.spacingTag, textTransform: 'uppercase' },
+  billPillText: { ...textStyles.caps, textTransform: 'uppercase' },
   billEmpty: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.xl,
@@ -4799,19 +4700,19 @@ const makeStyles = (th) => StyleSheet.create({
   // sobre `surface` porque el fondo de la hoja YA es `bg`.
   formSheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
   sheetHint: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:        th.colors.mutedLight,
     lineHeight:   17,
     marginBottom: spacing.sm,
   },
   sheetInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:             th.colors.text,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
@@ -4827,7 +4728,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginTop:       spacing.sm,
   },
-  sheetCtaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  sheetCtaText: { ...textStyles.button, color: th.colors.onAccent },
   cyclesGroup: { gap: spacing.sm },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
@@ -4839,13 +4740,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:     borders.thin,
     borderColor:     th.tint.accent50,
   },
-  templateRowName:   { ...textStyles.cardType, color: th.colors.text },
+  templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
   templateRowNameOn: { color: th.colors.accent },
-  templateRowMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+  templateRowMeta:   { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Hoja de alta de cobro ──
   billSecLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
     marginBottom:  spacing.sm,
@@ -4864,7 +4765,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Abierta: esquinas inferiores rectas para fundirse con el menú de debajo
   // (mismo recurso que el desplegable de ejercicios de Progress).
   billSelectOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  billSelectText: { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  billSelectText: { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   // El grupo entero se eleva sobre los campos siguientes (hermanos dentro de
   // `billSheetBody`); el ancla da el contexto de posición al menú absoluto.
   billDropField:  { zIndex: 100 },
@@ -4897,7 +4798,7 @@ const makeStyles = (th) => StyleSheet.create({
   billDropSearchInput: {
     flex:    1,
     padding: 0,
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:   th.colors.text,
   },
   billDropItem: {
@@ -4905,9 +4806,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   billDropItemSel:  { backgroundColor: th.tint.accent10 },
-  billDropItemText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  billDropItemText: { ...textStyles.body, color: th.colors.mutedLight },
   billDropEmpty: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.lg,
@@ -4922,7 +4823,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius:      th.radius.sm,
     backgroundColor:   th.colors.surface2,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:             th.colors.text,
   },
   billCta: {
@@ -4933,12 +4834,12 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginTop:       spacing.sm,
   },
-  billCtaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  billCtaText: { ...textStyles.button, color: th.colors.onAccent },
 
   // ── Calendario (hoja de fecha) ──
   calBody: { paddingBottom: spacing.sm, gap: spacing.md },
   calNav:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  calMonth: { ...textStyles.cardTitle, color: th.colors.text },
+  calMonth: { ...textStyles.itemTitle, color: th.colors.text },
   calNavBtn: {
     width:           34,
     height:          34,
@@ -4954,7 +4855,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  calWeekDay: { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  calWeekDay: { ...textStyles.caps, color: th.colors.mutedLight },
   calDay: {
     width:          34,
     height:         34,
@@ -4964,7 +4865,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   calDaySel:     { backgroundColor: th.colors.accent },
   calDayToday:   { borderWidth: borders.thin, borderColor: th.tint.accent50 },
-  calDayText:    { ...textStyles.cardType, color: th.colors.text },
+  calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
   // ── Buttons ──
@@ -4975,10 +4876,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       th.colors.border,
     borderRadius:      th.radius.sm,
   },
-  ghostBtnText: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
+  ghostBtnText: { ...textStyles.body, color: th.colors.muted },
 
   // ── Modals ──
   modalBackdrop: {
@@ -5001,16 +4899,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:           spacing.xl,
     gap:               spacing.md,
   },
-  modalTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 1,
-  },
-  modalSub: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  modalTitle: { ...textStyles.heading, color: th.colors.text },
+  modalSub:   { ...textStyles.label, color: th.colors.muted },
   // ── Import options ──
   importOption: {
     backgroundColor: th.colors.surface2,
@@ -5019,16 +4909,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
-  importOptionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  importOptionDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
+  importOptionLabel: { ...textStyles.body,  color: th.colors.text },
+  importOptionDesc:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
 
   // ── Context menu ──
   contextMenu: {
@@ -5047,6 +4929,6 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  contextMenuText: { fontSize: typography.base, color: th.colors.text },
+  contextMenuText: { ...textStyles.body, color: th.colors.text },
 });
 

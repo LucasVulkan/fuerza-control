@@ -17,7 +17,7 @@ import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, borders, withOpacity, sheetRowBase, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -786,8 +786,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg,
   },
   errorText: {
+    ...textStyles.body,
     color:     th.colors.muted,
-    fontSize:  typography.base,
     textAlign: 'center',
     marginTop: spacing.xxl,
   },
@@ -821,17 +821,15 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'center',
   },
   timerCountdown: {
-    position:   'absolute',
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.text,
+    ...textStyles.bodyStrong,
+    position: 'absolute',
+    color:    th.colors.text,
   },
   timerExName: {
+    ...textStyles.label,
     flex:       1,
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.4,
+    lineHeight: lh(textStyles.label.fontSize),
   },
   timerSkipBtn: {
     paddingHorizontal: spacing.sm,
@@ -841,11 +839,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       withOpacity(th.colors.accent, 0.35),
     backgroundColor:   withOpacity(th.colors.accent, 0.08),
   },
-  timerSkipText: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
+  timerSkipText: { ...textStyles.label, color: th.colors.accent },
 
   // Header — mismo lenguaje que `ScreenHeader` (barra de 56 sobre el fondo de
   // la app, ceja gris, nombre debajo, botón de volver en caja y regla
@@ -879,7 +873,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Aquí lleva además el reloj, que sí va en accent — es un dato vivo, y es el
   // único sitio de la pantalla donde se lee el tiempo de sesión.
   eyebrowText: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -889,12 +883,12 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant:   ['tabular-nums'],
   },
   headerTitle: {
-    ...textStyles.screenTitle,
+    ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
   },
   freeNameInputHeader: {
-    ...textStyles.screenTitle,
+    ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
     padding:   0,
@@ -903,7 +897,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Texto explicativo de la sesión libre: sin caja, tipografía de la app
   // (text/subtitle) y en mutedLight — es contexto, no un aviso.
   freeInfoText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     lineHeight: 18,
     textAlign:  'center',
@@ -918,13 +912,13 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Añadir — mismo botón que el editor de sesión (210:2784)
   addBtn:     { alignItems: 'center', paddingVertical: spacing.md },
-  addBtnText: { ...textStyles.cardType, color: th.tint.accent50 },
+  addBtnText: { ...textStyles.labelStrong, color: th.tint.accent50 },
   addBtnPlus: { color: th.colors.accent },
 
   // Hoja de "añadir" + editor de bloque de la sesión libre
   sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
   sheetRow: sheetRowBase(th),
-  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
   modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
   blockHeader: {
     flexDirection:     'row',
@@ -944,7 +938,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   blockHeaderTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.onAccent,
     textTransform: 'uppercase',
   },
@@ -955,7 +949,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  blockHeaderAcceptTxt: { ...textStyles.cardType, color: th.colors.text },
+  blockHeaderAcceptTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // Save / discard
   saveBtn: {
@@ -965,19 +959,14 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       spacing.sm,
     backgroundColor: th.colors.accent,
   },
-  saveBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.onAccent,
-    letterSpacing: 1,
-  },
+  saveBtnText: { ...textStyles.button, color: th.colors.onAccent },
   discardBtn: {
     alignItems:      'center',
     paddingVertical: spacing.md,
   },
-  // Tertiary buttom (235:4760) — solo texto, spacingTag, uppercase, rojo (acción destructiva)
+  // Tertiary buttom (235:4760) — solo texto, `caps`, uppercase, rojo (acción destructiva)
   discardText: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.tint.red50,
     textTransform: 'uppercase',
   },

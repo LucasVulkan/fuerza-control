@@ -132,12 +132,12 @@ function Bullet({ styles, text }) {
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
 
   bullets:    { gap: spacing.sm },
   bulletRow:  { flexDirection: 'row', gap: spacing.sm },
-  bulletDot:  { ...textStyles.tag, color: th.tint.red50, lineHeight: 15 },
-  bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+  bulletDot:  { ...textStyles.label, color: th.tint.red50, lineHeight: 15 },
+  bulletText: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
 
   // Rojo de relleno, no de contorno: es la única acción de la app que no se
   // puede deshacer, y tiene que pesar más que "Eliminar todas las copias".
@@ -148,6 +148,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  dangerBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  dangerBtnText: { ...textStyles.button, color: th.colors.text },
   btnDisabled:   { opacity: 0.5 },
 });

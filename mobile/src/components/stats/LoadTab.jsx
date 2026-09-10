@@ -696,14 +696,14 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   statValueBlock: { alignItems: 'center', gap: spacing.xs },
-  statValue: { ...textStyles.hero, textAlign: 'center' },
+  statValue: { ...textStyles.title, textAlign: 'center' },
   statLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.text,
     textAlign:     'center',
   },
-  statSub: { ...textStyles.tag, textAlign: 'center' },
+  statSub: { ...textStyles.label, textAlign: 'center' },
 
   card: {
     backgroundColor: th.colors.surface,
@@ -712,14 +712,14 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   cardHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  cardTitle: { ...textStyles.cardType, color: th.colors.text, textTransform: 'uppercase' },
-  cardMeta:  { ...textStyles.tag, color: th.colors.mutedLight },
+  cardTitle: { ...textStyles.labelStrong, color: th.colors.text, textTransform: 'uppercase' },
+  cardMeta:  { ...textStyles.label, color: th.colors.mutedLight },
 
   legend:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendBar:  { width: 4, height: 9, borderRadius: 1 },
   legendLine: { width: 13, height: 2, borderRadius: 2 },
-  legendText: { ...textStyles.tag, color: th.colors.mutedLight },
+  legendText: { ...textStyles.label, color: th.colors.mutedLight },
 
   strip: {
     flexDirection:   'row',
@@ -731,8 +731,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   dot:        { width: 7, height: 7, borderRadius: 4 },
-  stripText:  { ...textStyles.tag, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
-  stripTitle: { ...textStyles.tag, color: th.colors.text },
+  stripText:  { ...textStyles.label, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
+  stripTitle: { ...textStyles.label, color: th.colors.text },
 
   // ── Chip de lectura (esfuerzo vs carga) ──
   trendChip: {
@@ -745,7 +745,7 @@ const makeStyles = (th) => StyleSheet.create({
   trendChipGood: { backgroundColor: th.tint.accent10 },
   trendChipWarn: { backgroundColor: th.tint.orange30 },
   trendChipText: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -770,12 +770,12 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     marginTop:      spacing.xs2,
   },
-  strainAxisLabel: { ...textStyles.smallBold, color: th.colors.muted },
+  strainAxisLabel: { ...textStyles.caps, color: th.colors.muted },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },
   groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-  groupName:  { ...textStyles.tag, color: th.colors.mutedLight, width: 76 },
+  groupName:  { ...textStyles.label, color: th.colors.mutedLight, width: 76 },
   groupTrack: {
     flex: 1, height: 9, borderRadius: 3,
     backgroundColor: th.colors.surface2,
@@ -783,9 +783,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   groupFill:  { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
   groupMark:  { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
-  groupCount: { ...textStyles.cardType, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  groupHint:  { ...textStyles.tag, color: th.colors.muted, lineHeight: 15 },
+  groupCount: { ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  groupHint:  { ...textStyles.label, color: th.colors.muted, lineHeight: 15 },
 
   emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyText:  { ...textStyles.subtitle, color: th.colors.mutedLight, textAlign: 'center', lineHeight: 19 },
+  emptyText:  { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', lineHeight: 19 },
 });

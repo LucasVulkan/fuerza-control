@@ -5,7 +5,7 @@
  * entrenas — sólo el orden del ciclo.
  *
  * Sin nodo en Figma. Anatomía: fila `surface`/radio `sm`, etiqueta
- * `SEMANA N` en `smallBold` (mismo tratamiento que `statLabel` de
+ * `SEMANA N` en `caps` (mismo tratamiento que `statLabel` de
  * ProgramDetailScreen), cuadrados de sesión en `surface2` con la letra en el
  * color del día.
  */
@@ -74,7 +74,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm2,
   },
-  label: { ...textStyles.smallBold, fontSize: 11, color: th.colors.mutedLight },
+  label: { ...textStyles.caps, color: th.colors.mutedLight },
   dots:  { flexDirection: 'row', gap: spacing.sm, marginLeft: 'auto' },
   square: {
     width:           SQUARE,
@@ -87,5 +87,5 @@ const makeStyles = (th) => StyleSheet.create({
   // Sin cita exacta en §4: se sigue el tratamiento del badge de sesión ya
   // migrado (`previewSessionBadgeText`/`sessionChipLabel` de esta misma
   // pantalla) para la letra del día dentro de un cuadrado pequeño.
-  squareLabel: { ...textStyles.cardType },
+  squareLabel: { ...textStyles.labelStrong },
 });

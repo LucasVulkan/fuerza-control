@@ -44,6 +44,6 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
   },
   chipOn:     { backgroundColor: th.colors.accent },
-  chipText:   { ...textStyles.cardTitle, color: th.colors.mutedLight },
+  chipText:   { ...textStyles.itemTitle, color: th.colors.mutedLight },
   chipTextOn: { color: th.colors.onAccent },
 });

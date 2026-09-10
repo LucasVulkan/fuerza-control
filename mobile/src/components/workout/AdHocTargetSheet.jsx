@@ -101,7 +101,7 @@ const makeStyles = (th) => StyleSheet.create({
   body: { gap: spacing.sm, paddingBottom: spacing.sm },
   row:  { flexDirection: 'row', gap: spacing.sm },
   hint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.muted,
     lineHeight: 15,
     marginTop:  spacing.xs2,

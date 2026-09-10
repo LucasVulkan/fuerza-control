@@ -41,7 +41,7 @@ import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverrid
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { targetLabel as buildTarget } from '../../utils/prescription';
 import { isExerciseDone } from '../../utils/exerciseStatus';
-import { spacing, typography, textStyles, withOpacity } from '../../theme';
+import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ── Geometría del spec ────────────────────────────────────────────────────────
@@ -974,8 +974,7 @@ const makeStyles = (th) => StyleSheet.create({
     minWidth: 22,
   },
   num: {
-    fontFamily:  'Inter_900Black',
-    fontSize:    17,
+    ...textStyles.itemTitle,
     lineHeight:  22,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
@@ -1000,16 +999,14 @@ const makeStyles = (th) => StyleSheet.create({
   // que es el dato que hay que cazar de un vistazo entre repetición y
   // repetición. El número se queda en Black — el contraste es el que ordena.
   name: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      17,
-    lineHeight:    22,
-    letterSpacing: -0.17,
-    color:         th.colors.text,
-    flexShrink:    1,
+    ...textStyles.itemTitleQuiet,
+    lineHeight: 22,
+    color:      th.colors.text,
+    flexShrink: 1,
   },
   keyInline: {
     color:      th.colors.accent,
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
   },
   // Editable: subrayado punteado, que es lo que dice "esto se toca" sin meter
   // un botón en una tarjeta que no tiene ninguno.
@@ -1021,17 +1018,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // "3 × 12-14 reps" — la prescripción, que es lo que se lee entre serie y serie.
   target: {
-    fontFamily:  'Inter_600SemiBold',
-    fontSize:    14,
-    fontWeight:  '600',
+    ...textStyles.bodyStrong,
     color:       th.colors.mutedLight,
     marginTop:   3,
     fontVariant: ['tabular-nums'],
   },
-  tempoInline: {
-    color:         th.colors.muted,
-    letterSpacing: 1.2,
-  },
+  tempoInline: { color: th.colors.muted },
   // NoteButton — 32×32, radius 9, sin fondo, marginTop −5 (alinea ópticamente
   // con la 1ª línea del nombre).
   noteBtn: {
@@ -1071,17 +1063,13 @@ const makeStyles = (th) => StyleSheet.create({
   // El motivo es contexto, no instruccion: gris, minuscula y sin punto para que
   // se lea despues del que, no antes.
   progWhy: {
-    fontFamily: 'Inter_400Regular',
-    fontSize:   14,
-    lineHeight: 18,
+    ...textStyles.body,
+    lineHeight: lh(textStyles.body.fontSize, LINE.row),
     color:      th.colors.mutedLight,
     marginTop:  1,
   },
   progDir: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    fontWeight:    '900',
-    letterSpacing: 1.1,
+    ...textStyles.caps,
     color:         th.colors.accent,
     textTransform: 'uppercase',
     // La flecha arrastra su propio hueco a la izquierda (side bearing), asi que
@@ -1102,18 +1090,13 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.mutedLight,
   },
   progDirCoach: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    fontWeight:    '900',
-    letterSpacing: 1.1,
+    ...textStyles.caps,
     color:         th.colors.blue,
     textTransform: 'uppercase',
   },
   progDetail: {
+    ...textStyles.labelStrong,
     flexShrink:  1,
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
@@ -1126,22 +1109,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   2,
   },
   progDeltaText: {
-    fontFamily:  'Inter_700Bold',
-    fontSize:    11,
-    fontWeight:  '700',
+    ...textStyles.labelStrong,
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
 
   // §4.2 SectionLabel — 10/700 uppercase, tracking 0.14em, muted2, mb 8.
-  sectionLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    marginBottom:  8,
-  },
+  sectionLabel: { ...textStyles.caps, color: th.colors.muted, marginBottom: 8 },
   sectionLabelRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
@@ -1149,22 +1123,15 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Meta de descanso — no está en el spec, se conserva de la implementación
   // previa alineada a la derecha del SectionLabel.
-  sectionLabelMeta: {
-    fontFamily:   'Inter_500Medium',
-    fontSize:     10,
-    fontWeight:   '500',
-    color:        th.colors.muted,
-    marginBottom: 8,
-  },
+  sectionLabelMeta: { ...textStyles.label, color: th.colors.muted, marginBottom: 8 },
 
   // §4.3 WarmupSection expandida — grid 26 | 1fr | 42, gap 6/10, mb 14.
   warmupSection: {
     marginBottom: 14,
   },
   warmupBanner: {
-    fontSize:     typography.xs,
+    ...textStyles.label,
     color:        th.colors.mutedLight,
-    fontStyle:    'italic',
     marginBottom: 6,
   },
   warmupRows: {
@@ -1176,21 +1143,19 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           10,
   },
   warmupRowLabel: {
+    ...textStyles.labelStrong,
     width:       GRID.LABEL_W,
-    fontFamily:  'Inter_800ExtraBold',
-    fontSize:    12,
-    fontWeight:  '800',
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
   warmupDetail: {
+    ...textStyles.body,
     flex:        1,
-    fontSize:    14,
     fontVariant: ['tabular-nums'],
   },
-  warmupWeight: { fontFamily: 'Inter_800ExtraBold', fontWeight: '800', color: th.colors.text },
-  warmupTimes:  { fontFamily: 'Inter_600SemiBold',  fontWeight: '600', color: th.colors.muted },
-  warmupReps:   { fontFamily: 'Inter_700Bold',      fontWeight: '700', color: th.colors.mutedLight },
+  warmupWeight: { fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
+  warmupTimes:  { fontFamily: 'Inter_500Medium',    color: th.colors.muted },
+  warmupReps:   { fontFamily: 'Inter_700Bold',      color: th.colors.mutedLight },
   // Fila completada: todo el texto se apaga a muted2.
   warmupTextOff: { color: th.colors.muted },
   warmupCheck: {
@@ -1204,15 +1169,8 @@ const makeStyles = (th) => StyleSheet.create({
   warmupCheckDone: {
     backgroundColor: th.colors.accent,
   },
-  warmupCheckMark: {
-    fontSize: 13,
-    color:    th.colors.mutedLight,
-  },
-  warmupCheckMarkDone: {
-    fontFamily: 'Inter_900Black',
-    fontWeight: '900',
-    color:      th.colors.onAccent,
-  },
+  warmupCheckMark: { ...textStyles.body, color: th.colors.mutedLight },
+  warmupCheckMarkDone: { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
 
   // §4.4 WarmupSection colapsada — row, gap 8, padding 2 0 14.
   warmupCollapsed: {
@@ -1222,23 +1180,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:    2,
     paddingBottom: 14,
   },
-  warmupCollapsedTick: {
-    fontFamily: 'Inter_900Black',
-    fontWeight: '900',
-    fontSize:   12,
-    color:      th.colors.accent,
-  },
+  warmupCollapsedTick: { ...textStyles.labelStrong, fontFamily: 'Inter_900Black', color: th.colors.accent },
   warmupCollapsedText: {
+    ...textStyles.labelStrong,
     flexShrink:  1,
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
   warmupCollapsedChevron: {
+    ...textStyles.body,
     marginLeft: 'auto',
-    fontSize:   14,
     color:      th.colors.muted,
   },
 
@@ -1250,13 +1201,10 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:  8,
   },
   colLabel: {
-    flex:          1,
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    textAlign:     'center',
+    ...textStyles.caps,
+    flex:      1,
+    color:     th.colors.muted,
+    textAlign: 'center',
   },
   setList: {
     gap: 8,
@@ -1266,14 +1214,7 @@ const makeStyles = (th) => StyleSheet.create({
   dropBlock: {
     marginTop: 12,
   },
-  dropBlockLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.red,
-    marginBottom:  8,
-  },
+  dropBlockLabel: { ...textStyles.caps, color: th.colors.red, marginBottom: 8 },
   dropRowWrap: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -1282,10 +1223,7 @@ const makeStyles = (th) => StyleSheet.create({
   dropRemoveBtn: {
     padding: spacing.xs,
   },
-  dropRemoveText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  dropRemoveText: { ...textStyles.label, color: th.colors.muted },
   // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
   // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
   addLink: {
@@ -1296,7 +1234,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:     6,
     paddingBottom:  2,
   },
-  addLinkText: { ...textStyles.addLink, color: th.colors.mutedLight },
+  addLinkText: { ...textStyles.button, color: th.colors.mutedLight },
   addSetLink:  { marginTop: 12 },
   addSetPlus:  { color: th.colors.accent },
   addDropPlus: { color: th.colors.red },
@@ -1310,12 +1248,12 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      12,
   },
   trainerNoteText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.text,
-    lineHeight: 17,
+    lineHeight: lh(textStyles.label.fontSize),
   },
   trainerNoteName: {
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
     color:      th.colors.accent,
   },
 
@@ -1328,12 +1266,12 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      12,
   },
   coachNoteText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.text,
-    lineHeight: 17,
+    lineHeight: lh(textStyles.label.fontSize),
   },
   coachNoteName: {
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
     color:      th.colors.blue,
   },
   coachNoteTag: {
@@ -1369,7 +1307,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   weightPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
   },
   weightPillNum:  { color: th.colors.accent },
   weightPillUnit: { color: th.colors.text },
@@ -1388,7 +1326,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.red30,
   },
   setPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   setPillTextDone: {

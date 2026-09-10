@@ -11,7 +11,7 @@ import { View, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, StyleShe
 import { Text, TextInput } from '../ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, borders, withOpacity } from '../../theme';
+import { spacing, borders, withOpacity, textStyles, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 export default function NotesModal({ visible, title, value, onChange, onClose, placeholder, hint }) {
@@ -151,12 +151,10 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.sm,
   },
   modalTitle: {
-    flexShrink:    1,
-    minWidth:      0,
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 1,
+    ...textStyles.heading,
+    flexShrink: 1,
+    minWidth:   0,
+    color:      th.colors.text,
   },
   modalSaveBtn: {
     flexShrink:        0,
@@ -165,24 +163,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
   },
-  modalSaveBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-  },
+  modalSaveBtnText: { ...textStyles.button, color: th.colors.onAccent },
   notesInput: {
     backgroundColor: th.colors.surface2,
     borderWidth:     borders.thin,
     borderColor:     withOpacity(th.colors.accent, 0.4),
     borderRadius:    th.radius.md,
     color:           th.colors.text,
-    fontSize:        typography.base,
-    lineHeight:      typography.base * 1.7,
+    ...textStyles.body,
+    lineHeight:      lh(textStyles.body.fontSize),
     padding:         spacing.md,
     minHeight:       140,
   },
-  notesHint: {
-    fontSize: typography.xs,
-    color:    th.colors.mutedLight,
-  },
+  notesHint: { ...textStyles.label, color: th.colors.mutedLight },
 });

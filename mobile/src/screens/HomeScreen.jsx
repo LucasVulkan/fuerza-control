@@ -18,7 +18,7 @@ import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import { MenuRow, Status, RowIcon } from '../components/ui/MenuList';
 import ProgramCard from '../components/ui/ProgramCard';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
 import { isStageLocked } from '../utils/stageLocks';
@@ -448,7 +448,7 @@ function CheckIcon({ size = 16, color }) {
 // ── Section header ──────────────────────────────────────────────────────────────
 // SESIONES lleva a la derecha el contador del ciclo, que sale entero de
 // `sessionPlan`: la pantalla no compone la frase, solo decide si hay hueco para
-// ella (sin ciclo que contar, `subtitle` viene a null y no se pinta nada).
+// ella (sin ciclo que contar, el subtítulo viene a null y no se pinta nada).
 
 function SectionHeader({ label, count, dim }) {
   const styles = useThemedStyles(makeStyles);
@@ -1036,15 +1036,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // SESIONES es el rótulo de la zona de entreno y va en `text`; los demás
   // rótulos de la pantalla se quedan en `mutedLight`.
-  secHeaderLabel:    { ...textStyles.spacingTag, color: th.colors.text },
+  secHeaderLabel:    { ...textStyles.caps, color: th.colors.text },
   secHeaderLabelDim: { color: th.colors.mutedLight },
   // El mismo cuerpo que el meta del hero ("5 EJERCICIOS · ~55 MIN · …"): son el
   // mismo tipo de dato, contexto en mayúsculas muy trackeado. Antes iba a 9 y
   // en SemiBold, medio punto por debajo de todo lo demás.
   secHeaderCount: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    letterSpacing: 1.1,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginLeft:    'auto',
@@ -1057,7 +1055,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   9, // exacto de Figma, no cae en ningún token de spacing
   },
   weekLetters: { flexDirection: 'row', justifyContent: 'space-between' },
-  weekLetter:  { ...textStyles.cardType, color: th.colors.mutedLight },
+  weekLetter:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
   weekLetterToday: { color: LIMA },
   weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDot: {
@@ -1095,7 +1093,7 @@ const makeStyles = (th) => StyleSheet.create({
   // caja del texto valga lo que dice `lineHeight` y no lo que Android le suma
   // por su cuenta — sin eso, la letra no cae donde se la centra.
   sesGlyph: {
-    ...textStyles.sessionGlyph,
+    ...textStyles.title,
     lineHeight:         22,
     includeFontPadding: false,
     // Ajustada a la tinta de la Inter Black a este cuerpo (24 px medidos sobre
@@ -1105,10 +1103,10 @@ const makeStyles = (th) => StyleSheet.create({
     color:              LIMA,
   },
   sesGlyphDone: { color: th.colors.muted },
-  sesName:      { ...textStyles.sessionName, flex: 1, color: th.colors.text },
+  sesName:      { ...textStyles.itemTitle, flex: 1, color: th.colors.text },
   sesNameDone:  { color: th.colors.mutedLight },
-  sesMeta:      { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: th.colors.muted },
-  rowAdapted:   { fontFamily: 'Inter_800ExtraBold', fontSize: 11, color: th.tint.blue70 },
+  sesMeta:      { ...textStyles.label, color: th.colors.muted },
+  rowAdapted:   { ...textStyles.labelStrong, color: th.tint.blue70 },
 
   sesBody: { paddingHorizontal: 14, paddingTop: spacing.xs, paddingBottom: 14, overflow: 'hidden' },
   // La raya de la cabecera de hoy, apagada: separa sin contar nada.
@@ -1129,9 +1127,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:        14,
     marginTop:      12,
   },
-  // 13 y no los 12 de `btnAction`: el botón es lo que hay que pulsar y a 12 se
-  // quedaba por debajo del resto de la tarjeta.
-  sesBtnText: { ...textStyles.btnAction, color: th.colors.accent },
+  // `button`, como todo lo que se pulsa y lleva palabra.
+  sesBtnText: { ...textStyles.button, color: th.colors.accent },
 
   // ── La que toca hoy ─────────────────────────────────────────────────
   // La única pieza en color de la pantalla, así que dentro el acento es el
@@ -1165,7 +1162,7 @@ const makeStyles = (th) => StyleSheet.create({
   // 1.2 em × 28 = 33.6) y 39 en la letra. Si cambia un cuerpo, rehacer la cuenta;
   // no son números a ojo.
   todayGlyph: {
-    ...textStyles.sessionGlyphXL,
+    ...textStyles.heroGlyph,
     lineHeight:         39,
     includeFontPadding: false,
     // La tinta de la Barlow a 34 mide 26 justos: 27 para que la cursiva no
@@ -1176,12 +1173,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // La misma ceja que la tarjeta de programa y las cabeceras de pantalla.
   todayFlag: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         withOpacity(th.colors.onAccent, 0.55),
   },
   todayName: {
-    ...textStyles.sessionNameXL,
+    ...textStyles.heroName,
     // 34: la Barlow pide 1.2 em (33.6 a cuerpo 28) para que la "j" de "empuje"
     // quepa entera. Con los 25 de antes se comía 8 px de descendente.
     lineHeight:         34,
@@ -1198,10 +1195,8 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       11,
   },
   todayMeta: {
+    ...textStyles.caps,
     marginTop:     spacing.sm,
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    letterSpacing: 1.1,
     textTransform: 'uppercase',
     color:         withOpacity(th.colors.onAccent, 0.55),
   },
@@ -1228,16 +1223,16 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.md,
     padding:         spacing.lg,
   },
-  todayBtnText: { ...textStyles.btnAction, color: LIMA },
+  todayBtnText: { ...textStyles.button, color: LIMA },
 
   // ── Los ejercicios de la sesión desplegada ──────────────────────────────
   // Sosos a propósito: caja baja, sin filetes y sin lima. Dentro de la tarjeta
   // el acento ya lo gastan la raya y el botón; un tercero repetido siete veces
   // le quita fuerza justo a lo que hay que pulsar (§5.4).
   exRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.xs2 },
-  exIdx:  { fontFamily: 'Inter_600SemiBold', fontSize: 10, width: 11, color: th.colors.muted },
-  exName: { fontFamily: 'Inter_500Medium', fontSize: 13, letterSpacing: 0.1, flex: 1, color: th.colors.text },
-  exTarget: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: th.colors.mutedLight },
+  exIdx:    { ...textStyles.label, width: 13, color: th.colors.muted },
+  exName:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  exTarget: { ...textStyles.label, color: th.colors.mutedLight },
 
 
   // ── Banner de etapa terminada ─────────────────────────────────────────────────
@@ -1250,21 +1245,21 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:    spacing.md,
   },
   stageBannerLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.accent,
     textTransform: 'uppercase',
   },
   stageBannerText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
-    lineHeight: textStyles.subtitle.fontSize * 1.5,
+    lineHeight: textStyles.body.fontSize * 1.5,
     marginTop:  spacing.sm2,
   },
   // Segunda línea del caso bloqueado: lo que SÍ puede hacer mientras tanto.
   stageBannerHint: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.muted,
-    lineHeight: textStyles.subtitle.fontSize * 1.5,
+    lineHeight: textStyles.body.fontSize * 1.5,
     marginTop:  spacing.xs,
   },
   stageBannerBtns: {
@@ -1283,11 +1278,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   stageBannerBtnQuiet:     { borderColor: th.colors.border },
   stageBannerBtnText: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    letterSpacing: 1.2,
-    color:         th.colors.accent,
-    textAlign:     'center',
+    ...textStyles.caps,
+    fontFamily: 'Inter_900Black',
+    color:      th.colors.accent,
+    textAlign:  'center',
   },
   stageBannerBtnTextQuiet: { color: th.colors.mutedLight },
 
@@ -1305,7 +1299,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   freeSessionBtnText: {
-    ...textStyles.btnAction,
+    ...textStyles.button,
     color: th.colors.accent,
   },
 
@@ -1317,10 +1311,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   emptyIcon: { fontSize: 40 },
   emptyText: {
-    fontSize:   typography.base,
+    ...textStyles.body,
     color:      th.colors.muted,
     textAlign:  'center',
-    lineHeight: typography.base * 1.7,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   newProgramBtn: {
     backgroundColor:   th.colors.accent,
@@ -1329,21 +1323,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.lg,
     marginTop:         spacing.sm,
   },
-  newProgramBtnText: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
+  newProgramBtnText: { ...textStyles.button, color: th.colors.bg },
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
-  freeTplRemove:  { ...textStyles.cardType, color: th.colors.muted },
+  freeTplRemove:  { ...textStyles.labelStrong, color: th.colors.muted },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },
   sheetIntro: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:        th.colors.mutedLight,
     lineHeight:   18,
     paddingBottom: spacing.md,

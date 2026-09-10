@@ -151,10 +151,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   segmentActive: { backgroundColor: th.colors.accent },
   nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, minWidth: 0 },
-  name:       { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+  name:       { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
   nameActive: { color: th.colors.onAccent },
   nameLocked: { color: th.colors.muted },
-  meta:       { ...textStyles.tag, color: th.colors.mutedLight },
+  meta:       { ...textStyles.label, color: th.colors.mutedLight },
   // Sobre el relleno lima, la 2ª línea va en surface2 (Figma) — no en onAccent.
   metaActive: { color: th.colors.surface2 },
   add: {
@@ -165,7 +165,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginRight:    spacing.xs2,
   },
   addText: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.accent,
     lineHeight: 22,
   },

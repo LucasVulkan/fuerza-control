@@ -211,7 +211,7 @@ const makeStyles = (th) => StyleSheet.create({
   // "Planificar", `editor.sessionEyebrow` → "Sesión B"). Antes cada copia de la
   // cabecera decidía por su cuenta y no coincidían.
   eyebrow: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -219,18 +219,18 @@ const makeStyles = (th) => StyleSheet.create({
   // con más peso de la barra. Muy por debajo de los 25px Black de antes, pero a
   // 14 el nombre pesaba menos que el propio contenido.
   title: {
-    ...textStyles.screenTitle,
+    ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
   },
   titleInput: {
-    ...textStyles.screenTitle,
+    ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
     padding:   0,
   },
   count: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },

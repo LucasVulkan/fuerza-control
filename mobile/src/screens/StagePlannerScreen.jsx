@@ -317,11 +317,11 @@ const makeStyles = (th) => StyleSheet.create({
     padding:           spacing.md,
     gap:               spacing.xs,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType, color: th.colors.text },
-  summaryHint: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.labelStrong, color: th.colors.text },
+  summaryHint: { ...textStyles.body, color: th.colors.mutedLight },
 
-  secTitle: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
+  secTitle: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
 
   row: {
     backgroundColor: th.colors.surface,
@@ -333,10 +333,10 @@ const makeStyles = (th) => StyleSheet.create({
   rowTop:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   // Mismo criterio que la letra de sesión del editor de programa (`sesLetter`):
   // es el ancla visual de la fila, no una etiqueta.
-  rowNum:    { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  rowName:   { ...textStyles.cardType, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
-  activeBadge: { ...textStyles.tag, color: th.colors.accent },
-  rowRx:     { ...textStyles.subtitle, color: th.colors.accent },
+  rowNum:    { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  rowName:   { ...textStyles.labelStrong, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
+  activeBadge: { ...textStyles.label, color: th.colors.accent },
+  rowRx:     { ...textStyles.body, color: th.colors.accent },
 
   noLimitBtn: {
     paddingVertical:   spacing.sm,
@@ -344,7 +344,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     backgroundColor:   th.colors.surface2,
   },
-  noLimitText: { ...textStyles.cardType, color: th.colors.mutedLight },
+  noLimitText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
 
   addBtn: {
     marginTop:       spacing.md,
@@ -353,8 +353,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
     alignItems:      'center',
   },
-  addBtnText: { ...textStyles.btnAction, color: th.colors.onAccent, textTransform: 'uppercase' },
-  baseHint:   { ...textStyles.subtitle, color: th.colors.mutedLight, paddingTop: spacing.xs },
+  addBtnText: { ...textStyles.button, color: th.colors.onAccent, textTransform: 'uppercase' },
+  baseHint:   { ...textStyles.body, color: th.colors.mutedLight, paddingTop: spacing.xs },
 
   sheetBody:  { gap: spacing.sm, paddingBottom: spacing.md },
   ladderCard: {
@@ -363,13 +363,13 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     gap:             spacing.xs2,
   },
-  ladderDesc: { ...textStyles.subtitle, color: th.colors.mutedLight },
-  baseLine:   { ...textStyles.subtitle, color: th.colors.accent },
+  ladderDesc: { ...textStyles.body, color: th.colors.mutedLight },
+  baseLine:   { ...textStyles.body, color: th.colors.accent },
   rungCard: {
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     padding:         spacing.md,
     gap:             spacing.sm,
   },
-  rungName:   { ...textStyles.cardType, color: th.colors.accent },
+  rungName:   { ...textStyles.labelStrong, color: th.colors.accent },
 });

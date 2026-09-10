@@ -3,7 +3,7 @@ import { Animated, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, selectToast } from '../../store/useStore';
-import { spacing, typography, withOpacity } from '../theme';
+import { spacing, withOpacity, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 /**
@@ -106,8 +106,7 @@ const makeStyles = (th) => StyleSheet.create({
     elevation:         8,
   },
   text: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    textAlign:  'center',
+    ...textStyles.body,
+    textAlign: 'center',
   },
 });

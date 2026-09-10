@@ -144,8 +144,8 @@ const makeSf = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
   },
 
-  label:           { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
-  labelHorizontal: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+  label:           { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
+  labelHorizontal: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
 
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
@@ -184,7 +184,7 @@ const makeSf = (th) => StyleSheet.create({
   },
   valueInput: {
     width:              VALUE_INPUT_W,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
@@ -193,5 +193,5 @@ const makeSf = (th) => StyleSheet.create({
     height:             STEP_BTN,
     paddingVertical:    0,
   },
-  unit: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  unit: { ...textStyles.body, color: th.colors.mutedLight },
 });

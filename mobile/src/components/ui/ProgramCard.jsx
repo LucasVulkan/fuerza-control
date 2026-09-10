@@ -301,41 +301,41 @@ const makeStyles = (th) => StyleSheet.create({
   headCycle:  { flexShrink: 0, alignItems: 'flex-end' },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
   eyebrow: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
   eyebrowChevron: {
+    ...textStyles.caps,
     fontFamily: 'Inter_900Black',
-    fontSize:   11,
-    lineHeight: 12,
+    lineHeight: 13,
     color:      th.colors.muted,
   },
   // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
   // no mete en el ancho medido, así que alineado a la derecha se comía la "O"
   // de CICLO. El padding lo absorbe y el margen negativo devuelve la alineación.
   eyebrowRight: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     paddingRight:  spacing.xs,
     marginRight:   -spacing.xs,
   },
   name: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:     th.colors.text,
     marginTop: -spacing.xs,
   },
   cycleNum: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:       th.colors.accent,
     marginTop:   -spacing.xs,
     fontVariant: ['tabular-nums'],
   },
   by:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm2 },
   byDot:  { width: 5, height: 5, borderRadius: 2.5, backgroundColor: th.colors.blue, flexShrink: 0 },
-  byText: { ...textStyles.subtitle, color: th.colors.mutedLight, flexShrink: 1 },
-  byName: { ...textStyles.cardType, letterSpacing: 0, color: th.colors.blue },
+  byText: { ...textStyles.body, color: th.colors.mutedLight, flexShrink: 1 },
+  byName: { ...textStyles.labelStrong, letterSpacing: 0, color: th.colors.blue },
 
   rule: { height: borders.thin, backgroundColor: th.colors.border },
 
@@ -347,8 +347,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm2,
   },
   // 13px como los nombres de sesión de `MenuList` (`GroupedRow`): esto es un
-  // nombre, no una etiqueta, y en `spacingTag` mayúsculo competía con la ceja.
-  stageName:  { ...textStyles.cardType, fontSize: 13, color: th.colors.text, flexShrink: 1 },
+  // nombre, no una etiqueta, y en `caps` mayúsculo competía con la ceja.
+  stageName:  { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
   stageLabel: { color: th.colors.accent },
 
   pips: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginLeft: 'auto', flexShrink: 0 },
@@ -364,7 +364,7 @@ const makeStyles = (th) => StyleSheet.create({
   segDone: { backgroundColor: th.tint.accent50 },
   segNow:  { backgroundColor: th.colors.accent },
 
-  stageNote: { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.sm2 },
+  stageNote: { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.sm2 },
 
   // ── Cifras ──────────────────────────────────────────────────────────────────
   stats: {
@@ -378,16 +378,16 @@ const makeStyles = (th) => StyleSheet.create({
   statsAlone: { marginTop: 0, paddingTop: spacing.sm },
   stat:       { flex: 1, minWidth: 0 },
   statVal: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
   statUnit: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color: th.colors.mutedLight,
   },
   statKey: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.muted,
     textTransform: 'uppercase',
     marginTop:     spacing.xs2,
@@ -412,12 +412,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderLeftWidth: borders.thin,
     borderLeftColor: th.colors.border,
   },
-  footText: { ...textStyles.cardType, color: th.colors.text },
+  footText: { ...textStyles.labelStrong, color: th.colors.text },
   footIcon: { flex: 0, width: 52 },
-  footIconText: {
-    fontSize:   16,
-    fontWeight: '900',
-    color:      th.colors.mutedLight,
-    lineHeight: 18,
-  },
+  footIconText: { ...textStyles.itemTitle, color: th.colors.mutedLight, lineHeight: 18 },
 });

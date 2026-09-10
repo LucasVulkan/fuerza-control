@@ -27,7 +27,7 @@ import { useStore } from '../../store/useStore';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, typography, textStyles, borders, sheetRowBase } from '../theme';
+import { spacing, textStyles, borders, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon } from '../components/ui/EditorIcons';
@@ -882,7 +882,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Etiqueta de sección, igual que en el editor de programa.
   section:  { gap: spacing.xs2 },
   secTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
@@ -895,9 +895,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:    { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain:   { ...textStyles.cardType,   color: th.colors.text },
-  summaryVolume: { ...textStyles.tag,        color: th.tint.accent50 },
+  summaryTag:    { ...textStyles.caps, color: th.colors.accent },
+  summaryMain:   { ...textStyles.labelStrong,   color: th.colors.text },
+  summaryVolume: { ...textStyles.label,        color: th.tint.accent50 },
 
   // ── Fila ──
   row: {
@@ -909,11 +909,11 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm2,
   },
   // 12 es literal de Figma (no hay token); el asa va a `space/sm` del contenido.
-  rowNumber: { ...textStyles.cardType, color: th.colors.accent, marginRight: 12 },
+  rowNumber: { ...textStyles.labelStrong, color: th.colors.accent, marginRight: 12 },
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rowName:   { ...textStyles.editorName, color: th.colors.text },
-  rowMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs },
+  rowName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  rowMeta:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -932,7 +932,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.xs,
     padding:         spacing.sm,
   },
-  pillText: { ...textStyles.tag, color: th.colors.accent },
+  pillText: { ...textStyles.label, color: th.colors.accent },
 
   // Panel de acciones bajo la fila, descubierto al deslizar. Son botones con el
   // lenguaje de la app (radius/sm + text/card-type), no bloques de color a sangre.
@@ -953,28 +953,28 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // `surface2`: el mismo relleno que los botones Secondary de Figma.
   actionBtnSubstitute:     { backgroundColor: th.colors.surface2 },
-  actionBtnSubstituteText: { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
+  actionBtnSubstituteText: { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
   actionBtnDelete:         { backgroundColor: th.tint.red30 },
-  actionBtnDeleteText:     { ...textStyles.cardType, color: th.tint.red50, textAlign: 'center' },
+  actionBtnDeleteText:     { ...textStyles.labelStrong, color: th.tint.red50, textAlign: 'center' },
 
   // ── Añadir ── (texto plano, sin caja — así está ya en Figma)
   addBtn:      { alignItems: 'center', paddingVertical: spacing.md },
-  addBtnText:  { ...textStyles.addLink, color: th.tint.accent50 },
+  addBtnText:  { ...textStyles.button, color: th.tint.accent50 },
   addBtnPlus:  { color: th.colors.accent },
 
   // ── Hojas ──
   sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
   sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
+  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
   presetRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: th.colors.surface2,
     borderRadius: th.radius.sm,
     padding: spacing.md,
   },
-  presetName:   { ...textStyles.cardType, color: th.colors.text },
-  presetMeta:   { ...textStyles.tag, color: th.colors.mutedLight, marginTop: spacing.xs },
-  presetRemove: { fontSize: typography.md, color: th.colors.muted, padding: spacing.xs },
+  presetName:   { ...textStyles.labelStrong, color: th.colors.text },
+  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
+  presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
 
   // ── Cabecera del editor de ejercicio (123:1633) ──
   // `zIndex` para que el desplegable pinte por encima del ScrollView de abajo,
@@ -1004,7 +1004,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Con el menú abierto la barra pierde las esquinas de abajo para fusionarse
   // con él (mismo tratamiento que el desplegable de Progreso).
   exHeaderBarOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  exHeaderTitle:   { ...textStyles.spacingTag, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
+  exHeaderTitle:   { ...textStyles.caps, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
   exHeaderChevron:     { transform: [{ rotate: '90deg'  }] },
   exHeaderChevronOpen: { transform: [{ rotate: '270deg' }] },
 
@@ -1030,7 +1030,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   exPickerItemSel: { backgroundColor: th.tint.accent10 },
-  exPickerText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
+  exPickerText:    { ...textStyles.body, color: th.colors.mutedLight },
   exPickerTextSel: { color: th.colors.text },
   // Figma pinta este botón en `color/muted`; en QA se cambió al relleno
   // Secondary (`color/surface-2`), el mismo de los demás botones secundarios.
@@ -1041,7 +1041,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  exHeaderAcceptTxt: { ...textStyles.cardType, color: th.colors.text },
+  exHeaderAcceptTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // ── Modales de ejercicio / bloque (sin migrar todavía) ──
   modalSafe: { flex: 1, backgroundColor: th.colors.bg },
@@ -1053,14 +1053,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  modalExTag: {
-    fontSize: typography.xs, fontWeight: typography.bold,
-    color: th.colors.muted, letterSpacing: 1,
-  },
-  modalExName: {
-    fontSize: typography.lg, fontWeight: typography.bold,
-    color: th.colors.text, marginTop: 2,
-  },
+  modalExTag:  { ...textStyles.caps, color: th.colors.muted },
+  modalExName: { ...textStyles.itemTitleQuiet, color: th.colors.text, marginTop: 2 },
   modalAcceptBtn: {
     backgroundColor:   th.colors.accent,
     paddingHorizontal: spacing.md,
@@ -1070,8 +1064,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  modalAcceptTxt: {
-    fontSize: typography.sm, fontWeight: typography.heavy,
-    color: th.colors.onAccent, letterSpacing: 0.5,
-  },
+  modalAcceptTxt: { ...textStyles.labelStrong, color: th.colors.onAccent },
 });

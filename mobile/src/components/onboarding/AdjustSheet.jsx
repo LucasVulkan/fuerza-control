@@ -173,13 +173,13 @@ export default function AdjustSheet({
 const makeStyles = (th) => StyleSheet.create({
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   stepTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
   stepNum: { color: th.colors.accent },
-  hint:    { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14, marginTop: spacing.sm },
+  hint:    { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14, marginTop: spacing.sm },
 
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
   // linkPill (ExerciseEditorInline.jsx) — aquí en fila que envuelve en vez de
@@ -191,6 +191,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   pillOn:      { backgroundColor: th.colors.accent },
-  pillText:    { ...textStyles.btnAction, color: th.colors.text },
+  pillText:    { ...textStyles.button, color: th.colors.text },
   pillTextOn:  { color: th.colors.onAccent },
 });

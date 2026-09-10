@@ -376,7 +376,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
 
   // Caja de icono cuadrada, igual que en Clientes: 42×42 para casar con el buscador.
   iconBox: {
@@ -385,14 +385,14 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   iconBoxActive: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
-  closeGlyph: { fontSize: 17, color: th.colors.text },
+  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
   filterBadge: {
     position: 'absolute', top: 3, right: 3,
     minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
     backgroundColor: th.colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  filterBadgeText: { fontFamily: 'Inter_900Black', fontSize: 9, color: th.colors.onAccent },
+  filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -403,9 +403,9 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
     paddingHorizontal: spacing.lg, height: 42,
   },
-  searchInput: { flex: 1, padding: 0, ...textStyles.subtitle, color: th.colors.text },
+  searchInput: { flex: 1, padding: 0, ...textStyles.body, color: th.colors.text },
   searchClearBtn:  { paddingLeft: spacing.xs2 },
-  searchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  searchClearText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Wrapper con padding vertical — evita el clipping de Android en ScrollView horizontal
   patternRowWrap: { paddingTop: spacing.md },
@@ -423,14 +423,14 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
   },
   pillOn:      { backgroundColor: th.colors.accent },
-  pillText:    { ...textStyles.btnAction, color: th.colors.mutedLight },
+  pillText:    { ...textStyles.button, color: th.colors.mutedLight },
   pillTextOn:  { color: th.colors.onAccent },
 
   createBtn:     { alignItems: 'center', paddingVertical: spacing.md, paddingTop: spacing.lg },
-  createBtnText: { ...textStyles.cardType, color: th.tint.accent50 },
+  createBtnText: { ...textStyles.labelStrong, color: th.tint.accent50 },
 
   sectionLabel: {
-    ...textStyles.spacingTag, color: th.colors.mutedLight,
+    ...textStyles.caps, color: th.colors.mutedLight,
     paddingHorizontal: spacing.lg,
   },
 
@@ -445,14 +445,14 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exRowSel:   { backgroundColor: th.tint.accent10 },
   exNameRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  exName:     { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  exName:     { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   exNameSel:  { color: th.colors.accent },
-  exMeta:     { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: 2 },
+  exMeta:     { ...textStyles.body, color: th.colors.mutedLight, marginTop: 2 },
   customBadge: {
     backgroundColor: th.tint.accent10, borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
-  customBadgeText: { ...textStyles.smallBold, color: th.colors.accent },
+  customBadgeText: { ...textStyles.caps, color: th.colors.accent },
 
   check: {
     width: 36, height: 36, borderRadius: th.radius.sm,
@@ -462,7 +462,7 @@ const makeStyles = (th) => StyleSheet.create({
   checkOn: { backgroundColor: th.colors.accent },
 
   emptyText: {
-    ...textStyles.subtitle, color: th.colors.mutedLight,
+    ...textStyles.body, color: th.colors.mutedLight,
     textAlign: 'center', paddingTop: 40,
   },
 
@@ -472,10 +472,10 @@ const makeStyles = (th) => StyleSheet.create({
     height: 44, borderRadius: th.radius.md, backgroundColor: '#b8ff00',
     alignItems: 'center', justifyContent: 'center',
   },
-  ctaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  ctaText: { ...textStyles.button, color: th.colors.onAccent },
 
   sheetBody:    { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetSecTitle: {
-    ...textStyles.spacingTag, color: th.colors.mutedLight, paddingBottom: spacing.sm,
+    ...textStyles.caps, color: th.colors.mutedLight, paddingBottom: spacing.sm,
   },
 });

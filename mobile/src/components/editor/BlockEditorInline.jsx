@@ -587,16 +587,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
-  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
+  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
 
   // ── Etiquetas ─────────────────────────────────────────────────────────────
-  secLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
+  secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
   // Sub-etiqueta dentro de una sección ("TIPO DE EMOM"): sin el paddingTop, que
   // ya lo pone la etiqueta numerada de arriba.
-  subLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight },
-  hint:     { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+  subLabel: { ...textStyles.caps, color: th.colors.mutedLight },
+  hint:     { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
 
   // ── Movimientos ───────────────────────────────────────────────────────────
   movHeader: {
@@ -605,7 +605,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     gap:            spacing.md,
   },
-  movHeaderNote: { ...textStyles.tag, color: th.colors.mutedLight },
+  movHeaderNote: { ...textStyles.label, color: th.colors.mutedLight },
   movWrap: { position: 'relative' },
   // El asa es hermana del cuerpo, no hija: así se centra contra el alto entero
   // de la tarjeta. El padding derecho lo pone ella, para que su blanco llegue al
@@ -623,7 +623,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md,
     gap:             spacing.md,
   },
-  movName: { ...textStyles.cardType, color: th.colors.text },
+  movName: { ...textStyles.labelStrong, color: th.colors.text },
   // Ancho de sobra alrededor del icono: el asa es un blanco de 26px y costaba
   // acertar (QA). El área tiene que ser la de la propia View.
   movHandle: {
@@ -645,7 +645,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.sm,
     paddingVertical:    0,
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
@@ -663,8 +663,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     backgroundColor:   th.tint.accent10,
   },
-  movUnit:       { ...textStyles.cardType, color: th.colors.accent },
-  movWeightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+  movUnit:       { ...textStyles.labelStrong, color: th.colors.accent },
+  movWeightUnit: { ...textStyles.label, color: th.colors.mutedLight },
 
   // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
   movActions: {
@@ -680,13 +680,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     backgroundColor: th.tint.red30,
   },
-  movDeleteText: { ...textStyles.cardType, color: th.tint.red50 },
+  movDeleteText: { ...textStyles.labelStrong, color: th.tint.red50 },
 
   // Figma lo dibuja con borde accent (192:1817), pero manda la consistencia
   // (QA): es el mismo botón de añadir que el resto de la app — texto plano con
   // el "+" en accent, sin caja.
   addMovementBtn:  { alignItems: 'center', paddingVertical: spacing.md },
-  addMovementText: { ...textStyles.cardType, color: th.tint.accent50 },
+  addMovementText: { ...textStyles.labelStrong, color: th.tint.accent50 },
   addPlus:         { color: th.colors.accent },
 
   // ── Opciones ──────────────────────────────────────────────────────────────
@@ -697,14 +697,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  optionsLabel: { ...textStyles.cardType, color: th.colors.text },
+  optionsLabel: { ...textStyles.labelStrong, color: th.colors.text },
   nameInput: {
     height:            30,
     backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   0,
-    ...textStyles.tag,
+    ...textStyles.label,
     color:             th.colors.text,
   },
   noteInput: {
@@ -713,7 +713,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.sm,
-    ...textStyles.tag,
+    ...textStyles.label,
     color:             th.colors.text,
     textAlignVertical: 'top',
   },
@@ -726,7 +726,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     marginTop:       spacing.md,
   },
-  presetBtnText: { ...textStyles.cardType, color: th.colors.text },
+  presetBtnText: { ...textStyles.labelStrong, color: th.colors.text },
   deleteBtn:     { alignItems: 'center', paddingVertical: spacing.md },
-  deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
+  deleteBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
 });

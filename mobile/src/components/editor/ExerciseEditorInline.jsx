@@ -862,13 +862,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
-  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
+  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
 
   // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
   secLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
@@ -877,14 +877,14 @@ const makeStyles = (th) => StyleSheet.create({
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },
 
-  hint: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+  hint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
 
   // NavRow/OptionRow/ToggleRow/NoteRow viven en `ui/EditorRows.jsx` (compartidos
   // con el alta de ejercicio). `optRowLabel`/`optRowHint` se quedan aquí: se
   // reutilizan sueltos fuera de esos componentes (hint de vinculación, fila de
   // incremento mínimo).
-  optRowLabel: { ...textStyles.cardType, color: th.colors.text },
-  optRowHint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+  optRowLabel: { ...textStyles.labelStrong, color: th.colors.text },
+  optRowHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
 
   // El contenedor recorta: por eso las filas solo llevan `radius/xxs` y las
   // esquinas exteriores salen del clip, igual que en Figma.
@@ -895,7 +895,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  tempoValue:    { ...textStyles.cardType, color: th.colors.mutedLight, letterSpacing: 2 },
+  tempoValue:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
 
   // ── Vinculación (Option blocks / Vinculacion, 176:1952) ───────────────────
   linkCard: {
@@ -914,7 +914,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   linkPillActive:     { backgroundColor: th.colors.accent },
-  linkPillText:       { ...textStyles.btnAction, color: th.colors.text },
+  linkPillText:       { ...textStyles.button, color: th.colors.text },
   linkPillTextActive: { color: th.colors.onAccent },
 
   // ── Acciones ──────────────────────────────────────────────────────────────
@@ -926,14 +926,14 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.sm,
   },
-  substituteBtnText: { ...textStyles.cardType, color: th.colors.text },
+  substituteBtnText: { ...textStyles.labelStrong, color: th.colors.text },
   // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteBtn: {
     flex:            1,
     alignItems:      'center',
     paddingVertical: spacing.md,
   },
-  deleteBtnText: { ...textStyles.cardType, color: th.tint.red50 },
+  deleteBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
 
   // ── Calentamiento (hoja) ──────────────────────────────────────────────────
   // Los campos son los MISMOS Input Field del grid de series del workout
@@ -941,7 +941,7 @@ const makeStyles = (th) => StyleSheet.create({
   // tipografía, para que un paso de calentamiento se escriba igual en los dos
   // sitios.
   warmupStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  warmupStepIdx: { ...textStyles.btnAction, color: th.tint.accent50, width: GRID.LABEL_W },
+  warmupStepIdx: { ...textStyles.button, color: th.tint.accent50, width: GRID.LABEL_W },
   // El "%" va DENTRO de la celda, no suelto al lado (QA).
   // La celda va en `surface` (en el workout es `bg`): la hoja ya es `bg` y una
   // celda del mismo color desaparecería.
@@ -958,9 +958,8 @@ const makeStyles = (th) => StyleSheet.create({
   warmupFieldInput: {
     width:              40,
     height:             GRID.CELL_H,
+    ...textStyles.itemTitle,
     fontFamily:         'Inter_800ExtraBold',
-    fontSize:           15,
-    fontWeight:         '800',
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
@@ -968,14 +967,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:    0,
     fontVariant:        ['tabular-nums'],
   },
-  warmupFieldUnit:     { ...textStyles.subtitle, color: th.colors.mutedLight },
-  warmupStepUnit:      { ...textStyles.subtitle, color: th.colors.mutedLight },
+  warmupFieldUnit:     { ...textStyles.body, color: th.colors.mutedLight },
+  warmupStepUnit:      { ...textStyles.body, color: th.colors.mutedLight },
   warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  warmupStepRemoveTxt: { ...textStyles.subtitle, color: th.tint.red50 },
+  warmupStepRemoveTxt: { ...textStyles.body, color: th.tint.red50 },
   // Mismo botón de añadir que el resto de la app: texto plano, sin caja.
   addStepBtn:         { alignItems: 'center', paddingVertical: spacing.md },
   addStepBtnDisabled: { opacity: 0.35 },
-  addStepText:        { ...textStyles.cardType, color: th.tint.accent50 },
+  addStepText:        { ...textStyles.labelStrong, color: th.tint.accent50 },
   addPlus:            { color: th.colors.accent },
 
   // ── Incremento (hoja) ─────────────────────────────────────────────────────
@@ -988,14 +987,14 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:    th.colors.surface,
     borderRadius:       th.radius.sm,
     paddingHorizontal:  spacing.md,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
     includeFontPadding: false,
     paddingVertical:    0,
   },
-  incrUnit: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  incrUnit: { ...textStyles.body, color: th.colors.mutedLight },
   incrMinRow: {
     flexDirection:  'row',
     alignItems:     'center',
@@ -1012,8 +1011,7 @@ const makeStyles = (th) => StyleSheet.create({
     height:             48,
     backgroundColor:    th.colors.surface,
     borderRadius:       th.radius.sm,
-    ...textStyles.hero,
-    letterSpacing:      6,
+    ...textStyles.code,
     color:              th.colors.text,
     textAlign:          'center',
     textAlignVertical:  'center',
@@ -1026,7 +1024,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Misma tipografía Y mismo tratamiento que las etiquetas de sección del
   // editor (`secLabel`): `text/spacing-tag` en mayúsculas.
   stepTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,

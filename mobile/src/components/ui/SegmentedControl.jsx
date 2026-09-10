@@ -110,7 +110,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
   },
   optionText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.text,
   },
   optionTextActive: {

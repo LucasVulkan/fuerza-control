@@ -17,7 +17,7 @@ import Reanimated, { LinearTransition, SlideOutRight, FadeIn, FadeOut } from 're
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity, textStyles } from '../theme';
+import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
 import { formatBlockScore } from '../utils/conditioningBlocks';
@@ -335,31 +335,31 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // El nombre baja de `cardTitle` (16) a `cardType` (12) para que la tarjeta no
+  // El nombre baja de `itemTitle` (16) a `labelStrong` (12) para que la tarjeta no
   // crezca al ganar la fila de datos: dos filas compactas ocupan lo mismo que
   // el título grande + la línea de metadatos de antes.
   cardSesName: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:      th.colors.text,
     flexShrink: 1,
   },
-  cardSesLetter: { ...textStyles.cardType, color: th.colors.accent },
-  cardStage:     { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
+  cardSesLetter: { ...textStyles.labelStrong, color: th.colors.accent },
+  cardStage:     { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
 
   // ── Fila de datos ──
   cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  cardStat:     { ...textStyles.tag, color: th.colors.mutedLight },
-  cardStatNum:  { ...textStyles.cardType, color: th.colors.text },
-  cardStatUnit: { ...textStyles.tag, color: th.colors.mutedLight },
-  cardStatSep:  { ...textStyles.tag, color: th.colors.muted2 },
+  cardStat:     { ...textStyles.label, color: th.colors.mutedLight },
+  cardStatNum:  { ...textStyles.labelStrong, color: th.colors.text },
+  cardStatUnit: { ...textStyles.label, color: th.colors.mutedLight },
+  cardStatSep:  { ...textStyles.label, color: th.colors.muted2 },
   deltaUp:      { color: th.colors.accent },
   deltaDown:    { color: th.tint.red50 },
 
-  cardDateCorner: { ...textStyles.tag, color: th.colors.mutedLight, flexShrink: 0 },
+  cardDateCorner: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
   // `detail` no lleva padding lateral —cada sección se lo pone— así que este
   // texto suelto necesita el suyo o sale a sangre con el borde de la tarjeta.
   detailMeta: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:             th.colors.mutedLight,
     paddingHorizontal: spacing.lg,
     marginBottom:      spacing.sm,
@@ -369,7 +369,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.xs,
   },
   deleteRowText: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.tint.red50,
   },
@@ -382,12 +382,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  noteTagText: {
-    fontSize:      8,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 0.5,
-  },
+  noteTagText: { ...textStyles.caps, color: th.colors.accent },
   adaptedTag: {
     backgroundColor:   withOpacity(th.colors.blue, 0.1),
     borderWidth:       borders.thin,
@@ -396,12 +391,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  adaptedTagText: {
-    fontSize:      8,
-    fontWeight:    typography.bold,
-    color:         th.colors.blue,
-    letterSpacing: 0.5,
-  },
+  adaptedTagText: { ...textStyles.caps, color: th.colors.blue },
 
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)
@@ -416,31 +406,24 @@ const makeStyles = (th) => StyleSheet.create({
     borderLeftColor: withOpacity(th.colors.accent, 0.3),
     gap:             spacing.xs,
   },
-  noteSectionLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1.5,
-    opacity:       0.8,
-  },
+  noteSectionLabel: { ...textStyles.caps, color: th.colors.accent, opacity: 0.8 },
   noteSectionText: {
-    fontSize:   typography.sm,
+    ...textStyles.body,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.6,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   exSection: {
     paddingHorizontal: spacing.lg,
     gap:               spacing.xs,
   },
   exName: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.text,
   },
   exNote: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.accent,
-    fontStyle:  'italic',
-    lineHeight: 16,
+    lineHeight: lh(textStyles.label.fontSize),
   },
 
   // ── Conditioning blocks (v1: one compact line per block) ────────────────────
@@ -455,24 +438,18 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   1,
     borderRadius:      th.radius.xs,
   },
-  badgeText: { fontSize: 9, fontWeight: typography.bold, letterSpacing: 0.5 },
+  badgeText: { ...textStyles.caps },
   badgeBlockAmrap:       { backgroundColor: withOpacity(th.colors.accent, 0.12) },
   badgeBlockAmrapText:   { color: th.colors.accent },
   badgeBlockEmom:        { backgroundColor: withOpacity(th.colors.blue, 0.12) },
   badgeBlockEmomText:    { color: th.colors.blue },
   badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
   badgeBlockForTimeText: { color: th.colors.orange },
-  blockLineName: {
-    flex:       1,
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
+  blockLineName:  { ...textStyles.label, flex: 1, color: th.colors.text },
   blockLineScore: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    fontVariant:   ['tabular-nums'],
+    ...textStyles.labelStrong,
+    color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
   },
 
   // Outer wrap — groups (weight-pill + its reps pills) wrap as a unit, with a
@@ -496,7 +473,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   weightPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
   },
   weightPillNum:  { color: th.colors.accent },
   weightPillUnit: { color: th.colors.text },
@@ -517,7 +494,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.orange30,
   },
   setPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   setPillTextDone: {

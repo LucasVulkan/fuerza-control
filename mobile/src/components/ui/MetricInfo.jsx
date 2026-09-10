@@ -38,7 +38,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import DragSheet from '../DragSheet';
 import MetricDoc from './MetricDoc';
@@ -108,20 +108,19 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   chartWhat: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     color:      th.colors.text,
-    lineHeight: 19,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   chartLabel: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:         th.colors.accent,
     textTransform: 'uppercase',
     marginTop:     spacing.xs2,
   },
-  chartRead: { ...textStyles.tag, color: th.colors.text, lineHeight: 16 },
+  chartRead: { ...textStyles.label, color: th.colors.text, lineHeight: 16 },
   partsLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginTop:     spacing.xs2,

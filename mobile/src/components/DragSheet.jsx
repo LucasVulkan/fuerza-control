@@ -18,7 +18,7 @@ import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanRes
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, borders } from '../theme';
+import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 
 /**
@@ -161,15 +161,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom:  spacing.md,
   },
-  title: {
-    fontSize:      typography.md,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-  },
-  done: {
-    fontSize:   typography.sm,
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
+  title: { ...textStyles.bodyStrong, color: th.colors.text },
+  done:  { ...textStyles.labelStrong, color: th.colors.accent },
 });

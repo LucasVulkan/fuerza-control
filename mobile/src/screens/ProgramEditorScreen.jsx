@@ -619,11 +619,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   section:  { gap: spacing.xs2 },
   secTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
-  stageHint: { ...textStyles.subtitle, color: th.colors.muted },
+  stageHint: { ...textStyles.body, color: th.colors.muted },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
   summaryCard: {
@@ -633,8 +633,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
 
   // ── Tarjeta de sesión ──
   // paddingLeft `space/sm`: los puntos del asa empiezan a 9px dentro de su caja
@@ -662,14 +662,14 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
-  sesLetter: { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  sesName:   { ...textStyles.editorName, color: th.colors.text },
-  sesMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+  sesLetter: { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  sesName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  sesMeta:   { ...textStyles.body, color: th.colors.mutedLight },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).
   addSessionBtn:      { alignItems: 'center', paddingVertical: spacing.md },
-  addSessionBtnText:  { ...textStyles.addLink, color: th.tint.accent50 },
+  addSessionBtnText:  { ...textStyles.button, color: th.tint.accent50 },
   addSessionBtnStage: { color: th.colors.accent },
 
   // ── Guardar programa (Buttons 388:2676) ──
@@ -680,13 +680,13 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  saveBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  saveBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   // ── Menú "···" ──
   menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
-  menuRowText: { ...textStyles.cardType, color: th.colors.text },
-  menuRowHint: { ...textStyles.subtitle, color: th.colors.muted },
-  stageRxLine: { ...textStyles.cardType, color: th.colors.accent },
+  menuRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  menuRowHint: { ...textStyles.body, color: th.colors.muted },
+  stageRxLine: { ...textStyles.labelStrong, color: th.colors.accent },
 
   // Stage sheet
   sheetBody: {
@@ -696,7 +696,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Etiqueta de paso dentro de una hoja: igual que las de sección del editor de
   // ejercicio (`text/spacing-tag` mutedLight en mayúsculas).
   sheetLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
@@ -713,13 +713,13 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.bg,
   },
   noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
-  noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
-  noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
+  noLimitText:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  noLimitTextActive: { ...textStyles.labelStrong, color: th.colors.accent },
   // Dentro de una hoja el fondo YA es `bg`, así que los campos van sobre
   // `surface` para que se lean — mismo criterio que las hojas del editor de
   // ejercicio.
   sheetInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:             th.colors.text,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
@@ -736,7 +736,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   activeBadge: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:             th.colors.onAccent,
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.xs,
@@ -744,15 +744,15 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
     overflow:          'hidden',
   },
-  stateTitle: { ...textStyles.cardType, color: th.colors.text },
-  stateHint:  { ...textStyles.tag,      color: th.colors.mutedLight, lineHeight: 14 },
+  stateTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  stateHint:  { ...textStyles.label,      color: th.colors.mutedLight, lineHeight: 14 },
   activateBtn: {
     paddingVertical: spacing.md,
     backgroundColor: th.colors.accent,
     borderRadius:    th.radius.sm,
     alignItems:      'center',
   },
-  activateBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  activateBtnText: { ...textStyles.button, color: th.colors.onAccent },
   sheetBtnRow: { flexDirection: 'row', gap: spacing.sm },
   dupStageBtn: {
     flex:            1,
@@ -761,12 +761,12 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
   },
-  dupStageBtnText: { ...textStyles.cardType, color: th.colors.text },
+  dupStageBtnText: { ...textStyles.labelStrong, color: th.colors.text },
   // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteStageBtn: {
     flex:            1,
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
-  deleteStageBtnText: { ...textStyles.cardType, color: th.tint.red50 },
+  deleteStageBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
 });

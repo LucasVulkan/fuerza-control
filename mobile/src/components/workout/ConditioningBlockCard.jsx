@@ -32,6 +32,7 @@ import {
   buildBlockResult, formatBlockScore,
 } from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
+import { textStyles, lh } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 
 // ── Geometría (referencia v12) ───────────────────────────────────────────────
@@ -552,34 +553,25 @@ const makeStyles = (th) => StyleSheet.create({
   },
   numSlot: { minWidth: 22 },
   num: {
-    fontFamily:  'Inter_900Black',
-    fontSize:    17,
-    fontWeight:  '900',
+    ...textStyles.itemTitle,
     lineHeight:  22,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
   },
   nameBlock: { flex: 1, minWidth: 0 },
   name: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      17,
-    fontWeight:    '900',
-    lineHeight:    22,
-    letterSpacing: -0.17,
-    color:         th.colors.text,
+    ...textStyles.itemTitle,
+    lineHeight: 22,
+    color:      th.colors.text,
   },
   meta: {
-    fontFamily:  'Inter_600SemiBold',
-    fontSize:    12,
-    fontWeight:  '600',
+    ...textStyles.label,
     color:       th.colors.mutedLight,
     marginTop:   3,
     fontVariant: ['tabular-nums'],
   },
   scorePill: {
-    fontFamily:        'Inter_800ExtraBold',
-    fontSize:          13,
-    fontWeight:        '800',
+    ...textStyles.labelStrong,
     color:             th.colors.accent,
     backgroundColor:   th.tint.accent10,
     borderRadius:      9,
@@ -604,20 +596,13 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      12,
   },
   noteTxt: {
-    fontSize:   12,
+    ...textStyles.label,
     color:      th.colors.text,
-    lineHeight: 17,
+    lineHeight: lh(textStyles.label.fontSize),
   },
 
   // .section-label
-  secLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    marginBottom:  8,
-  },
+  secLabel: { ...textStyles.caps, color: th.colors.muted, marginBottom: 8 },
 
   // .timer / .now
   timerBox: {
@@ -644,11 +629,10 @@ const makeStyles = (th) => StyleSheet.create({
   // La referencia lo pinta a 32; subido a 44 en QA — es el dato que se mira de
   // reojo a metro y medio del suelo.
   clock: {
-    fontFamily:    'Inter_900Black',
+    ...textStyles.title,
     fontSize:      44,
-    fontWeight:    '900',
     lineHeight:    46,
-    letterSpacing: -0.88,
+    letterSpacing: -0.88,   // -0.02 em, la regla de display
     color:         th.colors.text,
     fontVariant:   ['tabular-nums'],
   },
@@ -658,67 +642,40 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'flex-end',
   },
   sideBig: {
-    fontFamily:  'Inter_900Black',
-    fontSize:    22,
-    lineHeight:  24,
+    ...textStyles.title,
+    lineHeight:  26,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
   },
   sideSmall: {
-    fontFamily:  'Inter_900Black',
-    fontSize:    15,
-    fontWeight:  '900',
-    lineHeight:  18,
+    ...textStyles.itemTitle,
+    lineHeight:  20,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
-  sideLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    marginTop:     4,
-  },
+  sideLabel: { ...textStyles.caps, color: th.colors.muted, marginTop: 4 },
 
   // .now-main / .now-next
   nowMain: { marginTop: 16 },
   work: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      24,
-    fontWeight:    '900',
-    lineHeight:    28,
-    letterSpacing: -0.24,
-    color:         th.colors.text,
-    fontVariant:   ['tabular-nums'],
+    ...textStyles.title,
+    lineHeight:  26,
+    color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
   },
   workUnit: { color: th.colors.mutedLight },
-  workX:    { color: th.colors.muted, fontFamily: 'Inter_700Bold', fontWeight: '700' },
-  workLoad: {
-    fontFamily: 'Inter_700Bold',
-    fontSize:   14,
-    fontWeight: '700',
-    color:      th.colors.mutedLight,
-    marginTop:  4,
-  },
+  workX:    { color: th.colors.muted, fontFamily: 'Inter_700Bold' },
+  workLoad: { ...textStyles.bodyStrong, color: th.colors.mutedLight, marginTop: 4 },
   nowNext: {
     flexDirection: 'row',
     alignItems:    'baseline',
     gap:           8,
     marginTop:     14,
   },
-  nextLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-  },
+  nextLabel: { ...textStyles.caps, color: th.colors.muted },
   nextTxt: {
+    ...textStyles.labelStrong,
     flexShrink:  1,
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
@@ -732,30 +689,15 @@ const makeStyles = (th) => StyleSheet.create({
     height:        38,
   },
   moveAmount: {
+    ...textStyles.itemTitle,
     minWidth:    34,
-    fontFamily:  'Inter_900Black',
-    fontSize:    15,
-    fontWeight:  '900',
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
   },
-  moveUnit: {
-    fontFamily: 'Inter_700Bold',
-    fontSize:   12,
-    fontWeight: '700',
-    color:      th.colors.mutedLight,
-  },
-  moveName: {
-    flex:       1,
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize:   14,
-    fontWeight: '800',
-    color:      th.colors.text,
-  },
+  moveUnit: { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  moveName: { ...textStyles.bodyStrong, flex: 1, color: th.colors.text },
   moveLoad: {
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
+    ...textStyles.labelStrong,
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
@@ -778,13 +720,11 @@ const makeStyles = (th) => StyleSheet.create({
   cellFailed:  { backgroundColor: th.colors.surface2 },
   cellCurrent: { backgroundColor: th.tint.accent10 },
   cellTxt: {
-    fontFamily:  'Inter_800ExtraBold',
-    fontSize:    13,
-    fontWeight:  '800',
+    ...textStyles.labelStrong,
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
-  cellTxtDone:    { fontFamily: 'Inter_900Black', fontWeight: '900', color: th.colors.onAccent },
+  cellTxtDone:    { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
   cellTxtFailed:  { color: th.colors.mutedLight },
   cellTxtCurrent: { color: th.colors.accent },
 
@@ -801,13 +741,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  roundBtnTxt: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      16,
-    fontWeight:    '900',
-    letterSpacing: 0.32,
-    color:         th.colors.onAccent,
-  },
+  roundBtnTxt: { ...textStyles.button, color: th.colors.onAccent },
   minusBtn: {
     width:           BTN_H,
     height:          BTN_H,
@@ -816,13 +750,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  minusTxt: {
-    fontFamily: 'Inter_700Bold',
-    fontSize:   22,
-    fontWeight: '700',
-    lineHeight: 26,
-    color:      th.colors.mutedLight,
-  },
+  minusTxt: { ...textStyles.title, lineHeight: 26, color: th.colors.mutedLight },
 
   primaryBtn: {
     height:          BTN_H,
@@ -831,39 +759,18 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryTxt: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      16,
-    fontWeight:    '900',
-    letterSpacing: 0.32,
-    color:         th.colors.onAccent,
-  },
+  primaryTxt: { ...textStyles.button, color: th.colors.onAccent },
   tertiaryBtn: {
     alignItems:      'center',
     paddingVertical: 12,
     marginTop:       4,
   },
-  tertiaryTxt: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      12,
-    fontWeight:    '800',
-    letterSpacing: 1.2,
-    color:         th.colors.accent,
-  },
+  tertiaryTxt: { ...textStyles.caps, color: th.colors.accent },
 
   // .hint
-  hint: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize:   11,
-    fontWeight: '600',
-    color:      th.colors.muted,
-    textAlign:  'center',
-    marginTop:  10,
-  },
+  hint: { ...textStyles.label, color: th.colors.muted, textAlign: 'center', marginTop: 10 },
   timeUp: {
-    fontFamily:   'Inter_800ExtraBold',
-    fontSize:     12,
-    fontWeight:   '800',
+    ...textStyles.labelStrong,
     color:        th.colors.accent,
     textAlign:    'center',
     marginBottom: 12,
@@ -877,13 +784,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom:   10,
   },
-  counterLabel: {
-    fontFamily: 'Inter_700Bold',
-    fontSize:   14,
-    fontWeight: '700',
-    color:      th.colors.text,
-    flexShrink: 1,
-  },
+  counterLabel: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   stepperRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -897,17 +798,11 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  stepBtnTxt: {
-    fontSize:   16,
-    lineHeight: 20,
-    color:      th.colors.mutedLight,
-  },
+  stepBtnTxt: { ...textStyles.itemTitle, lineHeight: 20, color: th.colors.mutedLight },
   stepValue: {
+    ...textStyles.title,
     minWidth:    34,
     textAlign:   'center',
-    fontFamily:  'Inter_900Black',
-    fontSize:    20,
-    fontWeight:  '900',
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
@@ -917,23 +812,12 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: 12,
     marginTop:       4,
   },
-  cancelTxt: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      11,
-    fontWeight:    '700',
-    letterSpacing: 1.1,
-    color:         th.colors.muted,
-  },
+  cancelTxt: { ...textStyles.caps, color: th.colors.muted },
 
   reopenBtn: {
     alignSelf:         'center',
     paddingVertical:   8,
     paddingHorizontal: 16,
   },
-  reopenTxt: {
-    fontFamily: 'Inter_700Bold',
-    fontSize:   12,
-    fontWeight: '700',
-    color:      th.colors.mutedLight,
-  },
+  reopenTxt: { ...textStyles.labelStrong, color: th.colors.mutedLight },
 });

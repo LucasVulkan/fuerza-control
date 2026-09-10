@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
-import { borders } from '../theme';
+import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
 import HistoryScreen    from '../screens/HistoryScreen';
@@ -108,7 +108,7 @@ function MainTabs() {
             tabBarLabel: t('tabs.clients'),
             tabBarIcon:  tabIcon('people'),
             tabBarBadge: pendingClients > 0 ? pendingClients : undefined,
-            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 10 },
+            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 11 },
           }}
         />
       )}
@@ -251,8 +251,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg, // tan oscuro como el fondo de la app
   },
   tabLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   9,
+    ...textStyles.micro,
   },
   scene: {
     backgroundColor: th.colors.bg,

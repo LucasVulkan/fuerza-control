@@ -7,14 +7,14 @@
  * and rebuild their StyleSheet when it changes — that's what makes switching
  * live.
  *
- * Only colours, radii and fonts are themed. The spacing scale, font sizes,
- * weights and the withOpacity helper are shared across all themes and keep
- * living in ./theme.js.
+ * Only colours, radii and fonts are themed. The spacing scale, the type roles
+ * (`textStyles`) and the withOpacity helper are shared across all themes and
+ * keep living in ./theme.js.
  *
  * Mirrors the themes defined in the web app's src/index.css.
  */
 
-import { spacing, typography, borders, withOpacity } from './theme';
+import { spacing, textStyles, borders, withOpacity } from './theme';
 
 // ─── Radius presets ───────────────────────────────────────────────────────────
 const ROUNDED = { xs: 4, sm: 6, md: 10, lg: 16, xl: 22, full: 9999 };
@@ -155,7 +155,7 @@ function makeTheme({ id, name, scheme, colors, radius = ROUNDED, fonts = SYSTEM_
     blue30:   withOpacity(colors.blue, 0.3),
     blue70:   withOpacity(colors.blue, 0.7),
   };
-  return { id, name, scheme, colors, radius, fonts, spacing, typography, borders, withOpacity, tint: { ...derivedTint, ...tint } };
+  return { id, name, scheme, colors, radius, fonts, spacing, textStyles, borders, withOpacity, tint: { ...derivedTint, ...tint } };
 }
 
 export const THEMES = {

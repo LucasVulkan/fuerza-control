@@ -23,7 +23,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { NAME_MAX } from '../../utils/names';
 
 // Hueco que se le quita al input para que el texto no pase por debajo del
-// contador: el propio contador ("25/25" en `smallBold`) más su margen.
+// contador: el propio contador ("25/25" en `caps`) más su margen.
 const COUNT_ROOM = 44;
 
 export default function NameField({ style, value, ...rest }) {
@@ -53,7 +53,7 @@ const makeStyles = (th) => StyleSheet.create({
   pad:      { paddingRight: COUNT_ROOM },
   countBox: { position: 'absolute', right: spacing.md, top: 0, bottom: 0, justifyContent: 'center' },
   count: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },

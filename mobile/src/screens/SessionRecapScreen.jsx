@@ -600,13 +600,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   headerBlock: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
-  completedTag: { ...textStyles.spacingTag, color: th.colors.accent },
-  sessionName:  { ...textStyles.hero, color: th.colors.text, textAlign: 'center' },
-  contextLine:  { ...textStyles.subtitle, color: th.colors.mutedLight },
+  completedTag: { ...textStyles.caps, color: th.colors.accent },
+  sessionName:  { ...textStyles.title, color: th.colors.text, textAlign: 'center' },
+  contextLine:  { ...textStyles.body, color: th.colors.mutedLight },
 
   section: { gap: spacing.sm },
   secTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -619,7 +619,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Post-session feedback (sRPE + body weight) ──
-  feedbackTitle: { ...textStyles.cardType, color: th.colors.text },
+  feedbackTitle: { ...textStyles.labelStrong, color: th.colors.text },
   rpeScale: { flexDirection: 'row', gap: spacing.xs2 },
   rpeBtn: {
     flex:            1,
@@ -628,14 +628,14 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  rpeBtnText: { ...textStyles.btnAction, fontVariant: ['tabular-nums'] },
+  rpeBtnText: { ...textStyles.button, fontVariant: ['tabular-nums'] },
   rpeLabels: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     marginTop:      -spacing.sm, // el gap de la card ya separa; esto lo acerca a la escala
   },
   rpeLabel: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -645,12 +645,12 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     gap:            spacing.sm,
   },
-  loadLabel:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  loadLabel:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   loadValueWrap: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  loadValue:     { ...textStyles.cardTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  loadValue:     { ...textStyles.itemTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
   // Neutro a propósito: más carga no es "mejor" ni "peor", así que no lleva el
   // verde/rojo de los deltas de rendimiento.
-  loadPct:       { ...textStyles.tag, color: th.colors.mutedLight },
+  loadPct:       { ...textStyles.label, color: th.colors.mutedLight },
 
   weightRow: {
     flexDirection:  'row',
@@ -666,11 +666,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     backgroundColor:   th.colors.surface2,
     textAlign:         'right',
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:             th.colors.accent,
     fontVariant:       ['tabular-nums'],
   },
-  weightUnit: { ...textStyles.tag, color: th.colors.mutedLight },
+  weightUnit: { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hero stats (anatomía de las Progress cards) ──
   statsRow: { flexDirection: 'row', gap: spacing.md },
@@ -685,10 +685,10 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.xs,
     overflow:          'hidden',
   },
-  statValue: { ...textStyles.hero, color: th.colors.text, textAlign: 'center' },
-  statUnit:  { ...textStyles.tag,  color: th.colors.mutedLight },
+  statValue: { ...textStyles.title, color: th.colors.text, textAlign: 'center' },
+  statUnit:  { ...textStyles.label,  color: th.colors.mutedLight },
   statLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.text,
     textTransform: 'uppercase',
     textAlign:     'center',
@@ -721,15 +721,15 @@ const makeStyles = (th) => StyleSheet.create({
   },
   rowBody:  { flex: 1, minWidth: 0, gap: spacing.xs },
 
-  exName: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
-  exSub:  { ...textStyles.tag, color: th.colors.mutedLight },
-  exNote: { ...textStyles.tag, color: th.colors.muted, fontStyle: 'italic' },
+  exName: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  exSub:  { ...textStyles.label, color: th.colors.mutedLight },
+  exNote: { ...textStyles.label, color: th.colors.muted, fontStyle: 'italic' },
 
   // ── Pills de series (misma anatomía exacta que History) ──
   setPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   setGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   weightPill:     { paddingLeft: spacing.sm, paddingVertical: spacing.sm },
-  weightPillText: { ...textStyles.tag },
+  weightPillText: { ...textStyles.label },
   weightPillNum:  { color: th.colors.accent },
   weightPillUnit: { color: th.colors.text },
   weightPillX:    { color: th.colors.mutedLight },
@@ -740,7 +740,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   setPillDone:    { backgroundColor: th.tint.accent10 },
   setPillPartial: { backgroundColor: th.tint.orange30 },
-  setPillText:        { ...textStyles.tag, color: th.colors.mutedLight },
+  setPillText:        { ...textStyles.label, color: th.colors.mutedLight },
   setPillTextDone:    { color: th.colors.accent },
   setPillTextPartial: { color: th.colors.orange },
   setPillRpeAt:        { color: th.colors.mutedLight },
@@ -748,7 +748,7 @@ const makeStyles = (th) => StyleSheet.create({
   setPillRpeAtPartial: { color: th.tint.orange50 },
   // Dropset: la flecha va DELANTE de la pill porque la sub-serie es una
   // continuación de la anterior (al revés que las pills de calentamiento).
-  dropArrow: { fontSize: 14, color: th.colors.mutedLight },
+  dropArrow: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Bloques ──
   blockNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -757,19 +757,19 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   1,
     borderRadius:      th.radius.xs,
   },
-  badgeText: { ...textStyles.smallBold },
+  badgeText: { ...textStyles.caps },
   badgeBlockAmrap:       { backgroundColor: th.tint.accent10 },
   badgeBlockAmrapText:   { color: th.colors.accent },
   badgeBlockEmom:        { backgroundColor: th.tint.blue30 },
   badgeBlockEmomText:    { color: th.colors.blue },
   badgeBlockForTime:     { backgroundColor: th.tint.orange30 },
   badgeBlockForTimeText: { color: th.colors.orange },
-  blockScore: { ...textStyles.cardTitle, color: th.colors.text, fontVariant: ['tabular-nums'] },
+  blockScore: { ...textStyles.itemTitle, color: th.colors.text, fontVariant: ['tabular-nums'] },
 
   // ── Desviación vs sesión anterior: texto suelto a la derecha, sin pill.
   // accent = propio/positivo (en este tema no se usa verde); red apagado para
   // los retrocesos — decisión explícita del usuario para el recap.
-  delta:    { ...textStyles.cardType, fontVariant: ['tabular-nums'], flexShrink: 0 },
+  delta:    { ...textStyles.labelStrong, fontVariant: ['tabular-nums'], flexShrink: 0 },
   delta_up: { color: th.colors.accent },
   delta_eq: { color: th.colors.mutedLight },
   delta_dn: { color: th.tint.red50 },
@@ -782,9 +782,9 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
     backgroundColor:   th.tint.accent10,
   },
-  chipText: { ...textStyles.tag, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  chipText: { ...textStyles.label, color: th.colors.accent, fontVariant: ['tabular-nums'] },
 
-  noteText: { ...textStyles.subtitle, color: th.colors.mutedLight, fontStyle: 'italic' },
+  noteText: { ...textStyles.body, color: th.colors.mutedLight, fontStyle: 'italic' },
 
   // Secundario del par: mismo alto y radio que LISTO, en outline — el relleno
   // accent es del botón que cierra la pantalla.
@@ -803,7 +803,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   tplBtnDone:  { borderColor: th.colors.border },
-  tplBtnText:  { ...textStyles.btnAction, color: th.colors.accent },
+  tplBtnText:  { ...textStyles.button, color: th.colors.accent },
 
   doneBtn: {
     backgroundColor: th.colors.accent,
@@ -812,5 +812,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     marginTop:       spacing.sm,
   },
-  doneBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  doneBtnText: { ...textStyles.button, color: th.colors.onAccent },
 });

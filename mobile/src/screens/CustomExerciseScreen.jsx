@@ -477,26 +477,26 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  closeGlyph: { fontSize: 17, color: th.colors.text },
+  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
   form: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   block: { gap: spacing.md },
 
-  secLabel: { ...textStyles.spacingTag, color: th.colors.mutedLight, paddingTop: spacing.md },
+  secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
 
   nameInput: {
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    ...textStyles.cardTitle, color: th.colors.text,
+    ...textStyles.itemTitle, color: th.colors.text,
   },
   nameInputError: { borderWidth: 1, borderColor: th.colors.red },
-  errorText: { ...textStyles.tag, color: th.colors.red, marginTop: spacing.xs },
+  errorText: { ...textStyles.label, color: th.colors.red, marginTop: spacing.xs },
 
   // ── Resumen (166:1245) — solo relleno tint/accent-10, sin borde ────────────
   summaryCard: {
@@ -506,22 +506,22 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
-  summarySub:  { ...textStyles.tag,        color: th.tint.accent50 },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
+  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
 
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },
-  hint:    { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+  hint:    { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
 
   optGroup: { borderRadius: th.radius.md, overflow: 'hidden', gap: spacing.xs },
 
   tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  tempoValue:    { ...textStyles.cardType, color: th.colors.mutedLight, letterSpacing: 2 },
+  tempoValue:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
   tempoInput: {
     alignSelf: 'center', minWidth: 140, height: 48,
     backgroundColor: th.colors.surface, borderRadius: th.radius.sm,
-    ...textStyles.hero, letterSpacing: 6, color: th.colors.text,
+    ...textStyles.code, color: th.colors.text,
     textAlign: 'center', textAlignVertical: 'center',
     includeFontPadding: false, paddingVertical: 0,
   },
@@ -533,17 +533,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
   },
-  cancelBtnText: { ...textStyles.cardType, color: th.colors.text },
+  cancelBtnText: { ...textStyles.labelStrong, color: th.colors.text },
   createBtn: {
     flex: 2, alignItems: 'center', justifyContent: 'center',
     paddingVertical: spacing.md, borderRadius: th.radius.sm,
     backgroundColor: '#b8ff00',
   },
-  createBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  createBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   stepTitle: {
-    ...textStyles.spacingTag, color: th.colors.mutedLight,
+    ...textStyles.caps, color: th.colors.mutedLight,
     textTransform: 'uppercase', marginBottom: spacing.sm,
   },
   stepNum: { color: th.colors.accent },
@@ -554,6 +554,6 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2, borderRadius: th.radius.sm,
   },
   pillOn:     { backgroundColor: th.colors.accent },
-  pillText:   { ...textStyles.btnAction, color: th.colors.mutedLight },
+  pillText:   { ...textStyles.button, color: th.colors.mutedLight },
   pillTextOn: { color: th.colors.onAccent },
 });

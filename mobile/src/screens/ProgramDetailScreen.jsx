@@ -628,18 +628,18 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Resumen
-  byline: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  byline: { ...textStyles.body, color: th.colors.mutedLight },
   stats:  { flexDirection: 'row', gap: spacing.xxl, paddingVertical: spacing.xs2 },
   stat:   { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs2 },
-  statValue: { ...textStyles.hero, color: th.colors.accent, fontSize: 22, lineHeight: 24 },
-  // Misma familia/peso/tracking que smallBold, solo el tamaño sube: en columna
+  statValue: { ...textStyles.title, color: th.colors.accent, lineHeight: 26 },
+  // `caps`, como toda etiqueta en versales de la app: en columna
   // 8px se leía bien de etiqueta, en línea junto al número se queda corto.
-  statLabel: { ...textStyles.smallBold, color: th.colors.mutedLight, fontSize: 11 },
+  statLabel: { ...textStyles.caps, color: th.colors.mutedLight },
 
   // Selector de etapas
   // Todas las etapas ocupan lo mismo. Sin scroll: con más de 5 el nombre se
   // trunca, que es preferible a que unas se vean más importantes que otras.
-  headerMore: { fontSize: 16, fontWeight: '900', lineHeight: 18 },
+  headerMore: { ...textStyles.itemTitle, lineHeight: 18 },
 
   // Relleno lima como el botón de EMPEZAR de la Home: es la acción principal de
   // la pantalla y aquí no compite con ningún otro acento.
@@ -650,20 +650,20 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     marginTop:       spacing.sm,
   },
-  editBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  editBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   // Las mismas hojas que tenía la Home cuando el archivado colgaba del pie de
   // la tarjeta.
   sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },
   sheetIntro: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:         th.colors.mutedLight,
     lineHeight:    18,
     paddingBottom: spacing.md,
   },
   sheetIntroName: { color: th.colors.text },
 
-  diffLine:    { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
+  diffLine:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 17 },
 
   // Tarjeta de volumen
   card: {
@@ -673,12 +673,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   cardHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  cardTitle: { ...textStyles.spacingTag, color: th.colors.mutedLight },
-  cardMeta:  { ...textStyles.tag, color: th.colors.muted },
+  cardTitle: { ...textStyles.caps, color: th.colors.mutedLight },
+  cardMeta:  { ...textStyles.label, color: th.colors.muted },
 
   groupList:  { gap: spacing.sm2 },
   groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-  groupName:  { ...textStyles.tag, color: th.colors.mutedLight, width: 76 },
+  groupName:  { ...textStyles.label, color: th.colors.mutedLight, width: 76 },
   groupTrack: {
     flex: 1, height: 9, borderRadius: 3,
     backgroundColor: th.colors.surface2,
@@ -688,14 +688,14 @@ const makeStyles = (th) => StyleSheet.create({
   groupMark:     { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
   groupBaseMark: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: th.colors.text },
   groupCount: {
-    ...textStyles.cardType, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'],
+    ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'],
   },
   groupDelta: {
-    ...textStyles.tag, width: 24, textAlign: 'right',
+    ...textStyles.label, width: 24, textAlign: 'right',
     color: th.colors.accent, fontVariant: ['tabular-nums'],
   },
   groupDeltaFlat: { color: th.colors.muted },
-  groupHint: { ...textStyles.tag, color: th.colors.muted, lineHeight: 15 },
+  groupHint: { ...textStyles.label, color: th.colors.muted, lineHeight: 15 },
 
   // Sesión
   session: {
@@ -712,13 +712,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  sessionLetter:    { ...textStyles.hero, fontSize: 26, lineHeight: 28 },
+  sessionLetter:    { ...textStyles.title, lineHeight: 28 },
   sessionTitles:    { flex: 1, gap: spacing.xs, minWidth: 0 },
-  sessionName:      { ...textStyles.cardTitle, color: th.colors.text },
-  sessionSubtitle:  { ...textStyles.tag, color: th.colors.mutedLight },
-  sessionStat:      { ...textStyles.tag, color: th.colors.mutedLight },
+  sessionName:      { ...textStyles.itemTitle, color: th.colors.text },
+  sessionSubtitle:  { ...textStyles.label, color: th.colors.mutedLight },
+  sessionStat:      { ...textStyles.label, color: th.colors.mutedLight },
   sessionBody:     { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  emptySession:    { ...textStyles.subtitle, color: th.colors.muted, paddingVertical: spacing.sm },
+  emptySession:    { ...textStyles.body, color: th.colors.muted, paddingVertical: spacing.sm },
 
   // Fila de ejercicio
   exRow: {
@@ -727,12 +727,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.md,
     paddingVertical: spacing.sm2,
   },
-  exNum:      { ...textStyles.cardType, color: th.colors.accent, width: 26, marginTop: 1 },
+  exNum:      { ...textStyles.labelStrong, color: th.colors.accent, width: 26, marginTop: 1 },
   exInfo:     { flex: 1, gap: spacing.xs, minWidth: 0 },
   exRxLine:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  exName:     { ...textStyles.subtitle, fontSize: 14, color: th.colors.text },
+  exName:     { ...textStyles.body, color: th.colors.text },
   keyBadge: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:             th.colors.accent,
     borderWidth:       borders.thin,
     borderColor:       th.tint.accent50,
@@ -740,9 +740,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xs2,
     paddingVertical:   1,
   },
-  exNote:    { ...textStyles.tag, color: th.colors.mutedLight },
-  exRxMain:  { ...textStyles.cardType, color: th.colors.accent, fontVariant: ['tabular-nums'] },
-  exRxRest:  { ...textStyles.tag, color: th.colors.muted, marginLeft: 'auto' },
+  exNote:    { ...textStyles.label, color: th.colors.mutedLight },
+  exRxMain:  { ...textStyles.labelStrong, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  exRxRest:  { ...textStyles.label, color: th.colors.muted, marginLeft: 'auto' },
 
   // Superserie
   ssGroup: {
@@ -751,7 +751,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingLeft:     spacing.md,
     marginVertical:  spacing.sm,
   },
-  ssHead: { ...textStyles.smallBold, color: th.colors.accent, marginBottom: spacing.xs2 },
+  ssHead: { ...textStyles.caps, color: th.colors.accent, marginBottom: spacing.xs2 },
 
   // Bloque de acondicionamiento
   blockRow: {
@@ -768,12 +768,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.xs2,
   },
   blockHead:      { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  blockFormat:    { ...textStyles.smallBold, color: th.colors.blue },
-  blockMeta:      { ...textStyles.tag, color: th.colors.mutedLight },
-  blockMovements: { ...textStyles.subtitle, color: th.colors.text, lineHeight: 17 },
-  blockNote:      { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15 },
+  blockFormat:    { ...textStyles.caps, color: th.colors.blue },
+  blockMeta:      { ...textStyles.label, color: th.colors.mutedLight },
+  blockMovements: { ...textStyles.body, color: th.colors.text, lineHeight: 17 },
+  blockNote:      { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
 
   // Vacío
   empty:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  emptyText: { ...textStyles.body, color: th.colors.mutedLight },
 });

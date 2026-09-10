@@ -13,7 +13,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
-import { spacing } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 import DragSheet from '../DragSheet';
 
@@ -58,15 +58,13 @@ const makeStyles = (th) => StyleSheet.create({
 
   pointRow: { flexDirection: 'row', gap: spacing.sm },
   pointDot: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     lineHeight: 20,
     color:      th.colors.accent,
   },
   pointText: {
     flex:       1,
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     color:      th.colors.text,
     lineHeight: 20,
   },

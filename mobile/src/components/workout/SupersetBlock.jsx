@@ -11,7 +11,7 @@
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, textStyles } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 export default function SupersetBlock({ rounds, restSec, children, onAddSet }) {
@@ -51,10 +51,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   header: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+    ...textStyles.caps,
     color:         th.colors.accent,
-    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   // La costura del par: 2px entre cards (frente a los 14 normales). Las esquinas
@@ -63,7 +61,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap: 2,
   },
   footer: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.colors.text,
     textAlign: 'center',
   },
@@ -79,12 +77,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:     6,
     paddingBottom:  2,
   },
-  addSetText: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      13,
-    fontWeight:    '800',
-    letterSpacing: 0.26,
-    color:         th.colors.mutedLight,
-  },
+  addSetText: { ...textStyles.button, color: th.colors.mutedLight },
   addSetPlus: { color: th.colors.accent },
 });

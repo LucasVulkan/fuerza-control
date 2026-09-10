@@ -409,9 +409,9 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
-  hint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
-  error: { ...textStyles.tag, color: th.tint.red50, lineHeight: 15 },
+  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
+  error: { ...textStyles.label, color: th.tint.red50, lineHeight: 15 },
 
   checkSpacer: { width: 16, height: 16 },
 
@@ -422,20 +422,20 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.lg,
     gap:             spacing.sm,
   },
-  foundLabel: { ...textStyles.spacingTag, color: th.colors.accent },
-  foundName:  { ...textStyles.cardTitle, color: th.colors.text },
+  foundLabel: { ...textStyles.caps, color: th.colors.accent },
+  foundName:  { ...textStyles.itemTitle, color: th.colors.text },
 
   warnCard: {
     backgroundColor: th.tint.orange30,
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
-  warnText: { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
+  warnText: { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
 
   bullets:    { gap: spacing.sm },
   bulletRow:  { flexDirection: 'row', gap: spacing.sm },
-  bulletDot:  { ...textStyles.tag, color: th.colors.accent, lineHeight: 15 },
-  bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+  bulletDot:  { ...textStyles.label, color: th.colors.accent, lineHeight: 15 },
+  bulletText: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
 
   ctaGroup: { gap: spacing.sm },
 
@@ -446,7 +446,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
   secondaryBtn: {
     height:          44,
     borderRadius:    th.radius.sm,
@@ -454,10 +454,10 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  secondaryBtnText: { ...textStyles.button, color: th.colors.text },
   btnDisabled:      { opacity: 0.5 },
 
   dividerRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   dividerLine: { flex: 1, height: 1, backgroundColor: th.colors.surface2 },
-  dividerText: { ...textStyles.tag, color: th.colors.muted },
+  dividerText: { ...textStyles.label, color: th.colors.muted },
 });

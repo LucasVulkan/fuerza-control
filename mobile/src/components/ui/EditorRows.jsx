@@ -157,8 +157,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   navRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  navRowTitle: { ...textStyles.cardType, color: th.colors.text },
-  navRowSub:   { ...textStyles.tag,      color: th.colors.mutedLight },
+  navRowTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  navRowSub:   { ...textStyles.label,      color: th.colors.mutedLight },
 
   // ── Lista agrupada de opciones (176:1902) ─────────────────────────────────
   optRow: {
@@ -173,8 +173,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   optRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  optRowLabel: { ...textStyles.cardType, color: th.colors.text },
-  optRowHint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 14 },
+  optRowLabel: { ...textStyles.labelStrong, color: th.colors.text },
+  optRowHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
 
   // Última fila del grupo: la nota, con su textarea sobre `color/workout-card`.
   noteRow: {
@@ -190,7 +190,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.sm,
-    ...textStyles.tag,
+    ...textStyles.label,
     color:             th.colors.text,
     textAlignVertical: 'top',
   },
