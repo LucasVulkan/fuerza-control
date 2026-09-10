@@ -334,7 +334,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Mismo criterio que la letra de sesión del editor de programa (`sesLetter`):
   // es el ancla visual de la fila, no una etiqueta.
   rowNum:    { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  rowName:   { ...textStyles.itemTitleQuiet, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
+  rowName:   { ...textStyles.bodyStrong, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
   activeBadge: { ...textStyles.label, color: th.colors.accent },
   rowRx:     { ...textStyles.body, color: th.colors.accent },
 

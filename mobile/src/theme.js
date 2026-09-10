@@ -144,8 +144,11 @@ export const textStyles = {
   // El nombre de una cosa en una lista de consulta: sesión, ejercicio, cliente.
   // Aquí SÍ canta, es lo que se busca con la vista.
   itemTitle: { fontFamily: 'Inter_900Black', fontSize: 16, letterSpacing: -0.2 },
-  // El mismo nombre dentro de un editor. Bold y no Black: un editor se lee
-  // seguido, fila tras fila, y la negra a ese cuerpo cansa.
+  // El mismo nombre cuando NO está en una lista: el ejercicio en marcha del
+  // entreno, la cabecera de «Próxima sesión», el modal de ejercicio del editor.
+  // Bold y no Black porque ahí el nombre se lee, no se busca. Un nombre dentro
+  // de una lista —editores, historial, progresión— va a `bodyStrong`: comparte
+  // cuerpo con su meta y manda por peso (ver docs/specs/tipografia.md §9.4).
   itemTitleQuiet: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: -0.2 },
 
   // ── Cuerpo ──────────────────────────────────────────────────────────────────

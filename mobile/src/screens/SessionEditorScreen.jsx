@@ -912,7 +912,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumber: { ...textStyles.labelStrong, color: th.colors.accent, marginRight: 12 },
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rowName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
   rowMeta:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',

@@ -663,7 +663,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
   sesLetter: { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  sesName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
   sesMeta:   { ...textStyles.body, color: th.colors.mutedLight },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el

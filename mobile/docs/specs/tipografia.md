@@ -357,17 +357,22 @@ anatomía:
   había pedido— y en pantalla no funcionó: un ± con su rótulo es una **fila de
   opción con botones**, no una tarjeta, y a 16 el rótulo pesaba más que el propio
   número. Decisión del usuario: las dos a 14.
-- Y detrás de ella, **el título de tarjeta baja de 16 a `bodyStrong`** en las
-  cuatro piezas donde el usuario lo comparó de lado: las tarjetas de
-  Calentamiento / Progresión / Opciones (`ui/EditorRows`), las tarjetas de
-  Historial (`SessionCard`) y las filas de Progresión (`ProgressTab`). Con ello,
-  título y meta comparten cuerpo en esas listas y se separan **sólo por peso**
-  (14/700 contra 14/500), que es la anatomía de §9.1 llevada hasta el final.
+- Y detrás de ella, **el nombre de fila baja de 16 a `bodyStrong`** en todas las
+  listas de la app: las tarjetas de Calentamiento / Progresión / Opciones
+  (`ui/EditorRows`), las tarjetas de Historial (`SessionCard`), las filas de
+  Progresión (`ProgressTab`) y los nombres de sesión y de ejercicio de los tres
+  editores (`ProgramEditor`, `SessionEditor`, `StagePlanner`).
 
-  Los nombres de sesión y de ejercicio de los **editores** (`ProgramEditor`,
-  `SessionEditor`, `StagePlanner`) y el del ejercicio en marcha
-  (`workout/ExerciseCard`) se quedan en `itemTitleQuiet` (16): ahí el nombre es
-  el contenido de la fila, no el rótulo de una tarjeta que lleva a otro sitio.
+  Con ello **nombre y meta comparten cuerpo y se separan sólo por peso** —14/700
+  contra 14/500—, que es la anatomía de §9.1 llevada hasta el final. El nombre de
+  historial pasó por los dos extremos antes de quedarse aquí: a 12 estaba por
+  debajo de sus propios datos, y la Black a 16 gritaba en una lista que se
+  recorre entera.
+
+  `itemTitleQuiet` (16) queda para los cuatro sitios donde un nombre **no está en
+  una lista**: el ejercicio en marcha del entreno y su celda de serie, la
+  cabecera de «Próxima sesión» y la del modal de ejercicio del editor. Ahí el
+  nombre es el asunto de la pantalla entera, no una fila entre muchas.
 - **«Añadir ejercicio»** de la sesión de entreno, a `button`. Es el hermano de
   «Añadir serie» (`ExerciseCard.addLinkText`), que ya iba en `button`: mismo
   enlace, misma voz. A 12 el botón salía diminuto y con él su «+» en lima, que
