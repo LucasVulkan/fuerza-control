@@ -863,8 +863,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
-  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
+  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
 
   // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
   secLabel: {

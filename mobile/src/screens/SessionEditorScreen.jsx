@@ -896,8 +896,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   summaryTag:    { ...textStyles.caps, color: th.colors.accent },
-  summaryMain:   { ...textStyles.labelStrong,   color: th.colors.text },
-  summaryVolume: { ...textStyles.label,        color: th.tint.accent50 },
+  summaryMain:   { ...textStyles.bodyStrong, color: th.colors.text },
+  summaryVolume: { ...textStyles.body, color: th.tint.accent50 },
 
   // ── Fila ──
   row: {
@@ -972,8 +972,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius: th.radius.sm,
     padding: spacing.md,
   },
-  presetName:   { ...textStyles.labelStrong, color: th.colors.text },
-  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
+  presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
+  presetMeta:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
 
   // ── Cabecera del editor de ejercicio (123:1633) ──

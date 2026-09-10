@@ -588,8 +588,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
-  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
+  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
 
   // ── Etiquetas ─────────────────────────────────────────────────────────────
   secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
@@ -623,7 +623,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md,
     gap:             spacing.md,
   },
-  movName: { ...textStyles.labelStrong, color: th.colors.text },
+  movName: { ...textStyles.bodyStrong, color: th.colors.text },
   // Ancho de sobra alrededor del icono: el asa es un blanco de 26px y costaba
   // acertar (QA). El área tiene que ser la de la propia View.
   movHandle: {

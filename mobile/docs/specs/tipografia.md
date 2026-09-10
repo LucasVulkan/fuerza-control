@@ -5,8 +5,9 @@
 > Fase U17 · hecho · Los papeles: `textStyles` se rehace y `typography` se retira · §4
 > Fase U18 · hecho · Las pantallas: los 170 `fontSize` a pelo caen sobre los papeles · §5
 > Fase U19 · hecho · El suelo de legibilidad y los dos pesos que sobraban · §6
+> Fase U20 · hecho · La anatomía nombre + meta, una sola para toda la app · §9
 >
-> Estado: **las tres fases implementadas** (sep 2026), en la rama
+> Estado: **las cuatro fases implementadas** (sep 2026), en la rama
 > `feat/tipografia-jerarquia`. Sale de una auditoría del uso real de tipografía
 > en `mobile/src` pedida por el usuario: «ahora mismo es una cacofonía de textos
 > diferentes».
@@ -263,9 +264,8 @@ puede es volver a declarar `fontSize` suelto.
 | Ficheros de fuente | 8 | **6** |
 | Papeles / tokens | 20 + 170 sueltos | **14** |
 
-Reparto de uso final: `label` 192 · `body` 156 · `labelStrong` 138 · `caps` 122 ·
-`itemTitle` 58 · `button` 46 · `title` 38 · `bodyStrong` 17 · `heading` 16 ·
-`micro` 7 · `itemTitleQuiet` 6 · `code` 4 · `heroName` 1 · `heroGlyph` 1.
+Reparto de uso final: ver §9, que redistribuye parte de `label`/`labelStrong`
+hacia `body`/`bodyStrong` al unificar la anatomía nombre + meta.
 
 ---
 
@@ -285,13 +285,64 @@ tracking, o vuelve a declarar `fontWeight` —que es lo que hacía caer Android 
 Roboto—. Sin ese test, en tres meses hay un decimoquinto papel a 15 px con
 tracking 0.7 y nadie se entera.
 
-## 9. Fases
+## 9. Fase U20 — La anatomía nombre + meta
+
+Sale del primer repaso en pantalla de U17–U19. Los papeles estaban bien elegidos
+pero **mal repartidos**: media app llamaba «meta» a un `label` de 12 y la otra
+media a un `body` de 14, y en tres sitios el nombre acabó siendo más pequeño que
+su propia línea de metadatos.
+
+El caso claro es la tarjeta de cliente: el **nombre del programa** iba a 12 y la
+**etapa que cuelga de él**, a 14. La línea que manda era la más pequeña de las
+dos.
+
+### 9.1 La anatomía
+
+Toda lista de consulta y todo editor de la app usan esta y sólo esta:
+
+```
+Nombre            → itemTitle 16/900   (consulta)  ·  itemTitleQuiet 16/700 (editor)
+Nombre secundario → bodyStrong 14/700
+Meta              → body 14/500
+```
+
+El nombre secundario y la meta **comparten cuerpo y se separan por peso**. Es la
+misma regla del sistema —se sube de peso antes que de cuerpo— aplicada a la
+unidad que más se repite en la app.
+
+La referencia la fijó el usuario: el «sin ritmo aún» de la tarjeta de cliente
+(`cPaceUnit`), que ya estaba en `body`.
+
+### 9.2 Dónde se aplicó
+
+| Zona | Qué cambia |
+|---|---|
+| **Clientes** | «+ Cliente» y «+ Programa» pasan de `labelStrong` a `button` — es la misma caja de 42/44 px que «+ Plantilla» de Plantillas, que ya iba en `button`. Nombre de programa y línea de aviso, de 12 a `bodyStrong` |
+| **Historial** (`SessionCard`) | Nombre de sesión y su letra, de `labelStrong` a `itemTitle`. Etapa, fila de datos, fecha de la esquina, meta del detalle y nombres de ejercicio, a 14 |
+| **Progresión** (`ProgressTab`) | Nombre de ejercicio a `itemTitle`, su subtítulo a `body` |
+| **Visualizador** (`ProgramDetailScreen`) | Subtítulo y stats de sesión, meta de tarjeta y de bloque, notas de ejercicio y de bloque, número y prescripción, todo a 14 |
+| **Editores** | Las dos líneas de las tarjetas de resumen (`summaryMain` / `summarySub` / `summaryVolume`), nombres de movimiento, `presetName` + `presetMeta`, y el nombre de fila del planificador de etapas |
+
+### 9.3 Lo que se dejó fuera, y por qué
+
+- **`WorkoutScreen` y el hero de la Home**, por instrucción explícita: son las dos
+  piezas donde la densidad está medida contra una caja concreta.
+- **Las filas de sesión del modal de Progresión** (`modalSes*`) y las píldoras de
+  series: no cuelgan de un nombre, son tres columnas en una fila estrecha y a 14
+  se desbordan.
+- **`statSub` de las tarjetas de estadística** y las barras de grupo muscular
+  (`groupName` / `groupHint`): son etiquetas de un dato, no la meta de un nombre.
+
+---
+
+## 10. Fases
 
 | Fase | Estado | Qué | Commit |
 |---|---|---|---|
 | U17 | ✅ | `textStyles` rehecho con 14 papeles, `typography` retirado, 510 usos de token migrados | esta rama |
 | U18 | ✅ | 170 literales caídos sobre los papeles en 47 ficheros | esta rama |
 | U19 | ✅ | Suelo de 11 px, Inter 400 y 600 fuera del bundle, test de invariantes | esta rama |
+| U20 | ✅ | Anatomía nombre + meta unificada en clientes, historial, progresión, visualizador y editores | esta rama |
 
-Criterio de aceptación de las tres: `npx vitest run` en verde (1244 tests) y
+Criterio de aceptación de las cuatro: `npx vitest run` en verde (1244 tests) y
 `npx eslint mobile/src` sin errores nuevos respecto a HEAD (169, los mismos).

@@ -318,7 +318,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.xs,
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.labelStrong, color: th.colors.text },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
   summaryHint: { ...textStyles.body, color: th.colors.mutedLight },
 
   secTitle: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
@@ -334,7 +334,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Mismo criterio que la letra de sesión del editor de programa (`sesLetter`):
   // es el ancla visual de la fila, no una etiqueta.
   rowNum:    { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  rowName:   { ...textStyles.labelStrong, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
+  rowName:   { ...textStyles.itemTitleQuiet, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
   activeBadge: { ...textStyles.label, color: th.colors.accent },
   rowRx:     { ...textStyles.body, color: th.colors.accent },
 
@@ -371,5 +371,5 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     gap:             spacing.sm,
   },
-  rungName:   { ...textStyles.labelStrong, color: th.colors.accent },
+  rungName:   { ...textStyles.bodyStrong, color: th.colors.accent },
 });

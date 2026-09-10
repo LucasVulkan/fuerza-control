@@ -3565,10 +3565,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  hdrNewBtnText: {
-    ...textStyles.labelStrong,
-    color: th.colors.onAccent,
-  },
+  hdrNewBtnText: { ...textStyles.button, color: th.colors.onAccent },
   // Connectivity status dot (on the cloud icon button)
   syncStatusDot: {
     position:     'absolute',
@@ -4008,9 +4005,11 @@ const makeStyles = (th) => StyleSheet.create({
     flex:     1,
     minWidth: 0,
   },
-  // Línea de programa: nombre en card-type, etapa en subtitle, los dos mutedLight
+  // Línea de programa: nombre y etapa a 14, los dos mutedLight. El nombre manda
+  // por PESO (Bold contra Medium) y no por cuerpo — antes iba a 12 y acababa
+  // siendo más pequeño que la etapa que cuelga de él.
   cProgLine: {
-    ...textStyles.labelStrong,
+    ...textStyles.bodyStrong,
     color: th.colors.mutedLight,
   },
   cStageLine: {
@@ -4030,8 +4029,9 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.orange,
     flexShrink:      0,
   },
+  // Sustituye a la línea de programa, así que va a su mismo rango.
   cAvisoText: {
-    ...textStyles.labelStrong,
+    ...textStyles.bodyStrong,
     color:      th.colors.orange,
     flexShrink: 1,
   },
@@ -4175,14 +4175,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.surface2,
     paddingHorizontal: spacing.lg,
   },
-  apBtnText: {
-    ...textStyles.labelStrong,
-    color: th.colors.text,
-  },
-  apBtnGlyph: {
-    ...textStyles.labelStrong,
-    color: th.colors.accent,
-  },
+  apBtnText:  { ...textStyles.button, color: th.colors.text },
+  apBtnGlyph: { ...textStyles.button, color: th.colors.accent },
   // "Preparar" va dentro de una tarjeta `surface`, y sobre ella el `surface2`
   // del Secondary apenas se separa del fondo. Relleno accent al 10%, que es el
   // lenguaje que ya usa la app para "esto lleva a algo editable".

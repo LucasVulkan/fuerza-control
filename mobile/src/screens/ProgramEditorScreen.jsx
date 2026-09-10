@@ -634,7 +634,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
 
   // ── Tarjeta de sesión ──
   // paddingLeft `space/sm`: los puntos del asa empiezan a 9px dentro de su caja
@@ -686,7 +686,7 @@ const makeStyles = (th) => StyleSheet.create({
   menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
   menuRowText: { ...textStyles.labelStrong, color: th.colors.text },
   menuRowHint: { ...textStyles.body, color: th.colors.muted },
-  stageRxLine: { ...textStyles.labelStrong, color: th.colors.accent },
+  stageRxLine: { ...textStyles.body, color: th.colors.accent },
 
   // Stage sheet
   sheetBody: {

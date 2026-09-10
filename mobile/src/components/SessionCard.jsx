@@ -335,31 +335,32 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // El nombre baja de `itemTitle` (16) a `labelStrong` (12) para que la tarjeta no
-  // crezca al ganar la fila de datos: dos filas compactas ocupan lo mismo que
-  // el título grande + la línea de metadatos de antes.
+  // El nombre es lo que se busca con la vista al recorrer el historial, así que
+  // va en `itemTitle` como cualquier otro nombre en lista de consulta. Se probó
+  // a 12 para que la tarjeta no creciera al ganar la fila de datos y quedó por
+  // debajo de sus propios metadatos: la tarjeta cabía y no se leía.
   cardSesName: {
-    ...textStyles.labelStrong,
+    ...textStyles.itemTitle,
     color:      th.colors.text,
     flexShrink: 1,
   },
-  cardSesLetter: { ...textStyles.labelStrong, color: th.colors.accent },
-  cardStage:     { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
+  cardSesLetter: { ...textStyles.itemTitle, color: th.colors.accent },
+  cardStage:     { ...textStyles.body, color: th.colors.mutedLight, flexShrink: 0 },
 
   // ── Fila de datos ──
   cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  cardStat:     { ...textStyles.label, color: th.colors.mutedLight },
-  cardStatNum:  { ...textStyles.labelStrong, color: th.colors.text },
-  cardStatUnit: { ...textStyles.label, color: th.colors.mutedLight },
-  cardStatSep:  { ...textStyles.label, color: th.colors.muted2 },
+  cardStat:     { ...textStyles.body, color: th.colors.mutedLight },
+  cardStatNum:  { ...textStyles.bodyStrong, color: th.colors.text },
+  cardStatUnit: { ...textStyles.body, color: th.colors.mutedLight },
+  cardStatSep:  { ...textStyles.body, color: th.colors.muted2 },
   deltaUp:      { color: th.colors.accent },
   deltaDown:    { color: th.tint.red50 },
 
-  cardDateCorner: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
+  cardDateCorner: { ...textStyles.body, color: th.colors.mutedLight, flexShrink: 0 },
   // `detail` no lleva padding lateral —cada sección se lo pone— así que este
   // texto suelto necesita el suyo o sale a sangre con el borde de la tarjeta.
   detailMeta: {
-    ...textStyles.label,
+    ...textStyles.body,
     color:             th.colors.mutedLight,
     paddingHorizontal: spacing.lg,
     marginBottom:      spacing.sm,
@@ -416,14 +417,11 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap:               spacing.xs,
   },
-  exName: {
-    ...textStyles.labelStrong,
-    color: th.colors.text,
-  },
+  exName: { ...textStyles.bodyStrong, color: th.colors.text },
   exNote: {
-    ...textStyles.label,
+    ...textStyles.body,
     color:      th.colors.accent,
-    lineHeight: lh(textStyles.label.fontSize),
+    lineHeight: lh(textStyles.body.fontSize),
   },
 
   // ── Conditioning blocks (v1: one compact line per block) ────────────────────
@@ -445,9 +443,9 @@ const makeStyles = (th) => StyleSheet.create({
   badgeBlockEmomText:    { color: th.colors.blue },
   badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
   badgeBlockForTimeText: { color: th.colors.orange },
-  blockLineName:  { ...textStyles.label, flex: 1, color: th.colors.text },
+  blockLineName:  { ...textStyles.body, flex: 1, color: th.colors.text },
   blockLineScore: {
-    ...textStyles.labelStrong,
+    ...textStyles.bodyStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
