@@ -157,7 +157,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   navRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  navRowTitle: { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  navRowTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   navRowSub:   { ...textStyles.body,           color: th.colors.mutedLight },
 
   // ── Lista agrupada de opciones (176:1902) ─────────────────────────────────

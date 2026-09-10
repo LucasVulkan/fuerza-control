@@ -357,6 +357,17 @@ anatomía:
   había pedido— y en pantalla no funcionó: un ± con su rótulo es una **fila de
   opción con botones**, no una tarjeta, y a 16 el rótulo pesaba más que el propio
   número. Decisión del usuario: las dos a 14.
+- Y detrás de ella, **el título de tarjeta baja de 16 a `bodyStrong`** en las
+  cuatro piezas donde el usuario lo comparó de lado: las tarjetas de
+  Calentamiento / Progresión / Opciones (`ui/EditorRows`), las tarjetas de
+  Historial (`SessionCard`) y las filas de Progresión (`ProgressTab`). Con ello,
+  título y meta comparten cuerpo en esas listas y se separan **sólo por peso**
+  (14/700 contra 14/500), que es la anatomía de §9.1 llevada hasta el final.
+
+  Los nombres de sesión y de ejercicio de los **editores** (`ProgramEditor`,
+  `SessionEditor`, `StagePlanner`) y el del ejercicio en marcha
+  (`workout/ExerciseCard`) se quedan en `itemTitleQuiet` (16): ahí el nombre es
+  el contenido de la fila, no el rótulo de una tarjeta que lleva a otro sitio.
 - **«Añadir ejercicio»** de la sesión de entreno, a `button`. Es el hermano de
   «Añadir serie» (`ExerciseCard.addLinkText`), que ya iba en `button`: mismo
   enlace, misma voz. A 12 el botón salía diminuto y con él su «+» en lima, que

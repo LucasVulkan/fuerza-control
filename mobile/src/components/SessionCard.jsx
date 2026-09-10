@@ -335,12 +335,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // Bold y no Black, la misma voz que los nombres del editor de programa: el
-  // historial se recorre entero, fila tras fila, y la negra a 16 cansa. Se probó
-  // a 12 para que la tarjeta no creciera al ganar la fila de datos y quedó por
-  // debajo de sus propios metadatos: la tarjeta cabía y no se leía.
+  // Bold a 14: manda sobre su fila de metadatos por PESO, no por cuerpo. Pasó
+  // por los dos extremos antes de quedarse aquí — a 12 estaba por debajo de sus
+  // propios datos, y la Black a 16 gritaba en una lista que se recorre entera.
   cardSesName: {
-    ...textStyles.itemTitleQuiet,
+    ...textStyles.bodyStrong,
     color:      th.colors.text,
     flexShrink: 1,
   },
