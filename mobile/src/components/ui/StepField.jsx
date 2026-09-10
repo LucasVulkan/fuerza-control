@@ -144,8 +144,8 @@ const makeSf = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
   },
 
-  label:           { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
-  labelHorizontal: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  label:           { ...textStyles.itemTitleQuiet, color: th.colors.text, textAlign: 'center' },
+  labelHorizontal: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
 
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },

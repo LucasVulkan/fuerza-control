@@ -349,7 +349,25 @@ anatomía:
   los botones de esas hojas («Sustituir», «Eliminar», «+ Añadir paso»), que
   seguían en `labelStrong` en vez de en `button`.
 
-### 9.4 Lo que se dejó fuera, y por qué
+### 9.4 Tercer repaso
+
+- **`ui/StepField`**, las cajas de ± del editor (Series, Descanso, Reps): sus dos
+  variantes iban las dos a 12 y son **dos anatomías distintas**. La caja del grid
+  es el título de una tarjeta y ahora habla como `NavRow` (`itemTitleQuiet`); la
+  fila horizontal es una fila de opción y habla como `OptionRow` (`bodyStrong`).
+  Poner la fila a 16 truncaría los rótulos largos («Tiempo mín») en las hojas
+  estrechas, que es de donde sale la diferencia.
+- **«Añadir ejercicio»** de la sesión de entreno, a `button`. Es el hermano de
+  «Añadir serie» (`ExerciseCard.addLinkText`), que ya iba en `button`: mismo
+  enlace, misma voz. A 12 el botón salía diminuto y con él su «+» en lima, que
+  sólo hereda el color.
+
+El resto de botones de añadir ya seguían el patrón correcto —el glifo en lima al
+100 % es un `<Text>` anidado que **sólo cambia el color** sobre el estilo del
+botón—, así que el único roto era ese. Vale igual para el nombre de etapa en
+«Añadir sesión a …» del editor de programa.
+
+### 9.5 Lo que se dejó fuera, y por qué
 
 - **`WorkoutScreen` y el hero de la Home**, por instrucción explícita: son las dos
   piezas donde la densidad está medida contra una caja concreta.

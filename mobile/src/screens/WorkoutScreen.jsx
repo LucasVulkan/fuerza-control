@@ -912,7 +912,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Añadir — mismo botón que el editor de sesión (210:2784)
   addBtn:     { alignItems: 'center', paddingVertical: spacing.md },
-  addBtnText: { ...textStyles.labelStrong, color: th.tint.accent50 },
+  addBtnText: { ...textStyles.button, color: th.tint.accent50 },
   addBtnPlus: { color: th.colors.accent },
 
   // Hoja de "añadir" + editor de bloque de la sesión libre
