@@ -16,10 +16,8 @@
  * elimina: `existingPatterns` sigue llegando por params pero ya no se usa.
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
-  ScrollView, StyleSheet,
-} from 'react-native';
+import { View, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';

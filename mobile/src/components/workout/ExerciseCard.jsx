@@ -25,7 +25,8 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -409,8 +410,8 @@ export default function ExerciseCard({
     <View style={styles.numSlot}>
       {animated ? (
         <>
-          <Animated.Text style={[styles.num, { opacity: numOpacity }]}>{numLabel}</Animated.Text>
-          <Animated.Text style={[styles.num, styles.numOverlay, { opacity: checkProgress }]}>✓</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.num, { opacity: numOpacity }]}>{numLabel}</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.num, styles.numOverlay, { opacity: checkProgress }]}>✓</Animated.Text>
         </>
       ) : (
         <Text style={styles.num}>{numLabel}</Text>
@@ -975,7 +976,6 @@ const makeStyles = (th) => StyleSheet.create({
   num: {
     fontFamily:  'Inter_900Black',
     fontSize:    17,
-    fontWeight:  '900',
     lineHeight:  22,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
@@ -996,10 +996,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     flexWrap:      'wrap',
   },
+  // ExtraBold y no Black: a 17 px la negra pesaba más que el número de serie,
+  // que es el dato que hay que cazar de un vistazo entre repetición y
+  // repetición. El número se queda en Black — el contraste es el que ordena.
   name: {
-    fontFamily:    'Inter_900Black',
+    fontFamily:    'Inter_800ExtraBold',
     fontSize:      17,
-    fontWeight:    '900',
     lineHeight:    22,
     letterSpacing: -0.17,
     color:         th.colors.text,
@@ -1017,9 +1019,10 @@ const makeStyles = (th) => StyleSheet.create({
     textDecorationStyle:      'dotted',
     textDecorationColor:      th.tint.accent50,
   },
+  // "3 × 12-14 reps" — la prescripción, que es lo que se lee entre serie y serie.
   target: {
     fontFamily:  'Inter_600SemiBold',
-    fontSize:    12,
+    fontSize:    14,
     fontWeight:  '600',
     color:       th.colors.mutedLight,
     marginTop:   3,
@@ -1069,8 +1072,8 @@ const makeStyles = (th) => StyleSheet.create({
   // se lea despues del que, no antes.
   progWhy: {
     fontFamily: 'Inter_400Regular',
-    fontSize:   12,
-    lineHeight: 15,
+    fontSize:   14,
+    lineHeight: 18,
     color:      th.colors.mutedLight,
     marginTop:  1,
   },
@@ -1293,13 +1296,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:     6,
     paddingBottom:  2,
   },
-  addLinkText: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      13,
-    fontWeight:    '800',
-    letterSpacing: 0.26,
-    color:         th.colors.mutedLight,
-  },
+  addLinkText: { ...textStyles.addLink, color: th.colors.mutedLight },
   addSetLink:  { marginTop: 12 },
   addSetPlus:  { color: th.colors.accent },
   addDropPlus: { color: th.colors.red },

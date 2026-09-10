@@ -18,7 +18,8 @@
  * como highlight en 3 casos y ninguno es este (docs/UI-MIGRATION.md §4.6).
  */
 import { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
 } from 'react-native-reanimated';
@@ -75,7 +76,7 @@ function RpeButton({ value, active, onPress }) {
 
   return (
     <AnimatedTouchable style={[styles.rpeBtn, boxStyle]} onPress={onPress} activeOpacity={0.8}>
-      <Reanimated.Text style={[styles.rpeBtnText, textStyle]}>{value}</Reanimated.Text>
+      <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.rpeBtnText, textStyle]}>{value}</Reanimated.Text>
     </AnimatedTouchable>
   );
 }

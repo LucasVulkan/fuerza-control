@@ -7,7 +7,8 @@
  * que sirve igual para las sesiones del cliente; el borrado entra por prop.
  */
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { Text } from './ui/Text';
 // Reanimated drives both the delete-card exit + sibling reflow (`exiting`/
 // `layout`) and the detail accordion (`FadeIn`/`FadeOut` + the card's own
 // `layout` animates the height change) — one animation system, no JS-driven

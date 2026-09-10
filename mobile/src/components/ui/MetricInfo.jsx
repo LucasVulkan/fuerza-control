@@ -34,7 +34,8 @@
  * grande y dos etiquetas, un aro de 11 px era ruido, y una tarjeta pequeña no
  * tiene ninguna otra acción con la que competir por el toque.
  */
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../../theme';

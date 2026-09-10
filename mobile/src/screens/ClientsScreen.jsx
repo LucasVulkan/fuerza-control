@@ -8,11 +8,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView, FlatList, TouchableOpacity,
-  TextInput, Modal, Alert, StyleSheet, KeyboardAvoidingView,
-  Platform, RefreshControl,
-} from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -4026,7 +4023,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     flexShrink:      0,
   },
-  pendingBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  pendingBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',
@@ -4936,7 +4933,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginTop:       spacing.sm,
   },
-  billCtaText: { ...textStyles.cardType, color: th.colors.onAccent },
+  billCtaText: { ...textStyles.btnAction, color: th.colors.onAccent },
 
   // ── Calendario (hoja de fecha) ──
   calBody: { paddingBottom: spacing.sm, gap: spacing.md },

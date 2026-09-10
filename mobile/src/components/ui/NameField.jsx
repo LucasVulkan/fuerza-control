@@ -15,7 +15,8 @@
  * cuanto bajan del límite vuelve a mandar él.
  */
 
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';

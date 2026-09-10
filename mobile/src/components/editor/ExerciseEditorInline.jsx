@@ -21,7 +21,8 @@
  * se conserva tal cual; esto es un restyle + reorganización de la UI.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../utils/progression';

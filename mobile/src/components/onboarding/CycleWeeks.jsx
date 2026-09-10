@@ -9,7 +9,8 @@
  * ProgramDetailScreen), cuadrados de sesión en `surface2` con la letra en el
  * color del día.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { textStyles, spacing } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';

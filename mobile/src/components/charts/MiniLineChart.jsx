@@ -6,7 +6,8 @@
  *   metricLabel: string                              unit shown in tooltip (e.g. "KG", "Reps")
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Animated } from 'react-native';
+import { View, ScrollView, StyleSheet, Animated } from 'react-native';
+import { Text } from '../ui/Text';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
 import { spacing, typography } from '../../theme';
@@ -212,7 +213,7 @@ export default function MiniLineChart({ data, metricLabel }) {
                 {pts.map((p) => {
                   const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
                   return (
-                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
+                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontFamily="Inter_400Regular" fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
                       {p.date}
                     </SvgText>
                   );
@@ -224,10 +225,10 @@ export default function MiniLineChart({ data, metricLabel }) {
                       width={TW} height={TH}
                       fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4}
                     />
-                    <SvgText x={dateStartX} y={tooltipY + 13} fontSize={8} fill={th.colors.muted} textAnchor="start">
+                    <SvgText x={dateStartX} y={tooltipY + 13} fontFamily="Inter_400Regular" fontSize={8} fill={th.colors.muted} textAnchor="start">
                       {selected.date}
                     </SvgText>
-                    <SvgText x={valueStartX} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
+                    <SvgText x={valueStartX} y={tooltipY + 28} fontFamily="Inter_400Regular" fontSize={11} fill={th.colors.accent} textAnchor="start">
                       {`${fmtAxisVal(selected.value)}${metricLabel ? ` ${metricLabel}` : ''}`}
                     </SvgText>
                   </G>

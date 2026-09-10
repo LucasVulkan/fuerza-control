@@ -17,7 +17,8 @@
  * contador es `setsState.length`, no un número aparte. Bajarlo nunca borra una
  * serie con algo registrado (lo garantiza `setAdHocSets`).
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../../theme';

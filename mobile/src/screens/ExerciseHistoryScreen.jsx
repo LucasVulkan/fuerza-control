@@ -6,9 +6,8 @@
  * Las filas donde se alcanzó el PR all-time quedan marcadas.
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import MiniLineChart from '../components/charts/MiniLineChart';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';

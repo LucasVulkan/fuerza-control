@@ -21,7 +21,8 @@
  * fallo de un intervalo se marca tocando su casilla (fuera el botón "Fallo").
  */
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import Reanimated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -255,7 +256,7 @@ export default function ConditioningBlockCard({
             hace el pop. Sin shared values — el resto del bump lo da la háptica. */}
         {bumpSide
           ? (
-            <Reanimated.Text key={`r-${sideValue}`} entering={ZoomIn.duration(170)} style={styles.sideBig}>
+            <Reanimated.Text key={`r-${sideValue}`} maxFontSizeMultiplier={MAX_FONT_SCALE} entering={ZoomIn.duration(170)} style={styles.sideBig}>
               {sideValue}
             </Reanimated.Text>
           )
@@ -659,7 +660,6 @@ const makeStyles = (th) => StyleSheet.create({
   sideBig: {
     fontFamily:  'Inter_900Black',
     fontSize:    22,
-    fontWeight:  '900',
     lineHeight:  24,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],

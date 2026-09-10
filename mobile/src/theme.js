@@ -103,34 +103,146 @@ export const typography = {
 // already consume as-is.
 //
 // The font is Inter (matching Figma). RN doesn't synthesize weights for custom
-// fonts, so each weight is a distinct family loaded in App.js — the family, not
-// `fontWeight`, is what actually selects the weight here. `fontWeight` is kept
-// as documentation and as a fallback hint before the font loads.
+// fonts, so each weight is a distinct family loaded in App.js — la familia, no
+// `fontWeight`, es lo que elige el peso.
+//
+// Y `fontWeight` no puede quedarse "de documentación": en Android, un estilo con
+// familia custom Y fontWeight hace que RN busque una variante con ese peso, no la
+// encuentre y caiga a Roboto. Era lo que hacía que la app se viera en Roboto en
+// Android y en Inter en iOS. El peso va en el nombre de la familia y en ningún
+// sitio más — `src/components/ui/Text` además lo quita de los estilos sueltos.
+//
+// ── Subida de escala de sep-2026 ──────────────────────────────────────────────
+// Los cuerpos de Figma se fijaron mirando iPhone, donde SF Pro cambia al corte
+// «Text» por debajo de ~20px y engorda las astas. Inter no tiene ese eje óptico,
+// así que a 8–12px se leía notablemente más fina de lo que el diseño suponía.
+// Decisión del usuario (sep-2026): +2 puntos en los tokens de texto pequeño y
+// nos apartamos de Figma a conciencia — ver AGENTS.md, la regla de fidelidad
+// queda suspendida para la escala tipográfica (no para color, radio ni layout).
+// La letra de la sesión de HOY, y solo esa: Barlow Condensed en la variante del
+// logotipo, que ya viene en el bundle. Se probó en las diez pantallas que
+// pintan una letra de sesión y solo convence aquí, donde es un titular a 34 px
+// — al resto, que son marcadores pequeños dentro de una fila, la condensada les
+// quitaba presencia. Las demás se quedan en Inter Black.
+const SESSION_LETTER = {
+  fontFamily:    'BarlowCondensed_800ExtraBold_Italic',
+  letterSpacing: 0,
+  textTransform: 'uppercase',
+};
+
 export const textStyles = {
-  hero:       { fontFamily: 'Inter_900Black',     fontSize: 20, fontWeight: '900', letterSpacing: 0 },    // text/hero — valor grande de las Progress cards
-  cardType:   { fontFamily: 'Inter_800ExtraBold', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },  // "SESIÓN X" tags
-  cardTitle:  { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0.64 }, // nombre de sesión
-  exercice:   { fontFamily: 'Inter_900Black',     fontSize: 16, fontWeight: '900', letterSpacing: 0 },    // text/Exercice — nombre de ejercicio (sin tracking, distinto de cardTitle)
-  subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 12, fontWeight: '500', letterSpacing: 0.48 }, // meta fecha/etapa/duración
-  tag:        { fontFamily: 'Inter_500Medium',    fontSize: 10, fontWeight: '500', letterSpacing: 0 },    // labels pequeños genéricos
-  spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 10, fontWeight: '800', letterSpacing: 2 },    // labels uppercase muy trackeados
-  smallBold:  { fontFamily: 'Inter_600SemiBold',  fontSize: 8,  fontWeight: '600', letterSpacing: 1.12 }, // text/SmallBold — labels 8px (etapa, entrenador, contadores)
-  btnAction:  { fontFamily: 'Inter_900Black',     fontSize: 12, fontWeight: '900', letterSpacing: 0 },    // texto de botones
+  hero:       { fontFamily: 'Inter_900Black',     fontSize: 20, letterSpacing: 0 },    // text/hero — valor grande de las Progress cards
+  cardType:   { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 1.2 },  // "SESIÓN X" tags
+  cardTitle:  { fontFamily: 'Inter_900Black',     fontSize: 16, letterSpacing: 0.64 }, // nombre de sesión
+  exercice:   { fontFamily: 'Inter_900Black',     fontSize: 16, letterSpacing: 0 },    // text/Exercice — nombre de ejercicio (sin tracking, distinto de cardTitle)
+  subtitle:   { fontFamily: 'Inter_500Medium',    fontSize: 14, letterSpacing: 0.48 }, // (12→14) subtítulos explicativos de tarjetas y tablas
+  tag:        { fontFamily: 'Inter_500Medium',    fontSize: 12, letterSpacing: 0 },    // (10→12) labels pequeños genéricos
+  smallBold:  { fontFamily: 'Inter_600SemiBold',  fontSize: 10, letterSpacing: 1.12 }, // (8→10) text/SmallBold — etapa, entrenador, contadores
+  btnAction:  { fontFamily: 'Inter_900Black',     fontSize: 14, letterSpacing: 0 },    // (12→14) TODO botón principal en lima pasa por aquí
+
+  // La ceja, una sola para toda la app. Antes había tres escalas distintas
+  // haciendo el mismo trabajo — 9 inline en el hero de la Home, este token a 10
+  // en la tarjeta de programa y `cardType` a 12 en las cabeceras de pantalla —,
+  // y las tres se leían como lo mismo porque LO SON. Unificadas aquí a 12.
+  spacingTag: { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 2 },    // (10→12) ceja: hero, tarjeta de programa y cabeceras
+
+  // El nombre en las listas de los editores. Bold y no Black: un editor se lee
+  // seguido, fila tras fila, y la negra a ese cuerpo cansa. Token propio y no
+  // `cardTitle`/`exercice` porque esos mandan en pantallas de consulta, donde
+  // el nombre sí tiene que cantar.
+  editorName:  { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: -0.2 },
+
+  // El enlace "+ Añadir …": añadir serie en el entreno, y añadir sesión y
+  // ejercicio en los editores. Los tres hacen lo mismo y son texto pelado, sin
+  // caja; iban en dos tipografías distintas (13/0.26 en el entreno y `cardType`
+  // a 12/1.2 en los editores) porque cada pantalla lo declaró por su cuenta.
+  addLink:     { fontFamily: 'Inter_800ExtraBold', fontSize: 13, letterSpacing: 0.26 },
+
+  // El nombre de la pantalla en la barra superior. Estaba declarado a pelo y
+  // copiado en cuatro sitios (ScreenHeader título + input, WorkoutScreen título
+  // + input de sesión libre); si no vive en un token, la quinta copia vuelve.
+  screenTitle: { fontFamily: 'Inter_800ExtraBold', fontSize: 18, letterSpacing: -0.2 }, // (16→18)
 
   // Sesiones de la Home (docs/specs/home-sesiones-plegables.md §4.2). La letra
-  // y el nombre a dos escalas: fila y tarjeta de hoy. Las maquetas los llevaban
-  // en Barlow Condensed y se rediseñaron a Inter para no cargar dos familias
-  // más por una pantalla — de ahí el tracking negativo, que es lo que compensa
-  // el ancho de la Inter Black a estos cuerpos.
-  // `Inter_900Black` es el peso más alto que carga la app, así que cuando algo
-  // «pide más bold» lo único que queda es cuerpo y tracking: subir el tamaño y
-  // apretar densa la mancha sin cambiar de fuente. Es la misma nota que ya
-  // llevaba `heroName` en la HomeView.
-  sessionGlyph:   { fontFamily: 'Inter_900Black', fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },  // letra de fila
-  sessionGlyphXL: { fontFamily: 'Inter_900Black', fontSize: 34, fontWeight: '900', letterSpacing: -1.6 },  // letra de la sesión de hoy
-  sessionName:    { fontFamily: 'Inter_900Black', fontSize: 16, fontWeight: '900', letterSpacing: -0.2 },  // nombre de fila
-  sessionNameXL:  { fontFamily: 'Inter_900Black', fontSize: 24, fontWeight: '900', letterSpacing: -0.8 },  // nombre de la sesión de hoy
+  // y el nombre a dos escalas: fila y tarjeta de hoy.
+  //
+  // La LETRA vuelve a Barlow Condensed, que es lo que pedían las maquetas. Se
+  // había descartado «para no cargar dos familias por una pantalla», pero esa
+  // familia ya está en el bundle desde siempre: es la del logotipo. Misma
+  // variante que el logo (800 ExtraBold Itálica), así que la marca y el
+  // marcador de sesión hablan igual y no entra ni un fichero nuevo.
+  //
+  // Sin tracking negativo: el que había compensaba el ancho de la Inter Black a
+  // estos cuerpos, y una condensada no necesita que la aprieten. El NOMBRE se
+  // queda en Inter — la condensada es para el marcador, no para leer.
+  sessionGlyph:   { fontFamily: 'Inter_900Black', fontSize: 22, letterSpacing: -0.6 },  // letra de fila
+  sessionGlyphXL: { ...SESSION_LETTER, fontSize: 34 },  // letra de la sesión de hoy
+  sessionName:    { fontFamily: 'Inter_900Black', fontSize: 16, letterSpacing: -0.2 },  // nombre de fila
+  // El nombre del hero comparte familia con su letra: son la misma cosa dicha de
+  // dos maneras. Sin el tracking negativo (era para apretar la Inter Black) y a
+  // 28, porque una condensada a 24 se quedaba corta donde había una Inter.
+  sessionNameXL:  { ...SESSION_LETTER, textTransform: 'none', fontSize: 28 },  // nombre de la sesión de hoy
 };
+
+// ─── Escalado del texto del sistema ───────────────────────────────────────────
+/**
+ * Techo del ajuste de tamaño de fuente del sistema.
+ *
+ * Ignorarlo del todo deja tirado a quien necesita texto grande; dejarlo suelto
+ * revienta unas maquetas medidas al píxel. 1.2 es donde el texto crece de forma
+ * perceptible y las tarjetas todavía cierran.
+ *
+ * Lo consumen `src/components/ui/Text` (todo el texto de la app), los tres
+ * `Animated.Text` que no pasan por ese wrapper, y `ui/FitLogo` — que lo necesita
+ * para escalar el SVG a la par que el texto del logotipo. Si esta constante
+ * desaparece, `Math.min(x, undefined)` es NaN y el logo se vuelve invisible sin
+ * un solo error: por eso theme.test.js la vigila.
+ */
+export const MAX_FONT_SCALE = 1.2;
+
+// ─── Familia por peso ─────────────────────────────────────────────────────────
+// RN no sintetiza pesos para fuentes custom: cada peso de Inter es una familia
+// propia (las carga App.js). Un estilo que sólo declara `fontWeight` se quedaba
+// en la fuente del sistema — SF Pro en iOS, Roboto en Android —, que es de donde
+// salía que la app se viera distinta en cada plataforma. `src/components/ui/Text`
+// pasa por aquí el peso de cada estilo para resolver la familia que toca.
+export const INTER_BY_WEIGHT = {
+  400:    'Inter_400Regular',
+  500:    'Inter_500Medium',
+  600:    'Inter_600SemiBold',
+  700:    'Inter_700Bold',
+  800:    'Inter_800ExtraBold',
+  900:    'Inter_900Black',
+  normal: 'Inter_400Regular',
+  bold:   'Inter_700Bold',
+};
+
+/**
+ * Familia Inter para un estilo ya aplanado. Devuelve `null` si el estilo ya
+ * eligió familia — ese estilo manda y no se toca.
+ */
+export function interFamily(flatStyle) {
+  if (flatStyle?.fontFamily) return null;
+  return INTER_BY_WEIGHT[flatStyle?.fontWeight] ?? INTER_BY_WEIGHT[400];
+}
+
+/**
+ * El estilo que acaba en la vista: familia resuelta y `fontWeight` fuera.
+ *
+ * Lo segundo es lo que arregla Android. Un estilo con familia custom Y
+ * `fontWeight` hace que RN busque una variante con ese peso, no la encuentre y
+ * caiga a Roboto — de ahí que la app se viera en Roboto en Android y en Inter en
+ * iOS. El peso lo elige la familia, así que se lee para escogerla y se descarta.
+ *
+ * Recibe el estilo ya aplanado (`StyleSheet.flatten`) porque así es pura y se
+ * puede testear sin react-native.
+ */
+export function textStyleFor(flatStyle) {
+  const style = { ...flatStyle };
+  style.fontFamily = style.fontFamily ?? interFamily(flatStyle);
+  delete style.fontWeight;
+  return style;
+}
 
 // ─── Border widths ────────────────────────────────────────────────────────────
 export const borders = {

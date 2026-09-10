@@ -16,7 +16,8 @@
  * programa convertiría las sesiones de fuera en días de descanso falsos.
  */
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { Text } from '../ui/Text';
 import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';

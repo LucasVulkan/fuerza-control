@@ -18,7 +18,8 @@
  */
 
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';

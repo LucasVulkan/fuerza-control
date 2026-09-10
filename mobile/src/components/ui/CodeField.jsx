@@ -10,7 +10,8 @@
  * al largo exacto, así que no se puede teclear un código con la forma mal.
  */
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 import * as Clipboard from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
 

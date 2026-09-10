@@ -6,14 +6,35 @@
  * asset real, así que el alto manda y el ancho se deriva de la caja original
  * (378×126) para no deformarlo.
  */
+import { PixelRatio } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../useTheme';
+import { MAX_FONT_SCALE } from '../../theme';
+
+// El logotipo es medio texto ("Forma") y medio SVG (esto). El texto sigue el
+// ajuste de tamaño de fuente del sistema y el SVG no, así que en cuanto alguien
+// tocaba ese ajuste "FIT" se descolgaba de "Forma". El SVG escala con el mismo
+// factor y el mismo techo que el texto, y así el lockup aguanta entero.
+//
+// `marginTop` sale de aquí y no del sitio que lo usa: es proporcional al alto
+// (los dos usos lo tenían a ojo, 4 sobre 14 y 8 sobre 28), y con la constante
+// dentro no hay dos números que puedan discrepar. 0.21 y no 0.286 porque a ojo
+// el SVG se apoyaba ~1 dp por debajo del suelo de "Forma".
+const BASELINE_DROP = 0.21;
 
 export default function FitLogo({ height = 22 }) {
-  const th    = useTheme();
-  const width = height * (378 / 126);
+  const th     = useTheme();
+  const scale  = Math.min(PixelRatio.getFontScale(), MAX_FONT_SCALE);
+  const h      = height * scale;
+  const width  = h * (378 / 126);
   return (
-    <Svg width={width} height={height} viewBox="0 0 378 126" fill="none">
+    <Svg
+      width={width}
+      height={h}
+      style={{ marginTop: h * BASELINE_DROP }}
+      viewBox="0 0 378 126"
+      fill="none"
+    >
       {/* I */}
       <Path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z" fill={th.colors.accent} />
       {/* T */}

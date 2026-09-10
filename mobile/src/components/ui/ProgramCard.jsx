@@ -45,7 +45,8 @@
  *                          el autor, así que no hay línea de autoría.
  */
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
 } from 'react-native-reanimated';

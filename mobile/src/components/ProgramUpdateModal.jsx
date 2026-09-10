@@ -11,7 +11,8 @@
  * §6.2). Only the trainer activating a different stage moves them.
  */
 
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
 import { spacing, typography, borders, withOpacity } from '../theme';

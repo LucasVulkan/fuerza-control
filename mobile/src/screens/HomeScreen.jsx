@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Alert,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Text } from '../components/ui/Text';
 import Svg, { Path, G } from 'react-native-svg';
 // Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
@@ -1040,9 +1038,12 @@ const makeStyles = (th) => StyleSheet.create({
   // rótulos de la pantalla se quedan en `mutedLight`.
   secHeaderLabel:    { ...textStyles.spacingTag, color: th.colors.text },
   secHeaderLabelDim: { color: th.colors.mutedLight },
+  // El mismo cuerpo que el meta del hero ("5 EJERCICIOS · ~55 MIN · …"): son el
+  // mismo tipo de dato, contexto en mayúsculas muy trackeado. Antes iba a 9 y
+  // en SemiBold, medio punto por debajo de todo lo demás.
   secHeaderCount: {
-    fontFamily:    'Inter_600SemiBold',
-    fontSize:      9,
+    fontFamily:    'Inter_700Bold',
+    fontSize:      10,
     letterSpacing: 1.1,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
@@ -1086,7 +1087,7 @@ const makeStyles = (th) => StyleSheet.create({
   sesHead: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               12,
+    gap:               8,
     height:            60,
     paddingHorizontal: 14,
   },
@@ -1097,7 +1098,10 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.sessionGlyph,
     lineHeight:         22,
     includeFontPadding: false,
-    width:              26,
+    // Ajustada a la tinta de la Inter Black a este cuerpo (24 px medidos sobre
+    // el .ttf), sin los 2 px de holgura que traía. Lo que separa la letra del
+    // nombre es el `gap` de la fila, no una caja con aire de sobra.
+    width:              24,
     color:              LIMA,
   },
   sesGlyphDone: { color: th.colors.muted },
@@ -1127,7 +1131,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // 13 y no los 12 de `btnAction`: el botón es lo que hay que pulsar y a 12 se
   // quedaba por debajo del resto de la tarjeta.
-  sesBtnText: { ...textStyles.btnAction, fontSize: 13, letterSpacing: 0.4, color: th.colors.accent },
+  sesBtnText: { ...textStyles.btnAction, color: th.colors.accent },
 
   // ── La que toca hoy ─────────────────────────────────────────────────
   // La única pieza en color de la pantalla, así que dentro el acento es el
@@ -1148,26 +1152,44 @@ const makeStyles = (th) => StyleSheet.create({
   // `flex-end` y no `center`: la letra se apoya en la misma línea de suelo que
   // el nombre. Centrada tampoco quedaba mal, pero a media altura no está
   // alineada con nada y se lee como un descuadre.
-  todayHeadRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginTop: spacing.sm },
+  todayHeadRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: spacing.sm },
+  // ── Cómo se apoyan la letra y el nombre en el mismo suelo ──────────────────
+  // La fila alinea a `flex-end`, o sea que lo que casa son los BORDES de las dos
+  // cajas de texto, no las bases de las letras. La distancia de la base al borde
+  // inferior es `(lineHeight − (A+D)·cuerpo)/2 + D·cuerpo`, con A=1.0 y D=0.2 em
+  // (métricas hhea de la Barlow). Igualando las dos sale una relación limpia:
+  //
+  //     lineHeight(letra) = lineHeight(nombre) + 6·(A − D) = +4.8
+  //
+  // De ahí 34 en el nombre (que es además lo mínimo para que la "j" no se corte:
+  // 1.2 em × 28 = 33.6) y 39 en la letra. Si cambia un cuerpo, rehacer la cuenta;
+  // no son números a ojo.
   todayGlyph: {
     ...textStyles.sessionGlyphXL,
-    lineHeight:         28,
+    lineHeight:         39,
     includeFontPadding: false,
-    width:              26,
+    // La tinta de la Barlow a 34 mide 26 justos: 27 para que la cursiva no
+    // roce el borde. Aquí el aire se recorta desde el `gap` de la fila, que
+    // sólo separa la letra del nombre.
+    width:              27,
     color:              th.colors.onAccent,
   },
+  // La misma ceja que la tarjeta de programa y las cabeceras de pantalla.
   todayFlag: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      9,
-    letterSpacing: 2,
+    ...textStyles.spacingTag,
     textTransform: 'uppercase',
     color:         withOpacity(th.colors.onAccent, 0.55),
   },
   todayName: {
     ...textStyles.sessionNameXL,
-    lineHeight: 25,
-    color:      th.colors.onAccent,
-    flex:       1,
+    // 34: la Barlow pide 1.2 em (33.6 a cuerpo 28) para que la "j" de "empuje"
+    // quepa entera. Con los 25 de antes se comía 8 px de descendente.
+    lineHeight:         34,
+    // Imprescindible para que la cuenta de arriba valga en Android: sin esto el
+    // sistema le suma su propio relleno a la caja y el suelo deja de casar.
+    includeFontPadding: false,
+    color:              th.colors.onAccent,
+    flex:               1,
   },
   todayRule: {
     height:          2,
@@ -1176,7 +1198,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       11,
   },
   todayMeta: {
-    marginTop:     spacing.md,
+    marginTop:     spacing.sm,
     fontFamily:    'Inter_700Bold',
     fontSize:      10,
     letterSpacing: 1.1,
@@ -1206,7 +1228,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.md,
     padding:         spacing.lg,
   },
-  todayBtnText: { ...textStyles.btnAction, fontSize: 13, letterSpacing: 0.4, color: LIMA },
+  todayBtnText: { ...textStyles.btnAction, color: LIMA },
 
   // ── Los ejercicios de la sesión desplegada ──────────────────────────────
   // Sosos a propósito: caja baja, sin filetes y sin lima. Dentro de la tarjeta

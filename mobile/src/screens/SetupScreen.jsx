@@ -16,7 +16,8 @@
  * porque elegirlo es justamente lo que se hace aquí.
  */
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../../store/useStore';
@@ -87,7 +88,7 @@ export default function SetupScreen() {
       <View>
         <View style={styles.brandRow}>
           <Text style={styles.brandForma}>Forma</Text>
-          <View style={{ marginTop: spacing.sm2 }}><FitLogo height={28} /></View>
+          <FitLogo height={28} />
         </View>
         <Text style={styles.tagline}>{tx.tagline}</Text>
       </View>

@@ -16,18 +16,14 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Animated, PanResponder, Platform,
-  Modal, KeyboardAvoidingView, Alert,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, Animated, PanResponder, Platform, Modal, KeyboardAvoidingView, Alert } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { resolveProgressionConfig } from '../utils/progression';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
@@ -72,12 +68,6 @@ function rowMeta(exConfig, t) {
   const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
   if (exConfig.isKey) parts.unshift(t('common.keyExercise'));
   return parts.join(' · ');
-}
-
-function progMode(exConfig, def) {
-  const prog = resolveProgressionConfig(exConfig, def);
-  if (prog.type !== 'none') return 'auto';
-  return (exConfig.progressionModel ?? def?.progressionModel) === 'submax' ? 'submax' : 'fixed';
 }
 
 function blockMeta(block, t) {
@@ -307,9 +297,9 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Subtítulo completo: prescripción + progresión automática + vinculación.
   function metaFor(exConfig) {
-    const def   = allExercises[exConfig.exerciseId];
+    // Sin "prog. auto.": ocupaba un tercio de la línea para decir lo que es el
+    // caso por defecto. Se sigue viendo al abrir el ejercicio.
     const parts = [rowMeta(exConfig, t)];
-    if (progMode(exConfig, def) === 'auto') parts.push(t('editor.metaProgAuto'));
     const linked = linkedSessions(exConfig);
     if (linked) parts.push(t('editor.metaLinked', { sessions: linked }));
     return parts.join(' · ');
@@ -922,8 +912,8 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumber: { ...textStyles.cardType, color: th.colors.accent, marginRight: 12 },
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rowName:   { ...textStyles.cardType, color: th.colors.text },
-  rowMeta:   { ...textStyles.tag, color: th.colors.mutedLight, marginTop: spacing.xs },
+  rowName:   { ...textStyles.editorName, color: th.colors.text },
+  rowMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs },
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -969,7 +959,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Añadir ── (texto plano, sin caja — así está ya en Figma)
   addBtn:      { alignItems: 'center', paddingVertical: spacing.md },
-  addBtnText:  { ...textStyles.cardType, color: th.tint.accent50 },
+  addBtnText:  { ...textStyles.addLink, color: th.tint.accent50 },
   addBtnPlus:  { color: th.colors.accent },
 
   // ── Hojas ──

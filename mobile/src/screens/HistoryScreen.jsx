@@ -8,10 +8,8 @@
  *  - buildSetLabel cubre todas las combinaciones: weight×reps, weight×time, reps, time
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, TouchableOpacity,
-  ScrollView, Alert, StyleSheet, PixelRatio,
-} from 'react-native';
+import { View, TouchableOpacity, ScrollView, Alert, StyleSheet, PixelRatio } from 'react-native';
+import { Text } from '../components/ui/Text';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';

@@ -10,7 +10,8 @@
  * sale de aquí, igual que hacía `AnswerChips`.
  */
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import DragSheet from '../DragSheet';
 import SegmentedControl from '../ui/SegmentedControl';

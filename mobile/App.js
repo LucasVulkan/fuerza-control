@@ -15,6 +15,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { AppState, Platform, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
+  Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
@@ -57,6 +58,7 @@ export default function App() {
   // Each weight is its own named family: RN doesn't synthesize weights for
   // custom fonts, so textStyles reference these by fontFamily, not fontWeight.
   const [fontsLoaded] = useFonts({
+    Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,

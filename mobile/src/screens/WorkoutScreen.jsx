@@ -1,8 +1,5 @@
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Modal,
-  Platform, StyleSheet, Animated, PanResponder,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, KeyboardAvoidingView, Modal, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -882,7 +879,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Aquí lleva además el reloj, que sí va en accent — es un dato vivo, y es el
   // único sitio de la pantalla donde se lee el tiempo de sesión.
   eyebrowText: {
-    ...textStyles.cardType,
+    ...textStyles.spacingTag,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -892,22 +889,16 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant:   ['tabular-nums'],
   },
   headerTitle: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      16,
-    fontWeight:    '800',
-    letterSpacing: -0.2,
-    color:         th.colors.text,
-    marginTop:     spacing.xs,
+    ...textStyles.screenTitle,
+    color:     th.colors.text,
+    marginTop: spacing.xs,
   },
   freeNameInputHeader: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      16,
-    fontWeight:    '800',
-    letterSpacing: -0.2,
-    color:         th.colors.text,
-    marginTop:     spacing.xs,
-    padding:       0,
-    alignSelf:     'stretch',
+    ...textStyles.screenTitle,
+    color:     th.colors.text,
+    marginTop: spacing.xs,
+    padding:   0,
+    alignSelf: 'stretch',
   },
   // Texto explicativo de la sesión libre: sin caja, tipografía de la app
   // (text/subtitle) y en mutedLight — es contexto, no un aviso.

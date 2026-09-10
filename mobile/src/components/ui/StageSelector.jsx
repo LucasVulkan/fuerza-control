@@ -11,7 +11,8 @@
  * segunda pulsación para abrir el modal de edición de etapa.
  */
 import { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { LockIcon } from './EditorIcons';

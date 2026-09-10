@@ -6,10 +6,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, Modal, StyleSheet,
-  ActivityIndicator, ScrollView, Alert,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }                                     from '../../store/useStore';

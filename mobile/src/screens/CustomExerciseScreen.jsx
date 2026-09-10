@@ -21,10 +21,8 @@
  * SESIÓN, no de la ficha, así que ese paso no aplica aquí.
  */
 import { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';

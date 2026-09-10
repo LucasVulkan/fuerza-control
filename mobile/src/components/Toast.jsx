@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Text, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, selectToast } from '../../store/useStore';
 import { spacing, typography, withOpacity } from '../theme';

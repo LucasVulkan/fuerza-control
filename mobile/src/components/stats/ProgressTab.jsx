@@ -13,10 +13,8 @@
  */
 
 import { useState, useRef, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import Reanimated, {
   LinearTransition,
   useSharedValue, useAnimatedStyle, withTiming, interpolate,
@@ -502,7 +500,7 @@ function MiniLineChart({ data, metricLabel }) {
         {pts.map((p) => {
           const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
           return (
-            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
+            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontFamily="Inter_400Regular" fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
               {p.date}
             </SvgText>
           );
@@ -511,8 +509,8 @@ function MiniLineChart({ data, metricLabel }) {
           <G>
             <Rect x={tooltipX - TW / 2} y={tooltipY} width={TW} height={TH}
               fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4} />
-            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={th.colors.muted}  textAnchor="start">{selected.date}</SvgText>
-            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
+            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontFamily="Inter_400Regular" fontSize={8}  fill={th.colors.muted}  textAnchor="start">{selected.date}</SvgText>
+            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontFamily="Inter_400Regular" fontSize={11} fill={th.colors.accent} textAnchor="start">
               {fmtAxisVal(selected.value)}{metricLabel ? ` ${metricLabel}` : ''}
             </SvgText>
           </G>
@@ -1122,13 +1120,16 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
           <Text style={styles.exSub} numberOfLines={1}>
             {`${sessionsCount} ${sessionsCount === 1 ? 'sesión' : 'sesiones'}`}
             {improvePct !== null && (
-              <Text>
+              // Fragmento y no `<Text>`: un Text anidado sin estilo pasa por el
+              // wrapper de ui/Text, que le inyecta la familia por defecto y le
+              // rompe la herencia del padre. Aquí sólo hay que agrupar.
+              <>
                 {' · '}
                 <Text style={{ color: improvePct >= 0 ? th.colors.accent : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
                 {' progreso'}
-              </Text>
+              </>
             )}
           </Text>
         </View>

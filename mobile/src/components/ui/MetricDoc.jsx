@@ -11,7 +11,8 @@
  * precisión que la métrica no tiene. `rules` sí lo es — hay métricas sin reglas
  * propias de la aplicación.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../../theme';

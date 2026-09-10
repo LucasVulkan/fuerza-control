@@ -13,7 +13,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { Text } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import Constants        from 'expo-constants';

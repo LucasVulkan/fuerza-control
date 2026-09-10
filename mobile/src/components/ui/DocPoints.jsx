@@ -9,7 +9,8 @@
  * `DocSheet` es lo que se abre al pulsar "CICLO" en el banner de Home: el
  * apartado que resuelve la duda, no el glosario entero.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
 import { spacing } from '../../theme';

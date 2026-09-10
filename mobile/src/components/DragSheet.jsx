@@ -14,10 +14,8 @@
  * zona y el arrastre saltaría al cruzar de una a otra.
  */
 import { useRef, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView,
-  Animated, PanResponder, KeyboardAvoidingView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { spacing, typography, borders } from '../theme';

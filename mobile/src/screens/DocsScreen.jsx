@@ -10,7 +10,8 @@
  * para resolver una duda concreta, y un bloque de texto obliga a leerlo entero
  * para encontrar la línea que importa.
  */
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';

@@ -7,10 +7,8 @@
  * KeyboardAvoidingView propio para que el TextInput con autofocus no quede tapado.
  */
 import { useRef, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, Modal, TextInput,
-  KeyboardAvoidingView, Platform, StyleSheet, Animated, PanResponder,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { spacing, typography, borders, withOpacity } from '../../theme';

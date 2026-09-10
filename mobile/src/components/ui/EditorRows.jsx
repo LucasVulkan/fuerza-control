@@ -5,7 +5,8 @@
  * mismos elementos de UI en vez de reimplementarlos.
  */
 import { useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, interpolate, interpolateColor, Easing,
 } from 'react-native-reanimated';

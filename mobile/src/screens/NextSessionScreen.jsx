@@ -9,15 +9,13 @@
  */
 
 import { useState, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Keyboard,
-} from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Keyboard } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { clientStageIndex, stageDaysAt } from '../utils/stageProgress';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 /** Input type for an exercise (matches ExerciseCard's fallback logic). */
@@ -342,7 +340,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   sendBtn: { backgroundColor: th.colors.blue, borderRadius: th.radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   sendBtnDisabled: { backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border },
-  sendText: { fontSize: typography.base, fontWeight: typography.heavy, color: th.colors.onAccent, letterSpacing: 0.3 },
+  sendText: { ...textStyles.btnAction, color: th.colors.onAccent },
   sendTextDisabled: { color: th.colors.muted },
   footerNote: { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center', marginTop: spacing.sm },
 

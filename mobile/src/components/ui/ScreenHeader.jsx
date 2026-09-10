@@ -29,7 +29,8 @@
  *   (pasos del onboarding, ejercicios del entreno) y hairline donde no.
  */
 
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -210,7 +211,7 @@ const makeStyles = (th) => StyleSheet.create({
   // "Planificar", `editor.sessionEyebrow` → "Sesión B"). Antes cada copia de la
   // cabecera decidía por su cuenta y no coincidían.
   eyebrow: {
-    ...textStyles.cardType,
+    ...textStyles.spacingTag,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
@@ -218,21 +219,15 @@ const makeStyles = (th) => StyleSheet.create({
   // con más peso de la barra. Muy por debajo de los 25px Black de antes, pero a
   // 14 el nombre pesaba menos que el propio contenido.
   title: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      16,
-    fontWeight:    '800',
-    letterSpacing: -0.2,
-    color:         th.colors.text,
-    marginTop:     spacing.xs,
+    ...textStyles.screenTitle,
+    color:     th.colors.text,
+    marginTop: spacing.xs,
   },
   titleInput: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      16,
-    fontWeight:    '800',
-    letterSpacing: -0.2,
-    color:         th.colors.text,
-    marginTop:     spacing.xs,
-    padding:       0,
+    ...textStyles.screenTitle,
+    color:     th.colors.text,
+    marginTop: spacing.xs,
+    padding:   0,
   },
   count: {
     ...textStyles.smallBold,

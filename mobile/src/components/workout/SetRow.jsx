@@ -13,10 +13,8 @@
  * de tiempo en vivo. Pausa/reanuda sin perder el tiempo acumulado.
  */
 
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, PanResponder, Keyboard, Pressable, Animated,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, Animated } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { spacing, borders } from '../../theme';

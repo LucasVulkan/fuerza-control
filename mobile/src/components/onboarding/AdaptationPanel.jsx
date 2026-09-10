@@ -10,7 +10,8 @@
  * `timeCuts` (`diffAdaptations`, §5.2) en las tres listas ya listas para
  * pintar + el contador total, que usa también la fila colapsada del preview.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';

@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, Keyboard,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Keyboard } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
@@ -665,13 +663,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
   sesLetter: { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  sesName:   { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', color: th.colors.text },
+  sesName:   { ...textStyles.editorName, color: th.colors.text },
   sesMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).
   addSessionBtn:      { alignItems: 'center', paddingVertical: spacing.md },
-  addSessionBtnText:  { ...textStyles.cardType, color: th.tint.accent50 },
+  addSessionBtnText:  { ...textStyles.addLink, color: th.tint.accent50 },
   addSessionBtnStage: { color: th.colors.accent },
 
   // ── Guardar programa (Buttons 388:2676) ──
@@ -682,7 +680,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  saveBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  saveBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
 
   // ── Menú "···" ──
   menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
@@ -754,7 +752,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     alignItems:      'center',
   },
-  activateBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  activateBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
   sheetBtnRow: { flexDirection: 'row', gap: spacing.sm },
   dupStageBtn: {
     flex:            1,

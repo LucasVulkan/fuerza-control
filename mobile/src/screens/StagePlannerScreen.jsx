@@ -22,9 +22,8 @@
  */
 
 import { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert,
-} from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';

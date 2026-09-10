@@ -10,7 +10,8 @@
  * pintar todas las opciones no cabe.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';

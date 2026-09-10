@@ -23,10 +23,8 @@
  * pulsar Asignar; ahora se lee en la propia fila del cliente, antes de elegir.
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -540,7 +538,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  hdrNewBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  hdrNewBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
 
   // ── Lista ──
   list: {

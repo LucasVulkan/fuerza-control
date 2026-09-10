@@ -23,11 +23,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView,
-  TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '../components/ui/Text';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Path, G, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1314,7 +1311,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   // La misma letra que la tarjeta de propuesta: color, sin recuadro.
-  previewSessionLetter: { fontSize: 18, fontWeight: typography.heavy, lineHeight: 20, width: 16 },
+  previewSessionLetter: { fontFamily: 'Inter_900Black', fontSize: 18, lineHeight: 20, width: 16 },
   previewSessionInfo: { flex: 1 },
   previewSessionHeader: {
     flexDirection:  'row',
@@ -1386,7 +1383,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  startBtnText:    { ...textStyles.btnAction, fontSize: 14, color: th.colors.onAccent },
+  startBtnText:    { ...textStyles.btnAction, color: th.colors.onAccent },
   startBtnOff:     { backgroundColor: th.colors.surface2 },
   startBtnTextOff: { color: th.colors.mutedLight },
 
@@ -1419,7 +1416,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
   },
-  proposalSessionLetter: { fontSize: 18, fontWeight: typography.heavy, lineHeight: 20, width: 16 },
+  proposalSessionLetter: { fontFamily: 'Inter_900Black', fontSize: 18, lineHeight: 20, width: 16 },
   proposalSessionInfo:   { flex: 1, gap: 2, minWidth: 0 },
   proposalSessionName:   { ...textStyles.subtitle, color: th.colors.text },
   proposalSessionMeta:   { ...textStyles.tag, color: th.colors.mutedLight },

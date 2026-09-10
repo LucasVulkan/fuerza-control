@@ -13,10 +13,8 @@
  *   onClose     — called to dismiss
  */
 import { useState } from 'react';
-import {
-  Modal, View, Text, TouchableOpacity, Switch, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { Modal, View, TouchableOpacity, Switch, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from './ui/Text';
 import { spacing, typography, borders, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 

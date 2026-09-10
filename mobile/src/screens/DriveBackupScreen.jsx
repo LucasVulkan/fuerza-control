@@ -12,10 +12,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, ScrollView, RefreshControl, TextInput,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';

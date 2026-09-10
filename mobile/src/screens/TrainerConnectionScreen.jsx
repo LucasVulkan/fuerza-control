@@ -17,9 +17,8 @@
  */
 
 import { useState } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';

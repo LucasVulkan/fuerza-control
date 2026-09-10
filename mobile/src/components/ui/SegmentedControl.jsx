@@ -5,7 +5,8 @@
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';

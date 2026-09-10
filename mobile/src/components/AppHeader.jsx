@@ -5,9 +5,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView, TextInput,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView } from 'react-native';
+import { Text, TextInput } from './ui/Text';
 import Svg, { Path, G, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -601,7 +600,7 @@ export default function AppHeader() {
       <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
           <Text style={styles.appNameForma}>Forma</Text>
-          <View style={{ marginTop: 4 }}><FitLogo height={14} /></View>
+          <FitLogo height={14} />
         </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
         <TouchableOpacity
@@ -689,12 +688,6 @@ const makeStyles = (th) => StyleSheet.create({
     fontSize:      19,
     color:         th.colors.text,
     letterSpacing: -1.14,
-  },
-  appNameFit: {
-    fontSize:      typography.xl,
-    fontFamily:    'BarlowCondensed_800ExtraBold_Italic',
-    color:         th.colors.accent,
-    letterSpacing: 2,
   },
   // Fecha — Inter Bold 10px, tracking 0.4, mutedLight (Figma)
   clockText: {

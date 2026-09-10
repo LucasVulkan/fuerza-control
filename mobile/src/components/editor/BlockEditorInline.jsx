@@ -23,9 +23,8 @@
  * La lógica (autosave con debounce, presets, picker de movimientos) se conserva.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, PanResponder,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Animated, PanResponder } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';

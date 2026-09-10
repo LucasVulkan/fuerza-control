@@ -79,6 +79,9 @@ function MainTabs() {
         tabBarActiveTintColor:   th.colors.accent,
         tabBarInactiveTintColor: th.colors.muted,
         tabBarLabelStyle: styles.tabLabel,
+        // La etiqueta la pinta react-navigation con su propio Text, fuera del
+        // wrapper de src/components/ui/Text: aquí se le repite el trato.
+        tabBarAllowFontScaling: false,
         sceneStyle: styles.scene,
       }}
     >
@@ -248,7 +251,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg, // tan oscuro como el fondo de la app
   },
   tabLabel: {
-    fontSize: 9,
+    fontFamily: 'Inter_500Medium',
+    fontSize:   9,
   },
   scene: {
     backgroundColor: th.colors.bg,

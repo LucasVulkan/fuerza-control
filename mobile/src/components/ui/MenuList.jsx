@@ -11,7 +11,8 @@
  * en gris: son decoración funcional, el lima queda para lo que informa.
  */
 import { Children, cloneElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import Svg from 'react-native-svg';
 
 import { spacing, textStyles, getCardRadii } from '../../theme';

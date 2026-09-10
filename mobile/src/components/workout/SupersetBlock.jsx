@@ -8,7 +8,8 @@
  * la aporta la costura entre cards (gap 2 + esquinas interiores a radio 4, ver
  * `groupPos` en ExerciseCard), no una tarjeta contenedora.
  */
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { spacing, typography, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';

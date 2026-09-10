@@ -7,7 +7,8 @@
  * de programa.
  */
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 
