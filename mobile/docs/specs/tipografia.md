@@ -352,11 +352,11 @@ anatomía:
 ### 9.4 Tercer repaso
 
 - **`ui/StepField`**, las cajas de ± del editor (Series, Descanso, Reps): sus dos
-  variantes iban las dos a 12 y son **dos anatomías distintas**. La caja del grid
-  es el título de una tarjeta y ahora habla como `NavRow` (`itemTitleQuiet`); la
-  fila horizontal es una fila de opción y habla como `OptionRow` (`bodyStrong`).
-  Poner la fila a 16 truncaría los rótulos largos («Tiempo mín») en las hojas
-  estrechas, que es de donde sale la diferencia.
+  variantes iban a 12 y se leían como metadato. Las dos suben a `bodyStrong`.
+  Se probó la del grid a 16 —el título de tarjeta de `NavRow`, que es lo que se
+  había pedido— y en pantalla no funcionó: un ± con su rótulo es una **fila de
+  opción con botones**, no una tarjeta, y a 16 el rótulo pesaba más que el propio
+  número. Decisión del usuario: las dos a 14.
 - **«Añadir ejercicio»** de la sesión de entreno, a `button`. Es el hermano de
   «Añadir serie» (`ExerciseCard.addLinkText`), que ya iba en `button`: mismo
   enlace, misma voz. A 12 el botón salía diminuto y con él su «+» en lima, que

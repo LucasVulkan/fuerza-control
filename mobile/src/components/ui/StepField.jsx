@@ -144,7 +144,11 @@ const makeSf = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
   },
 
-  label:           { ...textStyles.itemTitleQuiet, color: th.colors.text, textAlign: 'center' },
+  // Las dos variantes al mismo cuerpo. Iban a 12 y se leían como metadato; se
+  // probó la caja del grid a 16 —el título de tarjeta de `NavRow`— y el usuario
+  // prefirió las dos a 14: un ± con su rótulo es una fila de opción con botones,
+  // no una tarjeta, y a 16 el rótulo pesaba más que el número que hay debajo.
+  label:           { ...textStyles.bodyStrong, color: th.colors.text, textAlign: 'center' },
   labelHorizontal: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
 
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
