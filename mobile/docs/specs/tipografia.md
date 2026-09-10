@@ -369,10 +369,10 @@ anatomía:
   debajo de sus propios datos, y la Black a 16 gritaba en una lista que se
   recorre entera.
 
-  `itemTitleQuiet` (16) queda para los cuatro sitios donde un nombre **no está en
-  una lista**: el ejercicio en marcha del entreno y su celda de serie, la
-  cabecera de «Próxima sesión» y la del modal de ejercicio del editor. Ahí el
-  nombre es el asunto de la pantalla entera, no una fila entre muchas.
+  `itemTitleQuiet` (16) queda para los tres sitios donde un nombre **no está en
+  una lista**: el ejercicio en marcha del entreno, su celda de serie y la
+  cabecera de «Próxima sesión». Ahí el nombre es el asunto de la pantalla entera,
+  no una fila entre muchas.
 - **«Añadir ejercicio»** de la sesión de entreno, a `button`. Es el hermano de
   «Añadir serie» (`ExerciseCard.addLinkText`), que ya iba en `button`: mismo
   enlace, misma voz. A 12 el botón salía diminuto y con él su «+» en lima, que

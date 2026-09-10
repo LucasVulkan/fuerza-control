@@ -145,7 +145,7 @@ export const textStyles = {
   // Aquí SÍ canta, es lo que se busca con la vista.
   itemTitle: { fontFamily: 'Inter_900Black', fontSize: 16, letterSpacing: -0.2 },
   // El mismo nombre cuando NO está en una lista: el ejercicio en marcha del
-  // entreno, la cabecera de «Próxima sesión», el modal de ejercicio del editor.
+  // entreno, su celda de serie y la cabecera de «Próxima sesión».
   // Bold y no Black porque ahí el nombre se lee, no se busca. Un nombre dentro
   // de una lista —editores, historial, progresión— va a `bodyStrong`: comparte
   // cuerpo con su meta y manda por peso (ver docs/specs/tipografia.md §9.4).

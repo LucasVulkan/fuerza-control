@@ -27,7 +27,7 @@ import { useStore } from '../../store/useStore';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, textStyles, borders, sheetRowBase } from '../theme';
+import { spacing, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon } from '../components/ui/EditorIcons';
@@ -1043,26 +1043,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exHeaderAcceptTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
-  // ── Modales de ejercicio / bloque (sin migrar todavía) ──
+  // El marco de los modales de ejercicio / bloque. La barra superior que tenía
+  // debajo (`modalTopbar` + tag + nombre + botón aceptar) la sustituyó `exHeader*`
+  // y se quedó aquí sin usar; se va con esta ronda.
   modalSafe: { flex: 1, backgroundColor: th.colors.bg },
-  modalTopbar: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  modalExTag:  { ...textStyles.caps, color: th.colors.muted },
-  modalExName: { ...textStyles.itemTitleQuiet, color: th.colors.text, marginTop: 2 },
-  modalAcceptBtn: {
-    backgroundColor:   th.colors.accent,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   8,
-    borderRadius:      th.radius.sm,
-    marginLeft:        spacing.md,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  modalAcceptTxt: { ...textStyles.labelStrong, color: th.colors.onAccent },
 });
