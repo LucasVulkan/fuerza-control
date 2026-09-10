@@ -109,8 +109,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm2, // space/sm2=8 (Group together, botón seleccionado)
     alignItems:      'center',
   },
+  // Un escalón por encima de la etiqueta: es texto que se pulsa y a 12 se leía
+  // como metadato.
   optionText: {
-    ...textStyles.labelStrong,
+    ...textStyles.bodyStrong,
     color: th.colors.text,
   },
   optionTextActive: {

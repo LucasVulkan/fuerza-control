@@ -335,12 +335,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
 
-  // El nombre es lo que se busca con la vista al recorrer el historial, así que
-  // va en `itemTitle` como cualquier otro nombre en lista de consulta. Se probó
+  // Bold y no Black, la misma voz que los nombres del editor de programa: el
+  // historial se recorre entero, fila tras fila, y la negra a 16 cansa. Se probó
   // a 12 para que la tarjeta no creciera al ganar la fila de datos y quedó por
   // debajo de sus propios metadatos: la tarjeta cabía y no se leía.
   cardSesName: {
-    ...textStyles.itemTitle,
+    ...textStyles.itemTitleQuiet,
     color:      th.colors.text,
     flexShrink: 1,
   },

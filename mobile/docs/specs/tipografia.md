@@ -323,7 +323,33 @@ La referencia la fijó el usuario: el «sin ritmo aún» de la tarjeta de client
 | **Visualizador** (`ProgramDetailScreen`) | Subtítulo y stats de sesión, meta de tarjeta y de bloque, notas de ejercicio y de bloque, número y prescripción, todo a 14 |
 | **Editores** | Las dos líneas de las tarjetas de resumen (`summaryMain` / `summarySub` / `summaryVolume`), nombres de movimiento, `presetName` + `presetMeta`, y el nombre de fila del planificador de etapas |
 
-### 9.3 Lo que se dejó fuera, y por qué
+### 9.3 Segundo repaso
+
+Del segundo pase en pantalla salieron cinco ajustes más, todos dentro de la misma
+anatomía:
+
+- **El nombre en historial y progresión pasa de `itemTitle` a `itemTitleQuiet`.**
+  Misma voz que los nombres de sesión y de ejercicio del editor de programa. La
+  Black a 16 en una lista que se recorre entera cansa; el peso que hace falta
+  para encontrar un nombre con la vista es Bold, no Black.
+- **La tarjeta de programa de la Home** deja de hablar en `title` (22): nombre y
+  contador de ciclos bajan a `itemTitle`, la misma letra que los nombres de las
+  sesiones de la lista de abajo. Son la misma pantalla y el mismo tipo de dato.
+- **«ETAPA 1 · Nombre»**, en esa misma tarjeta, sube de 12 a `bodyStrong`: es un
+  nombre y quedaba por debajo del resto de la tarjeta.
+- **Los segmentados** suben un escalón, a `bodyStrong`. Es texto que se pulsa y a
+  12 se leía como metadato. `ui/TabBar` no es un `SegmentedControl` —lo dice su
+  propia cabecera, track y radio distintos— pero es la otra tira de pestañas de
+  la app y sube con ellos: dejarla a 12 recrearía el desajuste que U20 arregla.
+- **`ui/EditorRows`** —la anatomía de las tarjetas del editor de ejercicio:
+  Calentamiento, Progresión, Opciones— se había quedado fuera de U20 por ser un
+  componente compartido y no una de las pantallas de la lista. `navRowTitle` a
+  `itemTitleQuiet`, `optRowLabel` a `bodyStrong`, las dos pistas a `body`. Con
+  él, sus copias sueltas en los dos editores inline y en el alta de ejercicio, y
+  los botones de esas hojas («Sustituir», «Eliminar», «+ Añadir paso»), que
+  seguían en `labelStrong` en vez de en `button`.
+
+### 9.4 Lo que se dejó fuera, y por qué
 
 - **`WorkoutScreen` y el hero de la Home**, por instrucción explícita: son las dos
   piezas donde la densidad está medida contra una caja concreta.

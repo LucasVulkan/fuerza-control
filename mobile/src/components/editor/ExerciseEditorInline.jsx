@@ -29,7 +29,7 @@ import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../utils/progressi
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../utils/exerciseLinks';
 import { warmupSteps } from '../../utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import { ArrowIcon, ProgressionIcon } from '../ui/EditorIcons';
@@ -877,14 +877,14 @@ const makeStyles = (th) => StyleSheet.create({
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },
 
-  hint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  hint: { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   // NavRow/OptionRow/ToggleRow/NoteRow viven en `ui/EditorRows.jsx` (compartidos
   // con el alta de ejercicio). `optRowLabel`/`optRowHint` se quedan aquí: se
   // reutilizan sueltos fuera de esos componentes (hint de vinculación, fila de
   // incremento mínimo).
-  optRowLabel: { ...textStyles.labelStrong, color: th.colors.text },
-  optRowHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  optRowLabel: { ...textStyles.bodyStrong, color: th.colors.text },
+  optRowHint:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   // El contenedor recorta: por eso las filas solo llevan `radius/xxs` y las
   // esquinas exteriores salen del clip, igual que en Figma.
@@ -895,7 +895,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  tempoValue:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  tempoValue:    { ...textStyles.bodyStrong, color: th.colors.mutedLight },
 
   // ── Vinculación (Option blocks / Vinculacion, 176:1952) ───────────────────
   linkCard: {
@@ -926,14 +926,14 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.sm,
   },
-  substituteBtnText: { ...textStyles.labelStrong, color: th.colors.text },
+  substituteBtnText: { ...textStyles.button, color: th.colors.text },
   // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteBtn: {
     flex:            1,
     alignItems:      'center',
     paddingVertical: spacing.md,
   },
-  deleteBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
+  deleteBtnText: { ...textStyles.button, color: th.tint.red50 },
 
   // ── Calentamiento (hoja) ──────────────────────────────────────────────────
   // Los campos son los MISMOS Input Field del grid de series del workout
@@ -974,7 +974,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Mismo botón de añadir que el resto de la app: texto plano, sin caja.
   addStepBtn:         { alignItems: 'center', paddingVertical: spacing.md },
   addStepBtnDisabled: { opacity: 0.35 },
-  addStepText:        { ...textStyles.labelStrong, color: th.tint.accent50 },
+  addStepText:        { ...textStyles.button, color: th.tint.accent50 },
   addPlus:            { color: th.colors.accent },
 
   // ── Incremento (hoja) ─────────────────────────────────────────────────────

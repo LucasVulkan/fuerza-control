@@ -117,6 +117,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 2,
     alignItems:        'center',
   },
-  label:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  label:       { ...textStyles.bodyStrong, color: th.colors.mutedLight },
   labelActive: { color: th.colors.onAccent },
 });

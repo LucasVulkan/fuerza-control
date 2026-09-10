@@ -427,7 +427,7 @@ const makeStyles = (th) => StyleSheet.create({
   pillTextOn:  { color: th.colors.onAccent },
 
   createBtn:     { alignItems: 'center', paddingVertical: spacing.md, paddingTop: spacing.lg },
-  createBtnText: { ...textStyles.labelStrong, color: th.tint.accent50 },
+  createBtnText: { ...textStyles.button, color: th.tint.accent50 },
 
   sectionLabel: {
     ...textStyles.caps, color: th.colors.mutedLight,

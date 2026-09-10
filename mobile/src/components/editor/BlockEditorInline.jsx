@@ -30,7 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { emomTotalIntervals } from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import StepField from '../ui/StepField';
@@ -596,7 +596,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Sub-etiqueta dentro de una sección ("TIPO DE EMOM"): sin el paddingTop, que
   // ya lo pone la etiqueta numerada de arriba.
   subLabel: { ...textStyles.caps, color: th.colors.mutedLight },
-  hint:     { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  hint:     { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   // ── Movimientos ───────────────────────────────────────────────────────────
   movHeader: {
@@ -605,7 +605,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     gap:            spacing.md,
   },
-  movHeaderNote: { ...textStyles.label, color: th.colors.mutedLight },
+  movHeaderNote: { ...textStyles.body, color: th.colors.mutedLight },
   movWrap: { position: 'relative' },
   // El asa es hermana del cuerpo, no hija: así se centra contra el alto entero
   // de la tarjeta. El padding derecho lo pone ella, para que su blanco llegue al
@@ -663,8 +663,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     backgroundColor:   th.tint.accent10,
   },
-  movUnit:       { ...textStyles.labelStrong, color: th.colors.accent },
-  movWeightUnit: { ...textStyles.label, color: th.colors.mutedLight },
+  movUnit:       { ...textStyles.bodyStrong, color: th.colors.accent },
+  movWeightUnit: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
   movActions: {
@@ -680,13 +680,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     backgroundColor: th.tint.red30,
   },
-  movDeleteText: { ...textStyles.labelStrong, color: th.tint.red50 },
+  movDeleteText: { ...textStyles.button, color: th.tint.red50 },
 
   // Figma lo dibuja con borde accent (192:1817), pero manda la consistencia
   // (QA): es el mismo botón de añadir que el resto de la app — texto plano con
   // el "+" en accent, sin caja.
   addMovementBtn:  { alignItems: 'center', paddingVertical: spacing.md },
-  addMovementText: { ...textStyles.labelStrong, color: th.tint.accent50 },
+  addMovementText: { ...textStyles.button, color: th.tint.accent50 },
   addPlus:         { color: th.colors.accent },
 
   // ── Opciones ──────────────────────────────────────────────────────────────
@@ -697,7 +697,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  optionsLabel: { ...textStyles.labelStrong, color: th.colors.text },
+  optionsLabel: { ...textStyles.bodyStrong, color: th.colors.text },
   nameInput: {
     height:            30,
     backgroundColor:   th.colors.bg,
@@ -726,7 +726,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     marginTop:       spacing.md,
   },
-  presetBtnText: { ...textStyles.labelStrong, color: th.colors.text },
+  presetBtnText: { ...textStyles.button, color: th.colors.text },
   deleteBtn:     { alignItems: 'center', paddingVertical: spacing.md },
-  deleteBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
+  deleteBtnText: { ...textStyles.button, color: th.tint.red50 },
 });

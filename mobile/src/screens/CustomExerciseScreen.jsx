@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { LEGACY_TYPE_MAP } from '../utils/progression';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, textStyles } from '../theme';
+import { spacing, textStyles, lh, LINE } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
@@ -496,7 +496,7 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.itemTitle, color: th.colors.text,
   },
   nameInputError: { borderWidth: 1, borderColor: th.colors.red },
-  errorText: { ...textStyles.label, color: th.colors.red, marginTop: spacing.xs },
+  errorText: { ...textStyles.body, color: th.colors.red, marginTop: spacing.xs },
 
   // ── Resumen (166:1245) — solo relleno tint/accent-10, sin borde ────────────
   summaryCard: {
@@ -507,17 +507,17 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.labelStrong,   color: th.colors.text },
-  summarySub:  { ...textStyles.label,        color: th.tint.accent50 },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
+  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
 
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },
-  hint:    { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  hint:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   optGroup: { borderRadius: th.radius.md, overflow: 'hidden', gap: spacing.xs },
 
   tempoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  tempoValue:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  tempoValue:    { ...textStyles.bodyStrong, color: th.colors.mutedLight },
   tempoInput: {
     alignSelf: 'center', minWidth: 140, height: 48,
     backgroundColor: th.colors.surface, borderRadius: th.radius.sm,
@@ -533,7 +533,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
   },
-  cancelBtnText: { ...textStyles.labelStrong, color: th.colors.text },
+  cancelBtnText: { ...textStyles.button, color: th.colors.text },
   createBtn: {
     flex: 2, alignItems: 'center', justifyContent: 'center',
     paddingVertical: spacing.md, borderRadius: th.radius.sm,

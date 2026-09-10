@@ -321,13 +321,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:  spacing.xs,
     marginRight:   -spacing.xs,
   },
+  // El nombre del programa y el contador de ciclos hablan como los nombres de
+  // las sesiones de la lista de abajo (`itemTitle`): es la misma pantalla y son
+  // el mismo tipo de dato. A `title` (22) la tarjeta competía con el hero.
   name: {
-    ...textStyles.title,
+    ...textStyles.itemTitle,
     color:     th.colors.text,
     marginTop: -spacing.xs,
   },
   cycleNum: {
-    ...textStyles.title,
+    ...textStyles.itemTitle,
     color:       th.colors.accent,
     marginTop:   -spacing.xs,
     fontVariant: ['tabular-nums'],
@@ -346,9 +349,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           spacing.sm2,
   },
-  // 13px como los nombres de sesión de `MenuList` (`GroupedRow`): esto es un
-  // nombre, no una etiqueta, y en `caps` mayúsculo competía con la ceja.
-  stageName:  { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  // "ETAPA 1 · Fuerza": es un nombre, no una etiqueta, y en `caps` mayúsculo
+  // competía con la ceja. A 14 — a 12 quedaba por debajo del resto de la tarjeta.
+  stageName:  { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   stageLabel: { color: th.colors.accent },
 
   pips: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginLeft: 'auto', flexShrink: 0 },

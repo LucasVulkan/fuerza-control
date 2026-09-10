@@ -10,7 +10,7 @@ import { Text, TextInput } from './Text';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, interpolate, interpolateColor, Easing,
 } from 'react-native-reanimated';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { ArrowIcon } from './EditorIcons';
 
@@ -157,8 +157,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   navRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  navRowTitle: { ...textStyles.labelStrong, color: th.colors.text },
-  navRowSub:   { ...textStyles.label,      color: th.colors.mutedLight },
+  navRowTitle: { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  navRowSub:   { ...textStyles.body,           color: th.colors.mutedLight },
 
   // ── Lista agrupada de opciones (176:1902) ─────────────────────────────────
   optRow: {
@@ -173,8 +173,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   optRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
-  optRowLabel: { ...textStyles.labelStrong, color: th.colors.text },
-  optRowHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  optRowLabel: { ...textStyles.bodyStrong, color: th.colors.text },
+  optRowHint:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   // Última fila del grupo: la nota, con su textarea sobre `color/workout-card`.
   noteRow: {
