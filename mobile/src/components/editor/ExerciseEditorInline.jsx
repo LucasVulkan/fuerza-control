@@ -864,7 +864,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
   summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
+  summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
 
   // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
   secLabel: {
@@ -967,8 +967,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:    0,
     fontVariant:        ['tabular-nums'],
   },
-  warmupFieldUnit:     { ...textStyles.body, color: th.colors.mutedLight },
-  warmupStepUnit:      { ...textStyles.body, color: th.colors.mutedLight },
+  warmupFieldUnit:     { ...textStyles.label, color: th.colors.mutedLight },
+  warmupStepUnit:      { ...textStyles.label, color: th.colors.mutedLight },
   warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   warmupStepRemoveTxt: { ...textStyles.body, color: th.tint.red50 },
   // Mismo botón de añadir que el resto de la app: texto plano, sin caja.
@@ -994,7 +994,7 @@ const makeStyles = (th) => StyleSheet.create({
     includeFontPadding: false,
     paddingVertical:    0,
   },
-  incrUnit: { ...textStyles.body, color: th.colors.mutedLight },
+  incrUnit: { ...textStyles.label, color: th.colors.mutedLight },
   incrMinRow: {
     flexDirection:  'row',
     alignItems:     'center',

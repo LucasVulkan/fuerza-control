@@ -589,7 +589,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
   summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
+  summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
 
   // ── Etiquetas ─────────────────────────────────────────────────────────────
   secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
@@ -664,7 +664,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.tint.accent10,
   },
   movUnit:       { ...textStyles.bodyStrong, color: th.colors.accent },
-  movWeightUnit: { ...textStyles.body, color: th.colors.mutedLight },
+  movWeightUnit: { ...textStyles.label, color: th.colors.mutedLight },
 
   // Panel que descubre el swipe (mismo lenguaje que el del editor de sesión).
   movActions: {

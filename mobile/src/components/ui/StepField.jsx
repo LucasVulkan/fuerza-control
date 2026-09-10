@@ -197,5 +197,5 @@ const makeSf = (th) => StyleSheet.create({
     height:             STEP_BTN,
     paddingVertical:    0,
   },
-  unit: { ...textStyles.body, color: th.colors.mutedLight },
+  unit: { ...textStyles.label, color: th.colors.mutedLight },
 });

@@ -161,7 +161,24 @@ export const textStyles = {
   button:     { fontFamily: 'Inter_900Black',  fontSize: 14, letterSpacing: 0 },
 
   // ── Etiquetas ───────────────────────────────────────────────────────────────
-  // 12 es el cuerpo de lo que acompaña: metadatos, unidades, filas densas.
+  // 12 es el cuerpo de lo que acompaña.
+  //
+  // ── La frontera entre `label` y `body`, que es la que más se ha movido ──────
+  // No la decide la pantalla ni la posición: la decide si el texto se ESCANEA o
+  // se LEE.
+  //
+  //   escaneado → `label` (12): «5 ejercicios · 55 min · ayer», «4×8 · 90s»,
+  //     fechas, contadores, unidades, «ETAPA 2». Nunca se leen de izquierda a
+  //     derecha, son un objetivo de vistazo, y a 12 sobre `mutedLight` el
+  //     contraste es 7.1:1 — de sobra en fondo oscuro.
+  //   leído → `body` (14): pistas bajo una opción, avisos, descripciones, texto
+  //     legal. Eso son frases, y a 12 vuelve el problema de sep-2026: Inter sin
+  //     eje óptico sobre #0a0a0a, dos líneas seguidas, y se lee peor de lo que
+  //     el diseño supone.
+  //
+  // La pregunta que lo resuelve en tres meses: ¿esto es una frase, o son datos
+  // con separadores? Y no, apagar el color en vez de bajar el cuerpo no vale:
+  // `muted` da 4.4:1, justo por debajo del 4.5:1 de AA para texto normal.
   label:       { fontFamily: 'Inter_500Medium',    fontSize: 12, letterSpacing: 0 },
   labelStrong: { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 0 },
   // La ceja en VERSALES, una sola para toda la app. Antes eran tres tokens

@@ -674,7 +674,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   cardHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   cardTitle: { ...textStyles.caps, color: th.colors.mutedLight },
-  cardMeta:  { ...textStyles.body, color: th.colors.muted },
+  cardMeta:  { ...textStyles.label, color: th.colors.muted },
 
   groupList:  { gap: spacing.sm2 },
   groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
@@ -715,8 +715,8 @@ const makeStyles = (th) => StyleSheet.create({
   sessionLetter:    { ...textStyles.title, lineHeight: 28 },
   sessionTitles:    { flex: 1, gap: spacing.xs, minWidth: 0 },
   sessionName:      { ...textStyles.itemTitle, color: th.colors.text },
-  sessionSubtitle:  { ...textStyles.body, color: th.colors.mutedLight },
-  sessionStat:      { ...textStyles.body, color: th.colors.mutedLight },
+  sessionSubtitle:  { ...textStyles.label, color: th.colors.mutedLight },
+  sessionStat:      { ...textStyles.label, color: th.colors.mutedLight },
   sessionBody:     { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   emptySession:    { ...textStyles.body, color: th.colors.muted, paddingVertical: spacing.sm },
 
@@ -740,9 +740,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xs2,
     paddingVertical:   1,
   },
-  exNote:    { ...textStyles.body, color: th.colors.mutedLight },
+  exNote:    { ...textStyles.label, color: th.colors.mutedLight },
   exRxMain:  { ...textStyles.bodyStrong, color: th.colors.accent, fontVariant: ['tabular-nums'] },
-  exRxRest:  { ...textStyles.body, color: th.colors.muted, marginLeft: 'auto' },
+  exRxRest:  { ...textStyles.label, color: th.colors.muted, marginLeft: 'auto' },
 
   // Superserie
   ssGroup: {
@@ -769,7 +769,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   blockHead:      { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   blockFormat:    { ...textStyles.caps, color: th.colors.blue },
-  blockMeta:      { ...textStyles.body, color: th.colors.mutedLight },
+  blockMeta:      { ...textStyles.label, color: th.colors.mutedLight },
   blockMovements: { ...textStyles.body, color: th.colors.text, lineHeight: 17 },
   blockNote:      { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize) },
 

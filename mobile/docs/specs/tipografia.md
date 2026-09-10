@@ -383,7 +383,44 @@ El resto de botones de añadir ya seguían el patrón correcto —el glifo en li
 botón—, así que el único roto era ese. Vale igual para el nombre de etapa en
 «Añadir sesión a …» del editor de programa.
 
-### 9.5 Lo que se dejó fuera, y por qué
+### 9.5 Cuarto repaso — la frontera `label` / `body`
+
+Al bajar el nombre de fila de 16 a 14 (§9.4), el par nombre + meta se quedó
+apoyado **sólo en peso y color**: 14/700 contra 14/500. El usuario preguntó si el
+meta no debería volver a 12, y sí — pero no en bloque.
+
+La frontera no la decide la pantalla ni la posición, sino **si el texto se
+escanea o se lee**:
+
+| | Papel | Ejemplos |
+|---|---|---|
+| **Escaneado** | `label` 12/500 | «5 ejercicios · 55 min · ayer», «4×8 · 90s», fechas, contadores, unidades, «ETAPA 2» |
+| **Leído** | `body` 14/500 | pistas bajo una opción, avisos, descripciones, texto legal |
+
+Un dato escaneado no se lee nunca de izquierda a derecha: es un objetivo de
+vistazo, y a 12 sobre `mutedLight` da 7.1:1 de contraste, de sobra en fondo
+oscuro. Una frase sí se lee, y a 12 vuelve exactamente el problema de sep-2026
+—Inter sin eje óptico sobre `#0a0a0a`, dos líneas seguidas— que motivó la subida
+de escala.
+
+**Esto no reabre el desdoble 12/14 que la spec vino a cerrar.** Aquel era «cada
+pantalla declaró lo suyo»; éste es una regla por función, con una pregunta que
+cualquiera puede contestar dentro de tres meses: *¿es una frase, o son datos con
+separadores?*
+
+Se descartó la alternativa aparentemente más barata —dejarlo todo a 14 y apagar
+el color de `mutedLight` a `muted`—: `muted` (#777) da **4.4:1** sobre el fondo,
+justo por debajo del 4.5:1 de AA para texto normal. Por eso el propio `theme.js`
+dice que `mutedLight` existe para «mantener ≥4.5:1 a cuerpos pequeños». El color
+no es una palanca disponible aquí; el cuerpo sí.
+
+Bajan 35 claves de estilo en 14 ficheros: la banda de metadatos de las tarjetas
+de Historial, el subtítulo de Progresión, el sub de las tarjetas del editor de
+ejercicio, los metas del visualizador, los de los tres editores, las unidades de
+los `StepField` y de las cajas de calentamiento, y la línea de programa, ciclo,
+ritmo y fechas de la tarjeta de cliente.
+
+### 9.6 Lo que se dejó fuera, y por qué
 
 - **`WorkoutScreen` y el hero de la Home**, por instrucción explícita: son las dos
   piezas donde la densidad está medida contra una caja concreta.

@@ -508,7 +508,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
   summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summarySub:  { ...textStyles.body,       color: th.tint.accent50 },
+  summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
 
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },

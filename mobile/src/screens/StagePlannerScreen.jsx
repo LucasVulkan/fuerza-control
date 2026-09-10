@@ -336,7 +336,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowNum:    { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text, flex: 1, minWidth: 0, padding: 0 },
   activeBadge: { ...textStyles.label, color: th.colors.accent },
-  rowRx:     { ...textStyles.body, color: th.colors.accent },
+  rowRx:     { ...textStyles.label, color: th.colors.accent },
 
   noLimitBtn: {
     paddingVertical:   spacing.sm,

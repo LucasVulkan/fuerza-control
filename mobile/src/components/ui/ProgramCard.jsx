@@ -386,7 +386,7 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   statUnit: {
-    ...textStyles.body,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   statKey: {

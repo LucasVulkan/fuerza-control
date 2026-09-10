@@ -447,7 +447,7 @@ const makeStyles = (th) => StyleSheet.create({
   exNameRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   exName:     { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   exNameSel:  { color: th.colors.accent },
-  exMeta:     { ...textStyles.body, color: th.colors.mutedLight, marginTop: 2 },
+  exMeta:     { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
   customBadge: {
     backgroundColor: th.tint.accent10, borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,

@@ -344,22 +344,22 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 1,
   },
   cardSesLetter: { ...textStyles.itemTitle, color: th.colors.accent },
-  cardStage:     { ...textStyles.body, color: th.colors.mutedLight, flexShrink: 0 },
+  cardStage:     { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
 
   // ── Fila de datos ──
   cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  cardStat:     { ...textStyles.body, color: th.colors.mutedLight },
+  cardStat:     { ...textStyles.label, color: th.colors.mutedLight },
   cardStatNum:  { ...textStyles.bodyStrong, color: th.colors.text },
-  cardStatUnit: { ...textStyles.body, color: th.colors.mutedLight },
-  cardStatSep:  { ...textStyles.body, color: th.colors.muted2 },
+  cardStatUnit: { ...textStyles.label, color: th.colors.mutedLight },
+  cardStatSep:  { ...textStyles.label, color: th.colors.muted2 },
   deltaUp:      { color: th.colors.accent },
   deltaDown:    { color: th.tint.red50 },
 
-  cardDateCorner: { ...textStyles.body, color: th.colors.mutedLight, flexShrink: 0 },
+  cardDateCorner: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
   // `detail` no lleva padding lateral —cada sección se lo pone— así que este
   // texto suelto necesita el suyo o sale a sangre con el borde de la tarjeta.
   detailMeta: {
-    ...textStyles.body,
+    ...textStyles.label,
     color:             th.colors.mutedLight,
     paddingHorizontal: spacing.lg,
     marginBottom:      spacing.sm,

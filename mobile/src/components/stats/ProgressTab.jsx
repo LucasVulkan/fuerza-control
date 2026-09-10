@@ -1667,7 +1667,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exLeft: { flex: 1, gap: spacing.xs },
   exName: { ...textStyles.bodyStrong, color: th.colors.text },
-  exSub:  { ...textStyles.body, color: th.colors.mutedLight },
+  exSub:  { ...textStyles.label, color: th.colors.mutedLight },
   exChevron: { ...textStyles.heading, fontFamily: 'Inter_900Black', color: th.colors.mutedLight, marginLeft: spacing.sm },
 
   // ── Modal ──────────────────────────────────────────────────────────────────

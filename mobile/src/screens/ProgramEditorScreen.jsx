@@ -664,7 +664,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
   sesLetter: { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
   sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  sesMeta:   { ...textStyles.body, color: th.colors.mutedLight },
+  sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).
@@ -686,7 +686,7 @@ const makeStyles = (th) => StyleSheet.create({
   menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
   menuRowText: { ...textStyles.labelStrong, color: th.colors.text },
   menuRowHint: { ...textStyles.body, color: th.colors.muted },
-  stageRxLine: { ...textStyles.body, color: th.colors.accent },
+  stageRxLine: { ...textStyles.label, color: th.colors.accent },
 
   // Stage sheet
   sheetBody: {

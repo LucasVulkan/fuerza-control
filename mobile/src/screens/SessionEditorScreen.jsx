@@ -897,7 +897,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   summaryTag:    { ...textStyles.caps, color: th.colors.accent },
   summaryMain:   { ...textStyles.bodyStrong, color: th.colors.text },
-  summaryVolume: { ...textStyles.body, color: th.tint.accent50 },
+  summaryVolume: { ...textStyles.label, color: th.tint.accent50 },
 
   // ── Fila ──
   row: {
@@ -913,7 +913,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  rowMeta:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
+  rowMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -973,7 +973,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding: spacing.md,
   },
   presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  presetMeta:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
+  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
   presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
 
   // ── Cabecera del editor de ejercicio (123:1633) ──

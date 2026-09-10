@@ -3936,7 +3936,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 0,
   },
   cCycle: {
-    ...textStyles.body,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
@@ -4013,7 +4013,7 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.mutedLight,
   },
   cStageLine: {
-    ...textStyles.body,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   // Línea de aviso (sustituye a la de programa) — punto + texto en naranja
@@ -4050,7 +4050,7 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   cPaceUnit: {
-    ...textStyles.body,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   cDots: {
@@ -4520,7 +4520,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:   th.colors.text,
     padding: 0,
   },
-  rowDate:   { ...textStyles.body, color: th.colors.mutedLight, flex: 1 },
+  rowDate:   { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
   rowValue:  { ...textStyles.labelStrong, color: th.colors.text },
   rowDelete: { ...textStyles.labelStrong, color: th.colors.muted },
 
@@ -4736,7 +4736,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
   templateRowNameOn: { color: th.colors.accent },
-  templateRowMeta:   { ...textStyles.body, color: th.colors.mutedLight },
+  templateRowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hoja de alta de cobro ──
   billSecLabel: {
