@@ -16,11 +16,10 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Animated, PanResponder, Platform, Modal, KeyboardAvoidingView, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
@@ -33,8 +32,6 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
-import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
-import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
 import { generateId } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -211,7 +208,6 @@ function EditorRow({
 export default function SessionEditorScreen({ navigation, route }) {
   const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
   const { t } = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
@@ -245,13 +241,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const stageLabel = stage?.name;
   const canDelete  = sessionIds.length > 1;
 
-  const [editingExId, setEditingExId]       = useState(null);
-  const [editingBlockId, setEditingBlockId] = useState(null);
-  // Desplegables de las cabeceras de los editores. Se cierran en el mismo
-  // `openExercise`/`openBlock` que los abre, así no hace falta un efecto que
-  // los resetee al cerrar el modal.
-  const [exPickerOpen, setExPickerOpen]       = useState(false);
-  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
   const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen]     = useState(false);
@@ -259,17 +248,13 @@ export default function SessionEditorScreen({ navigation, route }) {
   const [editingName, setEditingName]       = useState(false);
   const [nameValue, setNameValue]           = useState('');
 
-  // Refs de los dos ScrollView que contienen una lista reordenable: el de la
-  // pantalla (huecos) y el del modal del editor de bloque (movimientos). Los
-  // necesitan para hacer autoscroll al arrastrar cerca del borde.
-  const scrollRef      = useAnimatedRef();
-  const blockScrollRef = useAnimatedRef();
+  // El ScrollView de la lista de huecos: `Sortable` lo necesita para hacer
+  // autoscroll al arrastrar cerca del borde.
+  const scrollRef = useAnimatedRef();
 
   function switchSession(id) {
     if (id === templateId) return;
     setEditingName(false);
-    setEditingExId(null);
-    setEditingBlockId(null);
     setOpenRowId(null);
     setTemplateId(id);
   }
@@ -324,30 +309,16 @@ export default function SessionEditorScreen({ navigation, route }) {
   // ── Acciones ──────────────────────────────────────────────────────────────
 
   function handleRemoveExercise(exerciseId) {
-    if (editingExId === exerciseId) setEditingExId(null);
     removeExercise(templateId, exerciseId);
     showToast(t('editor.toastExDeleted'), 2200, 'neutral');
   }
 
   function openExercise(exerciseId) {
-    setExPickerOpen(false);
-    setEditingExId(exerciseId);
+    navigation.navigate('ExerciseEditor', { templateId, exerciseId });
   }
 
   function openBlock(blockId) {
-    setBlockPickerOpen(false);
-    setEditingBlockId(blockId);
-  }
-
-  // Sustituir el ejercicio que se está editando: lo dispara el botón del pie
-  // del editor (el chevron de la cabecera abre el desplegable de la sesión).
-  function handleSubstituteEx() {
-    navigation.navigate('ExerciseSelector', {
-      templateId,
-      currentExerciseId: editingExId,
-      existingPatterns: [],
-    });
-    setEditingExId(null);
+    navigation.navigate('BlockEditor', { templateId, blockId });
   }
 
   function handleAddExercise() {
@@ -360,7 +331,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   function createNewBlock() {
     const block = defaultBlock();
     addBlockToSession(templateId, block);
-    setEditingBlockId(block.id);
+    openBlock(block.id);
   }
 
   function handlePickPreset(preset) {
@@ -368,7 +339,7 @@ export default function SessionEditorScreen({ navigation, route }) {
     const block = { ...rest, id: generateId('blk') };
     addBlockToSession(templateId, block);
     setPresetSheetOpen(false);
-    setEditingBlockId(block.id);
+    openBlock(block.id);
   }
 
   function handleRemoveBlock(block) {
@@ -379,10 +350,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('blocks.deleteBlock'), style: 'destructive',
-          onPress: () => {
-            if (editingBlockId === block.id) setEditingBlockId(null);
-            removeBlockFromSession(templateId, block.id);
-          },
+          onPress: () => removeBlockFromSession(templateId, block.id),
         },
       ]
     );
@@ -415,19 +383,6 @@ export default function SessionEditorScreen({ navigation, route }) {
     setNameValue(template.name ?? '');
     setEditingName(true);
   }
-
-  // ── Datos derivados para los modales ──────────────────────────────────────
-  const editingExConfig = editingExId
-    ? template.exercises.find((ex) => ex.exerciseId === editingExId) ?? null
-    : null;
-  const editingDef = editingExId ? allExercises[editingExId] : null;
-  const editingExHasNext = editingExId
-    ? template.exercises.findIndex((ex) => ex.exerciseId === editingExId) < template.exercises.length - 1
-    : false;
-  const blocks = template.blocks ?? [];
-  const editingBlock = editingBlockId
-    ? blocks.find((b) => b.id === editingBlockId) ?? null
-    : null;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -559,182 +514,6 @@ export default function SessionEditorScreen({ navigation, route }) {
           )}
         </View>
       </DragSheet>
-
-      {/* ── Modal de ejercicio ── */}
-      {editingExConfig && (
-        <Modal
-          visible
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setEditingExId(null)}
-        >
-          <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            {/* Cabecera del Exercice Editor (123:1633): barra accent con el
-                nombre y un desplegable para saltar a otro ejercicio de la misma
-                sesión, más el botón "Aceptar". El desplegable se ancla inline al
-                borde inferior de la barra, igual que el de Progreso. */}
-            <View style={styles.exHeader}>
-              <View style={styles.exHeaderAnchor}>
-                <TouchableOpacity
-                  style={[styles.exHeaderBar, exPickerOpen && styles.exHeaderBarOpen]}
-                  onPress={() => setExPickerOpen((o) => !o)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.exHeaderTitle} numberOfLines={1}>
-                    {editingDef?.name ?? editingExId}
-                  </Text>
-                  <View style={[styles.exHeaderChevron, exPickerOpen && styles.exHeaderChevronOpen]}>
-                    <ArrowIcon size={7.69} color={th.colors.onAccent} />
-                  </View>
-                </TouchableOpacity>
-
-                {exPickerOpen && (
-                  <View style={styles.exPickerList}>
-                    {template.exercises.map((ex) => {
-                      const isCurrent = ex.exerciseId === editingExId;
-                      return (
-                        <TouchableOpacity
-                          key={ex.exerciseId}
-                          style={[styles.exPickerItem, isCurrent && styles.exPickerItemSel]}
-                          onPress={() => openExercise(ex.exerciseId)}
-                          activeOpacity={0.75}
-                        >
-                          <Text
-                            style={[styles.exPickerText, isCurrent && styles.exPickerTextSel]}
-                            numberOfLines={1}
-                          >
-                            {allExercises[ex.exerciseId]?.name ?? ex.exerciseId}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.exHeaderAccept}
-                onPress={() => setEditingExId(null)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.exHeaderAcceptTxt}>{t('common.accept')}</Text>
-              </TouchableOpacity>
-            </View>
-            <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {/* `key`: el editor carga toda su configuración en el montaje
-                    (`computeInitial`), así que saltar a otro ejercicio desde el
-                    desplegable tiene que REMONTARLO — si no, cambia el título
-                    pero se queda con las series/descanso del anterior. Al
-                    desmontar se vuelca lo que hubiera pendiente del viejo. */}
-                <ExerciseEditorInline
-                  key={editingExId}
-                  templateId={templateId}
-                  exConfig={editingExConfig}
-                  def={editingDef}
-                  hasNextExercise={editingExHasNext}
-                  onSubstitute={handleSubstituteEx}
-                  onDelete={() => handleRemoveExercise(editingExId)}
-                />
-              </ScrollView>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </Modal>
-      )}
-
-      {/* ── Modal de bloque ── */}
-      {editingBlock && (
-        <Modal
-          visible
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setEditingBlockId(null)}
-        >
-          {/* Un `Modal` de RN monta su contenido en OTRA jerarquía nativa, fuera
-              del `GestureHandlerRootView` de `App.js`: sin uno propio aquí, los
-              gestos de gesture-handler no llegan y el asa de arrastre de los
-              movimientos no responde. */}
-          <GestureHandlerRootView style={{ flex: 1 }}>
-          <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-            {/* Misma cabecera que el editor de ejercicio (190:1662): barra accent
-                con el nombre del bloque y desplegable de los bloques de la
-                sesión, más el botón "Aceptar". */}
-            <View style={styles.exHeader}>
-              <View style={styles.exHeaderAnchor}>
-                <TouchableOpacity
-                  style={[styles.exHeaderBar, blockPickerOpen && styles.exHeaderBarOpen]}
-                  onPress={() => { if (blocks.length > 1) setBlockPickerOpen((o) => !o); }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.exHeaderTitle} numberOfLines={1}>
-                    {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
-                  </Text>
-                  {blocks.length > 1 && (
-                    <View style={[styles.exHeaderChevron, blockPickerOpen && styles.exHeaderChevronOpen]}>
-                      <ArrowIcon size={7.69} color={th.colors.onAccent} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                {blockPickerOpen && (
-                  <View style={styles.exPickerList}>
-                    {blocks.map((b) => {
-                      const isCurrent = b.id === editingBlockId;
-                      return (
-                        <TouchableOpacity
-                          key={b.id}
-                          style={[styles.exPickerItem, isCurrent && styles.exPickerItemSel]}
-                          onPress={() => openBlock(b.id)}
-                          activeOpacity={0.75}
-                        >
-                          <Text
-                            style={[styles.exPickerText, isCurrent && styles.exPickerTextSel]}
-                            numberOfLines={1}
-                          >
-                            {b.name ?? t(`blocks.formats.${b.format}`)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.exHeaderAccept}
-                onPress={() => setEditingBlockId(null)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.exHeaderAcceptTxt}>{t('common.accept')}</Text>
-              </TouchableOpacity>
-            </View>
-            <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <Reanimated.ScrollView
-                ref={blockScrollRef}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                {/* Mismo motivo que en el editor de ejercicio: saltar a otro
-                    bloque desde el desplegable lo remonta. */}
-                <BlockEditorInline
-                  key={editingBlockId}
-                  templateId={templateId}
-                  block={editingBlock}
-                  allExercises={allExercises}
-                  onClose={() => setEditingBlockId(null)}
-                  navigation={navigation}
-                  scrollableRef={blockScrollRef}
-                />
-              </Reanimated.ScrollView>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-          </GestureHandlerRootView>
-        </Modal>
-      )}
 
       {/* ── Selector de preset ── */}
       <DragSheet
@@ -981,76 +760,4 @@ const makeStyles = (th) => StyleSheet.create({
   // Mismo par nombre+meta que `rowMeta`: sin margen, lo separa el interlineado.
   presetMeta:   { ...textStyles.label, color: th.colors.mutedLight },
   presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
-
-  // ── Cabecera del editor de ejercicio (123:1633) ──
-  // `zIndex` para que el desplegable pinte por encima del ScrollView de abajo,
-  // que es su hermano posterior.
-  exHeader: {
-    flexDirection:     'row',
-    alignItems:        'stretch',
-    gap:               spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.md,
-    zIndex:            100,
-  },
-  exHeaderAnchor: { flex: 1, minWidth: 0, zIndex: 100 },
-  exHeaderBar: {
-    flex:              1,
-    minWidth:          0,
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    gap:               spacing.md,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-  },
-  // Con el menú abierto la barra pierde las esquinas de abajo para fusionarse
-  // con él (mismo tratamiento que el desplegable de Progreso).
-  exHeaderBarOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  exHeaderTitle:   { ...textStyles.caps, color: th.colors.onAccent, flexShrink: 1, textTransform: 'uppercase' },
-  exHeaderChevron:     { transform: [{ rotate: '90deg'  }] },
-  exHeaderChevronOpen: { transform: [{ rotate: '270deg' }] },
-
-  // ── Desplegable de ejercicios de la sesión ──
-  exPickerList: {
-    position:                'absolute',
-    top:                     '100%',
-    left:                    0,
-    right:                   0,
-    zIndex:                  100,
-    backgroundColor:         th.colors.surface2,
-    borderBottomLeftRadius:  th.radius.sm,
-    borderBottomRightRadius: th.radius.sm,
-    overflow:                'hidden',
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius:  10,
-    elevation:     12,
-  },
-  exPickerItem: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-  },
-  exPickerItemSel: { backgroundColor: th.tint.accent10 },
-  exPickerText:    { ...textStyles.body, color: th.colors.mutedLight },
-  exPickerTextSel: { color: th.colors.text },
-  // Figma pinta este botón en `color/muted`; en QA se cambió al relleno
-  // Secondary (`color/surface-2`), el mismo de los demás botones secundarios.
-  exHeaderAccept: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  exHeaderAcceptTxt: { ...textStyles.labelStrong, color: th.colors.text },
-
-  // El marco de los modales de ejercicio / bloque. La barra superior que tenía
-  // debajo (`modalTopbar` + tag + nombre + botón aceptar) la sustituyó `exHeader*`
-  // y se quedó aquí sin usar; se va con esta ronda.
-  modalSafe: { flex: 1, backgroundColor: th.colors.bg },
 });

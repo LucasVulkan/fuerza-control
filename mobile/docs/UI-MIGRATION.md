@@ -602,11 +602,24 @@ del vecino, no contra un paso fijo.
 ### Exercice Editor — desglose
 
 Nodo de Figma: `123:1511` (+ componentes `Exercice editor elements` `160:1197` y
-`Option blocks` `176:1902` / `176:1952`). Vive dentro del modal de ejercicio del
-Sesion Editor, así que la **cabecera** (barra accent con el nombre + chevron y
-botón `Aceptar` gris `color/muted`) se pintó en `SessionEditorScreen.jsx`, fuera
-del `ScrollView`, para que no se vaya con el scroll. El chevron de la barra
-**sustituye** el ejercicio, igual que el botón del pie.
+`Option blocks` `176:1902` / `176:1952`).
+
+Vivía dentro de un `Modal` `pageSheet` del Sesion Editor y **ahora es una pantalla
+del stack** (`ExerciseEditorScreen`, y su gemelo `BlockEditorScreen`): entraba
+deslizando desde abajo como una hoja pero se comportaba como pantalla —cabecera
+propia, scroll propio y sus propios `DragSheet` dentro—, y `presentationStyle` es
+solo de iOS, así que en Android ya salía a pantalla completa. La regla que queda:
+**profundidad = push, decisión puntual = sheet.** Así también empareja con
+`CustomExerciseScreen`, que es este mismo editor para el alta en librería.
+
+La **cabecera** (barra accent con el nombre + chevron y botón `Aceptar` gris
+`color/muted`) va fuera del `ScrollView` para que no se vaya con el scroll, y es
+`components/ui/EditorHeader.jsx` — la comparten el editor de ejercicio y el de
+bloque. El chevron de la barra **sustituye** el ejercicio, igual que el botón del
+pie; el desplegable salta a otro ejercicio de la sesión, remontando el editor
+(`key`) y con `FadeInDown`, porque si el ejercicio nuevo tiene la misma
+configuración el salto no movía un píxel y parecía que el toque no había hecho
+nada.
 
 Orden del mock: Resumen → VOLUMEN → PROGRESIÓN → OPCIONES (lista agrupada) +
 Vinculación. Piezas concretas:
@@ -1064,7 +1077,8 @@ Notas de uso:
 - **Dentro de un `Modal` de RN hace falta su propio `GestureHandlerRootView`.** El
   `Modal` monta su contenido en otra jerarquía nativa, fuera del de `App.js`, así que
   sin uno propio los gestos no llegan y el asa simplemente no responde — es lo que
-  pasaba en el modal del editor de bloque.
+  pasaba en el modal del editor de bloque. Ya no aplica ahí (es una pantalla del
+  stack y cuelga del de `App.js`), pero sigue valiendo para cualquier `Modal`.
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
