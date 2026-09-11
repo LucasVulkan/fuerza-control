@@ -31,7 +31,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Pressable, StyleSheet, InteractionManager, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { Text, TextInput } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -47,6 +47,14 @@ export const HEADER_RULE_H = 3;
 // Lado del botón de volver. Es también el ancho del hueco que ocupa cuando no
 // hay atrás, para que el título no salte entre pasos del onboarding.
 const BACK_BTN = 32;
+// Espera antes de pedir el foco del nombre. Renombrar se puede lanzar desde el
+// menú "···", y ese menú es un `Modal` de `DragSheet`: en Android el Modal es
+// OTRA ventana, y mientras se desmonta el IME sigue atado a ella — pedir el
+// foco antes deja el cursor puesto y el teclado sin salir. `InteractionManager`
+// no sirve de guía porque el desmontaje es nativo y no registra ninguna
+// interacción con la que sincronizarse. Es el botón de calibrado de esto: si
+// algún dispositivo lento se queda sin teclado, súbelo.
+const FOCUS_DELAY = 250;
 
 /**
  * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
@@ -115,14 +123,13 @@ export default function ScreenHeader({
   const inputRef = useRef(null);
   const { height: winH } = useWindowDimensions();
 
-  // `autoFocus` solo basta cuando el renombrado arranca de un toque en el
-  // propio nombre. Desde el menú "···" hay un `Modal` de `DragSheet`
-  // desmontándose en el mismo tick y el foco se pierde con él, así que se pide
-  // otra vez cuando las animaciones han terminado.
+  // El foco se pide UNA vez y siempre por aquí (ver `FOCUS_DELAY`). Nada de
+  // `autoFocus` además de esto: si el input ya se cree enfocado, `focus()`
+  // vuelve sin hacer nada y el teclado no sale — que era exactamente el fallo.
   useEffect(() => {
     if (!renaming) return undefined;
-    const task = InteractionManager.runAfterInteractions(() => inputRef.current?.focus());
-    return () => task.cancel();
+    const id = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY);
+    return () => clearTimeout(id);
   }, [renaming]);
   // La tinta de las acciones que pinta el llamante. Gris: el acento del cromo
   // es la ceja, el chevron y el check de "listo" — un "···" lima al lado sería
@@ -151,7 +158,6 @@ export default function ScreenHeader({
           {renaming ? (
             <TextInput
               ref={inputRef}
-              autoFocus
               style={styles.titleInput}
               value={draft}
               onChangeText={onDraftChange}
