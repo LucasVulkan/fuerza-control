@@ -30,14 +30,14 @@
  *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
-import { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { View, TouchableOpacity, Pressable, StyleSheet, InteractionManager, useWindowDimensions } from 'react-native';
 import { Text, TextInput } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { NAME_MAX } from '../../utils/names';
-import { ArrowIcon, CheckIcon } from './EditorIcons';
+import { ArrowIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
 // un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
@@ -89,9 +89,11 @@ export default function ScreenHeader({
   // Un booleano por unidad para la regla segmentada (ver `HeaderRule`).
   progress,
   // Título editable: con `onRenameStart` el nombre es pulsable y se renombra
-  // ahí mismo. No hay lápiz — el hueco de acciones es del check de "listo", y
-  // dos confirmaciones en la misma esquina no se distinguen. Lo que recuerda
-  // que se puede renombrar es "Editar nombre" en el menú de la pantalla.
+  // ahí mismo. No hay lápiz ni botón de confirmar — el hueco de acciones es del
+  // check de "listo", y dos confirmaciones idénticas en la misma esquina no se
+  // distinguen. Renombrando, la cabecera se queda SOLA: el resto se apaga tras
+  // un velo y tocar en cualquier sitio confirma. Lo que recuerda que se puede
+  // renombrar es "Editar nombre" en el menú de la pantalla.
   // Desplegable de título: `{ items: [{ id, label }], currentId, onSelect }`.
   // Con él el nombre lleva un chevron y abre la lista de hermanos anclada bajo
   // la cabecera — es como se salta de ejercicio o de bloque sin volver a la
@@ -110,8 +112,21 @@ export default function ScreenHeader({
   const editable = typeof onRenameStart === 'function';
   const draftLen = (draft ?? '').length;
   const [menuOpen, setMenuOpen] = useState(false);
-  // Las acciones van en gris: el acento del cromo es la ceja y el chevron, y
-  // un lápiz lima al lado de los dos ya serían tres.
+  const inputRef = useRef(null);
+  const { height: winH } = useWindowDimensions();
+
+  // `autoFocus` solo basta cuando el renombrado arranca de un toque en el
+  // propio nombre. Desde el menú "···" hay un `Modal` de `DragSheet`
+  // desmontándose en el mismo tick y el foco se pierde con él, así que se pide
+  // otra vez cuando las animaciones han terminado.
+  useEffect(() => {
+    if (!renaming) return undefined;
+    const task = InteractionManager.runAfterInteractions(() => inputRef.current?.focus());
+    return () => task.cancel();
+  }, [renaming]);
+  // La tinta de las acciones que pinta el llamante. Gris: el acento del cromo
+  // es la ceja, el chevron y el check de "listo" — un "···" lima al lado sería
+  // el cuarto y ninguno mandaría.
   const ink      = th.colors.mutedLight;
 
   return (
@@ -119,7 +134,10 @@ export default function ScreenHeader({
     // por encima del contenido de la pantalla, que es su hermano posterior.
     <View style={styles.wrap}>
       <View style={styles.header}>
-        {onBack
+        {/* Renombrando no hay atrás: el velo cubre todo lo demás y el único
+            gesto posible es confirmar. Un chevron vivo aquí se llevaría el
+            nombre a medio escribir a otra pantalla. */}
+        {onBack && !renaming
           ? (
             <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={10} activeOpacity={0.7}>
               <ArrowIcon size={15} color={th.colors.accent} back />
@@ -132,6 +150,7 @@ export default function ScreenHeader({
 
           {renaming ? (
             <TextInput
+              ref={inputRef}
               autoFocus
               style={styles.titleInput}
               value={draft}
@@ -175,15 +194,9 @@ export default function ScreenHeader({
         {/* Renombrando, el hueco es SOLO del check que cierra el nombre: si a su
             lado siguiera el de "listo", dos checks idénticos a 20px harían que
             confirmar un nombre y salir del editor fuesen el mismo gesto. */}
-        {(renaming || right) ? (
+        {(right && !renaming) ? (
           <View style={styles.actions}>
-            {renaming
-              ? (
-                <TouchableOpacity hitSlop={12} onPress={onRenameCommit}>
-                  <CheckIcon size={17} color={th.colors.accent} />
-                </TouchableOpacity>
-              )
-              : (typeof right === 'function' ? right(ink) : right)}
+            {typeof right === 'function' ? right(ink) : right}
           </View>
         ) : <View style={styles.backSpacer} />}
 
@@ -201,6 +214,13 @@ export default function ScreenHeader({
       </View>
 
       <HeaderRule progress={progress} />
+
+      {/* El velo. Cuelga del borde inferior de la cabecera y mide la pantalla
+          entera: apaga el cuerpo para que el nombre sea lo único encendido, y
+          es además el "tocar en cualquier parte para confirmar". */}
+      {renaming && (
+        <Pressable style={[styles.scrim, { height: winH }]} onPress={onRenameCommit} />
+      )}
 
       {menu && menuOpen && (
         <View style={styles.menuList}>
@@ -304,6 +324,16 @@ const makeStyles = (th) => StyleSheet.create({
   },
   titleChevron:     { transform: [{ rotate: '90deg'  }] },
   titleChevronOpen: { transform: [{ rotate: '270deg' }] },
+
+  // Mismo negro que el backdrop de `DragSheet`: apagar el fondo ya tiene un
+  // material en la app y no hacía falta otro.
+  scrim: {
+    position:        'absolute',
+    top:             '100%',
+    left:            0,
+    right:           0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
 
   // Cuelga del borde inferior de la cabecera —regla incluida— a todo el ancho.
   menuList: {

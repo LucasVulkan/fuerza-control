@@ -10,6 +10,10 @@
  * momento. Lo único que hacía el viejo botón "Guardar programa" —y lo único que
  * hace `commit` aquí— es marcar a los clientes que tengan este programa para
  * que el entrenador vuelva a subírselo.
+ *
+ * El toast va en `commit` y no en `done`: salir por el chevron desde el editor
+ * de programa también es salir del modo edición, y el toast es lo único que
+ * dice que lo que tocaste ha quedado hecho.
  */
 import { Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -28,13 +32,13 @@ export function useEditorExit(navigation) {
     const st = useStore.getState();
     const programId = st.ui._editingProgramId ?? st.profile?.activeProgramId;
     if (programId) markProgramDirtyForClients(programId);
+    showToast(t('editor.toastProgramEdited'), 2200, 'success');
   }
 
   // El check. `navigate` a una ruta que ya está en la pila vuelve a ella, así
   // que esto desapila el editor entero en vez de apilar otro Home encima.
   function done() {
     commit();
-    showToast(t('editor.toastProgramEdited'), 2200, 'success');
     navigation.navigate('Main', { screen: 'Home' });
   }
 
