@@ -6,8 +6,8 @@
  * editor de ejercicio (grid de VOLUMEN y hojas) y la hoja de etapa del editor
  * de programa.
  */
-import { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Text, TextInput } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
@@ -52,6 +52,12 @@ const GLYPH_T   = 2;    // grosor — sin caja detrás, súbelo si se queda floj
 // la izquierda: el `width` del TextInput recorta, no crece.
 const VALUE_W   = 76;
 const VALUE_INPUT_W = 52;
+// Holgura sobre el ancho medido del número. Un `TextInput` necesita más caja que
+// el `Text` que mide lo mismo —el cursor pide su sitio y Android redondea el
+// layout de la línea—, y quedarse corto no ajusta: recorta el primer dígito. Es
+// el botón de calibrado de este campo: si vuelve a cortarse en algún dispositivo,
+// sube esto antes de tocar nada más.
+const MEASURE_SLACK = 6;
 // Radio de la celda del valor. La celda de `SetRow` es 44×r11; a 34 de alto la
 // proporción sale en 8. No es `radius.sm` a propósito: la celda tiene que
 // leerse como la del entreno, no como una caja más de la hoja.
@@ -60,6 +66,15 @@ const VALUE_R   = 8;
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
+  // Ancho real del número, medido con un clon invisible: el TextInput no crece
+  // con su contenido, así que con `width` fijo el número se centraba en SU caja
+  // y la unidad quedaba colgando a la derecha, con el conjunto descentrado
+  // dentro de la celda. Midiendo, el input se ajusta al número, la unidad queda
+  // pegada y es el par "30 s" el que va centrado. Solo se mide si hay unidad.
+  const [numW, setNumW] = useState(0);
+  // Con el input ajustado al número, tocarlo es tocar dos dígitos: la celda
+  // entera se vuelve el área táctil y enfoca.
+  const inputRef = useRef(null);
   useEffect(() => { setDraft(String(value)); }, [value]);
   const numVal   = Number(value);
   const decimals = step < 1;
@@ -87,9 +102,20 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
       <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
       </TouchableOpacity>
-      <View style={sf.valueWrap}>
+      <Pressable style={sf.valueWrap} onPress={() => inputRef.current?.focus()}>
+        {!!unit && (
+          <Text
+            style={[sf.valueText, sf.valueMirror]}
+            numberOfLines={1}
+            onLayout={(e) => setNumW(e.nativeEvent.layout.width)}
+          >
+            {draft || '0'}
+          </Text>
+        )}
         <TextInput
-          style={sf.valueInput}
+          ref={inputRef}
+          style={[sf.valueText, sf.valueInput,
+            !!unit && numW > 0 && { width: Math.min(numW + MEASURE_SLACK, VALUE_INPUT_W) }]}
           keyboardType={decimals ? 'decimal-pad' : (signed ? 'numbers-and-punctuation' : 'numeric')}
           value={draft}
           onChangeText={handleChangeText}
@@ -97,7 +123,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
           selectTextOnFocus
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
-      </View>
+      </Pressable>
       <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
         <View style={[sf.glyphBar, sf.glyphBarV]} />
@@ -182,20 +208,33 @@ const makeSf = (th) => StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'center',
-    gap:             spacing.xs2,
+    // La separación que se VE entre el número y la unidad es este gap más medio
+    // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
+    // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
+    gap:             spacing.xs,
     backgroundColor: th.colors.bg,
     borderRadius:    VALUE_R,
   },
-  valueInput: {
-    width:              VALUE_INPUT_W,
+  // La tipografía va aparte porque la comparten el input y el clon que lo mide:
+  // si divergen, el ancho medido no es el que se pinta.
+  valueText: {
     ...textStyles.itemTitle,
     color:              th.colors.text,
     textAlign:          'center',
-    textAlignVertical:  'center',
     includeFontPadding: false,
+  },
+  valueInput: {
+    width:              VALUE_INPUT_W,
+    textAlignVertical:  'center',
     backgroundColor:    'transparent',
     height:             STEP_BTN,
     paddingVertical:    0,
+    // En Android el EditText trae padding horizontal propio, que `backgroundColor:
+    // transparent` no quita: con la caja ajustada al número se lo comía por los
+    // lados. Va a 0 explícitamente.
+    paddingHorizontal:  0,
   },
+  // Fuera del flujo y transparente: solo está para que `onLayout` dé el ancho.
+  valueMirror: { position: 'absolute', opacity: 0 },
   unit: { ...textStyles.label, color: th.colors.mutedLight },
 });
