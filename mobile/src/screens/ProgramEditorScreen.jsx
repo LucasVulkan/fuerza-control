@@ -320,7 +320,7 @@ export default function ProgramEditorScreen({ navigation }) {
       >
         {/* ── Resumen (Exercice editor elements / Resumen) ── */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+          <Text style={styles.summaryTag}>{t('editor.summaryProgram')}</Text>
           <Text style={styles.summaryMain}>{summaryLine}</Text>
         </View>
 

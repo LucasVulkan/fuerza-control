@@ -286,6 +286,9 @@ contenido**. Dos motivos concretos, los dos medibles:
   haciendo (17px).
 - **Presupuesto de acento otra vez.** La ceja en `accent` más la regla de 5px
   son dos usos de lima antes de llegar al primer dato.
+  (Revertido después: la ceja vuelve a `accent` —la regla de 5px ya no está—
+  porque en gris se leía la última y es justo lo que tiene que situarte primero.
+  El contraste ya estaba medido en §1.2 y es el mejor de los dos.)
 
 Y una tercera cosa que no era de peso sino de affordance: **el chevron dibuja
 9px de ancho**. Tiene `hitSlop` de sobra, pero nada dibujado dice que se pulse.

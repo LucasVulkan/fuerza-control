@@ -16,17 +16,18 @@
  * ocho variantes con nombres reales del generador (`docs/specs/cabeceras.md`
  * §6) y ésta es la que gana:
  *
- * - **Una fila de 56.** La identidad va arriba en `mutedLight` y el nombre
- *   debajo en blanco: primero te sitúas, luego lees qué es esto. La cabecera
+ * - **Una fila de 56.** La identidad va arriba en `accent` y el nombre debajo
+ *   en blanco: primero te sitúas, luego lees qué es esto. La cabecera
  *   deja de tener masa tipográfica propia y el contenido manda.
  * - **Alineada a la izquierda, y el botón de volver sin destino escrito.** Un
  *   `‹ Programas` centrando el título le dejaba ~180px de los 345 —26
  *   caracteres— y los arquetipos generan nombres de 43. Sin etiqueta y a la
  *   izquierda, el nombre dispone de 286 (~32 a 16px). Lo que hace que el
  *   botón se lea como botón es su caja, no la palabra.
- * - **El acento se gasta una sola vez**, en el chevron. La ceja pasa a gris y
- *   la regla de 5px a `HeaderRule`: segmentada donde hay algo que contar
- *   (pasos del onboarding, ejercicios del entreno) y hairline donde no.
+ * - **La regla de 5px pasa a `HeaderRule`**: segmentada donde hay algo que
+ *   contar (pasos del onboarding, ejercicios del entreno) y hairline donde no.
+ *   La ceja llegó a estar en gris por presupuesto de acento; volvió a `accent`
+ *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
@@ -100,7 +101,8 @@ export default function ScreenHeader({
   const styles   = useThemedStyles(makeStyles);
   const editable = typeof onRenameStart === 'function';
   const draftLen = (draft ?? '').length;
-  // Las acciones van en gris: el único accent del cromo es el chevron.
+  // Las acciones van en gris: el acento del cromo es la ceja y el chevron, y
+  // un lápiz lima al lado de los dos ya serían tres.
   const ink      = th.colors.mutedLight;
 
   return (
@@ -225,9 +227,13 @@ const makeStyles = (th) => StyleSheet.create({
   // (`programView.eyebrow` → "PROGRAMA") y otras no (`planner.eyebrow` →
   // "Planificar", `editor.sessionEyebrow` → "Sesión B"). Antes cada copia de la
   // cabecera decidía por su cuenta y no coincidían.
+  // En `accent`: es la línea que te sitúa, y en gris se leía después del nombre
+  // en vez de antes. Revierte el "el acento se gasta una sola vez" de §6 de
+  // `docs/specs/cabeceras.md` — el contraste ya estaba medido y es el mejor de
+  // los dos (§1.2).
   eyebrow: {
     ...textStyles.caps,
-    color:         th.colors.mutedLight,
+    color:         th.colors.accent,
     textTransform: 'uppercase',
   },
   // 16 ExtraBold con tracking negativo: el tamaño de `text/Exercice`, la línea

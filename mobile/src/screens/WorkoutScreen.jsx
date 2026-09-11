@@ -873,12 +873,12 @@ const makeStyles = (th) => StyleSheet.create({
   // el de la barra.
   headerMid:    { flex: 1, minWidth: 0, alignItems: 'center' },
   headerAction: { width: 32, alignItems: 'flex-end' },
-  // Misma ceja que `ScreenHeader`: `card-type` tal cual, en `mutedLight`.
-  // Aquí lleva además el reloj, que sí va en accent — es un dato vivo, y es el
-  // único sitio de la pantalla donde se lee el tiempo de sesión.
+  // Misma ceja que `ScreenHeader`: `card-type` tal cual, en `accent`. Aquí lleva
+  // además el reloj, que ya iba en accent y ahora se funde con ella en una sola
+  // línea: lo que lo separa es la cifra tabular, no el color.
   eyebrowText: {
     ...textStyles.caps,
-    color:         th.colors.mutedLight,
+    color:         th.colors.accent,
     textTransform: 'uppercase',
   },
   eyebrowClock: {

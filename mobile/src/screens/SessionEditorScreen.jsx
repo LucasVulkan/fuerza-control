@@ -238,7 +238,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
   const days       = stage?.days ?? [];
   const sessionIds = days.map((d) => d.sessionTemplateId);
-  const stageLabel = stage?.name;
   const canDelete  = sessionIds.length > 1;
 
   const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
@@ -390,7 +389,7 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={`${t('editor.sessionEyebrow', { label: template.label ?? '' })}${stageLabel ? ` · ${stageLabel}` : ''}`}
+        eyebrow={t('editor.sessionEyebrow', { label: template.label ?? '' })}
         title={template.name ?? ''}
         renaming={editingName}
         draft={nameValue}
@@ -421,7 +420,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
         {/* ── Resumen (208:1936) ── */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+          <Text style={styles.summaryTag}>{t('editor.summarySession', { label: template.label ?? '' })}</Text>
           <Text style={styles.summaryMain}>
             {stats.minutes > 0
               ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })

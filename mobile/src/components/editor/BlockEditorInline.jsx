@@ -384,7 +384,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
 
       {/* ══ RESUMEN ══════════════════════════════════════════════════════════ */}
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+        <Text style={styles.summaryTag}>{t('editor.summaryBlock')}</Text>
         <Text style={styles.summaryMain}>{summaryMain}</Text>
         <Text style={styles.summarySub}>{summarySub}</Text>
       </View>
