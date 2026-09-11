@@ -17,9 +17,11 @@ import { useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
+import { SheetContext } from './ui/sheetContext';
 
 /**
  * `action` sustituye el botón "Aceptar" de la derecha por otra acción
@@ -47,6 +49,10 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
   };
   const closeRef = useRef(close);
   closeRef.current = close;
+
+  // Valor estable: `close` se rehace en cada render y no puede viajar por el
+  // contexto sin repintar a todo el que lo lea.
+  const sheet = useMemo(() => ({ dismiss: () => closeRef.current() }), []);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -81,6 +87,7 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
   }, [visible]);
 
   return (
+    <SheetContext.Provider value={sheet}>
     <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFillObject} {...panResponder.panHandlers}>
@@ -124,6 +131,7 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+    </SheetContext.Provider>
   );
 }
 

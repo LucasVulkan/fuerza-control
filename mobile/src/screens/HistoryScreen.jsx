@@ -18,9 +18,9 @@ import { programTemplateIds as programTemplateIds_ } from '../utils/clientLogs';
 import AppHeader from '../components/AppHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import SessionCard from '../components/SessionCard';
-import { ArrowIcon } from '../components/ui/EditorIcons';
-import { spacing, borders, withOpacity, textStyles, sheetRowBase, lh } from '../theme';
+import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { volumeDeltas } from '../utils/sessionRecap';
 import { internalLoad } from '../utils/trainingLoad';
@@ -403,7 +403,6 @@ export default function HistoryScreen() {
    * calcula antes para que el aviso sea concreto y no un "esto borrará datos".
    */
   function confirmClear(scopeId) {
-    setMenuOpen(false);
     const willDelete = scopeId === 'all'
       ? workoutLog.length
       : workoutLog.filter((e) => !programTemplateIds.has(e.sessionTemplateId)).length;
@@ -561,17 +560,6 @@ export default function HistoryScreen() {
   );
 }
 
-function SheetRow({ label, onPress, danger = false }) {
-  const styles = useThemedStyles(makeStyles);
-  const th     = useTheme();
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
-    </TouchableOpacity>
-  );
-}
-
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
@@ -601,11 +589,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
-  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between' },
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   sheetHint: {
     ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,

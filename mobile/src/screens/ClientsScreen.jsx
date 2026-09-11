@@ -25,6 +25,7 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
@@ -360,8 +361,6 @@ function AssignedProgramCard({
     ? adherenceColor(th, adherence.status)
     : null;
 
-  const menu = (fn) => () => { setMenuOpen(false); fn(); };
-
   return (
     <>
       {/* ── Avisos ── van ENCIMA de la tarjeta: son lo que te para al abrir la
@@ -471,19 +470,19 @@ function AssignedProgramCard({
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
         <View style={styles.sheetBody}>
-          <SheetRow label={t('clients.menuNewProgram')} onPress={menu(onNewProgram)} />
-          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={menu(onUpload)} />}
-          <SheetRow label={t('clients.menuImport')} onPress={menu(onImport)} />
-          <SheetRow label={t('clients.menuShare')}  onPress={menu(onShare)} />
-          <SheetRow label={t('clients.menuExport')} onPress={menu(onExport)} />
+          <SheetRow label={t('clients.menuNewProgram')} onPress={onNewProgram} />
+          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={onUpload} />}
+          <SheetRow label={t('clients.menuImport')} onPress={onImport} />
+          <SheetRow label={t('clients.menuShare')}  onPress={onShare} />
+          <SheetRow label={t('clients.menuExport')} onPress={onExport} />
           {archivedCount > 0 && (
             <SheetRow
               label={`${t('clients.menuArchived')} · ${archivedCount}`}
-              onPress={menu(onShowArchived)}
+              onPress={onShowArchived}
             />
           )}
-          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={menu(onDeassign)} />}
-          <SheetRow label={t('clients.menuDelete')} onPress={menu(onDelete)} danger />
+          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={onDeassign} />}
+          <SheetRow label={t('clients.menuDelete')} onPress={onDelete} danger />
         </View>
       </DragSheet>
     </>
@@ -492,17 +491,6 @@ function AssignedProgramCard({
 
 // Fila de hoja — mismo patrón que los dos editores: surface2, radius/sm,
 // padding space/md, texto card-type y la flecha a la derecha.
-function SheetRow({ label, onPress, danger }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.75}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <Text style={[styles.sheetRowArrow, danger && { color: th.colors.red }]}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
 /**
  * ClientCodeBlock — el código de conexión del cliente.
  *
@@ -4223,20 +4211,6 @@ const makeStyles = (th) => StyleSheet.create({
   sheetBody: {
     gap:           spacing.sm,
     paddingBottom: spacing.lg,
-  },
-  sheetRow: sheetRowBase(th),
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: {
-    ...textStyles.bodyStrong,
-    fontFamily: 'Inter_800ExtraBold',
-    flex:       1,
-    color:      th.colors.text,
-  },
-  sheetRowArrow: {
-    ...textStyles.labelStrong,
-    color: th.colors.mutedLight,
   },
 
   // ── Código de conexión ──

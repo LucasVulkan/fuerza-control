@@ -32,11 +32,11 @@ import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
-import { ArrowIcon } from '../components/ui/EditorIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
-import { spacing, textStyles, sheetRowBase } from '../theme';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
 
@@ -99,17 +99,6 @@ function TemplateCard({ program, onAssign, onMenu }) {
 }
 
 // ── Filas de hoja (patrón `SheetRow` de los editores) ──────────────────────────
-
-function SheetRow({ label, onPress, danger = false }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
-    </TouchableOpacity>
-  );
-}
 
 // ── Hoja de crear plantilla ────────────────────────────────────────────────────
 
@@ -463,28 +452,28 @@ export default function ProgramScreen() {
         <View style={styles.sheetRows}>
           <SheetRow
             label={t('templates.actionView')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setPrintingProgram(id); }}
+            onPress={() => setPrintingProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.actionEdit')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setEditingProgram(id); }}
+            onPress={() => setEditingProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.contextDuplicate')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); handleDuplicate(id); }}
+            onPress={() => handleDuplicate(menuTarget)}
           />
           <SheetRow
             label={t('templates.actionShare')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); shareSpecificProgram(id); }}
+            onPress={() => shareSpecificProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.contextExport')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); exportSpecificProgram(id); }}
+            onPress={() => exportSpecificProgram(menuTarget)}
           />
           <SheetRow
             danger
             label={t('templates.contextDelete')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setDeleteTarget(id); }}
+            onPress={() => setDeleteTarget(menuTarget)}
           />
         </View>
       </DragSheet>
@@ -580,11 +569,6 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Hojas ──
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
-  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   sheetLabel: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,

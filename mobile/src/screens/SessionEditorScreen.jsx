@@ -26,13 +26,14 @@ import { useStore } from '../../store/useStore';
 import { exerciseLinkGroups } from '../utils/exerciseLinks';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
-import { spacing, textStyles, sheetRowBase } from '../theme';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { ArrowIcon, MenuIcon, DragIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -485,16 +486,16 @@ export default function SessionEditorScreen({ navigation, route }) {
         <View style={styles.sheetBody}>
           <SheetRow
             label={t('editor.addExerciseOption')}
-            onPress={() => { setAddSheetOpen(false); handleAddExercise(); }}
+            onPress={handleAddExercise}
           />
           <SheetRow
             label={t('editor.addBlockOption')}
-            onPress={() => { setAddSheetOpen(false); createNewBlock(); }}
+            onPress={createNewBlock}
           />
           {blockPresets.length > 0 && (
             <SheetRow
               label={t('editor.addPresetOption')}
-              onPress={() => { setAddSheetOpen(false); setPresetSheetOpen(true); }}
+              onPress={() => setPresetSheetOpen(true)}
             />
           )}
         </View>
@@ -507,12 +508,11 @@ export default function SessionEditorScreen({ navigation, route }) {
               puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
           <SheetRow
             label={t('editor.renameOption')}
-            onPress={() => { setMenuOpen(false); startEditName(); }}
+            onPress={startEditName}
           />
           <SheetRow
             label={t('editor.sessionDuplicateBtn')}
             onPress={() => {
-              setMenuOpen(false);
               const newId = duplicateSessionInProgram(programId, templateId);
               if (newId) {
                 switchSession(newId);
@@ -524,7 +524,7 @@ export default function SessionEditorScreen({ navigation, route }) {
             <SheetRow
               label={t('editor.sessionDeleteBtn')}
               danger
-              onPress={() => { setMenuOpen(false); handleDeleteSession(); }}
+              onPress={handleDeleteSession}
             />
           )}
         </View>
@@ -650,17 +650,6 @@ function groupRadii(i, n) {
   };
 }
 
-function SheetRow({ label, onPress, danger = false }) {
-  const styles = useThemedStyles(makeStyles);
-  const th     = useTheme();
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
-    </TouchableOpacity>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
@@ -760,11 +749,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas ──
   sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
-  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   presetRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: th.colors.surface2,

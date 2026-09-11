@@ -53,9 +53,10 @@ const BACK_BTN = 32;
 // OTRA ventana, y mientras se desmonta el IME sigue atado a ella — pedir el
 // foco antes deja el cursor puesto y el teclado sin salir. `InteractionManager`
 // no sirve de guía porque el desmontaje es nativo y no registra ninguna
-// interacción con la que sincronizarse. Es el botón de calibrado de esto: si
-// algún dispositivo lento se queda sin teclado, súbelo.
-const FOCUS_DELAY = 250;
+// interacción con la que sincronizarse, así que es un tiempo y tiene que cubrir
+// los 240ms que tarda `DragSheet` en cerrarse. Es el botón de calibrado de
+// esto: si algún dispositivo lento se queda sin teclado, súbelo.
+const FOCUS_DELAY = 300;
 
 /**
  * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
@@ -226,12 +227,15 @@ export default function ScreenHeader({
           entera: apaga el cuerpo para que el nombre sea lo único encendido, y
           es además el "tocar en cualquier parte para confirmar". Entra y sale
           con un fundido — a pelo, el cuerpo daba un salto de color que parecía
-          un cambio de pantalla. El `Pressable` va dentro y no en la vista
+          un cambio de pantalla. Los 120ms de entrada son para relevar al
+          backdrop de `DragSheet` cuando se renombra desde el "···": ése se
+          apaga hacia los 95ms de su cierre, y si el velo tardara más se vería
+          el cuerpo encenderse en medio. El `Pressable` va dentro y no en la vista
           animada porque el `exiting` de Reanimated necesita mandar sobre el
           desmontaje de la vista que anima. */}
       {renaming && (
         <Reanimated.View
-          entering={FadeIn.duration(160)}
+          entering={FadeIn.duration(120)}
           exiting={FadeOut.duration(120)}
           style={[styles.scrim, { height: winH }]}
         >
