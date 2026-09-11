@@ -37,7 +37,7 @@ import { Text, TextInput } from './Text';
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { NAME_MAX } from '../../utils/names';
-import { ArrowIcon, PencilIcon, CheckIcon } from './EditorIcons';
+import { ArrowIcon, CheckIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
 // un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
@@ -88,9 +88,10 @@ export default function ScreenHeader({
   right,
   // Un booleano por unidad para la regla segmentada (ver `HeaderRule`).
   progress,
-  // Título editable: con `onRenameStart` aparece el lápiz y el título es
-  // pulsable. El estado (`renaming`/`draft`) se queda en la pantalla porque el
-  // editor de programa lo mira para avisar de cambios sin guardar al salir.
+  // Título editable: con `onRenameStart` el nombre es pulsable y se renombra
+  // ahí mismo. No hay lápiz — el hueco de acciones es del check de "listo", y
+  // dos confirmaciones en la misma esquina no se distinguen. Lo que recuerda
+  // que se puede renombrar es "Editar nombre" en el menú de la pantalla.
   // Desplegable de título: `{ items: [{ id, label }], currentId, onSelect }`.
   // Con él el nombre lleva un chevron y abre la lista de hermanos anclada bajo
   // la cabecera — es como se salta de ejercicio o de bloque sin volver a la
@@ -171,16 +172,18 @@ export default function ScreenHeader({
           )}
         </View>
 
-        {(editable || right) ? (
+        {/* Renombrando, el hueco es SOLO del check que cierra el nombre: si a su
+            lado siguiera el de "listo", dos checks idénticos a 20px harían que
+            confirmar un nombre y salir del editor fuesen el mismo gesto. */}
+        {(renaming || right) ? (
           <View style={styles.actions}>
-            {editable && (
-              <TouchableOpacity hitSlop={12} onPress={renaming ? onRenameCommit : onRenameStart}>
-                {renaming
-                  ? <CheckIcon  size={17} color={th.colors.accent} />
-                  : <PencilIcon size={15} color={ink} />}
-              </TouchableOpacity>
-            )}
-            {typeof right === 'function' ? right(ink) : right}
+            {renaming
+              ? (
+                <TouchableOpacity hitSlop={12} onPress={onRenameCommit}>
+                  <CheckIcon size={17} color={th.colors.accent} />
+                </TouchableOpacity>
+              )
+              : (typeof right === 'function' ? right(ink) : right)}
           </View>
         ) : <View style={styles.backSpacer} />}
 

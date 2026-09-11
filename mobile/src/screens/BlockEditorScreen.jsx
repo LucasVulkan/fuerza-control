@@ -9,19 +9,23 @@
  * cuelga del de `App.js` y no hace falta.
  */
 import { useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef, FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import { CheckIcon } from '../components/ui/EditorIcons';
+import { useEditorExit } from '../hooks/useEditorExit';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 
 export default function BlockEditorScreen({ navigation, route }) {
   const { templateId, blockId: initialBlockId } = route.params ?? {};
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { done } = useEditorExit(navigation);
 
   const [blockId, setBlockId] = useState(initialBlockId);
   // Mismo contador de saltos que en `ExerciseEditorScreen`: sube en cada
@@ -65,6 +69,11 @@ export default function BlockEditorScreen({ navigation, route }) {
           currentId: blockId,
           onSelect:  selectBlock,
         } : null}
+        right={() => (
+          <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
+            <CheckIcon size={20} color={th.colors.accent} />
+          </TouchableOpacity>
+        )}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

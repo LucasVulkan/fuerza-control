@@ -490,13 +490,23 @@ variante *Plantillas* del set `Sesion Card` (`204:1901`).
 Nodo de Figma: `210:2864`. Cambios de **comportamiento** pedidos por el usuario que
 no están dibujados en Figma (mandan sobre el mock, §10):
 
-- **Guardar y cerrar**: desaparece el botón `Guardar`/`Guardado` del header. El botón
-  grande del final (`388:2676`, h44, `#b8ff00` literal) guarda y hace `goBack()`. Salir
-  por la flecha sigue disparando el aviso de cambios sin guardar (`beforeRemove`, ya
-  existía).
-- **Nombre del programa**: se edita pulsando el título dentro de la cabecera accent
-  (o el lápiz de al lado), no en un input aparte. `nameValue` solo es fuente de verdad
-  mientras `editingName` está activo — fuera de ahí manda el store.
+- **No hay guardar.** `programs` y `sessionTemplates` están en el `partialize` del
+  store: cada edición se escribe en AsyncStorage en el momento, así que el botón
+  `GUARDAR PROGRAMA` del final (`388:2676`, h44, `#b8ff00` literal) no guardaba
+  nada — marcaba a los clientes para re-subir y salía. Se fue, y con él el aviso
+  de cambios sin guardar y la foto de reversión (`beginEditSession`), que sólo
+  vivía en RAM y por tanto prometía una vuelta atrás que no sobrevivía a cerrar
+  la app.
+  Programa, sesión, ejercicio y bloque son **cuatro pantallas de un solo modo de
+  edición**: el chevron sube un nivel y el **check** de la derecha cierra el modo
+  entero y va a Home con el toast "Programa editado", desde cualquiera de las
+  cuatro. Lo comparten en `hooks/useEditorExit.js`.
+- **Nombre del programa**: se edita pulsando el título en la cabecera, no en un
+  input aparte. El lápiz se fue: el hueco de acciones es del check, y dos
+  confirmaciones en la misma esquina no se distinguen — lo que recuerda que se
+  puede renombrar es "Editar nombre" en el menú `···` (el editor de sesión ya lo
+  lleva). `nameValue` solo es fuente de verdad mientras `editingName` está
+  activo — fuera de ahí manda el store.
 - **Etapas**: el `+` va dentro del propio control segmentado (a partir de 4 etapas los
   segmentos dejan de repartirse el ancho y la fila scrollea en horizontal, con el `+`
   siempre fijo fuera del scroll). Se eliminan la fila-tarjeta "Etapa N" y el botón
@@ -527,7 +537,7 @@ Divergencias resueltas contra la imagen que mandó el usuario (Figma perdió en 
 
 | Pieza | Decisión |
 |---|---|
-| Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44 |
+| Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44. **Ya no existe** — ver arriba |
 | `+ Añadir sesión a X` | Imagen: texto plano centrado, **sin** la caja outline de Figma |
 | `+` de etapas | Imagen: glifo accent sobre `surface2`, **no** el cuadrado relleno `#b8ff00` de 37×37 del nodo oculto `210:3274` |
 

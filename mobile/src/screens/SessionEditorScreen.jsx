@@ -29,11 +29,12 @@ import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
 import { spacing, textStyles, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ArrowIcon, MenuIcon, DragIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, MenuIcon, DragIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import { generateId } from '../utils/formatters';
+import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ function EditorRow({
 export default function SessionEditorScreen({ navigation, route }) {
   const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
   const { t } = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
 
@@ -230,6 +232,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
   const reorderBlocks         = useStore((s) => s.reorderBlocks);
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
+  const { done }              = useEditorExit(navigation);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = sessionTemplates[templateId];
@@ -396,10 +399,17 @@ export default function SessionEditorScreen({ navigation, route }) {
         onDraftChange={setNameValue}
         onRenameStart={startEditName}
         onRenameCommit={commitName}
+        // El check va el último: es la acción principal de la barra y cae bajo
+        // el pulgar en el mismo sitio en las cuatro pantallas del editor.
         right={(ink) => (
-          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
-            <MenuIcon color={ink} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
+              <MenuIcon color={ink} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
+              <CheckIcon size={20} color={th.colors.accent} />
+            </TouchableOpacity>
+          </>
         )}
       />
 
@@ -493,6 +503,12 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── Menú "···" ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
         <View style={styles.sheetBody}>
+          {/* Sin lápiz en la cabecera, esto es lo que recuerda que el nombre se
+              puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
+          <SheetRow
+            label={t('editor.renameOption')}
+            onPress={() => { setMenuOpen(false); startEditName(); }}
+          />
           <SheetRow
             label={t('editor.sessionDuplicateBtn')}
             onPress={() => {

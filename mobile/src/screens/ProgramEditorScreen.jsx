@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, Keyboard } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
@@ -14,12 +14,13 @@ import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, DragIcon, LockIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, DragIcon, LockIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
+import { useEditorExit } from '../hooks/useEditorExit';
 
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
@@ -70,16 +71,15 @@ export default function ProgramEditorScreen({ navigation }) {
   const clients               = useStore((s) => s.clients);
   const clientSync            = useStore((s) => s.clientSync);
   const ui                    = useStore((s) => s.ui);
-  const beginEditSession      = useStore((s) => s.beginEditSession);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
   const renameProgram              = useStore((s) => s.renameProgram);
-  const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
   const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
   const reorderSessionsInStage = useStore((s) => s.reorderSessionsInStage);
   const showToast             = useStore((s) => s.showToast);
+  const { commit, done }      = useEditorExit(navigation);
 
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
   const activeProgram = programs[editingId];
@@ -102,10 +102,6 @@ export default function ProgramEditorScreen({ navigation }) {
   const scrollRef = useAnimatedRef();
 
   useEffect(() => {
-    beginEditSession(editingId);
-  }, []);
-
-  useEffect(() => {
     if (selectedStage) setStageName(selectedStage.name);
   }, [selectedStageIdx, activeProgram?.stages?.length]);
 
@@ -114,7 +110,6 @@ export default function ProgramEditorScreen({ navigation }) {
     if (selectedStageIdx > max) setSelectedStageIdx(max);
   }, [activeProgram?.stages?.length]);
 
-  const leavingRef = useRef(false);
 
   // `_editingProgramId` es global y sale sucio: salir sin cambios no pasa por
   // `restoreSnapshot` y el id se quedaba puesto, así que quien entrase después
@@ -124,67 +119,6 @@ export default function ProgramEditorScreen({ navigation }) {
   useEffect(() => () => {
     useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
   }, []);
-
-  // Reverts the live edits to the snapshot taken on entry, then clears edit state.
-  // Sin foto no hay nada que revertir: `importData` la borra al escribir encima
-  // (fallo 12), y ahí lo correcto es salir dejando lo que acaba de entrar.
-  function restoreSnapshot() {
-    const snap = useStore.getState()._editSnapshot;
-    if (snap) {
-      useStore.setState((s) => ({
-        programs: { ...s.programs, [snap.programId]: snap.program },
-        sessionTemplates: snap.sessionTemplates,
-        _editSnapshot: null,
-      }));
-    }
-    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
-  }
-
-  // True if the live store diverges from the entry snapshot, or a text field
-  // holds an uncommitted edit (program name / stage name).
-  function hasUnsavedChanges() {
-    const st   = useStore.getState();
-    const snap = st._editSnapshot;
-    if (!snap) return false;
-    // Los cambios caen en programs[editingId] (la estructura) y en las sesiones.
-    // Con un solo diccionario esto compara TODAS las sesiones y no sólo la capa
-    // de ediciones: sigue siendo correcto, y sólo corre al intentar salir.
-    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.program)) return true;
-    if (JSON.stringify(st.sessionTemplates) !== JSON.stringify(snap.sessionTemplates)) return true;
-    // `nameValue` solo es fuente de verdad mientras el título está en edición;
-    // fuera de ahí el nombre se pinta del store y compararlo daría falsos
-    // positivos (p. ej. si la pantalla montó antes de resolver el programa).
-    if (editingName && nameValue.trim() !== (activeProgram?.name ?? '')) return true;
-    if (selectedStage && stageName.trim() !== (selectedStage.name ?? '')) return true;
-    return false;
-  }
-
-  // Intercept every exit (back arrow, swipe, hardware back). Warn only when
-  // there are unsaved changes; otherwise leave silently.
-  useEffect(() => {
-    const sub = navigation.addListener('beforeRemove', (e) => {
-      if (leavingRef.current || !hasUnsavedChanges()) return;
-      e.preventDefault();
-      Alert.alert(
-        t('editor.unsavedTitle'),
-        t('editor.unsavedBody'),
-        [
-          { text: t('editor.keepEditing'), style: 'cancel' },
-          {
-            text: t('editor.exitNoSave'),
-            style: 'destructive',
-            onPress: () => {
-              leavingRef.current = true;
-              restoreSnapshot();
-              navigation.dispatch(e.data.action);
-            },
-          },
-        ],
-      );
-    });
-    return sub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, editingId, nameValue, editingName, stageName, selectedStage, activeProgram]);
 
   if (!activeProgram) return null;
 
@@ -261,17 +195,21 @@ export default function ProgramEditorScreen({ navigation }) {
     );
   }
 
-  function handleSave() {
-    // Flush any text field that still has focus before saving
-    Keyboard.dismiss();
+  // Los dos salen escribiendo lo que hubiera a medias en los campos de texto y
+  // marcando a los clientes; lo que cambia es el destino. El chevron sube un
+  // nivel —a la vista del programa— sin decir nada, y el check cierra el modo
+  // edición entero y se va a Home.
+  function handleBack() {
     commitName();
     commitStageName();
-    // Mark any clients that have this program assigned as needing a re-upload
-    markProgramDirtyForClients(editingId);
-    showToast(t('editor.toastSaved'), 2200, 'success');
-    leavingRef.current = true; // skip the unsaved-changes guard on the way out
-    useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
+    commit();
     navigation.goBack();
+  }
+
+  function handleDone() {
+    commitName();
+    commitStageName();
+    done();
   }
 
   // Etapa activa REAL. En el móvil del entrenador la del programa es solo la que
@@ -297,10 +235,8 @@ export default function ProgramEditorScreen({ navigation }) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
-      {/* Sin acción a la derecha: el "···" tenía una sola ("añadir etapa") y
-          ahora vive en la hoja del "+", junto al selector de etapas. */}
       <ScreenHeader
-        onBack={() => navigation.goBack()}
+        onBack={handleBack}
         eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
         title={activeProgram.name ?? ''}
         placeholder={t('editor.programNamePlaceholder')}
@@ -309,6 +245,11 @@ export default function ProgramEditorScreen({ navigation }) {
         onDraftChange={setNameValue}
         onRenameStart={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
         onRenameCommit={commitName}
+        right={() => (
+          <TouchableOpacity onPress={handleDone} hitSlop={12} accessibilityRole="button">
+            <CheckIcon size={20} color={th.colors.accent} />
+          </TouchableOpacity>
+        )}
       />
 
       {/* Scrollable content */}
@@ -404,11 +345,6 @@ export default function ProgramEditorScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* ── Guardar y cerrar (Buttons 388:2676) ── */}
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>{t('editor.saveProgram')}</Text>
-        </TouchableOpacity>
 
       </Reanimated.ScrollView>
 
@@ -630,16 +566,6 @@ const makeStyles = (th) => StyleSheet.create({
   addSessionBtn:      { alignItems: 'center', paddingVertical: spacing.md },
   addSessionBtnText:  { ...textStyles.button, color: th.tint.accent50 },
   addSessionBtnStage: { color: th.colors.accent },
-
-  // ── Guardar programa (Buttons 388:2676) ──
-  saveBtn: {
-    height:          44,
-    borderRadius:    th.radius.md,
-    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  saveBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   stageRxLine: { ...textStyles.label, color: th.colors.accent },
 

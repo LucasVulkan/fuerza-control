@@ -9,19 +9,23 @@
  * `CustomExerciseScreen`, que es el mismo editor para el alta en librería.
  */
 import { useState, useRef } from 'react';
-import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import { CheckIcon } from '../components/ui/EditorIcons';
+import { useEditorExit } from '../hooks/useEditorExit';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 
 export default function ExerciseEditorScreen({ navigation, route }) {
   const { templateId, exerciseId: initialExerciseId } = route.params ?? {};
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { done } = useEditorExit(navigation);
 
   // El ejercicio abierto es estado local (no parámetro de ruta) para que el
   // desplegable de la cabecera salte a otro sin apilar pantallas.
@@ -75,6 +79,11 @@ export default function ExerciseEditorScreen({ navigation, route }) {
           currentId: exerciseId,
           onSelect:  selectExercise,
         } : null}
+        right={() => (
+          <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
+            <CheckIcon size={20} color={th.colors.accent} />
+          </TouchableOpacity>
+        )}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
