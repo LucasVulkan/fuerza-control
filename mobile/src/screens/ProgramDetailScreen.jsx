@@ -31,6 +31,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import StageSelector from '../components/ui/StageSelector';
 import DragSheet from '../components/DragSheet';
 import { MenuRow } from '../components/ui/MenuList';
+import { MenuIcon } from '../components/ui/EditorIcons';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
@@ -467,7 +468,7 @@ export default function ProgramDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('home.moreOptions')}
             >
-              <Text style={[styles.headerMore, { color: ink }]}>⋯</Text>
+              <MenuIcon color={ink} />
             </TouchableOpacity>
           )
           : undefined}
@@ -475,7 +476,10 @@ export default function ProgramDetailScreen() {
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: canEdit ? spacing.lg : insets.bottom + spacing.xxl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Resumen del programa ─────────────────────────────────────────── */}
@@ -557,10 +561,15 @@ export default function ProgramDetailScreen() {
           />
         ))}
 
-        {/* ── Editar ── al final y no en la cabecera: se edita después de haber
-            visto el programa, y un lápiz arriba sería una segunda puerta a la
-            misma pantalla. */}
-        {canEdit && (
+      </ScrollView>
+
+      {/* ── Editar ── abajo y no en la cabecera: se edita después de haber visto
+          el programa, y un lápiz arriba sería una segunda puerta a la misma
+          pantalla. Pero FUERA del scroll: al final del contenido quedaba a un
+          programa entero de distancia, y llegar a editar costaba recorrer todas
+          las sesiones. Misma barra que el pie de `NextSessionScreen`. */}
+      {canEdit && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
           <TouchableOpacity
             style={styles.editBtn}
             onPress={() => navigate('programEditor')}
@@ -569,8 +578,8 @@ export default function ProgramDetailScreen() {
           >
             <Text style={styles.editBtnText}>{t('programView.editBtn')}</Text>
           </TouchableOpacity>
-        )}
-      </ScrollView>
+        </View>
+      )}
 
       {menuOpen && (
         <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
@@ -639,8 +648,16 @@ const makeStyles = (th) => StyleSheet.create({
   // Selector de etapas
   // Todas las etapas ocupan lo mismo. Sin scroll: con más de 5 el nombre se
   // trunca, que es preferible a que unas se vean más importantes que otras.
-  headerMore: { ...textStyles.itemTitle, lineHeight: 18 },
 
+  // La barra se apoya en el fondo de pantalla con un filete de 1px, igual que
+  // el pie de `NextSessionScreen`: el contenido pasa por debajo, no se funde.
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    borderTopWidth:    borders.thin,
+    borderTopColor:    th.colors.border,
+    backgroundColor:   th.colors.bg,
+  },
   // Relleno lima como el botón de EMPEZAR de la Home: es la acción principal de
   // la pantalla y aquí no compite con ningún otro acento.
   editBtn: {
@@ -648,7 +665,6 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.md,
     paddingVertical: 15,
     alignItems:      'center',
-    marginTop:       spacing.sm,
   },
   editBtnText: { ...textStyles.button, color: th.colors.onAccent },
 

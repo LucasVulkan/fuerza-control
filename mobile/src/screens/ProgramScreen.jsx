@@ -581,7 +581,10 @@ const makeStyles = (th) => StyleSheet.create({
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
   sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
+  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   sheetLabel: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,

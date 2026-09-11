@@ -33,12 +33,27 @@ export function ChevronDown({ size = 12, color }) {
 // Icons / "More..." (`151:1467`): 3 puntos de 3px. El componente los dibuja en
 // horizontal, pero las instancias de la cabecera van rotadas -90° — o sea que en
 // pantalla se ven VERTICALES. Se dibuja ya rotado.
-export function MenuIcon({ size = 26, color }) {
+//
+// La caja va a 30 y no a los 26 de Figma: los puntos sólo ocupan 15 de los 26 y
+// en pantalla el icono se leía pequeño al lado del resto del cromo. Excepción
+// pedida, no un descuido. Al escalar la caja escalan los puntos con ella, así
+// que basta con este número — las instancias no pasan `size`.
+// `horizontal` devuelve el icono a su orientación de origen (la de Figma, sin
+// rotar). No es otro icono: son los mismos tres puntos con los ejes cambiados,
+// para los sitios donde el "⋯" siempre fue horizontal (pie de la tarjeta de
+// programa, fila de archivados).
+export function MenuIcon({ size = 30, color, horizontal = false }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      <Circle cx={13} cy={6.5}  r={1.5} fill={color} />
-      <Circle cx={13} cy={12.5} r={1.5} fill={color} />
-      <Circle cx={13} cy={18.5} r={1.5} fill={color} />
+      {[6.5, 12.5, 18.5].map((d) => (
+        <Circle
+          key={d}
+          cx={horizontal ? d : 13}
+          cy={horizontal ? 13 : d}
+          r={1.5}
+          fill={color}
+        />
+      ))}
     </Svg>
   );
 }

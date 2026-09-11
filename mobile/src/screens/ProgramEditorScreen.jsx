@@ -684,7 +684,10 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Menú "···" ──
   menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
-  menuRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
+  menuRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   menuRowHint: { ...textStyles.body, color: th.colors.muted },
   stageRxLine: { ...textStyles.label, color: th.colors.accent },
 

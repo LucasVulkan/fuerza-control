@@ -52,6 +52,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
+import { MenuIcon } from './EditorIcons';
 import { spacing, textStyles, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
@@ -112,6 +113,7 @@ export default function ProgramCard({
   onEdit, onView, onMore,
 }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEs   = i18n.language?.startsWith('es');
 
@@ -274,7 +276,7 @@ export default function ProgramCard({
               accessibilityRole="button"
               accessibilityLabel={t('home.moreOptions')}
             >
-              <Text style={styles.footIconText}>⋯</Text>
+              <MenuIcon horizontal color={th.colors.mutedLight} />
             </TouchableOpacity>
           )}
         </View>
@@ -417,5 +419,4 @@ const makeStyles = (th) => StyleSheet.create({
   },
   footText: { ...textStyles.labelStrong, color: th.colors.text },
   footIcon: { flex: 0, width: 52 },
-  footIconText: { ...textStyles.itemTitle, color: th.colors.mutedLight, lineHeight: 18 },
 });

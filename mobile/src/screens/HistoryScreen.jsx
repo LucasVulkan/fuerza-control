@@ -602,7 +602,10 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
   sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between' },
-  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
+  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   sheetHint: {
     ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,

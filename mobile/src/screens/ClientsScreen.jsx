@@ -43,7 +43,7 @@ import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
-import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
 import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import ProgramCard from '../components/ui/ProgramCard';
 
@@ -679,7 +679,7 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <DownloadIcon size={17} color={th.colors.muted2} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <Text style={styles.archDots}>⋯</Text>
+        <MenuIcon horizontal color={th.colors.muted2} />
       </TouchableOpacity>
 
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
@@ -4225,10 +4225,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   sheetRow: sheetRowBase(th),
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
   sheetRowText: {
-    ...textStyles.labelStrong,
-    flex:  1,
-    color: th.colors.text,
+    ...textStyles.bodyStrong,
+    fontFamily: 'Inter_800ExtraBold',
+    flex:       1,
+    color:      th.colors.text,
   },
   sheetRowArrow: {
     ...textStyles.labelStrong,
@@ -4360,7 +4364,6 @@ const makeStyles = (th) => StyleSheet.create({
   archIcon: {
     padding: spacing.xs,
   },
-  archDots: { ...textStyles.body, color: th.colors.muted2, width: 18, textAlign: 'center' },
 
   // ── Exercise mini card ──
   exMiniCard: {

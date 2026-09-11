@@ -444,7 +444,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         onRenameCommit={commitName}
         right={(ink) => (
           <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
-            <MenuIcon size={22} color={ink} />
+            <MenuIcon color={ink} />
           </TouchableOpacity>
         )}
       />
@@ -913,7 +913,9 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  rowMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
+  // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
+  rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -965,7 +967,10 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Hojas ──
   sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
   sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
+  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   presetRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: th.colors.surface2,
@@ -973,7 +978,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding: spacing.md,
   },
   presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Mismo par nombre+meta que `rowMeta`: sin margen, lo separa el interlineado.
+  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight },
   presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
 
   // ── Cabecera del editor de ejercicio (123:1633) ──

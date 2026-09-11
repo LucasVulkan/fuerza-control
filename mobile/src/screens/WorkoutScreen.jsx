@@ -511,7 +511,7 @@ export default function WorkoutScreen() {
             )}
           </View>
 
-          <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={12}>
+          <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={12} style={styles.headerAction}>
             <NoteIcon
               size={22}
               color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
@@ -868,7 +868,11 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  headerMid: { flex: 1, minWidth: 0 },
+  // Centrado, como `ScreenHeader`: el bloque se centra dentro de `headerMid` y
+  // el hueco de la nota mide lo que el botón de volver para que ese centro sea
+  // el de la barra.
+  headerMid:    { flex: 1, minWidth: 0, alignItems: 'center' },
+  headerAction: { width: 32, alignItems: 'flex-end' },
   // Misma ceja que `ScreenHeader`: `card-type` tal cual, en `mutedLight`.
   // Aquí lleva además el reloj, que sí va en accent — es un dato vivo, y es el
   // único sitio de la pantalla donde se lee el tiempo de sesión.
@@ -886,6 +890,7 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   freeNameInputHeader: {
     ...textStyles.heading,
@@ -893,6 +898,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop: spacing.xs,
     padding:   0,
     alignSelf: 'stretch',
+    textAlign: 'center',
   },
   // Texto explicativo de la sesión libre: sin caja, tipografía de la app
   // (text/subtitle) y en mutedLight — es contexto, no un aviso.
@@ -918,7 +924,10 @@ const makeStyles = (th) => StyleSheet.create({
   // Hoja de "añadir" + editor de bloque de la sesión libre
   sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
   sheetRow: sheetRowBase(th),
-  sheetRowText: { ...textStyles.labelStrong, color: th.colors.text },
+  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
+  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
+  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
+  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
   blockHeader: {
     flexDirection:     'row',

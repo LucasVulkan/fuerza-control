@@ -148,16 +148,8 @@ export default function ScreenHeader({
           )}
         </View>
 
-        {(editable || right) && (
+        {(editable || right) ? (
           <View style={styles.actions}>
-            {/* El contador vive en el hueco de acciones y no dentro del input:
-                el input llega hasta aquí y la barra es de 56, no hay sitio para
-                una caja propia. Sólo mientras renombras. */}
-            {editable && renaming && (
-              <Text style={[styles.count, draftLen > NAME_MAX && styles.countOver]}>
-                {draftLen}/{NAME_MAX}
-              </Text>
-            )}
             {editable && (
               <TouchableOpacity hitSlop={12} onPress={renaming ? onRenameCommit : onRenameStart}>
                 {renaming
@@ -166,6 +158,18 @@ export default function ScreenHeader({
               </TouchableOpacity>
             )}
             {typeof right === 'function' ? right(ink) : right}
+          </View>
+        ) : <View style={styles.backSpacer} />}
+
+        {/* El contador va FUERA del flujo: en el hueco de acciones ensanchaba el
+            lado derecho y descentraba el título justo mientras escribes, que es
+            cuando más se nota. Cae sobre el final del input, que con el texto
+            centrado está vacío. Sólo mientras renombras. */}
+        {editable && renaming && (
+          <View style={styles.countWrap} pointerEvents="none">
+            <Text style={[styles.count, draftLen > NAME_MAX && styles.countOver]}>
+              {draftLen}/{NAME_MAX}
+            </Text>
           </View>
         )}
       </View>
@@ -201,8 +205,19 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   backSpacer: { width: BACK_BTN },
-  mid:        { flex: 1, minWidth: 0 },
-  actions:    { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
+  // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
+  // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.
+  // (Renombrando, el contador ensancha el lado derecho y el título se descentra
+  // unos píxeles mientras dura.)
+  mid:        { flex: 1, minWidth: 0, alignItems: 'center' },
+  actions: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'flex-end',
+    minWidth:       BACK_BTN,
+    gap:            spacing.lg,
+  },
   // `card-type` tal cual (12 / 800 / +1.2), el token de los tags "SESIÓN X" —
   // que son exactamente este tipo de etiqueta. A 10 la ceja no aguantaba ser lo
   // primero que se lee. La caja fuerza mayúsculas porque las
@@ -222,12 +237,25 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
+  // El input no tiene ancho propio: centrado por `alignItems` mediría cero, así
+  // que ocupa todo `mid` y lo que se centra es su texto.
   titleInput: {
     ...textStyles.heading,
     color:     th.colors.text,
     marginTop: spacing.xs,
     padding:   0,
+    alignSelf: 'stretch',
+    textAlign: 'center',
+  },
+  // Pegado al hueco de acciones por la derecha y centrado en el alto de la barra.
+  countWrap: {
+    position:       'absolute',
+    right:          spacing.lg + BACK_BTN + spacing.md,
+    top:            0,
+    bottom:         0,
+    justifyContent: 'center',
   },
   count: {
     ...textStyles.caps,
