@@ -32,6 +32,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import Reanimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Text, TextInput } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -223,9 +224,19 @@ export default function ScreenHeader({
 
       {/* El velo. Cuelga del borde inferior de la cabecera y mide la pantalla
           entera: apaga el cuerpo para que el nombre sea lo único encendido, y
-          es además el "tocar en cualquier parte para confirmar". */}
+          es además el "tocar en cualquier parte para confirmar". Entra y sale
+          con un fundido — a pelo, el cuerpo daba un salto de color que parecía
+          un cambio de pantalla. El `Pressable` va dentro y no en la vista
+          animada porque el `exiting` de Reanimated necesita mandar sobre el
+          desmontaje de la vista que anima. */}
       {renaming && (
-        <Pressable style={[styles.scrim, { height: winH }]} onPress={onRenameCommit} />
+        <Reanimated.View
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(120)}
+          style={[styles.scrim, { height: winH }]}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={onRenameCommit} />
+        </Reanimated.View>
       )}
 
       {menu && menuOpen && (
