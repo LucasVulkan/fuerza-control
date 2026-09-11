@@ -115,12 +115,14 @@ export function CloseIcon({ size = 14, color }) {
 // Candado de etapa bloqueada. NO sale de Figma: el componente `Icons` (98:138)
 // tiene 28 variantes y ninguna es un candado — la feature es posterior al
 // diseño. Trazo 2 como el resto de iconos dibujados a mano del proyecto.
-export function LockIcon({ size = 14, color }) {
+// `solid` rellena el cuerpo: en el planificador, el aro dice "abierta" y el
+// candado macizo dice "bloqueada" sin necesidad de una etiqueta al lado.
+export function LockIcon({ size = 14, color, solid = false }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M7 10V7a5 5 0 0110 0v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
       <Path
-        d="M5 10h14v10H5z" stroke={color} strokeWidth={2}
+        d="M5 10h14v10H5z" stroke={color} strokeWidth={2} fill={solid ? color : 'none'}
         strokeLinejoin="round" strokeLinecap="round"
       />
     </Svg>

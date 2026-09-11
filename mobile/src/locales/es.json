@@ -1440,15 +1440,11 @@
     "sessionMetaNoTime": "{{ex}} ejercicios · {{sets}} series",
     "programSummary": "{{stages}} etapas · {{weeks}} ciclos · {{sessions}} sesiones",
     "programSummarySimple": "{{sessions}} sesiones · {{sets}} series",
-    "addSheetTitle": "Añadir",
-    "addStageHint": "Copia de «{{name}}», para retocar a mano",
-    "planBlock": "Planificar bloque",
-    "planBlockHint": "Varias etapas de una vez, con progresión entre ellas",
+    "copySuffix": "(copia)",
     "programSummaryOpen": "{{stages}} etapas · {{weeks}}+ ciclos · {{sessions}}+ sesiones",
     "cyclesOpen": "Sin límite",
     "cyclesShort_one": "{{count}} ciclo",
     "cyclesShort_other": "{{count}} ciclos",
-    "addStage": "Añadir etapa",
     "cyclesQuestion": "¿Cuántos ciclos dura esta etapa?",
     "cyclesExplain": "Un ciclo son todas las sesiones distintas del programa (A, B y C), en el orden que sea. Cuando se completa, cuenta uno.",
     "cyclesNoLimit": "Sin límite — la etapa dura hasta que tú añadas la siguiente",
@@ -2221,15 +2217,19 @@
     "sameWeight": "el mismo peso"
   },
   "planner": {
-    "eyebrow": "Planificar",
-    "summaryTag": "PLAN",
+    "eyebrow": "Plan del programa",
+    "summaryTag": "AHORA MISMO",
     "summary": "{{stages}} etapas · {{cycles}} ciclos",
     "summaryOpen": "{{stages}} etapas · {{cycles}}+ ciclos",
     "summaryPerCycle": "{{count}} sesiones por ciclo",
     "stagePlaceholder": "Nombre de la etapa",
-    "addBlock": "Añadir bloque",
-    "baseHint": "Las etapas del bloque se derivan de «{{name}}», la última etapa hecha a mano.",
-    "ladderTitle": "Elige una escalera",
+    "sectionStages": "Ya en el programa",
+    "addSlot": "+ Añadir etapas aquí",
+    "stageVolume": "{{sessions}} sesiones · {{exercises}} ejercicios · {{sets}} series",
+    "cyclesProgress": "{{done}} de {{total}} ciclos",
+    "createdWith": "Creada con {{parts}}",
+    "lock": "Bloquear",
+    "unlock": "Desbloquear",
     "toastAdded": "+{{count}} etapas",
     "deleteTitle": "¿Eliminar etapa?",
     "deleteBody": "Se perderán las sesiones de «{{name}}».",
@@ -2259,14 +2259,24 @@
       "incrementHalf": "incremento a la mitad",
       "deload": "sin progresión"
     },
-    "rungCount": "Etapas de trabajo",
-    "withDeload": "Terminar con descarga",
-    "withDeloadHint": "Una etapa corta de menos volumen y sin progresión",
-    "applyBtn": "Añadir",
+    "addStagesTitle": "Añadir etapas",
+    "fromStage": "Parte de la etapa",
+    "fromStageHint": "De ella se copian las sesiones. Las etapas nuevas van al final del plan, elijas la que elijas.",
+    "startWith": "Empezar con",
+    "stagesToAdd": "Las etapas que se añaden",
+    "startWithHint": "O monta la lista a mano con los botones de abajo.",
+    "addWork": "+ trabajo",
+    "addDeload": "+ descarga",
+    "removeRung": "Quitar esta etapa",
+    "noChanges": "sin cambios",
+    "deloadFixedLine": "Sin progresión mientras dure",
+    "applyCount_one": "Añadir {{count}} etapa",
+    "applyCount_other": "Añadir {{count}} etapas",
     "rungNames": {
       "linear": "Acumulación {{n}}",
       "intensification": "Intensificación {{n}}",
-      "volume": "Volumen {{n}}"
+      "volume": "Volumen {{n}}",
+      "blank": "Etapa {{n}}"
     },
     "fields": {
       "setsDelta": "Series",
@@ -2275,14 +2285,19 @@
       "repsShift": "Reps",
       "repsShift_keys": "Reps en básicos",
       "repsShift_accessories": "Reps en accesorios",
-      "restPct": "Descanso (%)"
+      "restPct": "Descanso (%)",
+      "scope": "Aplicar a"
+    },
+    "scopes": {
+      "all": "Todo",
+      "keys": "Básicos",
+      "accessories": "Accesorios"
     },
     "ladderDesc": {
       "linear": "Sube series en todos los ejercicios de la etapa para aumentar el volumen de trabajo.",
-      "intensification": "Acorta el rango de repeticiones de los ejercicios principales y alarga el descanso.",
+      "intensification": "Baja el rango de repeticiones de los ejercicios principales y alarga el descanso.",
       "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
-    },
-    "baseLine": "Las etapas del bloque se derivan de «{{name}}»"
+    }
   },
   "deleteAccount": {
     "title": "Eliminar cuenta",

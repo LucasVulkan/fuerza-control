@@ -26,7 +26,7 @@ import { useThemedStyles } from '../useTheme';
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
  */
-export default function DragSheet({ visible, onClose, title, action, children }) {
+export default function DragSheet({ visible, onClose, title, action, tall, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
@@ -94,9 +94,14 @@ export default function DragSheet({ visible, onClose, title, action, children })
           y el `translateY` del arrastre sigue siendo del sheet, independiente
           del empuje de layout. */}
       <KeyboardAvoidingView style={styles.kavShell} behavior="padding" pointerEvents="box-none">
+        {/* `tall`: alto FIJO en vez de tope. Una hoja que crece con su
+            contenido da un salto cada vez que se despliega algo dentro —y en la
+            de etapas se despliega constantemente—, así que el contenido pasa a
+            scrollear dentro de una caja que no se mueve. */}
         <Animated.View
           style={[
             styles.card,
+            tall && styles.cardTall,
             { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
           ]}
         >
@@ -145,6 +150,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal:    spacing.lg,
     paddingTop:           spacing.sm,
   },
+  cardTall: { height: '85%' },
   handleWrap: {
     alignItems:      'center',
     paddingVertical: spacing.sm,

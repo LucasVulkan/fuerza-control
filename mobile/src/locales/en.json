@@ -1440,15 +1440,11 @@
     "sessionMetaNoTime": "{{ex}} exercises · {{sets}} sets",
     "programSummary": "{{stages}} stages · {{weeks}} cycles · {{sessions}} sessions",
     "programSummarySimple": "{{sessions}} sessions · {{sets}} sets",
-    "addSheetTitle": "Add",
-    "addStageHint": "A copy of “{{name}}”, to tweak by hand",
-    "planBlock": "Plan a block",
-    "planBlockHint": "Several stages at once, progressing between them",
+    "copySuffix": "(copy)",
     "programSummaryOpen": "{{stages}} stages · {{weeks}}+ cycles · {{sessions}}+ sessions",
     "cyclesOpen": "No limit",
     "cyclesShort_one": "{{count}} cycle",
     "cyclesShort_other": "{{count}} cycles",
-    "addStage": "Add stage",
     "cyclesQuestion": "How many cycles does this stage last?",
     "cyclesExplain": "A cycle is every distinct session of the program (A, B and C), in any order. Completing them all counts as one.",
     "cyclesNoLimit": "No limit — the stage runs until you add the next one",
@@ -2221,15 +2217,19 @@
     "sameWeight": "same weight"
   },
   "planner": {
-    "eyebrow": "Plan",
-    "summaryTag": "PLAN",
+    "eyebrow": "Program plan",
+    "summaryTag": "RIGHT NOW",
     "summary": "{{stages}} stages · {{cycles}} cycles",
     "summaryOpen": "{{stages}} stages · {{cycles}}+ cycles",
     "summaryPerCycle": "{{count}} sessions per cycle",
     "stagePlaceholder": "Stage name",
-    "addBlock": "Add a block",
-    "baseHint": "The stages of a block derive from “{{name}}”, the last hand-built stage.",
-    "ladderTitle": "Pick a ladder",
+    "sectionStages": "Already in the program",
+    "addSlot": "+ Add stages here",
+    "stageVolume": "{{sessions}} sessions · {{exercises}} exercises · {{sets}} sets",
+    "cyclesProgress": "{{done}} of {{total}} cycles",
+    "createdWith": "Created with {{parts}}",
+    "lock": "Lock",
+    "unlock": "Unlock",
     "toastAdded": "+{{count}} stages",
     "deleteTitle": "Delete stage?",
     "deleteBody": "The sessions in “{{name}}” will be lost.",
@@ -2259,14 +2259,24 @@
       "incrementHalf": "half increment",
       "deload": "no progression"
     },
-    "rungCount": "Work stages",
-    "withDeload": "End with a deload",
-    "withDeloadHint": "A short stage with less volume and no progression",
-    "applyBtn": "Add",
+    "addStagesTitle": "Add stages",
+    "fromStage": "Based on",
+    "fromStageHint": "Its sessions are the ones copied. New stages go at the end of the plan, whichever you pick.",
+    "startWith": "Start from",
+    "stagesToAdd": "The stages being added",
+    "startWithHint": "Or build the list by hand with the buttons below.",
+    "addWork": "+ work",
+    "addDeload": "+ deload",
+    "removeRung": "Remove this stage",
+    "noChanges": "no changes",
+    "deloadFixedLine": "No progression while it lasts",
+    "applyCount_one": "Add {{count}} stage",
+    "applyCount_other": "Add {{count}} stages",
     "rungNames": {
       "linear": "Accumulation {{n}}",
       "intensification": "Intensification {{n}}",
-      "volume": "Volume {{n}}"
+      "volume": "Volume {{n}}",
+      "blank": "Stage {{n}}"
     },
     "fields": {
       "setsDelta": "Sets",
@@ -2275,14 +2285,19 @@
       "repsShift": "Reps",
       "repsShift_keys": "Reps on key lifts",
       "repsShift_accessories": "Reps on accessories",
-      "restPct": "Rest (%)"
+      "restPct": "Rest (%)",
+      "scope": "Apply to"
+    },
+    "scopes": {
+      "all": "Everything",
+      "keys": "Key lifts",
+      "accessories": "Accessories"
     },
     "ladderDesc": {
       "linear": "Adds sets across every exercise in the stage to raise total work volume.",
-      "intensification": "Shortens the key lifts’ rep range and lengthens the rest.",
+      "intensification": "Lowers the key lifts’ rep range and lengthens the rest.",
       "volume": "Adds sets to the accessories only; the key lifts are left alone."
-    },
-    "baseLine": "The stages of the block derive from “{{name}}”"
+    }
   },
   "deleteAccount": {
     "title": "Delete account",

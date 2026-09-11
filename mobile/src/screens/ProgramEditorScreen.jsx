@@ -7,7 +7,7 @@ import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
@@ -74,7 +74,6 @@ export default function ProgramEditorScreen({ navigation }) {
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
   const renameProgram              = useStore((s) => s.renameProgram);
   const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
-  const addStageToProgram     = useStore((s) => s.addStageToProgram);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
   const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
@@ -95,7 +94,6 @@ export default function ProgramEditorScreen({ navigation }) {
   const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
-  const [addOpen, setAddOpen]                   = useState(false);
 
   const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
@@ -244,20 +242,6 @@ export default function ProgramEditorScreen({ navigation }) {
     else setStageName(selectedStage?.name ?? '');
   }
 
-  function handleAddStage() {
-    // Copia la etapa que está seleccionada en el segmentado, no la última: si
-    // estás mirando una etapa, esa es la que quieres continuar.
-    // Duración también de la de origen; `?? 4` porque una etapa abierta (sin
-    // límite) no se copia como abierta — misma regla que `duplicateStageInProgram`.
-    addStageToProgram(editingId, {
-      sourceStageIdx: selectedStageIdx,
-      durationWeeks: selectedStage?.durationWeeks ?? 4,
-    });
-    // La etapa nueva va al final: su índice es el tamaño de antes de añadirla.
-    setSelectedStageIdx(activeProgram?.stages?.length ?? 1);
-    showToast(t('editor.toastStageAdded'), 2200, 'success');
-  }
-
   function handleDeleteStage() {
     Alert.alert(
       '¿Eliminar etapa?',
@@ -362,7 +346,11 @@ export default function ProgramEditorScreen({ navigation }) {
               if (idx === selectedStageIdx) setStageSheetOpen(true);
               else setSelectedStageIdx(idx);
             }}
-            onAdd={() => setAddOpen(true)}
+            // El `+` lleva al plan del programa: allí se ve lo que ya hay y
+            // desde allí se añade. La hoja de dos filas que bifurcaba entre
+            // "etapa nueva" y "planificar bloque" murió con el rediseño — una
+            // etapa suelta es el plan con una etapa.
+            onAdd={() => navigation.navigate('StagePlanner')}
           />
           <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
         </View>
@@ -423,35 +411,6 @@ export default function ProgramEditorScreen({ navigation }) {
         </TouchableOpacity>
 
       </Reanimated.ScrollView>
-
-      {/* ── Menú "···" del header ── */}
-      {/* ── Hoja del "+" del selector de etapas ── */}
-      <DragSheet visible={addOpen} onClose={() => setAddOpen(false)} title={t('editor.addSheetTitle')}>
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => { setAddOpen(false); handleAddStage(); }}
-          activeOpacity={0.7}
-        >
-          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-            <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
-            <Text style={styles.menuRowHint}>
-              {t('editor.addStageHint', { name: selectedStage?.name ?? '' })}
-            </Text>
-          </View>
-          <ArrowIcon size={14} color={th.colors.mutedLight} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => { setAddOpen(false); navigation.navigate('StagePlanner'); }}
-          activeOpacity={0.7}
-        >
-          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-            <Text style={styles.menuRowText}>{t('editor.planBlock')}</Text>
-            <Text style={styles.menuRowHint}>{t('editor.planBlockHint')}</Text>
-          </View>
-          <ArrowIcon size={14} color={th.colors.mutedLight} />
-        </TouchableOpacity>
-      </DragSheet>
 
       {/* ── Stage settings sheet ── */}
       <DragSheet
@@ -682,13 +641,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   saveBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
-  // ── Menú "···" ──
-  menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  menuRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
-  menuRowHint: { ...textStyles.body, color: th.colors.muted },
   stageRxLine: { ...textStyles.label, color: th.colors.accent },
 
   // Stage sheet
