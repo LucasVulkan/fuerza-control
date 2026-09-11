@@ -15,7 +15,7 @@ import Reanimated, { useAnimatedRef, FadeInDown } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useThemedStyles } from '../useTheme';
-import EditorHeader from '../components/ui/EditorHeader';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 
 export default function BlockEditorScreen({ navigation, route }) {
@@ -56,12 +56,15 @@ export default function BlockEditorScreen({ navigation, route }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-      <EditorHeader
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('editor.blockEyebrow')}
         title={blockName(block)}
-        items={blocks.map((b) => ({ id: b.id, label: blockName(b) }))}
-        currentId={blockId}
-        onSelect={selectBlock}
-        onAccept={() => navigation.goBack()}
+        menu={blocks.length > 1 ? {
+          items: blocks.map((b) => ({ id: b.id, label: blockName(b) })),
+          currentId: blockId,
+          onSelect:  selectBlock,
+        } : null}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

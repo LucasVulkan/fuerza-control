@@ -1460,6 +1460,8 @@
     "menuTitle": "Opciones",
     "sectionExercises": "Ejercicios · {{n}}",
     "sessionEyebrow": "Editar sesión {{label}}",
+    "exerciseEyebrow": "Editar ejercicio",
+    "blockEyebrow": "Editar bloque",
     "summaryProgram": "RESUMEN DEL PROGRAMA",
     "summarySession": "RESUMEN DE LA SESIÓN {{label}}",
     "summaryBlock": "RESUMEN DEL BLOQUE",

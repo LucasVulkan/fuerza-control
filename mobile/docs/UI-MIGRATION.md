@@ -612,14 +612,19 @@ solo de iOS, así que en Android ya salía a pantalla completa. La regla que que
 **profundidad = push, decisión puntual = sheet.** Así también empareja con
 `CustomExerciseScreen`, que es este mismo editor para el alta en librería.
 
-La **cabecera** (barra accent con el nombre + chevron y botón `Aceptar` gris
-`color/muted`) va fuera del `ScrollView` para que no se vaya con el scroll, y es
-`components/ui/EditorHeader.jsx` — la comparten el editor de ejercicio y el de
-bloque. El chevron de la barra **sustituye** el ejercicio, igual que el botón del
-pie; el desplegable salta a otro ejercicio de la sesión, remontando el editor
-(`key`) y con `FadeInDown`, porque si el ejercicio nuevo tiene la misma
-configuración el salto no movía un píxel y parecía que el toque no había hecho
-nada.
+La **cabecera de Figma no se usa.** El mock dibuja una barra accent con el nombre
+y un botón `Aceptar` gris `color/muted`, que era coherente cuando esto era un
+modal. Siendo pantalla, deja al editor de ejercicio siendo la única de la cadena
+—programa, sesión, ejercicio— sin la cabecera de la app: sin chevron de volver y
+sin ceja que diga qué estás editando. Así que lleva `ScreenHeader` como las otras
+dos, con la ceja "EDITAR EJERCICIO" y el nombre debajo. `Aceptar` desaparece: su
+trabajo lo hace el chevron.
+
+El **desplegable para saltar a otro ejercicio** de la sesión pasa a colgar del
+nombre (prop `menu` de `ScreenHeader`, el chevron pequeño al lado del título).
+Salta remontando el editor (`key`) y con `FadeInDown`, porque si el ejercicio
+nuevo tiene la misma configuración el salto no movía un píxel y parecía que el
+toque no había hecho nada.
 
 Orden del mock: Resumen → VOLUMEN → PROGRESIÓN → OPCIONES (lista agrupada) +
 Vinculación. Piezas concretas:

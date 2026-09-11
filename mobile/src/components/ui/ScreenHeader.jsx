@@ -30,6 +30,7 @@
  *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
+import { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from './Text';
 
@@ -90,6 +91,12 @@ export default function ScreenHeader({
   // Título editable: con `onRenameStart` aparece el lápiz y el título es
   // pulsable. El estado (`renaming`/`draft`) se queda en la pantalla porque el
   // editor de programa lo mira para avisar de cambios sin guardar al salir.
+  // Desplegable de título: `{ items: [{ id, label }], currentId, onSelect }`.
+  // Con él el nombre lleva un chevron y abre la lista de hermanos anclada bajo
+  // la cabecera — es como se salta de ejercicio o de bloque sin volver a la
+  // sesión. Excluyente con el título editable: el toque solo puede hacer una
+  // cosa, y ni el ejercicio ni el bloque se renombran desde aquí.
+  menu,
   renaming = false,
   draft = '',
   onDraftChange,
@@ -101,12 +108,15 @@ export default function ScreenHeader({
   const styles   = useThemedStyles(makeStyles);
   const editable = typeof onRenameStart === 'function';
   const draftLen = (draft ?? '').length;
+  const [menuOpen, setMenuOpen] = useState(false);
   // Las acciones van en gris: el acento del cromo es la ceja y el chevron, y
   // un lápiz lima al lado de los dos ya serían tres.
   const ink      = th.colors.mutedLight;
 
   return (
-    <>
+    // El envoltorio es el ancla del desplegable, y lleva el `zIndex` para pintar
+    // por encima del contenido de la pantalla, que es su hermano posterior.
+    <View style={styles.wrap}>
       <View style={styles.header}>
         {onBack
           ? (
@@ -135,18 +145,29 @@ export default function ScreenHeader({
               maxLength={Math.max(NAME_MAX, draftLen)}
             />
           ) : (
-            <Text
-              style={styles.title}
-              // Una línea: a 16px caben ~32 caracteres. Escribir está
-              // limitado a `NAME_MAX` (25), pero lo guardado de antes puede ser
-              // más largo y trunca a propósito: partirlo en dos haría que la
-              // barra cambiase de alto según el programa que abras.
-              numberOfLines={1}
-              onPress={editable ? onRenameStart : undefined}
-              suppressHighlighting
-            >
-              {title ?? ''}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text
+                style={styles.title}
+                // Una línea: a 16px caben ~32 caracteres. Escribir está
+                // limitado a `NAME_MAX` (25), pero lo guardado de antes puede ser
+                // más largo y trunca a propósito: partirlo en dos haría que la
+                // barra cambiase de alto según el programa que abras.
+                numberOfLines={1}
+                onPress={editable ? onRenameStart : (menu ? () => setMenuOpen((o) => !o) : undefined)}
+                suppressHighlighting
+              >
+                {title ?? ''}
+              </Text>
+              {menu && (
+                <TouchableOpacity
+                  onPress={() => setMenuOpen((o) => !o)}
+                  hitSlop={12}
+                  style={[styles.titleChevron, menuOpen && styles.titleChevronOpen]}
+                >
+                  <ArrowIcon size={7.69} color={th.colors.mutedLight} />
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
@@ -177,11 +198,32 @@ export default function ScreenHeader({
       </View>
 
       <HeaderRule progress={progress} />
-    </>
+
+      {menu && menuOpen && (
+        <View style={styles.menuList}>
+          {menu.items.map((item) => {
+            const isCurrent = item.id === menu.currentId;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, isCurrent && styles.menuItemSel]}
+                onPress={() => { setMenuOpen(false); menu.onSelect(item.id); }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.menuText, isCurrent && styles.menuTextSel]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </View>
   );
 }
 
 const makeStyles = (th) => StyleSheet.create({
+  wrap: { zIndex: 100 },
   // Una fila, no una columna: el bloque ceja+nombre es tan bajo que los iconos
   // se alinean con él sin quedar a media altura, que era el motivo de que la
   // versión anterior los subiera a una fila aparte.
@@ -241,10 +283,46 @@ const makeStyles = (th) => StyleSheet.create({
   // 14 el nombre pesaba menos que el propio contenido.
   title: {
     ...textStyles.heading,
-    color:     th.colors.text,
-    marginTop: spacing.xs,
-    textAlign: 'center',
+    color:      th.colors.text,
+    textAlign:  'center',
+    flexShrink: 1,
   },
+  // Título y chevron del desplegable como una sola fila centrada: el chevron
+  // cuelga del nombre, no del borde de la barra, para que se lea como parte de
+  // él. `minWidth: 0` en el texto o un nombre largo empuja al chevron fuera.
+  // El `marginTop` que separa el nombre de la ceja vive aquí y no en el texto:
+  // puesto en el texto, el chevron quedaba 2px más alto que el nombre.
+  titleRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+    maxWidth:      '100%',
+    marginTop:     spacing.xs,
+  },
+  titleChevron:     { transform: [{ rotate: '90deg'  }] },
+  titleChevronOpen: { transform: [{ rotate: '270deg' }] },
+
+  // Cuelga del borde inferior de la cabecera —regla incluida— a todo el ancho.
+  menuList: {
+    position:          'absolute',
+    top:               '100%',
+    left:              0,
+    right:             0,
+    backgroundColor:   th.colors.surface2,
+    borderBottomLeftRadius:  th.radius.sm,
+    borderBottomRightRadius: th.radius.sm,
+    overflow:          'hidden',
+    shadowColor:   '#000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius:  10,
+    elevation:     12,
+  },
+  menuItem:    { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  menuItemSel: { backgroundColor: th.tint.accent10 },
+  menuText:    { ...textStyles.body, color: th.colors.mutedLight },
+  menuTextSel: { color: th.colors.text },
+
   // El input no tiene ancho propio: centrado por `alignItems` mediría cero, así
   // que ocupa todo `mid` y lo que se centra es su texto.
   titleInput: {

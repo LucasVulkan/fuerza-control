@@ -15,7 +15,7 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useThemedStyles } from '../useTheme';
-import EditorHeader from '../components/ui/EditorHeader';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 
 export default function ExerciseEditorScreen({ navigation, route }) {
@@ -63,15 +63,18 @@ export default function ExerciseEditorScreen({ navigation, route }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-      <EditorHeader
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('editor.exerciseEyebrow')}
         title={def?.name ?? exerciseId}
-        items={exercises.map((ex) => ({
-          id:    ex.exerciseId,
-          label: allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
-        }))}
-        currentId={exerciseId}
-        onSelect={selectExercise}
-        onAccept={() => navigation.goBack()}
+        menu={exercises.length > 1 ? {
+          items: exercises.map((ex) => ({
+            id:    ex.exerciseId,
+            label: allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
+          })),
+          currentId: exerciseId,
+          onSelect:  selectExercise,
+        } : null}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

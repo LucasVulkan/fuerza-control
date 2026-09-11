@@ -1460,6 +1460,8 @@
     "menuTitle": "Options",
     "sectionExercises": "Exercises · {{n}}",
     "sessionEyebrow": "Edit session {{label}}",
+    "exerciseEyebrow": "Edit exercise",
+    "blockEyebrow": "Edit block",
     "summaryProgram": "PROGRAM SUMMARY",
     "summarySession": "SESSION {{label}} SUMMARY",
     "summaryBlock": "BLOCK SUMMARY",
