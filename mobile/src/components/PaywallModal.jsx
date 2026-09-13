@@ -6,14 +6,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, Modal, StyleSheet,
-  ActivityIndicator, ScrollView, Alert,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore }                                     from '../../store/useStore';
-import { spacing, typography, borders } from '../theme';
+import { spacing, borders, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── Feature list ──────────────────────────────────────────────────────────────
@@ -232,10 +230,8 @@ const makeStyles = (th) => StyleSheet.create({
   badge: {
     alignSelf:       'flex-start',
     backgroundColor: `${th.colors.accent}22`,
+    ...textStyles.caps,
     color:           th.colors.accent,
-    fontSize:        typography.xs,
-    fontWeight:      typography.heavy,
-    letterSpacing:   2,
     paddingHorizontal: spacing.sm,
     paddingVertical:   2,
     borderRadius:    th.radius.sm,
@@ -243,24 +239,12 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     `${th.colors.accent}44`,
     marginBottom:    spacing.xs,
   },
-  title: {
-    fontSize:   typography.xl,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-  },
-  subtitle: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    marginTop: 4,
-    maxWidth:  260,
-  },
+  title:    { ...textStyles.heading, color: th.colors.text },
+  subtitle: { ...textStyles.label, color: th.colors.muted, marginTop: 4, maxWidth: 260 },
   closeBtn: {
     padding: spacing.xs,
   },
-  closeX: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
+  closeX: { ...textStyles.body, color: th.colors.muted },
 
   // Features
   featureList: {
@@ -272,15 +256,8 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  featureEmoji: {
-    fontSize: typography.lg,
-    width:    28,
-  },
-  featureTxt: {
-    fontSize: typography.base,
-    color:    th.colors.text,
-    flex:     1,
-  },
+  featureEmoji: { fontSize: 18, width: 28 },
+  featureTxt:   { ...textStyles.body, color: th.colors.text, flex: 1 },
 
   // Packages
   packageList: {
@@ -312,19 +289,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.accent,
     backgroundColor: th.colors.accent,
   },
-  pkgTitle: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
+  pkgTitle: { ...textStyles.body, color: th.colors.muted },
   pkgTitleActive: {
     color: th.colors.text,
   },
-  pkgPrice: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
+  pkgPrice: { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
   saveBadge: {
     position:        'absolute',
     top:             -1,
@@ -334,12 +303,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   2,
     borderRadius:    th.radius.xs,
   },
-  saveBadgeTxt: {
-    fontSize:   typography.xs - 1,
-    fontWeight: typography.heavy,
-    color:      th.colors.bg,
-    letterSpacing: 0.5,
-  },
+  saveBadgeTxt: { ...textStyles.caps, color: th.colors.bg },
 
   // CTA
   ctaBtn: {
@@ -349,11 +313,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     marginBottom:    spacing.md,
   },
-  ctaTxt: {
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.bg,
-  },
+  ctaTxt: { ...textStyles.button, color: th.colors.bg },
 
   // Restore
   restoreBtn: {
@@ -361,17 +321,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom:    spacing.sm,
   },
-  restoreTxt: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  restoreTxt: { ...textStyles.label, color: th.colors.muted },
 
   // Legal
   legal: {
-    fontSize:    typography.xs,
-    color:       th.colors.muted2,
-    textAlign:   'center',
-    lineHeight:  typography.xs * 1.6,
+    ...textStyles.label,
+    color:             th.colors.muted2,
+    textAlign:         'center',
+    lineHeight:        lh(textStyles.label.fontSize),
     paddingHorizontal: spacing.sm,
   },
 
@@ -380,9 +337,5 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.xl,
     alignItems:      'center',
   },
-  noProductsTxt: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
-  },
+  noProductsTxt: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
 });

@@ -14,18 +14,20 @@
  * peldaños de una escalera. Con la etapa 1 seleccionada no hay nada que
  * comparar y esas tres cosas desaparecen.
  */
-import { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, borders } from '../theme';
+import { spacing, textStyles, borders, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import StageSelector from '../components/ui/StageSelector';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
@@ -320,9 +322,7 @@ export default function ProgramDetailScreen() {
   const navigation   = useNavigation();
   const styles       = useThemedStyles(makeStyles);
 
-  const ui                   = useStore((s) => s.ui);
   const programs             = useStore((s) => s.programs);
-  const profile              = useStore((s) => s.profile);
   const clients              = useStore((s) => s.clients);
   const clientSync           = useStore((s) => s.clientSync);
   const sessionTemplates     = useStore((s) => s.sessionTemplates);
@@ -334,7 +334,18 @@ export default function ProgramDetailScreen() {
   // referencia de todo lo que se compara.
   const [stageIdx, setStageIdx] = useState(0);
 
-  const programId = ui._viewingProgramId ?? profile.activeProgramId;
+  // El visualizador mira UN programa: el que le dan al abrirlo. Se congela en
+  // el montaje y se suelta al salir. Releer el global en cada render era lo que
+  // dejaba entrar el programa del anterior —una plantilla, el de un cliente—
+  // cuando alguien navegaba aquí sin fijarlo; los programas no se cruzan.
+  const [programId] = useState(() => {
+    const s = useStore.getState();
+    return s.ui._viewingProgramId ?? s.profile.activeProgramId;
+  });
+  useEffect(() => () => {
+    useStore.setState((s) => ({ ui: { ...s.ui, _viewingProgramId: null } }));
+  }, []);
+
   const program   = programs[programId];
 
   const allExercises = useMemo(
@@ -424,7 +435,10 @@ export default function ProgramDetailScreen() {
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + spacing.xxl },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Resumen del programa ─────────────────────────────────────────── */}
@@ -435,28 +449,33 @@ export default function ProgramDetailScreen() {
           <Stat value={String(sessions.length)} label={t('programView.statSessions')} />
         </View>
 
-        {/* ── Selector de etapas ───────────────────────────────────────────── */}
+        {/* ── Selector de etapas ─────────────────────────────────────────────
+            El mismo control que el editor y el planificador, y no una fila de
+            chips propia: repartiendo el ancho entre 5 etapas los nombres se
+            estrangulaban. `StageSelector` reparte hasta 4 y a partir de ahí pasa
+            a scroll horizontal centrando la activa. Sin `onAdd`: aquí se mira,
+            no se crean etapas. */}
         {stages.length > 1 && (
           <>
-            <View style={styles.chipRow}>
-              {stages.map((s, i) => (
-                <TouchableOpacity
-                  key={s.id ?? i}
-                  style={[styles.chip, i === idx && styles.chipOn]}
-                  onPress={() => setStageIdx(i)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.chipName, i === idx && styles.chipNameOn]} numberOfLines={1}>
-                    {stageName(s, i, t)}
-                  </Text>
-                  <Text style={[styles.chipMeta, i === idx && styles.chipMetaOn]}>
-                    {s.durationWeeks == null
-                      ? t('programView.cyclesOpen')
-                      : t('programView.stageCycles', { count: s.durationWeeks })}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <StageSelector
+              stages={stages.map((s, i) => ({
+                id:   s.id ?? String(i),
+                name: stageName(s, i, t),
+                // Las mismas palabras que en el editor: es el mismo control y
+                // ahora hay sitio. El "{{count}} c." de los chips era una
+                // abreviatura que solo existía por la falta de ancho.
+                meta: s.durationWeeks == null
+                  ? t('editor.cyclesOpen')
+                  : t('editor.cyclesShort', { count: s.durationWeeks }),
+              }))}
+              value={stages[idx]?.id ?? String(idx)}
+              onChange={(id) => {
+                const next = stages.findIndex((s, i) => (s.id ?? String(i)) === id);
+                // Repulsar la etapa activa vuelve a emitir `onChange` (en el
+                // editor eso abre su modal). Aquí no hay nada que abrir.
+                if (next >= 0 && next !== idx) setStageIdx(next);
+              }}
+            />
             {diff ? <Text style={styles.diffLine}>{diff}</Text> : null}
           </>
         )}
@@ -500,7 +519,9 @@ export default function ProgramDetailScreen() {
             exName={exName}
           />
         ))}
+
       </ScrollView>
+
     </SafeAreaView>
   );
 }
@@ -517,33 +538,21 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Resumen
-  byline: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  byline: { ...textStyles.body, color: th.colors.mutedLight },
   stats:  { flexDirection: 'row', gap: spacing.xxl, paddingVertical: spacing.xs2 },
   stat:   { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs2 },
-  statValue: { ...textStyles.hero, color: th.colors.accent, fontSize: 22, lineHeight: 24 },
-  // Misma familia/peso/tracking que smallBold, solo el tamaño sube: en columna
+  statValue: { ...textStyles.title, color: th.colors.accent, lineHeight: 26 },
+  // `caps`, como toda etiqueta en versales de la app: en columna
   // 8px se leía bien de etiqueta, en línea junto al número se queda corto.
-  statLabel: { ...textStyles.smallBold, color: th.colors.mutedLight, fontSize: 11 },
+  statLabel: { ...textStyles.caps, color: th.colors.mutedLight },
 
   // Selector de etapas
   // Todas las etapas ocupan lo mismo. Sin scroll: con más de 5 el nombre se
   // trunca, que es preferible a que unas se vean más importantes que otras.
-  chipRow: { flexDirection: 'row', gap: spacing.sm },
-  chip: {
-    flex:              1,
-    alignItems:        'center',
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.surface,
-    gap:               spacing.xs,
-  },
-  chipOn:      { backgroundColor: th.colors.accent },
-  chipName:    { ...textStyles.subtitle, color: th.colors.mutedLight },
-  chipNameOn:  { color: th.colors.onAccent },
-  chipMeta:    { ...textStyles.tag, color: th.colors.muted },
-  chipMetaOn:  { color: th.colors.onAccent },
-  diffLine:    { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
+
+  // La barra se apoya en el fondo de pantalla con un filete de 1px, igual que
+  // el pie de `NextSessionScreen`: el contenido pasa por debajo, no se funde.
+  diffLine:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 17 },
 
   // Tarjeta de volumen
   card: {
@@ -553,12 +562,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   cardHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  cardTitle: { ...textStyles.spacingTag, color: th.colors.mutedLight },
-  cardMeta:  { ...textStyles.tag, color: th.colors.muted },
+  cardTitle: { ...textStyles.caps, color: th.colors.mutedLight },
+  cardMeta:  { ...textStyles.label, color: th.colors.muted },
 
   groupList:  { gap: spacing.sm2 },
   groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-  groupName:  { ...textStyles.tag, color: th.colors.mutedLight, width: 76 },
+  groupName:  { ...textStyles.label, color: th.colors.mutedLight, width: 76 },
   groupTrack: {
     flex: 1, height: 9, borderRadius: 3,
     backgroundColor: th.colors.surface2,
@@ -568,14 +577,14 @@ const makeStyles = (th) => StyleSheet.create({
   groupMark:     { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
   groupBaseMark: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: th.colors.text },
   groupCount: {
-    ...textStyles.cardType, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'],
+    ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'],
   },
   groupDelta: {
-    ...textStyles.tag, width: 24, textAlign: 'right',
+    ...textStyles.label, width: 24, textAlign: 'right',
     color: th.colors.accent, fontVariant: ['tabular-nums'],
   },
   groupDeltaFlat: { color: th.colors.muted },
-  groupHint: { ...textStyles.tag, color: th.colors.muted, lineHeight: 15 },
+  groupHint: { ...textStyles.label, color: th.colors.muted, lineHeight: 15 },
 
   // Sesión
   session: {
@@ -592,13 +601,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  sessionLetter:    { ...textStyles.hero, fontSize: 26, lineHeight: 28 },
+  sessionLetter:    { ...textStyles.title, lineHeight: 28 },
   sessionTitles:    { flex: 1, gap: spacing.xs, minWidth: 0 },
-  sessionName:      { ...textStyles.cardTitle, color: th.colors.text },
-  sessionSubtitle:  { ...textStyles.tag, color: th.colors.mutedLight },
-  sessionStat:      { ...textStyles.tag, color: th.colors.mutedLight },
+  sessionName:      { ...textStyles.itemTitle, color: th.colors.text },
+  sessionSubtitle:  { ...textStyles.label, color: th.colors.mutedLight },
+  sessionStat:      { ...textStyles.label, color: th.colors.mutedLight },
   sessionBody:     { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  emptySession:    { ...textStyles.subtitle, color: th.colors.muted, paddingVertical: spacing.sm },
+  emptySession:    { ...textStyles.body, color: th.colors.muted, paddingVertical: spacing.sm },
 
   // Fila de ejercicio
   exRow: {
@@ -607,12 +616,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.md,
     paddingVertical: spacing.sm2,
   },
-  exNum:      { ...textStyles.cardType, color: th.colors.accent, width: 26, marginTop: 1 },
+  exNum:      { ...textStyles.bodyStrong, color: th.colors.accent, width: 26, marginTop: 1 },
   exInfo:     { flex: 1, gap: spacing.xs, minWidth: 0 },
   exRxLine:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  exName:     { ...textStyles.subtitle, fontSize: 14, color: th.colors.text },
+  exName:     { ...textStyles.body, color: th.colors.text },
   keyBadge: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:             th.colors.accent,
     borderWidth:       borders.thin,
     borderColor:       th.tint.accent50,
@@ -620,9 +629,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xs2,
     paddingVertical:   1,
   },
-  exNote:    { ...textStyles.tag, color: th.colors.mutedLight },
-  exRxMain:  { ...textStyles.cardType, color: th.colors.accent, fontVariant: ['tabular-nums'] },
-  exRxRest:  { ...textStyles.tag, color: th.colors.muted, marginLeft: 'auto' },
+  exNote:    { ...textStyles.label, color: th.colors.mutedLight },
+  exRxMain:  { ...textStyles.bodyStrong, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  exRxRest:  { ...textStyles.label, color: th.colors.muted, marginLeft: 'auto' },
 
   // Superserie
   ssGroup: {
@@ -631,7 +640,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingLeft:     spacing.md,
     marginVertical:  spacing.sm,
   },
-  ssHead: { ...textStyles.smallBold, color: th.colors.accent, marginBottom: spacing.xs2 },
+  ssHead: { ...textStyles.caps, color: th.colors.accent, marginBottom: spacing.xs2 },
 
   // Bloque de acondicionamiento
   blockRow: {
@@ -648,12 +657,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.xs2,
   },
   blockHead:      { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  blockFormat:    { ...textStyles.smallBold, color: th.colors.blue },
-  blockMeta:      { ...textStyles.tag, color: th.colors.mutedLight },
-  blockMovements: { ...textStyles.subtitle, color: th.colors.text, lineHeight: 17 },
-  blockNote:      { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15 },
+  blockFormat:    { ...textStyles.caps, color: th.colors.blue },
+  blockMeta:      { ...textStyles.label, color: th.colors.mutedLight },
+  blockMovements: { ...textStyles.body, color: th.colors.text, lineHeight: 17 },
+  blockNote:      { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize) },
 
   // Vacío
   empty:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  emptyText: { ...textStyles.body, color: th.colors.mutedLight },
 });

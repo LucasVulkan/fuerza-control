@@ -6,8 +6,17 @@ migration status, the token system, the non-negotiable fidelity rules, how to
 extract from Figma, the verification workflow, and the RN traps already hit.
 
 Non-negotiable, stated repeatedly by the user:
-**respect Figma EXACTLY** — radius, spacing, text size/tracking, layout, colour.
+**respect Figma EXACTLY** — radius, spacing, layout, colour.
 Never "the closest thing that already exists in the code".
+
+**One deliberate exception: the type scale.** Text size and tracking no longer
+follow Figma — they follow the fourteen roles in `src/theme.js` (`textStyles`),
+specced in [`docs/specs/tipografia.md`](docs/specs/tipografia.md). Figma's bodies
+were set on iPhone, where SF Pro switches to its "Text" optical cut below ~20px;
+Inter has no such axis and read thinner than the design assumed. Never add a
+`fontSize` / `fontWeight` / `letterSpacing` of your own: pick a role and, if you
+must, override `lineHeight` or `color` on top of it. `src/theme.test.js` fails if
+a role leaves the scale — that guard is the point, don't route around it.
 
 Quick pointers:
 - Tokens: `src/theme.js` (spacing/textStyles — spacing already holds Figma's exact

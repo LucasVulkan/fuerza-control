@@ -6,16 +6,15 @@
  * Las filas donde se alcanzó el PR all-time quedan marcadas.
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import MiniLineChart from '../components/charts/MiniLineChart';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, borders, withOpacity, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
 import { summarizeSets } from '../utils/progression';
@@ -279,13 +278,12 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
   },
   backBtn:     { width: 36, alignItems: 'center' },
-  backIcon:    { fontSize: 28, color: th.colors.muted, lineHeight: 32 },
+  backIcon:    { ...textStyles.title, color: th.colors.muted, lineHeight: 32 },
   headerTitle: {
-    flex:       1,
-    textAlign:  'center',
-    fontSize:   typography.base,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
+    ...textStyles.heading,
+    flex:      1,
+    textAlign: 'center',
+    color:     th.colors.text,
   },
   headerRight: { width: 36 },
 
@@ -312,12 +310,12 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  periodBtnText:       { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
+  periodBtnText:       { ...textStyles.label, color: th.colors.muted },
   periodBtnTextActive: { color: th.colors.accent },
 
   // Meta (count + PR)
   meta: { paddingHorizontal: spacing.xl },
-  metaText: { fontSize: typography.sm, color: th.colors.muted },
+  metaText: { ...textStyles.label, color: th.colors.muted },
 
   // Chart card
   chartCard: {
@@ -347,7 +345,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  metricBtnText:       { fontSize: typography.xs, color: th.colors.muted, fontWeight: typography.medium },
+  metricBtnText:       { ...textStyles.label, color: th.colors.muted },
   metricBtnTextActive: { color: th.colors.accent },
 
   // Table
@@ -373,7 +371,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           spacing.xs,
   },
-  rowDate: { fontSize: typography.sm, color: th.colors.muted },
+  rowDate: { ...textStyles.label, color: th.colors.muted },
   prBadge: {
     backgroundColor: withOpacity(th.colors.accent, 0.12),
     borderWidth:     borders.thin,
@@ -382,15 +380,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  prBadgeText: {
-    fontSize:      8,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 0.5,
-  },
+  prBadgeText: { ...textStyles.caps, color: th.colors.accent },
   rowSets: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
+    ...textStyles.label,
     color:      th.colors.text,
     textAlign:  'right',
     flexShrink: 1,
@@ -399,6 +391,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Empty state
   empty:     { padding: spacing.xl, alignItems: 'center' },
-  emptyText: { fontSize: typography.sm, color: th.colors.muted, textAlign: 'center' },
+  emptyText: { ...textStyles.body, color: th.colors.muted, textAlign: 'center' },
 });
 

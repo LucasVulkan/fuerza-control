@@ -11,7 +11,8 @@
  * segunda pulsación para abrir el modal de edición de etapa.
  */
 import { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { LockIcon } from './EditorIcons';
@@ -119,9 +120,13 @@ export default function StageSelector({ stages, value, onChange, onAdd }) {
       ) : (
         segments
       )}
-      <TouchableOpacity style={styles.add} onPress={onAdd} activeOpacity={0.75} hitSlop={6}>
-        <Text style={styles.addText}>+</Text>
-      </TouchableOpacity>
+      {/* Sin `onAdd` no se pinta: el visualizador de programa usa este mismo
+          control para mirar etapas, y ahí no se crea ninguna. */}
+      {!!onAdd && (
+        <TouchableOpacity style={styles.add} onPress={onAdd} activeOpacity={0.75} hitSlop={6}>
+          <Text style={styles.addText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -146,10 +151,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   segmentActive: { backgroundColor: th.colors.accent },
   nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, minWidth: 0 },
-  name:       { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+  name:       { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
   nameActive: { color: th.colors.onAccent },
   nameLocked: { color: th.colors.muted },
-  meta:       { ...textStyles.tag, color: th.colors.mutedLight },
+  meta:       { ...textStyles.label, color: th.colors.mutedLight },
   // Sobre el relleno lima, la 2ª línea va en surface2 (Figma) — no en onAccent.
   metaActive: { color: th.colors.surface2 },
   add: {
@@ -160,7 +165,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginRight:    spacing.xs2,
   },
   addText: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.accent,
     lineHeight: 22,
   },

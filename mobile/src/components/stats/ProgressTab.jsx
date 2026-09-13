@@ -13,10 +13,8 @@
  */
 
 import { useState, useRef, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Animated, Modal, Pressable, PanResponder, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import Reanimated, {
   LinearTransition,
   useSharedValue, useAnimatedStyle, withTiming, interpolate,
@@ -31,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore }      from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { spacing, textStyles, typography, borders, withOpacity, getCardRadii } from '../../theme';
+import { spacing, textStyles, borders, withOpacity, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../utils/oneRm';
@@ -502,7 +500,7 @@ function MiniLineChart({ data, metricLabel }) {
         {pts.map((p) => {
           const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
           return (
-            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
+            <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontFamily="Inter_500Medium" fontSize={11} fill={th.colors.muted} textAnchor={anchor}>
               {p.date}
             </SvgText>
           );
@@ -511,8 +509,8 @@ function MiniLineChart({ data, metricLabel }) {
           <G>
             <Rect x={tooltipX - TW / 2} y={tooltipY} width={TW} height={TH}
               fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4} />
-            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontSize={8}  fill={th.colors.muted}  textAnchor="start">{selected.date}</SvgText>
-            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
+            <SvgText x={tooltipX - datePxW / 2}  y={tooltipY + 13} fontFamily="Inter_500Medium" fontSize={11} fill={th.colors.muted}  textAnchor="start">{selected.date}</SvgText>
+            <SvgText x={tooltipX - valuePxW / 2} y={tooltipY + 28} fontFamily="Inter_500Medium" fontSize={12} fill={th.colors.accent} textAnchor="start">
               {fmtAxisVal(selected.value)}{metricLabel ? ` ${metricLabel}` : ''}
             </SvgText>
           </G>
@@ -1122,13 +1120,16 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
           <Text style={styles.exSub} numberOfLines={1}>
             {`${sessionsCount} ${sessionsCount === 1 ? 'sesión' : 'sesiones'}`}
             {improvePct !== null && (
-              <Text>
+              // Fragmento y no `<Text>`: un Text anidado sin estilo pasa por el
+              // wrapper de ui/Text, que le inyecta la familia por defecto y le
+              // rompe la herencia del padre. Aquí sólo hay que agrupar.
+              <>
                 {' · '}
                 <Text style={{ color: improvePct >= 0 ? th.colors.accent : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
                 {' progreso'}
-              </Text>
+              </>
             )}
           </Text>
         </View>
@@ -1498,7 +1499,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
   },
   programToggleActive: { backgroundColor: th.colors.accent },
-  programToggleText:       { ...textStyles.cardType, color: th.colors.mutedLight },
+  programToggleText:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
   programToggleTextActive: { color: th.colors.onAccent },
 
   // ── Shared control button (used by the exercise-detail modal) ────────────────
@@ -1514,7 +1515,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  ctrlBtnText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.regular },
+  ctrlBtnText:       { ...textStyles.label, color: th.colors.muted },
   ctrlBtnTextActive: { color: th.colors.accent },
   btnGroup:          { flexDirection: 'row', gap: spacing.xs, flex: 1 },
   ctrlBtnFull:       { flex: 1, alignItems: 'center', paddingVertical: spacing.xs + 1 },
@@ -1532,7 +1533,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  scopeToggleText:       { fontSize: typography.sm, color: th.colors.muted, fontWeight: typography.medium },
+  scopeToggleText:       { ...textStyles.label, color: th.colors.muted },
   scopeToggleTextActive: { color: th.colors.accent },
 
   // ── Progress cards (SESIONES · CARGA · VOLUMEN) ───────────────────────────────
@@ -1550,14 +1551,14 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.lg,
   },
   statValueBlock: { alignItems: 'center', gap: spacing.xs },
-  statValue: { ...textStyles.hero, textAlign: 'center' },
+  statValue: { ...textStyles.title, textAlign: 'center' },
   statLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.text,
     textAlign:     'center',
   },
-  statSub: { ...textStyles.tag, textAlign: 'center' },
+  statSub: { ...textStyles.label, textAlign: 'center' },
 
   // ── Search ─────────────────────────────────────────────────────────────────
   searchBar: {
@@ -1568,7 +1569,7 @@ const makeStyles = (th) => StyleSheet.create({
     width:           '100%',
   },
   searchInput: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     flex:              1,
     color:             th.colors.text,
     paddingHorizontal: spacing.lg,
@@ -1579,7 +1580,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignSelf:         'stretch',
     justifyContent:    'center',
   },
-  searchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  searchClearText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Cabecera accent colapsable ─────────────────────────────────────────────
   listToggle: {
@@ -1593,15 +1594,11 @@ const makeStyles = (th) => StyleSheet.create({
     width:             '100%',
   },
   listToggleLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.onAccent,
   },
-  listToggleChevron: {
-    fontSize:   16,
-    fontWeight: '900',
-    color:      th.colors.onAccent,
-  },
+  listToggleChevron: { ...textStyles.itemTitle, color: th.colors.onAccent },
   // Barra con el dropdown abierto: esquinas inferiores rectas para fusionarse
   // visualmente con el menú que brota debajo.
   listToggleOpen: {
@@ -1645,8 +1642,8 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
-  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropCheckMark:   { ...textStyles.label, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
+  dropItemText:    { flex: 1, ...textStyles.body, color: th.colors.mutedLight },
   dropItemTextSel: { color: th.colors.text },
   dropResetBtn: {
     paddingVertical:   spacing.md,
@@ -1655,7 +1652,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopWidth:    borders.thin,
     borderTopColor:    th.colors.surface,
   },
-  dropResetText: { ...textStyles.spacingTag, textTransform: 'uppercase', color: th.colors.accent },
+  dropResetText: { ...textStyles.caps, textTransform: 'uppercase', color: th.colors.accent },
 
   // ── Exercise list ──────────────────────────────────────────────────────────
   exerciseList: { gap: spacing.xs, width: '100%' },
@@ -1669,9 +1666,9 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:          'hidden',
   },
   exLeft: { flex: 1, gap: spacing.xs },
-  exName: { ...textStyles.cardType, color: th.colors.text },
-  exSub:  { ...textStyles.tag, color: th.colors.mutedLight },
-  exChevron: { fontSize: 18, fontWeight: '900', color: th.colors.mutedLight, marginLeft: spacing.sm },
+  exName: { ...textStyles.bodyStrong, color: th.colors.text },
+  exSub:  { ...textStyles.label, color: th.colors.mutedLight },
+  exChevron: { ...textStyles.heading, fontFamily: 'Inter_900Black', color: th.colors.mutedLight, marginLeft: spacing.sm },
 
   // ── Modal ──────────────────────────────────────────────────────────────────
   modalOverlay: {
@@ -1718,15 +1715,13 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.06),
   },
   modalTitle: {
+    ...textStyles.body,
     flex:       1,
-    fontSize:   typography.md,
-    fontWeight: typography.medium,
     color:      th.colors.text,
-    lineHeight: typography.md * 1.3,
+    lineHeight: lh(textStyles.body.fontSize, LINE.tight),
   },
   modalTitleArrow: {
-    fontSize:   18,
-    fontWeight: typography.bold,
+    ...textStyles.heading,
     color:      th.colors.muted,
     flexShrink: 0,
     lineHeight: 20,
@@ -1767,11 +1762,11 @@ const makeStyles = (th) => StyleSheet.create({
   exPickerSearchInput: {
     flex:    1,
     padding: 0,
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:   th.colors.text,
   },
   exPickerSearchClear:     { paddingLeft: spacing.xs2 },
-  exPickerSearchClearText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  exPickerSearchClearText: { ...textStyles.body, color: th.colors.mutedLight },
   exPickerList:     { maxHeight: 380 },
   exPickerItem: {
     paddingHorizontal: spacing.lg,
@@ -1780,8 +1775,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopColor:    th.colors.border,
   },
   exPickerItemActive:     { backgroundColor: withOpacity(th.colors.accent, 0.07) },
-  exPickerItemText:       { fontSize: typography.base, color: th.colors.text },
-  exPickerItemTextActive: { color: th.colors.accent, fontWeight: typography.semibold },
+  exPickerItemText:       { ...textStyles.body, color: th.colors.text },
+  exPickerItemTextActive: { color: th.colors.accent, fontFamily: 'Inter_700Bold' },
   modalCloseBtn: {
     width:           28,
     height:          28,
@@ -1792,7 +1787,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     flexShrink:      0,
   },
-  modalCloseText: { fontSize: typography.sm, color: th.colors.mutedLight },
+  modalCloseText: { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Modal FormaFit: barra accent, período, cards, sesiones desglosadas ───────
   exBar: {
@@ -1805,8 +1800,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     borderRadius:      th.radius.sm,
   },
-  exBarTitle:   { ...textStyles.spacingTag, textTransform: 'uppercase', color: th.colors.onAccent, flex: 1 },
-  exBarChevron: { fontSize: 16, fontWeight: '900', color: th.colors.onAccent, marginLeft: spacing.sm },
+  exBarTitle:   { ...textStyles.caps, textTransform: 'uppercase', color: th.colors.onAccent, flex: 1 },
+  exBarChevron: { ...textStyles.itemTitle, color: th.colors.onAccent, marginLeft: spacing.sm },
 
   modalPeriodRow: {
     flexDirection:     'row',
@@ -1838,9 +1833,9 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:          'hidden',
   },
   sesHeaderRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sesDate:        { ...textStyles.tag, color: th.colors.mutedLight },
+  sesDate:        { ...textStyles.label, color: th.colors.mutedLight },
   sesHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  sesDelta:       { ...textStyles.cardType },
+  sesDelta:       { ...textStyles.labelStrong },
 
   // Series: mismo sistema que History — grupos (peso + pills) que fluyen y se
   // envuelven como unidad, con más gap entre grupos que dentro de uno.
@@ -1849,7 +1844,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Peso — sin fondo, tres spans ("80" / "Kg" / " x"), pegado a sus pills.
   sesWeightPill: { paddingLeft: spacing.sm, paddingVertical: spacing.sm },
-  sesWeightText: { ...textStyles.tag },
+  sesWeightText: { ...textStyles.label },
   sesWeightNum:  { color: th.colors.accent },
   sesWeightUnit: { color: th.colors.text },
   sesWeightX:    { color: th.colors.mutedLight },
@@ -1858,7 +1853,7 @@ const makeStyles = (th) => StyleSheet.create({
   sesPill:            { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, padding: spacing.sm },
   sesPillDone:        { backgroundColor: th.tint.accent10 },
   sesPillPartial:     { backgroundColor: th.tint.orange30 },
-  sesPillText:        { ...textStyles.tag, color: th.colors.mutedLight },
+  sesPillText:        { ...textStyles.label, color: th.colors.mutedLight },
   sesPillTextDone:    { color: th.colors.accent },
   sesPillTextPartial: { color: th.colors.orange },
   sesPillRpeAt:        { color: th.colors.mutedLight },
@@ -1891,13 +1886,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             3,
   },
   modalStatValue: {
-    fontSize:   typography.md,
-    fontWeight: typography.heavy,
+    ...textStyles.title,
     color:      th.colors.text,
-    lineHeight: typography.md * 1.2,
+    lineHeight: lh(textStyles.title.fontSize, LINE.tight),
   },
-  modalStatLabel: { fontSize: typography.xs, color: th.colors.muted2, letterSpacing: 0.4 },
-  modalStatSub:   { fontSize: 9, color: th.colors.muted, marginTop: 2 },
+  modalStatLabel: { ...textStyles.label, color: th.colors.muted2 },
+  modalStatSub:   { ...textStyles.micro, color: th.colors.muted, marginTop: 2 },
 
   // Chart — sin línea divisoria arriba (Figma no la tiene)
   chartSection: {
@@ -1915,25 +1909,20 @@ const makeStyles = (th) => StyleSheet.create({
   chartRow:         { flexDirection: 'row', alignItems: 'flex-start' },
   yAxisArea:        { width: Y_AXIS_W },
   yAxisLabel: {
-    position: 'absolute', right: 4, fontSize: 8,
-    color: th.colors.muted, textAlign: 'right', width: Y_AXIS_W - 4, lineHeight: 10,
+    ...textStyles.micro,
+    position: 'absolute', right: 4,
+    color: th.colors.muted, textAlign: 'right', width: Y_AXIS_W - 4, lineHeight: 13,
   },
   chartContentArea: { flex: 1, minHeight: CHART_H, overflow: 'hidden' },
   chartEmpty:       { paddingVertical: spacing.lg, alignItems: 'center' },
-  chartEmptyText:   { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center' },
+  chartEmptyText:   { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
 
   // Modal session list
   modalSesSection: {
     paddingHorizontal: spacing.lg,
     paddingBottom:     spacing.md,
   },
-  modalSesSectionLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted2,
-    fontWeight:    typography.bold,
-    letterSpacing: 1.2,
-    marginBottom:  spacing.xs,
-  },
+  modalSesSectionLabel: { ...textStyles.caps, color: th.colors.muted2, marginBottom: spacing.xs },
   modalSesRow: {
     flexDirection:   'row',
     alignItems:      'center',
@@ -1943,15 +1932,9 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   modalSesLeft: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 100 },
-  modalSesDate:    { fontSize: typography.xs, color: th.colors.muted },
-  modalSesDelta:   { fontSize: typography.xs, fontWeight: typography.bold },
-  modalSesSummary: {
-    flex:       1,
-    fontSize:   typography.xs,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-    textAlign:  'right',
-  },
+  modalSesDate:    { ...textStyles.label, color: th.colors.muted },
+  modalSesDelta:   { ...textStyles.labelStrong },
+  modalSesSummary: { ...textStyles.label, flex: 1, color: th.colors.text, textAlign: 'right' },
   // Set chips
   setPillsRow: {
     flex:           1,
@@ -1969,8 +1952,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   2,
   },
-  setPillText:   { fontSize: 10, color: th.colors.text,  fontWeight: typography.medium },
-  setPillWeight: { fontSize: 10, color: th.colors.muted, fontWeight: typography.medium, marginRight: 1 },
+  setPillText:   { ...textStyles.micro, color: th.colors.text },
+  setPillWeight: { ...textStyles.micro, color: th.colors.muted, marginRight: 1 },
 
   prPill: {
     paddingHorizontal: 6,
@@ -1981,11 +1964,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.xs,
     flexShrink:        0,
   },
-  prPillText: { fontSize: 8, fontWeight: typography.bold, color: th.colors.accent, letterSpacing: 0.5 },
-  modalSesEmpty: { fontSize: typography.xs, color: th.colors.muted, paddingVertical: spacing.md, textAlign: 'center' },
+  prPillText: { ...textStyles.caps, color: th.colors.accent },
+  modalSesEmpty: { ...textStyles.label, color: th.colors.muted, paddingVertical: spacing.md, textAlign: 'center' },
 
   // ── Empty state ────────────────────────────────────────────────────────────
   emptyState: { alignItems: 'center', padding: spacing.xxl, gap: spacing.md },
   emptyIcon:  { fontSize: 32 },
-  emptyText:  { fontSize: typography.base, color: th.colors.muted, textAlign: 'center', lineHeight: typography.base * 1.7 },
+  emptyText:  { ...textStyles.body, color: th.colors.muted, textAlign: 'center', lineHeight: lh(textStyles.body.fontSize) },
 });

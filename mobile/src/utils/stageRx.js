@@ -30,8 +30,8 @@ import { resolveProgressionConfig } from './progression';
 /** Regla identidad: "igual que la etapa anterior", el comportamiento de siempre. */
 export const DEFAULT_RX = {
   scope:           'all',   // 'all' | 'keys' | 'accessories'
-  setsDelta:        0,      // −2..+2 series por ejercicio
-  repsShift:        0,      // −4..+4, desplaza min Y max juntos
+  setsDelta:        0,      // −3..+3 series por ejercicio
+  repsShift:        0,      // −6..+6, desplaza min Y max juntos
   restPct:          0,      // −50..+100 %
   incrementScale:   1,      // 1 | 0.5 — escala el incremento de la progresión
   progressionHold:  null,   // null | 'deload'
@@ -40,9 +40,9 @@ export const DEFAULT_RX = {
 /**
  * Escaleras: tipos de bloque que el planificador sabe montar.
  *
- * NO son plantillas fijas. `buildRungs` genera los peldaños por defecto para el
- * número que se le pida, y el planificador los deja editar uno a uno antes de
- * aplicarlos — una escalera cerrada solo sirve si tu bloque coincide con ella.
+ * NO son plantillas: `buildRungs` solo rellena la lista de la hoja, y a partir
+ * de ahí se añaden, quitan y editan etapas una a una. Una escalera cerrada solo
+ * sirve si tu bloque coincide con ella.
  *
  * Por qué dos de las tres llevan `scope`: sin alcance, un peldaño de
  * intensificación empujaría los curls a 5-9 repeticiones, y eso contradice una
@@ -57,22 +57,27 @@ export const DEFAULT_RX = {
 export const LADDER_IDS = ['linear', 'intensification', 'volume'];
 
 /**
- * Campos editables de cada tipo, en orden de aparición. `key` es el campo de
+ * Campos editables de una etapa, en orden de aparición. `key` es el campo de
  * `rx`; el planificador pinta un stepper por cada uno y traduce la etiqueta con
  * `planner.fields.<key>`.
+ *
+ * UNA sola lista para todas las etapas, sea cual sea el preset del que salieron
+ * (spec §14.2.4). Antes había una por escalera (`LADDER_FIELDS`) y otra para la
+ * descarga, y de ahí salía toda la rigidez: el tipo decía a la vez de qué
+ * valores parte la etapa Y qué se puede tocar después. Ahora el preset solo
+ * rellena.
  */
-export const LADDER_FIELDS = {
-  linear:          [{ key: 'setsDelta', min: -2, max: 3,   step: 1, scoped: true }],
-  intensification: [{ key: 'repsShift', min: -6, max: 0,   step: 1, scoped: true },
-                    // El descanso no tiene variante por alcance: "Descanso en
-                    // básicos" no es una etiqueta que exista, y pedirla daba
-                    // `planner.fields.restPct_keys`, que no está en los locales.
-                    { key: 'restPct',   min: 0,  max: 100, step: 5 }],
-  volume:          [{ key: 'setsDelta', min: 0,  max: 3,   step: 1, scoped: true }],
-};
+export const RX_FIELDS = [
+  { key: 'setsDelta', min: -3,  max: 3,   step: 1, scoped: true },
+  { key: 'repsShift', min: -6,  max: 6,   step: 1, scoped: true },
+  // El descanso no tiene variante por alcance: "Descanso en básicos" no es una
+  // etiqueta que exista, y pedirla daba `planner.fields.restPct_keys`, que no
+  // está en los locales.
+  { key: 'restPct',   min: -50, max: 100, step: 5 },
+];
 
-/** Campos editables del peldaño de descarga, sea cual sea la escalera. */
-export const DELOAD_FIELDS = [{ key: 'setsDelta', min: -3, max: 0, step: 1, scoped: true }];
+/** Alcances, en el orden en que los pinta el segmentado. */
+export const SCOPES = ['all', 'keys', 'accessories'];
 
 /**
  * Clave i18n de la etiqueta de un campo. Solo los campos marcados `scoped`
@@ -86,16 +91,21 @@ export function fieldLabelKey(field, scope) {
 
 const DELOAD_RUNG = { kind: 'deload', durationWeeks: 1, rx: { setsDelta: -1, progressionHold: 'deload' } };
 
+/** Cuántas etapas de trabajo trae un preset recién pulsado. */
+const PRESET_WORK = 2;
+
 /**
- * Peldaños por defecto de una escalera: `count` de trabajo + descarga opcional.
- * Puros y extrapolables a cualquier `count`, para que subir de 2 a 3 etapas no
- * dependa de una tabla escrita a mano.
+ * La lista por defecto de un preset: dos etapas de trabajo y una descarga.
+ *
+ * Es un PUNTO DE PARTIDA, no una plantilla: el planificador deja añadir, quitar
+ * y editar cada etapa después. Por eso ya no recibe `count` ni `withDeload` —
+ * eso lo decide la lista, no el preset.
  *
  * @returns [{ kind, durationWeeks, rx }] — `kind` distingue trabajo de descarga
- *          y decide qué campos se pueden editar y cómo se nombra el peldaño.
+ *          y decide cómo se nombra la etapa.
  */
-export function buildRungs(ladderId, count, withDeload = true) {
-  const work = Array.from({ length: Math.max(0, count) }, (_, i) => {
+export function buildRungs(ladderId) {
+  const work = Array.from({ length: PRESET_WORK }, (_, i) => {
     if (ladderId === 'intensification') {
       return {
         kind: 'work', durationWeeks: i === 0 ? 4 : 3,
@@ -114,7 +124,19 @@ export function buildRungs(ladderId, count, withDeload = true) {
     }
     return { kind: 'work', durationWeeks: 4, rx: { setsDelta: i + 1 } };
   });
-  return withDeload ? [...work, { ...DELOAD_RUNG, rx: { ...DELOAD_RUNG.rx } }] : work;
+  return [...work, newRung('deload')];
+}
+
+/**
+ * Una etapa suelta para los botones `+ trabajo` / `+ descarga` de la hoja.
+ *
+ * La de trabajo nace con la regla vacía: es una copia literal de la base hasta
+ * que se le toque algo, que es exactamente lo que hacía el viejo "Etapa nueva".
+ */
+export function newRung(kind) {
+  return kind === 'deload'
+    ? { ...DELOAD_RUNG, rx: { ...DELOAD_RUNG.rx } }
+    : { kind: 'work', durationWeeks: 4, rx: {} };
 }
 
 /**

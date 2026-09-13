@@ -12,10 +12,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, ScrollView, RefreshControl, TextInput,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -579,13 +577,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  closeGlyph: { fontSize: 17, color: th.colors.text },
+  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
   tabs:    { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
@@ -603,9 +601,9 @@ const makeStyles = (th) => StyleSheet.create({
   stateCardOff: { backgroundColor: th.colors.surface },
   stateTagRow:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
   stateDot:     { width: 7, height: 7, borderRadius: 3.5 },
-  stateTag:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
-  stateTitle:   { ...textStyles.cardTitle, color: th.colors.text },
-  stateSub:     { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+  stateTag:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  stateTitle:   { ...textStyles.itemTitle, color: th.colors.text },
+  stateSub:     { ...textStyles.label, color: th.tint.accent50, lineHeight: 15 },
   stateSubOff:  { color: th.colors.mutedLight },
 
   // Hueco del mismo tamaño que el check, para que las 4 frecuencias tengan la
@@ -636,8 +634,8 @@ const makeStyles = (th) => StyleSheet.create({
   // Abierta: esquinas inferiores rectas para fusionarse con el menú de abajo.
   freqBarOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   freqBarLabel: {
+    ...textStyles.bodyStrong,
     fontFamily: 'Inter_800ExtraBold',
-    fontSize:   14,
     color:      th.colors.text,
     flexShrink: 1,
   },
@@ -666,10 +664,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   dropItemSel:     { backgroundColor: th.tint.accent10 },
   dropItemMeta:    { flex: 1, minWidth: 0 },
-  dropItemText:    { ...textStyles.subtitle, color: th.colors.mutedLight },
+  dropItemText:    { ...textStyles.body, color: th.colors.mutedLight },
   dropItemTextSel: { color: th.colors.text },
   dropItemSub: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 15,
     marginTop:  spacing.xs,
@@ -681,16 +679,16 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:             th.colors.text,
   },
   namePreview: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.tint.accent50,
     marginTop: spacing.sm2,
   },
   nameHint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 15,
     marginTop:  spacing.xs,
@@ -703,17 +701,17 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   hint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 15,
     textAlign:  'center',
     marginTop:  spacing.md,
   },
   listHint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:        th.colors.mutedLight,
     lineHeight:   15,
     marginBottom: spacing.md,
@@ -725,5 +723,5 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     marginTop:     spacing.md,
   },
-  loadingTxt: { ...textStyles.tag, color: th.colors.mutedLight },
+  loadingTxt: { ...textStyles.label, color: th.colors.mutedLight },
 });

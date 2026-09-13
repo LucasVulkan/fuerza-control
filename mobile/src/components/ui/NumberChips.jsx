@@ -10,7 +10,8 @@
  * pintar todas las opciones no cabe.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
@@ -43,6 +44,6 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
   },
   chipOn:     { backgroundColor: th.colors.accent },
-  chipText:   { ...textStyles.cardTitle, color: th.colors.mutedLight },
+  chipText:   { ...textStyles.itemTitle, color: th.colors.mutedLight },
   chipTextOn: { color: th.colors.onAccent },
 });

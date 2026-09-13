@@ -10,7 +10,8 @@
  * `timeCuts` (`diffAdaptations`, §5.2) en las tres listas ya listas para
  * pintar + el contador total, que usa también la fila colapsada del preview.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -106,21 +107,15 @@ const makeStyles = (th) => StyleSheet.create({
   },
   section: { gap: spacing.sm },
   group:   { gap: spacing.xs2 },
-  groupHead: {
-    ...textStyles.tag,
-    fontWeight:    '800',
-    letterSpacing: 1.12,
-    color:         th.colors.mutedLight,
-    marginTop:     spacing.xs2,
-  },
+  groupHead: { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.xs2 },
   sectionHead: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  sectionTitle: { ...textStyles.spacingTag, textTransform: 'uppercase' },
+  sectionTitle: { ...textStyles.caps, textTransform: 'uppercase' },
   sectionCount: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:             th.colors.onAccent,
     borderRadius:      th.radius.xs,
     paddingHorizontal: spacing.xs2 + 1,
@@ -133,7 +128,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
     paddingVertical: spacing.xs,
   },
-  from: { ...textStyles.tag, color: th.colors.mutedLight, textDecorationLine: 'line-through', flexShrink: 1 },
-  to:   { ...textStyles.tag, color: th.colors.text, fontWeight: '600', flexShrink: 1 },
-  dayLetter: { ...textStyles.cardType, width: 14 },
+  from: { ...textStyles.label, color: th.colors.mutedLight, textDecorationLine: 'line-through', flexShrink: 1 },
+  to:   { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  dayLetter: { ...textStyles.labelStrong, width: 14 },
 });

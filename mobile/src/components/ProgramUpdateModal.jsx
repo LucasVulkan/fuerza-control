@@ -11,10 +11,11 @@
  * §6.2). Only the trainer activating a different stage moves them.
  */
 
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { spacing, borders, withOpacity, textStyles, lh, LINE } from '../theme';
 import { useThemedStyles } from '../useTheme';
 
 export default function ProgramUpdateModal() {
@@ -110,17 +111,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingBottom: spacing.md,
   },
   tag: {
-    fontSize:        typography.xs,
-    fontWeight:      typography.heavy,
-    color:           th.colors.accent,
-    letterSpacing:   1.5,
-    marginBottom:    spacing.xs,
+    ...textStyles.caps,
+    color:        th.colors.accent,
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize:   typography.lg,
-    fontWeight: typography.heavy,
+    ...textStyles.heading,
     color:      th.colors.text,
-    lineHeight: typography.lg * 1.3,
+    lineHeight: lh(textStyles.heading.fontSize, LINE.tight),
   },
 
   // Diff
@@ -142,15 +140,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
     alignItems:    'flex-start',
   },
-  diffDot: {
-    color:    th.colors.accent,
-    fontSize: typography.base,
-  },
+  diffDot: { ...textStyles.body, color: th.colors.accent },
   diffText: {
+    ...textStyles.body,
     flex:       1,
-    fontSize:   typography.sm,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.5,
+    lineHeight: lh(textStyles.body.fontSize),
   },
 
   // Action buttons
@@ -172,18 +167,11 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
     borderColor:     th.colors.accent,
   },
-  actionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.text,
-  },
+  actionLabel: { ...textStyles.bodyStrong, color: th.colors.text },
   actionLabelAccent: {
     color: th.colors.bg,
   },
-  actionSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
+  actionSub: { ...textStyles.label, color: th.colors.muted },
   actionSubAccent: {
     color: withOpacity(th.colors.bg, 0.7),
   },
@@ -193,8 +181,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     paddingVertical: spacing.sm,
   },
-  laterTxt: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  laterTxt: { ...textStyles.label, color: th.colors.muted },
 });

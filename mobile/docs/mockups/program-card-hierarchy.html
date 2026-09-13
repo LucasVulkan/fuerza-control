@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tu programa — jerarquía sin segundo color</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; font-family: Inter, sans-serif; padding: 30px 26px 70px; -webkit-font-smoothing: antialiased; }
+  .rack { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 375px; }
+  .cap { font: 600 12px/1.55 Inter; color: #818181; letter-spacing: .3px; margin: 0 0 12px; }
+  .cap b { display: block; color: #aae216; font-weight: 800; letter-spacing: 1.4px; font-size: 11px; margin-bottom: 3px; }
+  .pad { background: #151515; border-radius: 26px; padding: 15px; margin-bottom: 28px; }
+
+  /* ── Tarjeta: UNA sola superficie ── */
+  .card { background: #1f1f1f; border-radius: 18px; padding: 16px; overflow: hidden; }
+  .top { display: flex; align-items: flex-start; gap: 10px; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; }
+  .pname { font: 900 20px Inter; color: #e6e6e6; margin-top: -1px; }
+  .cycnum { font: 900 20px Inter; color: #aae216; margin-top: -1px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .srow { display: flex; align-items: center; gap: 8px; }
+  .stage { font: 800 13px Inter; letter-spacing: .5px; color: #e6e6e6; }
+  .stage em { font-style: normal; color: #aae216; }
+
+  /* Puntos = ciclos de la etapa */
+  .pips { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .pips i { width: 7px; height: 7px; border-radius: 3.5px; background: #3a3a3a; }
+  .pips i.on { background: #aae216; }
+
+  /* Barra = etapas del programa, anchos proporcionales a sus ciclos */
+  .bar { display: flex; gap: 5px; height: 6px; }
+  .sg { height: 6px; border-radius: 3px; background: #3a3a3a; }
+  .sg.done { background: rgba(184,255,0,.45); }
+  .sg.now  { background: #aae216; }
+
+  /* ── Cifras ── */
+  .stats { display: flex; }
+  .stats > div { flex: 1; }
+  .sval { font: 900 16px Inter; letter-spacing: .64px; color: #e6e6e6; font-variant-numeric: tabular-nums; }
+  .sunit { font: 500 12px Inter; color: #818181; }
+  .skey { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #4d4d4d; margin-top: 4px; }
+
+  .rule { height: 1px; background: #3a3a3a; margin: 16px -16px 0; }
+</style>
+</head>
+<body>
+<div class="rack">
+
+  <!-- ══════ V1 ══════ -->
+  <div class="col">
+    <p class="cap"><b>1 · FILETE A SANGRE</b>Lo que hacía la banda de color lo hace una línea de 1px que cruza la tarjeta entera. Misma separación, cero superficies nuevas.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div class="rule"></div>
+        <div style="margin-top:16px">
+          <div class="srow">
+            <span class="stage"><em>Etapa 2</em> Acumulación</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          </div>
+          <div class="bar" style="margin-top:10px">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:22px">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap"><b>3 · LA BARRA ES LA LÍNEA</b>La barra de etapas sale a sangre y hace de separador ella misma. Debajo, el nombre de la etapa explica lo que acabas de ver.</p>
+    <div class="pad">
+      <div class="card" style="padding-bottom:16px">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div class="bar" style="margin:18px -16px 0;gap:4px">
+          <div class="sg done" style="flex:3;border-radius:0 3px 3px 0"></div>
+          <div class="sg now"  style="flex:4"></div>
+          <div class="sg" style="flex:3"></div>
+          <div class="sg" style="flex:4"></div>
+          <div class="sg" style="flex:3;border-radius:3px 0 0 3px"></div>
+        </div>
+        <div class="srow" style="margin-top:12px">
+          <span class="stage"><em>Etapa 2</em> Acumulación</span>
+          <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+        </div>
+        <div class="stats" style="margin-top:22px">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ V2 ══════ -->
+  <div class="col">
+    <p class="cap"><b>2 · AIRE Y ESCALA</b>Sin línea ni banda: el nombre sube a 22px y se lleva 26px de aire debajo. La jerarquía la hace la tipografía, que es lo que ya hace en el resto de la app.</p>
+    <div class="pad">
+      <div class="card" style="padding:18px 16px 16px">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname" style="font-size:22px;letter-spacing:-.3px;margin-top:1px">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum" style="font-size:22px;margin-top:1px">02</div></div>
+        </div>
+        <div style="margin-top:26px">
+          <div class="srow">
+            <span class="stage"><em>Etapa 2</em> Acumulación</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          </div>
+          <div class="bar" style="margin-top:9px">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:24px">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap"><b>4 · PROXIMIDAD</b>Ni línea, ni tamaño: el nombre queda solo arriba y etapa + barra + cifras se aprietan entre sí hasta leerse como un único bloque de datos.</p>
+    <div class="pad">
+      <div class="card" style="padding:18px 16px 16px">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div style="margin-top:28px">
+          <div class="srow">
+            <span class="stage"><em>Etapa 2</em> Acumulación</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          </div>
+          <div class="bar" style="margin-top:8px">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+          </div>
+          <div class="stats" style="margin-top:15px">
+            <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+            <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+            <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ REFERENCIA + AFORDANCIA ══════ -->
+  <div class="col">
+    <p class="cap"><b>REFERENCIA</b>Tu mockup tal cual, para comparar: nombre y etapa a la misma distancia que etapa y cifras, así que las tres zonas pesan igual.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="srow">
+            <span class="stage"><em>Etapa 2</em> Acumulación</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          </div>
+          <div class="bar" style="margin-top:10px">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:20px">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap"><b>1 + AFORDANCIA</b>La misma opción 1, con lo único que echo en falta al quitar el pie: una señal de que la tarjeta se pulsa. Chevron pegado a la ceja, no al nombre.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:5px"><span class="eyebrow">Tu programa</span><span style="font:900 11px Inter;color:#4d4d4d;line-height:1">›</span></div>
+            <div class="pname">Hipertrofia Iniciación</div>
+          </div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div class="rule"></div>
+        <div style="margin-top:16px">
+          <div class="srow">
+            <span class="stage"><em>Etapa 2</em> Acumulación</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          </div>
+          <div class="bar" style="margin-top:10px">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:22px">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

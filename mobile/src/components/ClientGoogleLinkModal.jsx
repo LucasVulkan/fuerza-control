@@ -11,7 +11,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { Text } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import Constants        from 'expo-constants';
@@ -156,13 +157,13 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
-  hint:  { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
+  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, textAlign: 'center' },
 
   bullets:    { gap: spacing.sm },
   bulletRow:  { flexDirection: 'row', gap: spacing.sm },
-  bulletDot:  { ...textStyles.tag, color: th.colors.accent, lineHeight: 15 },
-  bulletText: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+  bulletDot:  { ...textStyles.label, color: th.colors.accent, lineHeight: 15 },
+  bulletText: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
 
   ctaGroup: { gap: spacing.sm },
 
@@ -173,6 +174,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
   btnDisabled:    { opacity: 0.5 },
 });

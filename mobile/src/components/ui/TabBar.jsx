@@ -1,37 +1,86 @@
 /**
- * TabBar — pestañas "clásicas": la activa toma el fondo de la página y se funde
- * con el contenido que hay debajo, con la etiqueta en accent; las demás se
- * quedan en la banda.
+ * TabBar — pestañas de navegación: una píldora que se desliza sobre su track.
  *
- * No es `SegmentedControl` con otra piel, y por eso no es una variante suya:
- * aquel es un control de filtro (una píldora que flota SOBRE su fondo) y este es
- * navegación (un recorte de la banda HACIA el contenido). Que no se parezcan es
- * justo el punto — dentro de una misma pantalla conviven los dos.
+ * Antes eran pestañas "clásicas" (la activa tomaba el fondo de la página y se
+ * fundía con el contenido), y eso obligaba a que lo de arriba fuera una banda
+ * de otro color. La pantalla pasaba de header negro → banda gris → contenido
+ * negro, y una banda gris no existe en ningún otro sitio de la app. Ahora la
+ * pantalla entera va sobre `bg` y la banda desaparece
+ * (docs/specs/home-sessions.md §4.6).
  *
- * Va sin padding propio: lo coloca quien lo usa. Para que la fusión funcione, el
- * contenedor no puede meter `paddingBottom` (la pestaña activa tiene que llegar
- * al borde del contenido) y el contenido de debajo tiene que ir sobre
- * `colors.bg`.
+ * Sigue sin ser `SegmentedControl` con otra piel: track `surface2` y
+ * `radius.full` allí, `surface` y `radius.md` aquí.
+ *
+ * ⚠️ **La píldora activa va en `accent`.** Nació neutra —la regla de
+ * `specs/home-sessions.md` §4.6 reservaba el lima para los segmentados de
+ * filtro—, pero en QA sobre la ficha de cliente el usuario la quiso en acento:
+ * la pestaña en la que estás es el dato más importante de la cabecera y en
+ * `surface2` casi no se veía. La diferencia con el segmentado la siguen
+ * llevando el track y el radio, que es donde estaba de verdad.
+ *
+ * Va sin padding propio: lo coloca quien lo usa.
  */
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { textStyles, spacing } from '../../theme';
+import { useState, useRef, useEffect } from 'react';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+
+import { textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
+
+const PAD = 3;
+const GAP = 3;
+
+function offsetFor(index, width, n) {
+  const tabWidth = (width - PAD * 2 - GAP * (n - 1)) / n;
+  return PAD + index * (tabWidth + GAP);
+}
 
 export default function TabBar({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  const n           = options.length;
+  const tabWidth    = n > 0 ? (trackWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
+  const activeIndex = Math.max(0, options.findIndex((o) => o.id === value));
+
+  const translateX = useSharedValue(0);
+  const opacity    = useSharedValue(0);   // oculta hasta la primera medida (sin fotograma viejo)
+  const positioned = useRef(false);
+
+  // Primera medida → colocar sin animar; cada cambio posterior → deslizar.
+  useEffect(() => {
+    if (trackWidth === 0) return;
+    const target = offsetFor(activeIndex, trackWidth, n);
+    if (!positioned.current) {
+      positioned.current = true;
+      translateX.value   = target;
+      opacity.value      = 1;
+    } else {
+      translateX.value = withTiming(target, { duration: 200, easing: Easing.inOut(Easing.ease) });
+    }
+  }, [activeIndex, trackWidth, n, translateX, opacity]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity:   opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
-    <View style={styles.row}>
+    <View style={styles.track} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
+      {trackWidth > 0 && (
+        <Animated.View style={[styles.pill, { width: tabWidth }, pillStyle]} />
+      )}
       {options.map(({ id, label }) => {
         const active = value === id;
         return (
           <TouchableOpacity
             key={id}
-            style={[styles.tab, active && styles.tabActive]}
+            style={styles.tab}
             onPress={() => onChange(id)}
             activeOpacity={0.75}
-            // La caja mide ~35 px de alto: el hitSlop la lleva a zona de pulgar
-            // sin engordar la banda.
+            // La caja mide ~33 px de alto: el hitSlop la lleva a zona de pulgar
+            // sin engordar el track.
             hitSlop={{ top: 6, bottom: 6 }}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
@@ -47,27 +96,27 @@ export default function TabBar({ options, value, onChange }) {
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  // Cada pestaña ocupa lo que mide su etiqueta y el sobrante se reparte entre
-  // ellas. Con anchos iguales, una etiqueta corta ("Info") quedaba nadando en
-  // una caja del mismo tamaño que "Historial" — y al ser la última, ese hueco
-  // se leía como separación del resto.
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-
+  track: {
+    flexDirection:   'row',
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    padding:         PAD,
+    gap:             GAP,
+    position:        'relative',
+  },
+  pill: {
+    position:        'absolute',
+    top:             PAD,
+    bottom:          PAD,
+    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.accent,
+  },
   tab: {
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
+    flex:              1,
+    paddingVertical:   9,
+    paddingHorizontal: 2,
     alignItems:        'center',
   },
-  // Sin sombra ni borde: el escalón de fondo contra la banda ya dibuja la
-  // pestaña, y un borde volvería a meter la línea que se quitó de la banda.
-  tabActive: {
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.md,
-    borderTopRightRadius: th.radius.md,
-  },
-
-  label:       { ...textStyles.cardType, color: th.colors.mutedLight },
-  // El acento va en el TEXTO, no en el fondo: el fondo es lo que funde la
-  // pestaña con su contenido, y pintarlo de accent deshace esa unión.
-  labelActive: { color: th.colors.accent },
+  label:       { ...textStyles.bodyStrong, color: th.colors.mutedLight },
+  labelActive: { color: th.colors.onAccent },
 });

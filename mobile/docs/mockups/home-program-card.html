@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tu programa — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,500;0,600;0,700;0,800;0,900;1,900&family=Barlow+Condensed:ital,wght@1,800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    font-family: Inter, sans-serif;
+    color: #e6e6e6;
+    padding: 28px 24px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 375px; }
+  .caption { font: 600 12px/1.4 Inter; color: #818181; letter-spacing: .4px; margin-bottom: 10px; }
+  .caption b { color: #aae216; font-weight: 800; }
+
+  /* ── Marco del móvil: 375pt, fondo bg del tema formaFit ── */
+  .phone {
+    width: 375px; background: #151515; border-radius: 26px;
+    padding-top: 14px; padding-bottom: 26px; overflow: hidden;
+  }
+  .content { padding: 6px 15px 0; }   /* spacing.lg horizontal, spacing.sm top */
+
+  /* ── AppHeader ── */
+  .appbar { display: flex; align-items: center; padding: 10px 20px 6px; }
+  .logo { display: flex; align-items: center; gap: 2px; min-width: 88px; }
+  .logo .forma { font: italic 900 19px Inter; letter-spacing: -1.14px; color: #e6e6e6; }
+  .logo .fit { font: italic 800 18px "Barlow Condensed"; letter-spacing: 2px; color: #aae216; margin-top: 4px; }
+  .clock { flex: 1; font: 700 10px Inter; letter-spacing: .4px; color: #818181; margin-left: 10px; }
+  .menu { display: flex; flex-direction: column; align-items: flex-end; gap: 3.6px; }
+  .menu i { display: block; height: 3px; background: #aae216; }
+  .menu i:nth-child(1) { width: 16px; } .menu i:nth-child(2) { width: 20px; } .menu i:nth-child(3) { width: 24px; }
+
+  /* ── Selector semanal ── */
+  .week { padding: 9px 20px; }
+  .weekrow { display: flex; justify-content: space-between; }
+  .weekrow + .weekrow { margin-top: 10px; }
+  .wl { font: 800 12px Inter; letter-spacing: 1.2px; color: #818181; width: 12px; text-align: center; }
+  .wl.today { color: #b8ff00; }
+  .wd { width: 12px; height: 12px; border-radius: 6px; background: #4d4d4d; }
+  .wd.on { background: #b8ff00; }
+
+  /* ── Rótulo de sección ── */
+  .sec { display: flex; align-items: baseline; gap: 6px; padding: 0 4px; margin: 15px 0 8px; }
+  .sec .lab { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #e6e6e6; }
+  .sec .cnt { font: 600 9px Inter; letter-spacing: 1.1px; text-transform: uppercase; color: #818181; margin-left: auto; }
+
+  /* ── Hero (siguiente sesión) ── */
+  .hero { background: #aae216; border-radius: 18px; padding: 15px; }
+  .flag { font: 900 10px Inter; letter-spacing: 2.2px; text-transform: uppercase; color: rgba(0,0,0,.62); }
+  .flag b { color: #000; font-weight: 900; }
+  .heroname { font: 900 20px/21px Inter; letter-spacing: -.5px; color: #000; margin-top: 10px; }
+  .herometa { font: 600 12px/16.2px Inter; letter-spacing: .3px; color: rgba(0,0,0,.62); margin-top: 6px; }
+  .herobtn { display: flex; align-items: center; justify-content: space-between;
+             background: #000; border-radius: 10px; padding: 15px; margin-top: 15px; }
+  .herobtn span { font: 900 12px Inter; color: #b8ff00; }
+
+  /* ── Filas de sesión ── */
+  .group { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+  .row { display: flex; align-items: center; gap: 15px; min-height: 52px;
+         background: #1f1f1f; padding: 10px 15px; border-radius: 4px; }
+  .row:first-child { border-radius: 10px 10px 4px 4px; }
+  .row:last-child  { border-radius: 2px 4px 10px 10px; }
+  .mk { width: 20px; text-align: center; font: 900 13px Inter; letter-spacing: .5px; color: #818181; }
+  .rmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rtitle { font: 800 13px Inter; letter-spacing: 1.2px; color: #e6e6e6; }
+  .rsub { font: 500 11px Inter; color: #818181; }
+  .rchev { font: 900 18px Inter; color: #818181; }
+
+  /* ── Botón sesión libre ── */
+  .free { border: .5px solid rgba(184,255,0,.5); border-radius: 10px; padding: 10px 6px;
+          text-align: center; margin-top: 10px; font: 900 12px Inter; color: #aae216; }
+
+  /* ── Tarjeta de programa ── */
+  .pblock { margin-top: 20px; }
+  .card { background: #1f1f1f; border-radius: 18px; overflow: hidden; }
+  .chead { display: flex; align-items: flex-start; gap: 10px; background: #272727; padding: 14px 16px; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; }
+  .pname { font: 900 20px Inter; color: #e6e6e6; margin-top: -2px; }
+  .by { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .bydot { width: 5px; height: 5px; border-radius: 2.5px; background: #4c85ff; }
+  .bytext { font: 500 12px Inter; letter-spacing: .48px; color: #818181; }
+  .byname { font: 800 12px Inter; letter-spacing: 0; color: #4c85ff; }
+  .cyc { text-align: right; }
+  .cycnum { font: 900 20px Inter; color: #aae216; margin-top: -2px; font-variant-numeric: tabular-nums; }
+  .cbody { padding: 14px 16px 16px; }
+  .strow { display: flex; align-items: baseline; gap: 8px; }
+  .stname { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; }
+  .stown { color: #e6e6e6; }
+  .stmeta { font: 500 12px Inter; letter-spacing: .48px; color: #818181; margin-left: auto; }
+
+  /* Barra de etapa: paralelogramos skew -18°, alto 8, gap 4 (StageSegBar) */
+  .seg { display: flex; gap: 4px; margin-top: 6px; overflow: hidden; }
+  .seg > i { flex: 1; height: 8px; transform: skewX(-18deg); background: #545454; position: relative; overflow: hidden; }
+  .seg > i.full { background: #aae216; }
+  .seg > i.half::after { content: ""; position: absolute; inset: 0 45% 0 0; background: #aae216; }
+
+  .stats { display: flex; gap: 6px; margin-top: 15px; }
+  .stat { flex: 1; min-width: 0; background: #151515; border-radius: 10px; padding: 10px; }
+  .sval { font: 900 16px Inter; letter-spacing: .64px; color: #e6e6e6; font-variant-numeric: tabular-nums; }
+  .sunit { font: 500 12px Inter; letter-spacing: .48px; color: #818181; }
+  .skey { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #4d4d4d; margin-top: 3px; }
+
+  .foot { display: flex; border-top: 1px solid #3a3a3a; }
+  .fcell { flex: 1; height: 46px; display: flex; align-items: center; justify-content: center;
+           font: 800 12px Inter; letter-spacing: 1.2px; color: #e6e6e6; }
+  .fcell + .fcell { border-left: 1px solid #3a3a3a; }
+  .fmore { flex: 0 0 52px; font: 900 16px/18px Inter; color: #818181; }
+</style>
+</head>
+<body>
+<div class="rack">
+
+  <!-- ══════════ 1. ACTUAL ══════════ -->
+  <div class="col">
+    <p class="caption"><b>ACTUAL</b> · tal y como está hoy</p>
+    <div class="phone">
+      <div class="appbar">
+        <div class="logo"><span class="forma">Forma</span><span class="fit">FIT</span></div>
+        <div class="clock">09:41 · lun 8 sep</div>
+        <div class="menu"><i></i><i></i><i></i></div>
+      </div>
+      <div class="week">
+        <div class="weekrow"><span class="wl">L</span><span class="wl">M</span><span class="wl">X</span><span class="wl">J</span><span class="wl today">V</span><span class="wl">S</span><span class="wl">D</span></div>
+        <div class="weekrow"><span class="wd on"></span><span class="wd"></span><span class="wd on"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span></div>
+      </div>
+      <div class="content">
+        <div class="sec"><span class="lab">Sesiones</span><span class="cnt">2 de 3 del ciclo</span></div>
+        <div class="hero">
+          <div class="flag">Siguiente · <b>Sesión C</b></div>
+          <div class="heroname">Empuje vertical y tracción</div>
+          <div class="herometa">Etapa 1 · 6 ejercicios · 55 min</div>
+          <div class="herobtn"><span>EMPEZAR</span><span style="color:#b8ff00;font-weight:900">›</span></div>
+        </div>
+        <div class="group">
+          <div class="row"><span class="mk">A</span><span class="rmeta"><span class="rtitle">Full body</span><span class="rsub">hecha · hace 3 días</span></span><span class="rchev">›</span></div>
+          <div class="row"><span class="mk">B</span><span class="rmeta"><span class="rtitle">Pierna y core</span><span class="rsub">hecha · ayer</span></span><span class="rchev">›</span></div>
+        </div>
+        <div class="free">SESIÓN LIBRE</div>
+
+        <div class="pblock">
+          <div class="card">
+            <div class="chead">
+              <div style="flex:1;min-width:0">
+                <div class="eyebrow">Programa</div>
+                <div class="pname">Fuerza base</div>
+                <div class="by"><span class="bydot"></span><span class="bytext">por <span class="byname">Marta</span></span></div>
+              </div>
+              <div class="cyc"><div class="eyebrow">Ciclo</div><div class="cycnum">03</div></div>
+            </div>
+            <div class="cbody">
+              <div class="strow">
+                <span class="stname">Etapa 1 · <span class="stown">Acumulación</span></span>
+                <span class="stmeta">2 / 4</span>
+              </div>
+              <div class="seg"><i class="full"></i><i class="half"></i><i></i><i></i></div>
+              <div class="stmeta" style="display:block;text-align:right;margin-top:6px">quedan 2 sesiones</div>
+              <div class="stats">
+                <div class="stat"><div class="sval">86<span class="sunit">%</span></div><div class="skey">Adher.</div></div>
+                <div class="stat"><div class="sval">1,5<span class="sunit"> cic/sem</span></div><div class="skey">Ritmo</div></div>
+                <div class="stat"><div class="sval">+4<span class="sunit">%</span></div><div class="skey">Carga</div></div>
+              </div>
+            </div>
+            <div class="foot">
+              <div class="fcell">EDITAR</div>
+              <div class="fcell">VER</div>
+              <div class="fcell fmore">⋯</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 2. VARIANTE A ══════════ -->
+  <div class="col">
+    <p class="caption"><b>A</b> · cifras sin caja, etapa en una línea</p>
+    <div class="phone">
+      <div class="appbar">
+        <div class="logo"><span class="forma">Forma</span><span class="fit">FIT</span></div>
+        <div class="clock">09:41 · lun 8 sep</div>
+        <div class="menu"><i></i><i></i><i></i></div>
+      </div>
+      <div class="week">
+        <div class="weekrow"><span class="wl">L</span><span class="wl">M</span><span class="wl">X</span><span class="wl">J</span><span class="wl today">V</span><span class="wl">S</span><span class="wl">D</span></div>
+        <div class="weekrow"><span class="wd on"></span><span class="wd"></span><span class="wd on"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span></div>
+      </div>
+      <div class="content">
+        <div class="sec"><span class="lab">Sesiones</span><span class="cnt">2 de 3 del ciclo</span></div>
+        <div class="hero">
+          <div class="flag">Siguiente · <b>Sesión C</b></div>
+          <div class="heroname">Empuje vertical y tracción</div>
+          <div class="herometa">Etapa 1 · 6 ejercicios · 55 min</div>
+          <div class="herobtn"><span>EMPEZAR</span><span style="color:#b8ff00;font-weight:900">›</span></div>
+        </div>
+        <div class="group">
+          <div class="row"><span class="mk">A</span><span class="rmeta"><span class="rtitle">Full body</span><span class="rsub">hecha · hace 3 días</span></span><span class="rchev">›</span></div>
+          <div class="row"><span class="mk">B</span><span class="rmeta"><span class="rtitle">Pierna y core</span><span class="rsub">hecha · ayer</span></span><span class="rchev">›</span></div>
+        </div>
+        <div class="free">SESIÓN LIBRE</div>
+
+        <div class="pblock">
+          <div class="card">
+            <div class="chead" style="align-items:center">
+              <div style="flex:1;min-width:0">
+                <div class="eyebrow">Programa</div>
+                <div class="pname">Fuerza base</div>
+                <div class="by"><span class="bydot"></span><span class="bytext">por <span class="byname">Marta</span></span></div>
+              </div>
+              <div class="cyc"><div class="eyebrow">Ciclo</div><div class="cycnum">03</div></div>
+              <div style="font:900 18px Inter;color:#818181;align-self:center;margin-left:2px">›</div>
+            </div>
+            <div class="cbody">
+              <div class="strow">
+                <span class="stname">Etapa 1 · <span class="stown">Acumulación</span></span>
+                <span class="stmeta">2 / 4</span>
+              </div>
+              <div class="seg"><i class="full"></i><i class="half"></i><i></i><i></i></div>
+              <div class="stats" style="gap:0;margin-top:16px">
+                <div style="flex:1"><div class="sval">86<span class="sunit">%</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Adherencia</div></div>
+                <div style="flex:1"><div class="sval">1,5<span class="sunit"> c/sem</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Ritmo</div></div>
+                <div style="flex:1"><div class="sval">+4<span class="sunit">%</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Carga</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 3. VARIANTE B ══════════ -->
+  <div class="col">
+    <p class="caption"><b>B</b> · una sola superficie, barra a sangre</p>
+    <div class="phone">
+      <div class="appbar">
+        <div class="logo"><span class="forma">Forma</span><span class="fit">FIT</span></div>
+        <div class="clock">09:41 · lun 8 sep</div>
+        <div class="menu"><i></i><i></i><i></i></div>
+      </div>
+      <div class="week">
+        <div class="weekrow"><span class="wl">L</span><span class="wl">M</span><span class="wl">X</span><span class="wl">J</span><span class="wl today">V</span><span class="wl">S</span><span class="wl">D</span></div>
+        <div class="weekrow"><span class="wd on"></span><span class="wd"></span><span class="wd on"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span><span class="wd"></span></div>
+      </div>
+      <div class="content">
+        <div class="sec"><span class="lab">Sesiones</span><span class="cnt">2 de 3 del ciclo</span></div>
+        <div class="hero">
+          <div class="flag">Siguiente · <b>Sesión C</b></div>
+          <div class="heroname">Empuje vertical y tracción</div>
+          <div class="herometa">Etapa 1 · 6 ejercicios · 55 min</div>
+          <div class="herobtn"><span>EMPEZAR</span><span style="color:#b8ff00;font-weight:900">›</span></div>
+        </div>
+        <div class="group">
+          <div class="row"><span class="mk">A</span><span class="rmeta"><span class="rtitle">Full body</span><span class="rsub">hecha · hace 3 días</span></span><span class="rchev">›</span></div>
+          <div class="row"><span class="mk">B</span><span class="rmeta"><span class="rtitle">Pierna y core</span><span class="rsub">hecha · ayer</span></span><span class="rchev">›</span></div>
+        </div>
+        <div class="free">SESIÓN LIBRE</div>
+
+        <div class="pblock">
+          <div class="card">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:16px 16px 0">
+              <div style="flex:1;min-width:0">
+                <div class="eyebrow">Programa</div>
+                <div class="pname">Fuerza base</div>
+                <div class="by"><span class="bydot"></span><span class="bytext">Acumulación · sem 2 de 4 · <span class="byname">Marta</span></span></div>
+              </div>
+              <div class="cyc"><div class="eyebrow">Ciclo</div><div class="cycnum">03</div></div>
+            </div>
+            <div style="display:flex;padding:16px">
+              <div style="flex:1"><div class="sval">86<span class="sunit">%</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Adherencia</div></div>
+              <div style="flex:1"><div class="sval">1,5<span class="sunit"> c/sem</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Ritmo</div></div>
+              <div style="flex:1"><div class="sval">+4<span class="sunit">%</span></div><div style="font:500 10px Inter;color:#818181;margin-top:3px">Carga</div></div>
+            </div>
+            <div class="seg" style="gap:2px;margin:0">
+              <i class="full" style="height:5px"></i><i class="half" style="height:5px"></i><i style="height:5px"></i><i style="height:5px"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

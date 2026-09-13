@@ -1297,3 +1297,76 @@ describe('clearWorkoutLog — fallo 18', () => {
     expect(useStore.getState().workoutLog).toHaveLength(2);
   });
 });
+
+describe('setAdHocSets — bajar el contador no borra lo registrado', () => {
+  const setAdHoc = (setsState) => useStore.setState({
+    activeSession: {
+      ...useStore.getState().activeSession,
+      templateId: '__free__',
+      adHocExercises: [{ exerciseId: 'bench', setsState }],
+    },
+  });
+  const sets = () => useStore.getState().activeSession.adHocExercises[0].setsState;
+  const empty = () => ({ weight: '', reps: '', time: '', done: false });
+
+  it('sube añadiendo series vacías', () => {
+    setAdHoc([empty()]);
+    useStore.getState().setAdHocSets('bench', 4);
+    expect(sets()).toHaveLength(4);
+    expect(sets()[3]).toEqual(empty());
+  });
+
+  it('baja recortando por el final mientras no haya datos', () => {
+    setAdHoc([empty(), empty(), empty(), empty()]);
+    useStore.getState().setAdHocSets('bench', 2);
+    expect(sets()).toHaveLength(2);
+  });
+
+  it('nunca por debajo de la última serie con algo dentro', () => {
+    // 3 series, la tercera hecha: bajar a 1 dejaría el trabajo fuera del log.
+    setAdHoc([{ ...empty(), reps: '10' }, empty(), { ...empty(), done: true }]);
+    useStore.getState().setAdHocSets('bench', 1);
+    expect(sets()).toHaveLength(3);
+  });
+
+  it('el mínimo es 1 aunque no haya nada registrado', () => {
+    setAdHoc([empty(), empty()]);
+    useStore.getState().setAdHocSets('bench', 0);
+    expect(sets()).toHaveLength(1);
+  });
+});
+
+describe('updateFreeSessionPreset — retocar la plantilla, no fundar una copia', () => {
+  const ENTRY = {
+    sessionTemplateId: '__free__',
+    sessionName: 'Corta v2',
+    exercises: [{ exerciseId: 'row', sets: [{ weight: '40', reps: '10', time: '', done: true }] }],
+  };
+
+  beforeEach(() => {
+    useStore.setState({ freeSessionPresets: [
+      { presetId: 'fpre_1', name: 'Corta', exercises: [{ exerciseId: 'bench', sets: 3 }], blocks: [] },
+      { presetId: 'fpre_2', name: 'Otra',  exercises: [], blocks: [] },
+    ] });
+  });
+
+  it('conserva el presetId y su sitio en la lista', () => {
+    useStore.getState().updateFreeSessionPreset('fpre_1', ENTRY);
+    const list = useStore.getState().freeSessionPresets;
+    expect(list.map((p) => p.presetId)).toEqual(['fpre_1', 'fpre_2']);
+    expect(list[0].exercises).toEqual([{ exerciseId: 'row', sets: 1 }]);
+    expect(list[0].name).toBe('Corta v2');
+  });
+
+  it('sin nombre en la sesión, la plantilla se queda con el suyo', () => {
+    useStore.getState().updateFreeSessionPreset('fpre_1', { ...ENTRY, sessionName: '  ' });
+    expect(useStore.getState().freeSessionPresets[0].name).toBe('Corta');
+  });
+
+  it('no toca las demás', () => {
+    useStore.getState().updateFreeSessionPreset('fpre_1', ENTRY);
+    expect(useStore.getState().freeSessionPresets[1]).toEqual(
+      { presetId: 'fpre_2', name: 'Otra', exercises: [], blocks: [] },
+    );
+  });
+});

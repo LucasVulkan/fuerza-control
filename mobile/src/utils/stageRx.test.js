@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { applyRx, isNoopRx, DEFAULT_RX, LADDER_IDS, LADDER_FIELDS, DELOAD_FIELDS, buildRungs, describeRx, fieldLabelKey } from './stageRx';
+import { applyRx, isNoopRx, DEFAULT_RX, LADDER_IDS, RX_FIELDS, SCOPES, buildRungs, newRung, describeRx, fieldLabelKey } from './stageRx';
 
 // Ejercicios como los escribe `buildExConfig` / el editor.
 const squat  = { exerciseId: 'squat_barbell', isKey: true,  sets: 4, restSec: 120, minReps: 5, maxReps: 8, order: 1 };
@@ -171,58 +171,49 @@ describe('applyRx — los peldaños derivan de la BASE, no del anterior', () => 
 });
 
 describe('buildRungs', () => {
-  it('builds exactly the number of work rungs asked for, plus the deload', () => {
+  it('hands back two work stages and a deload, whatever the preset', () => {
     for (const id of LADDER_IDS) {
-      expect(buildRungs(id, 2, true).filter((r) => r.kind === 'work'), id).toHaveLength(2);
-      expect(buildRungs(id, 2, true).filter((r) => r.kind === 'deload'), id).toHaveLength(1);
-      expect(buildRungs(id, 3, false), id).toHaveLength(3);
+      expect(buildRungs(id).filter((r) => r.kind === 'work'), id).toHaveLength(2);
+      expect(buildRungs(id).filter((r) => r.kind === 'deload'), id).toHaveLength(1);
     }
   });
 
-  it('extrapolates past the presets — 1 or 4 rungs are as valid as 2', () => {
-    // Es la razón de que sea una función y no una tabla: subir de 2 a 4 no
-    // puede depender de que alguien escribiera el cuarto peldaño a mano.
-    const four = buildRungs('linear', 4, false);
-    expect(four.map((r) => r.rx.setsDelta)).toEqual([1, 2, 3, 4]);
-    expect(buildRungs('linear', 1, false)[0].rx.setsDelta).toBe(1);
-  });
-
   it('the deload always stops the progression', () => {
-    // Sin `progressionHold` la app seguiría sugiriendo subir peso durante la
-    // descarga, y la descarga no ocurriría.
+    // Sin `progressionHold` la app seguiria sugiriendo subir peso durante la
+    // descarga, y la descarga no ocurriria.
     for (const id of LADDER_IDS) {
-      const last = buildRungs(id, 2, true).at(-1);
+      const last = buildRungs(id).at(-1);
       expect(last.rx.progressionHold, id).toBe('deload');
       expect(last.rx.setsDelta, id).toBeLessThan(0);
     }
   });
 
   it('hands back fresh rx objects, so editing one rung cannot leak into another', () => {
-    const a = buildRungs('linear', 1, true);
-    const b = buildRungs('linear', 1, true);
+    const a = buildRungs('linear');
+    const b = buildRungs('linear');
     a.at(-1).rx.setsDelta = -3;
     expect(b.at(-1).rx.setsDelta).toBe(-1);
   });
 
-  it('intensification only shortens the rep range of the KEY lifts', () => {
+  it('intensification only moves the rep range of the KEY lifts', () => {
     // Los accesorios viven en rango de hipertrofia haga el bloque lo que haga:
     // es la misma regla que ya aplica el generador.
-    for (const r of buildRungs('intensification', 3, false)) {
+    for (const r of buildRungs('intensification').filter((x) => x.kind === 'work')) {
       expect(r.rx.scope).toBe('keys');
       expect(r.rx.repsShift).toBeLessThan(0);
     }
   });
 
   it('volume adds its sets to the accessories, not to the heavy basics', () => {
-    for (const r of buildRungs('volume', 3, false)) {
+    for (const r of buildRungs('volume').filter((x) => x.kind === 'work')) {
       expect(r.rx.scope).toBe('accessories');
       expect(r.rx.setsDelta).toBeGreaterThan(0);
     }
   });
 
-  it('every rung it produces is a real rule', () => {
+  it('every rung a preset produces is a real rule', () => {
     for (const id of LADDER_IDS) {
-      for (const r of buildRungs(id, 3, true)) {
+      for (const r of buildRungs(id)) {
         expect(isNoopRx(r.rx), id).toBe(false);
         expect(r.durationWeeks, id).toBeGreaterThan(0);
       }
@@ -231,7 +222,7 @@ describe('buildRungs', () => {
 
   it('applied to a real session, every rung stays within the hard floors', () => {
     for (const id of LADDER_IDS) {
-      for (const r of buildRungs(id, 4, true)) {
+      for (const r of buildRungs(id)) {
         for (const ex of applyRx(SESSION, r.rx, LIB)) {
           expect(ex.sets, id).toBeGreaterThanOrEqual(1);
           if (ex.minReps != null) expect(ex.minReps, id).toBeGreaterThanOrEqual(1);
@@ -241,26 +232,59 @@ describe('buildRungs', () => {
     }
   });
 
-  it('every editable field of a ladder is a field its rungs actually set', () => {
-    // Si no, el planificador pintaría un stepper que no controla nada.
-    for (const id of LADDER_IDS) {
-      const rung = buildRungs(id, 1, false)[0];
-      for (const f of LADDER_FIELDS[id]) expect(rung.rx, `${id}.${f.key}`).toHaveProperty(f.key);
+  it('an unknown preset still yields the linear default instead of blowing up', () => {
+    expect(buildRungs(undefined)).toHaveLength(3);
+    expect(buildRungs(undefined)[0].rx.setsDelta).toBe(1);
+  });
+});
+
+describe('newRung', () => {
+  it('a work stage is born with an EMPTY rule — a literal copy of the base', () => {
+    // Es lo que hacia el viejo "Etapa nueva". Y por eso la pantalla tiene que
+    // guardarlo como `rx: null`: `{}` es truthy, y una etapa con `rx` deja de
+    // poder ser la base del plan para siempre.
+    const r = newRung('work');
+    expect(r.kind).toBe('work');
+    expect(isNoopRx(r.rx)).toBe(true);
+    expect(r.durationWeeks).toBeGreaterThan(0);
+  });
+
+  it('a deload stage is born holding the progression', () => {
+    const r = newRung('deload');
+    expect(r.rx.progressionHold).toBe('deload');
+    expect(r.durationWeeks).toBe(1);
+  });
+
+  it('hands back a fresh object every time', () => {
+    const a = newRung('deload');
+    a.rx.setsDelta = -3;
+    expect(newRung('deload').rx.setsDelta).toBe(-1);
+  });
+});
+
+describe('RX_FIELDS', () => {
+  it('covers every delta that applyRx knows how to apply', () => {
+    // Al reves que antes: ya no se comprueba que cada campo lo escriba algun
+    // peldano —desde que todos los campos son editables en todas las etapas
+    // (spec 14.2.4) eso es falso por diseno— sino que no falte ninguno.
+    expect(RX_FIELDS.map((f) => f.key).sort()).toEqual(['repsShift', 'restPct', 'setsDelta']);
+    for (const f of RX_FIELDS) {
+      expect(f.min, f.key).toBeLessThanOrEqual(0);
+      expect(f.max, f.key).toBeGreaterThan(0);
+      expect(f.step, f.key).toBeGreaterThan(0);
     }
   });
 
-  it('never asks for a label that does not exist', () => {
+  it('never asks for a label that does not exist, in either language', () => {
     // El descanso NO tiene variante por alcance: pedir `restPct_keys` pintaba
-    // la clave en crudo en la hoja de intensificación.
+    // la clave en crudo en la hoja de intensificacion.
     const ES = JSON.parse(readFileSync(new URL('../locales/es.json', import.meta.url), 'utf8'));
     const EN = JSON.parse(readFileSync(new URL('../locales/en.json', import.meta.url), 'utf8'));
     const seen = new Set();
-    for (const id of LADDER_IDS) {
-      for (const rung of buildRungs(id, 3, true)) {
-        const fields = rung.kind === 'deload' ? DELOAD_FIELDS : LADDER_FIELDS[id];
-        for (const f of fields) seen.add(fieldLabelKey(f, rung.rx.scope));
-      }
-    }
+    for (const f of RX_FIELDS) for (const scope of SCOPES) seen.add(fieldLabelKey(f, scope));
+    for (const scope of SCOPES) seen.add(`planner.scopes.${scope}`);
+    seen.add('planner.fields.scope');
+
     expect(seen.size).toBeGreaterThan(0);
     for (const key of seen) {
       const path = key.split('.');
@@ -269,11 +293,6 @@ describe('buildRungs', () => {
         expect(value, key).toBeTruthy();
       }
     }
-  });
-
-  it('survives a nonsense count', () => {
-    expect(buildRungs('linear', 0, false)).toEqual([]);
-    expect(buildRungs('linear', -1, true)).toHaveLength(1);   // solo la descarga
   });
 });
 

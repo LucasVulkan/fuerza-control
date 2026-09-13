@@ -6,16 +6,17 @@
  *   metricLabel: string                              unit shown in tooltip (e.g. "KG", "Reps")
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Animated } from 'react-native';
+import { View, ScrollView, StyleSheet, Animated } from 'react-native';
+import { Text } from '../ui/Text';
 import Svg, { G, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
-import { spacing, typography } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CHART_H      = 128;
-const Y_AXIS_W     = 32;
+const Y_AXIS_W     = 36;  // 36 y no 32: el eje subió de 8 a 11 (suelo de legibilidad)
 const PAD_TOP      = 12;
 const PAD_BOT      = 24;
 const C_PAD_L      = 6;
@@ -212,7 +213,7 @@ export default function MiniLineChart({ data, metricLabel }) {
                 {pts.map((p) => {
                   const anchor = p.i === 0 ? 'start' : p.i === pts.length - 1 ? 'end' : 'middle';
                   return (
-                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontSize={8} fill={th.colors.muted} textAnchor={anchor}>
+                    <SvgText key={p.i} x={p.x} y={CHART_H - 4} fontFamily="Inter_500Medium" fontSize={11} fill={th.colors.muted} textAnchor={anchor}>
                       {p.date}
                     </SvgText>
                   );
@@ -224,10 +225,10 @@ export default function MiniLineChart({ data, metricLabel }) {
                       width={TW} height={TH}
                       fill={th.colors.surface2} stroke={th.colors.border} strokeWidth={1} rx={4}
                     />
-                    <SvgText x={dateStartX} y={tooltipY + 13} fontSize={8} fill={th.colors.muted} textAnchor="start">
+                    <SvgText x={dateStartX} y={tooltipY + 13} fontFamily="Inter_500Medium" fontSize={11} fill={th.colors.muted} textAnchor="start">
                       {selected.date}
                     </SvgText>
-                    <SvgText x={valueStartX} y={tooltipY + 28} fontSize={11} fill={th.colors.accent} textAnchor="start">
+                    <SvgText x={valueStartX} y={tooltipY + 28} fontFamily="Inter_500Medium" fontSize={12} fill={th.colors.accent} textAnchor="start">
                       {`${fmtAxisVal(selected.value)}${metricLabel ? ` ${metricLabel}` : ''}`}
                     </SvgText>
                   </G>
@@ -246,14 +247,15 @@ export default function MiniLineChart({ data, metricLabel }) {
 const makeStyles = (th) => StyleSheet.create({
   row:  { flexDirection: 'row', alignItems: 'flex-start', paddingBottom: spacing.sm },
   yAxis: { width: Y_AXIS_W },
+  // Eje de gráfica: uno de los tres sitios que se quedan en el suelo de 11.
   yLabel: {
+    ...textStyles.micro,
     position:   'absolute',
     right:      4,
-    fontSize:   8,
     color:      th.colors.muted,
     textAlign:  'right',
     width:      Y_AXIS_W - 4,
-    lineHeight: 10,
+    lineHeight: 13,
   },
   area: {
     flex:      1,
@@ -265,5 +267,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     paddingLeft:     Y_AXIS_W,
   },
-  emptyText: { fontSize: typography.xs, color: th.colors.muted, textAlign: 'center' },
+  emptyText: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
 });

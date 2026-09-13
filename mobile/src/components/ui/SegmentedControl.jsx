@@ -5,7 +5,8 @@
  * de 2 líneas ("Etapas") — no hace falta para los usos actuales.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
@@ -27,7 +28,11 @@ export default function SegmentedControl({ options, value, onChange }) {
 
   const n = options.length;
   const segmentWidth = n > 0 ? (containerWidth - PAD * 2 - GAP * (n - 1)) / n : 0;
-  const activeIndex  = Math.max(0, options.findIndex((o) => o.id === value));
+  // −1 = NADA seleccionado, y es un estado legítimo: la hoja del planificador
+  // abre sin preset. Antes se clampaba a 0 y el resalte se plantaba sobre la
+  // primera opción, que dice justo lo contrario de lo que se quería decir.
+  const activeIndex  = options.findIndex((o) => o.id === value);
+  const hasSelection = activeIndex >= 0;
 
   const translateX  = useSharedValue(0);
   const opacity     = useSharedValue(0);      // hidden until first positioned (no stale-frame flash)
@@ -35,8 +40,16 @@ export default function SegmentedControl({ options, value, onChange }) {
 
   // First measurement → snap into place (no animation, no first-open slide).
   // Every later option change → ease-in-out slide to the new position.
+  // Sin selección el resalte se apaga y se queda donde estaba, así que la
+  // primera elección entra de golpe en vez de deslizar desde un sitio que el
+  // usuario no llegó a ver.
   useEffect(() => {
     if (containerWidth === 0) return;
+    if (!hasSelection) {
+      positioned.current = false;
+      opacity.value      = 0;
+      return;
+    }
     const target = offsetFor(activeIndex, containerWidth, n);
     if (!positioned.current) {
       positioned.current = true;
@@ -45,7 +58,7 @@ export default function SegmentedControl({ options, value, onChange }) {
     } else {
       translateX.value = withTiming(target, { duration: 200, easing: Easing.inOut(Easing.ease) });
     }
-  }, [activeIndex, containerWidth, n, translateX, opacity]);
+  }, [activeIndex, hasSelection, containerWidth, n, translateX, opacity]);
 
   const highlightStyle = useAnimatedStyle(() => ({
     opacity:   opacity.value,
@@ -108,8 +121,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm2, // space/sm2=8 (Group together, botón seleccionado)
     alignItems:      'center',
   },
+  // Un escalón por encima de la etiqueta: es texto que se pulsa y a 12 se leía
+  // como metadato.
   optionText: {
-    ...textStyles.cardType,
+    ...textStyles.bodyStrong,
     color: th.colors.text,
   },
   optionTextActive: {

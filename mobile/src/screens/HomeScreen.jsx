@@ -1,54 +1,39 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Alert,
-} from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, interpolateColor } from 'react-native-reanimated';
+import { useState, useMemo } from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Text } from '../components/ui/Text';
 import Svg, { Path } from 'react-native-svg';
+// Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
+// anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
+// del acordeón de `SessionCard`; ningún `Animated.Value` persiguiendo alturas
+// desde JS.
+import Reanimated, { LinearTransition, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, stageDaysAt } from '../utils/stageProgress';
+import { stageDaysAt } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import { MenuRow } from '../components/ui/MenuList';
-import { spacing, typography, textStyles, borders, withOpacity } from '../theme';
+import NoProgram from '../components/ui/NoProgram';
+import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
-import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
-import { LockIcon } from '../components/ui/EditorIcons';
-import StageSegBar from '../components/ui/StageSegBar';
-import { DocSheet } from '../components/ui/DocPoints';
+import { isStageLocked } from '../utils/stageLocks';
+import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import { getWeekStatuses } from '../utils/weekProgress';
+import { sessionPlan } from '../utils/sessionPlan';
+import { sessionStats } from '../utils/sessionStats';
+import { targetLabel, exerciseName } from '../utils/prescription';
+import { isExerciseDone } from '../utils/exerciseStatus';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
 // token propio (mismo caso que el #81a71e del banner, ver theme.js).
 const LIMA = '#b8ff00';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-/**
- * Formats a Drive backup timestamp into a short, precise relative string.
- * Uses sub-hour precision for recent backups.
- */
-function formatBackupTime(isoString) {
-  if (!isoString) return null;
-  const ms      = Date.now() - new Date(isoString).getTime();
-  const mins    = Math.floor(ms / 60000);
-  const hours   = Math.floor(ms / 3600000);
-  const days    = Math.floor(ms / 86400000);
-  if (mins  <  1) return 'ahora';
-  if (mins  < 60) return `${mins}min`;
-  if (hours < 24) return `${hours}h`;
-  if (days  <  2) return 'ayer';
-  if (days  <  7) return `${days}d`;
-  // Older than a week: show short date
-  const d = new Date(isoString);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
-}
 
 function daysSince(ts) {
   if (!ts) return null;
@@ -66,191 +51,19 @@ function relativeTime(ts, t) {
   return formatDate(ts);
 }
 
-/**
- * Global "week" counter = total sessions logged for this program / sessions-per-cycle.
- * "Semana" in this app = one complete rotation through the session templates.
- */
-function computeWeekNum(program) {
-  // `totalWeeksCompleted` sube en el programa cada vez que se cierra un ciclo
-  // completo, sea cual sea la etapa; cambiar de etapa no lo reinicia.
-  //
-  // Aquí había una segunda rama que contaba ciclos desde el workoutLog para
-  // programas SIN etapas, leyendo el espejo `program.days`. Todo programa tiene
-  // etapas, así que era inalcanzable.
-  return (program.totalWeeksCompleted ?? 0) + 1;
-}
-
-/**
- * How many DISTINCT sessions have actually been completed in the current cycle
- * (via `program.cycleCompletedIds` — which templates, not a position count),
- * and how many sessions are in one cycle.
- */
-function computeCycleProgress(program) {
-  const currentDays = stageDays(program);
-  const sessionsPerCycle = Math.max(1, currentDays.length);
-  const doneIds          = new Set(program.cycleCompletedIds ?? []);
-  const doneInCycle      = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
-  return { doneInCycle, sessionsPerCycle };
-}
-
-/**
- * Data for the stage card (null when there is nothing worth showing).
- *
- * `totalWeeks` is null when the stage has no cycle limit
- * (`durationWeeks: null`), and the caller must not try to count towards it.
- */
-function computeStageInfo(program, t) {
-  const stages = program.stages ?? [];
-  if (stages.length === 0) return null;
-  const stageIdx         = program.currentStageIndex ?? 0;
-  const stage            = stages[stageIdx];
-  if (!stage) return null;
-  const totalWeeks       = stage.durationWeeks ?? null;
-  // Una sola etapa y sin límite = programa sin periodizar. No hay nada que
-  // contar ni total para la tira de ciclos, así que el bloque no se pinta —
-  // que es lo que se veía antes de unificar el modelo, cuando un programa así
-  // simplemente no tenía etapas.
-  if (stages.length === 1 && totalWeeks == null) return null;
-  // A week is a closed rotation, not a session count — repeating a session must
-  // not move this. See `docs/specs/stage-locks.md` §3.
-  const cyclesDone       = program.stageWeeksCompleted ?? 0;
-  const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
-  // "Estoy en el ciclo N" y "he terminado los N" caen los dos en el mismo
-  // `weekInStage` por el clamp, y se pintan distinto: terminada, la tira va
-  // llena entera. Sin esto, cerrar una etapa en los ciclos ya hechos (al añadir
-  // la siguiente) dejaba el último segmento vacío y parecía faltar un ciclo.
-  const stageComplete    = totalWeeks != null && cyclesDone >= totalWeeks;
-  const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
-  return {
-    stageLabel:    defaultLabel,
-    stageName:     stage.name ?? defaultLabel,
-    weekInStage,
-    totalWeeks,
-    stageComplete,
-  };
-}
-
-/**
- * Determines the display status of each session slot, in fixed A→F order
- * (no reorder). Completion is tracked by WHICH templates were actually done
- * this cycle (`isDoneThisCycle`, from `cycleCompletedIds`), not by position —
- * completing sessions out of order used to mark the wrong card as done
- * (a positional counter assumed strict A→B→C… order).
- *
- *   'active'  — this is the session currently in progress (even if it was
- *               already done this cycle — repeating it shows it in-progress
- *               again until saved)
- *   'done'    — its templateId is already in cycleCompletedIds
- *   'next'    — the first NOT-done session in fixed order (the "hero"),
- *               always, regardless of what else might be active out of order
- *   'pending' — every other not-done session
- */
-function getSessionStatus(templateId, isHero, isDoneThisCycle, activeTemplateId) {
-  if (activeTemplateId && activeTemplateId === templateId) return 'active';
-  if (isDoneThisCycle) return 'done';
-  return isHero ? 'next' : 'pending';
-}
-
-// ── Banner (FormaFit) ────────────────────────────────────────────────────────
-//
-// Bloque accent sólido — el único hero en color invertido. Dos variantes que
-// comparten la fila superior (nombre de programa · nº de ciclo + puntos de
-// sesión) y se distinguen por lo que va debajo:
-//   · con etapas → barra segmentada de la etapa ACTUAL (1 segmento = 1 ciclo)
-//   · abierta    → nada; el banner termina en la fila superior, y esa altura
-//                  menor es lo que comunica que el programa no tiene techo.
-// Nunca se contradicen: el relleno del segmento en curso es la misma fracción
-// que marcan los puntos (ambos salen de doneInCycle/sessionsPerCycle).
-
-// La barra de etapa vive en `ui/StageSegBar` — la comparte con la tarjeta de
-// programa asignado de la ficha de cliente.
-
-// Puntos de ciclo: se rellenan (onAccent) por cada sesión hecha en el ciclo.
-function CycleDots({ done, total, styles }) {
-  return (
-    <View style={styles.bnDots}>
-      {Array.from({ length: total }, (_, i) => (
-        <View key={i} style={[styles.bnDot, i < done ? styles.bnDotDone : styles.bnDotIdle]} />
-      ))}
-    </View>
-  );
-}
-
-function Banner({ programName, trainerName, stageInfo, cicloNum, doneInCycle, sessionsPerCycle, onPress, onCycleInfo }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const cicloLabel = String(cicloNum).padStart(2, '0');
-  // "ETAPA 2 · VOLUMEN"; sin nombre propio la etapa se queda en "ETAPA 2".
-  const stageTitle = stageInfo && (stageInfo.stageName !== stageInfo.stageLabel
-    ? `${stageInfo.stageLabel} · ${stageInfo.stageName}`
-    : stageInfo.stageLabel);
-
-  return (
-    <TouchableOpacity
-      style={styles.banner}
-      activeOpacity={onPress ? 0.9 : 1}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <View style={styles.bnTop}>
-        <View style={styles.bnNameBlock}>
-          <Text style={styles.bnEyebrow}>{t('home.program')}</Text>
-          <Text style={styles.bnProgName} numberOfLines={1}>{programName}</Text>
-          {trainerName ? (
-            <Text style={styles.bnTrainer} numberOfLines={1}>
-              {t('home.bannerBy')} <Text style={styles.bnTrainerName}>{trainerName}</Text>
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={styles.bnCycle}>
-          {/* "Ciclo" es el concepto que más cuesta y este es el sitio donde
-              todo el mundo lo ve a diario: pulsarlo abre la ficha del apartado,
-              no el glosario entero. El disparador es la ETIQUETA y no el bloque
-              (misma regla que `InfoLabel` en Progreso), porque el banner entero
-              ya abre el selector de etapa. Sin ⓘ: sobre el lima el aro no se
-              lee, y la etiqueta ya invita a pulsarla. */}
-          <TouchableOpacity onPress={onCycleInfo} hitSlop={10} activeOpacity={0.7}>
-            <Text style={styles.bnEyebrow}>{t('home.cycle')}</Text>
-          </TouchableOpacity>
-          <Text style={styles.bnCicloNum}>{cicloLabel}</Text>
-          <CycleDots done={doneInCycle} total={sessionsPerCycle} styles={styles} />
-        </View>
-      </View>
-
-      {stageInfo && (
-        <View style={styles.bnStage}>
-          <View style={styles.bnStageLabels}>
-            <Text style={styles.bnStageName} numberOfLines={1}>{stageTitle}</Text>
-            <Text style={styles.bnStagePos}>
-              {stageInfo.totalWeeks == null
-                ? t('home.cycleProgressOpen', { current: stageInfo.weekInStage })
-                : t('home.cycleProgress', { current: stageInfo.weekInStage, total: stageInfo.totalWeeks })}
-            </Text>
-          </View>
-          {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a la
-              fracción de sesiones hechas, los futuros vacíos. Sin límite de
-              ciclos no hay total, así que no hay tira que dibujar. */}
-          {stageInfo.totalWeeks != null && (
-            <StageSegBar
-              ratios={Array.from({ length: stageInfo.totalWeeks }, (_, i) => (
-                stageInfo.stageComplete ? 1
-                  : i < stageInfo.weekInStage - 1 ? 1
-                  : i === stageInfo.weekInStage - 1 ? doneInCycle / sessionsPerCycle
-                  : 0
-              ))}
-              trackColor={withOpacity(th.colors.onAccent, 0.16)}
-              fillColor={th.colors.onAccent}
-            />
-          )}
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+/** "42 min" / "2 h" — cuánto lleva abierta la sesión en curso. */
+function elapsedShort(startedAt) {
+  if (!startedAt) return null;
+  const mins = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
+  return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h`;
 }
 
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
+//
+// Va arriba del todo y DESNUDA: sin caja, sin rótulo y sin contador. Se probó
+// con caja rotulada "ESTA SEMANA" y un contador de entrenos, y el usuario lo
+// rechazó — si algún día se quiere recuperar ese contador hay que dárselo de
+// otra forma, porque con la caja se fue.
 //
 // Los puntos reflejan días REALMENTE entrenados (workoutLog), no una plantilla.
 // Solo dos estados: entrenado = lima, cualquier otro = gris apagado. El día de
@@ -296,292 +109,202 @@ function WeekSelector({ workoutLog }) {
   );
 }
 
-// ── Session cards ──────────────────────────────────────────────────────────────
+// ── Sesiones ──────────────────────────────────────────────────────────────
+//
+// Una sola lista en orden de ciclo. Cada sesión es una fila plegable y la que
+// toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
+// botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
+// (docs/specs/home-sesiones-plegables.md §5).
+//
+// El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
+// elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
+// mirar una sesión sin empezarla.
 
-function sessionA11yLabel(t, template, statusLabel) {
-  return `${t('workout.sessionLabel', { label: template?.label ?? '' })}, ${template?.name ?? ''}, ${statusLabel}`;
+function HeroChevron({ size = 13, color = LIMA }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <Path d="M4 2l4.5 4L4 10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
 }
 
 /**
- * Sesion Card (Figma 104:74–78, coordenadas exactas verificadas vía get_metadata
- * sobre las instancias reales dentro de HomeView, no sobre el componente aislado):
- * card 363×81, texto a x=20/y=15 (space/xl · space/lg), zona de acción siempre con
- * el borde derecho en el mismo punto (343 de 363 = padding-right space/xl) sea cual
- * sea su contenido — check/chevron en caja 26×26, botón EMPEZAR/CONTINUAR 99×35.
+ * Los ejercicios de la sesión, tal cual se los va a encontrar dentro.
  *
- * Orden fijo A→F, sin reorder. 3 tratamientos: 'done' (check + fondo/borde tinte
- * accent), 'active'/'next' (botón, mismo look), 'pending' (chevron, futura). El
- * cruce hacia/desde 'done' hace crossfade de fondo/borde/icono; el resto de
- * cambios de estado no animan.
- *
- * La animación de completar sesión se dispara al VOLVER (no con el cambio de
- * status en sí) porque este stack no usa enableFreeze — Home sigue re-renderizando
- * detrás de Workout/Recap, así que el status ya llega en 'done' desde antes de que
- * el usuario vuelva. Un efecto aparte hace la mutación real del shared value
- * leyendo `isDone` desde un ref siempre actualizado.
- *
- * CLAVE (raíz del bug anterior): el crossfade NO debe arrancar en el foco en sí.
- * El evento de foco se dispara al INICIO de la transición nativa del stack; un
- * crossfade de 300ms lanzado ahí se consume entero mientras Home todavía entra
- * deslizándose, y el usuario lo ve "ya completado". `InteractionManager.
- * runAfterInteractions` NO espera a las transiciones de native-stack (son nativas,
- * no crean handles JS), así que disparaba casi al instante — por eso fallaba.
- * Aquí esperamos al `transitionEnd` real del stack padre (Home ya asentada y
- * visible) para arrancar; un setTimeout es la red de seguridad por si ese evento
- * no llegara en alguna versión de react-native-screens.
+ * Deliberadamente sosa —Inter en caja baja, sin filetes y sin lima— para que la
+ * cabecera siga siendo lo que canta (§5.4). Los bloques de acondicionamiento van
+ * detrás de los ejercicios, con su formato donde las series y sin la pastilla de
+ * color del editor, que aquí sería un cuarto acento.
  */
-function SessionCard({ template, lastSession, status, onPress, hasOverride, doneThisCycle = false }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const navigation = useNavigation();
+function ExerciseLines({ template, allExercises }) {
+  const { t, i18n } = useTranslation();
+  const styles    = useThemedStyles(makeStyles);
+  const exercises = template.exercises ?? [];
+  const blocks    = template.blocks ?? [];
 
-  const isDone = status === 'done';
-  // Repetir una sesión que ya contaba como hecha este ciclo la muestra como
-  // 'active', lo que TAPABA su estado real: al empezar otra sesión, esta volvía
-  // a "aparecer" completada de golpe y se leía como si la hubiéramos completado
-  // sola. Ahora el fondo de completada se mantiene durante la repetición (ya
-  // estaba hecha, y sigue estándolo) y solo cambia la acción: check ↔ Continuar.
-  const showDoneChrome = isDone || (status === 'active' && doneThisCycle);
-  // Última variante no-"done" — se congela al llegar a 'done' para que el
-  // botón/chevron que se desvanece en el crossfade no cambie a mitad de camino.
-  const [variant, setVariant] = useState(isDone ? 'next' : status);
-  if (!isDone && variant !== status) setVariant(status);
-  const isCta = variant === 'active' || variant === 'next';
-
-  // Dos drivers, porque ya no van siempre juntos: `chromeAnim` es el fondo/borde
-  // de completada y `actionAnim` el crossfade check ↔ botón.
-  const chromeAnim = useSharedValue(showDoneChrome ? 1 : 0);
-  const actionAnim = useSharedValue(isDone ? 1 : 0);
-
-  const [settleTick, setSettleTick] = useState(0);
-  const focusedBefore               = useRef(false);
-  const isFocusedRef                = useRef(false);
-  useFocusEffect(
-    useCallback(() => {
-      isFocusedRef.current = true;
-      if (!focusedBefore.current) {
-        focusedBefore.current = true;
-        return () => { isFocusedRef.current = false; };
-      }
-      // Arranca el crossfade solo cuando la transición del stack ha terminado y
-      // Home está asentada y visible — así el usuario ve la animación entera.
-      let fired = false;
-      const settle = () => { if (!fired) { fired = true; setSettleTick((n) => n + 1); } };
-      const unsub  = navigation.getParent()?.addListener('transitionEnd', settle);
-      // ponytail: red de seguridad — si transitionEnd no llega, anima igual.
-      // Sube el valor si algún device transiciona más lento que esto.
-      const timer  = setTimeout(settle, 500);
-      return () => { isFocusedRef.current = false; unsub?.(); clearTimeout(timer); };
-    }, [navigation]),
+  const line = (key, idx, name, right) => (
+    <View key={key} style={styles.exRow}>
+      <Text style={styles.exIdx}>{idx}</Text>
+      <Text style={styles.exName} numberOfLines={1}>{name}</Text>
+      <Text style={styles.exTarget}>{right}</Text>
+    </View>
   );
-  // Dispara con DOS entradas: el settle al volver a Home y cualquier cambio de
-  // `isDone` con Home ya a la vista (empezar otra sesión desde aquí desenmascara
-  // el 'done' de la que estaba en curso, sin que medie navegación alguna).
-  //
-  // Sin la segunda, ese caso no tenía focus al que engancharse y la tarjeta se
-  // quedaba a medias — fondo y botón del estado viejo, contenido del nuevo —
-  // hasta la siguiente vuelta a Home.
-  //
-  // El guard de foco es lo que preserva la intención original: un cambio que
-  // ocurre con Home en segundo plano (guardar la sesión) NO se anima ahí, se
-  // deja para el settle, y así el crossfade se ve entero al volver.
-  const mountedRef = useRef(false);
-  useEffect(() => {
-    if (!mountedRef.current) { mountedRef.current = true; return; } // ya arrancaron en su valor
-    if (!isFocusedRef.current) return;
-    const cfg = { duration: 300, easing: Easing.inOut(Easing.ease) };
-    chromeAnim.value = withTiming(showDoneChrome ? 1 : 0, cfg);
-    actionAnim.value = withTiming(isDone ? 1 : 0, cfg);
-  }, [settleTick, isDone, showDoneChrome, chromeAnim, actionAnim]);
-
-  const cardAnimStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(chromeAnim.value, [0, 1], [th.colors.surface, th.tint.accent10]),
-    borderColor:     interpolateColor(chromeAnim.value, [0, 1], ['transparent', th.tint.accent50]),
-  }));
-  // El elemento "actual" (según el status en vivo) se desvanece hacia dentro;
-  // el "saliente" (congelado en `variant`) se desvanece hacia fuera — comparten
-  // el mismo borde derecho porque sesRightOverlay se ancla con right:0.
-  const currentAnimStyle  = useAnimatedStyle(() => ({ opacity: isDone ? actionAnim.value : 1 - actionAnim.value }));
-  const outgoingAnimStyle = useAnimatedStyle(() => ({ opacity: isDone ? 1 - actionAnim.value : actionAnim.value }));
-
-  const rel = relativeTime(lastSession?.timestamp, t);
-  // El prefijo "Completada" solo aplica a hoy/ayer — a partir de "hace N días"
-  // el texto va solo (pedido explícito, aunque el fragmento de tiempo siga en accent).
-  const isRecent = [0, 1].includes(daysSince(lastSession?.timestamp));
-  const statusLabel = isDone ? t('home.sessionDone') : isCta
-    ? (variant === 'active' ? t('home.sessionActive') : t('home.sessionNext'))
-    : t('home.sessionPending');
-
-  const actionContent = (kind) => {
-    if (kind === 'done') {
-      return <View style={styles.sesActionBox}><CheckIcon size={24} color={LIMA} /></View>;
-    }
-    if (kind === 'cta') {
-      return (
-        <View style={styles.sesBtn}>
-          <Text style={styles.sesBtnText}>
-            {variant === 'active' ? t('home.btnContinue') : t('home.btnStart')}
-          </Text>
-          <FutureChevronIcon size={11} color={th.colors.onAccent} />
-        </View>
-      );
-    }
-    return <View style={styles.sesActionBox}><FutureChevronIcon size={18} /></View>;
-  };
-
-  const currentKind  = isDone ? 'done' : (isCta ? 'cta' : 'pending');
-  const outgoingKind = isDone ? (isCta ? 'cta' : 'pending') : 'done';
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel={sessionA11yLabel(t, template, statusLabel)}
-    >
-      <Animated.View style={[styles.sesCard, cardAnimStyle]}>
-        <View style={styles.sesInfo}>
-          <View style={styles.sesTagRow}>
-            <Text style={styles.sesTag}>
-              {t('workout.sessionLabel', { label: template?.label ?? '' }).toUpperCase()}
-            </Text>
-            {hasOverride && (
-              <View style={styles.adaptedChip}><Text style={styles.adaptedChipText}>{t('home.adapted')}</Text></View>
-            )}
-          </View>
-          {/* título + subtítulo van pegados, gap 0 en Figma — el gap.sm entre el
-              tag y este bloque vive en sesInfo, no aquí dentro */}
-          <View>
-            <Text style={styles.sesTitle} numberOfLines={1}>{template?.name ?? ''}</Text>
-            <Text style={styles.sesSubtitle} numberOfLines={1}>
-              {rel ? (
-                isRecent ? (
-                  <>
-                    {`${t('home.sessionDone')} `}
-                    <Text style={{ color: th.colors.accent }}>{rel.toLowerCase()}</Text>
-                  </>
-                ) : (
-                  <Text style={{ color: th.colors.accent }}>{rel}</Text>
-                )
-              ) : t('home.firstTime')}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.sesRight}>
-          <Animated.View style={currentAnimStyle}>{actionContent(currentKind)}</Animated.View>
-          <Animated.View style={[styles.sesRightOverlay, outgoingAnimStyle]} pointerEvents="none">
-            {actionContent(outgoingKind)}
-          </Animated.View>
-        </View>
-      </Animated.View>
-    </TouchableOpacity>
+    <>
+      {exercises.map((ex, i) => {
+        const def = allExercises[ex.exerciseId];
+        return line(
+          `${ex.exerciseId}-${i}`,
+          i + 1,
+          exerciseName(def, i18n.language, ex.exerciseId),
+          targetLabel(def, ex, t, { compact: true }),
+        );
+      })}
+      {blocks.map((block, i) => line(
+        `block-${i}`,
+        exercises.length + i + 1,
+        block.name ?? t(`blocks.formats.${block.format}`),
+        t(`blocks.formats.${block.format}`).toUpperCase(),
+      ))}
+    </>
   );
 }
 
-// ── Hojas del programa (archivar / elegir etapa) ───────────────────────────────
-//
-// Las dos eran `Modal` propios con su backdrop, su título y su "Cancelar".
-// Pasan a `DragSheet` + las filas de `ui/MenuList`, que es lo que manda §9 de
-// docs/UI-MIGRATION.md: un solo bottom-sheet en toda la app y un solo tipo de
-// fila. `background` en `bg` porque las filas van en `surface` y sobre la hoja
-// (también `surface`) se fundirían. La salida es la propia cabecera de la hoja,
-// así que no hay botón de cancelar.
-
-function ArchiveSheet({ programName, onConfirm, onClose }) {
+/**
+ * Una sesión cualquiera: 60 px cerrada, y al abrirse los ejercicios y SU botón
+ * —en contorno, no en relleno—. Que el botón solo exista abierta es lo que dice
+ * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
+ */
+function SessionRow({
+  marker, name, meta, done, adapted, open,
+  cta, onToggle, onStart, a11yLabel, children,
+}) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <DragSheet visible onClose={onClose} title={t('home.archiveModal.title')}>
-      <Text style={styles.sheetIntro}>
-        <Text style={styles.sheetIntroName}>{programName}</Text>
-        {'\n'}{t('home.archiveModal.desc')}
-      </Text>
-      <View style={styles.sheetGroup}>
-        <MenuRow
-          isFirst
-          label={t('home.archiveModal.keepHistory')}
-          sub={t('home.archiveModal.keepHistoryDesc')}
-          subLines={0}
-          minHeight={62}
-          onPress={() => onConfirm(false)}
-        />
-        <MenuRow
-          isLast
-          label={t('home.archiveModal.clearHistory')}
-          labelColor={th.tint.red50}
-          sub={t('home.archiveModal.clearHistoryDesc')}
-          subLines={0}
-          minHeight={62}
-          onPress={() => onConfirm(true)}
-        />
-      </View>
-    </DragSheet>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.sesCard}>
+      <TouchableOpacity
+        style={styles.sesHead}
+        onPress={onToggle}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
+      >
+        <Text style={[styles.sesGlyph, done && styles.sesGlyphDone]}>{marker}</Text>
+        <Text style={[styles.sesName, done && styles.sesNameDone]} numberOfLines={1}>{name}</Text>
+        {!!adapted && <Text style={styles.rowAdapted}>{t('home.adapted')}</Text>}
+        <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
+        {done && <CheckIcon size={14} color={LIMA} />}
+      </TouchableOpacity>
+
+      {open && (
+        <Reanimated.View
+          entering={FadeIn.duration(180)}
+          exiting={collapseOut}
+          style={styles.sesBody}
+        >
+          <View style={styles.sesBodyRule} />
+          {children}
+          <TouchableOpacity
+            style={styles.sesBtn}
+            onPress={onStart}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={cta}
+          >
+            <Text style={styles.sesBtnText}>{cta}</Text>
+            <HeroChevron color={th.colors.accent} />
+          </TouchableOpacity>
+        </Reanimated.View>
+      )}
+    </Reanimated.View>
   );
 }
 
-function StagePickerSheet({ program, onSelect, onClose }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const clientSync = useStore((s) => s.clientSync);
-  const currentIdx = program.currentStageIndex ?? 0;
-  return (
-    <DragSheet visible onClose={onClose} title={t('home.selectStage')}>
-      <View style={styles.sheetGroup}>
-        {program.stages.map((stage, idx) => {
-          const isActive = idx === currentIdx;
-          const locked   = isStageLocked(program, idx, clientSync);
-          return (
-            <MenuRow
-              key={stage.id ?? idx}
-              isFirst={idx === 0}
-              isLast={idx === program.stages.length - 1}
-              label={stage.name}
-              labelColor={isActive ? th.colors.accent : undefined}
-              sub={locked
-                ? t('home.stageLockedShort')
-                : stage.durationWeeks == null
-                  ? t('home.stageMetaOpen', { sessions: stage.days?.length ?? 0 })
-                  : t('home.stageMeta',     { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
-              minHeight={62}
-              disabled={locked}
-              onPress={() => onSelect(idx)}
-              // La etapa en curso lleva el mismo check lima que las frecuencias
-              // de Drive. El hueco vacío de las demás mata el chevron de
-              // `MenuRow`: aquí se elige, no se navega.
-              control={isActive
-                ? <CheckIcon size={16} color={th.colors.accent} />
-                : locked
-                  ? <LockIcon size={13} color={th.colors.muted} />
-                  : <View style={styles.rowControlSpacer} />}
-            />
-          );
-        })}
-      </View>
-    </DragSheet>
-  );
-}
-
-// ── ProgramBtn ─────────────────────────────────────────────────────────────────
-
-function ProgramBtn({ label, onPress, icon }) {
+/**
+ * La que toca hoy: la misma fila en lima y a otra escala. Es la ÚNICA pieza en
+ * color de la pantalla, así que dentro el acento pasa a ser el negro —letra,
+ * raya y series— y el botón se invierte (§1.1).
+ *
+ * El botón vive en el pie y no dentro del desplegable: abrir la tarjeta crece
+ * por dentro y no lo mueve de sitio.
+ */
+function TodayCard({
+  marker, flag, name, meta, open, cta, onToggle, onStart, a11yLabel, children,
+}) {
+  const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
   return (
-    <TouchableOpacity
-      style={styles.programBtn}
-      onPress={onPress}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-    >
-      {icon}
-      <Text style={styles.programBtnText}>{label}</Text>
-    </TouchableOpacity>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.today}>
+      <TouchableOpacity
+        style={styles.todayHead}
+        onPress={onToggle}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
+      >
+        {/* La letra se empareja con el NOMBRE, no con el bloque entero: son la
+            misma cosa dicha de dos maneras. Por eso el rótulo sale fuera y se
+            queda a ancho completo —alineado con la raya, la meta y el botón— y
+            la letra y el nombre forman su propia línea, apoyados en el mismo
+            suelo. Sin un solo margen a ojo: se recoloca solo si el nombre rompe
+            a dos líneas. Ver §5.2.1. */}
+        <Text style={styles.todayFlag} numberOfLines={1}>{flag}</Text>
+        <View style={styles.todayHeadRow}>
+          {!!marker && <Text style={styles.todayGlyph}>{marker}</Text>}
+          <Text style={styles.todayName} numberOfLines={2}>{name}</Text>
+        </View>
+        <View style={styles.todayRule} />
+        <Text style={styles.todayMeta} numberOfLines={1}>{meta}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <Reanimated.View
+          entering={FadeIn.duration(180)}
+          exiting={collapseOut}
+          style={styles.todayBox}
+        >
+          {children}
+        </Reanimated.View>
+      )}
+
+      {/* Con `layout` propio: el pie es el único hermano que se mueve al
+          plegar, y sin él Reanimated le quita el hueco de golpe — el botón
+          saltaba a su sitio mientras la tarjeta seguía encogiendo. */}
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.todayFoot}>
+        <TouchableOpacity
+          style={styles.todayBtn}
+          onPress={onStart}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={cta}
+        >
+          <Text style={styles.todayBtnText}>{cta}</Text>
+          <HeroChevron />
+        </TouchableOpacity>
+      </Reanimated.View>
+    </Reanimated.View>
   );
 }
 
-// ── Status card icons ─────────────────────────────────────────────────────────
+/**
+ * El texto del botón dice A DÓNDE LLEVA, con el nombre de la sesión dentro.
+ * Sin letra (una plantilla sin `label`) cae a la forma corta: la interfaz no
+ * promete lo que no tiene.
+ */
+function startCta(t, label, { active, done }) {
+  if (active) return label ? t('home.btnContinueSession', { label }) : t('home.btnContinue');
+  if (done)   return label ? t('home.btnRepeatSession',   { label }) : t('home.btnRepeat');
+  return label ? t('home.btnStartSession', { label }) : t('home.btnStart');
+}
+
+// ── Iconos ────────────────────────────────────────────────────────────────────
 
 function CheckIcon({ size = 16, color }) {
   return (
@@ -591,25 +314,17 @@ function CheckIcon({ size = 16, color }) {
   );
 }
 
-// Flecha rellena de sesión futura (Figma, asset Rectangle57) — forma sólida,
-// gris literal #d9d9d9 sin token.
-function FutureChevronIcon({ size = 18, color = '#d9d9d9' }) {
-  return (
-    <Svg width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none">
-      <Path d="M0 0L5 0L12 10L5 20L0 20L7 10L0 0Z" fill={color} />
-    </Svg>
-  );
-}
-
 // ── Section header ──────────────────────────────────────────────────────────────
-// Las 3 etiquetas (SESIONES/PROGRAMA/CONEXIONES) comparten el mismo estilo,
-// exacto a Figma (text/spacing-tag, mutedLight).
+// SESIONES lleva a la derecha el contador del ciclo, que sale entero de
+// `sessionPlan`: la pantalla no compone la frase, solo decide si hay hueco para
+// ella (sin ciclo que contar, el subtítulo viene a null y no se pinta nada).
 
-function SectionHeader({ label }) {
+function SectionHeader({ label, count }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.secHeader}>
       <Text style={styles.secHeaderLabel}>{label}</Text>
+      {!!count && <Text style={styles.secHeaderCount}>{count}</Text>}
     </View>
   );
 }
@@ -620,12 +335,13 @@ export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t }      = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles     = useThemedStyles(makeStyles);
 
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const [stagePicker, setStagePicker] = useState(false);
-  const [cycleDoc,    setCycleDoc]    = useState(false);
+  const [freeSheet,   setFreeSheet]   = useState(false);
+  const [freeTpls,    setFreeTpls]    = useState(false);
+  // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
+  // recuerda al volver — es una preferencia de un segundo, no un ajuste.
+  const [openId,      setOpenId]      = useState(null);
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -639,38 +355,63 @@ export default function HomeScreen() {
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
   const startFreeSession     = useStore((s) => s.startFreeSession);
-  const navigate             = useStore((s) => s.navigate);
+  const freeSessionPresets   = useStore((s) => s.freeSessionPresets);
+  const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
   const clientSync           = useStore((s) => s.clientSync);
-  const archiveProgram       = useStore((s) => s.archiveProgram);
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
-  const setCurrentStage      = useStore((s) => s.setCurrentStage);
-  const driveBackup          = useStore((s) => s.driveBackup);
+  const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
+  const customExercises      = useStore((s) => s.customExercises);
 
-  function handleArchiveConfirm(clearHistory) {
-    if (activeProgram) archiveProgram(activeProgram.id, clearHistory);
-    setArchiveOpen(false);
-  }
+  const allExercises = useMemo(
+    () => ({ ...exerciseLibrary, ...customExercises }),
+    [exerciseLibrary, customExercises],
+  );
 
-  // ── Status cards data ────────────────────────────────────────────────────────
-  const driveConnected  = driveBackup.enabled && !driveBackup.needsReconnect;
-  const driveWarn       = driveBackup.enabled && driveBackup.needsReconnect;
-  const driveIconColor  = driveWarn ? th.colors.orange : driveConnected ? th.colors.green : th.colors.muted;
-  const driveSub        = driveWarn
-    ? t('home.reconnect')
-    : driveConnected
-      ? (driveBackup.lastBackup ? formatBackupTime(driveBackup.lastBackup) : t('home.connected'))
-      : t('home.notConnected');
+  // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
+  const confirmDiscardActive = (onConfirm) => {
+    Alert.alert(
+      t('workout.discardConfirm'),
+      undefined,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
+      ],
+    );
+  };
 
-  const trainerOk        = !!clientSync.slotId && !clientSync.syncErrorAt && !clientSync.pendingUpload;
-  const trainerWarn      = !!clientSync.slotId && (!!clientSync.syncErrorAt || clientSync.pendingUpload);
-  const trainerIconColor = trainerWarn ? th.colors.orange : trainerOk ? th.colors.blue : th.colors.muted;
-  const trainerTitle     = (trainerOk || trainerWarn)
-    ? (clientSync.trainerName ?? t('home.trainer'))
-    : t('home.trainer');
-  const trainerSub       = trainerWarn
-    ? t('home.pendingSync')
-    : trainerOk ? t('home.connected') : t('home.notConnected');
+  const startFree = (preset) => {
+    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession(preset)); return; }
+    startFreeSession(preset);
+  };
+
+  // La hoja de "nueva / desde plantilla" SOLO existe cuando hay plantillas: sin
+  // ninguna, el botón va directo a la sesión en blanco como siempre. Misma regla
+  // que la fila de presets del editor de sesión, y la del hero (§5.3) en otra
+  // pieza — la interfaz no promete lo que no tiene.
+  const handleFreePress = () => {
+    if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
+    if ((freeSessionPresets ?? []).length > 0) { setFreeSheet(true); return; }
+    startFree(null);
+  };
+
+  const freePresetMeta = (preset) => [
+    t('freeSession.templateExercises', { count: preset.exercises?.length ?? 0 }),
+    (preset.blocks?.length ?? 0) > 0
+      ? t('freeSession.templateBlocks', { count: preset.blocks.length })
+      : null,
+  ].filter(Boolean).join(' · ');
+
+  const confirmDeleteFreePreset = (preset) => {
+    Alert.alert(
+      t('freeSession.deleteTemplate'),
+      t('freeSession.deleteTemplateConfirm', { name: preset.name ?? t('freeSession.templateUnnamed') }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('freeSession.deleteTemplate'), style: 'destructive', onPress: () => deleteFreePreset(preset.presetId) },
+      ],
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -681,6 +422,8 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <WeekSelector workoutLog={workoutLog} />
+
         {activeProgram ? (() => {
           const hasStages   = (activeProgram.stages?.length ?? 0) > 0;
           const stageIdx    = activeProgram.currentStageIndex ?? 0;
@@ -688,178 +431,195 @@ export default function HomeScreen() {
           const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
           const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
-          // Computed values for progress header
-          const stageInfo                  = computeStageInfo(activeProgram, t);
-          const weekNum                    = computeWeekNum(activeProgram);
-          const { doneInCycle, sessionsPerCycle } = computeCycleProgress(activeProgram);
-
-          // Current session templates in cycle order (handles both flat and staged programs)
+          // Current session templates in cycle order.
           const currentDays = stageDaysAt(activeProgram, stageIdx);
+          const days = currentDays
+            .map(({ sessionTemplateId }) => ({
+              templateId:  sessionTemplateId,
+              template:    getEffectiveTemplate(sessionTemplateId),
+              lastSession: getLastSession(sessionTemplateId),
+            }))
+            .filter((d) => d.template);
+          const byId = new Map(days.map((d) => [d.templateId, d]));
 
-          // Trainer name — from the first session template that has one ("by …").
-          const programTrainerName = currentDays
-            .map((d) => getEffectiveTemplate(d.sessionTemplateId)?.trainerName)
-            .find(Boolean) ?? null;
+          // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
+          const plan = sessionPlan({
+            days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
+            cycleCompletedIds: activeProgram.cycleCompletedIds,
+            activeTemplateId:  activeSession.templateId,
+            t,
+          });
+          // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
+          // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
+          // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
+          // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
+          const requestStart = (templateId) => {
+            if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
+            if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
+            startSession(templateId);
+          };
 
-          // Starting anything (a session card or the free session) while one is
-          // already in progress used to silently discard it — now it warns first.
-          const confirmDiscardActive = (onConfirm) => {
-            Alert.alert(
-              t('workout.discardConfirm'),
-              undefined,
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
-              ],
-            );
+          // La meta de la tarjeta de hoy: los dos primeros datos salen de
+          // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
+          // vez. Con la sesión a medias cambia entera — cuánto llevas y desde
+          // cuándo, que es lo único que importa para volver a ella.
+          const todayMeta = (day) => {
+            if (activeSession.templateId === day.templateId) {
+              const exs  = day.template.exercises ?? [];
+              const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
+              return t('home.heroMetaActive', {
+                done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '',
+              });
+            }
+            const stats = sessionStats(day.template, allExercises);
+            const rel   = relativeTime(day.lastSession?.timestamp, t);
+            return [
+              t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
+              rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
+            ].join(' · ');
           };
 
           return (
             <>
-              {/* Banner: programa · etapa · progreso · semana/sesiones.
-                  Mantener pulsado abre el selector de etapa (sustituye al ··· ). */}
-              <Banner
-                programName={activeProgram.name}
-                trainerName={programTrainerName}
-                stageInfo={stageInfo}
-                cicloNum={weekNum}
-                doneInCycle={doneInCycle}
-                sessionsPerCycle={sessionsPerCycle}
-                onPress={hasStages ? () => setStagePicker(true) : undefined}
-                onCycleInfo={() => setCycleDoc(true)}
-              />
+              <View>
+                <SectionHeader label={t('home.sessions').toUpperCase()} count={plan.subtitle} />
 
-              <WeekSelector workoutLog={workoutLog} />
+                {/* Etapa terminada: el único "algo terminó" que persiste en la
+                    Home. Va ENCIMA del hero y no lo sustituye — la sesión que
+                    toca sigue siendo la que toca. Con la siguiente etapa
+                    bloqueada el cliente no se queda sin nada que hacer: sigue en
+                    la actual (spec stage-locks §0.1), así que el banner solo
+                    cambia de mensaje. */}
+                {activeProgram.stageAdvancePending && nextStage && (
+                  <View style={styles.stageBanner}>
+                    {nextStageLocked ? (
+                      <>
+                        <Text style={styles.stageBannerLabel}>{t('home.stageLockedTitle').toUpperCase()}</Text>
+                        <Text style={styles.stageBannerText}>
+                          {t('home.stageLockedText', {
+                            current: currentStage?.name ?? t('home.currentStageDefault'),
+                            next: nextStage.name,
+                          })}
+                        </Text>
+                        <Text style={styles.stageBannerHint}>{t('home.stageLockedHint')}</Text>
+                        <View style={styles.stageBannerBtns}>
+                          <TouchableOpacity
+                            style={styles.stageBannerBtn}
+                            onPress={() => dismissStageAdvance(activeProgram.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.stageBannerBtnText}>{t('home.understood')}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
+                        <Text style={styles.stageBannerText}>
+                          {t('home.stageAdvanceText', {
+                            current: currentStage?.name ?? t('home.currentStageDefault'),
+                            next: nextStage.name,
+                          })}
+                        </Text>
+                        <View style={styles.stageBannerBtns}>
+                          <TouchableOpacity
+                            style={[styles.stageBannerBtn, { flex: 2 }]}
+                            onPress={() => advanceStage(activeProgram.id)}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={styles.stageBannerBtnText}>
+                              {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.stageBannerBtn, styles.stageBannerBtnQuiet]}
+                            onPress={() => dismissStageAdvance(activeProgram.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.stageBannerBtnText, styles.stageBannerBtnTextQuiet]}>
+                              {t('home.close').toUpperCase()}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
 
-              {/* Stage advance banner. Con la siguiente etapa bloqueada el
-                  cliente no se queda sin nada que hacer: sigue en la actual
-                  (decisión de producto, spec §0.1), así que el banner solo
-                  cambia de mensaje — no aparece ningún botón que no funcione. */}
-              {activeProgram.stageAdvancePending && nextStage && (
-                <View style={styles.stageBanner}>
-                  {nextStageLocked ? (
-                    <>
-                      <Text style={styles.stageBannerLabel}>{t('home.stageLockedTitle').toUpperCase()}</Text>
-                      <Text style={styles.stageBannerText}>
-                        {t('home.stageLockedText', {
-                          current: currentStage?.name ?? t('home.currentStageDefault'),
-                          next: nextStage.name,
-                        })}
-                      </Text>
-                      <Text style={styles.stageBannerHint}>{t('home.stageLockedHint')}</Text>
-                      <View style={styles.stageBannerBtns}>
-                        <TouchableOpacity
-                          style={styles.stageBannerContinueBtn}
-                          onPress={() => dismissStageAdvance(activeProgram.id)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.stageBannerContinueBtnText}>{t('home.understood')}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
-                      <Text style={styles.stageBannerText}>
-                        {t('home.stageAdvanceText', {
-                          current: currentStage?.name ?? t('home.currentStageDefault'),
-                          next: nextStage.name,
-                        })}
-                      </Text>
-                      <View style={styles.stageBannerBtns}>
-                        <TouchableOpacity
-                          style={styles.stageBannerAdvanceBtn}
-                          onPress={() => advanceStage(activeProgram.id)}
-                          activeOpacity={0.85}
-                        >
-                          <Text style={styles.stageBannerAdvanceBtnText}>
-                            {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.stageBannerContinueBtn}
-                          onPress={() => dismissStageAdvance(activeProgram.id)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.stageBannerContinueBtnText}>{t('home.close').toUpperCase()}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
-                </View>
-              )}
-
-              {/* ── SESIONES ── orden fijo A→F, sin reorder (ver SessionCard) */}
-              <View style={styles.section}>
-                <SectionHeader label={t('home.sessions').toUpperCase()} />
-                {(() => {
-                  const doneIds  = new Set(activeProgram.cycleCompletedIds ?? []);
-                  const rawDays  = currentDays
-                    .map(({ sessionTemplateId }) => ({
-                      templateId:  sessionTemplateId,
-                      template:    getEffectiveTemplate(sessionTemplateId),
-                      lastSession: getLastSession(sessionTemplateId),
-                      isDone:      doneIds.has(sessionTemplateId),
-                    }))
-                    .filter((d) => d.template);
-                  // La "hero" es siempre la primera sesión SIN completar en orden
-                  // fijo, sin importar qué otra esté activa fuera de orden.
-                  const heroIdx = rawDays.findIndex((d) => !d.isDone);
-                  const days = rawDays.map((d, i) => ({
-                    ...d,
-                    status: getSessionStatus(d.templateId, i === heroIdx, d.isDone, activeSession?.templateId),
-                  }));
-
-                  // Starting a session out of rotation is easy to do by accident —
-                  // confirm before starting anything that isn't the "next" slot.
-                  const confirmOutOfOrder = (d) => {
-                    Alert.alert(
-                      t('home.startOutOfOrderTitle', {
-                        label: t('workout.sessionLabel', { label: d.template.label ?? '' }),
-                      }),
-                      t('home.startOutOfOrderDesc'),
-                      [
-                        { text: t('common.cancel'), style: 'cancel' },
-                        { text: t('home.btnStart'), onPress: () => startSession(d.templateId) },
-                      ],
+                {/* Todas las sesiones, en orden de ciclo: la que toca es una
+                    más, en su hueco y a otra escala. NO es la lista agrupada de
+                    Progreso: cada sesión es una tarjeta suelta con su radio
+                    entero, porque cualquiera de ellas puede crecer. */}
+                <View style={styles.group}>
+                  {plan.rows.map((row) => {
+                    const day = byId.get(row.templateId);
+                    if (!day) return null;
+                    const open   = openId === row.templateId;
+                    const active = activeSession.templateId === row.templateId;
+                    const name   = day.template.name ?? '';
+                    const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
+                    const toggle = () => setOpenId(open ? null : row.templateId);
+                    const start  = () => requestStart(row.templateId);
+                    const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
+                    const lines  = (
+                      <ExerciseLines template={day.template} allExercises={allExercises} />
                     );
-                  };
 
-                  const requestStart = (d) => {
-                    if (d.status === 'active') { navigation.navigate('Workout'); return; }
-                    if (activeSession.templateId && activeSession.templateId !== d.templateId) {
-                      confirmDiscardActive(() => startSession(d.templateId));
-                      return;
+                    if (row.isHero) {
+                      return (
+                        <TodayCard
+                          key={row.templateId}
+                          marker={row.marker}
+                          flag={plan.heroLabel}
+                          name={name}
+                          meta={todayMeta(day)}
+                          open={open}
+                          cta={cta}
+                          onToggle={toggle}
+                          onStart={start}
+                          a11yLabel={`${plan.heroLabel}, ${a11y}`}
+                        >
+                          {lines}
+                        </TodayCard>
+                      );
                     }
-                    if (d.status !== 'next') { confirmOutOfOrder(d); return; }
-                    startSession(d.templateId);
-                  };
 
-                  return (
-                    <View style={styles.sesList}>
-                      {days.map((d) => (
-                        <SessionCard
-                          key={d.templateId}
-                          template={d.template}
-                          lastSession={d.lastSession}
-                          status={d.status}
-                          doneThisCycle={d.isDone}
-                          hasOverride={!!clientSync.pendingOverrides?.[d.templateId]}
-                          onPress={() => requestStart(d)}
-                        />
-                      ))}
-                    </View>
-                  );
-                })()}
+                    const stats = sessionStats(day.template, allExercises);
+                    const rel   = relativeTime(day.lastSession?.timestamp, t);
+                    return (
+                      <SessionRow
+                        key={row.templateId}
+                        marker={row.marker}
+                        name={name}
+                        // Hecha: cuándo fue. Pendiente: cuánto dura. Cuántos
+                        // ejercicios tiene está un toque más abajo, con los
+                        // ejercicios de verdad.
+                        meta={row.isDone && rel
+                          ? rel.toLowerCase()
+                          : t('home.rowMinutes', { minutes: stats.minutes })}
+                        done={row.isDone}
+                        // "Adaptada" es texto, no una pastilla: menos ruido, y el
+                        // azul sigue significando entrenador.
+                        adapted={!!clientSync.pendingOverrides?.[row.templateId]}
+                        open={open}
+                        cta={cta}
+                        onToggle={toggle}
+                        onStart={start}
+                        a11yLabel={a11y}
+                      >
+                        {lines}
+                      </SessionRow>
+                    );
+                  })}
+                </View>
 
-                {/* Sesión libre */}
+                {/* Sesión libre. Con `layout` porque al plegar una sesión sube
+                    o baja: sin él daba el salto de golpe mientras la tarjeta
+                    seguía animando. Lo mismo la tarjeta de programa. */}
+                <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
                 <TouchableOpacity
                   style={styles.freeSessionBtn}
-                  onPress={() => {
-                    if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
-                    if (activeSession.templateId) { confirmDiscardActive(startFreeSession); return; }
-                    startFreeSession();
-                  }}
+                  onPress={handleFreePress}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                 >
@@ -869,142 +629,70 @@ export default function HomeScreen() {
                       : t('freeSession.btn')}
                   </Text>
                 </TouchableOpacity>
+                </Reanimated.View>
               </View>
 
-              {/* ── PROGRAMA ── */}
-              <View style={styles.section}>
-                <SectionHeader label={t('home.program').toUpperCase()} />
-                <View style={styles.programActions}>
-                  {/* El programa del entrenador no se edita aquí: la edición no
-                      sube por el canal (solo suben historial y contadores) y la
-                      siguiente actualización la reemplaza entera, así que el
-                      botón prometía algo que no pasaba — y de paso el historial
-                      que ve el entrenador quedaba etiquetado con SUS plantillas
-                      mientras el cliente entrenaba otras. Se esconde, como el
-                      candado de etapas: misma regla, mismo predicado.
-                      "Ver programa" sigue ahí, y con flex:1 ocupa el hueco. */}
-                  {!isTrainerProgram(activeProgram, clientSync) && (
-                    <ProgramBtn
-                      label={t('home.edit')}
-                      onPress={() => navigate('programEditor')}
-                    />
-                  )}
-                  <ProgramBtn
-                    label={t('home.viewProgram')}
-                    onPress={() => navigate('programPrint')}
-                  />
-                  <TouchableOpacity
-                    style={styles.programBtnMore}
-                    onPress={() => setArchiveOpen(true)}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('home.moreOptions')}
-                  >
-                    <Text style={styles.programBtnMoreText}>···</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
             </>
           );
         })() : (
-          /* ── Empty state ── */
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🏋️</Text>
-            <Text style={styles.emptyText}>
-              {t('home.noActiveProgram')}
-            </Text>
-            <TouchableOpacity
-              style={styles.newProgramBtn}
-              onPress={() => {
-                if (clientSync?.slotId) {
-                  Alert.alert(
-                    '¿Crear nuevo programa?',
-                    'Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado.',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Continuar', style: 'destructive', onPress: () => navigate('onboarding') },
-                    ],
-                  );
-                } else {
-                  navigate('onboarding');
-                }
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.newProgramBtnText}>{t('home.newProgram')}</Text>
-            </TouchableOpacity>
-          </View>
+          <NoProgram />
         )}
 
-        {/* ── CONEXIONES (Drive + Entrenador) — solo destacan si necesitan atención ── */}
-        <View style={styles.section}>
-        <SectionHeader label={t('home.connections').toUpperCase()} />
-        <View style={styles.statusCards}>
-
-          {/* Drive */}
-          <TouchableOpacity
-            style={[styles.statusCard, driveWarn && styles.statusCardWarn]}
-            onPress={() => navigation.navigate('DriveBackup')}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-            accessibilityLabel={`Drive, ${driveSub}`}
-          >
-            <View style={[styles.statusDot, { backgroundColor: driveIconColor }]} />
-            <View style={styles.statusInfo}>
-              <Text style={styles.statusTitle} numberOfLines={1}>Drive</Text>
-              <Text style={[styles.statusSub, driveWarn && { color: th.colors.orange }]} numberOfLines={1}>
-                {driveSub}
-              </Text>
-            </View>
-            <Text style={[styles.statusConnectBtn, driveConnected && styles.statusConnectBtnOk]}>
-              {(driveConnected ? t('home.connected') : t('home.connect')).toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Entrenador */}
-          <TouchableOpacity
-            style={[styles.statusCard, trainerWarn && styles.statusCardWarn]}
-            onPress={() => navigation.navigate('TrainerConnection')}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-            accessibilityLabel={`${trainerTitle}, ${trainerSub}`}
-          >
-            <View style={[styles.statusDot, { backgroundColor: trainerIconColor }]} />
-            <View style={styles.statusInfo}>
-              <Text style={styles.statusTitle} numberOfLines={1}>{trainerTitle}</Text>
-              <Text style={[styles.statusSub, trainerWarn && { color: th.colors.orange }]} numberOfLines={1}>
-                {trainerSub}
-              </Text>
-            </View>
-            <Text style={[styles.statusConnectBtn, trainerOk && styles.statusConnectBtnOk]}>
-              {(trainerOk ? t('home.connected') : t('home.connect')).toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-        </View>
       </ScrollView>
 
       {/* Modals */}
-      {archiveOpen && (
-        <ArchiveSheet
-          programName={activeProgram?.name}
-          onConfirm={handleArchiveConfirm}
-          onClose={() => setArchiveOpen(false)}
-        />
+      {/* ── Sesión libre: en blanco o desde plantilla (§7.2) ── */}
+      {freeSheet && (
+        <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
+          <View style={styles.sheetGroup}>
+            <MenuRow
+              isFirst
+              label={t('freeSession.startBlank')}
+              sub={t('freeSession.startBlankDesc')}
+              subLines={0}
+              minHeight={62}
+              onPress={() => { setFreeSheet(false); startFree(null); }}
+            />
+            <MenuRow
+              isLast
+              label={t('freeSession.startFromTemplate')}
+              sub={t('freeSession.startFromTemplateDesc')}
+              subLines={0}
+              minHeight={62}
+              onPress={() => { setFreeSheet(false); setFreeTpls(true); }}
+            />
+          </View>
+        </DragSheet>
       )}
-      <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
-      {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
-        <StagePickerSheet
-          program={activeProgram}
-          onSelect={(idx) => {
-            if (idx !== (activeProgram.currentStageIndex ?? 0)) {
-              setCurrentStage(activeProgram.id, idx);
-            }
-            setStagePicker(false);
-          }}
-          onClose={() => setStagePicker(false)}
-        />
+
+      {freeTpls && (
+        <DragSheet visible onClose={() => setFreeTpls(false)} title={t('freeSession.templatesTitle')}>
+          <View style={styles.sheetGroup}>
+            {freeSessionPresets.map((preset, i) => (
+              <MenuRow
+                key={preset.presetId}
+                isFirst={i === 0}
+                isLast={i === freeSessionPresets.length - 1}
+                label={preset.name ?? t('freeSession.templateUnnamed')}
+                sub={freePresetMeta(preset)}
+                minHeight={62}
+                onPress={() => { setFreeTpls(false); startFree(preset); }}
+                // La ✕ por fila, como en el selector de presets de bloque: la
+                // plantilla se borra donde se elige, que es donde estorba.
+                control={(
+                  <TouchableOpacity
+                    onPress={() => confirmDeleteFreePreset(preset)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('freeSession.deleteTemplate')}
+                  >
+                    <Text style={styles.freeTplRemove}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            ))}
+          </View>
+        </DragSheet>
       )}
     </View>
   );
@@ -1018,67 +706,44 @@ const makeStyles = (th) => StyleSheet.create({
     flex:            1,
     backgroundColor: th.colors.bg,
   },
+  // Sin `gap`: cada bloque pone su propio aire (el rótulo de sección ya trae el
+  // suyo, la tarjeta de programa va más separada que el resto).
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop:    spacing.xl,
-    paddingBottom: spacing.xxl * 2,
-    gap:           spacing.lg,
+    paddingTop:        spacing.sm,
+    paddingBottom:     spacing.xxl * 2,
   },
 
-  // ── Section structure (Sesiones / Programa / Conexiones) ──────────────────────
-  section: {
-    gap: spacing.sm,
-  },
+  // ── Rótulos de sección ────────────────────────────────────────────────────────
   secHeader: {
     flexDirection: 'row',
-    alignItems:    'center',
-    gap:           6,
+    alignItems:    'baseline',
+    gap:           spacing.sm,
+    paddingHorizontal: spacing.xs2,
+    marginTop:     spacing.lg,
+    marginBottom:  spacing.sm2,
   },
-  secHeaderLabel: {
-    ...textStyles.spacingTag,
-    color: th.colors.mutedLight,
+  // SESIONES es el rótulo de la zona de entreno y va en `text`; los demás
+  // rótulos de la pantalla se quedan en `mutedLight`.
+  secHeaderLabel: { ...textStyles.caps, color: th.colors.text },
+  // El mismo cuerpo que el meta del hero ("5 EJERCICIOS · ~55 MIN · …"): son el
+  // mismo tipo de dato, contexto en mayúsculas muy trackeado. Antes iba a 9 y
+  // en SemiBold, medio punto por debajo de todo lo demás.
+  secHeaderCount: {
+    ...textStyles.caps,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    marginLeft:    'auto',
   },
-
-  // ── Banner (FormaFit) — bloque accent, tinta onAccent ─────────────────────────
-  // Sobre el accent el texto usa su propia escala de tinta: sólido para lo
-  // principal, 0.55 para eyebrows/secundario, 0.16 para los tracks.
-  banner: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.lg,
-  },
-  bnTop:       { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  bnEyebrow:   { ...textStyles.spacingTag, color: withOpacity(th.colors.onAccent, 0.55), textTransform: 'uppercase' },
-  // Nombre de programa a 1 línea; el completo vive en el detalle del programa.
-  // El line-height de Inter deja aire de sobra bajo el eyebrow: los márgenes
-  // negativos pegan nombre y número a su etiqueta.
-  bnNameBlock:   { flex: 1, minWidth: 0 },
-  bnProgName:    { ...textStyles.hero, color: th.colors.onAccent, marginTop: -spacing.xs },
-  bnTrainer:     { ...textStyles.subtitle, color: withOpacity(th.colors.onAccent, 0.55), marginTop: spacing.xs },
-  bnTrainerName: { ...textStyles.btnAction, color: th.colors.onAccent },
-  bnCycle:       { flexShrink: 0, alignItems: 'flex-end' },
-  bnCicloNum:    { ...textStyles.hero, color: th.colors.onAccent, marginTop: -spacing.xs, fontVariant: ['tabular-nums'] },
-  // Puntos de sesión del ciclo: hechos = tinta sólida; pendientes = track.
-  bnDots:    { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.sm2 },
-  bnDot:     { width: 7, height: 7, borderRadius: 3.5 },
-  bnDotDone: { backgroundColor: th.colors.onAccent },
-  bnDotIdle: { backgroundColor: withOpacity(th.colors.onAccent, 0.16) },
-  // Barra de la etapa actual (solo variante con etapas).
-  bnStage:       { marginTop: spacing.lg },
-  bnStageLabels: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm2, marginBottom: spacing.sm },
-  bnStageName:   { ...textStyles.spacingTag, color: th.colors.onAccent, textTransform: 'uppercase', flexShrink: 1 },
-  bnStagePos:    { ...textStyles.smallBold, color: withOpacity(th.colors.onAccent, 0.55), marginLeft: 'auto' },
-  // (la barra segmentada se dibuja en SVG — ver StageSegBar)
 
   // ── Selector semanal (L M X J V S D + 7 puntos) ───────────────────────────────
   week: {
     gap:               spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical:   9, // exacto de Figma, no cae en ningún token de spacing
-    marginTop:         -spacing.sm, // acerca el selector al banner (ScrollView ya mete gap/lg)
   },
   weekLetters: { flexDirection: 'row', justifyContent: 'space-between' },
-  weekLetter:  { ...textStyles.cardType, color: th.colors.mutedLight },
+  weekLetter:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
   weekLetterToday: { color: LIMA },
   weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDot: {
@@ -1089,387 +754,227 @@ const makeStyles = (th) => StyleSheet.create({
   weekDotTrained: { backgroundColor: LIMA },
   weekDotIdle:    { backgroundColor: th.colors.muted },
 
-  // ── Program label ────────────────────────────────────────────────────────────
-  progHeader: {
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           spacing.sm,
-  },
-  progLabel: {
-    fontSize:      typography.sm,
-    fontWeight:    typography.bold,
-    letterSpacing: 2,
-    color:         th.colors.muted2,
-    textTransform: 'uppercase',
-    paddingLeft:   2,
-  },
-  progTrainer: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted2,
-    marginTop: 1,
-    paddingLeft: 2,
-  },
-  progTrainerInline: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted2,
-    fontWeight:    typography.regular,
-    letterSpacing: 0,
-    textTransform: 'none',
-  },
-  progDriveBlock: {
-    alignItems: 'flex-end',
-    marginTop:  2,
-    gap:        1,
-  },
-  progDriveIcon: {
-    fontSize:  13,
-    color:     th.colors.green,
-    opacity:   0.8,
-  },
-  progDriveTime: {
-    fontSize:      typography.xs - 1,
-    color:         th.colors.green,
-    opacity:       0.7,
-    textAlign:     'right',
-  },
+  // ── Lista de sesiones ───────────────────────────────────────────────────
+  // Los cuerpos y los huecos salen de la sesión de diseño
+  // (docs/specs/home-sesiones-plegables.md §5), no de Figma: donde no hay token
+  // —14, 12, 11— va el número exacto de la spec.
+  //
+  // Tarjetas sueltas, no una lista agrupada: cualquiera se despliega, así que
+  // todas llevan su radio entero. El aire va DENTRO de la tarjeta (60 px de
+  // alto) y no entre ellas: separadas y estrechas parecían una persiana, y
+  // juntas y altas se leen como fichas.
+  group: { gap: spacing.xs2 },
 
-  // ── Progress header ──────────────────────────────────────────────────────────
-  progressHeader: {
-    flexDirection: 'row',
-    gap:           8,
-  },
-  phCard: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
+  sesCard: {
+    backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
-  },
-
-  // Stage card (left, wider)
-  phStage: {
-    flex:    1.6,
-    padding: spacing.md,
-  },
-  phStageRow1: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'flex-start',
-    marginBottom:   3,
-  },
-  phStageLabel: {
-    fontSize:      11,
-    fontWeight:    typography.semibold,
-    color:         th.colors.muted,
-    letterSpacing: 0.2,
-  },
-  phStageMenu: {
-    fontSize:      16,
-    color:         th.colors.muted,
-    lineHeight:    16,
-    letterSpacing: 1,
-  },
-  phStageName: {
-    fontSize:     15,
-    fontWeight:   typography.bold,
-    color:        th.colors.text,
-    lineHeight:   15 * 1.2,
-    marginBottom: 3,
-  },
-  phStageWeek: {
-    fontSize:     11,
-    fontWeight:   typography.regular,
-    color:        th.colors.mutedLight,
-    marginBottom: spacing.sm,
-  },
-  phBar: {
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
     overflow:        'hidden',
   },
-  phBarFill: {
-    height:          '100%',
-    backgroundColor: th.colors.accent,
-    borderRadius:    2,
+  sesHead: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               8,
+    height:            60,
+    paddingHorizontal: 14,
   },
+  // `includeFontPadding: false` aquí y en la letra grande: es lo que deja que la
+  // caja del texto valga lo que dice `lineHeight` y no lo que Android le suma
+  // por su cuenta — sin eso, la letra no cae donde se la centra.
+  sesGlyph: {
+    ...textStyles.title,
+    lineHeight:         22,
+    includeFontPadding: false,
+    // Ajustada a la tinta de la Inter Black a este cuerpo (24 px medidos sobre
+    // el .ttf), sin los 2 px de holgura que traía. Lo que separa la letra del
+    // nombre es el `gap` de la fila, no una caja con aire de sobra.
+    width:              24,
+    color:              LIMA,
+  },
+  sesGlyphDone: { color: th.colors.muted },
+  sesName:      { ...textStyles.itemTitle, flex: 1, color: th.colors.text },
+  sesNameDone:  { color: th.colors.mutedLight },
+  sesMeta:      { ...textStyles.label, color: th.colors.muted },
+  rowAdapted:   { ...textStyles.labelStrong, color: th.tint.blue70 },
 
-  // Week card (right, squarish)
-  phWeekSq: {
-    flex:           1,
-    padding:        11,
+  sesBody: { paddingHorizontal: 14, paddingTop: spacing.xs, paddingBottom: 14, overflow: 'hidden' },
+  // La raya de la cabecera de hoy, apagada: separa sin contar nada.
+  sesBodyRule: {
+    height:          2,
+    borderRadius:    2,
+    backgroundColor: th.tint.accent50,
+    marginBottom:    spacing.sm2,
+  },
+  // Contorno y no relleno: el lima sólido es de la que toca (§1.1).
+  sesBtn: {
+    flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
+    borderWidth:    borders.thin,
+    borderColor:    th.colors.accent,
+    borderRadius:   th.radius.md,
+    padding:        14,
+    marginTop:      12,
   },
-  phWkTop: {
-    fontSize:      11,
-    fontWeight:    typography.semibold,
-    color:         th.colors.muted,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  phWkNum: {
-    fontSize:      22,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    lineHeight:    22,
-    letterSpacing: -0.5,
-  },
-  phWeekBottom: {
-    alignItems: 'center',
-    gap:        4,
-  },
-  phWkSes: {
-    fontSize:   11,
-    fontWeight: typography.regular,
-    color:      th.colors.mutedLight,
-    textAlign:  'center',
-  },
-  phDots: {
-    flexDirection:  'row',
-    gap:            5,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  phDot: {
-    width:        8,
-    height:       8,
-    borderRadius: 4,
-  },
-  phDotDone: {
+  // `button`, como todo lo que se pulsa y lleva palabra.
+  sesBtnText: { ...textStyles.button, color: th.colors.accent },
+
+  // ── La que toca hoy ─────────────────────────────────────────────────
+  // La única pieza en color de la pantalla, así que dentro el acento es el
+  // negro: letra, raya y series. El botón se invierte.
+  today: {
     backgroundColor: th.colors.accent,
-  },
-  phDotPending: {
-    backgroundColor: withOpacity(th.colors.accent, 0.15),
-    borderWidth:     1.5,
-    borderColor:     withOpacity(th.colors.accent, 0.5),
-  },
-  phDotIdle: {
-    backgroundColor: th.colors.border,
-  },
-
-  // Week pill (no stages, full width)
-  phPill: {
-    flex:           1,
-    height:         54,
-    flexDirection:  'row',
-    alignItems:     'center',
-    paddingHorizontal: spacing.lg,
-  },
-  phPillLeft: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           7,
-  },
-  phPillLabel: {
-    fontSize:      11,
-    fontWeight:    typography.semibold,
-    color:         th.colors.muted,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  phPillNum: {
-    fontSize:      22,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    letterSpacing: -0.5,
-    lineHeight:    22,
-  },
-  phPillDivider: {
-    width:           1,
-    height:          26,
-    backgroundColor: th.colors.border,
-    marginRight:     spacing.lg,
-  },
-  phPillRight: {
-    alignItems: 'center',
-    gap:        4,
-  },
-
-  // ── Session cards ─────────────────────────────────────────────────────────────
-  sesList: {
-    gap: spacing.md,
-  },
-  sesCard: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    borderWidth:       borders.thin,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical:   spacing.sm2, // Figma pide space/lg(15); en el dispositivo se veía con demasiado aire
-  },
-  sesInfo: {
-    flex:     1,
-    minWidth: 0,
-    gap:      spacing.sm, // gap tag ⟷ bloque título+subtítulo (space/sm, Figma)
-  },
-  sesTagRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
-  sesTag: {
-    ...textStyles.spacingTag,
-    color: LIMA,
-  },
-  sesTitle: {
-    ...textStyles.cardTitle,
-    color: th.colors.text,
-  },
-  sesSubtitle: {
-    ...textStyles.subtitle,
-    color:     th.colors.mutedLight,
-    marginTop: -3, // el line-height de la fuente deja aire de más entre título y subtítulo
-  },
-  // Sin ancho fijo: se ajusta al contenido "actual" (check/botón/chevron). El que
-  // se desvanece va en sesRightOverlay, absolute + right:0, así el borde derecho
-  // de la zona de acción no se mueve durante el fade (los 3 estados comparten el
-  // mismo borde derecho en Figma: x+w=343 de 363).
-  sesRight: {
-    position: 'relative',
-  },
-  sesRightOverlay: {
-    position:       'absolute',
-    top: 0, right: 0, bottom: 0,
-    justifyContent: 'center',
-  },
-  // Caja del check / del chevron futuro — icon-box de Figma (26×26).
-  sesActionBox: {
-    width:          26,
-    height:         26,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  sesBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'center',
-    gap:               spacing.sm,
-    backgroundColor:   LIMA,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.md, // Figma pide space/sm(6); en el dispositivo se veía apretado
-    paddingVertical:   spacing.md,
-  },
-  sesBtnText: {
-    ...textStyles.btnAction,
-    color: th.colors.onAccent,
-  },
-  secLabel: {
-    fontSize:      11,
-    fontWeight:    typography.semibold,
-    letterSpacing: 1,
-    color:         th.colors.mutedLight,
-    paddingLeft:   2,
-    marginBottom:  1,
-  },
-
-  adaptedChip: {
-    backgroundColor:   withOpacity(th.colors.blue, 0.14),
-    borderRadius:      th.radius.full,
-    paddingHorizontal: 7,
-    paddingVertical:   1,
-    flexShrink:        0,
-  },
-  adaptedChipText: {
-    fontSize:      9,
-    fontWeight:    typography.bold,
-    color:         th.colors.blue,
-    letterSpacing: 0.5,
-  },
-
-  // ── Stage advance banner ──────────────────────────────────────────────────────
-  stageBanner: {
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
     borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    gap:             spacing.sm,
+    overflow:        'hidden',
+    // La de hoy respira el doble que las demás por arriba y por abajo: es la
+    // pieza grande y pegada a sus vecinas se leía como parte de la misma lista.
+    marginVertical:  spacing.xs2,
+  },
+  todayHead: {
+    paddingTop:        14,
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     11,
+  },
+  // `flex-end` y no `center`: la letra se apoya en la misma línea de suelo que
+  // el nombre. Centrada tampoco quedaba mal, pero a media altura no está
+  // alineada con nada y se lee como un descuadre.
+  todayHeadRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: spacing.sm },
+  // ── Cómo se apoyan la letra y el nombre en el mismo suelo ──────────────────
+  // La fila alinea a `flex-end`, o sea que lo que casa son los BORDES de las dos
+  // cajas de texto, no las bases de las letras. La distancia de la base al borde
+  // inferior es `(lineHeight − (A+D)·cuerpo)/2 + D·cuerpo`, con A=1.0 y D=0.2 em
+  // (métricas hhea de la Barlow). Igualando las dos sale una relación limpia:
+  //
+  //     lineHeight(letra) = lineHeight(nombre) + 6·(A − D) = +4.8
+  //
+  // De ahí 34 en el nombre (que es además lo mínimo para que la "j" no se corte:
+  // 1.2 em × 28 = 33.6) y 39 en la letra. Si cambia un cuerpo, rehacer la cuenta;
+  // no son números a ojo.
+  todayGlyph: {
+    ...textStyles.heroGlyph,
+    lineHeight:         39,
+    includeFontPadding: false,
+    // La tinta de la Barlow a 34 mide 26 justos: 27 para que la cursiva no
+    // roce el borde. Aquí el aire se recorta desde el `gap` de la fila, que
+    // sólo separa la letra del nombre.
+    width:              27,
+    color:              th.colors.onAccent,
+  },
+  // La misma ceja que la tarjeta de programa y las cabeceras de pantalla.
+  todayFlag: {
+    ...textStyles.caps,
+    textTransform: 'uppercase',
+    color:         withOpacity(th.colors.onAccent, 0.55),
+  },
+  todayName: {
+    ...textStyles.heroName,
+    // 34: la Barlow pide 1.2 em (33.6 a cuerpo 28) para que la "j" de "empuje"
+    // quepa entera. Con los 25 de antes se comía 8 px de descendente.
+    lineHeight:         34,
+    // Imprescindible para que la cuenta de arriba valga en Android: sin esto el
+    // sistema le suma su propio relleno a la caja y el suelo deja de casar.
+    includeFontPadding: false,
+    color:              th.colors.onAccent,
+    flex:               1,
+  },
+  todayRule: {
+    height:          2,
+    borderRadius:    2,
+    backgroundColor: withOpacity(th.colors.onAccent, 0.85),
+    marginTop:       11,
+  },
+  todayMeta: {
+    ...textStyles.caps,
+    marginTop:     spacing.sm,
+    textTransform: 'uppercase',
+    color:         withOpacity(th.colors.onAccent, 0.55),
+  },
+  // 6 px a los lados y no 15: el lima queda de FILO, no de marco, y la tarjeta
+  // se sigue leyendo como una sola pieza. El pie lleva el mismo margen.
+  todayBox: {
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.sm,
+    overflow:          'hidden',
+    marginHorizontal:  spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical:   9,
+  },
+  todayFoot: {
+    paddingTop:        11,
+    paddingHorizontal: spacing.sm,
+    paddingBottom:     spacing.sm,
+  },
+  todayBtn: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    backgroundColor: th.colors.onAccent,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+  },
+  todayBtnText: { ...textStyles.button, color: LIMA },
+
+  // ── Los ejercicios de la sesión desplegada ──────────────────────────────
+  // Sosos a propósito: caja baja, sin filetes y sin lima. Dentro de la tarjeta
+  // el acento ya lo gastan la raya y el botón; un tercero repetido siete veces
+  // le quita fuerza justo a lo que hay que pulsar (§5.4).
+  exRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.xs2 },
+  exIdx:    { ...textStyles.label, width: 13, color: th.colors.muted },
+  exName:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  exTarget: { ...textStyles.label, color: th.colors.mutedLight },
+
+
+  // ── Banner de etapa terminada ─────────────────────────────────────────────────
+  // Sobre `surface` y con los dos botones en outline: el relleno lima es del
+  // hero, y aquí competiría con EMPEZAR.
+  stageBanner: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    padding:         spacing.lg,
+    marginBottom:    spacing.md,
   },
   stageBannerLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+    ...textStyles.caps,
     color:         th.colors.accent,
-    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   stageBannerText: {
-    ...textStyles.subtitle,
-    color:      th.colors.text,
-    lineHeight: textStyles.subtitle.fontSize * 1.5,
+    ...textStyles.body,
+    color:      th.colors.mutedLight,
+    lineHeight: textStyles.body.fontSize * 1.5,
+    marginTop:  spacing.sm2,
   },
   // Segunda línea del caso bloqueado: lo que SÍ puede hacer mientras tanto.
   stageBannerHint: {
-    ...textStyles.subtitle,
-    color:      th.colors.mutedLight,
-    lineHeight: textStyles.subtitle.fontSize * 1.5,
+    ...textStyles.body,
+    color:      th.colors.muted,
+    lineHeight: textStyles.body.fontSize * 1.5,
     marginTop:  spacing.xs,
   },
   stageBannerBtns: {
     flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
+    gap:           spacing.sm2,
+    marginTop:     spacing.md,
   },
-  // Botones "Primary"/"Secondary" del componente Buttons de Figma (mismo par que
-  // GUARDAR SESIÓN/Descartar sesión del footer de Workout, nodos 109:517/109:518).
-  stageBannerAdvanceBtn: {
-    flex:              2,
-    backgroundColor:   LIMA,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.md,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  stageBannerAdvanceBtnText: {
-    ...textStyles.cardType,
-    color:     th.colors.onAccent,
-    textAlign: 'center',
-  },
-  stageBannerContinueBtn: {
-    flex:              1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.md,
-    borderRadius:      th.radius.md,
-    alignItems:        'center',
-    justifyContent:    'center',
-  },
-  stageBannerContinueBtnText: {
-    ...textStyles.spacingTag,
-    color:     th.tint.accent50,
-    textAlign: 'center',
-  },
-
-  // ── Program action buttons — variante "Secondary" del componente Buttons ──────
-  programActions: {
-    flexDirection: 'row',
-    gap:           spacing.md,
-  },
-  programBtn: {
+  stageBannerBtn: {
     flex:            1,
-    flexDirection:   'row',
-    justifyContent:  'center',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    padding:         spacing.md,
+    paddingVertical: 11,
     borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface2,
-  },
-  programBtnText: {
-    ...textStyles.cardType,
-    color: th.colors.text,
-  },
-  programBtnMore: {
-    padding:         spacing.md,
-    borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface2,
+    borderWidth:     borders.thin,
+    borderColor:     th.tint.accent50,
     alignItems:      'center',
     justifyContent:  'center',
   },
-  programBtnMoreText: {
-    ...textStyles.cardType,
-    color: th.colors.text,
+  stageBannerBtnQuiet:     { borderColor: th.colors.border },
+  stageBannerBtnText: {
+    ...textStyles.caps,
+    fontFamily: 'Inter_900Black',
+    color:      th.colors.accent,
+    textAlign:  'center',
   },
+  stageBannerBtnTextQuiet: { color: th.colors.mutedLight },
+
+  // ── Bloque de programa ────────────────────────────────────────────────────────
+  programBlock: { marginTop: spacing.xl },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
   freeSessionBtn: {
@@ -1482,7 +987,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   freeSessionBtnText: {
-    ...textStyles.btnAction,
+    ...textStyles.button,
     color: th.colors.accent,
   },
 
@@ -1494,10 +999,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   emptyIcon: { fontSize: 40 },
   emptyText: {
-    fontSize:   typography.base,
+    ...textStyles.body,
     color:      th.colors.muted,
     textAlign:  'center',
-    lineHeight: typography.base * 1.7,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   newProgramBtn: {
     backgroundColor:   th.colors.accent,
@@ -1506,68 +1011,20 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.lg,
     marginTop:         spacing.sm,
   },
-  newProgramBtnText: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
+  newProgramBtnText: { ...textStyles.button, color: th.colors.bg },
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
+  freeTplRemove:  { ...textStyles.labelStrong, color: th.colors.muted },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },
   sheetIntro: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:        th.colors.mutedLight,
     lineHeight:   18,
     paddingBottom: spacing.md,
   },
   sheetIntroName: { color: th.colors.text },
-
-  // ── Conexiones (Drive + Entrenador) ──────────────────────────────────────────
-  statusCards: {
-    gap: spacing.sm,
-  },
-  statusCard: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.lg,
-    backgroundColor:   th.colors.surface,
-    borderRadius:      th.radius.md,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.xxl,
-  },
-  statusCardWarn: {
-    backgroundColor: withOpacity(th.colors.orange, 0.06),
-    borderWidth:      borders.thin,
-    borderColor:      withOpacity(th.colors.orange, 0.4),
-  },
-  statusDot: {
-    width:        12,
-    height:       12,
-    borderRadius: 6,
-  },
-  statusInfo: {
-    flex:     1,
-    minWidth: 0,
-  },
-  statusTitle: {
-    ...textStyles.btnAction,
-    color: th.colors.text,
-  },
-  statusSub: {
-    ...textStyles.tag,
-    color:     th.colors.mutedLight,
-    marginTop: 1,
-  },
-  statusConnectBtn: {
-    ...textStyles.spacingTag,
-    color: th.colors.accent,
-  },
-  statusConnectBtnOk: {
-    color: th.tint.accent50,
-  },
 
 });

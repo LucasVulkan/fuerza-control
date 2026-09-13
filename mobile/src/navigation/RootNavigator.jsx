@@ -6,10 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
-import { borders } from '../theme';
+import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
-import HistoryScreen    from '../screens/HistoryScreen';
+import MyProgramScreen  from '../screens/MyProgramScreen';
 import StatsScreen      from '../screens/StatsScreen';
 import ProgramScreen    from '../screens/ProgramScreen';
 import ClientsScreen    from '../screens/ClientsScreen';
@@ -19,6 +19,8 @@ import OnboardingScreen    from '../screens/OnboardingScreen';
 import ProgramDetailScreen    from '../screens/ProgramDetailScreen';
 import ProgramEditorScreen   from '../screens/ProgramEditorScreen';
 import SessionEditorScreen   from '../screens/SessionEditorScreen';
+import ExerciseEditorScreen  from '../screens/ExerciseEditorScreen';
+import BlockEditorScreen     from '../screens/BlockEditorScreen';
 import StagePlannerScreen    from '../screens/StagePlannerScreen';
 import SessionRecapScreen    from '../screens/SessionRecapScreen';
 import NextSessionScreen      from '../screens/NextSessionScreen';
@@ -61,6 +63,10 @@ function MainTabs() {
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
+  // Etapa terminada esperando decisión: el punto del tab de Programa.
+  const stageAdvancePending = useStore((s) =>
+    !!s.programs?.[s.profile?.activeProgramId]?.stageAdvancePending
+  );
   const pendingClients = useStore((s) =>
     Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
   );
@@ -79,6 +85,9 @@ function MainTabs() {
         tabBarActiveTintColor:   th.colors.accent,
         tabBarInactiveTintColor: th.colors.muted,
         tabBarLabelStyle: styles.tabLabel,
+        // La etiqueta la pinta react-navigation con su propio Text, fuera del
+        // wrapper de src/components/ui/Text: aquí se le repite el trato.
+        tabBarAllowFontScaling: false,
         sceneStyle: styles.scene,
       }}
     >
@@ -87,10 +96,19 @@ function MainTabs() {
         component={HomeScreen}
         options={{ tabBarLabel: t('tabs.session'),   tabBarIcon: tabIcon('barbell') }}
       />
+      {/* El programa vive aquí y no al final del scroll de Sesiones. El punto
+          avisa de que hay una etapa terminada esperando — el aviso completo se
+          queda en Sesiones, que es lo que decide qué entrenas mañana
+          (docs/specs/tab-programa.md §4.4). */}
       <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{ tabBarLabel: t('tabs.history'),   tabBarIcon: tabIcon('time') }}
+        name="MyProgram"
+        component={MyProgramScreen}
+        options={{
+          tabBarLabel: t('tabs.program'),
+          tabBarIcon:  tabIcon('layers'),
+          tabBarBadge: stageAdvancePending ? '' : undefined,
+          tabBarBadgeStyle: { backgroundColor: th.colors.accent, minWidth: 8, maxHeight: 8, borderRadius: 4 },
+        }}
       />
       <Tab.Screen
         name="Stats"
@@ -105,7 +123,7 @@ function MainTabs() {
             tabBarLabel: t('tabs.clients'),
             tabBarIcon:  tabIcon('people'),
             tabBarBadge: pendingClients > 0 ? pendingClients : undefined,
-            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 10 },
+            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 11 },
           }}
         />
       )}
@@ -113,7 +131,7 @@ function MainTabs() {
         <Tab.Screen
           name="Program"
           component={ProgramScreen}
-          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('layers') }}
+          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('copy') }}
         />
       )}
     </Tab.Navigator>
@@ -171,6 +189,16 @@ export default function RootNavigator() {
         <Stack.Screen
           name="SessionEditor"
           component={SessionEditorScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="ExerciseEditor"
+          component={ExerciseEditorScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="BlockEditor"
+          component={BlockEditorScreen}
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
@@ -248,7 +276,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg, // tan oscuro como el fondo de la app
   },
   tabLabel: {
-    fontSize: 9,
+    ...textStyles.micro,
   },
   scene: {
     backgroundColor: th.colors.bg,

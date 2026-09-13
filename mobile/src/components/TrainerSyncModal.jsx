@@ -16,9 +16,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, TextInput,
-} from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { Text, TextInput } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import * as Clipboard   from 'expo-clipboard';
@@ -640,16 +639,16 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
   hint:  {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 15,
     textAlign:  'center',
     marginTop:  -spacing.md,
   },
-  hintLeft: { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
-  link:     { ...textStyles.cardType, color: th.tint.accent50, textAlign: 'center' },
+  hintLeft: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
+  link:     { ...textStyles.labelStrong, color: th.tint.accent50, textAlign: 'center' },
 
   // Estado "ya conectado" — tratamiento "Resumen" (tint/accent-10, sin borde).
   stateCard: {
@@ -660,9 +659,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   stateTagRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   stateDot:    { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.accent },
-  stateTag:    { ...textStyles.spacingTag, color: th.colors.mutedLight },
-  stateTitle:  { ...textStyles.cardTitle, color: th.colors.text },
-  stateSub:    { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+  stateTag:    { ...textStyles.caps, color: th.colors.mutedLight },
+  stateTitle:  { ...textStyles.itemTitle, color: th.colors.text },
+  stateSub:    { ...textStyles.label, color: th.tint.accent50, lineHeight: 15 },
 
   // Caja del código: el código es el protagonista, con la pista de copiar debajo.
   codeBox: {
@@ -673,14 +672,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   codeText: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      26,
-    letterSpacing: 4,
+    ...textStyles.code,
     color:         th.colors.accent,
     fontVariant:   ['tabular-nums'],
   },
-  codeTextSm: { fontSize: 20 },
-  codeHint:   { ...textStyles.tag, color: th.colors.mutedLight },
+  codeTextSm: { fontSize: 18 },
+  codeHint:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // Modos, como lista agrupada (gap 2 + radios por posición) pero con sitio para
   // el aviso propio de cada uno, que MenuRow no contempla.
@@ -696,10 +693,10 @@ const makeStyles = (th) => StyleSheet.create({
   modeTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
   modeIcon:     { width: 20, alignItems: 'center', paddingTop: 2, flexShrink: 0 },
   modeMeta:     { flex: 1, minWidth: 0, gap: spacing.xs },
-  modeTitle:    { fontFamily: 'Inter_800ExtraBold', fontSize: 14, color: th.colors.text },
-  modeDesc:     { ...textStyles.tag, color: th.colors.mutedLight, lineHeight: 15 },
-  modeUnavail:  { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
-  modeWarn:     { ...textStyles.tag, lineHeight: 15, paddingLeft: 20 + spacing.lg },
+  modeTitle:    { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
+  modeDesc:     { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
+  modeUnavail:  { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
+  modeWarn:     { ...textStyles.label, lineHeight: 15, paddingLeft: 20 + spacing.lg },
   // Marca de elegida: disco lima con el check en negativo. Ocupa 24 para que se
   // vea de un vistazo; el hueco de las no elegidas mide lo mismo.
   checkBadge: {
@@ -714,14 +711,14 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
-  warnText: { ...textStyles.tag, color: th.tint.orange50, lineHeight: 15 },
+  warnText: { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
 
   nameInput: {
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:             th.colors.text,
   },
 
@@ -732,7 +729,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
   secondaryBtn: {
     height:          44,
     borderRadius:    th.radius.sm,
@@ -740,6 +737,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  secondaryBtnText: { ...textStyles.button, color: th.colors.text },
   btnDisabled:      { opacity: 0.5 },
 });

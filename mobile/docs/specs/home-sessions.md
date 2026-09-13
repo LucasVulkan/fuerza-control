@@ -2,10 +2,10 @@
 
 > Tema: ui
 > En corto: El banner lima deja de ser del programa y pasa a ser la sesión que toca; el programa baja a una tarjeta que se comparte con la ficha de cliente, y las tres frases que dan por hecho que entrenas rotando salen de la pantalla a una función.
-> Fase U06 · pendiente · Rediseño de la HomeView: hero, filas planas, semana desnuda · §3
-> Fase U07 · pendiente · `ProgramCard` compartida con `ClientsScreen` · §4
-> Fase U08 · pendiente · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
-> Fase U09 · pendiente · Plantillas de sesión libre · §7
+> Fase U06 · hecho · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
+> Fase U07 · hecho · `ProgramCard` compartida con `ClientsScreen` · §4
+> Fase U08 · hecho · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
+> Fase U09 · hecho · Plantillas de sesión libre · §7
 >
 > **Probar en dispositivo.** El acento pasa a estar en pantalla todos los días
 > (antes marcaba «programa activo», ahora «te toca entrenar»). Hay que mirar si
@@ -16,10 +16,20 @@
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
-> Estado: **ninguna fase implementada** (sep 2026). Sale de una sesión de
+> **Superada en parte (sep 2026) por dos specs**, que se llevan cuatro §: el
+> hero (§3.2) y las filas de las demás sesiones (§3.3) van a
+> [home-sesiones-plegables.md](home-sesiones-plegables.md), y la anatomía de la
+> tarjeta con su pie de acciones (§4.2, §4.3, §4.7) a
+> [program-card.md](program-card.md). Queda como registro. **El resto sigue
+> vigente**: la semana (§3.1), el hallazgo de la convergencia y lo que la tarjeta
+> deja distinto a propósito (§4.1, §4.4-§4.6), `sessionPlan()` (§5 — cambia solo
+> en que ya no saca el hero de `rows`), los modos (§6) y la sesión libre (§7).
+>
+> Estado: **todas las fases implementadas** (sep 2026, U06/U07/U08 en 97ae57d y
+> U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. Sale de una sesión de
 > diseño Opus + usuario sobre la zona de sesiones de la Home: seis rondas de
 > maquetas, cada corrección del usuario sobre la anterior. Las decisiones están
-> cerradas y los valores son exactos; lo que falta es escribirlo.
+> cerradas y los valores son exactos; lo que faltaba era escribirlo.
 >
 > Depende de que la Home ya esté migrada a FormaFit (lo está, ver
 > `docs/UI-MIGRATION.md`) y de `AssignedProgramCard`, que ya existe y está
@@ -122,14 +132,37 @@ Valores exactos, ya afinados en dos rondas:
 | Pieza | Valor |
 |---|---|
 | Contenedor | `colors.accent` (#aae216, el relleno sólido — **no** el lima #b8ff00), `radius.lg`, `padding: spacing.lg` |
-| Fila superior | rótulo a la izquierda (`Inter_900Black` 10, tracking 2.2, `onAccent`) · tag «SESIÓN C» a la derecha (`Inter_800ExtraBold` 10, tracking 2, `onAccent` al 50%) |
-| Nombre | **22 px** `Inter_900Black`, line-height 1.1, `marginTop: spacing.md` |
+| Fila superior | «SIGUIENTE · SESIÓN C» en un solo `Text` (`Inter_900Black` 10, tracking 2.2, uppercase): el papel en `onAccent` al 62%, la sesión en `onAccent` sólido. El tag suelto de la derecha se cayó en QA — ver abajo |
+| Nombre | línea limpia, sin prefijo: `marginTop: spacing.md`, `textStyles.hero` (**20 px** `Inter_900Black`, line-height 1.05, tracking −0.5) en `onAccent` sólido |
 | Meta | 12 px `Inter_600SemiBold`, `onAccent` al 62%, **`marginTop: spacing.sm`** |
 | Botón | `onAccent` sólido, `radius.md`, `padding: 15px spacing.lg`, `marginTop: spacing.lg`; texto `btnAction` en **lima** + chevron |
 
-El nombre empezó en 27 px y bajó a 22 a petición del usuario: 22 es el cuerpo
-que ya usan el número de ciclo del banner y los valores de `StatsRow`, no un
-tamaño inventado. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
+El nombre empezó en 27 px, bajó a 22 y acabó en 20 —dos correcciones del
+usuario, la segunda ya sobre el dispositivo—. 20 es además el token `text/hero`:
+el mismo cuerpo que el nombre de programa y el número de ciclo de la
+`ProgramCard`, no un tamaño intermedio inventado.
+
+**El tag «SESIÓN C» de la derecha desaparece: la sesión se dice en el rótulo.**
+Arriba a la derecha, en 10 px al 50% sobre el lima, no se leía; y era la pieza que
+menos trabajaba del hero, porque ocupaba una esquina para decir una letra.
+
+Tres intentos hasta dar con el sitio, y los dos primeros se anotan porque los dos
+parecían razonables:
+
+1. **La letra delante del nombre**, al 55% para prefijar sin competir. Sobre el
+   lima se leyó **gris y apagada** — el mismo defecto que se venía a arreglar.
+2. **La letra delante del nombre en tinta sólida**, con el punto a media altura
+   de separador. Se lee, pero le come el arranque de la línea al nombre, que es
+   lo único que el hero tiene que decir a media distancia.
+3. **La sesión dentro del rótulo**: `SIGUIENTE · SESIÓN C`. Es exactamente la
+   línea `ETAPA 2 · VOLUMEN` de la `ProgramCard` —papel a media tinta, dato en
+   tinta sólida, punto a media altura entre los dos— así que no estrena forma
+   ninguna, y **el nombre recupera su línea entera**.
+
+⚠️ **`Inter_900Black` es el peso más alto que carga la app** (App.js), así que a
+20 px no hay nada más pesado que pedirle al nombre. Lo que queda para ganar
+cuerpo es apretar —tracking −0.5, interlineado 1.05—, y si aun así se quiere más
+peso el único camino es subir otra vez el tamaño. Y el subtítulo bajó de `spacing.md` a `spacing.sm` para que
 nombre y meta se lean como un bloque. **El botón no se toca**: es la pieza más
 pesada del hero y así debe seguir.
 
@@ -140,51 +173,132 @@ Estados del hero:
 
 | Estado | Rótulo | Meta | Botón |
 |---|---|---|---|
-| Siguiente | `Siguiente` | ejercicios · min · última vez | `EMPEZAR` |
-| En curso | `En curso` | `3 de 6 ejercicios · empezada hace 42 min` | `CONTINUAR` |
-| Ciclo cerrado | `Ciclo 07 completo` · tag `5 / 5` | «Vuelves a la Sesión A · Empuje pesado» | `EMPEZAR SESIÓN A`, sin relleno acento |
+| Siguiente | `Siguiente · Sesión C` | ejercicios · min · última vez | `EMPEZAR` |
+| En curso | `En curso · Sesión C` | `3 de 6 ejercicios · empezada hace 42 min` | `CONTINUAR` |
 | **Sin hero** | — | — | — (§5.3) |
 
-El estado «ciclo cerrado» **suelta el acento** (`surface2` + borde `border`,
-botón con borde `accent-50` y texto `accent`): es la única pantalla del día que
-no pide entrenar, y darle un respiro al lima tiene valor.
+Son **tres y no más**. Ver §3.2.1: el «ciclo cerrado» que había aquí no existe.
+
+#### 3.2.1 No hay estado de «ciclo cerrado» — y la sesión A nunca lo lleva
+
+Una versión anterior de esta spec daba un cuarto estado al hero: «Ciclo 07
+completo · 5/5 · EMPEZAR SESIÓN A». **Es imposible**, y además rompía una cosa:
+si la A siempre viniera envuelta en «ciclo completado», la sesión A no tendría
+nunca su hero normal.
+
+El flujo real, leído en `advanceCycle` (`src/utils/stageProgress.js`):
+
+```js
+const cycleClosed = cycleIds.size >= valid.size;
+return {
+  cycleCompletedIds:   cycleClosed ? [] : [...cycleIds],   // ← se vacía aquí
+  stageWeeksCompleted: (…) + (cycleClosed ? 1 : 0),
+  totalWeeksCompleted: (…) + (cycleClosed ? 1 : 0),
+  …
+};
+```
+
+Guardar la quinta sesión **cierra el ciclo y lo vacía en la misma escritura**.
+Nunca hay un momento con las cinco hechas: al volver a la Home el contador dice
+«0 de 5 este ciclo», la tarjeta dice `CICLO 08`, y **A es el hero normal, con su
+rótulo «Siguiente» y su botón EMPEZAR**. Igual que cualquier otro día.
+
+Consecuencias, y las tres importan:
+
+1. **La sesión A no tiene un tratamiento especial.** Ni ella ni ninguna: el
+   hero depende del papel, no de la letra.
+2. **El «has cerrado el ciclo» es del recap**, no de la Home. Es un momento,
+   no un estado — cuando el usuario vuelve, ya está en el siguiente.
+3. **El único «algo terminó» que persiste en la Home es la ETAPA**
+   (`stageAdvancePending`), y ya está implementado: el banner de
+   `HomeScreen.jsx:738`, con sus dos variantes (etapa completada / siguiente
+   bloqueada por el entrenador). Va **encima** del hero y no lo sustituye —
+   la sesión que toca sigue siendo la que toca. Su botón va en outline
+   (`accent-50` + texto `accent`), no relleno, para no competir con EMPEZAR.
+
+⚠️ Es la tercera vez en este proyecto que una suposición sobre los datos se cuela
+en una spec propia sin verificarla contra el código. Se detectó en QA de maqueta,
+no antes de escribirla.
 
 ### 3.3 Las filas de las demás sesiones
 
-Un solo bloque agrupado, `gap: 1` sobre `hair` para el filete, `radius.md`,
-`overflow: hidden`. Cada fila: `padding: 13px spacing.lg`, `gap: spacing.md`.
+**Es la lista agrupada que la app ya tiene**, la de la lista de ejercicios de
+Progreso (`ProgressTab.jsx`, `exRow` + `getCardRadii`) y la de `ui/MenuList`.
+No se inventa nada: filas sueltas con `gap: spacing.xs` (2 px de fondo de
+pantalla entre ellas) y **radios asimétricos por posición** — la primera
+redondea arriba a `radius.md` y abajo a `xs`, la última al revés, las del medio
+a `xxs`. El grupo se lee como un bloque sin necesitar una caja que lo contenga.
 
 ```
-[A]  Empuje pesado                    hace 3 días   ✓
-[D]  Empuje volumen        Adaptada · ~44 min        ›
+┌ A   Empuje pesado                              ✓ ┐   ← md md / xs xs
+│     Completada hace 3 días · 5 ejercicios        │
+├ B   Tirón pesado                               ✓ ┤   ← xxs
+│     Completada ayer · 5 ejercicios               │
+├ D   Empuje volumen                             › ┤
+│     Adaptada · 5 ejercicios · ~44 min            │
+├ E   Tirón volumen                              › ┤   ← xxs xs / md md
+└     5 ejercicios · ~40 min                       ┘
 ```
+
+Anatomía: la de `exRow`, más el hueco de marcador que `MenuRow` ya reserva para
+el icono.
 
 | Elemento | Regla |
 |---|---|
-| **Marcador** | Ancho fijo 20 px, `Inter_900Black` 13, tracking .5. Pendiente → `lima`; hecha → `muted`. **Sin caja, sin fondo, sin borde** |
-| Nombre | `Inter_800ExtraBold` 13. Pendiente → `text`; hecha → `mutedLight` en peso 500 |
-| Meta | 11 px peso 500 en `muted`. Hecha → cuándo; pendiente → ejercicios y minutos |
-| «Adaptada» | **Texto en `tint.blue70` dentro de la meta**, no una pastilla |
-| Acción | Ancho 16, a la derecha: check lima (hecha) o chevron `muted` (pendiente) |
+| Fila | `backgroundColor: surface`, `padding: spacing.md spacing.lg`, `gap: spacing.lg`, `overflow: hidden` + `getCardRadii(th, isFirst, isLast)` |
+| **Marcador** | Ancho fijo **20 px** (el hueco de icono de `MenuRow`), `Inter_900Black` 13, tracking .5. Pendiente → `lima`; hecha → `muted`. **Sin caja, sin fondo, sin borde** |
+| Nombre | `textStyles.cardType` a **13 px** en `text` — **el mismo color en hecha y en pendiente** |
+| Subtítulo | `textStyles.tag` a **11 px** en `mutedLight`, `gap: spacing.xs` bajo el nombre. Hecha → «Completada hace 3 días · 5 ejercicios»; pendiente → «5 ejercicios · ~44 min» |
+| «Adaptada» | **Texto en `tint.blue70` al principio del subtítulo**, no una pastilla |
+| Acción | A la derecha: check lima (hecha) o el chevron `›` de 18 px de `exRow` (pendiente) |
 
-Tres rondas de corrección llegaron aquí, así que conviene no deshacerlas:
+Lo que aporta sobre la versión con filete que había antes:
 
-1. Primero el check ocupaba un hueco reservado a la izquierda que en las filas
-   pendientes **no lo llenaba nada**. Se fue a la derecha, con el chevron —
-   que además es la regla de Figma para las Sesion Cards: la zona de acción
-   siempre acaba en el mismo punto sea cual sea su contenido.
-2. Luego el marcador era un chip de 24×24 con fondo `accent-10` (pendiente) o
-   transparente con borde (hecha). El usuario lo rechazó: **«cambios de fondo
-   raros»**. Fuera la caja; el color de la letra basta.
-3. Y la pastilla azul de ADAPTADA pasó a ser texto. Menos ruido, y el azul
-   sigue significando entrenador.
+- **El filete gris desaparece.** Era un elemento que no significaba nada y que
+  no existe en ninguna otra lista de la app. Los 2 px de separación son fondo
+  de pantalla, no una línea.
+- **La fila es de dos líneas**, así que cada sesión dice lo que es sin pelear
+  por el espacio horizontal. Antes «hace 3 días» iba apretado contra el borde
+  derecho.
+- **Conexiones entra en el mismo grupo** con la otra anatomía de la misma lista
+  (`MenuRow`: etiqueta 14, sub 11, estado con punto a la derecha), así que la
+  pantalla acaba con **un solo tipo de lista repetido dos veces**.
 
-El ancho fijo de 20 px es lo que mantiene el borde izquierdo alineado en las
-cuatro filas, y de paso **aguanta tres caracteres** sin tocar nada — ver §5.2.
+Decisiones de estado ya cerradas — conviene no deshacerlas:
+
+1. El check estaba a la izquierda ocupando un hueco que en las filas pendientes
+   **no llenaba nada**. Se fue a la derecha, con el chevron — que además es la
+   regla de Figma para las Sesion Cards: la zona de acción siempre acaba en el
+   mismo punto sea cual sea su contenido.
+2. El marcador fue un chip de 24×24 con fondo `accent-10` (pendiente) o borde
+   (hecha). El usuario lo rechazó: **«cambios de fondo raros»**. Fuera la caja;
+   el color de la letra basta.
+3. La pastilla azul de ADAPTADA pasó a ser texto. Menos ruido, y el azul sigue
+   significando entrenador.
+4. **El nombre no cambia de color** entre hecha y pendiente. Lo que distingue
+   es el marcador, el icono de la derecha y lo que dice el subtítulo. Menos
+   variación, y la lista se lee como una sola cosa.
+
+El ancho fijo de 20 px del marcador es lo que mantiene el borde izquierdo
+alineado en las cuatro filas, y de paso **aguanta tres caracteres** sin tocar
+nada — ver §5.2.
+
+**Extracción:** la fila sale a `ui/MenuList` como `GroupedRow`, **no a un
+`ui/GroupedList` nuevo**: el grupo, el `gap: spacing.xs` y `getCardRadii` ya
+vivían ahí, y CONEXIONES es la otra anatomía (`MenuRow`) de esa misma lista, así
+que un archivo aparte habría duplicado el contenedor para no compartir nada.
+**En la ficha de cliente NO se usa** — ver §4.5.
 
 ---
 
 ## 4. Fase U07 — `ProgramCard` compartida
+
+> ⚠️ **La anatomía de abajo (§4.2), su pie de acciones (§4.3) y la extracción
+> (§4.7) están superadas por [program-card.md](program-card.md)** (sep 2026): la
+> tarjeta perdió la banda de dos tonos, las cajas de las cifras y el pie, y la
+> `StageSegBar` que se cita aquí está borrada. Lo que sigue vigente de esta fase
+> es el **hallazgo** —que las dos pantallas ya tenían la misma tarjeta— y lo que
+> se decidió dejar distinto entre ellas (§4.4-§4.6).
 
 ### 4.1 El hallazgo
 
@@ -206,7 +320,7 @@ clientes vive donde debe, arriba a la derecha, a 20 px en `accent`.
 ```
 ┌ surface · radius.lg · overflow hidden ─────────────┐
 │ apHead — surface2, py 14 px 16                     │
-│   PROGRAMA                              CICLO      │  spacingTag mutedLight
+│   TU PROGRAMA                           CICLO      │  spacingTag mutedLight
 │   Hipertrofia AF                           07      │  hero 20 · text / accent
 │   ● por Marcos Ruiz                                │  ← solo variante self
 │ apBody — pt 14 px 16 pb 16                         │
@@ -225,7 +339,7 @@ Dos variantes:
 
 | | `self` (Home) | `client` (ficha de cliente) |
 |---|---|---|
-| Eyebrow | `Programa` | `Programa asignado` |
+| Eyebrow | `Tu programa` | `Programa asignado` |
 | Línea de autoría | `● por {entrenador}` en **azul**, solo si el programa viene de uno | no existe — el entrenador *es* el autor |
 
 **El azul es la regla de siempre**: azul = entrenador, sin excepciones. Sin
@@ -258,18 +372,91 @@ clientes sigue siendo una **ficha con «Preparar»** en `accent-10`. El acento
 marca la acción principal de cada pantalla, y en clientes esa acción se hace una
 vez por semana: un hero ahí estaría gritando.
 
-Lo que sí sube de la Home a clientes: el marcador de letra y **las filas
-agrupadas del ciclo entero**, para que el entrenador vea qué lleva hecho su
-cliente sin abrir el historial. Al tocarlas debe abrirse la sesión **para
-prepararla, no para entrenarla**.
+Lo que sí sube de la Home a clientes es solo el **marcador de letra**. La lista
+agrupada no: ver §4.6.
 
-### 4.5 Extracción
+### 4.5 En la ficha de cliente NO hay sesiones
+
+Ni la lista agrupada ni un resumen. **El entrenador no puede pulsar esas
+sesiones** —no va a entrenarlas— así que cualquier cosa que las pinte solo
+empuja hacia abajo lo único que sí va a tocar, que son los ajustes del programa.
+
+Se probaron las dos y se descartaron las dos:
+
+1. La **lista agrupada** entera, la misma que la Home. Cuatro filas de dos
+   líneas ocupando media pantalla para algo que no se pulsa.
+2. Una **línea de resumen** dentro de la tarjeta (`A✓ B✓ C D E`). Cabía, pero
+   sobraba: **la barra de etapa ya rellena su segmento actual con la fracción
+   de sesiones hechas del ciclo**, así que el dato estaba dicho dos veces, y
+   «Próxima sesión», que va justo debajo, dice por dónde va la clienta.
+
+El tab de Programa queda con **tres piezas y ninguna suelta**: la tarjeta con
+sus ajustes, la ficha de «Preparar» y su nota. Entra sin scroll, que era el
+objetivo.
+
+### 4.6 Las pestañas pierden la banda
+
+`ui/TabBar` **existe y está en uso** (`ClientsScreen.jsx:2465`), pero hay que
+restilarlo. Su diseño actual son pestañas clásicas: la activa toma `colors.bg`
+con las esquinas de arriba redondeadas y **se funde con el contenido**, lo que
+obliga a que lo de arriba sea una banda de otro color (`detailNavBand`, sobre
+`surface`).
+
+Ese es el problema: la pantalla pasa de **header negro → banda gris → contenido
+negro**, y una banda gris no existe en ningún otro sitio de la app. El recurso
+es correcto y está bien argumentado en la cabecera del componente, pero paga un
+fondo que el resto del producto no usa.
+
+**Pestañas nuevas, sobre `bg`:**
+
+| Pieza | Valor |
+|---|---|
+| Track | `colors.surface`, `radius.md`, `padding: 3`, `gap: 3` |
+| Pestaña | `flex: 1`, `padding: 9px 2px`, `radius.sm`, `textStyles.cardType` en `mutedLight` |
+| Activa | fondo `colors.surface2`, texto en `colors.text` |
+| Animación | la píldora **desliza** a la nueva posición, igual que el `SegmentedControl` |
+
+Con esto la pantalla entera va sobre `bg`: cabecera, nombre, pestañas y
+contenido. Desaparecen la banda y las dos condiciones que imponía (sin borde
+inferior, sin `paddingBottom`).
+
+**La regla que sustituye a la de la banda, y es más simple:**
+
+> El `SegmentedControl` de filtro lleva el highlight en **`accent`**; las
+> pestañas de navegación lo llevan **neutro**. En una pantalla con los dos, la
+> píldora lima es siempre el filtro.
+
+> ⚠️ **Revertido en QA (sep-2026).** La píldora de `TabBar` pasa a `accent` con
+> el texto en `onAccent`: probada en la ficha de cliente, en `surface2` la
+> pestaña activa casi no se distinguía, y en qué pestaña estás es el dato que
+> manda en esa cabecera. La diferencia con el segmentado se queda donde ya
+> estaba de verdad —track `surface` + `radius.md` contra `surface2` +
+> `radius.full`—, que era el otro argumento de este mismo apartado.
+
+Los dos siguen sin parecerse —track `surface2` y `radius.full` contra `surface`
+y `radius.md`— y siguen conviviendo: las pestañas navegan entre sub-pantallas,
+y dentro de cada una hay segmentados que filtran. Lo que cambia es **de dónde
+sale la diferencia**: antes del fondo sobre el que flotaban, ahora del color del
+highlight, que además encaja con §1.1 — el acento marca acción, no en qué
+pestaña estás.
+
+⚠️ **Coste real:** `TabBar.jsx` está implementado, probado y en uso, y su
+cabecera documenta el motivo que aquí se cae. Hay que reescribir componente y
+comentario, no solo la maqueta.
+
+### 4.7 Extracción
 
 Sacar `AssignedProgramCard` a `components/ui/ProgramCard.jsx` quedándose **solo
 con la tarjeta** (cabecera, cuerpo, etapa, 3 cajas, pie). Los avisos de bloqueo
 y la sección de próxima sesión se quedan en `ClientsScreen`: son del tab, no de
-la tarjeta. Extraer también las filas de sesión, que ahora usan las dos
-pantallas.
+la tarjeta. Las filas de sesión NO se comparten — en la ficha de cliente no hay
+sesiones (§4.5), así que la lista agrupada solo la usa la Home.
+
+Dos accesos que vivían en el banner se mudan a las piezas equivalentes de la
+tarjeta, y solo en la variante `self`: la etiqueta **CICLO** abre la ficha del
+apartado (era ya el disparador en el banner) y el **bloque de etapa** abre el
+selector (era el `onPress` del banner entero). En la ficha de cliente no hay
+nada que elegir desde ahí, así que ninguna de las dos es pulsable.
 
 ---
 
@@ -435,6 +622,101 @@ lo que la hace útil aquí y no debe cambiar.
 
 Es independiente del resto de la spec: se puede hacer antes, después o nunca.
 
+### 7.1 No hay que diseñarlo: la app ya lo resolvió un nivel más abajo
+
+Los **presets de bloque** de acondicionamiento son este mismo problema con otro
+tamaño, y están hechos y en uso. U09 es esa forma a nivel de sesión, no un
+diseño nuevo:
+
+| Pieza | Presets de bloque (hoy) | Plantillas de sesión libre (U09) |
+|---|---|---|
+| Almacén | `blockPresets: []` en `useStore.js` — copias **congeladas**, device-global, fuera del sync, dentro del backup | igual, array propio |
+| Crear | botón al final del editor de bloque (`BlockEditorInline.jsx`) + toast | §7.3 |
+| Usar | la hoja de «añadir» gana una fila **solo si hay al menos uno**, y esa fila abre una segunda hoja con la lista | §7.2 |
+| Borrar | una `✕` por fila en esa segunda hoja, con confirmación | igual |
+
+`saveBlockPreset` le quita el `id` al bloque y le pone un `presetId` nuevo:
+insertar un preset **copia**, no referencia. La plantilla de sesión hace lo
+mismo.
+
+### 7.2 Abrir: la hoja solo existe cuando hay algo que ofrecer
+
+Pulsar `＋ SESIÓN LIBRE` abre una hoja de dos opciones —**nueva** o **desde
+plantilla**— y la segunda abre la lista.
+
+**Con cero plantillas la hoja no aparece**: el botón va directo a la sesión
+libre en blanco, exactamente como hoy. Es la misma regla que gobierna la fila de
+presets del editor (`blockPresets.length > 0 &&`), y tiene dos consecuencias
+buenas: quien no use plantillas nunca ve un paso de más, y la hoja no puede
+ofrecer una lista vacía.
+
+Es además la regla del hero (§5.3) aplicada a otra pieza: **la interfaz no
+promete lo que no tiene**.
+
+### 7.3 Guardar: en el recap, no en el workout
+
+El botón vive en el **recap**, como acción secundaria encima de `LISTO`.
+
+1. Al empezar una sesión libre no sabes si merece guardarse; al acabarla, sí.
+   El editor de bloque puede poner su botón abajo porque acabas de terminar de
+   *editarlo* — el recap es ese mismo momento para una sesión libre.
+2. El pie del workout es un par ya decidido (GUARDAR primario · Descartar
+   secundario) y un tercer botón ahí compite con el guardado.
+3. El recap ya es una pantalla que te **pide** algo (el RPE), no un informe, así
+   que tiene sitio para una acción sin cambiar de naturaleza.
+
+**Una plantilla por sesión**: guardada, el botón se queda diciéndolo y no acepta
+un segundo toque. Guardarla dos veces daría dos plantillas idénticas y ninguna
+forma de distinguirlas.
+
+**Y si la sesión SALIÓ de una plantilla, se puede actualizar esa.** Es el caso
+normal: abres la plantilla, le cambias un par de cosas por el camino y quieres
+que se queden. Sin esto, cada retoque fundaba una copia y acababas con tres
+«Corta de reserva» sin saber cuál es la buena. El recap ofrece las dos salidas,
+con «Actualizar «Corta»» al doble de ancho que «Guardar como nueva» — la
+actualización es lo que se espera, la copia es la excepción. Sin plantilla de
+origen, o si se borró mientras tanto, vuelve el botón único.
+
+Actualizar **conserva el `presetId`**, así que la plantilla no se mueve de sitio
+en la lista; y si le quitaste el nombre a la sesión se queda con el que ya tenía.
+La sesión recuerda su origen en `freePresetId`, que viaja al log porque el recap
+trabaja sobre la entrada y no sobre la sesión, que a esas alturas ya está
+reseteada.
+
+⚠️ **El recap es un momento, no un estado** — el mismo aviso del §3.2.1. Si el
+usuario lo pasa de largo, la sesión queda en el historial y la plantilla se
+pierde. Se acepta a propósito: el segundo hogar permanente sería un `⋯` en la
+entrada de historial, y hoy esa tarjeta no tiene ninguno, así que sería estrenar
+una afordancia para un caso que quizá no aparece. Si aparece, ese es el sitio.
+
+### 7.4 Qué se congela, y dónde vive
+
+**Qué:** los ejercicios con su configuración (series, rangos, descansos), los
+bloques y el nombre. **Los pesos y las reps registradas no** — eso es el log.
+La plantilla es el plan, no lo que hiciste.
+
+Al implementarlo apareció que **esa configuración no existía**: el `exConfig` de
+un ejercicio añadido sobre la marcha se inventaba en cada render con los valores
+por defecto de la biblioteca, así que la línea «4 × 8–12 · 90 s» de la tarjeta
+era un dato que nadie podía cambiar y que la plantilla no podía congelar. Se
+arregló en el mismo sitio donde se ve (commit b5424d5): la entrada ad-hoc lleva
+su `config`, la línea de objetivo es su disparador —el dato es el disparador,
+como la etiqueta CICLO de la Home— y detrás hay una hoja con el bloque VOLUMEN
+del editor y nada más. Nada de progresión, calentamiento ni vinculación: en una
+sesión libre no hay siguiente sesión a la que progresar.
+
+**Dónde:** `freeSessionPresets`, array propio device-global, **no en
+`sessionTemplates`**. Ese mapa lo referencian los días de las etapas; una
+plantilla libre metida ahí sería una sesión sin dueño, y aparecería en todo lo
+que recorre plantillas. Como `blockPresets`: fuera del canal del entrenador (es
+tuya, no la programa nadie) y dentro de `backupPayload`, del que viaja con la
+biblioteca personal en la importación.
+
+Las dos funciones que deciden qué entra y qué no son puras y viven en
+`utils/freeSessionPreset.js`, fuera del store: `presetFromEntry` congela,
+`freeSessionFromPreset` vuelve a montar. Lo que hay que acertar es exactamente
+eso, así que se prueba solo.
+
 ---
 
 ## 8. Lo que se aparta de Figma — pendiente de aprobar
@@ -448,9 +730,11 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 2. **El acento cambia de dueño.** En Figma el borde acento marca la sesión
    completada; aquí el relleno acento marca la siguiente y las completadas se
    quedan solo con el check.
-3. **Las sesiones restantes van agrupadas**, con filete entre ellas y radio solo
-   en las esquinas del bloque. Figma pide cinco tarjetas independientes de 81 px
-   con radio completo y gap de 10.
+3. **Las sesiones restantes usan la lista agrupada.** Figma pide cinco tarjetas
+   independientes de 81 px con radio completo y gap de 10; aquí van con
+   `gap: spacing.xs` y radios por posición. No es una forma inventada —es el
+   patrón que ya usan Progreso, los menús y la lista de clientes— pero **en
+   esta pantalla el mock pide el otro**.
 4. **La sesión siguiente sale de la lista.** El orden A→F se respeta dentro de
    la lista, pero la elegida ya no está en ella.
 5. **La sección `PROGRAMA` del final se elimina**: sus acciones bajan al pie de
@@ -462,10 +746,13 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 
 | # | Pregunta | Contexto |
 |---|---|---|
-| 1 | **¿EDITAR se pinta con programa de entrenador?** | Hoy `HomeScreen` lo oculta a propósito con `isTrainerProgram`: la edición no sube por el canal y la siguiente actualización reemplazaría el programa entero. Los mocks lo pintan siempre. Si la regla sigue, VER ocupa el pie completo en ese caso |
+| 1 | ~~**¿EDITAR se pinta con programa de entrenador?**~~ **Resuelto al implementar: no.** | La regla sigue —la edición no sube por el canal y la siguiente actualización reemplazaría el programa entero—, así que `ProgramCard` recibe `onEdit: undefined` y VER ocupa el pie junto al `⋯` |
 | 2 | **El nombre del programa no se ve al abrir** | Consecuencia directa de bajar la tarjeta al final. La única forma de tenerlo arriba *y* la tarjeta abajo es duplicar el nombre en una línea fina de cabecera |
 | 3 | **El radio** | La `ProgramCard` va a `radius.lg` (18) y las filas de sesión a `md` (10). O se igualan, o se acepta que la tarjeta es de otro rango — en clientes hoy conviven así y no chirría |
 | 4 | **La semana perdió su contador** | Al quedarse desnuda (§3.1). Si el dato interesa, hay que devolvérselo de otra forma |
+| 5 | **¿Se echan de menos las sesiones en clientes?** | §4.5 las quita del todo. Si al usarlo falta saber qué lleva hecho, el sitio es el historial del cliente, que está a una pestaña — no devolverlas a esta pantalla |
+| 6 | **Ancho de las pestañas** | Cuatro etiquetas a `cardType` (12 px, tracking 1.2) dejan ~82 px por celda: «Historial» entra justo. Si en dispositivo se corta, bajar el tracking solo de las pestañas, no el tamaño |
+| 7 | **El tracking del nombre de sesión** | La fila hereda `cardType` de Progreso, con **tracking 1.2**. El tamaño ya subió a 13/11 en QA (a 12/10 la fila se quedaba pequeña al lado del hero); el tracking sigue sin tocar, y en «Empuje volumen» queda más espaciado de lo esperable. Si no convence, bajarlo solo aquí y anotarlo |
 
 ---
 
@@ -473,10 +760,10 @@ Contra la extracción de `docs/figma-extraction/pages/homeview.md`:
 
 | Fase | Qué | Coste | Estado |
 |---|---|---|---|
-| **U06** | Rediseño de la HomeView: hero, filas planas, semana desnuda, tarjeta al final (§3) | medio | pendiente |
-| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta (§4) | medio | pendiente |
-| **U08** | `sessionPlan()` — se hace **dentro de U06**, no después (§5) | media tarde | pendiente |
-| **U09** | Plantillas de sesión libre (§7) | bajo | pendiente |
+| **U06** | Rediseño de la HomeView: hero, lista agrupada, semana desnuda, tarjeta al final (§3) | medio | ✅ 97ae57d |
+| **U07** | `ProgramCard` compartida: extracción, dos variantes, pie integrado, métricas del lado atleta, ficha de cliente sin sesiones y restyle de `ui/TabBar` sin banda (§4) | medio | ✅ 97ae57d |
+| **U08** | `sessionPlan()` — se hizo **dentro de U06**, no después (§5) | media tarde | ✅ 97ae57d |
+| **U09** | Plantillas de sesión libre (§7) | bajo | ✅ 94e77f6 |
 
 ---
 
@@ -490,3 +777,4 @@ antes/después de cada corrección:
 - **La Home reordenada** (4 rondas de corrección, con antes/después de cerca): <https://claude.ai/code/artifact/b7448110-37f8-4390-98ff-772b74d68259>
 - **Una tarjeta, dos pantallas** (la convergencia con `ClientsScreen`): <https://claude.ai/code/artifact/a124dafa-aae0-48ad-ba0c-104b869788d5>
 - **Cuando el orden no importa** (los quince modos de entrenar): <https://claude.ai/code/artifact/4587736e-02a0-464a-aeed-203906a04754>
+- **La Home, montada** — **la referencia buena**: la pantalla entera con los componentes finales, la lista agrupada, la ficha de cliente, los tres estados del hero (incluido el modo sin hero) y el inventario de qué componente sale de dónde: <https://claude.ai/code/artifact/a9a04c00-d471-4034-a20b-4bb6795784bc>

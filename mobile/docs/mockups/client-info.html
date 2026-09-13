@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Ficha de cliente › Info — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; font-family: Inter, sans-serif; padding: 30px 26px 70px; -webkit-font-smoothing: antialiased; color: #e6e6e6; }
+
+  /* ── Andamio de la maqueta (no es UI) ── */
+  .rack { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .col  { width: 375px; }
+  .cap  { font: 600 12px/1.55 Inter; color: #818181; letter-spacing: .3px; margin: 0 0 12px; }
+  .cap b { display: block; color: #aae216; font-weight: 800; letter-spacing: 1.4px; font-size: 11px; margin-bottom: 3px; }
+  .phone { background: #151515; border-radius: 26px; padding: 15px 15px 22px; margin-bottom: 28px; }
+  .note { font: 500 11px/1.5 Inter; color: #4d4d4d; margin: -18px 0 28px; }
+  h1 { font: 900 22px Inter; letter-spacing: -.4px; margin-bottom: 6px; }
+  .lead { font: 500 13px/1.6 Inter; color: #818181; max-width: 900px; margin-bottom: 26px; }
+
+  /* ══════ TOKENS FormaFit ══════
+     bg #151515 · surface #1f1f1f · surface2 #272727 · text #e6e6e6
+     mutedLight #818181 · muted #4d4d4d · accent #aae216 · border #3a3a3a
+     orange #fb923c · red #ff0900 · tint/accent-10 rgba(184,255,0,.1)
+     radius xs4 sm6 md10 lg18 full · space xs2 xs2-4 sm6 sm2-8 md10 lg15 xl20 */
+
+  /* ── Cabecera de ficha (YA migrada, aquí solo por contexto) ── */
+  .hdr { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+  .back { width: 34px; height: 34px; border-radius: 6px; background: #272727; display: grid; place-items: center; font: 900 16px Inter; color: #e6e6e6; }
+  .cname { font: 900 20px Inter; flex: 1; min-width: 0; }
+  .clast { font: 500 12px Inter; letter-spacing: .48px; color: #4d4d4d; }
+
+  /* ── Tabs = SegmentedControl (sin tocar) ── */
+  .seg { display: flex; gap: 6px; background: #272727; border-radius: 9999px; padding: 4px; margin: 15px 0; }
+  .seg div { flex: 1; text-align: center; padding: 8px 0; border-radius: 9999px; font: 800 12px Inter; letter-spacing: 1.2px; color: #e6e6e6; }
+  .seg div.on { background: #aae216; color: #000; }
+
+  /* ══════ SECCIÓN PLEGABLE ══════ */
+  .sec { background: #1f1f1f; border-radius: 18px; overflow: hidden; margin-bottom: 10px; }
+  .sechd { display: flex; align-items: center; gap: 10px; padding: 15px; }
+  .sectitle { font: 800 12px Inter; letter-spacing: 1.2px; color: #e6e6e6; }
+  .secsum { margin-left: auto; font: 500 12px Inter; letter-spacing: .48px; color: #818181; max-width: 175px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .secsum.accent { color: #aae216; }
+  .secsum.orange { color: #fb923c; }
+  .chev { font: 900 11px Inter; color: #4d4d4d; transition: transform .18s; }
+  .sec.open .chev { color: #aae216; transform: rotate(180deg); }
+  .rule { height: 1px; background: #3a3a3a; }
+  .secbd { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+
+  .lbl  { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; margin-bottom: 6px; }
+  .hint { font: 500 10px Inter; color: #4d4d4d; margin-top: 6px; }
+
+  /* ── Estado: 3 botones, sin borde ── */
+  .strow { display: flex; gap: 6px; }
+  .stbtn { flex: 1; height: 38px; border-radius: 6px; background: #272727; display: flex; align-items: center; justify-content: center; gap: 6px; font: 800 12px Inter; letter-spacing: 1.2px; color: #818181; }
+  .stbtn i { width: 6px; height: 6px; border-radius: 3px; }
+  .stbtn.on.g { background: rgba(184,255,0,.10); color: #aae216; }
+  .stbtn.on.g i { background: #aae216; }
+
+  /* ── Etiquetas: pills sin borde ── */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { padding: 7px 12px; border-radius: 9999px; background: #272727; font: 500 12px Inter; letter-spacing: .48px; color: #818181; }
+  .tag.on { background: rgba(184,255,0,.10); color: #aae216; font-weight: 800; }
+  .tag.add { color: #aae216; font-weight: 800; }
+
+  /* ── Lista agrupada (getCardRadii): el patrón denso ya cerrado ── */
+  .grp { display: flex; flex-direction: column; gap: 2px; }
+  .grp > div { background: #272727; padding: 12px 15px; display: flex; align-items: center; gap: 10px; border-radius: 2px; }
+  .grp > div:first-child { border-radius: 10px 10px 4px 4px; }
+  .grp > div:last-child  { border-radius: 4px 4px 10px 10px; }
+  .grp > div:only-child  { border-radius: 10px; }
+  .gk { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; width: 78px; flex: none; }
+  .gv { font: 800 12px Inter; letter-spacing: 1.2px; color: #e6e6e6; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gv.empty { color: #4d4d4d; font-weight: 500; letter-spacing: .48px; }
+  .del { font: 500 13px Inter; color: #4d4d4d; padding-left: 4px; }
+
+  /* ── Bloque de notas ── */
+  .notes { background: #272727; border-radius: 10px; padding: 12px 15px; }
+  .notes p { font: 500 12px/1.6 Inter; letter-spacing: .48px; color: #e6e6e6; }
+
+  /* ── Fila de alta (peso / factura) ── */
+  .addrow { display: flex; gap: 6px; }
+  .fld { height: 44px; background: #272727; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font: 800 12px Inter; letter-spacing: 1.2px; color: #4d4d4d; }
+  .fld.f1 { flex: 1; min-width: 0; }
+  .plus { width: 44px; height: 44px; flex: none; border-radius: 6px; background: #aae216; color: #000; display: grid; place-items: center; font: 900 16px Inter; }
+
+  /* ── 3 cifras (misma anatomía que la tarjeta de programa) ── */
+  .tiles { display: flex; gap: 6px; }
+  .tile { flex: 1; background: #151515; border-radius: 10px; padding: 10px; text-align: center; }
+  .tval { font: 900 20px Inter; font-variant-numeric: tabular-nums; }
+  .tval small { font: 500 12px Inter; }
+  .tkey { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #4d4d4d; margin-top: 4px; }
+
+  /* ── Fila de factura ── */
+  .bill { display: flex; align-items: center; gap: 10px; }
+  .bcon { font: 800 12px Inter; letter-spacing: 1.2px; color: #e6e6e6; }
+  .bdate { font: 500 10px Inter; color: #4d4d4d; margin-top: 2px; }
+  .bamt { font: 900 13px Inter; font-variant-numeric: tabular-nums; }
+  .pill { padding: 6px; border-radius: 4px; font: 800 10px Inter; letter-spacing: 1px; }
+  .pill.paid { background: rgba(184,255,0,.10); color: #aae216; }
+  .pill.pend { background: rgba(251,146,60,.30); color: #fb923c; }
+
+  /* ── Código de conexión (componente existente, sin tocar) ── */
+  .codeexp { font: 500 12px/1.42 Inter; letter-spacing: .48px; color: #818181; }
+  .coderow { display: flex; gap: 8px; }
+  .codebox { flex: 1; background: #272727; border-radius: 6px; padding: 12px; text-align: center; font: 900 20px Inter; letter-spacing: 4px; color: #aae216; }
+  .codecopy { width: 46px; border-radius: 6px; background: #272727; display: grid; place-items: center; }
+  .tert { font: 500 12px Inter; letter-spacing: .48px; color: #4d4d4d; text-align: center; padding: 6px; }
+  .tert.red { color: #ff0900; padding: 15px 6px 0; }
+</style>
+</head>
+<body>
+
+<h1>Ficha de cliente › Info — maqueta</h1>
+<p class="lead">
+  Misma funcionalidad, otra forma de presentarla. Hoy Info es una lista de acordeones a
+  sangre con separadores de 1px, campos con borde y la escala tipográfica genérica; aquí
+  cada categoría es una <b>tarjeta plegable con resumen vivo en la cabecera</b>, de modo que
+  la pantalla cerrada ya dice el estado del cliente sin abrir nada. Todo lo de dentro usa
+  piezas ya cerradas del rediseño: lista agrupada, pills sin borde, cifras en cajas
+  <code>bg</code>, filete a sangre, botón accent 44.
+</p>
+
+<div class="rack">
+
+  <!-- ══════════ COLUMNA 1 — todo plegado ══════════ -->
+  <div class="col">
+    <p class="cap"><b>1 · LA PANTALLA EN REPOSO</b>El estado por defecto. Hoy, con todo cerrado, la pantalla no dice absolutamente nada: cuatro rótulos y cuatro flechas. Aquí cada cabecera lleva su dato a la derecha, así que Info se lee de un vistazo antes de tocar nada.</p>
+    <div class="phone">
+      <div class="hdr">
+        <div class="back">‹</div>
+        <div class="cname">Marta</div>
+        <div class="clast">hace 2 días</div>
+      </div>
+      <div class="seg">
+        <div>PROGRAMA</div><div>HISTORIAL</div><div>PROGRESO</div><div class="on">INFO</div>
+      </div>
+
+      <div class="sec">
+        <div class="sechd"><span class="sectitle">ESTADO</span><span class="secsum accent">Activa · 2 etiquetas</span><span class="chev">▾</span></div>
+      </div>
+      <div class="sec">
+        <div class="sechd"><span class="sectitle">DATOS PERSONALES</span><span class="secsum">Marta Ruiz Vidal</span><span class="chev">▾</span></div>
+      </div>
+      <div class="sec">
+        <div class="sechd"><span class="sectitle">PESO CORPORAL</span><span class="secsum">78,4 kg · hace 6 días</span><span class="chev">▾</span></div>
+      </div>
+      <div class="sec">
+        <div class="sechd"><span class="sectitle">FACTURACIÓN</span><span class="secsum orange">45 € pendientes</span><span class="chev">▾</span></div>
+      </div>
+      <div class="sec">
+        <div class="sechd"><span class="sectitle">CONEXIÓN</span><span class="secsum">Conectada</span><span class="chev">▾</span></div>
+      </div>
+
+      <div class="tert red">Eliminar cliente</div>
+    </div>
+    <p class="note">
+      Resúmenes, todos derivados de datos que ya existen: estado + nº de etiquetas ·
+      <code>fullName</code> (o el alias si no hay) · último peso y su antigüedad ·
+      pendiente de cobro (en naranja solo si &gt; 0, si no “Al día” en mutedLight) ·
+      “Conectada” / <span style="color:#aae216">“Sin conectar”</span> en accent, que es lo
+      único de aquí que pide acción.
+    </p>
+  </div>
+
+  <!-- ══════════ COLUMNA 2 — Estado + Datos ══════════ -->
+  <div class="col">
+    <p class="cap"><b>2 · ESTADO Y DATOS PERSONALES</b>Fuera los bordes: los tres estados son botones <code>surface2</code> y el activo se tiñe con el 10% de su color. Los campos dejan de ser cinco inputs con borde y pasan a la lista agrupada que ya usan Progreso y el menú principal.</p>
+    <div class="phone">
+
+      <div class="sec open">
+        <div class="sechd"><span class="sectitle">ESTADO</span><span class="secsum accent">Activa · 2 etiquetas</span><span class="chev">▾</span></div>
+        <div class="rule"></div>
+        <div class="secbd">
+          <div>
+            <div class="strow">
+              <div class="stbtn on g"><i></i>ACTIVA</div>
+              <div class="stbtn">EN PAUSA</div>
+              <div class="stbtn">INACTIVA</div>
+            </div>
+          </div>
+          <div>
+            <div class="lbl">Etiquetas</div>
+            <div class="tags">
+              <span class="tag on">Fuerza</span>
+              <span class="tag on">Online</span>
+              <span class="tag">Presencial</span>
+              <span class="tag">Competición</span>
+              <span class="tag add">＋ Nueva</span>
+            </div>
+            <div class="hint">Toca para asignar · ＋ para crear una nueva</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec open">
+        <div class="sechd"><span class="sectitle">DATOS PERSONALES</span><span class="secsum">Marta Ruiz Vidal</span><span class="chev">▾</span></div>
+        <div class="rule"></div>
+        <div class="secbd">
+          <div class="grp">
+            <div><span class="gk">Alias</span><span class="gv">Marta</span></div>
+            <div><span class="gk">Nombre</span><span class="gv">Marta Ruiz Vidal</span></div>
+            <div><span class="gk">Teléfono</span><span class="gv">+34 600 111 222</span></div>
+            <div><span class="gk">Email</span><span class="gv empty">marta@email.com</span></div>
+          </div>
+          <div>
+            <div class="lbl">Notas</div>
+            <div class="notes"><p>Hombro derecho delicado desde marzo. Evitar press militar tras la nuca. Entrena martes y jueves por la tarde.</p></div>
+            <div class="hint">Se guarda al perder el foco</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <p class="note">
+      Cada fila de la lista agrupada es el propio <code>TextInput</code>: la etiqueta a la
+      izquierda ocupa un ancho fijo y el valor escribe a la derecha, sin caja propia. Un
+      campo vacío enseña su placeholder en <code>muted</code> (la fila del email). El estado
+      mantiene los tres colores semánticos actuales — verde/naranja/rojo — solo que como
+      tinte del 10% y punto, no como borde.
+    </p>
+  </div>
+
+  <!-- ══════════ COLUMNA 3 — Peso, Facturación, Conexión ══════════ -->
+  <div class="col">
+    <p class="cap"><b>3 · PESO, FACTURACIÓN Y CONEXIÓN</b>Las dos secciones con lista propia comparten anatomía: alta arriba, historial abajo en lista agrupada. Las tres cifras de facturación son las mismas cajas <code>bg</code> de la tarjeta de programa asignado.</p>
+    <div class="phone">
+
+      <div class="sec open">
+        <div class="sechd"><span class="sectitle">PESO CORPORAL</span><span class="secsum">78,4 kg · hace 6 días</span><span class="chev">▾</span></div>
+        <div class="rule"></div>
+        <div class="secbd">
+          <div class="addrow">
+            <div class="fld f1">2026-09-09</div>
+            <div class="fld" style="width:86px;justify-content:center">Peso</div>
+            <div class="plus">＋</div>
+          </div>
+          <div class="grp">
+            <div><span class="gv" style="color:#818181;font-weight:500;letter-spacing:.48px">3 sep</span><span class="gv" style="text-align:right">78,4 kg</span><span class="del">✕</span></div>
+            <div><span class="gv" style="color:#818181;font-weight:500;letter-spacing:.48px">27 ago</span><span class="gv" style="text-align:right">79,1 kg</span><span class="del">✕</span></div>
+            <div><span class="gv" style="color:#818181;font-weight:500;letter-spacing:.48px">20 ago</span><span class="gv" style="text-align:right">79,6 kg</span><span class="del">✕</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec open">
+        <div class="sechd"><span class="sectitle">FACTURACIÓN</span><span class="secsum orange">45 € pendientes</span><span class="chev">▾</span></div>
+        <div class="rule"></div>
+        <div class="secbd">
+          <div class="tiles">
+            <div class="tile"><div class="tval">180<small>€</small></div><div class="tkey">Facturado</div></div>
+            <div class="tile"><div class="tval" style="color:#aae216">135<small>€</small></div><div class="tkey">Recibido</div></div>
+            <div class="tile"><div class="tval" style="color:#fb923c">45<small>€</small></div><div class="tkey">Pendiente</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="addrow">
+              <div class="fld f1">2026-09-09</div>
+              <div class="fld" style="width:86px;justify-content:center">0,00 €</div>
+            </div>
+            <div class="addrow">
+              <div class="fld f1">Concepto</div>
+              <div class="plus">＋</div>
+            </div>
+          </div>
+          <div class="grp">
+            <div class="bill">
+              <div style="flex:1;min-width:0"><div class="bcon">Mensualidad septiembre</div><div class="bdate">1 sep</div></div>
+              <div class="bamt" style="color:#fb923c">45,00 €</div>
+              <span class="pill pend">PENDIENTE</span>
+            </div>
+            <div class="bill">
+              <div style="flex:1;min-width:0"><div class="bcon">Mensualidad agosto</div><div class="bdate">1 ago</div></div>
+              <div class="bamt">45,00 €</div>
+              <span class="pill paid">COBRADO</span>
+            </div>
+            <div class="bill">
+              <div style="flex:1;min-width:0"><div class="bcon">Revisión técnica</div><div class="bdate">18 jul</div></div>
+              <div class="bamt">30,00 €</div>
+              <span class="pill paid">COBRADO</span>
+            </div>
+          </div>
+          <div class="hint">Nace pendiente · toca la pill para darla por cobrada · mantén pulsada la fila para borrarla</div>
+        </div>
+      </div>
+
+      <div class="sec open">
+        <div class="sechd"><span class="sectitle">CONEXIÓN</span><span class="secsum">Conectada</span><span class="chev">▾</span></div>
+        <div class="rule"></div>
+        <div class="secbd">
+          <div class="codeexp">Marta introduce este código en su app para recibir tus programas.</div>
+          <div class="coderow">
+            <div class="codebox">7K2M-4XQ9</div>
+            <div class="codecopy">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#aae216" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2zm0 0H6a2 2 0 00-2 2v12"/></svg>
+            </div>
+          </div>
+          <div class="tert">Emitir un código nuevo</div>
+        </div>
+      </div>
+
+      <div class="tert red">Eliminar cliente</div>
+    </div>
+    <p class="note">
+      Las dos fechas vienen rellenas con hoy (hoy hay que teclear <code>AAAA-MM-DD</code>
+      a pelo), y siguen siendo editables para dar de alta hacia atrás. El ✕ de cada peso se
+      queda; en facturación, con la pill de estado ya en la fila, el borrado pasa a
+      pulsación larga para no meter dos toques destructivos en 40px, y el conmutador
+      cobrado/pendiente sale del formulario: toda entrada nace pendiente y se cambia desde
+      su pill. La tarjeta de código es el <code>ClientCodeBlock</code> actual sin tocar,
+      solo metido dentro de la sección.
+    </p>
+  </div>
+
+</div>
+
+<p class="lead" style="margin-top:10px">
+  <b style="color:#e6e6e6">Lo que la maqueta da por hecho:</b> apertura/cierre animados
+  con Reanimated (la regla de “nada en seco” del rediseño), las claves de i18n que ya
+  existen sin usarse (<code>clients.statusLabel</code>, <code>personalData</code>,
+  <code>bodyWeight</code>, <code>billing</code>, <code>fieldPhone</code>…) en vez del
+  castellano incrustado de hoy, y ninguna sección abierta por defecto salvo cuando se
+  entra desde Facturación global, que sigue abriendo la suya.
+</p>
+
+</body>
+</html>

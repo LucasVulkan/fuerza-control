@@ -20,6 +20,7 @@ import * as Sharing    from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
 import { uploadBackup, findOrCreateFolder, pruneOldBackups, deleteAllBackups, refreshAccessToken, listBackups, downloadBackup } from '../src/services/driveService';
 import { GOOGLE_CLIENT_ID } from '../src/config/google';
+import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc } from '../src/services/supabaseSync';
@@ -37,6 +38,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
+import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
 import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
@@ -219,6 +221,7 @@ const INITIAL_ACTIVE_SESSION = {
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
+  freePresetId: null,  // plantilla de la que salió la sesión libre, si salió de una
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
 };
@@ -399,6 +402,10 @@ export const useStore = create(
       tagRegistry: [],   // [{ id, name }] — global tag list
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
+      // [{ presetId, name, exercises: [{exerciseId, sets}], blocks }] — mismo
+      // trato que `blockPresets`: copias congeladas del PLAN de una sesión libre
+      // (docs/specs/home-sessions.md §7).
+      freeSessionPresets: [],
       _editSnapshot: null,
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
@@ -1107,6 +1114,39 @@ export const useStore = create(
         set((s) => ({ blockPresets: (s.blockPresets ?? []).filter((p) => p.presetId !== presetId) }));
       },
 
+      // Plantillas de sesión libre — se congelan desde una entrada YA guardada
+      // del historial (el recap es quien las ofrece), no desde la sesión en
+      // curso: al empezar no sabes si merece guardarse, al acabarla sí.
+      saveFreeSessionPreset: (entry) => {
+        const preset = { presetId: generateId('fpre'), ...presetFromEntry(entry) };
+        set((s) => ({ freeSessionPresets: [...(s.freeSessionPresets ?? []), preset] }));
+        return preset.presetId;
+      },
+
+      /**
+       * Reescribe una plantilla con lo que se acaba de hacer, conservando su
+       * `presetId` — así no se mueve de sitio en la lista y las sesiones que ya
+       * salieron de ella siguen apuntando a la misma.
+       *
+       * El nombre lo manda la sesión si tiene uno; si se lo quitaste, se queda
+       * el que tenía la plantilla en vez de dejarla sin nombre.
+       */
+      updateFreeSessionPreset: (presetId, entry) => {
+        set((s) => ({
+          freeSessionPresets: (s.freeSessionPresets ?? []).map((p) => {
+            if (p.presetId !== presetId) return p;
+            const next = presetFromEntry(entry);
+            return { ...next, presetId, name: next.name ?? p.name };
+          }),
+        }));
+      },
+
+      deleteFreeSessionPreset: (presetId) => {
+        set((s) => ({
+          freeSessionPresets: (s.freeSessionPresets ?? []).filter((p) => p.presetId !== presetId),
+        }));
+      },
+
       // Transient handoff for the block movement picker: ExerciseSelectorScreen
       // writes the pick here instead of calling addExercise when navigated with
       // `blockPicker: true`; BlockEditorInline consumes it in a useEffect and clears it.
@@ -1245,7 +1285,7 @@ export const useStore = create(
           id: tplId,
           programId,
           label,
-          name: `${src.name ?? 'Sesión'} (copia)`,
+          name: copyName(src.name ?? 'Sesión'),
           color: dayColors[i % dayColors.length],
           // The copy starts unlinked — otherwise edits to it would propagate
           // back to the original through the link group.
@@ -1726,7 +1766,9 @@ export const useStore = create(
         get().navigate('workout');
       },
 
-      startFreeSession: () => {
+      // Con `preset` arranca desde una plantilla: mismos ejercicios y bloques,
+      // series vacías. Sin él, en blanco como siempre.
+      startFreeSession: (preset) => {
         set({
           activeSession: {
             templateId: '__free__',
@@ -1734,10 +1776,8 @@ export const useStore = create(
             startedAt: Date.now(),
             notes: '',
             exerciseNotes: {},
-            adHocExercises: [],
-            freeSessionName: '',
-            freeBlocks: [],
             blockState: {},
+            ...freeSessionFromPreset(preset, () => generateId('blk')),
           },
           ui: { ...get().ui, view: 'workout' },
         });
@@ -1894,6 +1934,58 @@ export const useStore = create(
           },
         }));
         return { changed: true, done: !prevDone };
+      },
+
+      /**
+       * Configuración de un ejercicio ad-hoc — reps/tiempo objetivo y descanso.
+       *
+       * Hasta aquí no había NINGUNA: `WorkoutScreen` se inventaba el `exConfig`
+       * en cada render con los valores por defecto de la biblioteca, así que no
+       * existía sitio donde escribir un cambio. Ahora la entrada lleva el suyo,
+       * y lo que no se toca sigue saliendo del `def` (patch parcial, no una
+       * copia entera de la configuración por defecto).
+       *
+       * `sets` NO vive aquí: es `setsState.length` y punto. Dos fuentes para el
+       * mismo número se separan en cuanto alguien pulsa "añadir serie".
+       */
+      setAdHocConfig: (exerciseId, patch) => {
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: (s.activeSession.adHocExercises ?? []).map((ex) =>
+              ex.exerciseId !== exerciseId ? ex : { ...ex, config: { ...(ex.config ?? {}), ...patch } }
+            ),
+          },
+        }));
+      },
+
+      /**
+       * Cambia CUÁNTAS series tiene un ejercicio ad-hoc. Nunca por debajo de las
+       * que ya tienen algo registrado: bajar el contador es planificar, no
+       * borrar lo hecho.
+       */
+      setAdHocSets: (exerciseId, n) => {
+        const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
+        set((s) => ({
+          activeSession: {
+            ...s.activeSession,
+            adHocExercises: (s.activeSession.adHocExercises ?? []).map((ex) => {
+              if (ex.exerciseId !== exerciseId) return ex;
+              const withData = ex.setsState.reduce(
+                (last, set, i) => (set.weight !== '' || set.reps !== '' || set.time !== '' || set.done ? i + 1 : last),
+                0,
+              );
+              const target = Math.max(1, withData, Math.min(20, n));
+              if (target === ex.setsState.length) return ex;
+              return {
+                ...ex,
+                setsState: target < ex.setsState.length
+                  ? ex.setsState.slice(0, target)
+                  : [...ex.setsState, ...Array.from({ length: target - ex.setsState.length }, emptySet)],
+              };
+            }),
+          },
+        }));
       },
 
       addAdHocSet: (exerciseId) => {
@@ -2068,13 +2160,21 @@ export const useStore = create(
             id:                generateId('log'),
             sessionTemplateId: '__free__',
             sessionName:       activeSession.freeSessionName?.trim() || null,
+            // De qué plantilla salió — el recap trabaja sobre la entrada, no
+            // sobre la sesión (que a estas alturas ya está reseteada), y sin
+            // esto no podría ofrecer actualizarla.
+            ...(activeSession.freePresetId ? { freePresetId: activeSession.freePresetId } : {}),
             timestamp:         Date.now(),
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',
             bodyWeight:        null,
             ...(freeBlocksLog.length > 0 ? { blocks: freeBlocksLog } : {}),
+            // La config va al log porque es lo que la plantilla congela (§7.4):
+            // sin ella, repetir una sesión libre recuperaba los ejercicios pero
+            // no el objetivo que les habías puesto.
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
+              ...(a.config ?? {}),
               ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
             })),
           };
@@ -2156,6 +2256,7 @@ export const useStore = create(
             ...exercises,
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
               exerciseId: adHoc.exerciseId, isAdHoc: true, sets: adHoc.setsState,
+              ...(adHoc.config ?? {}),
               ...exNote(adHoc.exerciseId),
             })),
           ],
@@ -2765,6 +2866,14 @@ export const useStore = create(
               updates.blockPresets = [
                 ...(s.blockPresets ?? []),
                 ...presets.filter((p) => !known.has(p.presetId)),
+              ];
+            }
+            const freePresets = data.freeSessionPresets ?? [];
+            if (freePresets.length) {
+              const known = new Set((s.freeSessionPresets ?? []).map((p) => p.presetId));
+              updates.freeSessionPresets = [
+                ...(s.freeSessionPresets ?? []),
+                ...freePresets.filter((p) => !known.has(p.presetId)),
               ];
             }
           }
@@ -4016,6 +4125,7 @@ export const useStore = create(
         clientLogs: state.clientLogs,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
+        freeSessionPresets: state.freeSessionPresets,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,

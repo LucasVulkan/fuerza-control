@@ -23,10 +23,8 @@
  * pulsar Asignar; ahora se lee en la propia fila del cliente, antes de elegir.
  */
 import { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  TextInput, StyleSheet,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -34,10 +32,11 @@ import { useStore } from '../../store/useStore';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon } from '../components/ui/EditorIcons';
+import NameField from '../components/ui/NameField';
 import { ToggleRow } from '../components/ui/EditorRows';
-import { spacing, textStyles, sheetRowBase } from '../theme';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
 
@@ -101,22 +100,10 @@ function TemplateCard({ program, onAssign, onMenu }) {
 
 // ── Filas de hoja (patrón `SheetRow` de los editores) ──────────────────────────
 
-function SheetRow({ label, onPress, danger = false }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
-    </TouchableOpacity>
-  );
-}
-
 // ── Hoja de crear plantilla ────────────────────────────────────────────────────
 
 function CreateSheet({ visible, onClose, onCreate }) {
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
@@ -141,13 +128,11 @@ function CreateSheet({ visible, onClose, onCreate }) {
       action={{ label: t('common.cancel'), onPress: onClose }}
     >
       <View style={styles.sheetBody}>
-        <TextInput
+        <NameField
           style={styles.sheetInput}
           value={name}
           onChangeText={setName}
           placeholder={t('templates.newModal.namePlaceholder')}
-          placeholderTextColor={th.colors.mutedLight}
-          returnKeyType="done"
         />
 
         <View>
@@ -274,13 +259,11 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
             enseña el placeholder. */}
         <View>
           <Text style={styles.sheetLabel}>{t('templates.assignModal.programNameLabel')}</Text>
-          <TextInput
+          <NameField
             style={styles.sheetInput}
             placeholder={program.name}
-            placeholderTextColor={th.colors.mutedLight}
             value={customName}
             onChangeText={setCustomName}
-            returnKeyType="done"
           />
         </View>
 
@@ -469,28 +452,28 @@ export default function ProgramScreen() {
         <View style={styles.sheetRows}>
           <SheetRow
             label={t('templates.actionView')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setPrintingProgram(id); }}
+            onPress={() => setPrintingProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.actionEdit')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setEditingProgram(id); }}
+            onPress={() => setEditingProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.contextDuplicate')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); handleDuplicate(id); }}
+            onPress={() => handleDuplicate(menuTarget)}
           />
           <SheetRow
             label={t('templates.actionShare')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); shareSpecificProgram(id); }}
+            onPress={() => shareSpecificProgram(menuTarget)}
           />
           <SheetRow
             label={t('templates.contextExport')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); exportSpecificProgram(id); }}
+            onPress={() => exportSpecificProgram(menuTarget)}
           />
           <SheetRow
             danger
             label={t('templates.contextDelete')}
-            onPress={() => { const id = menuTarget; setMenuTarget(null); setDeleteTarget(id); }}
+            onPress={() => setDeleteTarget(menuTarget)}
           />
         </View>
       </DragSheet>
@@ -533,7 +516,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: spacing.lg,
   },
-  listTitle:      { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  listTitle:      { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
   listTitleDot:   { color: th.colors.mutedLight },
   listTitleCount: { color: th.colors.accent },
   hdrNewBtn: {
@@ -544,7 +527,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  hdrNewBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  hdrNewBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   // ── Lista ──
   list: {
@@ -565,13 +548,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   cardBody:  { flex: 1, minWidth: 0, justifyContent: 'center', gap: spacing.xs },
-  cardName:  { ...textStyles.cardTitle, color: th.colors.text },
+  cardName:  { ...textStyles.itemTitle, color: th.colors.text },
   statsRow:  { flexDirection: 'row', gap: 9 },
   stat:      { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
-  statValue: { ...textStyles.spacingTag, color: th.colors.accent },
+  statValue: { ...textStyles.caps, color: th.colors.accent },
   // Figma pone la etiqueta a `text/SmallBold` (8 px); subida a 10 en QA sin
   // cambiar familia ni tracking — a 8 px no se leía en dispositivo.
-  statLabel: { ...textStyles.smallBold, fontSize: 10, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  statLabel: { ...textStyles.caps, fontSize: 10, color: th.colors.mutedLight, textTransform: 'uppercase' },
 
   cardActions: { alignItems: 'flex-end', justifyContent: 'center' },
   cardBtn: {
@@ -581,26 +564,24 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  cardBtnText: { ...textStyles.cardType, color: th.colors.text },
+  cardBtnText: { ...textStyles.labelStrong, color: th.colors.text },
 
   // ── Hojas ──
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
-  sheetRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  sheetRowText: { ...textStyles.cardType, color: th.colors.text },
   sheetLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
-  // Los textos de apoyo van a `text/subtitle` (12), no a `text/tag` (10): a 10
+  // Los textos de apoyo van a `body`, no a `label`: un punto por debajo
   // no se leían en dispositivo (QA).
-  sheetHint:  { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
-  sheetEmpty: { ...textStyles.subtitle, color: th.colors.mutedLight, textAlign: 'center', paddingVertical: spacing.md },
+  sheetHint:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 17 },
+  sheetEmpty: { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', paddingVertical: spacing.md },
   // Dentro de una hoja el fondo YA es `bg`: los campos van sobre `surface`.
   sheetInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:             th.colors.text,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
@@ -617,7 +598,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Hoja de asignar
-  assignName: { ...textStyles.cardTitle, color: th.colors.text, marginBottom: spacing.xs },
+  assignName: { ...textStyles.itemTitle, color: th.colors.text, marginBottom: spacing.xs },
   clientList: { gap: spacing.sm },
   clientRow: {
     flexDirection:   'row',
@@ -628,10 +609,10 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   clientRowActive: { backgroundColor: th.tint.accent10 },
-  clientName:      { ...textStyles.cardType, color: th.colors.text },
-  clientSub:       { ...textStyles.subtitle, color: th.colors.mutedLight },
-  clientReplaces:  { ...textStyles.subtitle, color: th.colors.orange },
-  clientCheck:     { ...textStyles.cardType, color: th.colors.accent },
+  clientName:      { ...textStyles.labelStrong, color: th.colors.text },
+  clientSub:       { ...textStyles.body, color: th.colors.mutedLight },
+  clientReplaces:  { ...textStyles.body, color: th.colors.orange },
+  clientCheck:     { ...textStyles.labelStrong, color: th.colors.accent },
 
   // Confirmación de borrado — mismo par que cierra el editor de ejercicio.
   confirmRow:    { flexDirection: 'row', gap: spacing.sm },
@@ -642,7 +623,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
   },
-  confirmCancelText: { ...textStyles.cardType, color: th.colors.text },
+  confirmCancelText: { ...textStyles.labelStrong, color: th.colors.text },
   confirmDelete: {
     flex:            1,
     paddingVertical: spacing.md,
@@ -650,7 +631,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.red30,
     alignItems:      'center',
   },
-  confirmDeleteText: { ...textStyles.cardType, color: th.tint.red50 },
+  confirmDeleteText: { ...textStyles.labelStrong, color: th.tint.red50 },
 
   // CTA de hoja / estado vacío (Buttons `388:2676`)
   cta: {
@@ -662,7 +643,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   ctaDisabled:     { backgroundColor: th.colors.surface2 },
-  ctaText:         { ...textStyles.cardType, color: th.colors.onAccent },
+  ctaText:         { ...textStyles.labelStrong, color: th.colors.onAccent },
   ctaTextDisabled: { color: th.colors.mutedLight },
 
   // ── Estado vacío / gate PRO ──
@@ -673,14 +654,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xxl,
     gap:            spacing.md,
   },
-  emptyTitle: { ...textStyles.hero, color: th.colors.text },
+  emptyTitle: { ...textStyles.title, color: th.colors.text },
   emptyBody: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:        th.colors.mutedLight,
     textAlign:    'center',
     lineHeight:   18,
     marginBottom: spacing.sm,
   },
   hideTabBtn:     { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  hideTabBtnText: { ...textStyles.cardType, color: th.colors.mutedLight },
+  hideTabBtnText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
 });

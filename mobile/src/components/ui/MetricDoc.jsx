@@ -11,7 +11,8 @@
  * precisión que la métrica no tiene. `rules` sí lo es — hay métricas sin reglas
  * propias de la aplicación.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { useTranslation } from 'react-i18next';
 
 import { spacing, textStyles } from '../../theme';
@@ -60,15 +61,14 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.lg,
     gap:             spacing.sm,
   },
-  metricName: { ...textStyles.exercice, color: th.colors.text },
+  metricName: { ...textStyles.itemTitle, color: th.colors.text },
   metricWhat: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     color:      th.colors.text,
     lineHeight: 19,
   },
   metricLabel: {
-    ...textStyles.smallBold,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginTop:     spacing.xs2,
@@ -81,13 +81,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   metricFormulaText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:       th.colors.accent,
     lineHeight:  16,
     fontVariant: ['tabular-nums'],
   },
   metricBody: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 16,
   },

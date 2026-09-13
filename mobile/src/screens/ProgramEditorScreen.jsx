@@ -1,27 +1,26 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, Keyboard,
-} from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, DragIcon, LockIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, DragIcon, LockIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
 import { clientStageIndex } from '../utils/stageProgress';
+import { useEditorExit } from '../hooks/useEditorExit';
 
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
@@ -72,17 +71,15 @@ export default function ProgramEditorScreen({ navigation }) {
   const clients               = useStore((s) => s.clients);
   const clientSync            = useStore((s) => s.clientSync);
   const ui                    = useStore((s) => s.ui);
-  const beginEditSession      = useStore((s) => s.beginEditSession);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
   const renameProgram              = useStore((s) => s.renameProgram);
-  const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
-  const addStageToProgram     = useStore((s) => s.addStageToProgram);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
   const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
   const reorderSessionsInStage = useStore((s) => s.reorderSessionsInStage);
   const showToast             = useStore((s) => s.showToast);
+  const { commit, done }      = useEditorExit(navigation);
 
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
   const activeProgram = programs[editingId];
@@ -97,17 +94,12 @@ export default function ProgramEditorScreen({ navigation }) {
   const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
-  const [addOpen, setAddOpen]                   = useState(false);
 
   const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
 
   // Ref del ScrollView para el autoscroll de la lista reordenable.
   const scrollRef = useAnimatedRef();
-
-  useEffect(() => {
-    beginEditSession(editingId);
-  }, []);
 
   useEffect(() => {
     if (selectedStage) setStageName(selectedStage.name);
@@ -118,68 +110,15 @@ export default function ProgramEditorScreen({ navigation }) {
     if (selectedStageIdx > max) setSelectedStageIdx(max);
   }, [activeProgram?.stages?.length]);
 
-  const leavingRef = useRef(false);
 
-  // Reverts the live edits to the snapshot taken on entry, then clears edit state.
-  // Sin foto no hay nada que revertir: `importData` la borra al escribir encima
-  // (fallo 12), y ahí lo correcto es salir dejando lo que acaba de entrar.
-  function restoreSnapshot() {
-    const snap = useStore.getState()._editSnapshot;
-    if (snap) {
-      useStore.setState((s) => ({
-        programs: { ...s.programs, [snap.programId]: snap.program },
-        sessionTemplates: snap.sessionTemplates,
-        _editSnapshot: null,
-      }));
-    }
+  // `_editingProgramId` es global y sale sucio: salir sin cambios no pasa por
+  // `restoreSnapshot` y el id se quedaba puesto, así que quien entrase después
+  // por el fallback —Onboarding— heredaba este programa. Se suelta al
+  // desmontar, no antes: hacerlo con la pantalla en pantalla la repintaría con
+  // otro programa durante la animación de salida.
+  useEffect(() => () => {
     useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
-  }
-
-  // True if the live store diverges from the entry snapshot, or a text field
-  // holds an uncommitted edit (program name / stage name).
-  function hasUnsavedChanges() {
-    const st   = useStore.getState();
-    const snap = st._editSnapshot;
-    if (!snap) return false;
-    // Los cambios caen en programs[editingId] (la estructura) y en las sesiones.
-    // Con un solo diccionario esto compara TODAS las sesiones y no sólo la capa
-    // de ediciones: sigue siendo correcto, y sólo corre al intentar salir.
-    if (JSON.stringify(st.programs[editingId]) !== JSON.stringify(snap.program)) return true;
-    if (JSON.stringify(st.sessionTemplates) !== JSON.stringify(snap.sessionTemplates)) return true;
-    // `nameValue` solo es fuente de verdad mientras el título está en edición;
-    // fuera de ahí el nombre se pinta del store y compararlo daría falsos
-    // positivos (p. ej. si la pantalla montó antes de resolver el programa).
-    if (editingName && nameValue.trim() !== (activeProgram?.name ?? '')) return true;
-    if (selectedStage && stageName.trim() !== (selectedStage.name ?? '')) return true;
-    return false;
-  }
-
-  // Intercept every exit (back arrow, swipe, hardware back). Warn only when
-  // there are unsaved changes; otherwise leave silently.
-  useEffect(() => {
-    const sub = navigation.addListener('beforeRemove', (e) => {
-      if (leavingRef.current || !hasUnsavedChanges()) return;
-      e.preventDefault();
-      Alert.alert(
-        t('editor.unsavedTitle'),
-        t('editor.unsavedBody'),
-        [
-          { text: t('editor.keepEditing'), style: 'cancel' },
-          {
-            text: t('editor.exitNoSave'),
-            style: 'destructive',
-            onPress: () => {
-              leavingRef.current = true;
-              restoreSnapshot();
-              navigation.dispatch(e.data.action);
-            },
-          },
-        ],
-      );
-    });
-    return sub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, editingId, nameValue, editingName, stageName, selectedStage, activeProgram]);
+  }, []);
 
   if (!activeProgram) return null;
 
@@ -237,13 +176,6 @@ export default function ProgramEditorScreen({ navigation }) {
     else setStageName(selectedStage?.name ?? '');
   }
 
-  function handleAddStage() {
-    addStageToProgram(editingId);
-    // La etapa nueva va al final: su índice es el tamaño de antes de añadirla.
-    setSelectedStageIdx(activeProgram?.stages?.length ?? 1);
-    showToast(t('editor.toastStageAdded'), 2200, 'success');
-  }
-
   function handleDeleteStage() {
     Alert.alert(
       '¿Eliminar etapa?',
@@ -263,17 +195,21 @@ export default function ProgramEditorScreen({ navigation }) {
     );
   }
 
-  function handleSave() {
-    // Flush any text field that still has focus before saving
-    Keyboard.dismiss();
+  // Los dos salen escribiendo lo que hubiera a medias en los campos de texto y
+  // marcando a los clientes; lo que cambia es el destino. El chevron sube un
+  // nivel —a la vista del programa— sin decir nada, y el check cierra el modo
+  // edición entero y se va a Home.
+  function handleBack() {
     commitName();
     commitStageName();
-    // Mark any clients that have this program assigned as needing a re-upload
-    markProgramDirtyForClients(editingId);
-    showToast(t('editor.toastSaved'), 2200, 'success');
-    leavingRef.current = true; // skip the unsaved-changes guard on the way out
-    useStore.setState((s) => ({ _editSnapshot: null, ui: { ...s.ui, _editingProgramId: null } }));
+    commit();
     navigation.goBack();
+  }
+
+  function handleDone() {
+    commitName();
+    commitStageName();
+    done();
   }
 
   // Etapa activa REAL. En el móvil del entrenador la del programa es solo la que
@@ -284,22 +220,23 @@ export default function ProgramEditorScreen({ navigation }) {
   const activeStageIdx      = clientStageIndex(editedClient, activeProgram);
   const isStageActive       = selectedStageIdx === activeStageIdx;
   const selectedStageLocked = isStageLocked(activeProgram, selectedStageIdx, clientSync);
-  // Poner y quitar candados es cosa del entrenador: en el móvil del cliente el
-  // control no aparece (si no, se abriría sus propias etapas). Y solo por
-  // delante de donde está — encerrarle fuera de la etapa que entrena no tiene
-  // sentido, e `isStageLocked` lo ignoraría igualmente.
+  // Poner y quitar candados es cosa del entrenador sobre el programa de UN
+  // cliente: en el móvil del cliente el control no aparece (si no, se abriría
+  // sus propias etapas) y en un programa propio no pinta nada — no hay nadie a
+  // quien cerrarle la etapa. Y solo por delante de donde está — encerrarle
+  // fuera de la etapa que entrena no tiene sentido, e `isStageLocked` lo
+  // ignoraría igualmente.
   const fromTrainer         = isTrainerProgram(activeProgram, clientSync);
   const canLockStage        = !fromTrainer
+    && !!editedClient
     && selectedStageIdx > 0
     && selectedStageIdx > activeStageIdx;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
-      {/* Sin acción a la derecha: el "···" tenía una sola ("añadir etapa") y
-          ahora vive en la hoja del "+", junto al selector de etapas. */}
       <ScreenHeader
-        onBack={() => navigation.goBack()}
+        onBack={handleBack}
         eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
         title={activeProgram.name ?? ''}
         placeholder={t('editor.programNamePlaceholder')}
@@ -308,6 +245,11 @@ export default function ProgramEditorScreen({ navigation }) {
         onDraftChange={setNameValue}
         onRenameStart={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
         onRenameCommit={commitName}
+        right={() => (
+          <TouchableOpacity onPress={handleDone} hitSlop={12} accessibilityRole="button">
+            <CheckIcon size={20} color={th.colors.accent} />
+          </TouchableOpacity>
+        )}
       />
 
       {/* Scrollable content */}
@@ -319,7 +261,7 @@ export default function ProgramEditorScreen({ navigation }) {
       >
         {/* ── Resumen (Exercice editor elements / Resumen) ── */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+          <Text style={styles.summaryTag}>{t('editor.summaryProgram')}</Text>
           <Text style={styles.summaryMain}>{summaryLine}</Text>
         </View>
 
@@ -345,7 +287,11 @@ export default function ProgramEditorScreen({ navigation }) {
               if (idx === selectedStageIdx) setStageSheetOpen(true);
               else setSelectedStageIdx(idx);
             }}
-            onAdd={() => setAddOpen(true)}
+            // El `+` lleva al plan del programa: allí se ve lo que ya hay y
+            // desde allí se añade. La hoja de dos filas que bifurcaba entre
+            // "etapa nueva" y "planificar bloque" murió con el rediseño — una
+            // etapa suelta es el plan con una etapa.
+            onAdd={() => navigation.navigate('StagePlanner')}
           />
           <Text style={styles.stageHint}>{t('editor.stageTapHint')}</Text>
         </View>
@@ -400,41 +346,7 @@ export default function ProgramEditorScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── Guardar y cerrar (Buttons 388:2676) ── */}
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>{t('editor.saveProgram')}</Text>
-        </TouchableOpacity>
-
       </Reanimated.ScrollView>
-
-      {/* ── Menú "···" del header ── */}
-      {/* ── Hoja del "+" del selector de etapas ── */}
-      <DragSheet visible={addOpen} onClose={() => setAddOpen(false)} title={t('editor.addSheetTitle')}>
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => { setAddOpen(false); handleAddStage(); }}
-          activeOpacity={0.7}
-        >
-          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-            <Text style={styles.menuRowText}>{t('editor.addStage')}</Text>
-            <Text style={styles.menuRowHint}>
-              {t('editor.addStageHint', { name: activeProgram.stages[activeProgram.stages.length - 1]?.name ?? '' })}
-            </Text>
-          </View>
-          <ArrowIcon size={14} color={th.colors.mutedLight} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => { setAddOpen(false); navigation.navigate('StagePlanner'); }}
-          activeOpacity={0.7}
-        >
-          <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-            <Text style={styles.menuRowText}>{t('editor.planBlock')}</Text>
-            <Text style={styles.menuRowHint}>{t('editor.planBlockHint')}</Text>
-          </View>
-          <ArrowIcon size={14} color={th.colors.mutedLight} />
-        </TouchableOpacity>
-      </DragSheet>
 
       {/* ── Stage settings sheet ── */}
       <DragSheet
@@ -602,11 +514,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   section:  { gap: spacing.xs2 },
   secTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
-  stageHint: { ...textStyles.subtitle, color: th.colors.muted },
+  stageHint: { ...textStyles.body, color: th.colors.muted },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
   summaryCard: {
@@ -616,8 +528,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.spacingTag, color: th.colors.accent },
-  summaryMain: { ...textStyles.cardType,   color: th.colors.text },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
 
   // ── Tarjeta de sesión ──
   // paddingLeft `space/sm`: los puntos del asa empiezan a 9px dentro de su caja
@@ -645,31 +557,17 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
-  sesLetter: { ...textStyles.hero, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
-  sesName:   { fontFamily: 'Inter_900Black', fontSize: 12, fontWeight: '900', color: th.colors.text },
-  sesMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+  sesLetter: { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
+  sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).
   addSessionBtn:      { alignItems: 'center', paddingVertical: spacing.md },
-  addSessionBtnText:  { ...textStyles.cardType, color: th.tint.accent50 },
+  addSessionBtnText:  { ...textStyles.button, color: th.tint.accent50 },
   addSessionBtnStage: { color: th.colors.accent },
 
-  // ── Guardar programa (Buttons 388:2676) ──
-  saveBtn: {
-    height:          44,
-    borderRadius:    th.radius.md,
-    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  saveBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
-
-  // ── Menú "···" ──
-  menuRow: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl, marginBottom: spacing.md },
-  menuRowText: { ...textStyles.cardType, color: th.colors.text },
-  menuRowHint: { ...textStyles.subtitle, color: th.colors.muted },
-  stageRxLine: { ...textStyles.cardType, color: th.colors.accent },
+  stageRxLine: { ...textStyles.label, color: th.colors.accent },
 
   // Stage sheet
   sheetBody: {
@@ -679,7 +577,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Etiqueta de paso dentro de una hoja: igual que las de sección del editor de
   // ejercicio (`text/spacing-tag` mutedLight en mayúsculas).
   sheetLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
@@ -696,13 +594,13 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.bg,
   },
   noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
-  noLimitText:       { ...textStyles.cardType, color: th.colors.mutedLight },
-  noLimitTextActive: { ...textStyles.cardType, color: th.colors.accent },
+  noLimitText:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  noLimitTextActive: { ...textStyles.labelStrong, color: th.colors.accent },
   // Dentro de una hoja el fondo YA es `bg`, así que los campos van sobre
   // `surface` para que se lean — mismo criterio que las hojas del editor de
   // ejercicio.
   sheetInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:             th.colors.text,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
@@ -719,7 +617,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   activeBadge: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:             th.colors.onAccent,
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.xs,
@@ -727,15 +625,15 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
     overflow:          'hidden',
   },
-  stateTitle: { ...textStyles.cardType, color: th.colors.text },
-  stateHint:  { ...textStyles.tag,      color: th.colors.mutedLight, lineHeight: 14 },
+  stateTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  stateHint:  { ...textStyles.label,      color: th.colors.mutedLight, lineHeight: 14 },
   activateBtn: {
     paddingVertical: spacing.md,
     backgroundColor: th.colors.accent,
     borderRadius:    th.radius.sm,
     alignItems:      'center',
   },
-  activateBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  activateBtnText: { ...textStyles.button, color: th.colors.onAccent },
   sheetBtnRow: { flexDirection: 'row', gap: spacing.sm },
   dupStageBtn: {
     flex:            1,
@@ -744,12 +642,12 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
   },
-  dupStageBtnText: { ...textStyles.cardType, color: th.colors.text },
+  dupStageBtnText: { ...textStyles.labelStrong, color: th.colors.text },
   // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
   deleteStageBtn: {
     flex:            1,
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
-  deleteStageBtnText: { ...textStyles.cardType, color: th.tint.red50 },
+  deleteStageBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
 });

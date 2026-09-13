@@ -18,18 +18,19 @@ const estado = () => ({
   driveBackup:   { email: 'ana@gmail.com', folderId: 'carpeta_drive' },
   trainerSync:   { userId: 'u1', password: 'secreto' },
   clientSync:    { slotId: 'slot_1', clientCode: 'ABCD-1234' },
+  freeSessionPresets: [{ presetId: 'fpre_1', name: 'Corta' }],
   activeSession: { templateId: 't1' },
   theme:         'formaFit',
 });
 
 describe('buildBackupPayload', () => {
-  it('lleva los nueve campos de datos y la cabecera del formato', () => {
+  it('lleva los diez campos de datos y la cabecera del formato', () => {
     const payload = buildBackupPayload(estado());
 
     expect(Object.keys(payload).sort()).toEqual([
       'appName', 'blockPresets', 'clientLogs', 'clients', 'customExercises',
-      'exportDate', 'exportType', 'profile', 'programs', 'sessionTemplates',
-      'tagRegistry', 'version', 'workoutLog',
+      'exportDate', 'exportType', 'freeSessionPresets', 'profile', 'programs',
+      'sessionTemplates', 'tagRegistry', 'version', 'workoutLog',
     ]);
     expect(payload.version).toBe('4');
     expect(payload.exportType).toBe('full');
@@ -44,6 +45,9 @@ describe('buildBackupPayload', () => {
 
     expect(payload.tagRegistry).toEqual([{ id: 'tag_1', name: 'Lesionado' }]);
     expect(payload.blockPresets).toEqual([{ presetId: 'pre_1', format: 'amrap' }]);
+    // Las plantillas de sesión libre viajan con ellos: son lo mismo, contenido
+    // reutilizable del propio dispositivo (home-sessions §7.4).
+    expect(payload.freeSessionPresets).toEqual([{ presetId: 'fpre_1', name: 'Corta' }]);
   });
 
   it('no filtra credenciales ni configuración local', () => {

@@ -10,7 +10,8 @@
  * para resolver una duda concreta, y un bloque de texto obliga a leerlo entero
  * para encontrar la línea que importa.
  */
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -69,17 +70,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  closeGlyph: { fontSize: 17, color: th.colors.text },
+  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
   body:  { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xl },
   intro: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     lineHeight: 19,
     paddingTop: spacing.md,
@@ -89,7 +90,7 @@ const makeStyles = (th) => StyleSheet.create({
   // como un grupo y no como una lista corrida.
   section:  { gap: spacing.sm },
   secLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.accent,
     textTransform: 'uppercase',
     marginBottom:  spacing.xs,
@@ -100,27 +101,25 @@ const makeStyles = (th) => StyleSheet.create({
   // líneas que envuelven queden alineadas bajo la primera y no bajo el punto.
   pointRow:  { flexDirection: 'row', gap: spacing.sm },
   pointDot:  {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     lineHeight: 20,
     color:      th.colors.accent,
   },
   pointText: {
     flex:       1,
-    fontFamily: 'Inter_500Medium',
-    fontSize:   13,
+    ...textStyles.body,
     color:      th.colors.text,
     lineHeight: 20,
   },
 
   // ── Fichas de métrica ──
   metricsIntro: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     lineHeight: 19,
   },
   groupLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.xs,

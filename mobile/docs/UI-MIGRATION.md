@@ -26,7 +26,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Copia en Drive** | ✅ | `src/screens/DriveBackupScreen.jsx` |
 | **Modales de conexión** (código / Google / modo sync) | ✅ | `ClientCodeModal.jsx`, `ClientGoogleLinkModal.jsx`, `TrainerSyncModal.jsx` |
 | Clientes (tarjeta, header, modal de filtros) | ✅ (tarjeta **rehecha**, ver desglose) | `src/screens/ClientsScreen.jsx` |
-| **Ficha de cliente** (header + tabs + tab de Programa) | ✅ (Historial/Progreso/Info **sin migrar**, ver desglose) | `src/screens/ClientsScreen.jsx` |
+| **Ficha de cliente** (header + tabs + Programa + **Info**) | ✅ (Historial y Progreso heredan sus paneles ya migrados) | `src/screens/ClientsScreen.jsx` |
 | Modal de sincronización | ✅ (solo colores) | `src/components/TrainerSyncModal.jsx` |
 | **HomeView** | ✅ | `src/screens/HomeScreen.jsx` |
 | **Recap de sesión** | ✅ (sin nodo en Figma — ver desglose) | `src/screens/SessionRecapScreen.jsx` |
@@ -197,9 +197,10 @@ Divergencias conscientes respecto al mock:
 ### Ficha de cliente — desglose (header, tabs y tab de Programa)
 
 **No hay frame de Figma**: la referencia es un HTML que mandó el usuario
-(`formfit-v21-Clienteficha.html`) más su lista de 8 puntos. Solo entran la vista
-general y el **tab de Programa** — Historial, Progreso e Info se quedan como
-estaban (Info se rehará entero después, y ahí es donde vive ya el código).
+(`formfit-v21-Clienteficha.html`) más su lista de 8 puntos. Este bloque cubre la
+vista general y el **tab de Programa**; Historial y Progreso heredan paneles ya
+migrados (`SessionCard`, `ProgressPanel`) y **Info tiene su propio desglose más
+abajo**.
 
 - **Cabecera, en UNA línea**: `‹` en caja 34×34 `surface2` + nombre a
   `text/hero` + la última actividad (`hace 2 días`, `text/subtitle` `muted`) a la
@@ -213,6 +214,13 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
 - **Tarjeta de programa asignado** — dos colores, como la tarjeta de ejercicio
   del workout: cabecera `surface2` (padding 14/16, los del spec v6 de
   `ExerciseCard`, sin token) y cuerpo `surface`, todo en `radius/lg`.
+  > ⚠️ **Superado (sep 2026) por [`specs/program-card.md`](specs/program-card.md).**
+  > La tarjeta es hoy **una sola superficie** —los dos tonos se caen, y lo que
+  > separa nombre de etapa es un filete de 1px a sangre—, las cifras pierden su
+  > caja y `StageSegBar` está **borrada**: el progreso lo pintan una barra de
+  > etapas (tramos proporcionales a sus ciclos) y unos puntos de ciclo. Lo que
+  > sigue vigente de este bloque es la tipografía y las razones de cada valor.
+
   - **Misma tipografía que el banner de Home**, que es el mismo bloque de
     información sobre otro fondo: eyebrows `text/spacing-tag` en `mutedLight` y
     uppercase (`bnEyebrow`), nombre y nº de ciclo a `text/hero` con el
@@ -223,8 +231,9 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
   - El eyebrow de la derecha necesita `paddingRight` + `marginRight` negativo:
     el tracking de `spacing-tag` deja hueco DETRÁS de la última letra que RN no
     mete en el ancho medido, y alineado a la derecha se comía la "O" de CICLO.
-  - Barra de etapas: **`StageSegBar` extraída de `HomeScreen` a
-    `ui/StageSegBar.jsx`** y compartida. Aquí sobre oscuro (fill `accent`, track
+  - Barra de etapas (**pieza retirada**, ver el aviso de arriba):
+    **`StageSegBar` extraída de `HomeScreen` a `ui/StageSegBar.jsx`** y
+    compartida. Aquí sobre oscuro (fill `accent`, track
     **`#545454` literal**, `STAGE_TRACK` — `surface2` no se veía y `mutedLight`
     competía con el relleno, así que es el punto medio entre los dos; mismo caso
     de "color sin token" que el `#b8ff00`/`#81a71e` del banner). En el banner el
@@ -282,6 +291,70 @@ estaban (Info se rehará entero después, y ahí es donde vive ya el código).
 
 Pendiente: el `⋯` de la cabecera que dibuja el HTML se ha dejado **fuera** —
 todas sus acciones son ya pestañas o están en el `⋯` del programa.
+
+### Ficha de cliente › Info — desglose
+
+**Sin nodo en Figma.** Maqueta previa en
+[`mockups/client-info.html`](mockups/client-info.html), aprobada antes de tocar
+código. Misma funcionalidad que antes; lo que cambia es cómo se presenta.
+
+- **Cada categoría es una tarjeta plegable con resumen vivo** (`InfoSection`):
+  `surface`, `radius/lg`, título a `text/card-type` en mayúsculas a la izquierda
+  y **el dato que resume la sección a la derecha**. Es lo que justifica el
+  componente: el acordeón anterior eran rótulos a sangre con separadores de 1px
+  y, con todo cerrado —que es como se entra—, la pantalla no decía nada.
+  Los cinco resúmenes salen de datos ya guardados (`infoSummaries`, memoizado):
+  estado + nº de etiquetas · `fullName` (o teléfono, o email) · último peso y su
+  antigüedad · pendiente de cobro · conectado o no.
+  - El tono del resumen es semántico y escaso: accent si pide acción (`Sin
+    conectar`) o describe lo normal (`Activo`), naranja si hay dinero pendiente,
+    `mutedLight` el resto.
+  - `Date.now()` no puede vivir en un render, ni dentro de un `useMemo`
+    (`react-hooks/purity`): la antigüedad del peso la calcula `daysSinceIso()`,
+    a nivel de módulo.
+- **Plegado**: `LinearTransition` en la tarjeta + `collapseOut` en el cuerpo.
+  `collapseOut` **se extrae de `HomeScreen` a `ui/collapseOut.js`** y lo comparten
+  las dos pantallas — mismo `FOLD_MS`, para que dos plegados de la app no se
+  muevan distinto. Sale del flujo y encoge además de desvanecerse; `FadeOut` a
+  secas no clipa y el contenido se queda flotando.
+- **Filete a sangre** entre cabecera y cuerpo (1px `border`, `marginHorizontal`
+  negativo), el mismo recurso que la tarjeta de programa: separa sin meter una
+  segunda superficie.
+- **Fuera todos los bordes del tab.** Los campos de datos personales pasan a la
+  **lista agrupada** (`getCardRadii`, gap `space/xs`) y el `TextInput` **es** la
+  fila: etiqueta `spacing-tag` a ancho fijo de 74 y el valor al lado, sin caja
+  dentro de la caja. Por eso `fieldNameAlias` pasa de `NOMBRE / ALIAS` a `Alias`
+  y `fieldFullName` de `Nombre completo` a `Nombre`: a 10px con tracking 2, las
+  etiquetas largas no caben en la columna.
+- **Estado**: tres botones `surface2` sin borde; el activo se tiñe con el 10% de
+  su color y saca su punto. El del acento usa `tint.accent10`, que en formaFit no
+  es el acento con alfa sino su propio valor.
+- **Etiquetas**: pills `radius/full` sin borde, `tint/accent-10` + texto accent
+  al asignarlas. Mismo cuerpo y mismo peso encendidas y apagadas, si no la pill
+  cambiaría de ancho al tocarla. El campo de etiqueta nueva ya no está siempre
+  puesto: lo abre una pill `＋ Nueva`.
+- **Facturación**: las tres cifras van en cajas `bg` `radius/md`, la misma
+  anatomía que los tres datos de la tarjeta de programa asignado
+  (`adjustsFontSizeToFit` incluido, que a tercios quedan ~86px).
+  - **El alta la hace la hoja que ya existía**: `GlobalAddBillingSheet` acepta
+    `lockedClientId` y esconde su selector de cliente. El formulario que tenía
+    Info era esa misma hoja peor hecha —dos fechas tecleadas a mano y sin
+    calendario—, así que se borra entero. Igual la fecha del peso, que ahora abre
+    el `BillDateSheet` de la facturación global.
+  - La **pill de estado es la de la facturación global** (`billPill`), con su
+    verde y sus mismas etiquetas: es el mismo dato en dos sitios.
+  - Borrar una entrada pasa a **pulsación larga** sobre la fila: con la pill de
+    estado ya puesta, un ✕ al lado dejaba dos dianas pegadas de 20px.
+- **`ClientCodeBlock` es ahora una sección más** ("Conexión"), con una prop
+  `flat` que le quita fondo, radio y padding cuando ya vive dentro de otra
+  `surface`. En el tab de Programa sigue igual que estaba.
+- **Eliminar cliente** deja de ser una caja roja —pesaba más que cualquiera de
+  las secciones de encima— y es un terciario de texto al pie.
+- **i18n**: las claves de este tab llevaban tiempo en `es.json`/`en.json` sin
+  usarse (el JSX tenía el castellano incrustado). Se conectan todas, se les
+  quitan los emojis heredados de la web a `personalData` / `bodyWeight` /
+  `billing`, y se añade `clients.info.*` para lo nuevo.
+- De paso mueren `AccentBtn` y 38 claves de estilo que este cambio dejó sin uso.
 
 ### Progreso › pestaña Carga — desglose
 
@@ -417,13 +490,23 @@ variante *Plantillas* del set `Sesion Card` (`204:1901`).
 Nodo de Figma: `210:2864`. Cambios de **comportamiento** pedidos por el usuario que
 no están dibujados en Figma (mandan sobre el mock, §10):
 
-- **Guardar y cerrar**: desaparece el botón `Guardar`/`Guardado` del header. El botón
-  grande del final (`388:2676`, h44, `#b8ff00` literal) guarda y hace `goBack()`. Salir
-  por la flecha sigue disparando el aviso de cambios sin guardar (`beforeRemove`, ya
-  existía).
-- **Nombre del programa**: se edita pulsando el título dentro de la cabecera accent
-  (o el lápiz de al lado), no en un input aparte. `nameValue` solo es fuente de verdad
-  mientras `editingName` está activo — fuera de ahí manda el store.
+- **No hay guardar.** `programs` y `sessionTemplates` están en el `partialize` del
+  store: cada edición se escribe en AsyncStorage en el momento, así que el botón
+  `GUARDAR PROGRAMA` del final (`388:2676`, h44, `#b8ff00` literal) no guardaba
+  nada — marcaba a los clientes para re-subir y salía. Se fue, y con él el aviso
+  de cambios sin guardar y la foto de reversión (`beginEditSession`), que sólo
+  vivía en RAM y por tanto prometía una vuelta atrás que no sobrevivía a cerrar
+  la app.
+  Programa, sesión, ejercicio y bloque son **cuatro pantallas de un solo modo de
+  edición**: el chevron sube un nivel y el **check** de la derecha cierra el modo
+  entero y va a Home con el toast "Programa editado", desde cualquiera de las
+  cuatro. Lo comparten en `hooks/useEditorExit.js`.
+- **Nombre del programa**: se edita pulsando el título en la cabecera, no en un
+  input aparte. El lápiz se fue: el hueco de acciones es del check, y dos
+  confirmaciones en la misma esquina no se distinguen — lo que recuerda que se
+  puede renombrar es "Editar nombre" en el menú `···` (el editor de sesión ya lo
+  lleva). `nameValue` solo es fuente de verdad mientras `editingName` está
+  activo — fuera de ahí manda el store.
 - **Etapas**: el `+` va dentro del propio control segmentado (a partir de 4 etapas los
   segmentos dejan de repartirse el ancho y la fila scrollea en horizontal, con el `+`
   siempre fijo fuera del scroll). Se eliminan la fila-tarjeta "Etapa N" y el botón
@@ -454,7 +537,7 @@ Divergencias resueltas contra la imagen que mandó el usuario (Figma perdió en 
 
 | Pieza | Decisión |
 |---|---|
-| Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44 |
+| Botón guardar | Figma: `GUARDAR PROGRAMA` en mayúsculas, `text/card-type`, h44. **Ya no existe** — ver arriba |
 | `+ Añadir sesión a X` | Imagen: texto plano centrado, **sin** la caja outline de Figma |
 | `+` de etapas | Imagen: glifo accent sobre `surface2`, **no** el cuadrado relleno `#b8ff00` de 37×37 del nodo oculto `210:3274` |
 
@@ -529,11 +612,29 @@ del vecino, no contra un paso fijo.
 ### Exercice Editor — desglose
 
 Nodo de Figma: `123:1511` (+ componentes `Exercice editor elements` `160:1197` y
-`Option blocks` `176:1902` / `176:1952`). Vive dentro del modal de ejercicio del
-Sesion Editor, así que la **cabecera** (barra accent con el nombre + chevron y
-botón `Aceptar` gris `color/muted`) se pintó en `SessionEditorScreen.jsx`, fuera
-del `ScrollView`, para que no se vaya con el scroll. El chevron de la barra
-**sustituye** el ejercicio, igual que el botón del pie.
+`Option blocks` `176:1902` / `176:1952`).
+
+Vivía dentro de un `Modal` `pageSheet` del Sesion Editor y **ahora es una pantalla
+del stack** (`ExerciseEditorScreen`, y su gemelo `BlockEditorScreen`): entraba
+deslizando desde abajo como una hoja pero se comportaba como pantalla —cabecera
+propia, scroll propio y sus propios `DragSheet` dentro—, y `presentationStyle` es
+solo de iOS, así que en Android ya salía a pantalla completa. La regla que queda:
+**profundidad = push, decisión puntual = sheet.** Así también empareja con
+`CustomExerciseScreen`, que es este mismo editor para el alta en librería.
+
+La **cabecera de Figma no se usa.** El mock dibuja una barra accent con el nombre
+y un botón `Aceptar` gris `color/muted`, que era coherente cuando esto era un
+modal. Siendo pantalla, deja al editor de ejercicio siendo la única de la cadena
+—programa, sesión, ejercicio— sin la cabecera de la app: sin chevron de volver y
+sin ceja que diga qué estás editando. Así que lleva `ScreenHeader` como las otras
+dos, con la ceja "EDITAR EJERCICIO" y el nombre debajo. `Aceptar` desaparece: su
+trabajo lo hace el chevron.
+
+El **desplegable para saltar a otro ejercicio** de la sesión pasa a colgar del
+nombre (prop `menu` de `ScreenHeader`, el chevron pequeño al lado del título).
+Salta remontando el editor (`key`) y con `FadeInDown`, porque si el ejercicio
+nuevo tiene la misma configuración el salto no movía un píxel y parecía que el
+toque no había hecho nada.
 
 Orden del mock: Resumen → VOLUMEN → PROGRESIÓN → OPCIONES (lista agrupada) +
 Vinculación. Piezas concretas:
@@ -991,7 +1092,8 @@ Notas de uso:
 - **Dentro de un `Modal` de RN hace falta su propio `GestureHandlerRootView`.** El
   `Modal` monta su contenido en otra jerarquía nativa, fuera del de `App.js`, así que
   sin uno propio los gestos no llegan y el asa simplemente no responde — es lo que
-  pasaba en el modal del editor de bloque.
+  pasaba en el modal del editor de bloque. Ya no aplica ahí (es una pantalla del
+  stack y cuelga del de `App.js`), pero sigue valiendo para cualquier `Modal`.
 
 ### ⚠️ Problema conocido sin resolver: animación de sesión completada
 Al completar una sesión y cerrar el recap, la tarjeta correspondiente debería animar su
@@ -1246,6 +1348,13 @@ listas ni controles nuevos.
   último: al revés que el primero. Implementado como helper `getCardRadii(th, isFirst, isLast)`
   en `ProgressTab.jsx`. Se usa en listas densas de datos/config, **no** en listas de
   navegación (Clientes, History y HomeView usan tarjetas independientes con radio completo).
+- **Tarjeta plegable** (Home y ficha de cliente): `Reanimated.View` con
+  `layout={LinearTransition.duration(FOLD_MS)}` en la tarjeta y el cuerpo montado
+  solo mientras está abierta, con `entering={FadeIn}` y
+  **`exiting={collapseOut}`** — `src/components/ui/collapseOut.js`. `FadeOut` a
+  secas NO vale: Reanimated saca la vista del flujo y no la clipa nadie, así que
+  el contenido se desvanece en su sitio en vez de plegarse. `FOLD_MS` es
+  compartido a propósito.
 - **Barra de búsqueda estándar**: `surface2`, `radius/sm`, altura 42, lupa a la izquierda
   (mutedLight) y "✕" a la derecha que aparece al escribir. Los botones cuadrados
   adyacentes (filtro, "+") miden 42×42 para casar con ella.

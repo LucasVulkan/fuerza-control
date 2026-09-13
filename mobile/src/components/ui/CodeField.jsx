@@ -10,7 +10,8 @@
  * al largo exacto, así que no se puede teclear un código con la forma mal.
  */
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 import * as Clipboard from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
 
@@ -70,15 +71,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       'transparent',
     // El código es el protagonista de la pantalla: Black 22 muy trackeado y
     // centrado, con cifras tabulares para que no baile al escribir.
-    fontFamily:    'Inter_900Black',
-    fontSize:      22,
-    letterSpacing: 4,
+    ...textStyles.code,
     textAlign:     'center',
     color:         th.colors.text,
     fontVariant:   ['tabular-nums'],
   },
   inputError:  { borderColor: th.tint.red50 },
   pasteBtn:    { alignSelf: 'flex-end' },
-  pasteText:   { ...textStyles.cardType, color: th.tint.accent50 },
-  error:       { ...textStyles.tag, color: th.tint.red50, lineHeight: 15 },
+  pasteText:   { ...textStyles.labelStrong, color: th.tint.accent50 },
+  error:       { ...textStyles.label, color: th.tint.red50, lineHeight: 15 },
 });

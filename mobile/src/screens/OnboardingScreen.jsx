@@ -23,11 +23,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView, TextInput,
-  TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '../components/ui/Text';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Path, G, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,10 +46,11 @@ import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import NumberChips from '../components/ui/NumberChips';
+import NameField from '../components/ui/NameField';
 import { NavRow } from '../components/ui/EditorRows';
 import { RowIcon, ROW_CHEVRON } from '../components/ui/MenuList';
 import { EQUIP_PRESETS, presetOf } from '../utils/equipmentPresets';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, borders, sheetRowBase } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { parseImportFile } from '../utils/importFile';
@@ -167,22 +165,15 @@ function RotatingChevron({ open, size = 12, color }) {
 }
 
 function LimeHeader({ eyebrow, title, onBack, dotsDone }) {
-  const styles = useThemedStyles(makeStyles);
   return (
     <ScreenHeader
       onBack={onBack}
       eyebrow={eyebrow}
       title={title}
-      right={dotsDone != null ? (ink) => (
-        <View style={styles.limeHeaderDots}>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={[styles.limeDot, { backgroundColor: i < dotsDone ? ink : withOpacity(ink, 0.2) }]}
-            />
-          ))}
-        </View>
-      ) : null}
+      // El paso ya no son tres puntos en el hueco de acciones: es la regla que
+      // cierra la cabecera, partida en un segmento por pregunta. Por eso la ceja
+      // se queda sólo con "NUEVO PROGRAMA" — el "2 de 3" está dibujado.
+      progress={dotsDone != null ? [0, 1, 2].map((i) => i < dotsDone) : undefined}
     />
   );
 }
@@ -271,8 +262,8 @@ function proposalNote(t, entry, daysPerWeek) {
   });
 }
 
-// Fila de 3 datos — §6.2/§6.3: valor `hero` 22 en `accent`, etiqueta
-// `smallBold` 11 en `mutedLight`. `bordered` añade el filete vertical entre
+// Fila de 3 datos — §6.2/§6.3: valor `title` en `accent`, etiqueta
+// `caps` en `mutedLight`. `bordered` añade el filete vertical entre
 // columnas y el filete horizontal arriba/abajo (propuestas); el preview usa
 // la misma fila sin ninguno de los dos.
 function StatsRow({ items, bordered = false, card = false }) {
@@ -973,13 +964,11 @@ export default function OnboardingScreen() {
         >
           <View>
             <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
-            <TextInput
+            <NameField
               style={styles.textInput}
               value={manualName}
               onChangeText={setManualName}
               placeholder={t('onboarding.programNamePlaceholder')}
-              placeholderTextColor={th.colors.mutedLight}
-              returnKeyType="done"
               autoFocus
             />
           </View>
@@ -1060,13 +1049,11 @@ export default function OnboardingScreen() {
           {selectedTpl && (
             <View>
               <Text style={styles.sectionLabel}>{t('onboarding.programName')}</Text>
-              <TextInput
+              <NameField
                 style={styles.textInput}
                 value={templateProgramName}
                 onChangeText={setTemplateProgramName}
                 placeholder={selectedTpl.name}
-                placeholderTextColor={th.colors.mutedLight}
-                returnKeyType="done"
                 autoCorrect={false}
               />
               <Text style={[styles.qHint, styles.hintGap]}>
@@ -1203,7 +1190,7 @@ const makeStyles = (th) => StyleSheet.create({
   modeIcon:      { width: 20, alignItems: 'center', flexShrink: 0 },
   modeBody:      { flex: 1, minWidth: 0, gap: 3 },
   modeTitleLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  modeTitle:     { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  modeTitle:     { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   // Badge sólido de las propuestas (`proposalBadge`): marca la ruta por
   // defecto sin usar el tratamiento accent10/accent50, que significa ELEGIDO.
   modeBadge: {
@@ -1213,10 +1200,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.xs2,
     flexShrink:        0,
   },
-  modeBadgeText:  { ...textStyles.spacingTag, color: th.colors.onAccent },
-  modeDesc:       { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 17 },
+  modeBadgeText:  { ...textStyles.caps, color: th.colors.onAccent },
+  modeDesc:       { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 17 },
   modeFooterHint: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:             th.colors.mutedLight,
     lineHeight:        18,
     paddingHorizontal: spacing.xs2,
@@ -1228,14 +1215,14 @@ const makeStyles = (th) => StyleSheet.create({
   qCards:   { gap: spacing.sm },
   hintGap:  { marginTop: spacing.md },
   // Caja de `nameInput` (CustomExerciseScreen) con el texto de 14 ExtraBold de
-  // `MenuList.rowLabel`: en `cardTitle` (16) el nombre se veía enorme.
+  // `MenuList.rowLabel`: en `itemTitle` (16) el nombre se veía enorme.
   textInput: {
     backgroundColor:   th.colors.surface2,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm2,
+    ...textStyles.bodyStrong,
     fontFamily:        'Inter_800ExtraBold',
-    fontSize:          14,
     color:             th.colors.text,
   },
 
@@ -1247,21 +1234,15 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Brand tag
 
-  // Los tres puntos de progreso, en el hueco de acciones de `ScreenHeader`. El
-  // color no vive aquí: lo da la cabecera por el render-prop `right`, porque su
-  // tinta cambia con la variante de cabecera que esté puesta.
-  limeHeaderDots:    { flexDirection: 'row', gap: spacing.sm },
-  limeDot:           { width: 7, height: 7, borderRadius: 3.5 },
-
   // ── Las tres preguntas ─────────────────────────────────────────────────────
   qBody: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   sectionLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
-  qHint: { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 12 * 1.5 },
+  qHint: { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 12 * 1.5 },
   // Columna, no fila: en fila el subtítulo se quedaba el ancho y el título se
   // comprimía hasta no leerse. El borde va también en la tarjeta apagada, en
   // transparente, para que seleccionar no mueva el layout 1 px.
@@ -1278,9 +1259,9 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent10,
     borderColor:     th.tint.accent50,
   },
-  qCardTitle:   { ...textStyles.cardTitle, color: th.colors.text },
+  qCardTitle:   { ...textStyles.itemTitle, color: th.colors.text },
   qCardTitleOn: { color: th.colors.accent },
-  qCardSubtitle: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  qCardSubtitle: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Fila de 3 datos (§6.2/§6.3) ────────────────────────────────────────────
   statsRow:         { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
@@ -1298,16 +1279,16 @@ const makeStyles = (th) => StyleSheet.create({
   },
   stat:         { flex: 1, gap: spacing.xs2 },
   statDivider:  { borderLeftWidth: borders.thin, borderLeftColor: th.colors.border, paddingLeft: spacing.md },
-  statValue:    { ...textStyles.hero, fontSize: 22, lineHeight: 24, color: th.colors.accent },
-  statLabel:    { ...textStyles.smallBold, fontSize: 11, color: th.colors.mutedLight },
+  statValue:    { ...textStyles.title, lineHeight: 26, color: th.colors.accent },
+  statLabel:    { ...textStyles.caps, color: th.colors.mutedLight },
   pips:         { flexDirection: 'row', gap: 3, height: 24, alignItems: 'center' },
   pip:          { width: 14, height: 8, borderRadius: th.radius.xxs ?? 2, backgroundColor: th.colors.muted },
   pipOn:        { backgroundColor: th.colors.accent },
 
-  byline: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  byline: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Programa elegido
-  previewCycleHint: { ...textStyles.subtitle, color: th.colors.accent },
+  previewCycleHint: { ...textStyles.body, color: th.colors.accent },
   previewList: {
     paddingHorizontal: spacing.xl,
     paddingTop:        spacing.xl,
@@ -1317,7 +1298,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Fila de ajustes aplicados (§6.3.5) — `sheetRowBase` de theme.js: es la
   // misma fila de opción que abre una hoja en el resto de la app.
   adjRow: { ...sheetRowBase(th), justifyContent: 'space-between' },
-  adjRowText: { ...textStyles.subtitle, color: th.colors.mutedLight, flex: 1 },
+  adjRowText: { ...textStyles.body, color: th.colors.mutedLight, flex: 1 },
 
   previewSession: {
     flexDirection:   'row',
@@ -1330,15 +1311,15 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   // La misma letra que la tarjeta de propuesta: color, sin recuadro.
-  previewSessionLetter: { fontSize: 18, fontWeight: typography.heavy, lineHeight: 20, width: 16 },
+  previewSessionLetter: { ...textStyles.heading, fontFamily: 'Inter_900Black', lineHeight: 20, width: 16 },
   previewSessionInfo: { flex: 1 },
   previewSessionHeader: {
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
   },
-  previewSessionName: { ...textStyles.cardTitle, color: th.colors.text, flex: 1 },
-  previewSessionMeta: { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs2 },
+  previewSessionName: { ...textStyles.itemTitle, color: th.colors.text, flex: 1 },
+  previewSessionMeta: { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs2 },
   previewExList: {
     marginTop:      spacing.sm,
     paddingTop:     spacing.sm,
@@ -1352,24 +1333,20 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
   },
   // La misma fila de ejercicio que el visualizador de programa ya migrado
-  // (`ProgramDetailScreen`: número en `cardType`/accent, nombre en `subtitle` a
-  // 14, meta en `tag`). Se conserva la densidad de aquí —número estrecho y
+  // (`ProgramDetailScreen`: número en `labelStrong`/accent, nombre en `body`,
+  // meta en `label`). Se conserva la densidad de aquí —número estrecho y
   // alineado a la derecha— porque esta lista vive dentro de una tarjeta
   // plegable, no en una pantalla de detalle a ancho completo.
   previewExOrder: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:      th.colors.accent,
     width:      16,
     textAlign:  'right',
     paddingTop: 2,
   },
-  previewExName: {
-    ...textStyles.subtitle,
-    fontSize: 14,
-    color:    th.colors.text,
-  },
+  previewExName: { ...textStyles.body, color: th.colors.text },
   previewExMeta: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:     th.colors.mutedLight,
     marginTop: 1,
   },
@@ -1381,7 +1358,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.lg,
   },
   previewFooterInner: { gap: spacing.sm },
-  changeLaterText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  changeLaterText: { ...textStyles.body, color: th.colors.mutedLight },
   previewFooterBtns: { flexDirection: 'row', gap: spacing.sm },
   editBtn: {
     flex:            1,
@@ -1391,7 +1368,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     backgroundColor: th.colors.surface2,
   },
-  editBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  editBtnText: { ...textStyles.button, color: th.colors.text },
   startBtn: {
     flex:            2,
     flexDirection:   'row',
@@ -1402,7 +1379,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  startBtnText:    { ...textStyles.btnAction, fontSize: 14, color: th.colors.onAccent },
+  startBtnText:    { ...textStyles.button, color: th.colors.onAccent },
   startBtnOff:     { backgroundColor: th.colors.surface2 },
   startBtnTextOff: { color: th.colors.mutedLight },
 
@@ -1414,7 +1391,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   proposalHead: { padding: spacing.lg, gap: spacing.sm },
   proposalTitleLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  proposalName:  { ...textStyles.cardTitle, flex: 1, color: th.colors.text },
+  proposalName:  { ...textStyles.itemTitle, flex: 1, color: th.colors.text },
   // Badge sólido (activeBadge de ProgramEditorScreen/StagePlannerScreen).
   proposalBadge: {
     backgroundColor:   th.colors.accent,
@@ -1422,10 +1399,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical:   spacing.xs2,
   },
-  proposalBadgeText: { ...textStyles.spacingTag, color: th.colors.onAccent },
-  proposalByline:    { ...textStyles.subtitle, color: th.colors.mutedLight },
-  proposalSummary: { ...textStyles.subtitle, color: th.colors.text, lineHeight: 12 * 1.6, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs2 },
-  proposalNote:    { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 12 * 1.5, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  proposalBadgeText: { ...textStyles.caps, color: th.colors.onAccent },
+  proposalByline:    { ...textStyles.body, color: th.colors.mutedLight },
+  proposalSummary: { ...textStyles.body, color: th.colors.text, lineHeight: 12 * 1.6, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs2 },
+  proposalNote:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 12 * 1.5, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
 
   proposalSessions: { paddingVertical: spacing.sm },
   proposalSessionRow: {
@@ -1435,17 +1412,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.sm,
   },
-  proposalSessionLetter: { fontSize: 18, fontWeight: typography.heavy, lineHeight: 20, width: 16 },
+  proposalSessionLetter: { ...textStyles.heading, fontFamily: 'Inter_900Black', lineHeight: 20, width: 16 },
   proposalSessionInfo:   { flex: 1, gap: 2, minWidth: 0 },
-  proposalSessionName:   { ...textStyles.subtitle, color: th.colors.text },
-  proposalSessionMeta:   { ...textStyles.tag, color: th.colors.mutedLight },
+  proposalSessionName:   { ...textStyles.body, color: th.colors.text },
+  proposalSessionMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // Enlaces de texto ("ver todas")
   linkBtn: {
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
-  linkBtnText: { ...textStyles.subtitle, color: th.colors.accent },
+  linkBtnText: { ...textStyles.body, color: th.colors.accent },
 
   // Loading
   loadingScreen: {
@@ -1456,13 +1433,11 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   loadingTitle: {
-    fontSize:      28,
-    fontWeight:    typography.heavy,
-    color:         th.colors.accent,
-    letterSpacing: 2,
-    textAlign:     'center',
+    ...textStyles.title,
+    color:     th.colors.accent,
+    textAlign: 'center',
   },
-  loadingDesc: { fontSize: typography.base, color: th.colors.muted, textAlign: 'center' },
+  loadingDesc: { ...textStyles.body, color: th.colors.muted, textAlign: 'center' },
 
 
 

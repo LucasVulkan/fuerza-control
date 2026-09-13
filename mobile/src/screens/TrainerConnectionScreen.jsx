@@ -17,9 +17,8 @@
  */
 
 import { useState } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -304,13 +303,13 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerTitle: { ...textStyles.hero, color: th.colors.text, flexShrink: 1 },
+  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  closeGlyph: { fontSize: 17, color: th.colors.text },
+  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
@@ -329,9 +328,9 @@ const makeStyles = (th) => StyleSheet.create({
   stateSubOff:  { color: th.colors.mutedLight },
   stateTagRow:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
   stateDot:     { width: 7, height: 7, borderRadius: 3.5 },
-  stateTag:     { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
-  stateTitle:   { ...textStyles.cardTitle, color: th.colors.text },
-  stateSub:     { ...textStyles.tag, color: th.tint.accent50, lineHeight: 15 },
+  stateTag:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  stateTitle:   { ...textStyles.itemTitle, color: th.colors.text },
+  stateSub:     { ...textStyles.label, color: th.tint.accent50, lineHeight: 15 },
 
   // Botones: primario accent h44 (mismo que "Guardar programa"), secundario
   // surface2 sin borde (variante Secondary de Figma).
@@ -343,7 +342,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginBottom:    spacing.md,
   },
-  primaryBtnText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
   secondaryBtn: {
     height:          44,
     borderRadius:    th.radius.sm,
@@ -351,9 +350,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  secondaryBtnText: { ...textStyles.btnAction, color: th.colors.text },
+  secondaryBtnText: { ...textStyles.button, color: th.colors.text },
   hint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     lineHeight: 15,
     textAlign:  'center',

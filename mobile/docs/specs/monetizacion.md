@@ -560,3 +560,114 @@ abandono en la invitación aparece medido.
 Total de app: **~4 días**. El camino crítico real no es el código: es el
 contrato de Apps de Pago de Apple, que es tiempo de espera puro. Empezarlo antes
 que nada.
+
+---
+
+## 12. Coste de infraestructura: qué pasa si el 2+2 lo usan miles
+
+Regalar dos huecos significa gente usando tu Supabase sin pagar. La pregunta es
+cuándo eso deja de ser gratis para ti. Números de septiembre de 2026, medidos
+contra este repositorio.
+
+### 12.1 Quién cuesta y quién no
+
+**El usuario en solitario no toca Supabase.** No hay ningún `signIn` hasta que
+alguien entra como entrenador o vincula un código
+([supabaseAuth.js](../../src/services/supabaseAuth.js)). Miles de personas
+usando la app sin la feature de clientes cuestan **cero**: ni MAU, ni filas, ni
+egress. El coste empieza exactamente donde empieza la feature que se regala.
+
+Y los asientos no valen lo mismo:
+
+| Quién | Cómo entra | Qué cuota consume |
+|---|---|---|
+| Entrenador | Google/Apple o código → `signInWithPassword` | **MAU** |
+| Cliente conectado | `signInAnonymously` ([supabaseAuth.js:143](../../src/services/supabaseAuth.js)) | **MAU anónimo** (bolsa aparte) |
+| Usuario solo | no entra | nada |
+
+Un trío gratis —entrenador + sus dos clientes— son 1 MAU, 2 MAU anónimos y dos
+filas en `trainer_clients`.
+
+### 12.2 Los planes
+
+| | Free | Pro $25/mes | Exceso en Pro |
+|---|---|---|---|
+| Base de datos | 500 MB | 8 GB | **$0.125 / GB** |
+| Egress | 5 GB | 250 GB | $0.09 / GB |
+| MAU | 50.000 | 100.000 | $0.00325 / usuario |
+| MAU anónimos | 50.000 | 100.000 | $0.00325 / usuario |
+| Storage | 1 GB | 100 GB | $0.0213 / GB |
+| Backups | **ninguno** | diarios, 7 días | — |
+| Pausa por inactividad | **sí, a la semana** | no | — |
+
+Pro incluye $10 de crédito de cómputo, que cubre la instancia micro. Las
+consultas de esta app son lecturas de una fila por código: micro sobra.
+
+### 12.3 Cuánto pesa un cliente
+
+Medido sobre `fc-seed-carga.fitdata`: **969 bytes por sesión** en JSON compacto.
+Un cliente que entrena cuatro días por semana genera ~200 sesiones al año, unos
+**200 KB de historial anual**, más el `program_json` del hueco. Redondeando al
+alza con el overhead de `jsonb`: **~0.5 MB por cliente y año**.
+
+De ahí salen los techos:
+
+- **500 MB gratis ≈ 1.000 clientes-año** — unos 500 entrenadores exprimiendo el
+  regalo durante un año entero.
+- **8 GB de Pro ≈ 16.000 clientes-año.**
+- Los 100.000 MAU de Pro son 100.000 entrenadores; los 250 GB de egress,
+  ~800.000 descargas de historial. Ninguno de los dos es el límite.
+
+La sincronización juega a favor: **no hay polling**. `checkAndPullProgramUpdates`
+va en el arranque y el entrenador tira del historial cuando quiere
+([useStore.js:3279](../../store/useStore.js)).
+
+### 12.4 El coste marginal de un entrenador gratis
+
+Ya en Pro y pasados todos los incluidos, lo peor del caso:
+
+```
+3 MAU × $0.00325           = $0.0098
+1 MB de BD × $0.125/GB     = $0.0001
+~5 MB de egress × $0.09/GB = $0.0005
+                            ─────────
+                             ~$0.01 / mes
+```
+
+**Un céntimo al mes por entrenador gratis activo.** Diez mil entrenadores
+gratis y activos son ~$100/mes; mil son ~$10, dentro del $25 que ya se paga.
+
+### 12.5 Qué implica para el 2+2
+
+**Los dos huecos gratis no son un riesgo financiero.** No hay escenario
+plausible en el que la generosidad del muro cueste más de lo que trae: para que
+Supabase duela hace falta un volumen de entrenadores en el que la conversión a
+Pro paga la factura veinte veces. El 2+2 de §4 es sostenible tal como está
+escrito, y esta sección existe para que nadie lo recorte por miedo a una factura
+que no llega.
+
+**Pero se pagan los $25 el día de la publicación, y no por capacidad.** El plan
+Free no tiene backups, y aquí se guarda el historial de entrenamiento de gente
+real: perderlo por no pagar $25 no se arregla con una disculpa. La pausa por
+inactividad y el límite de dos proyectos son la segunda razón. La capacidad es
+la última.
+
+### 12.6 Lo único que sí crece sin techo
+
+No es el usuario gratis, es **el hueco muerto**: un cliente que se desconectó
+hace un año deja su `history_json` ahí para siempre, y un entrenador que
+abandonó deja sus dos huecos llenos. Eso engorda sin dar nada. Una línea cuando
+la base de datos pase de ~4 GB, no antes:
+
+```sql
+update trainer_clients set history_json = null
+where client_id is null and disconnected_at < now() - interval '12 months';
+```
+
+Los estados del hueco están en [connection_model.sql](../../../supabase/connection_model.sql):
+`client_id` nulo con `disconnected_at` con fecha es VACANTE, y una vacante de un
+año no va a volver.
+
+**Y los anónimos:** cada reinstalación de un cliente crea un usuario nuevo en
+`auth.users` que ya no se borra solo. No afecta al MAU —solo cuentan los activos
+del mes— pero la tabla engorda igual. Mismo criterio: se purga cuando moleste.

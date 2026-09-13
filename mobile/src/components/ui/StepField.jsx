@@ -6,8 +6,9 @@
  * editor de ejercicio (grid de VOLUMEN y hojas) y la hoja de etapa del editor
  * de programa.
  */
-import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { Text, TextInput } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 
@@ -22,33 +23,58 @@ import { useThemedStyles } from '../../useTheme';
 //     que usan las hojas, donde el alto vertical es caro.
 // ─── Tres reglas del stepper, cerradas en QA. No romperlas. ──────────────────
 //
-// 1. **El ± siempre lleva fondo propio** (`surface2`), distinto del de la caja.
-//    Nunca transparente: sin caja no se lee como botón.
-// 2. **La caja nunca se funde con lo que la rodea.** De ahí `dark`: la caja va
-//    sobre `surface` por defecto y sobre `bg` con `dark`. Se usa `dark` cuando
-//    el contenedor ya es `surface` (una tarjeta) y NO se usa cuando el
-//    contenedor es `bg`, o volvería a fundirse. El cuerpo de una hoja es `bg`
-//    desde que `DragSheet` unificó el fondo de los modales: ahí va SIN `dark`.
+// 1. **El fondo lo lleva el NÚMERO, no el ±.** La zona del valor va en una celda
+//    `bg` —la misma que las celdas del grid de series del entreno (`SetRow`)— y
+//    eso es lo que dice "esto se escribe". Los ± van sin caja, sostenidos por el
+//    acento pleno. Antes era al revés (± en `surface2`, valor transparente) y
+//    con ocho ajustes seguidos en la hoja del planificador el resultado eran
+//    veinticuatro rectángulos idénticos.
+// 2. **La celda del valor SIEMPRE cae sobre `surface`**, o desaparece. De ahí
+//    `flat`: sin él la caja del control es `surface` y la celda contrasta; con
+//    él la caja no se pinta y el contenedor es quien pone el `surface` (una
+//    tarjeta de peldaño, una fila de etapa). Usar `flat` SOLO dentro de algo ya
+//    pintado en `surface`. El cuerpo de una hoja es `bg` desde que `DragSheet`
+//    unificó los modales: ahí va SIN `flat`.
 // 3. **La caja llega hasta el título.** El label va SIEMPRE por la prop `label`,
 //    nunca pintado fuera por el llamante: el fondo tiene que cubrir el título y
-//    los controles, no solo los ±.
+//    los controles, no solo los ±. Con `flat` lo cubre la tarjeta de dentro.
 export const STEP_BTN = 34;   // caja del botón ± (Figma 30; subido en QA)
-// Separación entre los ± y la zona del número, en la variante Horizontal.
-// 26 dejaba los botones a 120 px y el control parecía tres piezas sueltas; 10
-// se quedó corto. 14 es el punto medio del QA.
-const STEP_GAP  = 14;
+// Separación entre los ± y la celda del número, en la variante Horizontal. El
+// QA cerró 14 cuando los ± tenían caja propia y el valor no; con la celda del
+// valor pintada la referencia se invierte y los ± tienen que quedar pegados a
+// ella o parecen dos glifos sueltos en mitad de la fila.
+const STEP_GAP  = spacing.xs2;
 const GLYPH_W   = 13;   // largo de la barra del − / +
-const GLYPH_T   = 2;    // grosor
+const GLYPH_T   = 2;    // grosor — sin caja detrás, súbelo si se queda flojo en pantalla
 // Ancho FIJO de la zona del número: con y sin unidad tiene que medir lo mismo,
 // o los botones ± bailan de una fila a otra (QA). Subido de 68 a 76 y el input
 // de dentro de 44 a 52 porque un valor de 4 caracteres ("6.75") se cortaba por
 // la izquierda: el `width` del TextInput recorta, no crece.
 const VALUE_W   = 76;
 const VALUE_INPUT_W = 52;
+// Holgura sobre el ancho medido del número. Un `TextInput` necesita más caja que
+// el `Text` que mide lo mismo —el cursor pide su sitio y Android redondea el
+// layout de la línea—, y quedarse corto no ajusta: recorta el primer dígito. Es
+// el botón de calibrado de este campo: si vuelve a cortarse en algún dispositivo,
+// sube esto antes de tocar nada más.
+const MEASURE_SLACK = 6;
+// Radio de la celda del valor. La celda de `SetRow` es 44×r11; a 34 de alto la
+// proporción sale en 8. No es `radius.sm` a propósito: la celda tiene que
+// leerse como la del entreno, no como una caja más de la hoja.
+const VALUE_R   = 8;
 
-export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, dark }) {
+export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
+  // Ancho real del número, medido con un clon invisible: el TextInput no crece
+  // con su contenido, así que con `width` fijo el número se centraba en SU caja
+  // y la unidad quedaba colgando a la derecha, con el conjunto descentrado
+  // dentro de la celda. Midiendo, el input se ajusta al número, la unidad queda
+  // pegada y es el par "30 s" el que va centrado. Solo se mide si hay unidad.
+  const [numW, setNumW] = useState(0);
+  // Con el input ajustado al número, tocarlo es tocar dos dígitos: la celda
+  // entera se vuelve el área táctil y enfoca.
+  const inputRef = useRef(null);
   useEffect(() => { setDraft(String(value)); }, [value]);
   const numVal   = Number(value);
   const decimals = step < 1;
@@ -76,9 +102,20 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
       <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
       </TouchableOpacity>
-      <View style={sf.valueWrap}>
+      <Pressable style={sf.valueWrap} onPress={() => inputRef.current?.focus()}>
+        {!!unit && (
+          <Text
+            style={[sf.valueText, sf.valueMirror]}
+            numberOfLines={1}
+            onLayout={(e) => setNumW(e.nativeEvent.layout.width)}
+          >
+            {draft || '0'}
+          </Text>
+        )}
         <TextInput
-          style={sf.valueInput}
+          ref={inputRef}
+          style={[sf.valueText, sf.valueInput,
+            !!unit && numW > 0 && { width: Math.min(numW + MEASURE_SLACK, VALUE_INPUT_W) }]}
           keyboardType={decimals ? 'decimal-pad' : (signed ? 'numbers-and-punctuation' : 'numeric')}
           value={draft}
           onChangeText={handleChangeText}
@@ -86,7 +123,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
           selectTextOnFocus
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
-      </View>
+      </Pressable>
       <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
         <View style={[sf.glyphBar, sf.glyphBarV]} />
@@ -95,7 +132,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   );
 
   return (
-    <View style={[horizontal ? sf.cardHorizontal : sf.card, dark && sf.cardDark]}>
+    <View style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
       <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
       {controls}
     </View>
@@ -123,21 +160,32 @@ const makeSf = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
   },
-  cardDark: { backgroundColor: th.colors.bg },
+  // `flat`: la caja no se pinta y el contenedor pone el `surface` que la celda
+  // del valor necesita debajo. Sin inset horizontal, para que la fila ocupe todo
+  // el ancho de la tarjeta que la contiene.
+  flat:           { backgroundColor: 'transparent' },
+  flatHorizontal: {
+    backgroundColor:   'transparent',
+    paddingHorizontal: 0,
+    paddingVertical:   spacing.xs2,
+  },
 
-  label:           { ...textStyles.cardType, color: th.colors.text, textAlign: 'center' },
-  labelHorizontal: { ...textStyles.cardType, color: th.colors.text, flexShrink: 1 },
+  // Las dos variantes al mismo cuerpo. Iban a 12 y se leían como metadato; se
+  // probó la caja del grid a 16 —el título de tarjeta de `NavRow`— y el usuario
+  // prefirió las dos a 14: un ± con su rótulo es una fila de opción con botones,
+  // no una tarjeta, y a 16 el rótulo pesaba más que el número que hay debajo.
+  label:           { ...textStyles.bodyStrong, color: th.colors.text, textAlign: 'center' },
+  labelHorizontal: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
 
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
 
+  // Sin fondo (regla 1) pero conservando los 34×34 de área táctil.
   stepBtn: {
-    width:           STEP_BTN,
-    height:          STEP_BTN,
-    borderRadius:    th.radius.xs,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
+    width:          STEP_BTN,
+    height:         STEP_BTN,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   // El − y el + van dibujados con Views y con las coordenadas puestas a mano
   // (no con glifos ni con centrado automático): así quedan clavados en el
@@ -150,27 +198,43 @@ const makeSf = (th) => StyleSheet.create({
     left:            (STEP_BTN - GLYPH_W) / 2,
     top:             (STEP_BTN - GLYPH_T) / 2,
     borderRadius:    GLYPH_T / 2,
-    backgroundColor: th.tint.accent50,
+    backgroundColor: th.colors.accent,
   },
   glyphBarV: { transform: [{ rotate: '90deg' }] },
 
   valueWrap: {
-    width:          VALUE_W,
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'center',
-    gap:            spacing.xs2,
+    width:           VALUE_W,
+    height:          STEP_BTN,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    // La separación que se VE entre el número y la unidad es este gap más medio
+    // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
+    // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
+    gap:             spacing.xs,
+    backgroundColor: th.colors.bg,
+    borderRadius:    VALUE_R,
+  },
+  // La tipografía va aparte porque la comparten el input y el clon que lo mide:
+  // si divergen, el ancho medido no es el que se pinta.
+  valueText: {
+    ...textStyles.itemTitle,
+    color:              th.colors.text,
+    textAlign:          'center',
+    includeFontPadding: false,
   },
   valueInput: {
     width:              VALUE_INPUT_W,
-    ...textStyles.cardTitle,
-    color:              th.colors.text,
-    textAlign:          'center',
     textAlignVertical:  'center',
-    includeFontPadding: false,
     backgroundColor:    'transparent',
     height:             STEP_BTN,
     paddingVertical:    0,
+    // En Android el EditText trae padding horizontal propio, que `backgroundColor:
+    // transparent` no quita: con la caja ajustada al número se lo comía por los
+    // lados. Va a 0 explícitamente.
+    paddingHorizontal:  0,
   },
-  unit: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  // Fuera del flujo y transparente: solo está para que `onLayout` dé el ancho.
+  valueMirror: { position: 'absolute', opacity: 0 },
+  unit: { ...textStyles.label, color: th.colors.mutedLight },
 });

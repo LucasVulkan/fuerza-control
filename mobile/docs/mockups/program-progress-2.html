@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tu programa — progreso v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; font-family: Inter, sans-serif; padding: 30px 26px 70px; -webkit-font-smoothing: antialiased; }
+  .rack { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 375px; }
+  .cap { font: 600 12px/1.55 Inter; color: #818181; letter-spacing: .3px; margin: 0 0 12px; }
+  .cap b { display: block; color: #aae216; font-weight: 800; letter-spacing: 1.4px; font-size: 11px; margin-bottom: 3px; }
+  .pad { background: #151515; border-radius: 26px; padding: 15px; margin-bottom: 26px; }
+  .pad .card + .card { margin-top: 12px; }
+
+  /* ── Tarjeta ── */
+  .card { background: #1f1f1f; border-radius: 18px; padding: 16px; }
+  .top { display: flex; align-items: flex-start; gap: 10px; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #818181; }
+  .pname { font: 900 20px Inter; color: #e6e6e6; margin-top: -1px; }
+  .cycnum { font: 900 20px Inter; color: #aae216; margin-top: -1px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .prog { margin-top: 16px; }
+  .prow { display: flex; align-items: baseline; gap: 8px; }
+  .stage { font: 800 13px Inter; letter-spacing: .5px; color: #e6e6e6; }
+  .stage em { font-style: normal; color: #aae216; }
+  .meta { font: 500 12px Inter; letter-spacing: .48px; color: #818181; margin-left: auto; }
+  .meta b { color: #e6e6e6; font-weight: 700; }
+  .under { font: 500 12px Inter; letter-spacing: .48px; color: #818181; margin-top: 8px; }
+  .under b { color: #e6e6e6; font-weight: 700; }
+
+  /* ── Barra de etapas: tramos proporcionales, TODOS a la misma altura ── */
+  .bar { display: flex; gap: 5px; margin-top: 9px; height: 6px; }
+  .sg { height: 6px; border-radius: 3px; background: #3a3a3a; overflow: hidden; }
+  .sg.done { background: rgba(184,255,0,.45); }
+  .sg.now  { background: transparent; display: flex; gap: 2px; border-radius: 0; }
+  .sg.now > i { flex: 1; height: 6px; background: #4d4d4d; }
+  .sg.now > i:first-child { border-radius: 3px 0 0 3px; }
+  .sg.now > i:last-child { border-radius: 0 3px 3px 0; }
+  .sg.now > i.f { background: #aae216; }
+  .sg.now > i.p { background: linear-gradient(to right, #aae216 55%, #4d4d4d 55%); }
+  .sg.now.solid { display: block; position: relative; background: #4d4d4d; border-radius: 3px; }
+  .sg.now.solid::after { content: ""; position: absolute; top:0; bottom:0; left:0; width: var(--f, 38%); border-radius: 3px; background: #aae216; }
+
+  /* Cursor "estás aquí" (A3) */
+  .track { position: relative; }
+  .cursor { position: absolute; top: -3px; width: 2px; height: 12px; border-radius: 1px; background: #e6e6e6; }
+
+  /* Puntos */
+  .pips { display: flex; gap: 5px; align-items: center; margin-left: auto; }
+  .pips i { width: 6px; height: 6px; border-radius: 3px; background: #3a3a3a; }
+  .pips i.done { background: rgba(184,255,0,.45); }
+  .pips i.now  { background: #aae216; width: 14px; }
+  .pips i.cdone { background: #aae216; }
+  .pips i.cnow  { background: transparent; box-shadow: inset 0 0 0 2px #aae216; }
+
+  /* Barra ancha de ciclos (B) */
+  .cyc { display: flex; gap: 3px; margin-top: 9px; }
+  .cyc i { flex: 1; height: 6px; border-radius: 3px; background: #4d4d4d; overflow: hidden; }
+  .cyc i.f { background: #aae216; }
+  .cyc i.p { background: linear-gradient(to right, #aae216 55%, #4d4d4d 55%); }
+
+  /* ── Cifras ── */
+  .stats { display: flex; margin-top: 20px; }
+  .stats > div { flex: 1; }
+  .sval { font: 900 16px Inter; letter-spacing: .64px; color: #e6e6e6; font-variant-numeric: tabular-nums; }
+  .sunit { font: 500 12px Inter; color: #818181; }
+  .skey { font: 800 10px Inter; letter-spacing: 2px; text-transform: uppercase; color: #4d4d4d; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="rack">
+
+  <!-- ══════════ COLUMNA 1 ══════════ -->
+  <div class="col">
+
+    <p class="cap"><b>A1 · TODO A LA MISMA ALTURA</b>La etapa en curso no crece: se distingue porque es la única partida en ciclos y la única con lima sólido. Las cumplidas, lima apagado.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">08</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow"><span class="stage"><em>Etapa 3</em> Intensificación</span><span class="meta">quedan <b>3 ciclos</b></span></div>
+          <div class="bar">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now"  style="flex:4"><i class="f"></i><i class="p"></i><i></i><i></i></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow"><span class="stage"><em>Etapa 1</em> Acumulación</span><span class="meta">queda <b>1 ciclo</b></span></div>
+          <div class="bar">
+            <div class="sg now" style="flex:3"><i class="f"></i><i class="p"></i><i></i></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap"><b>A2 · SIN PARTIR LA ETAPA</b>Los ciclos salen de la barra y se van al texto. La barra solo responde "por dónde vas del programa": tramo lleno = etapa hecha, tramo a medias = la de ahora.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">08</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow"><span class="stage"><em>Etapa 3</em> Intensificación</span><span class="meta">quedan <b>3 ciclos</b></span></div>
+          <div class="bar">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now solid" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+          </div>
+          <div class="under">Ciclo <b>2</b> de 4 de esta etapa · <b>3</b> etapas por delante</div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ COLUMNA 2 ══════════ -->
+  <div class="col">
+
+    <p class="cap"><b>A3 · CURSOR "ESTÁS AQUÍ"</b>Todos los tramos iguales y en gris salvo lo recorrido; una marca blanca de 2px cruza la barra en el ciclo exacto en el que estás.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">08</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow"><span class="stage"><em>Etapa 3</em> Intensificación</span><span class="meta">quedan <b>3 ciclos</b></span></div>
+          <div class="bar track">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now solid" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+            <span class="cursor" style="left:49%"></span>
+          </div>
+          <div class="under">Ciclo <b>2</b> de 4 de esta etapa</div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap"><b>B · COMO ESTABA</b>Puntos = etapas (5), barra ancha = ciclos de la etapa. La barra grande responde a "cuánto queda de esta etapa".</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">08</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow">
+            <span class="stage"><em>Etapa 3</em> Intensificación</span>
+            <span class="pips"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></span>
+          </div>
+          <div class="cyc"><i class="f"></i><i class="p"></i><i></i><i></i></div>
+          <div class="under">Ciclo <b>2</b> de 4 · quedan <b>3</b> para la etapa 4</div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ COLUMNA 3 ══════════ -->
+  <div class="col">
+
+    <p class="cap"><b>B invertida · PUNTOS = CICLOS</b>Los puntos pasan a ser los ciclos de la etapa (hechos en lima, el de ahora en anillo) y la barra larga pasa a ser el programa entero.</p>
+    <div class="pad">
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">08</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow">
+            <span class="stage"><em>Etapa 3</em> Intensificación</span>
+            <span class="pips"><i class="cdone"></i><i class="cnow"></i><i></i><i></i></span>
+          </div>
+          <div class="bar">
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg done" style="flex:3"></div>
+            <div class="sg now solid" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+          </div>
+          <div class="under">Etapa <b>3</b> de 5 · quedan <b>3 ciclos</b> para la 4</div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="top">
+          <div style="flex:1;min-width:0"><div class="eyebrow">Tu programa</div><div class="pname">Hipertrofia Iniciación</div></div>
+          <div><div class="eyebrow" style="text-align:right">Ciclo</div><div class="cycnum">02</div></div>
+        </div>
+        <div class="prog">
+          <div class="prow">
+            <span class="stage"><em>Etapa 1</em> Acumulación</span>
+            <span class="pips"><i class="cdone"></i><i class="cnow"></i><i></i></span>
+          </div>
+          <div class="bar">
+            <div class="sg now solid" style="flex:3;--f:50%"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:4"></div>
+            <div class="sg" style="flex:3"></div>
+            <div class="sg" style="flex:2"></div>
+          </div>
+          <div class="under">Etapa <b>1</b> de 5 · queda <b>1 ciclo</b> para la 2</div>
+        </div>
+        <div class="stats">
+          <div><div class="sval">85<span class="sunit">%</span></div><div class="skey">Adherencia</div></div>
+          <div><div class="sval">0,5</div><div class="skey">Cic/semana</div></div>
+          <div><div class="sval">16<span class="sunit">%</span></div><div class="skey">Mejora</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

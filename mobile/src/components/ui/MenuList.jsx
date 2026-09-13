@@ -6,15 +6,16 @@
  * reimplementación (mismo motivo por el que `EditorRows.jsx` salió de
  * `ExerciseEditorInline`).
  *
- * Estructura: etiqueta de sección (`spacingTag`/`mutedLight`) + filas con gap
+ * Estructura: etiqueta de sección (`caps`/`mutedLight`) + filas con gap
  * `space/xs` y radios asimétricos por posición (`getCardRadii`). Los iconos van
  * en gris: son decoración funcional, el lima queda para lo que informa.
  */
 import { Children, cloneElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import Svg from 'react-native-svg';
 
-import { spacing, textStyles, getCardRadii } from '../../theme';
+import { spacing, textStyles, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { ArrowIcon } from './EditorIcons';
 
@@ -62,12 +63,18 @@ export function Section({ title, children }) {
   );
 }
 
-/** Punto + texto de estado. `tone`: 'on' | 'warn' | 'off'. */
-export function Status({ tone, label }) {
+/**
+ * Punto + texto de estado. `tone`: 'on' | 'warn' | 'off'.
+ *
+ * `color` pinta punto y texto con un color propio, para los estados que ya
+ * tienen el suyo en el resto de la app (Drive en verde, entrenador en azul) y
+ * que en lima dirían otra cosa.
+ */
+export function Status({ tone, label, color }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const dot    = tone === 'on' ? th.colors.accent     : tone === 'warn' ? th.colors.orange : th.colors.muted;
-  const text   = tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent;
+  const dot    = color ?? (tone === 'on' ? th.colors.accent     : tone === 'warn' ? th.colors.orange : th.colors.muted);
+  const text   = color ?? (tone === 'on' ? th.colors.mutedLight : tone === 'warn' ? th.colors.orange : th.colors.accent);
   return (
     <View style={styles.status}>
       <View style={[styles.statusDot, { backgroundColor: dot }]} />
@@ -136,10 +143,50 @@ export function MenuRow({
   );
 }
 
+/**
+ * La OTRA anatomía de la misma lista: la de la lista de ejercicios de Progreso
+ * (`exRow`). Mismo grupo, mismos radios y mismo `gap` que `MenuRow` — cambia lo
+ * que va dentro: marcador de texto en el hueco de 20 px del icono, nombre a
+ * `bodyStrong` en Bold frente al ExtraBold de `MenuRow`: mismo cuerpo, otro peso.
+ *
+ * El marcador va SIN caja: chip con fondo/borde se probó y el usuario lo
+ * rechazó ("cambios de fondo raros"); el color de la letra basta. Los 20 px
+ * fijos son lo que mantiene el borde izquierdo alineado en todas las filas, y
+ * de paso aguantan tres caracteres (`LUN`) sin tocar nada.
+ *
+ * `right` es la zona de acción, que siempre acaba en el mismo punto sea cual
+ * sea su contenido (regla de Figma para las Sesion Cards).
+ */
+export function GroupedRow({
+  marker, markerColor, title, subtitle, right, onPress, isFirst, isLast,
+  accessibilityLabel,
+}) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const Wrap   = onPress ? TouchableOpacity : View;
+  const press  = onPress
+    ? { onPress, activeOpacity: 0.72, accessibilityRole: 'button', accessibilityLabel }
+    : null;
+  return (
+    <Wrap style={[styles.row, styles.groupedRow, getCardRadii(th, isFirst, isLast)]} {...press}>
+      {marker != null && (
+        <Text style={[styles.groupedMarker, markerColor ? { color: markerColor } : null]} numberOfLines={1}>
+          {marker}
+        </Text>
+      )}
+      <View style={styles.groupedMeta}>
+        <Text style={styles.groupedTitle} numberOfLines={1}>{title}</Text>
+        {!!subtitle && <Text style={styles.groupedSub} numberOfLines={1}>{subtitle}</Text>}
+      </View>
+      {right}
+    </Wrap>
+  );
+}
+
 const makeStyles = (th) => StyleSheet.create({
   section:      { marginBottom: spacing.xl },
   sectionLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:             th.colors.mutedLight,
     textTransform:     'uppercase',
     paddingHorizontal: spacing.xs2,
@@ -157,25 +204,36 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
   },
   rowDisabled: { opacity: 0.45 },
+
+  // Anatomía "Progreso" (`GroupedRow`): el mismo contenedor con el padding de
+  // `exRow` y el nombre/subtítulo un punto más pequeños.
+  groupedRow:    { paddingVertical: spacing.md, overflow: 'hidden' },
+  groupedMarker: {
+    ...textStyles.bodyStrong,
+    fontFamily: 'Inter_900Black',
+    width:      20,
+    flexShrink: 0,
+    textAlign:  'center',
+    color:      th.colors.mutedLight,
+  },
+  groupedMeta: { flex: 1, minWidth: 0, gap: spacing.xs },
+  // Las dos anatomías de esta lista se separan por PESO, no por cuerpo: las dos
+  // van a 14 y `MenuRow` usa ExtraBold contra el Bold de aquí. Antes eran 13 y
+  // 14, que es un punto y no se ve.
+  groupedTitle: { ...textStyles.bodyStrong, color: th.colors.text },
+  groupedSub:   { ...textStyles.label, color: th.colors.mutedLight },
   rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
   rowMeta:     { flex: 1, minWidth: 0 },
-  // 14px ExtraBold sin tracking: no hay token de Figma para este tamaño
-  // (`cardType` es 12/1.2).
-  rowLabel: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize:   14,
-    color:      th.colors.text,
-  },
+  rowLabel: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   rowSub: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize:   11,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     marginTop:  spacing.xs,
-    lineHeight: 15,
+    lineHeight: lh(textStyles.label.fontSize, LINE.row),
   },
   rowValue: {
+    ...textStyles.labelStrong,
     fontFamily:  'Inter_700Bold',
-    fontSize:    12,
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
     flexShrink:  0,
@@ -184,8 +242,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Apilado: sin `maxWidth` ni `numberOfLines`, y en lima porque al bajar de la
   // columna derecha pierde el contraste de posición que lo hacía destacar.
   rowValueBelow: {
-    fontFamily:  'Inter_700Bold',
-    fontSize:    13,
+    ...textStyles.bodyStrong,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
     marginTop:   spacing.xs,
@@ -195,7 +252,7 @@ const makeStyles = (th) => StyleSheet.create({
   // apagado, el texto pasa a lima porque ahí SÍ hay una acción que ofrecer.
   status:     { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 0 },
   statusDot:  { width: 7, height: 7, borderRadius: 3.5 },
-  statusText: { fontFamily: 'Inter_700Bold', fontSize: 12 },
+  statusText: { ...textStyles.labelStrong, fontFamily: 'Inter_700Bold' },
 
   badge: {
     paddingHorizontal: spacing.sm2,
@@ -204,7 +261,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.tint.accent10,
     flexShrink:        0,
   },
-  badgeText:    { ...textStyles.spacingTag, color: th.colors.accent },
+  badgeText:    { ...textStyles.caps, color: th.colors.accent },
   badgeOff:     { backgroundColor: th.colors.surface2 },
   badgeTextOff: { color: th.colors.mutedLight },
 });

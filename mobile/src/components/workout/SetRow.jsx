@@ -13,13 +13,11 @@
  * de tiempo en vivo. Pausa/reanuda sin perder el tiempo acumulado.
  */
 
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, PanResponder, Keyboard, Pressable, Animated,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, Animated } from 'react-native';
+import { Text, TextInput } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { spacing, borders } from '../../theme';
+import { spacing, borders, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { GRID } from './grid';
 
@@ -442,10 +440,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Label "S1" (§4.5) — 12/800, muted, tabular. Fila completada → lime.
   setNum: {
+    ...textStyles.labelStrong,
     width:       GRID.LABEL_W,
-    fontFamily:  'Inter_800ExtraBold',
-    fontSize:    12,
-    fontWeight:  '800',
     color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
@@ -477,10 +473,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:       borders.thin,
     borderColor:       th.colors.accent,
     borderRadius:      GRID.RADIUS,
+    ...textStyles.itemTitle,
     color:             th.colors.text,
-    fontFamily:        'Inter_800ExtraBold',
-    fontSize:          15,
-    fontWeight:        '800',
     textAlign:         'center',
     paddingHorizontal: spacing.xs,
   },
@@ -501,9 +495,8 @@ const makeStyles = (th) => StyleSheet.create({
   // Estados de celda (§4.5): valor del usuario 800/text · ghost 700/limeGhost
   // (o azul si es objetivo del coach) · completada lime · vacía 600/muted2.
   valueText: {
+    ...textStyles.itemTitle,
     fontFamily:  'Inter_800ExtraBold',
-    fontSize:    15,
-    fontWeight:  '800',
     color:       th.colors.text,
     textAlign:   'center',
     fontVariant: ['tabular-nums'],
@@ -511,22 +504,12 @@ const makeStyles = (th) => StyleSheet.create({
   valueTextDone: {
     color: th.colors.accent,
   },
-  valueTextGhost: {
-    fontFamily: 'Inter_700Bold',
-    fontWeight: '700',
-    color:      th.colors.muted2,
-  },
-  valueTextCoach: {
-    fontFamily: 'Inter_700Bold',
-    fontWeight: '700',
-    color:      th.colors.blue,
-  },
+  valueTextGhost: { fontFamily: 'Inter_700Bold', color: th.colors.muted2 },
+  valueTextCoach: { fontFamily: 'Inter_700Bold', color: th.colors.blue },
   placeholder: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize:   15,
-    fontWeight: '600',
-    color:      th.colors.muted,
-    textAlign:  'center',
+    ...textStyles.itemTitleQuiet,
+    color:     th.colors.muted,
+    textAlign: 'center',
   },
 
   numRow: {
@@ -560,10 +543,10 @@ const makeStyles = (th) => StyleSheet.create({
   doneBtnActive: {
     backgroundColor: th.colors.accent,
   },
-  doneMark: { fontSize: 15, color: th.colors.mutedLight },
+  doneMark: { ...textStyles.itemTitle, color: th.colors.mutedLight },
   // Activa (aún sin marcar): solo cambia el color del icono frente a las pendientes.
   doneMarkCurrent: { color: th.tint.accent50 },
-  doneMarkActive:  { fontFamily: 'Inter_900Black', fontWeight: '900', color: th.colors.onAccent },
+  doneMarkActive:  { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
 
   // Botón play (§4.5) — misma caja que el check.
   timerBtn: {
@@ -578,7 +561,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent10,
   },
   timerBtnIcon: {
-    fontSize:           15,
+    ...textStyles.itemTitle,
     color:              th.colors.mutedLight,
     lineHeight:         16,
     includeFontPadding: false,

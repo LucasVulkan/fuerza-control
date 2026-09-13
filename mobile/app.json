@@ -58,7 +58,19 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
+            "node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
+            "node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf",
+            "node_modules/@expo-google-fonts/inter/900Black/Inter_900Black.ttf",
+            "node_modules/@expo-google-fonts/inter/900Black_Italic/Inter_900Black_Italic.ttf",
+            "node_modules/@expo-google-fonts/barlow-condensed/800ExtraBold_Italic/BarlowCondensed_800ExtraBold_Italic.ttf"
+          ]
+        }
+      ],
       "expo-web-browser",
       "expo-secure-store",
       "expo-notifications",

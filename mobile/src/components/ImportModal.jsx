@@ -13,11 +13,9 @@
  *   onClose     — called to dismiss
  */
 import { useState } from 'react';
-import {
-  Modal, View, Text, TouchableOpacity, Switch, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform,
-} from 'react-native';
-import { spacing, typography, borders, withOpacity } from '../theme';
+import { Modal, View, TouchableOpacity, Switch, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from './ui/Text';
+import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -379,22 +377,13 @@ const makeS = (th) => StyleSheet.create({
     gap:             spacing.md,
     maxHeight:       '88%',
   },
-  title: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-  },
+  title: { ...textStyles.heading, color: th.colors.text },
   fileRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.sm,
   },
-  fileName: {
-    flex:     1,
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  fileName: { ...textStyles.label, flex: 1, color: th.colors.muted },
   badge: {
     backgroundColor:   withOpacity(th.colors.accent, 0.1),
     borderWidth:       borders.thin,
@@ -403,12 +392,7 @@ const makeS = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   2,
   },
-  badgeText: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 0.5,
-  },
+  badgeText: { ...textStyles.caps, color: th.colors.accent },
 
   // Scroll area
   scroll: { flexShrink: 1 },
@@ -424,9 +408,9 @@ const makeS = (th) => StyleSheet.create({
     marginBottom:    spacing.xs,
   },
   warningText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.red,
-    lineHeight: typography.xs * 1.6,
+    lineHeight: lh(textStyles.label.fontSize),
   },
 
   // ── Radio options (program modes) ─────────────────────────────────────────
@@ -465,19 +449,14 @@ const makeS = (th) => StyleSheet.create({
     borderRadius:    5,
     backgroundColor: th.colors.accent,
   },
-  radioLabel: {
-    fontSize:     typography.base,
-    fontWeight:   typography.medium,
-    color:        th.colors.text,
-    marginBottom: 2,
-  },
+  radioLabel: { ...textStyles.body, color: th.colors.text, marginBottom: 2 },
   radioLabelSelected: {
     color: th.colors.accent,
   },
   radioDesc: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.muted,
-    lineHeight: typography.xs * 1.6,
+    lineHeight: lh(textStyles.label.fontSize),
   },
 
   // ── Backup sections ───────────────────────────────────────────────────────
@@ -497,16 +476,8 @@ const makeS = (th) => StyleSheet.create({
     borderColor:     withOpacity(th.colors.accent, 0.25),
   },
   sectionInfo: { flex: 1 },
-  sectionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  sectionDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
+  sectionLabel: { ...textStyles.body,  color: th.colors.text },
+  sectionDesc:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
 
   // Template card
   templateCard: {
@@ -547,11 +518,7 @@ const makeS = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.1),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  modeBtnText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  modeBtnText: { ...textStyles.label, color: th.colors.muted },
   modeBtnTextActive: { color: th.colors.accent },
 
   // ── Actions row (always visible) ─────────────────────────────────────────
@@ -568,11 +535,7 @@ const makeS = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  cancelText: {
-    fontSize:   typography.base,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  cancelText: { ...textStyles.body, color: th.colors.muted },
   importBtn: {
     flex:            2,
     paddingVertical: spacing.md,
@@ -581,11 +544,6 @@ const makeS = (th) => StyleSheet.create({
     alignItems:      'center',
   },
   importBtnDisabled: { backgroundColor: th.colors.surface2 },
-  importBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
+  importBtnText: { ...textStyles.button, color: th.colors.bg },
   importBtnTextDisabled: { color: th.colors.muted },
 });

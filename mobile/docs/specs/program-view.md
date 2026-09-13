@@ -15,6 +15,12 @@
 >
 > Es un **visualizador**, no un tracker. No muestra en qué etapa va el atleta,
 > ni la semana en curso, ni el progreso. Muestra **qué es el programa**.
+>
+> **Ampliada (sep 2026) por [program-card.md](program-card.md).** Al perder el
+> pie la tarjeta de la Home, esta pantalla pasa a ser **donde vive todo lo que se
+> le puede hacer a un programa**: se entra pulsando la tarjeta, y aquí están
+> editar (botón al final) y archivar (`⋯` de la cabecera). Su §3.2 —los chips de
+> etapa— queda sustituida por `StageSelector`.
 
 ---
 
@@ -61,7 +67,7 @@ configurados") — i18n es obligatoria en las dos lenguas.
 Cuatro zonas, una sola pantalla, un solo scroll.
 
 ```
-┌ cabecera ───────────────────────────────┐
+┌ cabecera ──────────────────────────── ⋯ ┐
 │ PROGRAMA / nombre / "Programa de X"     │
 │ 04 ETAPAS   12 CICLOS   04 SESIONES     │
 ├ selector de etapas ─────────────────────┤
@@ -75,14 +81,20 @@ Cuatro zonas, una sola pantalla, un solo scroll.
 │    Press banca CLAVE          4 × 6–8   │
 │    │ SUPERSERIE · 3 RONDAS · 90 S       │
 │    ┌ AMRAP · 12 min ──────────────────┐ │
+├ editar ─────────────────────────────────┤
+│ [        EDITAR PROGRAMA (lima)       ] │
 └─────────────────────────────────────────┘
 ```
 
 ### 3.1 Cabecera
 
-- Barra accent con flecha atrás, eyebrow y nombre del programa — mismo patrón
-  que [`StagePlannerScreen`](../../src/screens/StagePlannerScreen.jsx), que es
-  su pantalla hermana.
+- [`ScreenHeader`](../../src/components/ui/ScreenHeader.jsx) — flecha atrás,
+  eyebrow y nombre del programa, el mismo componente que
+  [`StagePlannerScreen`](../../src/screens/StagePlannerScreen.jsx), que es su
+  pantalla hermana. (Era una barra accent propia hasta la U10 de
+  [cabeceras.md](cabeceras.md), que se llevó las cinco copias.) A la derecha, el
+  `⋯` de acciones cuando el programa es propio y activo — ver
+  [program-card.md](program-card.md) §4.2.
 - Línea de autoría, **solo si aplica**:
   - copia del cliente (`clientSync.trainerName` y el programa vino del
     entrenador) → "Programa de {nombre}";
@@ -94,9 +106,16 @@ Cuatro zonas, una sola pantalla, un solo scroll.
 
 ### 3.2 Selector de etapas
 
-Fila horizontal scrollable, un chip por etapa: nombre + ciclos ("4 c." / "∞").
-Seleccionado en accent. **Con una sola etapa no se pinta** — un selector de un
-elemento es ruido. Debajo, la línea de cambios (§4.2) cuando el índice > 0.
+> Sustituida (sep 2026) por [program-card.md](program-card.md) §4.3: los chips
+> propios se estrangulaban a partir de 5 etapas y pasan a `StageSelector`, el
+> mismo control del editor y del planificador — reparte hasta 4 y desde la 5ª
+> pasa a scroll horizontal centrando la activa. Sin `+`, y sin reaccionar a la
+> segunda pulsación de la etapa ya activa.
+
+Un segmento por etapa: nombre + ciclos (`4 ciclos` / `Sin límite`, las mismas
+palabras que el editor). Seleccionado en accent. **Con una sola etapa no se
+pinta** — un selector de un elemento es ruido. Debajo, la línea de cambios (§4.2)
+cuando el índice > 0.
 
 ### 3.3 Tarjeta de volumen
 

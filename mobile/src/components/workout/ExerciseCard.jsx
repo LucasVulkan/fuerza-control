@@ -25,7 +25,8 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +39,9 @@ import { getProgression } from '../../utils/progression';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../utils/warmup';
 import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
+import { targetLabel as buildTarget } from '../../utils/prescription';
 import { isExerciseDone } from '../../utils/exerciseStatus';
-import { spacing, typography, textStyles, withOpacity } from '../../theme';
+import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 // ── Geometría del spec ────────────────────────────────────────────────────────
@@ -81,35 +83,6 @@ export function NoteIcon({ size = 21, color }) {
   );
 }
 
-// ── buildTarget ───────────────────────────────────────────────────────────────
-
-function buildTarget(def, exConfig, t) {
-  if (!def) return '';
-  const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
-  const model      = def.progressionModel;
-  const sets       = exConfig.sets ?? 0;
-  const minReps    = exConfig.minReps ?? def.minReps;
-  const maxReps    = exConfig.maxReps ?? def.maxReps;
-  const minTime    = exConfig.minTime ?? def.minTime;
-  const maxTime    = exConfig.maxTime ?? def.maxTime;
-  const unilateral = (exConfig.isUnilateral ?? def.isUnilateral)
-    ? ` ${t('workout.perSide', 'por lado')}`
-    : '';
-
-  if (model === 'submax') return `${sets} × ${t('workout.submax', 'submáx')}`;
-
-  if (inputType === 'reps') {
-    const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
-    return `${sets} × ${r} reps${unilateral}`;
-  }
-  if (inputType === 'time' || inputType === 'weight_time') {
-    return `${sets} × ${minTime}–${maxTime} s${unilateral}`;
-  }
-  // weight_reps (default)
-  const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
-  return `${sets} × ${r} reps${unilateral}`;
-}
-
 // ── ExerciseCard ──────────────────────────────────────────────────────────────
 
 export default function ExerciseCard({
@@ -133,6 +106,7 @@ export default function ExerciseCard({
   overrideEx,
   activeSetIndex = -1,
   hideAddSetBtn = false,   // superset: un único botón compartido debajo del grupo (WorkoutScreen)
+  onEditTarget,            // solo los ad-hoc: la línea de objetivo abre su hoja (ver abajo)
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -379,29 +353,49 @@ export default function ExerciseCard({
     catch { return null; }
   })();
 
-  // ── ProgressionLine (spec §4.1) — solo tipografía: dir + detail ─────────────
-  // `dir` sale de progression.type; `detail` es el salto numérico ("60 → 62.5 kg"),
-  // calculado con el valor tope de la última sesión y la sugerencia del motor de
-  // progresión. Sin sugerencia numérica (progresión por reps) cae al mensaje largo.
-  const progDetail = (() => {
-    if (!progression) return null;
+  // ── ProgressionLine (spec §4.1) — solo tipografía: dir + destino + salto ────
+  // `dir` sale de progression.type. El detalle NO es un rango: "7.5 → 2.5 kg" no
+  // dice si bajas A 2.5 o RESTAS 2.5, y encima su flecha compite con la de `dir`.
+  // Se parte en dos: `target` es el peso al que vas (la instrucción) y `delta` es
+  // el salto respecto a la última sesión, en pastilla aparte y en gris para que no
+  // pelee con el acento. Sin sugerencia numérica (progresión por reps) cae al
+  // mensaje largo, y ahí el label pierde la preposición ("Subir", no "Subir a").
+  // `why` es el porque en una linea gris debajo: solo acompana a la instruccion
+  // numerica -- con el mensaje largo sobra, porque ese mensaje YA es el motivo.
+  const { progTarget, progDelta, progWhy } = (() => {
+    if (!progression) return {};
     const sets = lastExercise?.sets ?? [];
+    const signed = (n) => `${n > 0 ? '+' : '−'}${Math.abs(n)}`;
     if (progression.suggestedWeight != null) {
-      const curKg   = Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
-      const cur     = curKg > 0 ? toDisplay(curKg) : null;
-      const next    = toDisplay(progression.suggestedWeight);
-      return cur != null && cur !== next
-        ? `${cur} → ${next} ${weightLabel}`
-        : `${next} ${weightLabel}`;
+      const curKg = Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
+      const cur   = curKg > 0 ? toDisplay(curKg) : null;
+      const next  = toDisplay(progression.suggestedWeight);
+      return {
+        progTarget: `${next} ${weightLabel}`,
+        progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
+        progWhy:    progression.why ?? null,
+      };
     }
     if (progression.suggestedTime != null) {
       const cur  = Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
       const next = progression.suggestedTime;
-      return cur > 0 && cur !== next ? `${cur} → ${next} s` : `${next} s`;
+      return {
+        progTarget: `${next} s`,
+        progDelta:  cur > 0 && cur !== next ? signed(next - cur) : null,
+        progWhy:    progression.why ?? null,
+      };
     }
-    return progression.msg;
+    return { progTarget: progression.msg, progDelta: null, progWhy: null };
   })();
   const PROG_ARROW = { up: '↑', hold: '→', down: '↓' };
+  // "Subir a 62.5 kg" solo tiene sentido con un número detrás: con el mensaje
+  // largo de la progresión por reps vuelve al label sin preposición.
+  const progKey = (() => {
+    if (!progression) return null;
+    const base = progression.reason === 'deload' ? 'deload' : progression.type;
+    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null;
+    return numeric && base !== 'hold' ? `${base}To` : base;
+  })();
 
   const targetLabel = buildTarget(def, exConfig, t)
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
@@ -416,8 +410,8 @@ export default function ExerciseCard({
     <View style={styles.numSlot}>
       {animated ? (
         <>
-          <Animated.Text style={[styles.num, { opacity: numOpacity }]}>{numLabel}</Animated.Text>
-          <Animated.Text style={[styles.num, styles.numOverlay, { opacity: checkProgress }]}>✓</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.num, { opacity: numOpacity }]}>{numLabel}</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.num, styles.numOverlay, { opacity: checkProgress }]}>✓</Animated.Text>
         </>
       ) : (
         <Text style={styles.num}>{numLabel}</Text>
@@ -433,8 +427,18 @@ export default function ExerciseCard({
       {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
           llevaba una fila entera en cuanto el nombre era largo. Va delante del
           objetivo, en la misma línea, separado por punto medio. */}
+      {/* La línea de objetivo es el disparador de su propia edición cuando hay
+          algo que editar — que hoy son solo los ejercicios añadidos sobre la
+          marcha (`onEditTarget`). En los de plantilla sigue siendo texto: ahí
+          el plan es del programa y se cambia en el editor de sesión, no en
+          mitad del entreno. Misma regla que la etiqueta CICLO de la Home: el
+          disparador es el dato, no un icono al lado. */}
       {(targetLabel || exConfig.tempo || exConfig.isKey) ? (
-        <Text style={styles.target} numberOfLines={2}>
+        <Text
+          style={[styles.target, onEditTarget && styles.targetEditable]}
+          numberOfLines={2}
+          onPress={onEditTarget}
+          suppressHighlighting={!onEditTarget}>
           {exConfig.isKey ? <Text style={styles.keyInline}>{t('common.keyExercise')}</Text> : null}
           {exConfig.isKey && (targetLabel || exConfig.tempo) ? ' · ' : ''}
           {targetLabel}
@@ -605,18 +609,27 @@ export default function ExerciseCard({
 
           {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
           {!hasCoachTarget && progression ? (
-            <View style={styles.progLine}>
-              <Text style={[
-                styles.progDir,
-                progression.type === 'hold' && styles.progDirHold,
-                // La descarga no es un mantenimiento más: es una instrucción
-                // del bloque, y se lee antes si no comparte color con el gris
-                // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
-                progression.reason === 'deload' && styles.progDirDeload,
-              ]}>
-                {`${PROG_ARROW[progression.type] ?? '→'} ${t(`workout.progression.${progression.reason === 'deload' ? 'deload' : progression.type}`, '')}`}
-              </Text>
-              {progDetail ? <Text style={styles.progDetail}>{progDetail}</Text> : null}
+            <View style={styles.progBlock}>
+              <View style={styles.progLine}>
+                <Text style={[
+                  styles.progDir,
+                  progression.type === 'hold' && styles.progDirHold,
+                  // La descarga no es un mantenimiento más: es una instrucción
+                  // del bloque, y se lee antes si no comparte color con el gris
+                  // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
+                  progression.reason === 'deload' && styles.progDirDeload,
+                ]}>
+                  <Text style={styles.progArrow}>{PROG_ARROW[progression.type] ?? '→'}</Text>
+                  {` ${t(`workout.progression.${progKey}`, '')}`}
+                </Text>
+                {progTarget ? <Text style={styles.progDetail}>{progTarget}</Text> : null}
+                {progDelta ? (
+                  <View style={styles.progDeltaPill}>
+                    <Text style={styles.progDeltaText}>{progDelta}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {progWhy ? <Text style={styles.progWhy}>{progWhy}</Text> : null}
             </View>
           ) : null}
 
@@ -961,9 +974,7 @@ const makeStyles = (th) => StyleSheet.create({
     minWidth: 22,
   },
   num: {
-    fontFamily:  'Inter_900Black',
-    fontSize:    17,
-    fontWeight:  '900',
+    ...textStyles.itemTitle,
     lineHeight:  22,
     color:       th.colors.accent,
     fontVariant: ['tabular-nums'],
@@ -984,31 +995,35 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     flexWrap:      'wrap',
   },
+  // ExtraBold y no Black: a 17 px la negra pesaba más que el número de serie,
+  // que es el dato que hay que cazar de un vistazo entre repetición y
+  // repetición. El número se queda en Black — el contraste es el que ordena.
   name: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      17,
-    fontWeight:    '900',
-    lineHeight:    22,
-    letterSpacing: -0.17,
-    color:         th.colors.text,
-    flexShrink:    1,
+    ...textStyles.itemTitleQuiet,
+    lineHeight: 22,
+    color:      th.colors.text,
+    flexShrink: 1,
   },
   keyInline: {
     color:      th.colors.accent,
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
   },
+  // Editable: subrayado punteado, que es lo que dice "esto se toca" sin meter
+  // un botón en una tarjeta que no tiene ninguno.
+  targetEditable: {
+    color:                    th.colors.accent,
+    textDecorationLine:       'underline',
+    textDecorationStyle:      'dotted',
+    textDecorationColor:      th.tint.accent50,
+  },
+  // "3 × 12-14 reps" — la prescripción, que es lo que se lee entre serie y serie.
   target: {
-    fontFamily:  'Inter_600SemiBold',
-    fontSize:    12,
-    fontWeight:  '600',
+    ...textStyles.bodyStrong,
     color:       th.colors.mutedLight,
     marginTop:   3,
     fontVariant: ['tabular-nums'],
   },
-  tempoInline: {
-    color:         th.colors.muted,
-    letterSpacing: 1.2,
-  },
+  tempoInline: { color: th.colors.muted },
   // NoteButton — 32×32, radius 9, sin fondo, marginTop −5 (alinea ópticamente
   // con la 1ª línea del nombre).
   noteBtn: {
@@ -1036,20 +1051,37 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // §4.1 ProgressionLine — solo tipografía, sin fondo ni chip.
+  progBlock: {
+    paddingBottom: 12,
+  },
   progLine: {
     flexDirection: 'row',
     alignItems:    'baseline',
     gap:           8,
     paddingTop:    2,
-    paddingBottom: 12,
+  },
+  // El motivo es contexto, no instruccion: gris, minuscula y sin punto para que
+  // se lea despues del que, no antes.
+  progWhy: {
+    ...textStyles.body,
+    lineHeight: lh(textStyles.body.fontSize, LINE.row),
+    color:      th.colors.mutedLight,
+    marginTop:  1,
   },
   progDir: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    fontWeight:    '900',
-    letterSpacing: 1.1,
+    ...textStyles.caps,
     color:         th.colors.accent,
     textTransform: 'uppercase',
+    // La flecha arrastra su propio hueco a la izquierda (side bearing), asi que
+    // el trazo arranca 2px dentro y la linea de motivo, que empieza a ras,
+    // parecia mas pegada al borde. Se compensa tirando de la fila, no metiendo
+    // sangria al motivo: asi las dos siguen colgando del mismo margen.
+    marginLeft:    -2,
+  },
+  // Flecha algo mas grande que el label: a 11px se perdia contra el texto en
+  // negra. Anidada, hereda el color del estado (acento / azul / gris).
+  progArrow: {
+    fontSize: 14,
   },
   progDirDeload: {
     color: th.colors.blue,
@@ -1058,31 +1090,32 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.mutedLight,
   },
   progDirCoach: {
-    fontFamily:    'Inter_900Black',
-    fontSize:      11,
-    fontWeight:    '900',
-    letterSpacing: 1.1,
+    ...textStyles.caps,
     color:         th.colors.blue,
     textTransform: 'uppercase',
   },
   progDetail: {
-    flex:        1,
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
+    ...textStyles.labelStrong,
+    flexShrink:  1,
     color:       th.colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  // El salto va en pastilla gris, no en acento: dos amarillos en la misma línea
+  // se disputan la mirada y el destino deja de ser lo primero que se lee.
+  progDeltaPill: {
+    backgroundColor: th.colors.surface2,
+    borderRadius:    999,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+  },
+  progDeltaText: {
+    ...textStyles.labelStrong,
+    color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
 
   // §4.2 SectionLabel — 10/700 uppercase, tracking 0.14em, muted2, mb 8.
-  sectionLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    marginBottom:  8,
-  },
+  sectionLabel: { ...textStyles.caps, color: th.colors.muted, marginBottom: 8 },
   sectionLabelRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
@@ -1090,22 +1123,15 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // Meta de descanso — no está en el spec, se conserva de la implementación
   // previa alineada a la derecha del SectionLabel.
-  sectionLabelMeta: {
-    fontFamily:   'Inter_500Medium',
-    fontSize:     10,
-    fontWeight:   '500',
-    color:        th.colors.muted,
-    marginBottom: 8,
-  },
+  sectionLabelMeta: { ...textStyles.label, color: th.colors.muted, marginBottom: 8 },
 
   // §4.3 WarmupSection expandida — grid 26 | 1fr | 42, gap 6/10, mb 14.
   warmupSection: {
     marginBottom: 14,
   },
   warmupBanner: {
-    fontSize:     typography.xs,
+    ...textStyles.label,
     color:        th.colors.mutedLight,
-    fontStyle:    'italic',
     marginBottom: 6,
   },
   warmupRows: {
@@ -1117,21 +1143,19 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           10,
   },
   warmupRowLabel: {
+    ...textStyles.labelStrong,
     width:       GRID.LABEL_W,
-    fontFamily:  'Inter_800ExtraBold',
-    fontSize:    12,
-    fontWeight:  '800',
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
   warmupDetail: {
+    ...textStyles.body,
     flex:        1,
-    fontSize:    14,
     fontVariant: ['tabular-nums'],
   },
-  warmupWeight: { fontFamily: 'Inter_800ExtraBold', fontWeight: '800', color: th.colors.text },
-  warmupTimes:  { fontFamily: 'Inter_600SemiBold',  fontWeight: '600', color: th.colors.muted },
-  warmupReps:   { fontFamily: 'Inter_700Bold',      fontWeight: '700', color: th.colors.mutedLight },
+  warmupWeight: { fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
+  warmupTimes:  { fontFamily: 'Inter_500Medium',    color: th.colors.muted },
+  warmupReps:   { fontFamily: 'Inter_700Bold',      color: th.colors.mutedLight },
   // Fila completada: todo el texto se apaga a muted2.
   warmupTextOff: { color: th.colors.muted },
   warmupCheck: {
@@ -1145,15 +1169,8 @@ const makeStyles = (th) => StyleSheet.create({
   warmupCheckDone: {
     backgroundColor: th.colors.accent,
   },
-  warmupCheckMark: {
-    fontSize: 13,
-    color:    th.colors.mutedLight,
-  },
-  warmupCheckMarkDone: {
-    fontFamily: 'Inter_900Black',
-    fontWeight: '900',
-    color:      th.colors.onAccent,
-  },
+  warmupCheckMark: { ...textStyles.body, color: th.colors.mutedLight },
+  warmupCheckMarkDone: { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
 
   // §4.4 WarmupSection colapsada — row, gap 8, padding 2 0 14.
   warmupCollapsed: {
@@ -1163,23 +1180,16 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:    2,
     paddingBottom: 14,
   },
-  warmupCollapsedTick: {
-    fontFamily: 'Inter_900Black',
-    fontWeight: '900',
-    fontSize:   12,
-    color:      th.colors.accent,
-  },
+  warmupCollapsedTick: { ...textStyles.labelStrong, fontFamily: 'Inter_900Black', color: th.colors.accent },
   warmupCollapsedText: {
+    ...textStyles.labelStrong,
     flexShrink:  1,
-    fontFamily:  'Inter_700Bold',
-    fontSize:    12,
-    fontWeight:  '700',
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
   warmupCollapsedChevron: {
+    ...textStyles.body,
     marginLeft: 'auto',
-    fontSize:   14,
     color:      th.colors.muted,
   },
 
@@ -1191,13 +1201,10 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:  8,
   },
   colLabel: {
-    flex:          1,
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.muted,
-    textAlign:     'center',
+    ...textStyles.caps,
+    flex:      1,
+    color:     th.colors.muted,
+    textAlign: 'center',
   },
   setList: {
     gap: 8,
@@ -1207,14 +1214,7 @@ const makeStyles = (th) => StyleSheet.create({
   dropBlock: {
     marginTop: 12,
   },
-  dropBlockLabel: {
-    fontFamily:    'Inter_700Bold',
-    fontSize:      10,
-    fontWeight:    '700',
-    letterSpacing: 1.4,
-    color:         th.colors.red,
-    marginBottom:  8,
-  },
+  dropBlockLabel: { ...textStyles.caps, color: th.colors.red, marginBottom: 8 },
   dropRowWrap: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -1223,10 +1223,7 @@ const makeStyles = (th) => StyleSheet.create({
   dropRemoveBtn: {
     padding: spacing.xs,
   },
-  dropRemoveText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  dropRemoveText: { ...textStyles.label, color: th.colors.muted },
   // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
   // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
   addLink: {
@@ -1237,13 +1234,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:     6,
     paddingBottom:  2,
   },
-  addLinkText: {
-    fontFamily:    'Inter_800ExtraBold',
-    fontSize:      13,
-    fontWeight:    '800',
-    letterSpacing: 0.26,
-    color:         th.colors.mutedLight,
-  },
+  addLinkText: { ...textStyles.button, color: th.colors.mutedLight },
   addSetLink:  { marginTop: 12 },
   addSetPlus:  { color: th.colors.accent },
   addDropPlus: { color: th.colors.red },
@@ -1257,12 +1248,12 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      12,
   },
   trainerNoteText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.text,
-    lineHeight: 17,
+    lineHeight: lh(textStyles.label.fontSize),
   },
   trainerNoteName: {
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
     color:      th.colors.accent,
   },
 
@@ -1275,12 +1266,12 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:      12,
   },
   coachNoteText: {
-    fontSize:   typography.xs,
+    ...textStyles.label,
     color:      th.colors.text,
-    lineHeight: 17,
+    lineHeight: lh(textStyles.label.fontSize),
   },
   coachNoteName: {
-    fontWeight: typography.bold,
+    fontFamily: 'Inter_700Bold',
     color:      th.colors.blue,
   },
   coachNoteTag: {
@@ -1316,7 +1307,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   weightPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
   },
   weightPillNum:  { color: th.colors.accent },
   weightPillUnit: { color: th.colors.text },
@@ -1335,7 +1326,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.red30,
   },
   setPillText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   setPillTextDone: {

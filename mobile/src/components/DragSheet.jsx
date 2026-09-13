@@ -14,21 +14,21 @@
  * zona y el arrastre saltaría al cruzar de una a otra.
  */
 import { useRef, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView,
-  Animated, PanResponder, KeyboardAvoidingView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
+import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, borders } from '../theme';
+import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
+import { SheetContext } from './ui/sheetContext';
 
 /**
  * `action` sustituye el botón "Aceptar" de la derecha por otra acción
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
  */
-export default function DragSheet({ visible, onClose, title, action, children }) {
+export default function DragSheet({ visible, onClose, title, action, tall, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
@@ -49,6 +49,10 @@ export default function DragSheet({ visible, onClose, title, action, children })
   };
   const closeRef = useRef(close);
   closeRef.current = close;
+
+  // Valor estable: `close` se rehace en cada render y no puede viajar por el
+  // contexto sin repintar a todo el que lo lea.
+  const sheet = useMemo(() => ({ dismiss: () => closeRef.current() }), []);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -83,6 +87,7 @@ export default function DragSheet({ visible, onClose, title, action, children })
   }, [visible]);
 
   return (
+    <SheetContext.Provider value={sheet}>
     <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFillObject} {...panResponder.panHandlers}>
@@ -96,9 +101,14 @@ export default function DragSheet({ visible, onClose, title, action, children })
           y el `translateY` del arrastre sigue siendo del sheet, independiente
           del empuje de layout. */}
       <KeyboardAvoidingView style={styles.kavShell} behavior="padding" pointerEvents="box-none">
+        {/* `tall`: alto FIJO en vez de tope. Una hoja que crece con su
+            contenido da un salto cada vez que se despliega algo dentro —y en la
+            de etapas se despliega constantemente—, así que el contenido pasa a
+            scrollear dentro de una caja que no se mueve. */}
         <Animated.View
           style={[
             styles.card,
+            tall && styles.cardTall,
             { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
           ]}
         >
@@ -121,6 +131,7 @@ export default function DragSheet({ visible, onClose, title, action, children })
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+    </SheetContext.Provider>
   );
 }
 
@@ -147,6 +158,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal:    spacing.lg,
     paddingTop:           spacing.sm,
   },
+  cardTall: { height: '85%' },
   handleWrap: {
     alignItems:      'center',
     paddingVertical: spacing.sm,
@@ -163,15 +175,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom:  spacing.md,
   },
-  title: {
-    fontSize:      typography.md,
-    fontWeight:    typography.bold,
-    color:         th.colors.text,
-    letterSpacing: 0.5,
-  },
-  done: {
-    fontSize:   typography.sm,
-    fontWeight: typography.bold,
-    color:      th.colors.accent,
-  },
+  title: { ...textStyles.bodyStrong, color: th.colors.text },
+  done:  { ...textStyles.labelStrong, color: th.colors.accent },
 });

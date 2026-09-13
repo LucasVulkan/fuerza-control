@@ -6,17 +6,18 @@
  * Migrada a FormaFit sin nodo de Figma: cada pieza sale de una pantalla ya
  * cerrada (ver `docs/UI-MIGRATION.md` §1, fila de Onboarding).
  *   · marca        → el lockup de `AppHeader` (Forma + `FitLogo`), a escala ×2
- *   · secciones    → `stepTitle` de la hoja de Progresión: `spacingTag` en
+ *   · secciones    → `stepTitle` de la hoja de Progresión: `caps` en
  *                    `mutedLight` con el número en `accent`
  *   · selectores   → `SegmentedControl`, el control de la app para 2-4 opciones
- *   · hints        → `textStyles.subtitle` / `mutedLight`, y dicen el EFECTO
+ *   · hints        → `textStyles.body` / `mutedLight`, y dicen el EFECTO
  *   · CTA          → `startBtn` del pie del preview de onboarding
  *
  * Es la única pantalla que puede saltarse `t()`: i18n todavía no tiene idioma,
  * porque elegirlo es justamente lo que se hace aquí.
  */
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../../store/useStore';
@@ -87,7 +88,7 @@ export default function SetupScreen() {
       <View>
         <View style={styles.brandRow}>
           <Text style={styles.brandForma}>Forma</Text>
-          <View style={{ marginTop: spacing.sm2 }}><FitLogo height={28} /></View>
+          <FitLogo height={28} />
         </View>
         <Text style={styles.tagline}>{tx.tagline}</Text>
       </View>
@@ -139,14 +140,14 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.text,
     letterSpacing: -2.28,
   },
-  tagline: { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.sm },
+  tagline: { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.sm },
 
   spacer: { flex: 1 },
 
   step:      { gap: spacing.sm },
-  stepTitle: { ...textStyles.spacingTag, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  stepTitle: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   stepNum:   { color: th.colors.accent },
-  hint:      { ...textStyles.subtitle, color: th.colors.mutedLight, lineHeight: 18 },
+  hint:      { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
 
   cta: {
     flexDirection:   'row',
@@ -157,5 +158,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  ctaText: { ...textStyles.btnAction, fontSize: 14, color: th.colors.onAccent },
+  ctaText: { ...textStyles.button, color: th.colors.onAccent },
 });

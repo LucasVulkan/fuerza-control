@@ -8,11 +8,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import {
-  View, Text, ScrollView, FlatList, TouchableOpacity,
-  TextInput, Modal, Alert, StyleSheet, KeyboardAvoidingView,
-  Platform, RefreshControl,
-} from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -21,32 +18,35 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeIn, FadeOutUp } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
+import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
-import { spacing, typography, textStyles, borders, withOpacity, sheetRowBase } from '../theme';
+import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
-import { computeAdherence, requiresAttention, adherencePct, STATUS } from '../utils/adherence';
+import { computeAdherence, requiresAttention, adherencePct, adherenceColor, STATUS } from '../utils/adherence';
 import { progressFromBlob, clientStageIndex, stageDays, stageDaysAt, allProgramDays } from '../utils/stageProgress';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
-import { LockIcon, CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
-import StageSegBar from '../components/ui/StageSegBar';
+import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
+import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
+import ProgramCard from '../components/ui/ProgramCard';
 
 // Sesiones por ciclo — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
@@ -58,14 +58,6 @@ function weeklyTarget(program) {
   if (!program) return 0;
   const days = stageDays(program);
   return days.length;
-}
-
-/** Adherence procedural status → theme color. */
-function adherenceColor(th, status) {
-  if (status === STATUS.AT_RISK)  return th.colors.red;
-  if (status === STATUS.SLIPPING) return th.colors.orange;
-  if (status === STATUS.ON_TRACK) return th.colors.green;
-  return th.colors.muted; // no_data / muted
 }
 
 // ── Shared small components ────────────────────────────────────────────────────
@@ -105,19 +97,6 @@ function FilterChip({ label, active, onPress, count }) {
   );
 }
 
-function AccentBtn({ label, onPress, small, disabled }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.accentBtn, small && styles.accentBtnSmall, disabled && { opacity: 0.4 }]}
-      onPress={disabled ? undefined : onPress}
-      activeOpacity={0.85}
-    >
-      <Text style={[styles.accentBtnText, small && styles.accentBtnTextSmall]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 function GhostBtn({ label, onPress, danger }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -130,19 +109,67 @@ function GhostBtn({ label, onPress, danger }) {
 
 // ── Status dot ─────────────────────────────────────────────────────────────────
 
-// ── Accordion (for Info tab sections) ─────────────────────────────────────────
+// ── Sección plegable de Info ──────────────────────────────────────────────────
 
-function Accordion({ label, open, onToggle, children }) {
+/**
+ * Categoría de la pestaña Info: una tarjeta `surface` con el título a la
+ * izquierda y **su resumen a la derecha**.
+ *
+ * El resumen es lo que justifica el componente. El acordeón anterior eran
+ * rótulos a sangre con separadores de 1px: con todo cerrado —que es como se
+ * entra— la pantalla no decía nada, cuatro etiquetas y cuatro flechas. Aquí
+ * cada cabecera lleva el dato que resume su sección (estado, nombre completo,
+ * último peso, pendiente de cobro, conexión), así que Info se lee sin abrir
+ * nada y solo se despliega lo que se va a tocar.
+ *
+ * El plegado es el mismo de las sesiones de la Home, y a propósito:
+ * `LinearTransition` en la tarjeta y `collapseOut` en el cuerpo, que encoge
+ * además de desvanecerse.
+ */
+function InfoSection({ title, summary, tone, open, onToggle, children }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const toneColor = tone === 'accent' ? th.colors.accent
+    : tone === 'green'  ? th.colors.green
+    : tone === 'orange' ? th.colors.orange
+    : th.colors.mutedLight;
   return (
-    <View style={styles.accordion}>
-      <TouchableOpacity style={styles.accordionHeader} onPress={onToggle} activeOpacity={0.7}>
-        <Text style={styles.accordionLabel}>{label}</Text>
-        <Text style={[styles.accordionArrow, open && { transform: [{ rotate: '180deg' }] }]}>▾</Text>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.infoSec}>
+      <TouchableOpacity
+        style={styles.infoSecHead}
+        onPress={onToggle}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <Text style={styles.infoSecTitle}>{title}</Text>
+        <Text style={[styles.infoSecSum, { color: toneColor }]} numberOfLines={1}>{summary ?? ''}</Text>
+        <View style={open ? styles.infoSecChevOpen : null}>
+          <ChevronDown size={12} color={open ? th.colors.accent : th.colors.muted} />
+        </View>
       </TouchableOpacity>
-      {open && <View style={styles.accordionBody}>{children}</View>}
-    </View>
+      {open && (
+        <Reanimated.View entering={FadeIn.duration(180)} exiting={collapseOut} style={styles.infoSecBody}>
+          {/* Filete a sangre: separa cabecera y cuerpo sin meter una segunda
+              superficie, el mismo recurso que la tarjeta de programa. */}
+          <View style={styles.infoSecRule} />
+          {children}
+        </Reanimated.View>
+      )}
+    </Reanimated.View>
   );
+}
+
+/**
+ * Fila de la lista agrupada de Info (`getCardRadii`): el patrón denso que ya
+ * usan Progreso y el menú principal. Sustituye a los campos con borde propio —
+ * la etiqueta ocupa un ancho fijo a la izquierda y el valor escribe al lado,
+ * sin caja dentro de la caja.
+ */
+function InfoRow({ isFirst, isLast, children }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return <View style={[styles.infoRow, getCardRadii(th, isFirst, isLast)]}>{children}</View>;
 }
 
 // ── Exercise mini-card (progress tab) ─────────────────────────────────────────
@@ -260,15 +287,6 @@ function UploadIcon({ size = 12, color }) {
   );
 }
 
-// Track de la barra de etapas, sin token propio (mismo caso que el #b8ff00 y el
-// #81a71e del banner de Home): `surface2` no se veía y `mutedLight` competía con
-// el relleno. Es el punto medio exacto entre los dos.
-const STAGE_TRACK = '#545454';
-
-// Una caja de dato mide ~86px en un móvil estrecho: el texto se encoge antes de
-// truncarse. Mismo recurso que las Progress cards.
-const FIT = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 };
-
 // ── Tarjeta de programa asignado (tab de Programa) ──────────────────────────────
 // Pinta el bloque entero del tab: los avisos que te paran, la tarjeta de dos
 // colores (nombre + ciclo · barra de etapa · adherencia/ritmo/carga), la fila de
@@ -280,10 +298,9 @@ function AssignedProgramCard({
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
 }) {
-  const { t, i18n } = useTranslation();
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const isEs = i18n.language?.startsWith('es');
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ── Mesocycle position ──
@@ -297,14 +314,12 @@ function AssignedProgramCard({
   const stageIdx     = clientStageIndex({ progress }, program);
   const currentStage = hasStages ? stages[stageIdx] : null;
   const currentDays  = stageDaysAt(program, stageIdx);
-  const sessPerCycle = Math.max(1, currentDays.length);
   const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
   // ── Next session in the rotation ── first one NOT done this cycle. By
   // template, not by position: an index breaks as soon as the client trains out
   // of rotation order.
   const doneIds     = new Set(mine?.cycleCompletedIds ?? program.cycleCompletedIds ?? []);
-  const doneInCycle = currentDays.filter((d) => doneIds.has(d.sessionTemplateId)).length;
   const nextDayIdx  = currentDays.findIndex((d) => !doneIds.has(d.sessionTemplateId));
   const nextDay     = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
   const nextTpl     = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
@@ -340,17 +355,11 @@ function AssignedProgramCard({
   // ── Real pace ──
   const paceRaw     = adherence?.recentPerWeek ?? 0;
   const paceHasData = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
-  const paceRounded = Math.round(paceRaw * 2) / 2;
-  const paceRateStr = Number.isInteger(paceRounded)
-    ? String(paceRounded)
-    : paceRounded.toFixed(1).replace('.', isEs ? ',' : '.');
   // La adherencia es el único de los 3 datos que emite un veredicto, así que es
   // el único que se colorea cuando pide atención.
   const attnColor = adherence && requiresAttention(adherence.status)
     ? adherenceColor(th, adherence.status)
     : null;
-
-  const menu = (fn) => () => { setMenuOpen(false); fn(); };
 
   return (
     <>
@@ -406,102 +415,38 @@ function AssignedProgramCard({
         </View>
       )}
 
-      {/* ── Tarjeta de programa asignado ──
-          Dos colores como la tarjeta de ejercicio del workout: cabecera en
-          surface2, cuerpo en surface. */}
-      <View style={styles.apCard}>
-
-        <View style={styles.apHead}>
-          <View style={styles.apHeadName}>
-            <Text style={styles.apEyebrow}>{t('clients.assignedProgram')}</Text>
-            <Text style={styles.apName} numberOfLines={1}>{program.name}</Text>
-          </View>
-          <View style={styles.apHeadCycle}>
-            <Text style={styles.apEyebrowRight}>{t('home.cycle')}</Text>
-            <Text style={styles.apCycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.apBody}>
-          {showStageBar && (
-            <View style={styles.apStage}>
-              <View style={styles.apStageRow}>
-                <Text style={styles.apStageName} numberOfLines={1}>
-                  {t('home.stageDefault', { n: stageIdx + 1 })}
-                  {currentStage?.name
-                    ? <Text style={styles.apStageOwnName}>{` · ${currentStage.name}`}</Text>
-                    : null}
-                </Text>
-                <Text style={styles.apStageMeta}>
-                  {t('home.cycleProgress', { current: weekInStage, total: stageWeeks })}
-                </Text>
-              </View>
-              {/* Un segmento por ciclo de la etapa: pasados al 100%, el actual a
-                  la fracción de sesiones hechas, los futuros vacíos. Misma
-                  lectura que los puntos de la cabecera, del mismo dato. */}
-              <StageSegBar
-                ratios={Array.from({ length: stageWeeks }, (_, i) => (
-                  stageEnded ? 1
-                    : i < weekInStage - 1 ? 1
-                    : i === weekInStage - 1 ? doneInCycle / sessPerCycle
-                    : 0
-                ))}
-                trackColor={STAGE_TRACK}
-                fillColor={th.colors.accent}
-              />
-              {/* Terminó la etapa y no ha avanzado. Puede ser decisión suya o
-                  tuya ("hazme un ciclo más"), así que se informa sin alarmar —
-                  el naranja se reserva para cuando NO puede avanzar. */}
-              {stageDone && !nextLocked && (
-                <Text style={styles.apStageMeta}>
-                  {t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Las 3 cajas se reparten el ancho a partes iguales, así que en un
-              móvil estrecho quedan ~86px de contenido: valor y etiqueta llevan
-              `adjustsFontSizeToFit` (mismo recurso que las Progress cards) para
-              que ninguna se parta ni se trunque. */}
-          <View style={[styles.apStats, !showStageBar && { marginTop: 0 }]}>
-            <View style={styles.apStat}>
-              <Text style={[styles.apStatVal, attnColor && { color: attnColor }]} {...FIT}>
-                {adherence4w != null ? adherence4w : '—'}
-                {adherence4w != null && <Text style={styles.apStatUnit}>%</Text>}
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statAdherence')}</Text>
-            </View>
-            <View style={styles.apStat}>
-              <Text style={styles.apStatVal} {...FIT}>
-                {paceHasData ? paceRateStr : '—'}
-                <Text style={styles.apStatUnit}> {t('clients.cyclesPerWeek')}</Text>
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statPace')}</Text>
-            </View>
-            <View style={styles.apStat}>
-              <Text style={styles.apStatVal} {...FIT}>
-                {loadPct != null ? `${loadPct > 0 ? '+' : ''}${loadPct}` : '—'}
-                {loadPct != null && <Text style={styles.apStatUnit}>%</Text>}
-              </Text>
-              <Text style={styles.apStatKey} {...FIT}>{t('clients.statLoad')}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* ── Acciones del programa ── */}
-      <View style={styles.apActions}>
-        <TouchableOpacity style={[styles.apBtn, { flex: 1 }]} onPress={onEdit} activeOpacity={0.85}>
-          <Text style={styles.apBtnText} numberOfLines={1}>{t('clients.editProgram')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.apBtn, { flex: 1 }]} onPress={onView} activeOpacity={0.85}>
-          <Text style={styles.apBtnText} numberOfLines={1}>{t('clients.viewProgram')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.apBtn, styles.apBtnIcon]} onPress={() => setMenuOpen(true)} activeOpacity={0.85}>
-          <Text style={styles.apBtnIconText}>⋯</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
+          convergían sin saberlo (docs/specs/home-sessions.md §4). El pie de
+          acciones va DENTRO, que es el único cambio real de la convergencia. */}
+      <ProgramCard
+        variant="client"
+        name={program.name}
+        cycleNum={cycleNum}
+        stage={showStageBar && {
+          label:       t('home.stageDefault', { n: stageIdx + 1 }),
+          name:        currentStage?.name,
+          weekInStage,
+          totalWeeks:  stageWeeks,
+        }}
+        // La barra pinta el PROGRAMA: un tramo por etapa, de ancho proporcional
+        // a sus ciclos. Los puntos de dentro de la etapa los saca la tarjeta de
+        // `stage.weekInStage`/`totalWeeks`.
+        stages={stages.map((s) => ({ cycles: s.durationWeeks }))}
+        stageIdx={stageIdx}
+        // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
+        // ("hazme un ciclo más"), así que se informa sin alarmar — el naranja se
+        // reserva para cuando NO puede avanzar.
+        stageNote={stageDone && !nextLocked
+          ? t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })
+          : null}
+        adherence={adherence4w}
+        adherenceColor={attnColor}
+        pace={paceHasData ? paceRaw : null}
+        loadPct={loadPct}
+        onEdit={onEdit}
+        onView={onView}
+        onMore={() => setMenuOpen(true)}
+      />
 
       {/* ── Próxima sesión — sección propia ── */}
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
@@ -525,19 +470,19 @@ function AssignedProgramCard({
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
         <View style={styles.sheetBody}>
-          <SheetRow label={t('clients.menuNewProgram')} onPress={menu(onNewProgram)} />
-          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={menu(onUpload)} />}
-          <SheetRow label={t('clients.menuImport')} onPress={menu(onImport)} />
-          <SheetRow label={t('clients.menuShare')}  onPress={menu(onShare)} />
-          <SheetRow label={t('clients.menuExport')} onPress={menu(onExport)} />
+          <SheetRow label={t('clients.menuNewProgram')} onPress={onNewProgram} />
+          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={onUpload} />}
+          <SheetRow label={t('clients.menuImport')} onPress={onImport} />
+          <SheetRow label={t('clients.menuShare')}  onPress={onShare} />
+          <SheetRow label={t('clients.menuExport')} onPress={onExport} />
           {archivedCount > 0 && (
             <SheetRow
               label={`${t('clients.menuArchived')} · ${archivedCount}`}
-              onPress={menu(onShowArchived)}
+              onPress={onShowArchived}
             />
           )}
-          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={menu(onDeassign)} />}
-          <SheetRow label={t('clients.menuDelete')} onPress={menu(onDelete)} danger />
+          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={onDeassign} />}
+          <SheetRow label={t('clients.menuDelete')} onPress={onDelete} danger />
         </View>
       </DragSheet>
     </>
@@ -546,17 +491,6 @@ function AssignedProgramCard({
 
 // Fila de hoja — mismo patrón que los dos editores: surface2, radius/sm,
 // padding space/md, texto card-type y la flecha a la derecha.
-function SheetRow({ label, onPress, danger }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.sheetRow} onPress={onPress} activeOpacity={0.75}>
-      <Text style={[styles.sheetRowText, danger && { color: th.colors.red }]}>{label}</Text>
-      <Text style={[styles.sheetRowArrow, danger && { color: th.colors.red }]}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
 /**
  * ClientCodeBlock — el código de conexión del cliente.
  *
@@ -567,7 +501,7 @@ function SheetRow({ label, onPress, danger }) {
  * `onDismiss` solo lo pasa el tab de Programa: si nunca vas a conectar a ese
  * cliente, la tarjeta se queda ahí para siempre sin nada que hacer.
  */
-function ClientCodeBlock({ client, showToast, onDismiss }) {
+function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -610,7 +544,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
 
   if (!client.syncSlotId) {
     return (
-      <View style={styles.codeCard}>
+      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
         <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
         <Text style={styles.codeExplain}>{t('clients.keyTab.noSlot')}</Text>
         <TouchableOpacity
@@ -643,7 +577,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
 
   if (!client.syncCode) {
     return (
-      <View style={styles.codeCard}>
+      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
         <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
         <Text style={styles.codeExplain}>{t('clients.keyTab.connectedNoCode')}</Text>
       {onDismiss && (
@@ -656,7 +590,7 @@ function ClientCodeBlock({ client, showToast, onDismiss }) {
   }
 
   return (
-    <View style={styles.codeCard}>
+    <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
       <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
       <Text style={styles.codeExplain}>{t('clients.codeCard.explain', { name: client.name })}</Text>
       <View style={styles.codeRow}>
@@ -733,7 +667,7 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <DownloadIcon size={17} color={th.colors.muted2} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <Text style={styles.archDots}>⋯</Text>
+        <MenuIcon horizontal color={th.colors.muted2} />
       </TouchableOpacity>
 
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
@@ -814,13 +748,11 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
           <>
             <View>
               <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <TextInput
+              <NameField
                 style={styles.sheetInput}
                 placeholder={t('clients.newProgramModal.namePlaceholder')}
-                placeholderTextColor={th.colors.mutedLight}
                 value={name}
                 onChangeText={setName}
-                returnKeyType="done"
               />
             </View>
 
@@ -890,13 +822,11 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
 
             <View>
               <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <TextInput
+              <NameField
                 style={styles.sheetInput}
                 placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
-                placeholderTextColor={th.colors.mutedLight}
                 value={fromTemplateName}
                 onChangeText={setFromTemplateName}
-                returnKeyType="done"
               />
             </View>
           </>
@@ -927,6 +857,17 @@ const billLocale = (lang) => (lang === 'en' ? 'en-US' : 'es-ES');
 /** Date → 'AAAA-MM-DD' en hora LOCAL (`toISOString()` es UTC y adelanta el día). */
 function toIsoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Días completos desde una fecha `AAAA-MM-DD`. Vive fuera del componente a
+ * propósito: mirar el reloj dentro de un render —aunque sea dentro de un
+ * `useMemo`— es justo lo que prohíbe la regla de pureza de react-hooks.
+ */
+function daysSinceIso(iso) {
+  const [y, m, d] = (iso ?? '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return Math.max(0, Math.round((Date.now() - new Date(y, m - 1, d)) / 86400000));
 }
 
 /** '2026-07-14' → '14 jul' (con año si `withYear` o si no es el año en curso). */
@@ -1018,8 +959,13 @@ function BillDateSheet({ value, lang, onPick, onClose }) {
  * Hoja de alta de cobro. Antes era un `<Modal>` propio; pasa a `DragSheet`, que es
  * el único bottom-sheet de la app (§9 de docs/UI-MIGRATION.md). La salida vive en
  * el hueco derecho de la cabecera y abajo queda un solo botón, el que avanza.
+ *
+ * Con `lockedClientId` es la misma hoja sin el selector de cliente: así la
+ * pestaña Info del cliente da de alta un cobro con esta hoja en vez de con el
+ * formulario propio que tenía —dos campos de fecha tecleados a mano y ningún
+ * calendario—, que era la misma pantalla peor hecha.
  */
-function GlobalAddBillingSheet({ clients, lang, onClose }) {
+function GlobalAddBillingSheet({ clients, lang, lockedClientId, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -1031,7 +977,7 @@ function GlobalAddBillingSheet({ clients, lang, onClose }) {
     [clients]
   );
 
-  const [clientId,  setClientId]  = useState('');
+  const [clientId,  setClientId]  = useState(lockedClientId ?? '');
   const [date,      setDate]      = useState(() => toIsoDate(new Date()));
   const [concept,   setConcept]   = useState('');
   const [amount,    setAmount]    = useState('');
@@ -1068,8 +1014,9 @@ function GlobalAddBillingSheet({ clients, lang, onClose }) {
 
         {/* Cliente — dropdown con buscador, mismo patrón que el desplegable de
             ejercicios de Progress: ancla relativa + menú `position:absolute`
-            colgando de `top:'100%'`, que FLOTA sobre los campos de abajo. */}
-        <View style={styles.billDropField}>
+            colgando de `top:'100%'`, que FLOTA sobre los campos de abajo.
+            Abierta desde la ficha de un cliente no hay nada que elegir. */}
+        <View style={[styles.billDropField, !!lockedClientId && { display: 'none' }]}>
           <Text style={styles.billSecLabel}>{t('clients.billSheet.client')}</Text>
           {clientList.length === 0 ? (
             <Text style={styles.billEmpty}>{t('clients.billSheet.noClients')}</Text>
@@ -1285,7 +1232,7 @@ function GlobalBillingView({ clients, onClose, onSelectClient }) {
       <ScrollView contentContainerStyle={styles.billBody} showsVerticalScrollIndicator={false}>
 
         {/* Tarjetas resumen — mismo tratamiento que las de Progress (statTile),
-            con el valor a `card-title` en vez de `hero`: caben más dígitos. */}
+            con el valor a `itemTitle` en vez de `title`: caben más dígitos. */}
         <View style={styles.billTilesRow}>
           {[
             { label: t('clients.billedLabel'),   value: total,   color: th.colors.text },
@@ -1777,7 +1724,8 @@ function ClientListCard({
 export default function ClientsScreen() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const billLang = i18n.language?.startsWith('en') ? 'en' : 'es';
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -1801,7 +1749,6 @@ export default function ClientsScreen() {
   const exportSpecificProgram  = useStore((s) => s.exportSpecificProgram);
   const shareSpecificProgram   = useStore((s) => s.shareSpecificProgram);
   const setClientActiveProgram = useStore((s) => s.setClientActiveProgram);
-  const addClientBilling       = useStore((s) => s.addClientBilling);
   const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
   const removeClientBilling    = useStore((s) => s.removeClientBilling);
   const addClientBodyWeight    = useStore((s) => s.addClientBodyWeight);
@@ -1896,18 +1843,20 @@ export default function ClientsScreen() {
   // List pull-to-refresh
   const [refreshingList, setRefreshingList] = useState(false);
 
-  // Detail - info accordion
-  const [openSections,  setOpenSections]  = useState({ status: false, personal: true, weight: false, billing: false });
+  // Detail - secciones plegables de Info. Todas cerradas al entrar: con el
+  // resumen en cada cabecera, la pantalla ya se lee sin abrir ninguna.
+  const [openSections,  setOpenSections]  = useState({ status: false, personal: false, weight: false, billing: false, connection: false });
+  // El campo de etiqueta nueva solo aparece al pedirlo, para que la fila de
+  // pills no lleve siempre un input detrás sin usar.
+  const [addingTag,     setAddingTag]     = useState(false);
 
   // Detail - body weight
-  const [weightDate,  setWeightDate]  = useState(new Date().toISOString().split('T')[0]);
-  const [weightValue, setWeightValue] = useState('');
+  const [weightDate,   setWeightDate]   = useState(() => toIsoDate(new Date()));
+  const [weightValue,  setWeightValue]  = useState('');
+  const [showWeightCal, setShowWeightCal] = useState(false);
 
-  // Detail - billing
-  const [billDate,    setBillDate]    = useState(new Date().toISOString().split('T')[0]);
-  const [billConcept, setBillConcept] = useState('');
-  const [billAmount,  setBillAmount]  = useState('');
-  const [billStatus,  setBillStatus]  = useState('pending');
+  // Detail - alta de cobro (la hoja de la facturación global, con el cliente puesto)
+  const [addingBill,  setAddingBill]  = useState(false);
 
   // Detail - key tab
 
@@ -2082,6 +2031,46 @@ export default function ClientsScreen() {
     if (!m28) return null;
     return Math.round((m7 / m28 - 1) * 100);
   }, [clientBaseLog, allExercises, selectedClientId]);
+
+  // ── Resúmenes de las cabeceras de Info ─────────────────────────────────────
+  // Se entra a Info con todo cerrado, así que cada cabecera tiene que contar su
+  // sección de un vistazo. Todo sale de datos ya guardados; va en un memo
+  // porque el del peso mira el reloj, y eso no puede pasar en cada render.
+  const infoSummaries = useMemo(() => {
+    if (!selectedClient) return {};
+    const status  = selectedClient.status ?? 'active';
+    const tagged  = (selectedClient.tags ?? []).length;
+    const weights = selectedClient.bodyWeight ?? [];       // ordenado por fecha
+    const lastW   = weights[weights.length - 1];
+    const bills   = selectedClient.billing ?? [];
+    const pending = bills.reduce((a, b) => a + (b.status === 'paid' ? 0 : (b.amount ?? 0)), 0);
+
+    let weight = null;
+    if (lastW) {
+      const days = daysSinceIso(lastW.date);
+      const when = days == null ? null
+        : days === 0 ? t('dayCard.today')
+        : days === 1 ? t('dayCard.yesterday')
+        : t('dayCard.daysAgo', { count: days });
+      weight = [`${lastW.weight} kg`, when].filter(Boolean).join(' · ');
+    }
+
+    return {
+      status: [
+        t(`clients.status${status === 'paused' ? 'Paused' : status === 'inactive' ? 'Inactive' : 'Active'}`),
+        tagged ? t('clients.filterTagsCount', { count: tagged }) : null,
+      ].filter(Boolean).join(' · '),
+      statusTone: status === 'active' ? 'green' : status === 'paused' ? 'orange' : null,
+      personal:   selectedClient.fullName || selectedClient.phone || selectedClient.email || null,
+      weight,
+      billing:     bills.length === 0 ? null
+        : pending > 0 ? `${pending.toFixed(2)}€ ${t('clients.pendingLabel').toLowerCase()}`
+        : t('clients.info.upToDate'),
+      billingTone: pending > 0 ? 'orange' : null,
+      connection:     selectedClient.syncLinked ? t('clients.info.connected') : t('clients.info.notConnected'),
+      connectionTone: selectedClient.syncLinked ? null : 'accent',
+    };
+  }, [selectedClient, t]);
 
   const filteredLog = useMemo(() => {
     let log = scopeFilter === 'active'
@@ -2352,13 +2341,16 @@ export default function ClientsScreen() {
     setWeightValue('');
   }
 
-  function handleAddBilling() {
-    if (!billConcept.trim() || !billAmount || !billDate) return;
-    addClientBilling(selectedClientId, {
-      date: billDate, concept: billConcept.trim(),
-      amount: parseFloat(billAmount), status: billStatus,
-    });
-    setBillConcept(''); setBillAmount(''); setBillStatus('pending');
+  // Crear etiqueta y asignarla de una vez: se crea desde la ficha del cliente
+  // al que se le va a poner, así que quedarse sin asignar nunca es lo que se
+  // quería. Estaba duplicada en el `onSubmitEditing` y en el botón.
+  function handleCreateTag() {
+    const name = newTag.trim();
+    setNewTag('');
+    setAddingTag(false);
+    if (!name || allTags.some((tag) => tag.name.toLowerCase() === name.toLowerCase())) return;
+    const newId = createTag(name);
+    updateClientInfo(selectedClientId, { tags: [...(selectedClient?.tags ?? []), newId] });
   }
 
   // ── PRO gate ───────────────────────────────────────────────────────────────
@@ -2409,7 +2401,7 @@ export default function ClientsScreen() {
             setView('detail');
             handleSelectClient(id);
             setActiveTab('info');
-            setOpenSections({ personal: false, weight: false, billing: true });
+            setOpenSections({ status: false, personal: false, weight: false, billing: true, connection: false });
           }}
         />
       </View>
@@ -2445,25 +2437,22 @@ export default function ClientsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
 
-        {/* Banda de navegación: cabecera y pestañas comparten fondo y cierran con
-            un borde. Lo que va DENTRO de la banda navega, lo que va sobre `bg`
-            filtra — así las pestañas no se confunden con los controles
-            segmentados de filtro que viven dentro de cada tab, sin necesidad de
-            pintarlas distinto. */}
-        <View style={styles.detailNavBand}>
-          {/* ‹ · nombre · última actividad, todo en una línea */}
-          <View style={styles.detailHeader}>
-            <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
-              <Text style={styles.backIcon}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
-            {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
-          </View>
+        {/* Sin banda: cabecera, pestañas y contenido van los tres sobre `bg`.
+            Lo que distingue estas pestañas de los controles segmentados que
+            filtran dentro de cada tab ya no es el fondo sobre el que flotan sino
+            el color del highlight — la píldora lima es siempre el filtro
+            (docs/specs/home-sessions.md §4.6). */}
+        {/* ‹ · nombre · última actividad, todo en una línea */}
+        <View style={styles.detailHeader}>
+          <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
+          {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
+        </View>
 
-          {/* Tabs */}
-          <View style={styles.detailTabs}>
-            <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
-          </View>
+        <View style={styles.detailTabs}>
+          <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
         </View>
 
         {/* ── Tab: Programas ── */}
@@ -2643,168 +2632,167 @@ export default function ClientsScreen() {
         )}
 
         {/* ── Tab: Info ── */}
+        {/* Cinco categorías plegables, cada una con su resumen en la cabecera.
+            El código de conexión pasa a ser una más: aquí es consulta, no
+            trámite — el trámite lo lleva el tab de Programa mientras el cliente
+            no ha canjeado el código. */}
         {activeTab === 'info' && (
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <ScrollView
-              contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
+              contentContainerStyle={[styles.infoTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}
               keyboardShouldPersistTaps="handled"
             >
-              {/* El código de conexión vive aquí de forma permanente (en el tab
-                  de Programa solo aparece mientras el cliente no lo ha canjeado). */}
-              <View style={styles.infoCodeWrap}>
-                <ClientCodeBlock client={selectedClient} showToast={showToast} />
-              </View>
-
               {/* ── Estado ── */}
-              <Accordion
-                label="Estado"
+              <InfoSection
+                title={t('clients.statusLabel')}
+                summary={infoSummaries.status}
+                tone={infoSummaries.statusTone}
                 open={openSections.status}
                 onToggle={() => setOpenSections((s) => ({ ...s, status: !s.status }))}
               >
-                {/* Status buttons */}
-                <View style={{ marginBottom: spacing.md }}>
-                  <View style={styles.statusRow}>
-                    {[
-                      { id: 'active',   label: t('clients.statusActive'),   color: th.colors.green },
-                      { id: 'paused',   label: t('clients.statusPaused'),   color: th.colors.orange },
-                      { id: 'inactive', label: t('clients.statusInactive'), color: th.colors.red },
-                    ].map(({ id, label, color }) => {
-                      const isSel = (selectedClient.status ?? 'active') === id;
+                <View style={styles.stRow}>
+                  {[
+                    // El activo se tiñe con el 10% de su propio color, no con un
+                    // borde. Verde y no acento: es el mismo verde con el que
+                    // `adherenceColor` pinta "al día" en la tarjeta de cliente.
+                    { id: 'active',   label: t('clients.statusActive'),   color: th.colors.green,  tint: withOpacity(th.colors.green, 0.1) },
+                    { id: 'paused',   label: t('clients.statusPaused'),   color: th.colors.orange, tint: withOpacity(th.colors.orange, 0.1) },
+                    { id: 'inactive', label: t('clients.statusInactive'), color: th.colors.red,    tint: withOpacity(th.colors.red, 0.1) },
+                  ].map(({ id, label, color, tint }) => {
+                    const isSel = (selectedClient.status ?? 'active') === id;
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        style={[styles.stBtn, isSel && { backgroundColor: tint }]}
+                        onPress={() => updateClientInfo(selectedClientId, { status: id })}
+                        activeOpacity={0.75}
+                      >
+                        {isSel && <View style={[styles.stDot, { backgroundColor: color }]} />}
+                        <Text style={[styles.stBtnText, isSel && { color }]} numberOfLines={1}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>{t('clients.filterTags')}</Text>
+                  <View style={styles.tagRow}>
+                    {allTags.map(({ id, name }) => {
+                      const active = (selectedClient.tags ?? []).includes(id);
                       return (
                         <TouchableOpacity
                           key={id}
-                          style={[styles.statusBtn, { borderColor: isSel ? color : th.colors.border, backgroundColor: isSel ? `${color}18` : th.colors.surface2 }]}
-                          onPress={() => updateClientInfo(selectedClientId, { status: id })}
+                          style={[styles.tagPill, active && styles.tagPillOn]}
+                          onPress={() => {
+                            const current = selectedClient.tags ?? [];
+                            updateClientInfo(selectedClientId, {
+                              tags: active ? current.filter((tid) => tid !== id) : [...current, id],
+                            });
+                          }}
+                          activeOpacity={0.75}
                         >
-                          {isSel && <View style={[styles.statusDot, { backgroundColor: color }]} />}
-                          <Text style={[styles.statusBtnText, { color: isSel ? color : th.colors.muted }]}>{label}</Text>
+                          <Text style={[styles.tagPillText, active && styles.tagPillTextOn]}>{name}</Text>
                         </TouchableOpacity>
                       );
                     })}
+                    {!addingTag && (
+                      <TouchableOpacity style={styles.tagPill} onPress={() => setAddingTag(true)} activeOpacity={0.75}>
+                        <Text style={[styles.tagPillText, styles.tagPillTextOn]}>＋ {t('clients.info.newTag')}</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                </View>
 
-                {/* Tags */}
-                <View style={{ marginBottom: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>ETIQUETAS</Text>
-                  {allTags.length > 0 && (
-                    <View style={[styles.cTagRow, { marginBottom: spacing.sm }]}>
-                      {allTags.map(({ id, name }) => {
-                        const active = (selectedClient.tags ?? []).includes(id);
-                        return (
-                          <TouchableOpacity
-                            key={id}
-                            style={[styles.cTagSelectable, active && styles.cTagSelectableActive]}
-                            onPress={() => {
-                              const current = selectedClient.tags ?? [];
-                              updateClientInfo(selectedClientId, {
-                                tags: active ? current.filter((tid) => tid !== id) : [...current, id],
-                              });
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            {active && <Text style={styles.cTagSelectableTick}>✓ </Text>}
-                            <Text style={[styles.cTagSelectableText, active && styles.cTagSelectableTextActive]}>
-                              {name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                  {addingTag && (
+                    <View style={styles.addRow}>
+                      <TextInput
+                        style={[styles.fld, { flex: 1 }]}
+                        placeholder={t('clients.info.newTagPlaceholder')}
+                        placeholderTextColor={th.colors.muted}
+                        value={newTag}
+                        onChangeText={setNewTag}
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={handleCreateTag}
+                      />
+                      <TouchableOpacity
+                        style={[styles.plusBtn, !newTag.trim() && { opacity: 0.4 }]}
+                        onPress={newTag.trim() ? handleCreateTag : undefined}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.plusBtnText}>＋</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
-                  {/* Inline create (escape hatch) */}
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Crear nueva etiqueta…"
-                      placeholderTextColor={th.colors.muted}
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      returnKeyType="done"
-                      onSubmitEditing={() => {
-                        const t = newTag.trim();
-                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
-                        const newId = createTag(t);
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
-                        setNewTag('');
-                      }}
-                    />
-                    <AccentBtn
-                      label="＋"
-                      small
-                      disabled={!newTag.trim()}
-                      onPress={() => {
-                        const t = newTag.trim();
-                        if (!t || allTags.some((tag) => tag.name.toLowerCase() === t.toLowerCase())) { setNewTag(''); return; }
-                        const newId = createTag(t);
-                        updateClientInfo(selectedClientId, { tags: [...(selectedClient.tags ?? []), newId] });
-                        setNewTag('');
-                      }}
-                    />
-                  </View>
-                  <Text style={styles.fieldHint}>Toca para asignar · Escribe para crear nueva</Text>
+                  <Text style={styles.infoHint}>{t('clients.info.tagsHint')}</Text>
                 </View>
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Personal data ── */}
-              <Accordion
-                label="Datos personales"
+              {/* ── Datos personales ── */}
+              <InfoSection
+                title={t('clients.personalData')}
+                summary={infoSummaries.personal}
                 open={openSections.personal}
                 onToggle={() => setOpenSections((s) => ({ ...s, personal: !s.personal }))}
               >
-                {/* Fields */}
-                {[
-                  { key: 'name',     label: t('clients.fieldNameAlias'),                       placeholder: 'Lucas' },
-                  { key: 'fullName', label: t('clients.fieldFullName').toUpperCase(),          placeholder: 'Lucas García Martínez' },
-                  { key: 'phone',    label: 'TELÉFONO',         placeholder: '+34 600 000 000' },
-                  { key: 'email',    label: 'EMAIL',            placeholder: 'lucas@email.com' },
-                ].map(({ key, label, placeholder }) => (
-                  <View key={key} style={{ marginBottom: spacing.sm }}>
-                    <Text style={styles.fieldLabel}>{label}</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={placeholder}
-                      placeholderTextColor={th.colors.muted}
-                      defaultValue={selectedClient[key] ?? ''}
-                      onEndEditing={(e) => updateClientInfo(selectedClientId, { [key]: e.nativeEvent.text })}
-                      returnKeyType="done"
-                    />
-                  </View>
-                ))}
+                <View style={styles.group}>
+                  {[
+                    { key: 'name',     label: t('clients.fieldNameAlias'), placeholder: 'Lucas' },
+                    { key: 'fullName', label: t('clients.fieldFullName'),  placeholder: 'Lucas García Martínez' },
+                    { key: 'phone',    label: t('clients.fieldPhone'),     placeholder: '+34 600 000 000' },
+                    { key: 'email',    label: t('clients.fieldEmail'),     placeholder: 'lucas@email.com' },
+                  ].map(({ key, label, placeholder }, i, arr) => (
+                    <InfoRow key={key} isFirst={i === 0} isLast={i === arr.length - 1}>
+                      <Text style={styles.infoRowKey} numberOfLines={1}>{label}</Text>
+                      <TextInput
+                        style={styles.infoRowInput}
+                        placeholder={placeholder}
+                        placeholderTextColor={th.colors.muted}
+                        defaultValue={selectedClient[key] ?? ''}
+                        onEndEditing={(e) => updateClientInfo(selectedClientId, { [key]: e.nativeEvent.text })}
+                        returnKeyType="done"
+                      />
+                    </InfoRow>
+                  ))}
+                </View>
 
-                {/* Notes */}
-                <View style={{ marginBottom: spacing.sm }}>
-                  <Text style={styles.fieldLabel}>NOTAS</Text>
+                <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>{t('clients.fieldNotes')}</Text>
                   <TextInput
-                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                    placeholder="Notas sobre el cliente…"
+                    style={styles.notesBox}
+                    placeholder={t('clients.notesPlaceholder')}
                     placeholderTextColor={th.colors.muted}
                     multiline
                     defaultValue={selectedClient.notes ?? ''}
                     onEndEditing={(e) => updateClientInfo(selectedClientId, { notes: e.nativeEvent.text })}
                   />
-                  <Text style={styles.fieldHint}>Se guarda al perder el foco</Text>
+                  <Text style={styles.infoHint}>{t('clients.notesSavedHint')}</Text>
                 </View>
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Body weight ── */}
-              <Accordion
-                label="Peso corporal"
+              {/* ── Peso corporal ── */}
+              <InfoSection
+                title={t('clients.bodyWeight')}
+                summary={infoSummaries.weight}
                 open={openSections.weight}
                 onToggle={() => setOpenSections((s) => ({ ...s, weight: !s.weight }))}
               >
                 <View style={styles.addRow}>
+                  {/* La fecha abre el calendario que ya usa el alta de cobro, no
+                      un teclado para escribir AAAA-MM-DD a mano. */}
+                  <TouchableOpacity
+                    style={[styles.fldBtn, { flex: 1 }]}
+                    onPress={() => setShowWeightCal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.fldBtnText} numberOfLines={1}>{formatBillDate(weightDate, billLang, true)}</Text>
+                    <Svg viewBox="0 0 24 24" width={15} height={15} fill="none"
+                      stroke={th.colors.mutedLight} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+                    </Svg>
+                  </TouchableOpacity>
                   <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Fecha (AAAA-MM-DD)"
-                    placeholderTextColor={th.colors.muted}
-                    value={weightDate}
-                    onChangeText={setWeightDate}
-                    returnKeyType="next"
-                  />
-                  <TextInput
-                    style={[styles.input, { width: 80, textAlign: 'center' }]}
-                    placeholder="Peso"
+                    style={[styles.fld, { width: 86, textAlign: 'center' }]}
+                    placeholder="kg"
                     placeholderTextColor={th.colors.muted}
                     keyboardType="decimal-pad"
                     value={weightValue}
@@ -2812,131 +2800,147 @@ export default function ClientsScreen() {
                     returnKeyType="done"
                     onSubmitEditing={handleAddWeight}
                   />
-                  <AccentBtn label="＋" onPress={handleAddWeight} disabled={!weightValue} small />
+                  <TouchableOpacity
+                    style={[styles.plusBtn, !weightValue && { opacity: 0.4 }]}
+                    onPress={weightValue ? handleAddWeight : undefined}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.plusBtnText}>＋</Text>
+                  </TouchableOpacity>
                 </View>
+
                 {(selectedClient.bodyWeight ?? []).length === 0 ? (
-                  <Text style={styles.emptyText}>Sin datos de peso</Text>
+                  <Text style={styles.infoEmpty}>{t('clients.noWeightData')}</Text>
                 ) : (
-                  <View style={styles.weightList}>
-                    {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry) => (
-                      <View key={entry.date} style={styles.weightRow}>
-                        <Text style={styles.weightDate}>{entry.date}</Text>
-                        <Text style={styles.weightVal}>{entry.weight} kg</Text>
+                  <View style={styles.group}>
+                    {[...(selectedClient.bodyWeight ?? [])].reverse().map((entry, i, arr) => (
+                      <InfoRow key={entry.date} isFirst={i === 0} isLast={i === arr.length - 1}>
+                        <Text style={styles.rowDate}>{formatBillDate(entry.date, billLang, true)}</Text>
+                        <Text style={styles.rowValue}>{entry.weight} kg</Text>
                         <TouchableOpacity onPress={() => removeClientBodyWeight(selectedClientId, entry.date)} hitSlop={8}>
-                          <Text style={styles.deleteIcon}>✕</Text>
+                          <Text style={styles.rowDelete}>✕</Text>
                         </TouchableOpacity>
-                      </View>
+                      </InfoRow>
                     ))}
                   </View>
                 )}
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Billing ── */}
-              <Accordion
-                label="Facturación"
+              {/* ── Facturación ── */}
+              <InfoSection
+                title={t('clients.billing')}
+                summary={infoSummaries.billing}
+                tone={infoSummaries.billingTone}
                 open={openSections.billing}
                 onToggle={() => setOpenSections((s) => ({ ...s, billing: !s.billing }))}
               >
                 {(selectedClient.billing ?? []).length > 0 && (() => {
-                  const total   = (selectedClient.billing ?? []).reduce((a, b) => a + (b.amount ?? 0), 0);
-                  const paid    = (selectedClient.billing ?? []).filter((b) => b.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
+                  const bills = selectedClient.billing ?? [];
+                  const total = bills.reduce((a, b) => a + (b.amount ?? 0), 0);
+                  const paid  = bills.filter((b) => b.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
                   return (
-                    <View style={[styles.billingRow, { marginBottom: spacing.md }]}>
+                    // Las mismas tres tarjetas que la facturación global, en
+                    // `bg`: aquí el contenedor ya es `surface` y en `surface`
+                    // no se verían.
+                    <View style={styles.billTilesRow}>
                       {[
-                        { label: 'FACTURADO', value: `${total.toFixed(2)}€`,         color: th.colors.text },
-                        { label: 'RECIBIDO',  value: `${paid.toFixed(2)}€`,          color: th.colors.green },
-                        { label: 'PENDIENTE', value: `${(total - paid).toFixed(2)}€`, color: (total - paid) > 0 ? th.colors.orange : th.colors.muted },
+                        { label: t('clients.billedLabel'),   value: total,        color: th.colors.text },
+                        { label: t('clients.receivedLabel'), value: paid,         color: th.colors.green },
+                        { label: t('clients.pendingLabel'),  value: total - paid, color: (total - paid) > 0 ? th.colors.orange : th.colors.mutedLight },
                       ].map(({ label, value, color }) => (
-                        <View key={label} style={styles.billingTile}>
-                          <Text style={styles.billingTileLabel}>{label}</Text>
-                          <Text style={[styles.billingTileValue, { color }]}>{value}</Text>
+                        <View key={label} style={[styles.billTile, { backgroundColor: th.colors.bg }]}>
+                          <Text style={styles.billTileLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                            {label}
+                          </Text>
+                          <Text style={[styles.billTileValue, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                            {value.toFixed(2)}€
+                          </Text>
                         </View>
                       ))}
                     </View>
                   );
                 })()}
 
-                {/* Add entry */}
-                <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Fecha (AAAA-MM-DD)"
-                      placeholderTextColor={th.colors.muted}
-                      value={billDate}
-                      onChangeText={setBillDate}
-                      returnKeyType="next"
-                    />
-                    <TextInput
-                      style={[styles.input, { width: 90, textAlign: 'center' }]}
-                      placeholder="0.00"
-                      placeholderTextColor={th.colors.muted}
-                      keyboardType="decimal-pad"
-                      value={billAmount}
-                      onChangeText={setBillAmount}
-                      returnKeyType="next"
-                    />
-                  </View>
-                  <View style={styles.addRow}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      placeholder="Concepto"
-                      placeholderTextColor={th.colors.muted}
-                      value={billConcept}
-                      onChangeText={setBillConcept}
-                      returnKeyType="done"
-                      onSubmitEditing={handleAddBilling}
-                    />
-                    <TouchableOpacity
-                      style={[styles.billStatusBtnForm, billStatus === 'paid' && styles.billStatusBtnPaid]}
-                      onPress={() => setBillStatus((s) => s === 'paid' ? 'pending' : 'paid')}
-                    >
-                      <Text style={[styles.billStatusText, billStatus === 'paid' && styles.billStatusTextPaid]}>
-                        {billStatus === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-                      </Text>
-                    </TouchableOpacity>
-                    <AccentBtn label="＋" onPress={handleAddBilling} disabled={!billConcept.trim() || !billAmount} small />
-                  </View>
-                </View>
+                {/* El alta es la MISMA hoja que la facturación global, con el
+                    cliente ya puesto: allí ya hay calendario, importe, concepto
+                    y estado. El formulario que había aquí era esa hoja peor
+                    hecha, con las dos fechas tecleadas a mano. */}
+                <TouchableOpacity style={styles.apBtn} onPress={() => setAddingBill(true)} activeOpacity={0.85}>
+                  <Text style={styles.apBtnGlyph}>+</Text>
+                  <Text style={styles.apBtnText}>{t('clients.billSheet.title')}</Text>
+                </TouchableOpacity>
 
                 {(selectedClient.billing ?? []).length === 0 ? (
-                  <Text style={styles.emptyText}>Sin entradas de facturación</Text>
+                  <Text style={styles.infoEmpty}>{t('clients.noBillingData')}</Text>
                 ) : (
-                  <View style={styles.weightList}>
-                    {(selectedClient.billing ?? []).map((entry) => (
-                      <View key={entry.id} style={[styles.billEntry, { marginBottom: 0 }]}>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.billConcept} numberOfLines={1}>{entry.concept}</Text>
-                          <Text style={styles.billDate}>{entry.date}</Text>
-                        </View>
-                        <Text style={styles.billAmount}>{entry.amount?.toFixed(2)}€</Text>
-                        <TouchableOpacity
-                          style={[styles.billStatusBtn, entry.status === 'paid' && styles.billStatusBtnPaid]}
-                          onPress={() => updateClientBillingStatus(selectedClientId, entry.id, entry.status === 'paid' ? 'pending' : 'paid')}
-                        >
-                          <Text style={[styles.billStatusText, entry.status === 'paid' && styles.billStatusTextPaid]}>
-                            {entry.status === 'paid' ? t('clients.billPaid') : t('clients.billPending')}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => Alert.alert('Eliminar entrada', '¿Eliminar esta entrada de facturación?', [
-                          { text: 'Cancelar', style: 'cancel' },
-                          { text: 'Eliminar', style: 'destructive', onPress: () => removeClientBilling(selectedClientId, entry.id) },
-                        ])} hitSlop={8}>
-                          <Text style={styles.deleteIcon}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
+                  <>
+                    <View style={styles.group}>
+                      {(selectedClient.billing ?? []).map((entry, i, arr) => {
+                        const paid = entry.status === 'paid';
+                        // Mismo verde y mismas etiquetas que la pill de la
+                        // facturación global: es el mismo dato en dos sitios.
+                        const c = paid ? th.colors.green : th.colors.orange;
+                        return (
+                          <InfoRow key={entry.id} isFirst={i === 0} isLast={i === arr.length - 1}>
+                            {/* Borrar es pulsación larga sobre la fila: con la
+                                pill de estado ya puesta, un ✕ al lado dejaba dos
+                                dianas pegadas de 20px y la mitad de las veces se
+                                pulsaba la que no era. */}
+                            <TouchableOpacity
+                              style={styles.billMain}
+                              activeOpacity={1}
+                              onLongPress={() => Alert.alert(
+                                t('clients.menuDelete'),
+                                t('clients.billDeleteConfirm'),
+                                [
+                                  { text: t('common.cancel'), style: 'cancel' },
+                                  { text: t('clients.menuDelete'), style: 'destructive', onPress: () => removeClientBilling(selectedClientId, entry.id) },
+                                ],
+                              )}
+                            >
+                              <Text style={styles.rowValue} numberOfLines={1}>{entry.concept}</Text>
+                              <Text style={styles.billMainDate}>{formatBillDate(entry.date, billLang)}</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.billAmount}>{entry.amount?.toFixed(2)}€</Text>
+                            <TouchableOpacity
+                              style={[styles.billPill, { backgroundColor: withOpacity(c, 0.12) }]}
+                              onPress={() => updateClientBillingStatus(selectedClientId, entry.id, paid ? 'pending' : 'paid')}
+                              activeOpacity={0.75}
+                              hitSlop={8}
+                            >
+                              <Text style={[styles.billPillText, { color: c }]}>
+                                {paid ? t('clients.statusPaid') : t('clients.billPending')}
+                              </Text>
+                            </TouchableOpacity>
+                          </InfoRow>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.infoHint}>{t('clients.info.billHint')}</Text>
+                  </>
                 )}
-              </Accordion>
+              </InfoSection>
 
-              {/* ── Danger zone ── */}
-              <TouchableOpacity
-                style={styles.deleteClientBtn}
-                onPress={() => handleDeleteClient(selectedClientId)}
-                activeOpacity={0.8}
+              {/* ── Conexión ── */}
+              <InfoSection
+                title={t('clients.info.connection')}
+                summary={infoSummaries.connection}
+                tone={infoSummaries.connectionTone}
+                open={openSections.connection}
+                onToggle={() => setOpenSections((s) => ({ ...s, connection: !s.connection }))}
               >
-                <Text style={styles.deleteClientBtnText}>{t('clients.deleteClientTitle')}</Text>
+                <ClientCodeBlock client={selectedClient} showToast={showToast} flat />
+              </InfoSection>
+
+              {/* Eliminar cliente: terciario, como el resto de salidas que no se
+                  pulsan a diario. La caja roja de antes pesaba más en la
+                  pantalla que cualquiera de las secciones que tiene encima. */}
+              <TouchableOpacity
+                style={styles.infoDanger}
+                onPress={() => handleDeleteClient(selectedClientId)}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.infoDangerText}>{t('clients.deleteClientTitle')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -2949,6 +2953,25 @@ export default function ClientsScreen() {
             onCreateBlank={handleCreateProgram}
             onCreateFromTemplate={handleCreateFromTemplate}
             onClose={() => setShowNewProgram(false)}
+          />
+        )}
+
+        {/* Calendario del peso y alta de cobro — las dos hojas que la pestaña
+            Info comparte con la facturación global. */}
+        {showWeightCal && (
+          <BillDateSheet
+            value={weightDate}
+            lang={billLang}
+            onPick={(iso) => { setWeightDate(iso); setShowWeightCal(false); }}
+            onClose={() => setShowWeightCal(false)}
+          />
+        )}
+        {addingBill && (
+          <GlobalAddBillingSheet
+            clients={clients}
+            lang={billLang}
+            lockedClientId={selectedClientId}
+            onClose={() => setAddingBill(false)}
           />
         )}
 
@@ -3489,7 +3512,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // "CLIENTES" en color texto, el contador en accent (mismo tamaño hero)
   listTitle: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.text,
     flexShrink: 1,
   },
@@ -3530,10 +3553,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     justifyContent:    'center',
   },
-  hdrNewBtnText: {
-    ...textStyles.cardType,
-    color: th.colors.onAccent,
-  },
+  hdrNewBtnText: { ...textStyles.button, color: th.colors.onAccent },
   // Connectivity status dot (on the cloud icon button)
   syncStatusDot: {
     position:     'absolute',
@@ -3558,21 +3578,15 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     paddingHorizontal: 3,
   },
-  filterBadgeText: {
-    fontSize:   9,
-    fontWeight: typography.heavy,
-    color:      th.colors.onAccent,
-  },
+  filterBadgeText: { ...textStyles.caps, color: th.colors.onAccent },
   // Unified filter sheet
   filterSheetBody: {
     gap:           spacing.lg,
     paddingBottom: spacing.sm,
   },
   filterSecTitle: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
-    letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
@@ -3591,12 +3605,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     flexShrink:      0,
   },
-  tagAddBtnText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize:   24,
-    lineHeight: 26,
-    color:      th.colors.onAccent,
-  },
+  tagAddBtnText: { ...textStyles.title, lineHeight: 26, color: th.colors.onAccent },
   // Lista de etiquetas — mismo listed-item que el dropdown de Progress, pero
   // sin fondo (más legible sobre la superficie del sheet)
   tagListBox: {
@@ -3618,11 +3627,11 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  dropCheckMark:   { ...textStyles.tag, color: th.colors.onAccent, fontWeight: '900' },
-  dropItemText:    { flex: 1, ...textStyles.subtitle, color: th.colors.text },
+  dropCheckMark:   { ...textStyles.label, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
+  dropItemText:    { flex: 1, ...textStyles.body, color: th.colors.text },
   dropItemTextSel: { color: th.colors.text },
   tagEmptyText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.colors.mutedLight,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.xs,
@@ -3630,10 +3639,7 @@ const makeStyles = (th) => StyleSheet.create({
   tagActionBtn: {
     padding: spacing.xs,
   },
-  tagActionText: {
-    fontSize: 14,
-    color:    th.colors.mutedLight,
-  },
+  tagActionText: { ...textStyles.body, color: th.colors.mutedLight },
   tagSelectArea: {
     flex:          1,
     flexDirection: 'row',
@@ -3647,10 +3653,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  filterClearBtnText: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  filterClearBtnText: { ...textStyles.label, color: th.colors.muted },
   // Row 2: Search + Filter (gap space/sm)
   searchRow: {
     flexDirection:     'row',
@@ -3680,7 +3683,7 @@ const makeStyles = (th) => StyleSheet.create({
   searchInput: {
     flex:    1,
     padding: 0,
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:   th.colors.text,
   },
   // Botón "✕" para limpiar el texto del buscador (aparece al escribir)
@@ -3688,7 +3691,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingLeft: spacing.xs2,
   },
   searchClearText: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color: th.colors.mutedLight,
   },
 
@@ -3714,7 +3717,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   attnPillText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
   },
   attnPillBadge: {
     borderRadius:      th.radius.full,
@@ -3726,7 +3729,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   attnPillBadgeText: {
-    ...textStyles.tag,
+    ...textStyles.label,
     fontFamily: 'Inter_700Bold',
   },
   // Tag pills aplicadas — pill seleccionada del lenguaje nuevo: relleno accent
@@ -3744,11 +3747,11 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   tagRowPillText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.onAccent,
   },
   tagRowPillX: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:      th.colors.onAccent,
     lineHeight: 14,
   },
@@ -3768,11 +3771,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     withOpacity(th.colors.accent, 0.4),
     backgroundColor: withOpacity(th.colors.accent, 0.08),
   },
-  chipText: {
-    fontSize:   typography.sm,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
+  chipText: { ...textStyles.label, color: th.colors.muted },
   chipTextActive: { color: th.colors.accent },
   chipCountBadge: {
     marginLeft:      4,
@@ -3781,7 +3780,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical:   1,
   },
-  chipCountText: { fontSize: typography.xs, color: th.colors.muted },
+  chipCountText: { ...textStyles.label, color: th.colors.muted },
   chipCountBadgeActive: { backgroundColor: withOpacity(th.colors.accent, 0.15) },
   chipCountTextActive: { color: th.colors.accent },
 
@@ -3799,16 +3798,12 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   emptyIcon: { fontSize: 32 },
-  emptyTitle: {
-    fontSize:   typography.md,
-    fontWeight: typography.semibold,
-    color:      th.colors.text,
-  },
+  emptyTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   emptyBody: {
-    fontSize:    typography.sm,
-    color:       th.colors.muted,
-    textAlign:   'center',
-    lineHeight:  typography.sm * 1.6,
+    ...textStyles.body,
+    color:        th.colors.muted,
+    textAlign:    'center',
+    lineHeight:   lh(textStyles.body.fontSize),
     marginBottom: spacing.lg,
   },
   proBtn: {
@@ -3818,25 +3813,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
     marginTop:       spacing.xs,
   },
-  proBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.bold,
-    color:      th.colors.bg,
-  },
+  proBtnText: { ...textStyles.button, color: th.colors.bg },
   hideTabBtn: {
     marginTop:         spacing.sm,
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  hideTabBtnText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
-  },
+  hideTabBtnText: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
   emptyText: {
-    fontSize:  typography.sm,
-    color:     th.colors.muted,
-    textAlign: 'center',
+    ...textStyles.label,
+    color:           th.colors.muted,
+    textAlign:       'center',
     paddingVertical: spacing.xl,
   },
 
@@ -3864,12 +3851,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignSelf:       'center',
     marginBottom:    spacing.sm,
   },
-  infoSheetName: {
-    fontSize:   typography.md,
-    fontWeight: typography.heavy,
-    color:      th.colors.text,
-    marginBottom: spacing.xs,
-  },
+  infoSheetName: { ...textStyles.itemTitle, color: th.colors.text, marginBottom: spacing.xs },
   infoCodeRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -3884,22 +3866,12 @@ const makeStyles = (th) => StyleSheet.create({
     padding:           spacing.md,
     gap:               3,
   },
-  infoCodeLabel: {
-    fontSize:      typography.xs,
-    fontWeight:    typography.bold,
-    color:         th.colors.accent,
-    letterSpacing: 1,
-  },
-  infoCodeText: {
-    fontSize:      typography.md,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 3,
-  },
-  infoCodeSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-  },
+  infoCodeLabel: { ...textStyles.caps, color: th.colors.accent },
+  // Un codigo de emparejamiento: se lee caracter a caracter, asi que el aire es
+  // funcional. A 16 y no a los 22 de `code` porque comparte fila con el boton
+  // de copiar.
+  infoCodeText: { ...textStyles.code, fontSize: 16, color: th.colors.text },
+  infoCodeSub:  { ...textStyles.label, color: th.colors.muted },
   infoCopyBtn: {
     width:           44,
     height:          44,
@@ -3910,7 +3882,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  infoCopyBtnText: { fontSize: 20 },
+  infoCopyBtnText: { fontSize: 18 },
   infoSheetBtnAccent: {
     backgroundColor:   withOpacity(th.colors.accent, 0.08),
     borderWidth:       borders.thin,
@@ -3920,11 +3892,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
   },
-  infoSheetBtnTextAccent: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.accent,
-  },
+  infoSheetBtnTextAccent: { ...textStyles.body, color: th.colors.accent },
 
   // ── Key tab ───────────────────────────────────────────────────────────────────
 
@@ -3945,23 +3913,23 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
   },
   cName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:    th.colors.text,
     flex:     1,
     minWidth: 0,
   },
   cStreak: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
   cCycle: {
-    ...textStyles.subtitle,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
   cCycleNum: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
@@ -3979,8 +3947,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.md,
     backgroundColor:   withOpacity(th.colors.blue, 0.12),
   },
-  pendingTitle: { ...textStyles.cardType, color: th.colors.text },
-  pendingSub:   { ...textStyles.subtitle, color: th.colors.mutedLight, marginTop: spacing.xs },
+  pendingTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  pendingSub:   { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   // Misma geometría que los CTA de la tarjeta de cliente
   pendingBtn: {
     backgroundColor: th.colors.blue,
@@ -3988,7 +3956,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     flexShrink:      0,
   },
-  pendingBtnText: { ...textStyles.cardType, color: th.colors.onAccent },
+  pendingBtnText: { ...textStyles.button, color: th.colors.onAccent },
   // Action sheet rows (··· menu)
   actionRow: {
     flexDirection:   'row',
@@ -4001,16 +3969,8 @@ const makeStyles = (th) => StyleSheet.create({
   actionRowNext: {
     backgroundColor: withOpacity(th.colors.blue, 0.08),
   },
-  actionLabel: {
-    flex:       1,
-    fontSize:   typography.md,
-    color:      th.colors.text,
-    fontWeight: typography.medium,
-  },
-  actionChevron: {
-    fontSize: 18,
-    color:    th.colors.muted2,
-  },
+  actionLabel:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  actionChevron: { ...textStyles.heading, color: th.colors.muted2 },
   actionBadge: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.full,
@@ -4020,11 +3980,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'center',
     paddingHorizontal: 6,
   },
-  actionBadgeText: {
-    fontSize:   11,
-    fontWeight: typography.bold,
-    color:      th.colors.onAccent,
-  },
+  actionBadgeText: { ...textStyles.labelStrong, color: th.colors.onAccent },
   // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
   // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
   // el botón va centrado contra el alto real.
@@ -4037,13 +3993,15 @@ const makeStyles = (th) => StyleSheet.create({
     flex:     1,
     minWidth: 0,
   },
-  // Línea de programa: nombre en card-type, etapa en subtitle, los dos mutedLight
+  // Línea de programa: nombre y etapa a 14, los dos mutedLight. El nombre manda
+  // por PESO (Bold contra Medium) y no por cuerpo — antes iba a 12 y acababa
+  // siendo más pequeño que la etapa que cuelga de él.
   cProgLine: {
-    ...textStyles.cardType,
+    ...textStyles.bodyStrong,
     color: th.colors.mutedLight,
   },
   cStageLine: {
-    ...textStyles.subtitle,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   // Línea de aviso (sustituye a la de programa) — punto + texto en naranja
@@ -4059,8 +4017,9 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.orange,
     flexShrink:      0,
   },
+  // Sustituye a la línea de programa, así que va a su mismo rango.
   cAvisoText: {
-    ...textStyles.cardType,
+    ...textStyles.bodyStrong,
     color:      th.colors.orange,
     flexShrink: 1,
   },
@@ -4074,12 +4033,12 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 0,
   },
   cPaceNum: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
   cPaceUnit: {
-    ...textStyles.subtitle,
+    ...textStyles.label,
     color: th.colors.mutedLight,
   },
   cDots: {
@@ -4097,7 +4056,7 @@ const makeStyles = (th) => StyleSheet.create({
   cDotFull:  { backgroundColor: th.colors.accent },
   cDotEmpty: { backgroundColor: th.colors.muted },
   cLast: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
@@ -4114,7 +4073,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
   },
   cUnreviewedText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.text,
   },
   // CTA — geometría del componente "Buttons" de Figma
@@ -4127,52 +4086,14 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:    0,
   },
   cCtaText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.onAccent,
   },
 
-  // Legacy stubs — kept so detail view still compiles
-  cTagRow: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           spacing.xs,
-  },
-  // Selectable tags in info tab
-  cTagSelectable: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
-    borderRadius:      th.radius.full,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    backgroundColor:   th.colors.surface2,
-  },
-  cTagSelectableActive: {
-    backgroundColor: `${th.colors.accent}14`,
-    borderColor:     `${th.colors.accent}40`,
-  },
-  cTagSelectableTick: {
-    fontSize:   typography.xs,
-    color:      th.colors.accent,
-    fontWeight: typography.bold,
-  },
-  cTagSelectableText: {
-    fontSize:   typography.xs,
-    color:      th.colors.muted,
-    fontWeight: typography.medium,
-  },
-  cTagSelectableTextActive: { color: th.colors.accent },
 
   // Legacy action button stubs
 
   // ── Detail header ──
-  // Sin borde inferior: la pestaña activa cruza esa línea para fundirse con su
-  // contenido, así que el corte lo marca el escalón de fondo (banda `surface`
-  // sobre página `bg`) y no una raya que la pestaña tendría que interrumpir.
-  detailNavBand: {
-    backgroundColor: th.colors.surface,
-  },
   detailHeader: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4189,24 +4110,21 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   backIcon: {
-    fontSize:   20,
-    fontWeight: '900',
+    ...textStyles.title,
     color:      th.colors.mutedLight,
     lineHeight: 22,
     marginTop:  -2,
   },
   detailName: {
     flex: 1,
-    ...textStyles.hero,
+    ...textStyles.title,
     color: th.colors.text,
   },
   detailLast: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.muted,
     flexShrink: 0,
   },
-  // SIN `paddingBottom`: la pestaña activa tiene que llegar hasta el borde de la
-  // banda para fundirse con el contenido. El aire de debajo lo pone cada tab.
   detailTabs: {
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
@@ -4234,114 +4152,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.lg,
   },
 
-  // ── Tarjeta de programa asignado ─────────────────────────────────────────────
-  // Dos colores como la tarjeta de ejercicio del workout: cabecera surface2,
-  // cuerpo surface. Los 14/16 de padding son los de esa tarjeta (spec v6), no
-  // hay token para ellos.
-  apCard: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
-    overflow:        'hidden',
-  },
-  apHead: {
-    flexDirection:     'row',
-    alignItems:        'flex-start',
-    gap:               spacing.md,
-    backgroundColor:   th.colors.surface2,
-    paddingVertical:   14,
-    paddingHorizontal: 16,
-  },
-  apHeadName:  { flex: 1, minWidth: 0 },
-  apHeadCycle: { flexShrink: 0, alignItems: 'flex-end' },
-  // Misma tipografía que el banner de Home (`bnEyebrow`/`bnProgName`/`bnCicloNum`):
-  // es el mismo bloque de información, solo que sobre oscuro en vez de sobre lima.
-  apEyebrow: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-  },
-  // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
-  // no mete en el ancho medido, así que alineado a la derecha se comía la "O"
-  // de CICLO. El padding lo absorbe y el margen negativo devuelve la alineación.
-  apEyebrowRight: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    paddingRight:  spacing.xs,
-    marginRight:   -spacing.xs,
-  },
-  apName: {
-    ...textStyles.hero,
-    color:     th.colors.text,
-    marginTop: -spacing.xs,
-  },
-  apCycleNum: {
-    ...textStyles.hero,
-    color:       th.colors.accent,
-    marginTop:   -spacing.xs,
-    fontVariant: ['tabular-nums'],
-  },
-
-  apBody: {
-    paddingTop:        14,
-    paddingHorizontal: 16,
-    paddingBottom:     16,
-  },
-  apStage: { gap: spacing.sm },
-  // Misma línea que `bnStageLabels` del banner: nombre trackeado a la izquierda,
-  // posición pequeña empujada a la derecha.
-  apStageRow: {
-    flexDirection: 'row',
-    alignItems:    'baseline',
-    gap:           spacing.sm2,
-  },
-  apStageName: {
-    ...textStyles.spacingTag,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    flexShrink:    1,
-  },
-  // "ETAPA 1" se queda de etiqueta; el nombre propio de la etapa es el dato.
-  apStageOwnName: { color: th.colors.text },
-  apStageMeta: {
-    ...textStyles.subtitle,
-    color:      th.colors.mutedLight,
-    marginLeft: 'auto',
-  },
-  apStats: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    marginTop:     spacing.lg,
-  },
-  apStat: {
-    flex:              1,
-    minWidth:          0,
-    backgroundColor:   th.colors.bg,
-    borderRadius:      th.radius.md,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  apStatVal: {
-    ...textStyles.cardTitle,
-    color:       th.colors.text,
-    fontVariant: ['tabular-nums'],
-  },
-  apStatUnit: {
-    ...textStyles.subtitle,
-    color: th.colors.mutedLight,
-  },
-  apStatKey: {
-    ...textStyles.spacingTag,
-    color:     th.colors.muted,
-    marginTop: 3,
-  },
-
   // Botones Secondary (variante real de Figma: surface2 sólido, sin borde).
-  apActions: {
-    flexDirection: 'row',
-    gap:           spacing.sm2,
-    marginTop:     spacing.sm2,
-  },
   apBtn: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4352,32 +4163,16 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.surface2,
     paddingHorizontal: spacing.lg,
   },
-  apBtnText: {
-    ...textStyles.cardType,
-    color: th.colors.text,
-  },
-  apBtnGlyph: {
-    ...textStyles.cardType,
-    color: th.colors.accent,
-  },
+  apBtnText:  { ...textStyles.button, color: th.colors.text },
+  apBtnGlyph: { ...textStyles.button, color: th.colors.accent },
   // "Preparar" va dentro de una tarjeta `surface`, y sobre ella el `surface2`
   // del Secondary apenas se separa del fondo. Relleno accent al 10%, que es el
   // lenguaje que ya usa la app para "esto lleva a algo editable".
   apBtnAccent: { backgroundColor: th.tint.accent10 },
-  apBtnIcon: {
-    width:             44,
-    paddingHorizontal: 0,
-  },
-  apBtnIconText: {
-    fontSize:   16,
-    fontWeight: '900',
-    color:      th.colors.mutedLight,
-    lineHeight: 18,
-  },
 
   // ── Próxima sesión ──
   apSectionLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:        th.colors.mutedLight,
     marginTop:    spacing.xl,
     marginBottom: spacing.sm2,
@@ -4392,20 +4187,20 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         16,
   },
   apNextLetter: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color: th.colors.accent,
   },
   apNextName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color: th.colors.text,
   },
   apNextMeta: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:     th.colors.mutedLight,
     marginTop: 2,
   },
   apNextHint: {
-    ...textStyles.tag,
+    ...textStyles.label,
     color:      th.colors.muted,
     lineHeight: 15,
     marginLeft: spacing.xs2,
@@ -4417,16 +4212,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     paddingBottom: spacing.lg,
   },
-  sheetRow: sheetRowBase(th),
-  sheetRowText: {
-    ...textStyles.cardType,
-    flex:  1,
-    color: th.colors.text,
-  },
-  sheetRowArrow: {
-    ...textStyles.cardType,
-    color: th.colors.mutedLight,
-  },
 
   // ── Código de conexión ──
   codeCard: {
@@ -4436,11 +4221,15 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm2,
   },
   codeTitle: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.accent,
   },
+  // Dentro de la sección Conexión de Info la tarjeta ya está dentro de otra
+  // `surface`: se queda con su contenido y suelta fondo, radio y padding, que
+  // los pone la sección.
+  codeCardFlat: { backgroundColor: 'transparent', borderRadius: 0, padding: 0 },
   codeExplain: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     lineHeight: 17,
   },
@@ -4457,11 +4246,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems:      'center',
   },
-  codeText: {
-    ...textStyles.hero,
-    color:         th.colors.text,
-    letterSpacing: 3,
-  },
+  codeText: { ...textStyles.code, color: th.colors.text },
   codeCopyBtn: {
     width:           44,
     height:          44,
@@ -4480,13 +4265,8 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:   -spacing.md,
   },
   codeDismissText: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color: th.colors.mutedLight,
-  },
-  infoCodeWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.sm,
   },
 
   // ── Active program hero ──
@@ -4508,13 +4288,13 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.xs,
   },
   lockTag: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.orange,
   },
   lockText: {
-    fontSize:   typography.sm,
+    ...textStyles.body,
     color:      th.colors.text,
-    lineHeight: typography.sm * 1.45,
+    lineHeight: lh(textStyles.body.fontSize),
   },
   lockBtn: {
     backgroundColor:   th.colors.orange,
@@ -4524,7 +4304,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
   },
   lockBtnText: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color: th.colors.bg,
   },
 
@@ -4538,15 +4318,8 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     gap:             spacing.xs,
   },
-  noActiveTitle: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.muted,
-  },
-  noActiveSub: {
-    fontSize: typography.xs,
-    color:    th.colors.muted2,
-  },
+  noActiveTitle: { ...textStyles.body,  color: th.colors.muted },
+  noActiveSub:   { ...textStyles.label, color: th.colors.muted2 },
 
   // ── Previous (archived) programs ──
   archRow: {
@@ -4560,23 +4333,10 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     backgroundColor: `${th.colors.surface}80`,
   },
-  archName: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
-  archMeta: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted2,
-    marginTop: 2,
-  },
+  archName: { ...textStyles.body,  color: th.colors.muted },
+  archMeta: { ...textStyles.label, color: th.colors.muted2, marginTop: 2 },
   archIcon: {
     padding: spacing.xs,
-  },
-  archDots: {
-    fontSize:  typography.base,
-    color:     th.colors.muted2,
-    width:     18,
-    textAlign: 'center',
   },
 
   // ── Exercise mini card ──
@@ -4593,20 +4353,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:     'center',
     padding:        spacing.md,
   },
-  exMiniName: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  exMiniLast: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
-  exMiniArrow: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  exMiniName:  { ...textStyles.label, color: th.colors.text },
+  exMiniLast:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
+  exMiniArrow: { ...textStyles.label, color: th.colors.muted },
   exMiniBody: {
     paddingHorizontal: spacing.md,
     paddingBottom:     spacing.md,
@@ -4621,42 +4370,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  exMiniDate: { fontSize: typography.xs, color: th.colors.muted },
-  exMiniVal:  { fontSize: typography.xs, color: th.colors.text, fontWeight: typography.medium },
+  exMiniDate: { ...textStyles.label, color: th.colors.muted },
+  exMiniVal:  { ...textStyles.label, color: th.colors.text },
 
-  // ── Info tab ──
-  accordion: {
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  accordionHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  accordionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  accordionArrow: { fontSize: 16, color: th.colors.muted },
-  accordionBody:  { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
-
-  fieldLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    marginBottom:  spacing.xs,
-    marginTop:     spacing.xs,
-    fontWeight:    typography.bold,
-  },
-  fieldHint: {
-    fontSize: typography.xs,
-    color:    th.colors.muted,
-    marginTop: 4,
-  },
+  // El único `input` que queda del estilo antiguo: el renombrado de etiqueta
+  // del filtro de la lista, que no es parte de esta migración.
   input: {
     backgroundColor:   th.colors.surface2,
     borderWidth:       borders.thin,
@@ -4664,95 +4382,187 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm,
+    ...textStyles.body,
     color:             th.colors.text,
-    fontSize:          typography.base,
   },
-  statusRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
+
+  // ══ Info — categorías plegables ═════════════════════════════════════════════
+  // Cinco tarjetas `surface` con resumen en la cabecera. Dentro no hay ni un
+  // borde: los campos son la lista agrupada, las etiquetas y los estados son
+  // pills tintadas y las cifras van en cajas `bg`.
+
+  infoTabContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg,
+    gap:               spacing.md,
   },
-  statusBtn: {
+  infoSec: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
+    overflow:        'hidden',
+  },
+  infoSecHead: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    minHeight:         52,
+    paddingHorizontal: spacing.lg,
+  },
+  infoSecTitle: {
+    ...textStyles.labelStrong,
+    textTransform: 'uppercase',
+    color:         th.colors.text,
+  },
+  // Ocupa el hueco que deja el título aunque esté vacío: si no, el galón se
+  // pega al rótulo en las secciones sin resumen y las cabeceras no casan.
+  infoSecSum: {
+    ...textStyles.body,
+    flex:      1,
+    textAlign: 'right',
+  },
+  infoSecChevOpen: { transform: [{ rotate: '180deg' }] },
+  infoSecBody: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom:     spacing.lg,
+    gap:               spacing.lg,
+    overflow:          'hidden',
+  },
+  // Filete a sangre: sale del padding de la tarjeta por los dos lados.
+  infoSecRule: {
+    height:           borders.thin,
+    backgroundColor:  th.colors.border,
+    marginHorizontal: -spacing.lg,
+  },
+
+  infoBlock: { gap: spacing.sm },
+  infoLabel: {
+    ...textStyles.caps,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+  },
+  infoHint:  { ...textStyles.label, color: th.colors.muted, lineHeight: 14 },
+  infoEmpty: { ...textStyles.body, color: th.colors.muted },
+
+  // ── Estado: tres botones sin borde, el activo tintado con su propio color ──
+  stRow: { flexDirection: 'row', gap: spacing.sm },
+  stBtn: {
     flex:            1,
-    paddingVertical: spacing.sm,
+    height:          38,
     borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    alignItems:      'center',
+    backgroundColor: th.colors.surface2,
     flexDirection:   'row',
+    alignItems:      'center',
     justifyContent:  'center',
-    gap:             4,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusBtnText: { fontSize: typography.xs, fontWeight: typography.medium },
-
-  addRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    marginBottom:  spacing.xs,
-  },
-
-  // ── Weight list ──
-  weightList: {
-    borderRadius:  th.radius.sm,
-    borderWidth:   borders.thin,
-    borderColor:   th.colors.borderCard,
-    overflow:      'hidden',
-  },
-  weightRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    padding:         spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
     gap:             spacing.sm,
   },
-  weightDate: { flex: 1, fontSize: typography.sm, color: th.colors.muted },
-  weightVal:  { fontSize: typography.base, fontWeight: typography.medium, color: th.colors.text },
-  deleteIcon: { fontSize: typography.sm, color: th.colors.muted, padding: 4 },
+  stDot:     { width: 6, height: 6, borderRadius: 3 },
+  stBtnText: { ...textStyles.labelStrong, textTransform: 'uppercase', color: th.colors.mutedLight },
 
-  deleteClientBtn: {
-    marginHorizontal: spacing.xl,
-    marginTop:        spacing.xl,
-    marginBottom:     spacing.md,
-    paddingVertical:  spacing.md,
-    borderRadius:     th.radius.sm,
-    backgroundColor:  `${th.colors.red}15`,
-    borderWidth:      borders.thin,
-    borderColor:      `${th.colors.red}40`,
-    alignItems:       'center',
+  // ── Etiquetas ──
+  tagRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tagPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+    borderRadius:      th.radius.full,
+    backgroundColor:   th.colors.surface2,
   },
-  deleteClientBtnText: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.red,
-  },
+  tagPillOn:     { backgroundColor: th.tint.accent10 },
+  // Mismo cuerpo y mismo peso encendida o apagada: si cambiara, la pill
+  // cambiaría de ancho al asignarla y la fila entera daría un salto.
+  tagPillText:   { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  tagPillTextOn: { color: th.colors.accent },
 
-  // ── Billing tiles ──
-  billingRow: { flexDirection: 'row', gap: spacing.xs },
-  billingTile: {
-    flex:            1,
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
+  // ── Lista agrupada (campos, pesos, facturas) ──
+  group:   { gap: spacing.xs },
+  infoRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    minHeight:         44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm,
+    backgroundColor:   th.colors.surface2,
+  },
+  infoRowKey: {
+    ...textStyles.caps,
+    textTransform: 'uppercase',
+    color:         th.colors.mutedLight,
+    width:         74,
+  },
+  // El campo ES la fila: sin caja propia, sin padding y sin altura mínima
+  // propia, que la pone la fila.
+  infoRowInput: {
+    ...textStyles.labelStrong,
+    flex:    1,
+    color:   th.colors.text,
+    padding: 0,
+  },
+  rowDate:   { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
+  rowValue:  { ...textStyles.labelStrong, color: th.colors.text },
+  rowDelete: { ...textStyles.labelStrong, color: th.colors.muted },
+
+  // ── Fila de alta (peso, etiqueta nueva) ──
+  addRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  fld: {
+    ...textStyles.labelStrong,
+    height:            44,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    color:             th.colors.text,
+  },
+  // Mismo campo, pero abre una hoja en vez de un teclado (la fecha del peso).
+  // Repite la caja de `fld` en vez de componerse con ella: `fld` lleva estilos
+  // de texto y esto es una `View`, que no los admite.
+  fldBtn: {
+    height:            44,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.sm,
+  },
+  fldBtnText: { ...textStyles.labelStrong, color: th.colors.text, flex: 1 },
+  plusBtn: {
+    width:           44,
+    height:          44,
     borderRadius:    th.radius.sm,
-    padding:         spacing.sm,
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
+    justifyContent:  'center',
   },
-  billingTileLabel: {
-    fontSize:      typography.xs,
-    color:         th.colors.muted,
-    letterSpacing: 1,
-    marginBottom:  3,
+  plusBtnText: { ...textStyles.itemTitle, color: th.colors.onAccent },
+
+  notesBox: {
+    ...textStyles.body,
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.md,
+    padding:           spacing.md,
+    minHeight:         88,
+    textAlignVertical: 'top',
+    color:             th.colors.text,
+    lineHeight:        18,
   },
-  billingTileValue: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
+
+  // Las cifras de facturación reutilizan `billTilesRow`/`billTile*` de la
+  // facturación global, solo repintadas en `bg`.
+
+  billMain:     { flex: 1, minWidth: 0 },
+  billMainDate: { ...textStyles.label, color: th.colors.muted, marginTop: spacing.xs },
+  billAmount:   { ...textStyles.labelStrong, color: th.colors.text },
+  // La pill de estado es la de la facturación global (`billPill`, más abajo).
+
+  infoDanger: {
+    height:         44,
+    alignItems:     'center',
+    justifyContent: 'center',
+    marginTop:      spacing.sm,
   },
+  infoDangerText: { ...textStyles.labelStrong, color: th.colors.red },
 
   // ══ Facturación global — pantalla migrada ═══════════════════════════════════
-  // Los estilos `billing*` / `billEntry` / `billStatus*` de arriba y abajo siguen
-  // siendo los del detalle de cliente, que NO está migrado: no los toques aquí.
 
   // Cabecera: ‹ + título hero + ＋, misma geometría que el header de la lista.
   billHeader: {
@@ -4764,7 +4574,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingBottom:     spacing.sm,
   },
   billHeaderTitle: {
-    ...textStyles.hero,
+    ...textStyles.title,
     color:      th.colors.text,
     flex:       1,
   },
@@ -4776,7 +4586,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Tarjetas resumen — `statTile` de Progress con el valor a `card-title`
-  // (Black 16) en vez de `hero` (Black 20): son importes, no contadores de 1-3
+  // (`itemTitle`, Black 16) en vez de `title` (Black 22): son importes, no contadores de 1-3
   // dígitos. `adjustsFontSizeToFit` cubre los que aun así no entren.
   billTilesRow: { flexDirection: 'row', gap: spacing.md },
   billTile: {
@@ -4791,14 +4601,14 @@ const makeStyles = (th) => StyleSheet.create({
     overflow:          'hidden',
   },
   billTileValue: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     textAlign:   'center',
     fontVariant: ['tabular-nums'],
   },
   // La etiqueta va ARRIBA de la cifra y en `mutedLight`: aquí nombra el dato,
   // no lo remata (al revés que en las cards de Progress).
   billTileLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
     textAlign:     'center',
@@ -4822,20 +4632,20 @@ const makeStyles = (th) => StyleSheet.create({
     gap:            spacing.md,
   },
   billCardName: {
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:      th.colors.text,
     flexShrink: 1,
   },
   // Importe a `card-type` (12) y no a `card-title` (16): es el mismo peso que el
   // número de "Ciclo NN" en la tarjeta de cliente, y deja el nombre de titular.
   billCardAmount: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:       th.colors.text,
     flexShrink:  0,
     fontVariant: ['tabular-nums'],
   },
   billCardMeta: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:      th.colors.mutedLight,
     flexShrink: 1,
   },
@@ -4847,9 +4657,9 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:      th.radius.xs,
     flexShrink:        0,
   },
-  billPillText: { ...textStyles.spacingTag, textTransform: 'uppercase' },
+  billPillText: { ...textStyles.caps, textTransform: 'uppercase' },
   billEmpty: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.xl,
@@ -4861,19 +4671,19 @@ const makeStyles = (th) => StyleSheet.create({
   // sobre `surface` porque el fondo de la hoja YA es `bg`.
   formSheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
   sheetHint: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:        th.colors.mutedLight,
     lineHeight:   17,
     marginBottom: spacing.sm,
   },
   sheetInput: {
-    ...textStyles.cardType,
+    ...textStyles.labelStrong,
     color:             th.colors.text,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.sm,
@@ -4889,7 +4699,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginTop:       spacing.sm,
   },
-  sheetCtaText: { ...textStyles.btnAction, color: th.colors.onAccent },
+  sheetCtaText: { ...textStyles.button, color: th.colors.onAccent },
   cyclesGroup: { gap: spacing.sm },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
@@ -4901,13 +4711,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:     borders.thin,
     borderColor:     th.tint.accent50,
   },
-  templateRowName:   { ...textStyles.cardType, color: th.colors.text },
+  templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
   templateRowNameOn: { color: th.colors.accent },
-  templateRowMeta:   { ...textStyles.subtitle, color: th.colors.mutedLight },
+  templateRowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hoja de alta de cobro ──
   billSecLabel: {
-    ...textStyles.spacingTag,
+    ...textStyles.caps,
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
     marginBottom:  spacing.sm,
@@ -4926,7 +4736,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Abierta: esquinas inferiores rectas para fundirse con el menú de debajo
   // (mismo recurso que el desplegable de ejercicios de Progress).
   billSelectOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  billSelectText: { ...textStyles.cardTitle, color: th.colors.text, flexShrink: 1 },
+  billSelectText: { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
   // El grupo entero se eleva sobre los campos siguientes (hermanos dentro de
   // `billSheetBody`); el ancla da el contexto de posición al menú absoluto.
   billDropField:  { zIndex: 100 },
@@ -4959,7 +4769,7 @@ const makeStyles = (th) => StyleSheet.create({
   billDropSearchInput: {
     flex:    1,
     padding: 0,
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:   th.colors.text,
   },
   billDropItem: {
@@ -4967,9 +4777,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   billDropItemSel:  { backgroundColor: th.tint.accent10 },
-  billDropItemText: { ...textStyles.subtitle, color: th.colors.mutedLight },
+  billDropItemText: { ...textStyles.body, color: th.colors.mutedLight },
   billDropEmpty: {
-    ...textStyles.subtitle,
+    ...textStyles.body,
     color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.lg,
@@ -4984,7 +4794,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius:      th.radius.sm,
     backgroundColor:   th.colors.surface2,
-    ...textStyles.cardTitle,
+    ...textStyles.itemTitle,
     color:             th.colors.text,
   },
   billCta: {
@@ -4995,12 +4805,12 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     marginTop:       spacing.sm,
   },
-  billCtaText: { ...textStyles.cardType, color: th.colors.onAccent },
+  billCtaText: { ...textStyles.button, color: th.colors.onAccent },
 
   // ── Calendario (hoja de fecha) ──
   calBody: { paddingBottom: spacing.sm, gap: spacing.md },
   calNav:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  calMonth: { ...textStyles.cardTitle, color: th.colors.text },
+  calMonth: { ...textStyles.itemTitle, color: th.colors.text },
   calNavBtn: {
     width:           34,
     height:          34,
@@ -5016,7 +4826,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  calWeekDay: { ...textStyles.spacingTag, color: th.colors.mutedLight },
+  calWeekDay: { ...textStyles.caps, color: th.colors.mutedLight },
   calDay: {
     width:          34,
     height:         34,
@@ -5026,78 +4836,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   calDaySel:     { backgroundColor: th.colors.accent },
   calDayToday:   { borderWidth: borders.thin, borderColor: th.tint.accent50 },
-  calDayText:    { ...textStyles.cardType, color: th.colors.text },
+  calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  // ── Billing entries ──
-  billEntry: {
-    backgroundColor: th.colors.surface,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    marginBottom:    spacing.xs,
-  },
-  billConcept: {
-    fontSize:   typography.sm,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  billDate: { fontSize: typography.xs, color: th.colors.muted, marginTop: 1 },
-  billAmount: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  // Pill style for existing entries (compact)
-  billStatusBtn: {
-    borderWidth:       borders.thin,
-    borderColor:       `${th.colors.orange}50`,
-    backgroundColor:   `${th.colors.orange}10`,
-    borderRadius:      th.radius.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   3,
-  },
-  // Taller variant for the ADD form toggle (matches input height)
-  billStatusBtnForm: {
-    borderWidth:       borders.thin,
-    borderColor:       `${th.colors.orange}50`,
-    backgroundColor:   `${th.colors.orange}10`,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.sm,
-  },
-  billStatusBtnPaid: {
-    borderColor:     `${th.colors.green}50`,
-    backgroundColor: `${th.colors.green}10`,
-  },
-  billStatusText: {
-    fontSize: typography.xs,
-    color:    th.colors.orange,
-  },
-  billStatusTextPaid: { color: th.colors.green },
-
   // ── Buttons ──
-  accentBtn: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-  },
-  accentBtnSmall: {
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.xs + 2,
-  },
-  accentBtnText: {
-    fontSize:      typography.base,
-    fontWeight:    typography.heavy,
-    color:         th.colors.bg,
-    letterSpacing: 1,
-  },
-  accentBtnTextSmall: { fontSize: typography.base, letterSpacing: 0.5 },
   ghostBtn: {
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
@@ -5105,10 +4847,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       th.colors.border,
     borderRadius:      th.radius.sm,
   },
-  ghostBtnText: {
-    fontSize: typography.base,
-    color:    th.colors.muted,
-  },
+  ghostBtnText: { ...textStyles.body, color: th.colors.muted },
 
   // ── Modals ──
   modalBackdrop: {
@@ -5131,16 +4870,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:           spacing.xl,
     gap:               spacing.md,
   },
-  modalTitle: {
-    fontSize:      typography.lg,
-    fontWeight:    typography.heavy,
-    color:         th.colors.text,
-    letterSpacing: 1,
-  },
-  modalSub: {
-    fontSize: typography.sm,
-    color:    th.colors.muted,
-  },
+  modalTitle: { ...textStyles.heading, color: th.colors.text },
+  modalSub:   { ...textStyles.label, color: th.colors.muted },
   // ── Import options ──
   importOption: {
     backgroundColor: th.colors.surface2,
@@ -5149,16 +4880,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
   },
-  importOptionLabel: {
-    fontSize:   typography.base,
-    fontWeight: typography.medium,
-    color:      th.colors.text,
-  },
-  importOptionDesc: {
-    fontSize:  typography.xs,
-    color:     th.colors.muted,
-    marginTop: 2,
-  },
+  importOptionLabel: { ...textStyles.body,  color: th.colors.text },
+  importOptionDesc:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
 
   // ── Context menu ──
   contextMenu: {
@@ -5177,6 +4900,6 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin,
     borderBottomColor: th.colors.border,
   },
-  contextMenuText: { fontSize: typography.base, color: th.colors.text },
+  contextMenuText: { ...textStyles.body, color: th.colors.text },
 });
 
