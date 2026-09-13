@@ -17,8 +17,8 @@ export function viewToRoute(view) {
   switch (view) {
     case 'home':
       return { screen: 'Main', params: { screen: 'Home' } };
-    case 'history':
-      return { screen: 'Main', params: { screen: 'History' } };
+    case 'myProgram':
+      return { screen: 'Main', params: { screen: 'MyProgram' } };
     case 'stats':
       return { screen: 'Main', params: { screen: 'Stats' } };
     case 'programPrint':

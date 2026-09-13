@@ -612,7 +612,7 @@
   },
   "tabs": {
     "session": "Session",
-    "history": "History",
+    "program": "Program",
     "progress": "Progress",
     "clients": "Clients",
     "templates": "Templates"
@@ -624,12 +624,10 @@
     "selectSession": "Select today's session",
     "program": "Program",
     "edit": "Edit",
-    "archive": "Archive",
     "week": "Week",
     "weekDayLetters": ["M", "T", "W", "T", "F", "S", "S"],
     "dayTrained": "trained",
     "sessions": "Your sessions",
-    "connections": "Connections",
     "restOfCycle": "Rest of the cycle",
     "weekProgress": "Week {{current}} of {{total}}",
     "stageDefault": "Stage {{n}}",
@@ -678,14 +676,9 @@
     "heroMetaLast": "last {{rel}}",
     "heroMetaActive": "{{done}} of {{total}} exercises · started {{ago}} ago",
     "rowDone": "Completed {{rel}} · {{count}} exercises",
-    "connected": "Connected",
-    "connect": "Connect",
-    "notConnected": "Not connected",
-    "reconnect": "Reconnect",
-    "pendingSync": "Sync pending",
-    "trainer": "Trainer",
     "startOutOfOrderTitle": "Start {{label}}?",
     "startOutOfOrderDesc": "It's not the next session in your cycle.",
+    "archive": "Archive",
     "archiveModal": {
       "title": "Archive program",
       "desc": "It will be saved in archives. You can restore it later.",
@@ -693,6 +686,16 @@
       "keepHistoryDesc": "The program is archived, session history is preserved",
       "clearHistory": "Clear history",
       "clearHistoryDesc": "All recorded sessions for this program will be deleted"
+    }
+  },
+  "myProgram": {
+    "stagesLabel": "Stages",
+    "stageConfirm": {
+      "title": "Switch to {{name}}?",
+      "body": "You will start training this stage.",
+      "bodyReset_one": "You will start training this stage and the current cycle resets: you will lose the session you have marked.",
+      "bodyReset_other": "You will start training this stage and the current cycle resets: you will lose the {{count}} sessions you have marked.",
+      "confirm": "Switch"
     }
   },
   "workout": {
@@ -858,15 +861,18 @@
   },
   "history": {
     "title": "HISTORY",
+    "filterTitle": "Filter",
+    "scopeLabel": "Scope",
+    "stagesLabel": "Stages",
+    "stagesCount_one": "{{count}} stage",
+    "stagesCount_other": "{{count}} stages",
     "currentProgram": "Current program",
     "all": "All",
-    "allStages": "All ✕",
     "noSessions": "No sessions for this filter.",
     "deleteConfirm": "Delete this session?",
     "deleteTitle": "Delete session",
     "noSessionsProgram": "No sessions recorded for this program.",
     "noSessionsEmpty": "Complete your first session to see it here.",
-    "noSessionsDate": "No sessions recorded on {{day}} of {{month}}.",
     "noteLabel": "Note",
     "noteTag": "📝 note",
     "modifiedTag": "＋ modified",
@@ -1527,6 +1533,7 @@
   "load": {
     "tabExercises": "Exercises",
     "tabLoad": "Load",
+    "tabHistory": "History",
     "load7d": "Load 7d",
     "vs28d": "vs 28d average",
     "monotony": "Monotony",

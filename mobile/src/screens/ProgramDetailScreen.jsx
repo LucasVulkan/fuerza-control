@@ -15,23 +15,19 @@
  * comparar y esas tres cosas desaparecen.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { isTrainerProgram } from '../utils/stageLocks';
 import { spacing, textStyles, borders, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { resolveColor } from '../themes';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import StageSelector from '../components/ui/StageSelector';
-import DragSheet from '../components/DragSheet';
-import { MenuRow } from '../components/ui/MenuList';
-import { MenuIcon } from '../components/ui/EditorIcons';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
@@ -324,27 +320,19 @@ export default function ProgramDetailScreen() {
   const { t, i18n }  = useTranslation();
   const insets       = useSafeAreaInsets();
   const navigation   = useNavigation();
-  const th           = useTheme();
   const styles       = useThemedStyles(makeStyles);
 
   const programs             = useStore((s) => s.programs);
-  const profile              = useStore((s) => s.profile);
   const clients              = useStore((s) => s.clients);
   const clientSync           = useStore((s) => s.clientSync);
   const sessionTemplates     = useStore((s) => s.sessionTemplates);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
-  const archiveProgram       = useStore((s) => s.archiveProgram);
-  const navigate             = useStore((s) => s.navigate);
 
   // Arranca en la etapa 1 a propósito: es un visualizador, y la etapa 1 es la
   // referencia de todo lo que se compara.
   const [stageIdx, setStageIdx] = useState(0);
-  // Las acciones del programa vivían en el "⋯" del pie de la tarjeta de la
-  // Home. Sin pie, viven aquí: es la pantalla del programa.
-  const [menuOpen,    setMenuOpen]    = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
 
   // El visualizador mira UN programa: el que le dan al abrirlo. Se congela en
   // el montaje y se suelta al salir. Releer el global en cada render era lo que
@@ -421,23 +409,6 @@ export default function ProgramDetailScreen() {
       ? t('programView.byTrainer', { name: clientSync.trainerName })
       : null;
 
-  // Archivar deja el programa sin sitio en la Home, así que la pantalla que lo
-  // mira tampoco tiene ya nada que mirar: se vuelve.
-  function handleArchive(clearHistory) {
-    archiveProgram(program.id, clearHistory);
-    setArchiveOpen(false);
-    navigation.goBack();
-  }
-
-  // Solo el dueño del programa activo lo toca: el entrenador mirando el de un
-  // cliente no (lo edita desde la ficha), y un programa ya archivado tampoco.
-  const isMineActive = !client && program?.id != null && program.id === profile.activeProgramId;
-  const canArchive   = isMineActive;
-  // El programa del entrenador no se edita aquí: la edición no sube por el
-  // canal (solo suben historial y contadores) y la siguiente actualización lo
-  // reemplaza entero, así que el botón prometía algo que no pasaba.
-  const canEdit      = isMineActive && !isTrainerProgram(program, clientSync);
-
   function exName(def, fallbackId) {
     if (!def) return fallbackId;
     return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
@@ -460,25 +431,13 @@ export default function ProgramDetailScreen() {
         onBack={() => navigation.goBack()}
         eyebrow={t('programView.eyebrow')}
         title={program.name}
-        right={canArchive
-          ? (ink) => (
-            <TouchableOpacity
-              onPress={() => setMenuOpen(true)}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel={t('home.moreOptions')}
-            >
-              <MenuIcon color={ink} />
-            </TouchableOpacity>
-          )
-          : undefined}
       />
 
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: canEdit ? spacing.lg : insets.bottom + spacing.xxl },
+          { paddingBottom: insets.bottom + spacing.xxl },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -563,64 +522,6 @@ export default function ProgramDetailScreen() {
 
       </ScrollView>
 
-      {/* ── Editar ── abajo y no en la cabecera: se edita después de haber visto
-          el programa, y un lápiz arriba sería una segunda puerta a la misma
-          pantalla. Pero FUERA del scroll: al final del contenido quedaba a un
-          programa entero de distancia, y llegar a editar costaba recorrer todas
-          las sesiones. Misma barra que el pie de `NextSessionScreen`. */}
-      {canEdit && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => navigate('programEditor')}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-          >
-            <Text style={styles.editBtnText}>{t('programView.editBtn')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {menuOpen && (
-        <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
-          <View style={styles.sheetGroup}>
-            <MenuRow
-              isFirst
-              isLast
-              label={t('home.archive')}
-              onPress={() => { setMenuOpen(false); setArchiveOpen(true); }}
-            />
-          </View>
-        </DragSheet>
-      )}
-
-      {archiveOpen && (
-        <DragSheet visible onClose={() => setArchiveOpen(false)} title={t('home.archiveModal.title')}>
-          <Text style={styles.sheetIntro}>
-            <Text style={styles.sheetIntroName}>{program.name}</Text>
-            {'\n'}{t('home.archiveModal.desc')}
-          </Text>
-          <View style={styles.sheetGroup}>
-            <MenuRow
-              isFirst
-              label={t('home.archiveModal.keepHistory')}
-              sub={t('home.archiveModal.keepHistoryDesc')}
-              subLines={0}
-              minHeight={62}
-              onPress={() => handleArchive(false)}
-            />
-            <MenuRow
-              isLast
-              label={t('home.archiveModal.clearHistory')}
-              labelColor={th.tint.red50}
-              sub={t('home.archiveModal.clearHistoryDesc')}
-              subLines={0}
-              minHeight={62}
-              onPress={() => handleArchive(true)}
-            />
-          </View>
-        </DragSheet>
-      )}
     </SafeAreaView>
   );
 }
@@ -651,34 +552,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // La barra se apoya en el fondo de pantalla con un filete de 1px, igual que
   // el pie de `NextSessionScreen`: el contenido pasa por debajo, no se funde.
-  footer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.md,
-    borderTopWidth:    borders.thin,
-    borderTopColor:    th.colors.border,
-    backgroundColor:   th.colors.bg,
-  },
-  // Relleno lima como el botón de EMPEZAR de la Home: es la acción principal de
-  // la pantalla y aquí no compite con ningún otro acento.
-  editBtn: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.md,
-    paddingVertical: 15,
-    alignItems:      'center',
-  },
-  editBtnText: { ...textStyles.button, color: th.colors.onAccent },
-
-  // Las mismas hojas que tenía la Home cuando el archivado colgaba del pie de
-  // la tarjeta.
-  sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },
-  sheetIntro: {
-    ...textStyles.body,
-    color:         th.colors.mutedLight,
-    lineHeight:    18,
-    paddingBottom: spacing.md,
-  },
-  sheetIntroName: { color: th.colors.text },
-
   diffLine:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 17 },
 
   // Tarjeta de volumen

@@ -9,7 +9,7 @@ import { useStore }        from '../../store/useStore';
 import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
-import HistoryScreen    from '../screens/HistoryScreen';
+import MyProgramScreen  from '../screens/MyProgramScreen';
 import StatsScreen      from '../screens/StatsScreen';
 import ProgramScreen    from '../screens/ProgramScreen';
 import ClientsScreen    from '../screens/ClientsScreen';
@@ -63,6 +63,10 @@ function MainTabs() {
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
+  // Etapa terminada esperando decisión: el punto del tab de Programa.
+  const stageAdvancePending = useStore((s) =>
+    !!s.programs?.[s.profile?.activeProgramId]?.stageAdvancePending
+  );
   const pendingClients = useStore((s) =>
     Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
   );
@@ -92,10 +96,19 @@ function MainTabs() {
         component={HomeScreen}
         options={{ tabBarLabel: t('tabs.session'),   tabBarIcon: tabIcon('barbell') }}
       />
+      {/* El programa vive aquí y no al final del scroll de Sesiones. El punto
+          avisa de que hay una etapa terminada esperando — el aviso completo se
+          queda en Sesiones, que es lo que decide qué entrenas mañana
+          (docs/specs/tab-programa.md §4.4). */}
       <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{ tabBarLabel: t('tabs.history'),   tabBarIcon: tabIcon('time') }}
+        name="MyProgram"
+        component={MyProgramScreen}
+        options={{
+          tabBarLabel: t('tabs.program'),
+          tabBarIcon:  tabIcon('layers'),
+          tabBarBadge: stageAdvancePending ? '' : undefined,
+          tabBarBadgeStyle: { backgroundColor: th.colors.accent, minWidth: 8, maxHeight: 8, borderRadius: 4 },
+        }}
       />
       <Tab.Screen
         name="Stats"
@@ -118,7 +131,7 @@ function MainTabs() {
         <Tab.Screen
           name="Program"
           component={ProgramScreen}
-          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('layers') }}
+          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('copy') }}
         />
       )}
     </Tab.Navigator>

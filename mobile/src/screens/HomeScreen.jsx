@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Text } from '../components/ui/Text';
-import Svg, { Path, G } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 // Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
 // del acordeón de `SessionCard`; ningún `Animated.Value` persiguiendo alturas
@@ -12,52 +12,28 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, stageDaysAt } from '../utils/stageProgress';
+import { stageDaysAt } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
-import { MenuRow, Status, RowIcon } from '../components/ui/MenuList';
-import ProgramCard from '../components/ui/ProgramCard';
+import { MenuRow } from '../components/ui/MenuList';
+import NoProgram from '../components/ui/NoProgram';
 import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
 import { isStageLocked } from '../utils/stageLocks';
-import { LockIcon } from '../components/ui/EditorIcons';
-import { DocSheet } from '../components/ui/DocPoints';
 import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import { getWeekStatuses } from '../utils/weekProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
 import { targetLabel, exerciseName } from '../utils/prescription';
 import { isExerciseDone } from '../utils/exerciseStatus';
-import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
-import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
 // token propio (mismo caso que el #81a71e del banner, ver theme.js).
 const LIMA = '#b8ff00';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-/**
- * Formats a Drive backup timestamp into a short, precise relative string.
- * Uses sub-hour precision for recent backups.
- */
-function formatBackupTime(isoString) {
-  if (!isoString) return null;
-  const ms      = Date.now() - new Date(isoString).getTime();
-  const mins    = Math.floor(ms / 60000);
-  const hours   = Math.floor(ms / 3600000);
-  const days    = Math.floor(ms / 86400000);
-  if (mins  <  1) return 'ahora';
-  if (mins  < 60) return `${mins}min`;
-  if (hours < 24) return `${hours}h`;
-  if (days  <  2) return 'ayer';
-  if (days  <  7) return `${days}d`;
-  // Older than a week: show short date
-  const d = new Date(isoString);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
-}
 
 function daysSince(ts) {
   if (!ts) return null;
@@ -80,56 +56,6 @@ function elapsedShort(startedAt) {
   if (!startedAt) return null;
   const mins = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
   return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h`;
-}
-
-/**
- * Global "week" counter = total sessions logged for this program / sessions-per-cycle.
- * "Semana" in this app = one complete rotation through the session templates.
- */
-function computeWeekNum(program) {
-  // `totalWeeksCompleted` sube en el programa cada vez que se cierra un ciclo
-  // completo, sea cual sea la etapa; cambiar de etapa no lo reinicia.
-  //
-  // Aquí había una segunda rama que contaba ciclos desde el workoutLog para
-  // programas SIN etapas, leyendo el espejo `program.days`. Todo programa tiene
-  // etapas, así que era inalcanzable.
-  return (program.totalWeeksCompleted ?? 0) + 1;
-}
-
-
-/**
- * Data for the stage block of the program card (null when there is nothing
- * worth showing).
- *
- * `totalWeeks` is null when the stage has no cycle limit
- * (`durationWeeks: null`), and the caller must not try to count towards it.
- */
-function computeStageInfo(program, t) {
-  const stages = program.stages ?? [];
-  if (stages.length === 0) return null;
-  const stageIdx         = program.currentStageIndex ?? 0;
-  const stage            = stages[stageIdx];
-  if (!stage) return null;
-  const totalWeeks       = stage.durationWeeks ?? null;
-  // Una sola etapa y sin límite = programa sin periodizar. No hay nada que
-  // contar ni total para la tira de ciclos, así que el bloque no se pinta —
-  // que es lo que se veía antes de unificar el modelo, cuando un programa así
-  // simplemente no tenía etapas.
-  if (stages.length === 1 && totalWeeks == null) return null;
-  // A week is a closed rotation, not a session count — repeating a session must
-  // not move this. See `docs/specs/stage-locks.md` §3.
-  const cyclesDone       = program.stageWeeksCompleted ?? 0;
-  const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
-  // "Estoy en el ciclo N" y "he terminado los N" caen los dos en el mismo
-  // `weekInStage` por el clamp, que es justo lo que quieren los puntos de la
-  // tarjeta: terminada la etapa, se encienden todos.
-  const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
-  return {
-    stageLabel:    defaultLabel,
-    stageName:     stage.name ?? defaultLabel,
-    weekInStage,
-    totalWeeks,
-  };
 }
 
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
@@ -378,63 +304,6 @@ function startCta(t, label, { active, done }) {
   return label ? t('home.btnStartSession', { label }) : t('home.btnStart');
 }
 
-// ── Hoja de elegir etapa ───────────────────────────────────────────────────────
-//
-// Era un `Modal` propio con su backdrop, su título y su "Cancelar". Pasa a
-// `DragSheet` + las filas de `ui/MenuList`, que es lo que manda §9 de
-// docs/UI-MIGRATION.md: un solo bottom-sheet en toda la app y un solo tipo de
-// fila. `background` en `bg` porque las filas van en `surface` y sobre la hoja
-// (también `surface`) se fundirían. La salida es la propia cabecera de la hoja,
-// así que no hay botón de cancelar.
-//
-// Archivar el programa vivía aquí al lado, colgando del "⋯" del pie de la
-// tarjeta. Sin pie, se mudó al "⋯" de la cabecera del visualizador
-// (`ProgramDetailScreen`), que es donde están ahora todas las acciones del
-// programa.
-
-function StagePickerSheet({ program, onSelect, onClose }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const clientSync = useStore((s) => s.clientSync);
-  const currentIdx = program.currentStageIndex ?? 0;
-  return (
-    <DragSheet visible onClose={onClose} title={t('home.selectStage')}>
-      <View style={styles.sheetGroup}>
-        {program.stages.map((stage, idx) => {
-          const isActive = idx === currentIdx;
-          const locked   = isStageLocked(program, idx, clientSync);
-          return (
-            <MenuRow
-              key={stage.id ?? idx}
-              isFirst={idx === 0}
-              isLast={idx === program.stages.length - 1}
-              label={stage.name}
-              labelColor={isActive ? th.colors.accent : undefined}
-              sub={locked
-                ? t('home.stageLockedShort')
-                : stage.durationWeeks == null
-                  ? t('home.stageMetaOpen', { sessions: stage.days?.length ?? 0 })
-                  : t('home.stageMeta',     { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
-              minHeight={62}
-              disabled={locked}
-              onPress={() => onSelect(idx)}
-              // La etapa en curso lleva el mismo check lima que las frecuencias
-              // de Drive. El hueco vacío de las demás mata el chevron de
-              // `MenuRow`: aquí se elige, no se navega.
-              control={isActive
-                ? <CheckIcon size={16} color={th.colors.accent} />
-                : locked
-                  ? <LockIcon size={13} color={th.colors.muted} />
-                  : <View style={styles.rowControlSpacer} />}
-            />
-          );
-        })}
-      </View>
-    </DragSheet>
-  );
-}
-
 // ── Iconos ────────────────────────────────────────────────────────────────────
 
 function CheckIcon({ size = 16, color }) {
@@ -450,11 +319,11 @@ function CheckIcon({ size = 16, color }) {
 // `sessionPlan`: la pantalla no compone la frase, solo decide si hay hueco para
 // ella (sin ciclo que contar, el subtítulo viene a null y no se pinta nada).
 
-function SectionHeader({ label, count, dim }) {
+function SectionHeader({ label, count }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.secHeader}>
-      <Text style={[styles.secHeaderLabel, dim && styles.secHeaderLabelDim]}>{label}</Text>
+      <Text style={styles.secHeaderLabel}>{label}</Text>
       {!!count && <Text style={styles.secHeaderCount}>{count}</Text>}
     </View>
   );
@@ -466,11 +335,8 @@ export default function HomeScreen() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t }      = useTranslation();
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles     = useThemedStyles(makeStyles);
 
-  const [stagePicker, setStagePicker] = useState(false);
-  const [cycleDoc,    setCycleDoc]    = useState(false);
   const [freeSheet,   setFreeSheet]   = useState(false);
   const [freeTpls,    setFreeTpls]    = useState(false);
   // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
@@ -491,13 +357,9 @@ export default function HomeScreen() {
   const startFreeSession     = useStore((s) => s.startFreeSession);
   const freeSessionPresets   = useStore((s) => s.freeSessionPresets);
   const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
-  const navigate             = useStore((s) => s.navigate);
-  const setPrintingProgram   = useStore((s) => s.setPrintingProgram);
   const clientSync           = useStore((s) => s.clientSync);
   const advanceStage         = useStore((s) => s.advanceStage);
   const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
-  const setCurrentStage      = useStore((s) => s.setCurrentStage);
-  const driveBackup          = useStore((s) => s.driveBackup);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
 
@@ -551,60 +413,6 @@ export default function HomeScreen() {
     );
   };
 
-  // ── Los 3 datos de la tarjeta de programa ────────────────────────────────────
-  // Las mismas tres cifras que el entrenador ve del cliente, calculadas aquí del
-  // lado del atleta: es la única lógica nueva de la convergencia, y el efecto
-  // secundario es bueno — se ve de sí mismo exactamente lo que ven de él, sin
-  // panel oculto (spec §4.3).
-  const sessionsPerCycle = activeProgram ? Math.max(1, stageDays(activeProgram).length) : 0;
-
-  const adherence = useMemo(() => computeAdherence({
-    sessions: workoutLog,
-    sessionsPerCycle,
-  }), [workoutLog, sessionsPerCycle]);
-
-  const adherence4w = useMemo(
-    () => adherencePct({ sessions: workoutLog, sessionsPerCycle }),
-    [workoutLog, sessionsPerCycle],
-  );
-
-  // Carga media: media de carga externa de los últimos 7 días frente a la de los
-  // 28, en %. Con menos de dos semanas de historial no hay contra qué comparar.
-  const loadPct = useMemo(() => {
-    if (workoutLog.length < 2) return null;
-    const days = dailySeries(sessionLoads(workoutLog, allExercises));
-    if (days.length < 14) return null;
-    const ext = days.map((d) => d.external ?? 0);
-    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const m28 = avg(ext.slice(-28));
-    if (!m28) return null;
-    return Math.round((avg(ext.slice(-7)) / m28 - 1) * 100);
-  }, [workoutLog, allExercises]);
-
-  // ── Conexiones ───────────────────────────────────────────────────────────────
-  const driveConnected  = driveBackup.enabled && !driveBackup.needsReconnect;
-  const driveWarn       = driveBackup.enabled && driveBackup.needsReconnect;
-  const driveBackupRel  = formatBackupTime(driveBackup.lastBackup);
-  const driveSub        = driveWarn
-    ? t('home.reconnect')
-    : driveConnected
-      ? [driveBackup.email, driveBackupRel].filter(Boolean).join(' · ')
-      : t('home.notConnected');
-
-  const trainerOk        = !!clientSync.slotId && !clientSync.syncErrorAt && !clientSync.pendingUpload;
-  const trainerWarn      = !!clientSync.slotId && (!!clientSync.syncErrorAt || clientSync.pendingUpload);
-  const trainerTitle     = (trainerOk || trainerWarn)
-    ? (clientSync.trainerName ?? t('home.trainer'))
-    : t('home.trainer');
-  // La etiqueta de la fila es el NOMBRE del entrenador cuando lo hay, así que
-  // el subtítulo dice el papel; sin nombre, la etiqueta ya es "Entrenador" y
-  // repetirlo debajo no diría nada.
-  const trainerSub       = trainerWarn
-    ? t('home.pendingSync')
-    : trainerOk
-      ? (clientSync.trainerName ? t('home.trainer') : t('home.connected'))
-      : t('home.notConnected');
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
@@ -623,9 +431,6 @@ export default function HomeScreen() {
           const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
           const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
-          const stageInfo                  = computeStageInfo(activeProgram, t);
-          const weekNum                    = computeWeekNum(activeProgram);
-
           // Current session templates in cycle order.
           const currentDays = stageDaysAt(activeProgram, stageIdx);
           const days = currentDays
@@ -636,9 +441,6 @@ export default function HomeScreen() {
             }))
             .filter((d) => d.template);
           const byId = new Map(days.map((d) => [d.templateId, d]));
-
-          // Trainer name — from the first session template that has one ("por …").
-          const programTrainerName = days.map((d) => d.template?.trainerName).find(Boolean) ?? null;
 
           // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
           const plan = sessionPlan({
@@ -830,116 +632,15 @@ export default function HomeScreen() {
                 </Reanimated.View>
               </View>
 
-              {/* ── El programa, al final ── la misma tarjeta que la ficha de
-                  cliente. Aquí no lleva pie: pulsar el nombre abre el
-                  visualizador (y de ahí se edita y se archiva) y pulsar la
-                  etapa abre el selector. */}
-              <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.programBlock}>
-                <ProgramCard
-                  variant="self"
-                  name={activeProgram.name}
-                  cycleNum={weekNum}
-                  trainerName={programTrainerName}
-                  stage={stageInfo && {
-                    label:       stageInfo.stageLabel,
-                    name:        stageInfo.stageName,
-                    weekInStage: stageInfo.weekInStage,
-                    totalWeeks:  stageInfo.totalWeeks,
-                  }}
-                  // La barra pinta el PROGRAMA: un tramo por etapa, de ancho
-                  // proporcional a sus ciclos. La etapa abierta no tiene techo
-                  // y la tarjeta le da el peso mínimo.
-                  stages={activeProgram.stages?.map((s) => ({ cycles: s.durationWeeks }))}
-                  stageIdx={stageIdx}
-                  adherence={adherence4w}
-                  adherenceColor={requiresAttention(adherence.status) ? adherenceColor(th, adherence.status) : null}
-                  pace={adherence.status === STATUS.NO_DATA ? null : adherence.recentPerWeek}
-                  loadPct={loadPct}
-                  // Se fija SIEMPRE el programa que se va a mirar: `_viewingProgramId`
-                  // es global, y entrar sin fijarlo dejaba ver el último que se abrió
-                  // (una plantilla, el de un cliente) en vez del propio.
-                  onPress={() => setPrintingProgram(activeProgram.id)}
-                  // Los dos accesos que vivían en el banner se mudan a las
-                  // piezas equivalentes de la tarjeta: la etiqueta CICLO abre la
-                  // ficha del apartado (es el concepto que más cuesta y este es
-                  // el sitio donde todo el mundo lo ve a diario) y el bloque de
-                  // etapa abre el selector.
-                  onCycleInfo={() => setCycleDoc(true)}
-                  onStagePress={hasStages ? () => setStagePicker(true) : undefined}
-                />
-              </Reanimated.View>
             </>
           );
         })() : (
-          /* ── Empty state ── */
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🏋️</Text>
-            <Text style={styles.emptyText}>
-              {t('home.noActiveProgram')}
-            </Text>
-            <TouchableOpacity
-              style={styles.newProgramBtn}
-              onPress={() => {
-                if (clientSync?.slotId) {
-                  Alert.alert(
-                    '¿Crear nuevo programa?',
-                    'Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado.',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Continuar', style: 'destructive', onPress: () => navigate('onboarding') },
-                    ],
-                  );
-                } else {
-                  navigate('onboarding');
-                }
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.newProgramBtnText}>{t('home.newProgram')}</Text>
-            </TouchableOpacity>
-          </View>
+          <NoProgram />
         )}
 
-        {/* ── CONEXIONES ── la otra anatomía de la MISMA lista, así que la
-            pantalla acaba con un solo tipo de lista repetido dos veces. ── */}
-        <View>
-          <SectionHeader label={t('home.connections').toUpperCase()} dim />
-          <View style={styles.group}>
-            <MenuRow
-              isFirst
-              icon={<RowIcon><G><Path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></G></RowIcon>}
-              label="Drive"
-              sub={driveSub}
-              status={(
-                <Status
-                  tone={driveConnected ? 'on' : driveWarn ? 'warn' : 'off'}
-                  color={driveConnected ? th.colors.green : undefined}
-                  label={driveWarn ? t('home.reconnect') : driveConnected ? t('home.connected') : t('home.connect')}
-                />
-              )}
-              onPress={() => navigation.navigate('DriveBackup')}
-            />
-            <MenuRow
-              isLast
-              icon={<RowIcon><G><Path d="M16 20v-2a4 4 0 0 0-8 0v2M12 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" /></G></RowIcon>}
-              label={trainerTitle}
-              sub={trainerSub}
-              status={(
-                <Status
-                  tone={trainerOk ? 'on' : trainerWarn ? 'warn' : 'off'}
-                  color={trainerOk ? th.colors.blue : undefined}
-                  label={trainerWarn ? t('home.pendingSync') : trainerOk ? t('home.connected') : t('home.connect')}
-                />
-              )}
-              onPress={() => navigation.navigate('TrainerConnection')}
-            />
-          </View>
-        </View>
       </ScrollView>
 
       {/* Modals */}
-      <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
-
       {/* ── Sesión libre: en blanco o desde plantilla (§7.2) ── */}
       {freeSheet && (
         <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
@@ -993,18 +694,6 @@ export default function HomeScreen() {
           </View>
         </DragSheet>
       )}
-      {stagePicker && (activeProgram?.stages?.length ?? 0) > 0 && (
-        <StagePickerSheet
-          program={activeProgram}
-          onSelect={(idx) => {
-            if (idx !== (activeProgram.currentStageIndex ?? 0)) {
-              setCurrentStage(activeProgram.id, idx);
-            }
-            setStagePicker(false);
-          }}
-          onClose={() => setStagePicker(false)}
-        />
-      )}
     </View>
   );
 }
@@ -1036,8 +725,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // SESIONES es el rótulo de la zona de entreno y va en `text`; los demás
   // rótulos de la pantalla se quedan en `mutedLight`.
-  secHeaderLabel:    { ...textStyles.caps, color: th.colors.text },
-  secHeaderLabelDim: { color: th.colors.mutedLight },
+  secHeaderLabel: { ...textStyles.caps, color: th.colors.text },
   // El mismo cuerpo que el meta del hero ("5 EJERCICIOS · ~55 MIN · …"): son el
   // mismo tipo de dato, contexto en mayúsculas muy trackeado. Antes iba a 9 y
   // en SemiBold, medio punto por debajo de todo lo demás.

@@ -612,7 +612,7 @@
   },
   "tabs": {
     "session": "Sesión",
-    "history": "Historial",
+    "program": "Programa",
     "progress": "Progresión",
     "clients": "Clientes",
     "templates": "Plantillas"
@@ -624,12 +624,10 @@
     "selectSession": "Selecciona sesión de hoy",
     "program": "Programa",
     "edit": "Editar",
-    "archive": "Archivar",
     "week": "Semana",
     "weekDayLetters": ["L", "M", "X", "J", "V", "S", "D"],
     "dayTrained": "entrenaste",
     "sessions": "Tus sesiones",
-    "connections": "Conexiones",
     "restOfCycle": "Resto del ciclo",
     "weekProgress": "Semana {{current}} de {{total}}",
     "stageDefault": "Etapa {{n}}",
@@ -678,14 +676,9 @@
     "heroMetaLast": "última {{rel}}",
     "heroMetaActive": "{{done}} de {{total}} ejercicios · empezada hace {{ago}}",
     "rowDone": "Completada {{rel}} · {{count}} ejercicios",
-    "connected": "Conectado",
-    "connect": "Conectar",
-    "notConnected": "Sin conectar",
-    "reconnect": "Reconectar",
-    "pendingSync": "Sync pendiente",
-    "trainer": "Entrenador",
     "startOutOfOrderTitle": "¿Empezar {{label}}?",
     "startOutOfOrderDesc": "No es la siguiente sesión de tu ciclo.",
+    "archive": "Archivar",
     "archiveModal": {
       "title": "Archivar programa",
       "desc": "Se guardará en archivados. Podrás restaurarlo después.",
@@ -693,6 +686,16 @@
       "keepHistoryDesc": "El programa se archiva, el historial de sesiones se conserva",
       "clearHistory": "Borrar historial",
       "clearHistoryDesc": "Se eliminarán todas las sesiones registradas de este programa"
+    }
+  },
+  "myProgram": {
+    "stagesLabel": "Etapas",
+    "stageConfirm": {
+      "title": "¿Cambiar a {{name}}?",
+      "body": "Pasarás a entrenar esta etapa.",
+      "bodyReset_one": "Pasarás a entrenar esta etapa y se reiniciará el ciclo en curso: perderás la sesión que llevas marcada.",
+      "bodyReset_other": "Pasarás a entrenar esta etapa y se reiniciará el ciclo en curso: perderás las {{count}} sesiones que llevas marcadas.",
+      "confirm": "Cambiar"
     }
   },
   "workout": {
@@ -858,15 +861,18 @@
   },
   "history": {
     "title": "HISTORIAL",
+    "filterTitle": "Filtrar",
+    "scopeLabel": "Ámbito",
+    "stagesLabel": "Etapas",
+    "stagesCount_one": "{{count}} etapa",
+    "stagesCount_other": "{{count}} etapas",
     "currentProgram": "Programa actual",
     "all": "Todo",
-    "allStages": "Todas ✕",
     "noSessions": "Sin sesiones para este filtro.",
     "deleteConfirm": "¿Eliminar esta sesión?",
     "deleteTitle": "Eliminar sesión",
     "noSessionsProgram": "No hay sesiones registradas para este programa.",
     "noSessionsEmpty": "Completa tu primera sesión para verla aquí.",
-    "noSessionsDate": "No hay sesiones registradas el {{day}} de {{month}}.",
     "noteLabel": "Nota",
     "noteTag": "📝 nota",
     "modifiedTag": "＋ modificado",
@@ -1527,6 +1533,7 @@
   "load": {
     "tabExercises": "Ejercicios",
     "tabLoad": "Carga",
+    "tabHistory": "Historial",
     "load7d": "Carga 7d",
     "vs28d": "vs media 28d",
     "monotony": "Monoton.",

@@ -30,6 +30,7 @@ import {
 } from '../../utils/trainingLoad';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import LoadCalendar from './LoadCalendar';
 import SegmentedControl from '../ui/SegmentedControl';
 import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 
@@ -413,6 +414,11 @@ export default function LoadTab({ header, baseLog, allExercises, fallbackBodyWei
 
   return scroll(
     <>
+      {/* ── El mes ── cada día teñido por su carga. Va ENCIMA del selector de
+          periodo a propósito: el selector no le afecta —el calendario siempre
+          enseña un mes y se navega con sus flechas— y debajo parecería que sí. */}
+      <LoadCalendar />
+
       <View style={styles.controlRow}>
         <View style={styles.segmentedWrap}>
           <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />

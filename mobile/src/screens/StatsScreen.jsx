@@ -1,5 +1,6 @@
 /**
- * StatsScreen — wraps ProgressTab with AppHeader + store data.
+ * StatsScreen — el tab de Progresión: `AppHeader` + los datos del store, y el
+ * panel de tres segmentos (Ejercicios / Carga / Historial).
  */
 
 import { useMemo } from 'react';
@@ -10,6 +11,7 @@ import { useStore }    from '../../store/useStore';
 import { programTemplateIds as programTemplateIds_ } from '../utils/clientLogs';
 import AppHeader       from '../components/AppHeader';
 import ProgressPanel   from '../components/stats/ProgressPanel';
+import HistoryList     from '../components/history/HistoryList';
 import { useThemedStyles } from '../useTheme';
 
 export default function StatsScreen() {
@@ -40,6 +42,9 @@ export default function StatsScreen() {
         programTemplateIds={programTemplateIds}
         allExercises={allExercises}
         fallbackBodyWeight={profile.bodyWeight ?? null}
+        // El tercer segmento sólo aquí: la ficha de cliente comparte este panel
+        // y ya tiene su propio tab de Historial.
+        history={<HistoryList />}
       />
     </View>
   );
