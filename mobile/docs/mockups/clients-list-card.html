@@ -13,7 +13,7 @@
 
   /* ══════ TOKENS FormaFit (src/themes.js) ══════
      bg #151515 · surface #1f1f1f · surface2 #272727 · text #e6e6e6
-     mutedLight #949494 (era #818181) · muted #4d4d4d · accent #aae216 · onAccent #000
+     mutedLight #949494 (era #818181) · muted #585858 (era #4d4d4d) · accent #aae216 · onAccent #000
      orange #fb923c · red #ff0900 · redText #ff5e58 · blue #4c85ff
      radius xs4 sm6 md10 lg18 · space xs2 xs2·4 sm6 sm2·8 md10 lg15 xl20
      tipografía: itemTitleQuiet 700/16/-0.2 · bodyStrong 700/14 (en text) · labelStrong 800/12
@@ -63,7 +63,7 @@
   .caviso { display: flex; align-items: center; gap: 6px; }
   .cdot { width: 6px; height: 6px; border-radius: 3px; background: #fb923c; flex-shrink: 0; }
   .cavisotx { font: 800 12px Inter; color: #fb923c; }
-  .caviso.none .cdot { background: #4d4d4d; }
+  .caviso.none .cdot { background: #585858; }
   .caviso.none .cavisotx { color: #949494; }
   .caviso.blue .cdot { background: #4c85ff; }
   .caviso.blue .cavisotx { color: #4c85ff; }
@@ -88,7 +88,7 @@
 
   /* puntos de ciclo — sólo en la columna "antes" */
   .cdots { flex: 1; display: flex; align-items: center; gap: 6px; }
-  .cdots i { width: 6px; height: 6px; border-radius: 3px; background: #4d4d4d; }
+  .cdots i { width: 6px; height: 6px; border-radius: 3px; background: #585858; }
   .cdots i.on { background: #aae216; }
 
   /* ══════ PILDORAS DE ATENCIÓN ══════ */
@@ -389,18 +389,21 @@
 
 <p class="sub" style="margin-top:26px">
   <b style="color:#ff5e58">Y tiene un hermano peor.</b> <code style="color:#ff5e58">muted</code>
-  (#4d4d4d) da <b>1,95:1</b> sobre surface —invisible— y lo usan <b>108</b> estilos de texto de la
-  app. Míralos seguidos sobre la misma tarjeta:
+  daba <b>1,95:1</b> sobre surface —invisible— y lo usan <b>108</b> estilos de texto de la app. Se
+  ha subido un paso corto, a #585858 (2,32:1): un respiro, <b>no</b> el arreglo. Sigue siendo el
+  tono de punto, línea y desactivado. Míralos seguidos sobre la misma tarjeta:
 </p>
 <div class="ramp" style="width:774px">
-  <div class="band b2"><div class="sw" style="background:#4d4d4d"></div><div class="t" style="color:#4d4d4d">muted #4d4d4d — “5 ejercicios · 55 min · ayer”</div><div class="r ko">1,95</div></div>
+  <div class="band b2"><div class="sw" style="background:#4d4d4d"></div><div class="t" style="color:#4d4d4d">muted, antes #4d4d4d — “5 ejercicios · 55 min · ayer”</div><div class="r ko">1,95</div></div>
+  <div class="band b2"><div class="sw" style="background:#585858"></div><div class="t" style="color:#585858">muted, ahora #585858 — “5 ejercicios · 55 min · ayer”</div><div class="r ko">2,32</div></div>
   <div class="band b2"><div class="sw" style="background:#818181"></div><div class="t" style="color:#818181">mutedLight #818181 — “5 ejercicios · 55 min · ayer”</div><div class="r ko">4,23</div></div>
   <div class="band b2"><div class="sw" style="background:#949494"></div><div class="t" style="color:#949494">mutedLight aplicado #949494 — “5 ejercicios · 55 min · ayer”</div><div class="r ok">5,43</div></div>
   <div class="band b2"><div class="sw" style="background:#e6e6e6"></div><div class="t" style="color:#e6e6e6">text #e6e6e6 — “5 ejercicios · 55 min · ayer”</div><div class="r ok">13,2</div></div>
 </div>
 <p class="note" style="max-width:774px">Entre 4,9 y 13,2 caben de sobra tres niveles de gris. El
-  cuarto —<b>muted</b> como letra— no cabe en ninguna paleta oscura: ése es color de punto, de línea
-  y de desactivado, no de texto.</p>
+  cuarto —<b>muted</b> como letra— no cabe en ninguna paleta oscura por mucho que se suba: ése es
+  color de punto, de línea y de desactivado. Los 108 estilos de texto que lo usan siguen pendientes
+  de repasar uno a uno, y eso toca media app.</p>
 
 <!-- ══════════════════════════════════════════════════════════════ -->
 <h2>5 · Lo demás <span class="tagfix">A · B · C APLICADOS</span>

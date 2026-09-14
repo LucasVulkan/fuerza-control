@@ -1818,7 +1818,8 @@
       "sortName": "Name A–Z",
       "clear": "Clear filters"
     },
-    "searchPlaceholder": "Search client...",
+    "searchPlaceholder": "Search client…",
+    "searchTagPlaceholder": "Search tag…",
     "filterActive": "Active",
     "filterInactive": "Inactive",
     "filterAll": "All",

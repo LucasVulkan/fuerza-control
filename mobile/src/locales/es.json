@@ -1818,7 +1818,8 @@
       "sortName": "Nombre A–Z",
       "clear": "Limpiar filtros"
     },
-    "searchPlaceholder": "Buscar cliente...",
+    "searchPlaceholder": "Buscar cliente…",
+    "searchTagPlaceholder": "Buscar etiqueta…",
     "filterActive": "Activos",
     "filterInactive": "Inactivos",
     "filterAll": "Todos",

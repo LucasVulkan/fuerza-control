@@ -144,7 +144,11 @@ const formaFitColors = {
   // meta de la app (234 estilos) a 12 px. #949494 da 5.43 y 4.92 sin acercarse
   // a `text` (13.2:1), así que la jerarquía de color sigue intacta.
   mutedLight: '#949494',
-  muted:      '#4d4d4d',
+  // Subido un paso corto desde #4d4d4d: 1.95:1 sobre `surface` era un gris que
+  // en pantalla no estaba. A #585858 son 2.32:1 — sigue siendo el tono de punto,
+  // línea y desactivado, y sigue MUY lejos de AA, así que los sitios que hoy lo
+  // usan como color de texto siguen mal. Esto es un respiro, no el arreglo.
+  muted:      '#585858',
   muted2:     '#4d4d4d',
   accent:     '#aae216',
   onAccent:   '#000000',

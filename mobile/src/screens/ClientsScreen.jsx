@@ -1480,20 +1480,6 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
   );
 }
 
-// ── Sync time helper ───────────────────────────────────────────────────────────
-
-function syncAgo(isoStr) {
-  if (!isoStr) return null;
-  const ms = Date.now() - new Date(isoStr).getTime();
-  const m  = Math.floor(ms / 60000);
-  if (m < 1)  return 'ahora';
-  if (m < 60) return `hace ${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h}h`;
-  const d = Math.floor(h / 24);
-  return `hace ${d}d`;
-}
-
 // ── Client list card ───────────────────────────────────────────────────────────
 
 /**
@@ -3090,7 +3076,7 @@ export default function ClientsScreen() {
             </Svg>
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar cliente…"
+              placeholder={t('clients.searchPlaceholder')}
               placeholderTextColor={th.colors.mutedLight}
               value={search}
               onChangeText={setSearch}
@@ -3364,7 +3350,7 @@ export default function ClientsScreen() {
                 </Svg>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Buscar etiqueta…"
+                  placeholder={t('clients.searchTagPlaceholder')}
                   placeholderTextColor={th.colors.mutedLight}
                   value={tagSearchText}
                   onChangeText={setTagSearchText}
