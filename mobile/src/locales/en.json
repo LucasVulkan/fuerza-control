@@ -221,7 +221,7 @@
       "caveat": "This is estimated performance, not measured strength: it rests entirely on the estimated 1RM. Changing exercises mid-period moves the number even if your performance doesn't change."
     },
     "loadTrend": {
-      "name": "Improvement",
+      "name": "Trend",
       "what": "Tells you whether the weights you move are going up or down on average during the period, combining all your exercises into one percentage.",
       "formula": "trend line (linear regression) over each exercise's sessions; the percentage is the change between its ends, averaged across exercises",
       "rules": "Every exercise carries the same weight in the average, regardless of how many sessions it has.",
@@ -1375,7 +1375,7 @@
     "metricVolume": "Vol",
     "currentProgram": "Current program",
     "statSessions": "Sessions",
-    "statImprovement": "Improvement",
+    "statTrend": "Trend",
     "statVolume": "Volume",
     "thisWeek": "{{count}} this week",
     "lastSessionShort": "last ses.",

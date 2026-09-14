@@ -961,7 +961,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statImprovement')}</Text>
+                  <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statTrend')}</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </TouchableOpacity>
@@ -1344,7 +1344,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statImprovement')}</Text>
+            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statTrend')}</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}

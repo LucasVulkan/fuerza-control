@@ -1375,7 +1375,7 @@
     "metricVolume": "Vol",
     "currentProgram": "Programa actual",
     "statSessions": "Sesiones",
-    "statImprovement": "Mejora",
+    "statTrend": "Mejora",
     "statVolume": "Volumen",
     "thisWeek": "{{count}} esta semana",
     "lastSessionShort": "últ. ses.",
