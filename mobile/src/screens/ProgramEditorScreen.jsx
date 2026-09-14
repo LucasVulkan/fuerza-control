@@ -557,7 +557,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
-  sesLetter: { ...textStyles.title, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  sesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
   sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
   sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 

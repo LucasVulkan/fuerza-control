@@ -188,12 +188,14 @@ export default function HistoryList() {
           { paddingBottom: spacing.xxl + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <SessionCard
             session={item}
             onDelete={deleteLogEntry}
             volumeDelta={deltas.get(item.id) ?? null}
             style={styles.cardGutter}
+            isFirst={index === 0}
+            isLast={index === filtered.length - 1}
           />
         )}
         ListEmptyComponent={
@@ -315,8 +317,12 @@ const makeStyles = (th) => StyleSheet.create({
 
   // List — la lista va a sangre (el calendario de la cabecera lleva sus propios
   // bordes de lado a lado), así que el margen lateral lo pone cada tarjeta.
+  // Bloque agrupado, como la lista de Progreso/Ejercicios: 2 de hueco y radios
+  // por posición (los pone `SessionCard` con `isFirst`/`isLast`). Que las filas
+  // crezcan al desplegarse no lo impide — la abierta se redondea entera
+  // mientras lo está, animado.
   listContent: {
-    gap: spacing.md,
+    gap: spacing.xs,
   },
   cardGutter: { marginHorizontal: spacing.lg },
 

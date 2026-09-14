@@ -13,12 +13,15 @@ import { Text } from './ui/Text';
 // `layout`) and the detail accordion (`FadeIn`/`FadeOut` + the card's own
 // `layout` animates the height change) — one animation system, no JS-driven
 // Animated.Value height chase fighting the UI-thread layout transition.
-import Reanimated, { LinearTransition, SlideOutRight, FadeIn, FadeOut } from 'react-native-reanimated';
+import Reanimated, {
+  LinearTransition, SlideOutRight, FadeIn, FadeOut,
+  useAnimatedStyle, withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { spacing, withOpacity, textStyles, lh, getCardRadii } from '../theme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
 import { formatBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
@@ -31,18 +34,42 @@ const BLOCK_BADGE_STYLE = {
   for_time: 'badgeBlockForTime',
 };
 
-export default function SessionCard({ session, onDelete, volumeDelta = null, style }) {
+// `isFirst`/`isLast` colocan la tarjeta dentro del bloque agrupado (radios por
+// posición, como la lista de Progreso/Ejercicios). Por defecto es una tarjeta
+// suelta —así la pinta la ficha de cliente, que no agrupa.
+export default function SessionCard({ session, onDelete, volumeDelta = null, style, isFirst = true, isLast = true }) {
   const { t, i18n } = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { fmt: fmtWeight, toDisplay, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
 
   const [open, setOpen] = useState(false);
 
+  // Los radios no los anima `LinearTransition` —sólo mide geometría—, así que
+  // van en su propio `useAnimatedStyle`: cada `withTiming` reacciona a que
+  // cambie su destino. Cubre los dos casos con el mismo código: la fila abierta
+  // se redondea entera (deja de ser pieza del bloque mientras enseña el
+  // detalle) y la vecina que hereda el radio grande al borrar un extremo no lo
+  // cambia en seco.
+  const radii = open
+    ? { borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
+        borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md }
+    : getCardRadii(th, isFirst, isLast);
+  const radiiStyle = useAnimatedStyle(() => ({
+    borderTopLeftRadius:     withTiming(radii.borderTopLeftRadius,     { duration: 240 }),
+    borderTopRightRadius:    withTiming(radii.borderTopRightRadius,    { duration: 240 }),
+    borderBottomLeftRadius:  withTiming(radii.borderBottomLeftRadius,  { duration: 240 }),
+    borderBottomRightRadius: withTiming(radii.borderBottomRightRadius, { duration: 240 }),
+    // Deps explícitas: `radii` es un objeto nuevo en cada render y sin esto el
+    // worklet se rehace en cualquier repintado, reiniciando un `withTiming` a
+    // medio camino.
+  }), [radii.borderTopLeftRadius, radii.borderTopRightRadius,
+       radii.borderBottomLeftRadius, radii.borderBottomRightRadius]);
+
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
-  const programs             = useStore((s) => s.programs);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
   const isFree   = session.sessionTemplateId === '__free__';
@@ -56,19 +83,6 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
     (template?.exercises ?? []).forEach((ec) => { map[ec.exerciseId] = ec; });
     return map;
   }, [template]);
-
-  // Stage name (if applicable — never for free sessions)
-  const stageName = useMemo(() => {
-    if (isFree || !template?.programId) return null;
-    const program = programs[template.programId];
-    if (!program?.stages?.length) return null;
-    for (const stage of program.stages) {
-      if (stage.days.some((d) => d.sessionTemplateId === session.sessionTemplateId)) {
-        return stage.name;
-      }
-    }
-    return null;
-  }, [template, programs, session.sessionTemplateId, isFree]);
 
   const durationMin = session.duration ? Math.round(session.duration / 60000) : null;
   // Series hechas/planificadas: puro por entrada, sin recorrer el log.
@@ -238,7 +252,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
     // unmount until it finishes; `layout` on every card (this one included) makes
     // siblings glide into the freed space automatically once it does.
     <Reanimated.View layout={LinearTransition.duration(240)} exiting={SlideOutRight.duration(240)} style={style}>
-      <View style={styles.card}>
+      <Reanimated.View style={[styles.card, radiiStyle]}>
           {/* Header — tap to expand */}
           <TouchableOpacity
             style={styles.cardHeader}
@@ -246,53 +260,41 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
             activeOpacity={0.75}
           >
             <View style={styles.cardHeaderLeft}>
-              {/* Identidad: letra en accent + nombre + etapa, todo en una línea.
-                  La etapa va pegada al nombre y no perdida entre metadatos: es
-                  lo que sitúa la sesión dentro del programa. */}
-              <View style={styles.cardIdRow}>
-                <Text style={styles.cardSesName} numberOfLines={1}>
-                  <Text style={styles.cardSesLetter}>{isFree ? '★' : label}</Text>
-                  {'  '}{name}
-                </Text>
-                {stageName ? (
-                  <Text style={styles.cardStage} numberOfLines={1}>{stageName}</Text>
-                ) : null}
-              </View>
+              {/* La letra va en su propia columna, centrada contra el bloque
+                  entero (nombre + datos) — igual que en el editor de programa,
+                  no como prefijo del nombre. La etapa se cayó de aquí: alargaba
+                  la fila sin decir nada que no dijera ya el nombre. */}
+              <Text style={styles.cardSesLetter}>{isFree ? '★' : label}</Text>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
 
-              {/* Datos de la sesión. Texto suelto, no chips: son tres cifras,
-                  no tres botones. Sin carga — un número de carga aislado no
-                  dice nada sin su serie temporal, que vive en la pestaña Carga. */}
-              <View style={styles.cardStatsRow}>
-                <Text style={styles.cardStat}>
-                  <Text style={styles.cardStatNum}>{setsDone}</Text>
-                  <Text style={styles.cardStatUnit}>{`/${setsPlanned} `}</Text>
-                  {t('history.setsShort')}
+                {/* Una sola línea de metadatos, como las filas de
+                    Progreso/Ejercicios: mismo cuerpo para todo y color sólo
+                    donde dice algo (delta, nota, adaptada). Los números en 14
+                    Bold eran lo que hacía alta la fila. */}
+                <Text style={styles.cardMeta} numberOfLines={1}>
+                  {`${setsDone}/${setsPlanned} ${t('history.setsShort')} · RPE ${session.sessionRpe ?? '—'}`}
+                  {volumeDelta != null && (
+                    <>
+                      {' · '}
+                      <Text style={volumeDelta >= 0 ? styles.deltaUp : styles.deltaDown}>
+                        {`${volumeDelta > 0 ? '+' : ''}${volumeDelta}%`}
+                      </Text>
+                    </>
+                  )}
+                  {hasNotes && (
+                    <>
+                      {' · '}
+                      <Text style={styles.metaNote}>{t('history.noteTag')}</Text>
+                    </>
+                  )}
+                  {session.adapted && (
+                    <>
+                      {' · '}
+                      <Text style={styles.metaAdapted}>{t('home.adapted')}</Text>
+                    </>
+                  )}
                 </Text>
-                <Text style={styles.cardStatSep}>·</Text>
-                <Text style={styles.cardStat}>
-                  {'RPE '}
-                  <Text style={session.sessionRpe != null ? styles.cardStatNum : styles.cardStatUnit}>
-                    {session.sessionRpe ?? '—'}
-                  </Text>
-                </Text>
-                {volumeDelta != null && (
-                  <>
-                    <Text style={styles.cardStatSep}>·</Text>
-                    <Text style={[styles.cardStat, volumeDelta >= 0 ? styles.deltaUp : styles.deltaDown]}>
-                      {`${volumeDelta > 0 ? '+' : ''}${volumeDelta}%`}
-                    </Text>
-                  </>
-                )}
-                {hasNotes && (
-                  <View style={styles.noteTag}>
-                    <Text style={styles.noteTagText}>NOTA</Text>
-                  </View>
-                )}
-                {session.adapted && (
-                  <View style={styles.adaptedTag}>
-                    <Text style={styles.adaptedTagText}>{t('home.adapted')}</Text>
-                  </View>
-                )}
               </View>
             </View>
 
@@ -307,7 +309,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
               {detailContent}
             </Reanimated.View>
           )}
-      </View>
+      </Reanimated.View>
     </Reanimated.View>
   );
 }
@@ -315,25 +317,28 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
 const makeStyles = (th) => StyleSheet.create({
   // El margen lateral lo pone quien la coloca (`style`): el historial la mete
   // en una lista a sangre, la ficha de cliente en un ScrollView ya con padding.
+  // Sin `borderRadius`: lo pone `radiiStyle` (posición en el bloque + abierta).
   card: {
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
   cardHeader: {
     flexDirection:     'row',
-    // flex-start y no center: la fecha tiene que quedar clavada en la esquina
-    // superior, no centrada respecto a las dos filas de la izquierda.
-    alignItems:        'flex-start',
+    // Fila compacta: las dos líneas de la izquierda miden lo mismo que la
+    // fecha de la derecha, así que ya se centran entre sí (antes la fecha se
+    // clavaba arriba porque el bloque izquierdo era mucho más alto).
+    alignItems:        'center',
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
   cardHeaderLeft: {
-    flex: 1,
-    gap:  spacing.sm,
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.md,
   },
-  cardIdRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  cardHeaderText: { flex: 1, minWidth: 0, gap: spacing.xs },
 
   // Bold a 14: manda sobre su fila de metadatos por PESO, no por cuerpo. Pasó
   // por los dos extremos antes de quedarse aquí — a 12 estaba por debajo de sus
@@ -343,17 +348,14 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     flexShrink: 1,
   },
-  cardSesLetter: { ...textStyles.itemTitle, color: th.colors.accent },
-  cardStage:     { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
+  cardSesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
 
-  // ── Fila de datos ──
-  cardStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  cardStat:     { ...textStyles.label, color: th.colors.mutedLight },
-  cardStatNum:  { ...textStyles.bodyStrong, color: th.colors.text },
-  cardStatUnit: { ...textStyles.label, color: th.colors.mutedLight },
-  cardStatSep:  { ...textStyles.label, color: th.colors.muted2 },
-  deltaUp:      { color: th.colors.accent },
-  deltaDown:    { color: th.tint.red50 },
+  // ── Línea de datos ──
+  cardMeta:    { ...textStyles.label, color: th.colors.mutedLight },
+  deltaUp:     { color: th.colors.accent },
+  deltaDown:   { color: th.tint.red50 },
+  metaNote:    { color: th.colors.accent },
+  metaAdapted: { color: th.colors.blue },
 
   cardDateCorner: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
   // `detail` no lleva padding lateral —cada sección se lo pone— así que este
@@ -374,24 +376,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.tint.red50,
   },
 
-  noteTag: {
-    backgroundColor: withOpacity(th.colors.accent, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-    borderRadius:    3,
-    paddingHorizontal: 5,
-    paddingVertical:   1,
-  },
-  noteTagText: { ...textStyles.caps, color: th.colors.accent },
-  adaptedTag: {
-    backgroundColor:   withOpacity(th.colors.blue, 0.1),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.blue, 0.3),
-    borderRadius:      3,
-    paddingHorizontal: 5,
-    paddingVertical:   1,
-  },
-  adaptedTagText: { ...textStyles.caps, color: th.colors.blue },
 
   // Detail — separación por espaciado, sin líneas divisorias (Figma no muestra
   // ningún separador interno en la tarjeta expandida)
