@@ -2854,8 +2854,20 @@ export const useStore = create(
               updates.workoutLog = [...s.workoutLog, ...newEntries];
             }
           }
+          // Las fichas propias no son una sección opcional del programa: son
+          // sus NOMBRES. Un programa que las referencia y llega sin ellas se ve
+          // como `custom_m4k2_a1b2` en la pantalla del cliente
+          // (`def?.name ?? exerciseId`). Ninguna de las puertas por las que
+          // entra un programa suelto —el canal del entrenador (conectar,
+          // actualizar, reconectar) y el fichero de WhatsApp— pedía esta
+          // casilla, así que el nombre que puso el entrenador no llegaba nunca.
+          // El `??` respeta la casilla explícita del backup completo (donde
+          // `data.customExercises` es la biblioteca ENTERA, no sólo lo que el
+          // programa usa) y cubre por defecto a quien sólo pide `program`.
+          if ((sections.customExercises ?? sections.program) && data.customExercises) {
+            updates.customExercises = { ...s.customExercises, ...data.customExercises };
+          }
           if (sections.customExercises) {
-            updates.customExercises = { ...s.customExercises, ...(data.customExercises ?? {}) };
             // Los presets de bloque viajan con la biblioteca personal: son lo
             // mismo, contenido reutilizable del propio dispositivo, y no valen
             // una fila más en `ImportModal`. Array, no mapa: se funde por

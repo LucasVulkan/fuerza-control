@@ -255,6 +255,36 @@ describe('importData — fallo 25, etiquetas y presets de bloque', () => {
   });
 });
 
+describe('importData — el programa trae los nombres de sus ejercicios propios', () => {
+  /** Lo que escribe `_buildProgramJson`: el programa + SOLO las fichas que usa. */
+  const programFile = () => ({
+    exportType: 'program',
+    program: { id: 'prog_1', name: 'Fuerza', owner: 'me', kind: 'program', days: [] },
+    sessionTemplates: {},
+    customExercises: { custom_a1: { id: 'custom_a1', name: 'Remo con toalla' } },
+    workoutLog: [],
+  });
+
+  beforeEach(() => {
+    useStore.setState({ programs: {}, customExercises: {}, blockPresets: [], workoutLog: [] });
+  });
+
+  it('las fichas propias entran con el programa aunque nadie pida su casilla', () => {
+    // Es la llamada literal del canal del entrenador y del fichero de WhatsApp.
+    useStore.getState().importData(programFile(), { program: true, log: false }, { silent: true });
+
+    expect(useStore.getState().customExercises.custom_a1?.name).toBe('Remo con toalla');
+  });
+
+  it('una casilla apagada a mano sigue mandando', () => {
+    useStore.getState().importData(
+      programFile(), { program: true, customExercises: false }, { silent: true },
+    );
+
+    expect(useStore.getState().customExercises.custom_a1).toBeUndefined();
+  });
+});
+
 describe('addExercise / replaceExercise — fallo 15', () => {
   beforeEach(() => {
     useStore.setState({
