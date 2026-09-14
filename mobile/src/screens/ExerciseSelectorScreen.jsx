@@ -2,7 +2,9 @@
  * Buscador de ejercicios — rediseño FormaFit.
  *
  * Dos modos, mismo layout:
- *   - AÑADIR (por defecto): multiselección con checkbox y CTA lima abajo.
+ *   - AÑADIR (por defecto): multiselección con checkbox y botón 'Añadir' en
+ *     la cabecera — el CTA de abajo se quitó: con el teclado desplegado, que es
+ *     mientras buscas, casi nunca estaba a la vista.
  *   - SUSTITUIR / picker de bloque: selección única, chevron a la derecha, se
  *     elige y se cierra. Arranca con la pill del patrón del ejercicio actual
  *     ya activa (sustituye al viejo modo "Similar", que además filtraba por
@@ -11,6 +13,9 @@
  * Filtros: fila de pills de patrón (single-select, siempre visible) + hoja de
  * filtros (`DragSheet`) con grupo muscular / equipo / tipo en multiselección.
  * El badge del botón de filtro cuenta solo los de la hoja, no la pill.
+ *
+ * La cabecera es el `ScreenHeader` del editor: la ceja ("Editar sesión A",
+ * "SESIÓN A") la pasa quien abre el selector por params.
  *
  * El modo "Complementario" (ordenar por patrones que faltan en la sesión) se
  * elimina: `existingPatterns` sigue llegando por params pero ya no se usa.
@@ -22,13 +27,15 @@ import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, textStyles, withOpacity } from '../theme';
+import { spacing, textStyles, withOpacity, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { ArrowIcon, CheckIcon } from '../components/ui/EditorIcons';
 import {
   PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf,
 } from '../utils/exerciseTaxonomy';
+import { filterBySearch } from '../utils/searchText';
 
 // El buscador filtra por grupo muscular abriendo 'arms' en Bíceps/Tríceps
 // (ver `muscleGroupIdsOf`) — no existe como `primaryGroup` real, solo aquí.
@@ -53,6 +60,10 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     currentExerciseId = null,
     sessionMode = false,   // true → add to active session (adHoc), not to the template
     blockPicker = false,   // true → picking a movement for a conditioning block (see BlockEditorInline)
+    // La ceja de la cabecera la pasa quien abre el selector ('Editar sesión A',
+    // 'SESIÓN A' en el entreno): el selector no sabe de dónde viene y sin ella
+    // se pierde el hilo de qué estás editando. Sin ceja, sólo el título.
+    eyebrow = null,
   } = route.params ?? {};
 
   const language = useStore((s) => s.profile.language);
@@ -135,19 +146,18 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const allExercises = useMemo(() => Object.values(allLibrary), [allLibrary]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return allExercises
+    const byFilters = allExercises
       .filter((ex) => ex.id !== currentExerciseId && !taken.has(ex.id))
-      .filter((ex) => !q || [ex.name, ex.nameEn].filter(Boolean).join(' ').toLowerCase().includes(q))
       .filter((ex) => !patternGroup || GROUP_OF_PATTERN[ex.pattern] === patternGroup)
       .filter((ex) => !groupFilter.length || muscleGroupIdsOf(ex).some((id) => groupFilter.includes(id)))
       .filter((ex) => !equipFilter.length || equipmentOf(ex).some((e) => equipFilter.includes(e)))
-      .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'))
+      .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'));
+    return filterBySearch(byFilters, search, (ex) => [ex.name, ex.nameEn].filter(Boolean).join(' '))
       .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, taken, language]);
 
-  const renderItem = ({ item: ex }) => {
+  const renderItem = ({ item: ex, index }) => {
     const isSel = multiSelect && selectedIds.includes(ex.id);
     const meta = [
       t(`exerciseSelector.groups.${ex.primaryGroup}`, ex.primaryGroup),
@@ -156,7 +166,11 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
     return (
       <TouchableOpacity
-        style={[styles.exRow, isSel && styles.exRowSel]}
+        style={[
+          styles.exRow,
+          getCardRadii(th, index === 0, index === filtered.length - 1),
+          isSel && styles.exRowSel,
+        ]}
         onPress={() =>
           multiSelect
             ? setSelectedIds((prev) =>
@@ -179,7 +193,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
         {multiSelect ? (
           <View style={[styles.check, isSel && styles.checkOn]}>
-            <CheckIcon size={20} color={isSel ? th.colors.onAccent : th.colors.muted} />
+            <CheckIcon size={16} color={isSel ? th.colors.onAccent : th.colors.muted} />
           </View>
         ) : (
           <ArrowIcon size={16} color={th.colors.mutedLight} />
@@ -190,17 +204,32 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      {/* Cabecera: título + cerrar (caja 42 surface2, como los iconos de Clientes) */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {currentExerciseId || blockPicker
-            ? t('exerciseSelector.titleReplace')
-            : t('exerciseSelector.titleAdd')}
-        </Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* La misma cabecera que el resto del editor. El botón 'Añadir' ocupa el
+          hueco del check: es la acción de la pantalla y con el teclado abierto
+          es lo único que sigue a la vista (el CTA de abajo quedaba tapado). */}
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={eyebrow}
+        title={
+          multiSelect
+            ? (selectedIds.length
+                ? t('exerciseSelector.addedN', { count: selectedIds.length })
+                : t('exerciseSelector.titleAdd'))
+            : t('exerciseSelector.titleReplace')
+        }
+        right={multiSelect ? (
+          <TouchableOpacity
+            style={[styles.addBtn, !selectedIds.length && styles.addBtnOff]}
+            onPress={handleAddSelected}
+            disabled={!selectedIds.length}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.addBtnText, !selectedIds.length && styles.addBtnTextOff]}>
+              {t('exerciseSelector.addAction')}
+            </Text>
+          </TouchableOpacity>
+        ) : undefined}
+      />
 
       {/* Buscador + filtros (barra estándar: surface2, radius/sm, h42) */}
       <View style={styles.searchRow}>
@@ -288,17 +317,6 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         ListEmptyComponent={<Text style={styles.emptyText}>{t('exerciseSelector.noResults')}</Text>}
       />
 
-      {/* CTA — solo en multiselección y con algo elegido */}
-      {multiSelect && selectedIds.length > 0 && (
-        <View style={styles.ctaWrap}>
-          <TouchableOpacity style={styles.cta} onPress={handleAddSelected} activeOpacity={0.85}>
-            <Text style={styles.ctaText}>
-              {t('exerciseSelector.addedN', { count: selectedIds.length })}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Hoja de filtros — se aplican en vivo, el CTA solo cierra */}
       <DragSheet
         visible={showFilters}
@@ -371,12 +389,17 @@ function FilterSection({ styles, title, options, selected, onToggle }) {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
+  // El botón de la cabecera: relleno lima porque es la acción de la pantalla,
+  // apagado a surface2 mientras no hay nada elegido (sigue ocupando sitio para
+  // que el título no baile al marcar el primer ejercicio).
+  addBtn: {
+    height: 32, paddingHorizontal: spacing.md, borderRadius: th.radius.md,
+    backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
+  addBtnOff:      { backgroundColor: th.colors.surface2 },
+  addBtnText:     { ...textStyles.button, color: th.colors.onAccent },
+  addBtnTextOff:  { color: th.colors.muted },
 
   // Caja de icono cuadrada, igual que en Clientes: 42×42 para casar con el buscador.
   iconBox: {
@@ -385,7 +408,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   iconBoxActive: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
   filterBadge: {
     position: 'absolute', top: 3, right: 3,
     minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
@@ -396,7 +418,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg,
   },
   searchInputWrap: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -434,28 +456,37 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
 
+  // Lista compacta: el mismo bloque continuo que la lista de ejercicios de
+  // Progresión —filas pegadas con 2px de hueco y los radios grandes sólo en los
+  // extremos (`getCardRadii`)— en vez de tarjetas sueltas. Buscando ejercicios
+  // caben tres o cuatro más en pantalla, que es de lo que va esta pantalla.
   listContent: {
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   exRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: th.colors.surface, borderRadius: th.radius.sm,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm2,
+    backgroundColor: th.colors.surface,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
   exRowSel:   { backgroundColor: th.tint.accent10 },
   exNameRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  exName:     { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
+  // El mismo par que `rowName`/`rowMeta` del editor de sesión: 14 Bold sobre 12
+  // Medium, sin margen entre ellos —los separa el interlineado—. Un nombre
+  // dentro de una lista va a `bodyStrong` (docs/specs/tipografia.md §9.4).
+  exName:     { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   exNameSel:  { color: th.colors.accent },
-  exMeta:     { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
+  exMeta:     { ...textStyles.label, color: th.colors.mutedLight },
   customBadge: {
     backgroundColor: th.tint.accent10, borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
   customBadgeText: { ...textStyles.caps, color: th.colors.accent },
 
+  // 28 y no 36: en la fila compacta el alto lo pone el par nombre+meta, y una
+  // caja más grande lo estiraba sólo para el check.
   check: {
-    width: 36, height: 36, borderRadius: th.radius.sm,
+    width: 28, height: 28, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
@@ -466,8 +497,8 @@ const makeStyles = (th) => StyleSheet.create({
     textAlign: 'center', paddingTop: 40,
   },
 
-  // CTA lima h44 — el mismo botón que cierra el editor de programa
-  ctaWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: th.colors.bg },
+  // CTA lima h44 — lo usa la hoja de filtros para cerrarse (la pantalla ya no
+  // tiene botón abajo: con el teclado desplegado casi nunca se veía).
   cta: {
     height: 44, borderRadius: th.radius.md, backgroundColor: '#b8ff00',
     alignItems: 'center', justifyContent: 'center',

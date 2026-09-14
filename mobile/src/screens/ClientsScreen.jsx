@@ -44,6 +44,7 @@ import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
+import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
 import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import ProgramCard from '../components/ui/ProgramCard';
@@ -987,9 +988,7 @@ function GlobalAddBillingSheet({ clients, lang, lockedClientId, onClose }) {
   const [showCal,      setShowCal]      = useState(false);
 
   const selectedClient = clientList.find((c) => c.id === clientId);
-  const matches = clientSearch.trim()
-    ? clientList.filter((c) => c.name.toLowerCase().includes(clientSearch.trim().toLowerCase()))
-    : clientList;
+  const matches = filterBySearch(clientList, clientSearch, (c) => c.name);
 
   const canAdd = clientId && concept.trim() && amount && date;
 
@@ -1942,8 +1941,7 @@ export default function ClientsScreen() {
   // An adherence pill, when active, overrides the manual status/tag filters and
   // jumps to its focused subset + order. Otherwise the list behaves as before.
   const clientList = useMemo(() => {
-    let list = Object.values(clients ?? {})
-      .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+    let list = filterBySearch(Object.values(clients ?? {}), search, (c) => c.name);
 
     if (effectiveAdherenceFilter === 'at_risk') {
       list = list.filter((c) => adherenceByClient[c.id]?.status === STATUS.AT_RISK);
@@ -3342,9 +3340,7 @@ export default function ClientsScreen() {
             {/* Lista de etiquetas — mismo estilo de listed-items que el dropdown
                 de "filtrar ejercicios" de Progress (sin ser un dropdown) */}
             {(() => {
-              const filtered = tagSearchText.trim()
-                ? allTags.filter((tg) => tg.name.toLowerCase().includes(tagSearchText.toLowerCase()))
-                : allTags;
+              const filtered = filterBySearch(allTags, tagSearchText, (tg) => tg.name);
               if (filtered.length === 0) {
                 return (
                   <Text style={styles.tagEmptyText}>

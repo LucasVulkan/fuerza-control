@@ -328,7 +328,11 @@ export default function SessionEditorScreen({ navigation, route }) {
     const existingPatterns = template.exercises
       .map((ex) => allExercises[ex.exerciseId]?.pattern)
       .filter(Boolean);
-    navigation.navigate('ExerciseSelector', { templateId, existingPatterns });
+    navigation.navigate('ExerciseSelector', {
+      templateId,
+      existingPatterns,
+      eyebrow: t('editor.sessionEyebrow', { label: template.label ?? '' }),
+    });
   }
 
   function createNewBlock() {

@@ -379,6 +379,7 @@ export default function WorkoutScreen() {
   function handleAddExercise() {
     navigation.navigate('ExerciseSelector', {
       sessionMode: true,
+      eyebrow: sessionLabel,
       existingPatterns: (template?.exercises ?? [])
         .map((e) => allExercises[e.exerciseId]?.pattern)
         .filter(Boolean),

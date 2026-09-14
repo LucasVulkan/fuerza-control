@@ -35,6 +35,7 @@ import { formatDate }    from '../../utils/formatters';
 import { bestSetE1RM, recentE1RM } from '../../utils/oneRm';
 import { recapStats }     from '../../utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
+import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
@@ -633,10 +634,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   }, [workoutLog_, allEx, i18n.language]);
 
   const pickerFiltered = useMemo(() => {
-    if (!exPickerSearch.trim()) return pickerExercises;
-    const q = exPickerSearch.trim().toLowerCase();
     const getN = (id) => { const d = allEx[id]; return d ? (i18n.language === 'en' ? (d.nameEn ?? d.name) : d.name) : id; };
-    return pickerExercises.filter((id) => getN(id).toLowerCase().includes(q));
+    return filterBySearch(pickerExercises, exPickerSearch, getN);
   }, [pickerExercises, exPickerSearch, allEx, i18n.language]);
 
   // Shadow `def` and `rawLogs` — all downstream memos update automatically
@@ -1261,12 +1260,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       ? exercisesWithLogs.filter((id) => selectedExIds.has(id))
       : exercisesWithLogs;
 
-    if (!search.trim()) return base;
-    const q = search.trim().toLowerCase();
-    const matching = base.filter((id) => {
-      const def  = allExercises[id];
-      const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : id;
-      return name.toLowerCase().includes(q);
+    const q = search.trim();
+    if (!q) return base;
+    const matching = filterBySearch(base, q, (id) => {
+      const def = allExercises[id];
+      return def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : id;
     });
     if (q.length >= 3) return matching;
     const rest = base.filter((id) => !matching.includes(id));

@@ -1592,6 +1592,7 @@
   },
   "exerciseSelector": {
     "titleAdd": "Añadir ejercicios",
+    "addAction": "Añadir",
     "titleReplace": "Sustituir ejercicio",
     "searchPlaceholder2": "Buscar ejercicio",
     "patternGroups": { "push": "Empuje", "pull": "Tracción", "squat": "Sentadilla", "hinge": "Bisagra", "core": "Core", "grip": "Agarre", "calf": "Gemelos" },

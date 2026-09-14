@@ -1592,6 +1592,7 @@
   },
   "exerciseSelector": {
     "titleAdd": "Add exercises",
+    "addAction": "Add",
     "titleReplace": "Replace exercise",
     "searchPlaceholder2": "Search exercise",
     "patternGroups": { "push": "Push", "pull": "Pull", "squat": "Squat", "hinge": "Hinge", "core": "Core", "grip": "Grip", "calf": "Calves" },
