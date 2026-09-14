@@ -56,11 +56,13 @@ const C_PAD_R      = 12;
 const MIN_SCROLL   = 12;
 const Y_ANIM_COUNT = 80;
 
-const PERIOD_OPTIONS = [
-  { id: '7d',  label: '7D'   },
-  { id: '1m',  label: '1M'   },
-  { id: '3m',  label: '3M'   },
-  { id: 'all', label: 'Todo' },
+// Los tres primeros son abreviaturas de unidad, iguales en los dos idiomas; el
+// último es una palabra, así que la pantalla lo memoiza sobre `t`.
+const periodOptions = (t) => [
+  { id: '7d',  label: '7D' },
+  { id: '1m',  label: '1M' },
+  { id: '3m',  label: '3M' },
+  { id: 'all', label: t('stats.periodAll') },
 ];
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
@@ -94,17 +96,19 @@ function getExerciseLogsFrom(exerciseId, sourceLog) {
     }));
 }
 
-function getMetrics(def, allLogs, weightLabel = 'kg') {
+function getMetrics(def, allLogs, weightLabel = 'kg', t) {
   const model = def?.progressionModel;
-  if (model === 'time_progression') return [{ id: 'time', label: 'Seg' }];
-  if (model === 'submax')           return [{ id: 'reps', label: 'Reps' }];
+  if (model === 'time_progression') return [{ id: 'time', label: t('stats.metricSeconds') }];
+  if (model === 'submax')           return [{ id: 'reps', label: t('stats.metricReps') }];
   const hasWeight = allLogs.some(({ exercise }) =>
     exercise?.sets?.some((s) => parseFloat(s.weight) > 0)
   );
-  const m = [{ id: 'reps', label: 'Reps' }];
+  const m = [{ id: 'reps', label: t('stats.metricReps') }];
   if (hasWeight) {
+    // 1RM se queda literal: es la misma sigla en los dos idiomas, igual que el
+    // `kg`/`lb` que ya viene resuelto de `useWeightUnit`.
     m.unshift({ id: 'kg', label: weightLabel.toUpperCase() });
-    m.push({ id: 'vol',  label: 'Vol' });
+    m.push({ id: 'vol',  label: t('stats.metricVolume') });
     m.push({ id: 'e1rm', label: '1RM' });
   }
   return m;
@@ -199,20 +203,22 @@ function fmtVol(raw, toDisplay) {
   return v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v);
 }
 
-function timeAgo(timestamp) {
+// Mismas claves `dayCard.*` que usan Home y la lista de clientes; aquí sólo se
+// alarga la escala hacia meses y años, que el resto de la app no necesitaba.
+function timeAgo(timestamp, t) {
   if (!timestamp) return null;
   const days = Math.floor((Date.now() - timestamp) / 86400000);
-  if (days === 0) return 'Hoy';
-  if (days === 1) return 'Ayer';
-  if (days < 7)   return `Hace ${days} días`;
+  if (days === 0) return t('dayCard.today');
+  if (days === 1) return t('dayCard.yesterday');
+  if (days < 7)   return t('dayCard.daysAgo', { count: days });
   const w = Math.floor(days / 7);
-  if (w === 1)   return 'Hace 1 semana';
-  if (w < 5)     return `Hace ${w} semanas`;
+  if (w === 1)   return t('dayCard.oneWeekAgo');
+  if (w < 5)     return t('dayCard.weeksAgo', { count: w });
   const m = Math.floor(days / 30);
-  if (m === 1)   return 'Hace 1 mes';
-  if (m < 12)    return `Hace ${m} meses`;
+  if (m === 1)   return t('dayCard.oneMonthAgo');
+  if (m < 12)    return t('dayCard.monthsAgo', { count: m });
   const y = Math.floor(days / 365);
-  return y === 1 ? 'Hace 1 año' : `Hace ${y} años`;
+  return y === 1 ? t('dayCard.oneYearAgo') : t('dayCard.yearsAgo', { count: y });
 }
 
 function buildSessionSummary(exercise, def, fmtWeight) {
@@ -365,6 +371,7 @@ function computeExSessionDeltas(logs, def, metricOverride = null) {
 // ── SVG line chart ─────────────────────────────────────────────────────────────
 
 function MiniLineChart({ data, metricLabel }) {
+  const { t } = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const [chartW,   setChartW]   = useState(0);
@@ -429,7 +436,7 @@ function MiniLineChart({ data, metricLabel }) {
   if (data.length < 2) {
     return (
       <View style={styles.chartEmpty}>
-        <Text style={styles.chartEmptyText}>Necesitas al menos 2 sesiones en este período.</Text>
+        <Text style={styles.chartEmptyText}>{t('stats.chartNeedsTwo')}</Text>
       </View>
     );
   }
@@ -554,7 +561,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const periods = useMemo(() => periodOptions(t), [t]);
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight, unit } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
 
@@ -716,7 +724,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     return effectiveLogs.filter(({ timestamp }) => timestamp >= cutoff);
   }, [effectiveLogs, modalPeriod]);
 
-  const metrics      = useMemo(() => getMetrics(def, effectiveLogs, weightLabel), [def, effectiveLogs, weightLabel]);
+  const metrics      = useMemo(() => getMetrics(def, effectiveLogs, weightLabel, t), [def, effectiveLogs, weightLabel, t]);
   const activeMetric = chartMetric ?? metrics[0]?.id;
   const metricLabel  = pctMode ? '%' : (metrics.find((m) => m.id === activeMetric)?.label ?? '');
 
@@ -786,10 +794,12 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     const sign = lastSesLoadDelta >= 0 ? '+' : '−';
     const abs  = Math.abs(lastSesLoadDelta);
     const model = def?.progressionModel;
-    if (model === 'time_progression') return `${sign}${abs}s últ.`;
+    if (model === 'time_progression') return `${sign}${abs}s ${t('stats.lastShort')}`;
     const hasWeight = filteredLogs.length > 0 &&
       computeValue(filteredLogs[filteredLogs.length - 1]?.exercise?.sets, 'kg') !== null;
-    return hasWeight ? `${sign}${fmtWeight(abs)} últ.` : `${sign}${abs} reps últ.`;
+    return hasWeight
+      ? `${sign}${fmtWeight(abs)} ${t('stats.lastShort')}`
+      : `${sign}${abs} ${t('stats.metricReps').toLowerCase()} ${t('stats.lastShort')}`;
   })();
 
   const volImpStr    = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
@@ -799,13 +809,15 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     if (lastSesVolDelta === null) return null;
     const sign = lastSesVolDelta >= 0 ? '+' : '−';
     const abs  = Math.abs(lastSesVolDelta);
-    return `${sign}${fmtVol(abs, wDisplay)} ${weightLabel} últ.`;
+    return `${sign}${fmtVol(abs, wDisplay)} ${weightLabel} ${t('stats.lastShort')}`;
   })();
 
   const prDisplay = prData
-    ? (prData.metric === 'time' ? `${prData.value}s` : prData.metric === 'kg' ? fmtWeight(prData.value) : `${prData.value} reps`)
+    ? (prData.metric === 'time' ? `${prData.value}s`
+      : prData.metric === 'kg'   ? fmtWeight(prData.value)
+      : `${prData.value} ${t('stats.metricReps').toLowerCase()}`)
     : null;
-  const prAgoStr  = timeAgo(prData?.timestamp);
+  const prAgoStr  = timeAgo(prData?.timestamp, t);
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
@@ -857,7 +869,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 </Svg>
                 <TextInput
                   style={styles.exPickerSearchInput}
-                  placeholder="Buscar ejercicio…"
+                  placeholder={t('stats.searchExercise')}
                   placeholderTextColor={th.colors.mutedLight}
                   value={exPickerSearch}
                   onChangeText={setExPickerSearch}
@@ -898,7 +910,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             {/* Período + programa actual */}
             <View style={styles.modalPeriodRow}>
               <View style={styles.segmentedWrap}>
-                <SegmentedControl options={PERIOD_OPTIONS} value={modalPeriod} onChange={setModalPeriod} />
+                <SegmentedControl options={periods} value={modalPeriod} onChange={setModalPeriod} />
               </View>
               {programTemplateIds?.size > 0 && (
                 <TouchableOpacity
@@ -907,7 +919,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   activeOpacity={0.75}
                 >
                   <Text style={[styles.programToggleText, modalScope === 'program' && styles.programToggleTextActive]}>
-                    Programa actual
+                    {t('stats.currentProgram')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -926,7 +938,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                         {fmtWeight(Math.round(e1rmData.value * 10) / 10)}
                       </Text>
-                      <Text style={styles.statLabel}>1RM</Text>
+                      <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>1RM</Text>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>
                       {prDisplay ? `PR ${prDisplay} · ${prAgoStr ?? ''}` : '—'}
@@ -936,7 +948,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   <>
                     <View style={styles.statValueBlock}>
                       <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{prDisplay ?? '—'}</Text>
-                      <Text style={styles.statLabel}>PR</Text>
+                      <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>PR</Text>
                     </View>
                     <Text style={[styles.statSub, { color: th.colors.muted }]} numberOfLines={1}>{prAgoStr ?? '—'}</Text>
                   </>
@@ -949,7 +961,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: loadImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{loadImpStr}</Text>
-                  <Text style={styles.statLabel}>MEJORA</Text>
+                  <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statImprovement')}</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastLoadSubColor }]} numberOfLines={1}>{lastLoadSubStr ?? '—'}</Text>
               </TouchableOpacity>
@@ -960,7 +972,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               >
                 <View style={styles.statValueBlock}>
                   <Text style={[styles.statValue, { color: volImpColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volImpStr}</Text>
-                  <Text style={styles.statLabel}>VOLUMEN</Text>
+                  <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statVolume')}</Text>
                 </View>
                 <Text style={[styles.statSub, { color: lastVolSubColor }]} numberOfLines={1}>{lastVolSubStr ?? '—'}</Text>
               </TouchableOpacity>
@@ -981,7 +993,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
             {/* Lista de sesiones — "listed items" agrupados, desglose por bloque de peso */}
             <View style={styles.modalSesSection}>
               {sessionDeltas.length === 0 ? (
-                <Text style={styles.modalSesEmpty}>Sin sesiones en este período.</Text>
+                <Text style={styles.modalSesEmpty}>{t('stats.noSessionsPeriod')}</Text>
               ) : (
                 <Reanimated.View style={styles.modalSesList} layout={LinearTransition.duration(200)}>
                   {[...sessionDeltas].reverse().map(({ timestamp, delta, isPR, metricId, exercise, sessionTemplateId }, idx, arr) => {
@@ -996,7 +1008,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                       if (metricId === 'vol') {
                         return `${delta >= 0 ? '+' : '−'}${fmtVol(Math.abs(delta), wDisplay)} ${weightLabel}`;
                       }
-                      return `${sign}${Math.round(delta)} reps`;
+                      return `${sign}${Math.round(delta)} ${t('stats.metricReps').toLowerCase()}`;
                     })() : null;
                     // exConfig (rango minReps/minTime) — sale de la plantilla de esa
                     // sesión concreta, igual que HistoryScreen (exConfigs por template).
@@ -1092,7 +1104,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 // ── ExerciseStatCard ───────────────────────────────────────────────────────────
 
 function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, programTemplateIds, isFirst, isLast }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const [modalVisible, setModalVisible] = useState(false);
@@ -1117,7 +1129,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
         <View style={styles.exLeft}>
           <Text style={styles.exName} numberOfLines={1}>{name}</Text>
           <Text style={styles.exSub} numberOfLines={1}>
-            {`${sessionsCount} ${sessionsCount === 1 ? 'sesión' : 'sesiones'}`}
+            {t('stats.sessionsCount', { count: sessionsCount })}
             {improvePct !== null && (
               // Fragmento y no `<Text>`: un Text anidado sin estilo pasa por el
               // wrapper de ui/Text, que le inyecta la familia por defecto y le
@@ -1127,7 +1139,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
                 <Text style={{ color: improvePct >= 0 ? th.colors.accent : th.colors.orange }}>
                   {`${improvePct > 0 ? '+' : ''}${improvePct}%`}
                 </Text>
-                {' progreso'}
+                {' '}{t('stats.progressSuffix')}
               </>
             )}
           </Text>
@@ -1153,7 +1165,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const periods = useMemo(() => periodOptions(t), [t]);
   const { fmt: fmtWeight, toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
 
@@ -1229,7 +1242,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const improveStr   = improvePct !== null ? `${improvePct > 0 ? '+' : ''}${improvePct}%` : '—';
   const improveColor = (improvePct === null || improvePct >= 0) ? th.colors.accent : th.colors.orange;
   const loadSubStr   = lastLoadDelta !== null
-    ? `${lastLoadDelta > 0 ? '+' : ''}${lastLoadDelta}% últ. ses.`
+    ? `${lastLoadDelta > 0 ? '+' : ''}${lastLoadDelta}% ${t('stats.lastSessionShort')}`
     : null;
   const loadSubColor = (lastLoadDelta === null || lastLoadDelta >= 0) ? th.tint.accent50 : th.colors.orange;
 
@@ -1237,7 +1250,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const volColor    = (volImprovePct === null || volImprovePct >= 0) ? th.colors.accent : th.colors.orange;
   const volSubColor = (lastSesDelta === null || lastSesDelta >= 0) ? th.tint.accent50 : th.colors.orange;
   const volSubStr   = lastSesVol
-    ? `${fmtVol(lastSesVol, wDisplay)} ${weightLabel} últ. ses.`
+    ? `${fmtVol(lastSesVol, wDisplay)} ${weightLabel} ${t('stats.lastSessionShort')}`
     : null;
 
   // ── Exercise list ────────────────────────────────────────────────────────
@@ -1294,7 +1307,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       {/* ── Fila de control: período + toggle programa ──────────────────────── */}
       <View style={styles.controlRow}>
         <View style={styles.segmentedWrap}>
-          <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+          <SegmentedControl options={periods} value={period} onChange={setPeriod} />
         </View>
         {hasProgramScope && (
           <TouchableOpacity
@@ -1303,7 +1316,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
             activeOpacity={0.75}
           >
             <Text style={[styles.programToggleText, scope === 'program' && styles.programToggleTextActive]}>
-              Programa actual
+              {t('stats.currentProgram')}
             </Text>
           </TouchableOpacity>
         )}
@@ -1318,10 +1331,10 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{String(filteredLog.length)}</Text>
-            <Text style={styles.statLabel}>SESIONES</Text>
+            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statSessions')}</Text>
           </View>
           <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
-            {`${thisWeekCount} esta semana`}
+            {t('stats.thisWeek', { count: thisWeekCount })}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -1331,7 +1344,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: improveColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{improveStr}</Text>
-            <Text style={styles.statLabel}>MEJORA</Text>
+            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statImprovement')}</Text>
           </View>
           <Text style={[styles.statSub, { color: loadSubColor }]} numberOfLines={1}>
             {loadSubStr ?? '—'}
@@ -1344,7 +1357,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         >
           <View style={styles.statValueBlock}>
             <Text style={[styles.statValue, { color: volColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{volStr}</Text>
-            <Text style={styles.statLabel}>VOLUMEN</Text>
+            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('stats.statVolume')}</Text>
           </View>
           <Text style={[styles.statSub, { color: volSubColor }]} numberOfLines={1}>
             {volSubStr ?? '—'}
@@ -1357,7 +1370,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar ejercicio..."
+          placeholder={t('stats.searchExercise')}
           placeholderTextColor={th.colors.mutedLight}
           value={search}
           onChangeText={setSearch}
@@ -1383,8 +1396,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         >
           <Text style={styles.listToggleLabel}>
             {selectedExIds.size === 0
-              ? 'Filtrar ejercicios'
-              : `${selectedExIds.size} ejercicio${selectedExIds.size > 1 ? 's' : ''} seleccionado${selectedExIds.size > 1 ? 's' : ''}`}
+              ? t('stats.filterExercises')
+              : t('stats.selectedCount', { count: selectedExIds.size })}
           </Text>
           <Reanimated.View style={chevronStyle}>
             <ChevronDown size={12} color={th.colors.onAccent} />
@@ -1421,7 +1434,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
                 onPress={() => { setSelectedExIds(new Set()); setDropOpen(false); }}
                 activeOpacity={0.75}
               >
-                <Text style={styles.dropResetText}>Restablecer selección</Text>
+                <Text style={styles.dropResetText}>{t('stats.clearSelection')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1434,10 +1447,10 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           <Text style={styles.emptyIcon}>📈</Text>
           <Text style={styles.emptyText}>
             {baseLog.length === 0
-              ? 'Completa tu primera sesión para ver el progreso aquí.'
+              ? t('stats.emptyFirstSession')
               : search.trim()
-                ? 'Sin coincidencias para esa búsqueda.'
-                : 'Sin datos para el filtro seleccionado.'}
+                ? t('stats.emptyNoMatch')
+                : t('stats.noData')}
           </Text>
         </View>
       ) : (
