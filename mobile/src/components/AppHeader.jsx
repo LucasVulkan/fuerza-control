@@ -787,7 +787,7 @@ const makeStyles = (th) => StyleSheet.create({
   archivedTitle: { ...textStyles.caps, color: th.colors.muted },
   archivedEmpty: {
     ...textStyles.label,
-    color:           th.colors.muted,
+    color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.md,
   },
@@ -817,5 +817,5 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  archivedCloseBtnText: { ...textStyles.body, color: th.colors.muted },
+  archivedCloseBtnText: { ...textStyles.body, color: th.colors.mutedLight },
 });

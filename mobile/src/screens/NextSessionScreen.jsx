@@ -288,11 +288,11 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
   },
   backBtn: { padding: spacing.xs },
-  backIcon: { ...textStyles.title, color: th.colors.muted, lineHeight: 30 },
+  backIcon: { ...textStyles.title, color: th.colors.mutedLight, lineHeight: 30 },
   headerKicker: { ...textStyles.caps, color: th.colors.muted },
   headerName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
   clearBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  clearText: { ...textStyles.label, color: th.colors.muted },
+  clearText: { ...textStyles.label, color: th.colors.mutedLight },
 
   selectorWrap: { flexGrow: 0, borderBottomWidth: borders.thin, borderBottomColor: th.colors.border },
   selector: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.xs },
@@ -305,7 +305,7 @@ const makeStyles = (th) => StyleSheet.create({
   sessTabText: { ...textStyles.label, color: th.colors.muted, maxWidth: 180 },
   sessTabTextActive: { color: th.colors.blue },
 
-  hint: { ...textStyles.label, color: th.colors.muted, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  hint: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
 
   list: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
   exCard: {
@@ -342,8 +342,8 @@ const makeStyles = (th) => StyleSheet.create({
   sendBtnDisabled: { backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border },
   sendText: { ...textStyles.button, color: th.colors.onAccent },
   sendTextDisabled: { color: th.colors.muted },
-  footerNote: { ...textStyles.label, color: th.colors.muted, textAlign: 'center', marginTop: spacing.sm },
+  footerNote: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center', marginTop: spacing.sm },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  emptyText: { ...textStyles.body, color: th.colors.muted, textAlign: 'center' },
+  emptyText: { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center' },
 });

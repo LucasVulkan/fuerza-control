@@ -62,7 +62,7 @@ const makeStyles = (th) => StyleSheet.create({
   emptyIcon: { fontSize: 40 },
   emptyText: {
     ...textStyles.body,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     textAlign:  'center',
     lineHeight: lh(textStyles.body.fontSize),
   },

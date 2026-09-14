@@ -455,7 +455,7 @@ const makeS = (th) => StyleSheet.create({
   },
   radioDesc: {
     ...textStyles.label,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     lineHeight: lh(textStyles.label.fontSize),
   },
 
@@ -477,7 +477,7 @@ const makeS = (th) => StyleSheet.create({
   },
   sectionInfo: { flex: 1 },
   sectionLabel: { ...textStyles.body,  color: th.colors.text },
-  sectionDesc:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
+  sectionDesc:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
 
   // Template card
   templateCard: {
@@ -518,7 +518,7 @@ const makeS = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.1),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  modeBtnText: { ...textStyles.label, color: th.colors.muted },
+  modeBtnText: { ...textStyles.label, color: th.colors.mutedLight },
   modeBtnTextActive: { color: th.colors.accent },
 
   // ── Actions row (always visible) ─────────────────────────────────────────
@@ -535,7 +535,7 @@ const makeS = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  cancelText: { ...textStyles.body, color: th.colors.muted },
+  cancelText: { ...textStyles.body, color: th.colors.mutedLight },
   importBtn: {
     flex:            2,
     paddingVertical: spacing.md,

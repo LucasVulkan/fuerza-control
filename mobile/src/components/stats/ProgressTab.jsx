@@ -1928,7 +1928,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   chartContentArea: { flex: 1, minHeight: CHART_H, overflow: 'hidden' },
   chartEmpty:       { paddingVertical: spacing.lg, alignItems: 'center' },
-  chartEmptyText:   { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
+  chartEmptyText:   { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
 
   // Modal session list
   modalSesSection: {
@@ -1978,10 +1978,10 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:        0,
   },
   prPillText: { ...textStyles.caps, color: th.colors.accent },
-  modalSesEmpty: { ...textStyles.label, color: th.colors.muted, paddingVertical: spacing.md, textAlign: 'center' },
+  modalSesEmpty: { ...textStyles.label, color: th.colors.mutedLight, paddingVertical: spacing.md, textAlign: 'center' },
 
   // ── Empty state ────────────────────────────────────────────────────────────
   emptyState: { alignItems: 'center', padding: spacing.xxl, gap: spacing.md },
   emptyIcon:  { fontSize: 32 },
-  emptyText:  { ...textStyles.body, color: th.colors.muted, textAlign: 'center', lineHeight: lh(textStyles.body.fontSize) },
+  emptyText:  { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', lineHeight: lh(textStyles.body.fontSize) },
 });

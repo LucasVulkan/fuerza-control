@@ -721,7 +721,7 @@ const makeStyles = (th) => StyleSheet.create({
   cellCurrent: { backgroundColor: th.tint.accent10 },
   cellTxt: {
     ...textStyles.labelStrong,
-    color:       th.colors.muted,
+    color:       th.colors.mutedLight,
     fontVariant: ['tabular-nums'],
   },
   cellTxtDone:    { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
@@ -768,7 +768,7 @@ const makeStyles = (th) => StyleSheet.create({
   tertiaryTxt: { ...textStyles.caps, color: th.colors.accent },
 
   // .hint
-  hint: { ...textStyles.label, color: th.colors.muted, textAlign: 'center', marginTop: 10 },
+  hint: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center', marginTop: 10 },
   timeUp: {
     ...textStyles.labelStrong,
     color:        th.colors.accent,
@@ -812,7 +812,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: 12,
     marginTop:       4,
   },
-  cancelTxt: { ...textStyles.caps, color: th.colors.muted },
+  cancelTxt: { ...textStyles.caps, color: th.colors.mutedLight },
 
   reopenBtn: {
     alignSelf:         'center',

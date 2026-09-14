@@ -311,7 +311,7 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.caps,
     fontFamily: 'Inter_900Black',
     lineHeight: 13,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
   },
   // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
   // no mete en el ancho medido, así que alineado a la derecha se comía la "O"

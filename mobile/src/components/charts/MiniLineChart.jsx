@@ -267,5 +267,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     paddingLeft:     Y_AXIS_W,
   },
-  emptyText: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
+  emptyText: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
 });

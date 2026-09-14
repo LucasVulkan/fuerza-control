@@ -240,11 +240,11 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:    spacing.xs,
   },
   title:    { ...textStyles.heading, color: th.colors.text },
-  subtitle: { ...textStyles.label, color: th.colors.muted, marginTop: 4, maxWidth: 260 },
+  subtitle: { ...textStyles.label, color: th.colors.mutedLight, marginTop: 4, maxWidth: 260 },
   closeBtn: {
     padding: spacing.xs,
   },
-  closeX: { ...textStyles.body, color: th.colors.muted },
+  closeX: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Features
   featureList: {
@@ -321,12 +321,12 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom:    spacing.sm,
   },
-  restoreTxt: { ...textStyles.label, color: th.colors.muted },
+  restoreTxt: { ...textStyles.label, color: th.colors.mutedLight },
 
   // Legal
   legal: {
     ...textStyles.label,
-    color:             th.colors.muted2,
+    color:             th.colors.mutedLight,
     textAlign:         'center',
     lineHeight:        lh(textStyles.label.fontSize),
     paddingHorizontal: spacing.sm,
@@ -337,5 +337,5 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical: spacing.xl,
     alignItems:      'center',
   },
-  noProductsTxt: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
+  noProductsTxt: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
 });

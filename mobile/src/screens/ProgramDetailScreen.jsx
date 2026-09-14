@@ -584,7 +584,7 @@ const makeStyles = (th) => StyleSheet.create({
     color: th.colors.accent, fontVariant: ['tabular-nums'],
   },
   groupDeltaFlat: { color: th.colors.muted },
-  groupHint: { ...textStyles.label, color: th.colors.muted, lineHeight: 15 },
+  groupHint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
 
   // Sesión
   session: {
@@ -607,7 +607,7 @@ const makeStyles = (th) => StyleSheet.create({
   sessionSubtitle:  { ...textStyles.label, color: th.colors.mutedLight },
   sessionStat:      { ...textStyles.label, color: th.colors.mutedLight },
   sessionBody:     { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  emptySession:    { ...textStyles.body, color: th.colors.muted, paddingVertical: spacing.sm },
+  emptySession:    { ...textStyles.body, color: th.colors.mutedLight, paddingVertical: spacing.sm },
 
   // Fila de ejercicio
   exRow: {

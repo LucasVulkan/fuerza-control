@@ -788,7 +788,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   errorText: {
     ...textStyles.body,
-    color:     th.colors.muted,
+    color:     th.colors.mutedLight,
     textAlign: 'center',
     marginTop: spacing.xxl,
   },

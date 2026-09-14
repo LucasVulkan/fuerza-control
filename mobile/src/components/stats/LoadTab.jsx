@@ -791,7 +791,7 @@ const makeStyles = (th) => StyleSheet.create({
   groupFill:  { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
   groupMark:  { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
   groupCount: { ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  groupHint:  { ...textStyles.label, color: th.colors.muted, lineHeight: 15 },
+  groupHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
 
   emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   emptyText:  { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', lineHeight: 19 },

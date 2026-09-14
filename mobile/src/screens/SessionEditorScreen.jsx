@@ -762,5 +762,5 @@ const makeStyles = (th) => StyleSheet.create({
   presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
   // Mismo par nombre+meta que `rowMeta`: sin margen, lo separa el interlineado.
   presetMeta:   { ...textStyles.label, color: th.colors.mutedLight },
-  presetRemove: { ...textStyles.body, color: th.colors.muted, padding: spacing.xs },
+  presetRemove: { ...textStyles.body, color: th.colors.mutedLight, padding: spacing.xs },
 });

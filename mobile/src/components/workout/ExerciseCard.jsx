@@ -1190,7 +1190,7 @@ const makeStyles = (th) => StyleSheet.create({
   warmupCollapsedChevron: {
     ...textStyles.body,
     marginLeft: 'auto',
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
   },
 
   // §4.5 SetsGrid — headers de columna (mismo estilo que SectionLabel, centrado).
@@ -1223,7 +1223,7 @@ const makeStyles = (th) => StyleSheet.create({
   dropRemoveBtn: {
     padding: spacing.xs,
   },
-  dropRemoveText: { ...textStyles.label, color: th.colors.muted },
+  dropRemoveText: { ...textStyles.label, color: th.colors.mutedLight },
   // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
   // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
   addLink: {

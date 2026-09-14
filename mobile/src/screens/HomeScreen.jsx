@@ -946,7 +946,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Segunda línea del caso bloqueado: lo que SÍ puede hacer mientras tanto.
   stageBannerHint: {
     ...textStyles.body,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     lineHeight: textStyles.body.fontSize * 1.5,
     marginTop:  spacing.xs,
   },
@@ -1015,7 +1015,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
-  freeTplRemove:  { ...textStyles.labelStrong, color: th.colors.muted },
+  freeTplRemove:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },

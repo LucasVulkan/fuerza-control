@@ -518,7 +518,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
-  stageHint: { ...textStyles.body, color: th.colors.muted },
+  stageHint: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
   summaryCard: {

@@ -181,5 +181,5 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     paddingVertical: spacing.sm,
   },
-  laterTxt: { ...textStyles.label, color: th.colors.muted },
+  laterTxt: { ...textStyles.label, color: th.colors.mutedLight },
 });

@@ -252,7 +252,7 @@ const makeCal = (th) => StyleSheet.create({
   },
   navBtn:     { padding: 4 },
   navBtnOff:  { opacity: 0.25 },
-  navIcon:    { ...textStyles.title, color: th.colors.muted, lineHeight: 28 },
+  navIcon:    { ...textStyles.title, color: th.colors.mutedLight, lineHeight: 28 },
   navIconOff: { color: th.colors.muted2 },
   monthLabel: { ...textStyles.labelStrong, color: th.colors.text },
 

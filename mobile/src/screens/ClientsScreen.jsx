@@ -3692,7 +3692,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.colors.border,
     alignItems:      'center',
   },
-  filterClearBtnText: { ...textStyles.label, color: th.colors.muted },
+  filterClearBtnText: { ...textStyles.label, color: th.colors.mutedLight },
   // Row 2: Search + Filter (gap space/sm)
   searchRow: {
     flexDirection:     'row',
@@ -3840,7 +3840,7 @@ const makeStyles = (th) => StyleSheet.create({
   emptyTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   emptyBody: {
     ...textStyles.body,
-    color:        th.colors.muted,
+    color:        th.colors.mutedLight,
     textAlign:    'center',
     lineHeight:   lh(textStyles.body.fontSize),
     marginBottom: spacing.lg,
@@ -3858,10 +3858,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  hideTabBtnText: { ...textStyles.label, color: th.colors.muted, textAlign: 'center' },
+  hideTabBtnText: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
   emptyText: {
     ...textStyles.label,
-    color:           th.colors.muted,
+    color:           th.colors.mutedLight,
     textAlign:       'center',
     paddingVertical: spacing.xl,
   },
@@ -4008,7 +4008,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.blue, 0.08),
   },
   actionLabel:   { ...textStyles.body, flex: 1, color: th.colors.text },
-  actionChevron: { ...textStyles.heading, color: th.colors.muted2 },
+  actionChevron: { ...textStyles.heading, color: th.colors.mutedLight },
   actionBadge: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.full,
@@ -4234,7 +4234,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   apNextHint: {
     ...textStyles.label,
-    color:      th.colors.muted,
+    color:      th.colors.mutedLight,
     lineHeight: 15,
     marginLeft: spacing.xs2,
     marginTop:  spacing.sm2,
@@ -4388,7 +4388,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exMiniName:  { ...textStyles.label, color: th.colors.text },
   exMiniLast:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
-  exMiniArrow: { ...textStyles.label, color: th.colors.muted },
+  exMiniArrow: { ...textStyles.label, color: th.colors.mutedLight },
   exMiniBody: {
     paddingHorizontal: spacing.md,
     paddingBottom:     spacing.md,
@@ -4473,8 +4473,8 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     color:         th.colors.mutedLight,
   },
-  infoHint:  { ...textStyles.label, color: th.colors.muted, lineHeight: 14 },
-  infoEmpty: { ...textStyles.body, color: th.colors.muted },
+  infoHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 14 },
+  infoEmpty: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Estado: tres botones sin borde, el activo tintado con su propio color ──
   stRow: { flexDirection: 'row', gap: spacing.sm },
@@ -4880,7 +4880,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:       th.colors.border,
     borderRadius:      th.radius.sm,
   },
-  ghostBtnText: { ...textStyles.body, color: th.colors.muted },
+  ghostBtnText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Modals ──
   modalBackdrop: {
@@ -4914,7 +4914,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   importOptionLabel: { ...textStyles.body,  color: th.colors.text },
-  importOptionDesc:  { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
+  importOptionDesc:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
 
   // ── Context menu ──
   contextMenu: {

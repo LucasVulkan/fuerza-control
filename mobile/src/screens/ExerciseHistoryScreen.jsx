@@ -278,7 +278,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderBottomColor: th.colors.border,
   },
   backBtn:     { width: 36, alignItems: 'center' },
-  backIcon:    { ...textStyles.title, color: th.colors.muted, lineHeight: 32 },
+  backIcon:    { ...textStyles.title, color: th.colors.mutedLight, lineHeight: 32 },
   headerTitle: {
     ...textStyles.heading,
     flex:      1,
@@ -310,7 +310,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  periodBtnText:       { ...textStyles.label, color: th.colors.muted },
+  periodBtnText:       { ...textStyles.label, color: th.colors.mutedLight },
   periodBtnTextActive: { color: th.colors.accent },
 
   // Meta (count + PR)
@@ -345,7 +345,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: withOpacity(th.colors.accent, 0.08),
     borderColor:     withOpacity(th.colors.accent, 0.3),
   },
-  metricBtnText:       { ...textStyles.label, color: th.colors.muted },
+  metricBtnText:       { ...textStyles.label, color: th.colors.mutedLight },
   metricBtnTextActive: { color: th.colors.accent },
 
   // Table
@@ -391,6 +391,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Empty state
   empty:     { padding: spacing.xl, alignItems: 'center' },
-  emptyText: { ...textStyles.body, color: th.colors.muted, textAlign: 'center' },
+  emptyText: { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center' },
 });
 

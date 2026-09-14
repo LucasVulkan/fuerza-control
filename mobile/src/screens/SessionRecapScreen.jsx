@@ -723,7 +723,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   exName: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
   exSub:  { ...textStyles.label, color: th.colors.mutedLight },
-  exNote: { ...textStyles.label, color: th.colors.muted, fontStyle: 'italic' },
+  exNote: { ...textStyles.label, color: th.colors.mutedLight, fontStyle: 'italic' },
 
   // ── Pills de series (misma anatomía exacta que History) ──
   setPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

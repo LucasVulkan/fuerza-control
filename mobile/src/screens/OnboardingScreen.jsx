@@ -1437,7 +1437,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:     th.colors.accent,
     textAlign: 'center',
   },
-  loadingDesc: { ...textStyles.body, color: th.colors.muted, textAlign: 'center' },
+  loadingDesc: { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center' },
 
 
 
