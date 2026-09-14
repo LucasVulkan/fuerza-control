@@ -1150,7 +1150,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
 
 // ── ProgressTab ────────────────────────────────────────────────────────────────
 
-export default function ProgressTab({ header, baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
+export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -1291,8 +1291,6 @@ export default function ProgressTab({ header, baseLog, programTemplateIds, allEx
         />
       ) : undefined}
     >
-      {header}
-
       {/* ── Grupo control + cards (Figma 122:899: gap 15, py 10) ──────────────── */}
       <View style={styles.headerGroup}>
       {/* ── Fila de control: período + toggle programa ──────────────────────── */}
@@ -1478,11 +1476,15 @@ export default function ProgressTab({ header, baseLog, programTemplateIds, allEx
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   // Página Figma (122:789): padding lateral space/lg (15), gap space/md (10).
-  // Sin paddingTop propio: el headerGroup ya aporta 10px bajo el top bar.
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md },
+  // `paddingTop: md` = el aire que había entre el conmutador y esto cuando el
+  // conmutador iba dentro del scroll; ahora lo monta ProgressPanel encima.
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
 
   // Grupo control+cards (Figma 122:899): gap space/lg (15) + padding vertical space/md (10).
-  headerGroup: { width: '100%', gap: spacing.lg, paddingVertical: spacing.md },
+  // Sólo abajo: el `gap` del contentContainer ya pone los 10 de arriba, y con el
+  // padding además el contenido arrancaba 10px más bajo que en Carga e Historial
+  // — el conmutador de Progresión es el mismo en las tres y tiene que verse igual.
+  headerGroup: { width: '100%', gap: spacing.lg, paddingBottom: spacing.md },
 
   // ── Control row: segmented período + toggle programa ─────────────────────────
   controlRow: {

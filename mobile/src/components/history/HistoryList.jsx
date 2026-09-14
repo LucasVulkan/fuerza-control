@@ -8,11 +8,7 @@
  * su `AppHeader`, su contenedor y el `paddingTop` del notch — los pone
  * `StatsScreen`, que es quien la monta ahora.
  *
- * `header` es el conmutador de Progresión, que viaja DENTRO del scroll como en
- * las otras dos pestañas. Se antepone al resto de la cabecera de la lista y se
- * pasa **como elemento**, nunca como función: `ListHeaderComponent={() => …}`
- * remonta la cabecera en cada render y se lleva por delante el scroll.
- *
+
  * El calendario de calor que tenía arriba se fue a la pestaña de Carga: pintaba
  * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
  */
@@ -44,7 +40,7 @@ function CheckIcon({ size = 16, color }) {
 
 // ── Lista ──────────────────────────────────────────────────────────────────────
 
-export default function HistoryList({ header }) {
+export default function HistoryList() {
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -154,10 +150,6 @@ export default function HistoryList({ header }) {
   // Rendered inline so it closes over scope/hasStages/selectedStageIds state
   const listHeader = (
     <>
-      {/* La lista va a sangre y cada tarjeta pone su propio margen, así que el
-          conmutador necesita el suyo: en las otras dos pestañas se lo da el
-          `contentContainer`. Mismo aire arriba que allí (`paddingTop: lg`). */}
-      {!!header && <View style={styles.headerGutter}>{header}</View>}
       {/* Un solo control: ámbito y etapas viven dentro de la hoja que abre
           este chip. Apilados fuera —conmutador + tira de pastillas— eran dos
           filas de filtro antes de la primera sesión, y con el conmutador de
@@ -326,8 +318,7 @@ const makeStyles = (th) => StyleSheet.create({
   listContent: {
     gap: spacing.md,
   },
-  cardGutter:   { marginHorizontal: spacing.lg },
-  headerGutter: { marginHorizontal: spacing.lg, marginTop: spacing.lg },
+  cardGutter: { marginHorizontal: spacing.lg },
 
   // Empty state
   emptyState: {

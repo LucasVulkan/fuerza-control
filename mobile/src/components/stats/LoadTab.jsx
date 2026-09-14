@@ -205,7 +205,7 @@ function IndexChart({ series, height = 96 }) {
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export default function LoadTab({ header, baseLog, allExercises, fallbackBodyWeight, onRefresh, refreshing = false }) {
+export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onRefresh, refreshing = false }) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -382,7 +382,6 @@ export default function LoadTab({ header, baseLog, allExercises, fallbackBodyWei
           tintColor={th.colors.accent} colors={[th.colors.accent]} />
       ) : undefined}
     >
-      {header}
       {children}
     </ScrollView>
   );
@@ -683,7 +682,9 @@ export default function LoadTab({ header, baseLog, allExercises, fallbackBodyWei
 
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md },
+  // `paddingTop: md` = el aire que había entre el conmutador y esto cuando el
+  // conmutador iba dentro del scroll; ahora lo monta ProgressPanel encima.
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
 
   controlRow:    { flexDirection: 'row', alignItems: 'center' },
   segmentedWrap: { width: 198 },
