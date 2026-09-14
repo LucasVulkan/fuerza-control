@@ -1496,23 +1496,40 @@ function syncAgo(isoStr) {
 
 // ── Client list card ───────────────────────────────────────────────────────────
 
-/** Ephemeral filter pill that doubles as an attention counter. */
-function AttentionPill({ label, count, color, active, onPress }) {
+/**
+ * Pills de adherencia → el estado procedural que cada una filtra. Las dos se
+ * comportan igual (mismo contador, mismo filtro, mismo orden "el más parado
+ * primero"), así que son datos y no dos ramas copiadas.
+ */
+const ADHERENCE_PILLS = { at_risk: STATUS.AT_RISK, slipping: STATUS.SLIPPING };
+
+/**
+ * Ephemeral filter pill that doubles as an attention counter.
+ *
+ * `ink` es el tono LEGIBLE de la familia y `color` el de relleno — la regla de
+ * dos tonos del tema (sólido para rellenos, claro para texto pequeño sobre
+ * fondo). Sin esto, "En riesgo" se pintaba con el rojo de relleno de formaFit
+ * (#ff0900), que sobre el fondo teñido da 4.3:1 a 12 px: por debajo de AA, y a
+ * ojo casi ilegible por ser un rojo sin nada de verde. El tono claro sube a
+ * 5.7:1. El estado activo rellena con ese mismo tono claro por lo mismo: el
+ * texto oscuro sobre #ff0900 se quedaba en 4.6:1.
+ */
+function AttentionPill({ label, count, color, ink = color, active, onPress }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
-      style={[styles.attnPill, { backgroundColor: active ? color : withOpacity(color, 0.12) }]}
+      style={[styles.attnPill, { backgroundColor: active ? ink : withOpacity(ink, 0.12) }]}
       onPress={onPress}
       activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.attnPillText, { color: active ? th.colors.bg : color }]}>{label}</Text>
+      <Text style={[styles.attnPillText, { color: active ? th.colors.bg : ink }]}>{label}</Text>
       <View style={[styles.attnPillBadge, {
-        backgroundColor: active ? withOpacity(th.colors.bg, 0.25) : withOpacity(color, 0.2),
+        backgroundColor: active ? withOpacity(th.colors.bg, 0.25) : withOpacity(ink, 0.2),
       }]}>
-        <Text style={[styles.attnPillBadgeText, { color: active ? th.colors.bg : color }]}>{count}</Text>
+        <Text style={[styles.attnPillBadgeText, { color: active ? th.colors.bg : ink }]}>{count}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -1550,6 +1567,7 @@ function ClientListCard({
   const currentDays    = stageDaysAt(activeProgram, stageIdx);
   const sessPerCycle   = Math.max(1, currentDays.length);
   const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
+  const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   // Parado, en cualquiera de sus dos formas — mismo cálculo que el hero, aquí
   // solo para encender el aviso en la fila. Esperando a que le abras la etapa
   // siguiente, o a que la montes porque no hay ninguna detrás.
@@ -1557,24 +1575,23 @@ function ClientListCard({
     && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity);
   const stageStuck     = stageEnded && !!activeProgram.stages[stageIdx + 1]?.locked;
   const blockStuck     = stageEnded && !activeProgram.stages[stageIdx + 1];
-  const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
   // "Ciclo NN" = vueltas COMPLETAS al ciclo + 1, el mismo contador que el banner
   // de Home (`totalWeeksCompleted`), espejado del blob del cliente. Antes aquí se
   // pintaban semanas de calendario desde el log, que es otro número.
   const cycleNum       = (mine?.totalWeeksCompleted ?? activeProgram?.totalWeeksCompleted ?? 0) + 1;
-
-  // Real training pace (avg cycles/week) vs target — el objetivo ya no se pinta
-  // (era ilegible en la tarjeta), pero sigue decidiendo el color.
-  const paceTarget   = adherence?.weekTarget ?? sessPerCycle;
+  // Ritmo real (media de ciclos/semana). Ya no se colorea por "va por debajo
+  // del objetivo": eso es exactamente lo que dice la adherencia, que ahora se
+  // pinta al lado en crudo. Un solo veredicto por fila.
   const paceRaw      = adherence?.recentPerWeek ?? 0;
   const paceRounded  = Math.round(paceRaw * 2) / 2; // nearest 0.5
   const paceHasData  = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
+  // A un cliente en pausa la adherencia se le silencia (es la regla de
+  // `computeAdherence`), así que tampoco se le pinta el porcentaje: un "100%"
+  // al lado de "Pausado" se lee como que el cálculo está roto.
+  const showPct      = adherence?.pct != null && adherence.status !== STATUS.MUTED;
   const paceRateStr  = Number.isInteger(paceRounded)
     ? String(paceRounded)
     : paceRounded.toFixed(1).replace('.', i18n.language?.startsWith('es') ? ',' : '.');
-  // Flag when the real pace falls below target so the trainer notices a slowdown
-  // even before adherence flips to slipping/at-risk.
-  const paceBehind   = paceHasData && paceRounded < paceTarget;
   const attnColor    = adherence && requiresAttention(adherence.status)
     ? adherenceColor(th, adherence.status)
     : null;
@@ -1584,7 +1601,7 @@ function ClientListCard({
   const cta = !activeProgram
     ? { label: t('clients.btnProgramShort'), bg: th.colors.accent, onPress: onOpenEditor }
     : showDirty
-      ? { label: t('clients.btnUploadChanges'), upload: true, bg: th.colors.orange, onPress: onUploadProgram }
+      ? { label: t('clients.btnUploadChanges'), upload: true, bg: th.colors.blue, onPress: onUploadProgram }
       : stageStuck
         ? { label: t('clients.stageUnlockShort'), bg: th.colors.orange, onPress: () => onUnlockStage(stageIdx + 1) }
         : blockStuck
@@ -1608,12 +1625,9 @@ function ClientListCard({
       delayLongPress={350}
       activeOpacity={0.75}
     >
-      {/* ── Línea 1: nombre · racha · Ciclo NN ── */}
+      {/* ── Línea 1: nombre · Ciclo NN ── */}
       <View style={styles.cTop}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
-        {adherence?.streak >= 2 && (
-          <Text style={styles.cStreak}>{t('clients.streakWeeks', { count: adherence.streak })}</Text>
-        )}
         {activeProgram && (
           <Text style={styles.cCycle}>
             {t('clients.cycleLabel')}{' '}
@@ -1633,20 +1647,29 @@ function ClientListCard({
             </View>
           ) : (
             <>
-              {/* El aviso ocupa el sitio de la línea de programa; cuando además
-                  hay cambios sin enviar se pintan las dos. */}
-              {(!(stageStuck || blockStuck) || showDirty) && (
-                <Text
-                  style={[styles.cProgLine, showDirty && { color: th.colors.orange }]}
-                  numberOfLines={1}
-                >
+              {/* La línea de programa sólo sale cuando no la tapa un aviso. */}
+              {!(stageStuck || blockStuck || showDirty) && (
+                <Text style={styles.cProgLine} numberOfLines={1}>
                   {activeProgram.name}
                   {currentStage?.name ? (
-                    <Text style={[styles.cStageLine, showDirty && { color: th.colors.orange }]}>
-                      {' · '}{currentStage.name}
-                    </Text>
+                    <Text style={styles.cStageLine}>{' · '}{currentStage.name}</Text>
                   ) : null}
                 </Text>
+              )}
+
+              {/* Los avisos se separan por DE QUIÉN ES LA PELOTA, que es lo que
+                  ya dice el color en el resto de la app: azul = entrenador y
+                  sincronización (lo tuyo, sin enviar), naranja = el programa
+                  está parado. Antes los tres eran naranjas y se distinguían sólo
+                  leyendo el texto. Pueden coincidir: el CTA lo resuelve por
+                  prioridad, los avisos se apilan. */}
+              {showDirty && (
+                <View style={styles.cAvisoRow}>
+                  <View style={[styles.cAvisoDot, { backgroundColor: th.colors.blue }]} />
+                  <Text style={[styles.cAvisoText, { color: th.colors.blue }]}>
+                    {t('clients.pendingTitle')}
+                  </Text>
+                </View>
               )}
 
               {(stageStuck || blockStuck) && (
@@ -1658,27 +1681,38 @@ function ClientListCard({
                 </View>
               )}
 
+              {/* Adherencia · ritmo · avance del ciclo. Los puntos eran una barra
+                  de progreso de 6 px que no se leía como barra; el dato que
+                  daban ("3 de 4 hechas") vuelve en números.
+                  La adherencia es el único que emite un veredicto, así que es el
+                  único que se colorea — la regla que ya sigue `ProgramCard`.
+                  El primer hueco y el último están siempre: así ningún " · " se
+                  queda huérfano y no hacen falta guardas cruzadas.
+                  "3/4" lleva la coletilla "del ciclo" para decir de qué son esas
+                  cuatro, y va entero en el peso de la unidad: es el dato que más
+                  se mueve de la tarjeta (sube en cada sesión) y en negrita se
+                  llevaba el vistazo que le toca a la adherencia. */}
               <View style={styles.cPaceRow}>
-                <Text style={styles.cPace}>
-                  {paceHasData ? (
+                <Text style={styles.cPace} numberOfLines={1}>
+                  {showPct ? (
                     <>
-                      <Text style={[
-                        styles.cPaceNum,
-                        paceBehind && { color: th.colors.orange },
-                        attnColor && { color: attnColor },
-                      ]}>{paceRateStr}</Text>
-                      <Text style={styles.cPaceUnit}> {t('clients.cyclesPerWeek')}</Text>
+                      <Text style={[styles.cPaceNum, attnColor && { color: attnColor }]}>{adherence.pct}</Text>
+                      <Text style={[styles.cPaceUnit, attnColor && { color: attnColor }]}>%</Text>
                     </>
                   ) : (
                     <Text style={styles.cPaceUnit}>{t('clients.noPaceShort')}</Text>
                   )}
+                  {paceHasData && (
+                    <>
+                      <Text style={styles.cPaceUnit}>{' · '}</Text>
+                      <Text style={styles.cPaceNum}>{paceRateStr}</Text>
+                      <Text style={styles.cPaceUnit}> {t('clients.cyclesPerWeek')}</Text>
+                    </>
+                  )}
+                  <Text style={styles.cPaceUnit}>
+                    {' · '}{doneInCycle}/{sessPerCycle} {t('clients.ofCycle')}
+                  </Text>
                 </Text>
-
-                <View style={styles.cDots}>
-                  {Array.from({ length: sessPerCycle }, (_, i) => (
-                    <View key={i} style={[styles.cDot, i < doneInCycle ? styles.cDotFull : styles.cDotEmpty]} />
-                  ))}
-                </View>
 
                 {/* Jerarquía del hueco derecho: CTA > sin revisar > estado > fecha */}
                 {!cta && (newSessionsCount > 0 ? (
@@ -1876,11 +1910,14 @@ export default function ClientsScreen() {
   const adherenceByClient = useMemo(() => {
     const out = {};
     Object.values(clients ?? {}).forEach((c) => {
-      out[c.id] = computeAdherence({
-        sessions:         clientLogs[c.id] ?? [],
-        sessionsPerCycle: weeklyTarget(programs[c.activeProgramId]),
-        manualStatus:     c.status ?? 'active',
-      });
+      const sessions = clientLogs[c.id] ?? [];
+      const target   = weeklyTarget(programs[c.activeProgramId]);
+      // `pct` viaja pegado al estado porque la tarjeta ya recibe este objeto:
+      // añadirlo aquí sale gratis y evita un segundo prop por cliente.
+      out[c.id] = {
+        ...computeAdherence({ sessions, sessionsPerCycle: target, manualStatus: c.status ?? 'active' }),
+        pct: adherencePct({ sessions, sessionsPerCycle: target }),
+      };
     });
     return out;
   }, [clients, programs, clientLogs]);
@@ -1894,11 +1931,21 @@ export default function ClientsScreen() {
     return out;
   }, [clients, trainerSync.lastSeenSessionsCount]);
 
-  // Pill counters — global avisos, not scoped to search/tags.
-  const atRiskCount     = useMemo(
-    () => Object.values(clients ?? {}).filter((c) => adherenceByClient[c.id]?.status === STATUS.AT_RISK).length,
-    [clients, adherenceByClient],
-  );
+  // Pill counters — global avisos, not scoped to search/tags. Las dos pills de
+  // adherencia se cuentan en la misma pasada: es el mismo recorrido y el mismo
+  // dato. "Aflojando" es el aviso que llega a tiempo — `requiresAttention` ya
+  // incluía SLIPPING y la tarjeta ya lo pintaba, pero no se podía filtrar.
+  const attnCounts = useMemo(() => {
+    const out = { at_risk: 0, slipping: 0 };
+    Object.values(clients ?? {}).forEach((c) => {
+      const st = adherenceByClient[c.id]?.status;
+      if (st === STATUS.AT_RISK)       out.at_risk  += 1;
+      else if (st === STATUS.SLIPPING) out.slipping += 1;
+    });
+    return out;
+  }, [clients, adherenceByClient]);
+  const atRiskCount   = attnCounts.at_risk;
+  const slippingCount = attnCounts.slipping;
   const unreviewedCount = useMemo(
     () => Object.values(unreviewedByClient).filter((n) => n > 0).length,
     [unreviewedByClient],
@@ -1934,7 +1981,7 @@ export default function ClientsScreen() {
   // If a filter's counter dropped to zero its pill is gone, so ignore it
   // (derived, not stored — avoids resetting state from an effect).
   const effectiveAdherenceFilter =
-    (adherenceFilter === 'at_risk'    && atRiskCount === 0) ||
+    (ADHERENCE_PILLS[adherenceFilter] && attnCounts[adherenceFilter] === 0) ||
     (adherenceFilter === 'unreviewed' && unreviewedCount === 0)
       ? null : adherenceFilter;
 
@@ -1943,8 +1990,9 @@ export default function ClientsScreen() {
   const clientList = useMemo(() => {
     let list = filterBySearch(Object.values(clients ?? {}), search, (c) => c.name);
 
-    if (effectiveAdherenceFilter === 'at_risk') {
-      list = list.filter((c) => adherenceByClient[c.id]?.status === STATUS.AT_RISK);
+    const pillStatus = ADHERENCE_PILLS[effectiveAdherenceFilter];
+    if (pillStatus) {
+      list = list.filter((c) => adherenceByClient[c.id]?.status === pillStatus);
     } else if (effectiveAdherenceFilter === 'unreviewed') {
       list = list.filter((c) => (unreviewedByClient[c.id] ?? 0) > 0);
     } else {
@@ -1963,7 +2011,7 @@ export default function ClientsScreen() {
       const sessions = clientLogs[c.id] ?? [];
       lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
     });
-    if (effectiveAdherenceFilter === 'at_risk') {
+    if (pillStatus) {
       list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)); // most idle first
     } else if (effectiveAdherenceFilter === 'unreviewed') {
       list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // most recent first
@@ -2008,11 +2056,10 @@ export default function ClientsScreen() {
   }, [clientLogs, selectedClientId]);
 
   // ── Los 3 datos de la tarjeta de programa ──────────────────────────────────
-  // Adherencia: sesiones hechas vs esperadas en las últimas 4 semanas.
-  const clientAdherencePct = useMemo(() => adherencePct({
-    sessions:         clientBaseLog,
-    sessionsPerCycle: adherenceByClient[selectedClientId]?.weekTarget ?? 0,
-  }), [clientBaseLog, adherenceByClient, selectedClientId]);
+  // Adherencia: sesiones hechas vs esperadas en las últimas 4 semanas. Ya viene
+  // calculada con el resto del estado (`adherenceByClient`), que es la misma
+  // cuenta sobre el mismo log — antes se hacía dos veces.
+  const clientAdherencePct = adherenceByClient[selectedClientId]?.pct ?? null;
 
   // Carga media: media de carga externa de los últimos 7 días frente a la de
   // los 28, en % — el mismo par de medias del que sale `loadState` en el panel
@@ -3077,7 +3124,7 @@ export default function ClientsScreen() {
 
         {/* Row 3 — conditional: attention pills + applied filters. Hidden when
             there's nothing to show, so the default state is two clean rows. */}
-        {(atRiskCount > 0 || unreviewedCount > 0 || tagFilter.length > 0) && (
+        {(atRiskCount > 0 || slippingCount > 0 || unreviewedCount > 0 || tagFilter.length > 0) && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -3090,8 +3137,18 @@ export default function ClientsScreen() {
                 label={t('clients.atRiskPill')}
                 count={atRiskCount}
                 color={th.colors.red}
+                ink={th.colors.redText}
                 active={adherenceFilter === 'at_risk'}
                 onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
+              />
+            )}
+            {slippingCount > 0 && (
+              <AttentionPill
+                label={t('clients.slippingPill')}
+                count={slippingCount}
+                color={th.colors.orange}
+                active={adherenceFilter === 'slipping'}
+                onPress={() => setAdherenceFilter((f) => (f === 'slipping' ? null : 'slipping'))}
               />
             )}
             {unreviewedCount > 0 && (
@@ -3902,22 +3959,21 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.md,
   },
-  // Línea 1: nombre · racha · Ciclo NN (Figma: gap 6, alineado arriba)
+  // Bold y no Black, la misma voz que el nombre del ejercicio en marcha
+  // (`itemTitleQuiet`, ExerciseCard): en esta tarjeta el nombre no compite con
+  // nadie por el vistazo —ya manda por posición y tamaño—, y la Black a 16
+  // pesaba más que el dato que el entrenador viene a cazar, que es el estado.
+  // Línea 1: nombre · Ciclo NN (Figma: gap 6, alineado a la línea base)
   cTop: {
     flexDirection: 'row',
     alignItems:    'baseline',
     gap:           spacing.sm,
   },
   cName: {
-    ...textStyles.itemTitle,
+    ...textStyles.itemTitleQuiet,
     color:    th.colors.text,
     flex:     1,
     minWidth: 0,
-  },
-  cStreak: {
-    ...textStyles.label,
-    color:      th.colors.mutedLight,
-    flexShrink: 0,
   },
   cCycle: {
     ...textStyles.label,
@@ -3989,12 +4045,18 @@ const makeStyles = (th) => StyleSheet.create({
     flex:     1,
     minWidth: 0,
   },
-  // Línea de programa: nombre y etapa a 14, los dos mutedLight. El nombre manda
-  // por PESO (Bold contra Medium) y no por cuerpo — antes iba a 12 y acababa
-  // siendo más pequeño que la etapa que cuelga de él.
+  // Línea de programa: el nombre en el escalón de en medio (14) y en `text`; su
+  // etapa a 12 y en `mutedLight`. 14 es el único paso que hay entre el nombre
+  // del cliente (16) y el resto de la meta (12) — la escala son ocho pasos, no
+  // un continuo.
+  // El nombre del programa es un NOMBRE, no un metadato: en gris prometía
+  // lectura con color de dato secundario, que es lo que lo dejaba en tierra de
+  // nadie. Ahora la jerarquía dentro de la línea la marca el color (`text`
+  // contra `mutedLight`), no el peso, y contra el nombre del cliente la marca
+  // el cuerpo (16 contra 14).
   cProgLine: {
     ...textStyles.bodyStrong,
-    color: th.colors.mutedLight,
+    color: th.colors.text,
   },
   cStageLine: {
     ...textStyles.label,
@@ -4013,20 +4075,23 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.orange,
     flexShrink:      0,
   },
-  // Sustituye a la línea de programa, así que va a su mismo rango.
+  // Ocupa el sitio de la línea de programa pero NO le sigue el cuerpo: un aviso
+  // es una etiqueta de estado corta ("Etapa bloqueada"), se escanea y ya la
+  // destacan el punto y el color. A 14 competía con el nombre del cliente.
   cAvisoText: {
-    ...textStyles.bodyStrong,
+    ...textStyles.labelStrong,
     color:      th.colors.orange,
     flexShrink: 1,
   },
-  // Línea de ritmo: "1.2 cic/sem" · puntos de ciclo · fecha / sin revisar
+  // Línea de meta: "83% · 1,2 cic/sem · 3/4 del ciclo" ····· fecha / sin revisar
   cPaceRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           spacing.lg,
   },
   cPace: {
-    flexShrink: 0,
+    flex:     1,
+    minWidth: 0,
   },
   cPaceNum: {
     ...textStyles.labelStrong,
@@ -4037,20 +4102,6 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.label,
     color: th.colors.mutedLight,
   },
-  cDots: {
-    flex:          1,
-    minWidth:      0,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
-  cDot: {
-    width:        6,
-    height:       6,
-    borderRadius: 3,
-  },
-  cDotFull:  { backgroundColor: th.colors.accent },
-  cDotEmpty: { backgroundColor: th.colors.muted },
   cLast: {
     ...textStyles.label,
     color:      th.colors.mutedLight,

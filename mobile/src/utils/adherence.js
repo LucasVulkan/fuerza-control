@@ -95,7 +95,9 @@ export function requiresAttention(status) {
  * mismo la misma cifra, con el mismo color, que su entrenador ve de él.
  */
 export function adherenceColor(th, status) {
-  if (status === STATUS.AT_RISK)  return th.colors.red;
+  // `redText` y no `red`: los tres sitios que llaman aquí pintan TEXTO, y el
+  // rojo de relleno de formaFit no llega a AA a 12-14 px (ver themes.js).
+  if (status === STATUS.AT_RISK)  return th.colors.redText ?? th.colors.red;
   if (status === STATUS.SLIPPING) return th.colors.orange;
   if (status === STATUS.ON_TRACK) return th.colors.green;
   return th.colors.muted; // no_data / muted

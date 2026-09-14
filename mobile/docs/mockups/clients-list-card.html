@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lista de clientes — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: #e6e6e6;
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+
+  /* ══════ TOKENS FormaFit (src/themes.js) ══════
+     bg #151515 · surface #1f1f1f · surface2 #272727 · text #e6e6e6
+     mutedLight #949494 (era #818181) · muted #4d4d4d · accent #aae216 · onAccent #000
+     orange #fb923c · red #ff0900 · redText #ff5e58 · blue #4c85ff
+     radius xs4 sm6 md10 lg18 · space xs2 xs2·4 sm6 sm2·8 md10 lg15 xl20
+     tipografía: itemTitleQuiet 700/16/-0.2 · bodyStrong 700/14 (en text) · labelStrong 800/12
+                 · label 500/12 */
+
+  /* ── Andamio (no es UI) ── */
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 880px; margin-bottom: 34px; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: #aae216;
+       margin: 46px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+  .sub { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 880px; margin-bottom: 20px; }
+  .sub code, .lead code { font: 800 12px Inter; color: #c9c9c9; }
+  .rack { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; }
+  .cap b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: #aae216; margin-bottom: 3px; }
+  .cap.bad b { color: #ff5e58; }
+  .phone { background: #151515; border-radius: 22px; padding: 15px; }
+  .note { font: 500 11px/1.6 Inter; color: #6a6a6a; margin-top: 10px; }
+  .note b { color: #9a9a9a; font-weight: 800; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .tagfix { display: inline-block; font: 800 9px Inter; letter-spacing: 1.2px; padding: 3px 7px;
+            border-radius: 4px; background: rgba(184,255,0,.12); color: #aae216; vertical-align: 2px; }
+  .tagopen { background: rgba(76,133,255,.16); color: #4c85ff; }
+
+  /* ══════ TARJETA DE CLIENTE ══════ */
+  .cc { background: #1f1f1f; border-radius: 10px; padding: 10px 15px; display: flex;
+        flex-direction: column; gap: 10px; }
+  .ctop { display: flex; align-items: baseline; gap: 6px; }
+  .cname { font: 700 16px Inter; letter-spacing: -.2px; color: #e6e6e6; flex: 1; min-width: 0;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cname.old { font-weight: 900; }
+  .cstreak { font: 500 12px Inter; color: #818181; flex-shrink: 0; }
+  .ccycle { font: 500 12px Inter; color: #949494; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .ccycle b { font: 800 12px Inter; color: #e6e6e6; font-variant-numeric: tabular-nums; }
+  .cbody { display: flex; align-items: center; gap: 10px; }
+  .cmain { flex: 1; min-width: 0; }
+
+  .cprog { font: 700 14px Inter; color: #e6e6e6; white-space: nowrap; overflow: hidden;
+           text-overflow: ellipsis; }
+  .cprog span { font: 500 12px Inter; color: #949494; }
+  .cprog.old { font: 700 14px Inter; color: #818181; } /* el de antes, a proposito */
+  .cprog.old span { font: 500 12px Inter; }
+  .cprog.dirty, .cprog.dirty span { color: #fb923c; }
+
+  .caviso { display: flex; align-items: center; gap: 6px; }
+  .cdot { width: 6px; height: 6px; border-radius: 3px; background: #fb923c; flex-shrink: 0; }
+  .cavisotx { font: 800 12px Inter; color: #fb923c; }
+  .caviso.none .cdot { background: #4d4d4d; }
+  .caviso.none .cavisotx { color: #949494; }
+  .caviso.blue .cdot { background: #4c85ff; }
+  .caviso.blue .cavisotx { color: #4c85ff; }
+
+  .cmeta { display: flex; align-items: center; gap: 15px; margin-top: 2px; }
+  .cpace { flex: 1; min-width: 0; white-space: nowrap; }
+  .cpace b { font: 800 12px Inter; color: #e6e6e6; font-variant-numeric: tabular-nums; }
+  .cpace i { font: 500 12px Inter; font-style: normal; color: #949494; }
+  .cpace b.risk, .cpace i.risk { color: #ff5e58; }
+  .cpace b.slip, .cpace i.slip { color: #fb923c; }
+  .clast { font: 500 12px Inter; color: #949494; flex-shrink: 0; }
+  .clast.risk { color: #ff5e58; }
+  .cunrev { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .cunrev i { width: 6px; height: 6px; border-radius: 3px; background: #aae216; }
+  .cunrev span { font: 800 12px Inter; color: #e6e6e6; }
+
+  .ccta { padding: 10px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center;
+          gap: 6px; font: 800 12px Inter; color: #000; background: #aae216; }
+  .ccta.orange { background: #fb923c; }
+  .ccta.blue { background: #4c85ff; }
+  .ccta svg { width: 13px; height: 13px; }
+
+  /* puntos de ciclo — sólo en la columna "antes" */
+  .cdots { flex: 1; display: flex; align-items: center; gap: 6px; }
+  .cdots i { width: 6px; height: 6px; border-radius: 3px; background: #4d4d4d; }
+  .cdots i.on { background: #aae216; }
+
+  /* ══════ PILDORAS DE ATENCIÓN ══════ */
+  .pillrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
+          font: 800 12px Inter; flex-shrink: 0; }
+  .pill u { text-decoration: none; min-width: 18px; height: 18px; border-radius: 9999px; padding: 0 4px;
+            display: grid; place-items: center; font: 800 12px Inter; }
+
+  /* ══════ RAMPA DE GRISES ══════ */
+  .ramp { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; width: 375px; }
+  .band { padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
+  .band .sw { width: 26px; height: 26px; border-radius: 5px; flex-shrink: 0; }
+  .band .t { flex: 1; font: 500 12px Inter; }
+  .band .r { font: 800 11px Inter; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .r.ko { color: #ff5e58; } .r.ok { color: #aae216; } .r.meh { color: #fb923c; }
+  .b1 { background: #151515; } .b2 { background: #1f1f1f; } .b3 { background: #272727; }
+  .rlabel { font: 800 10px Inter; letter-spacing: 1.4px; color: #6a6a6a; margin: 0 0 6px; }
+</style>
+</head>
+<body>
+
+<h1>Lista de clientes — lo aplicado y lo que queda por decidir</h1>
+<p class="lead">
+  Todo con los tokens reales de <b>formaFit</b>. Las secciones marcadas
+  <span class="tagfix">APLICADO</span> ya están en el código; las marcadas
+  <span class="tagfix tagopen">DESCARTADO</span> se probó y se descartó. Los ratios de contraste
+  son WCAG 2.1 calculados sobre los hex reales.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2>1 · Tipografía de la tarjeta <span class="tagfix">APLICADO</span></h2>
+<p class="sub">
+  El nombre del cliente baja de Black a Bold (la voz del nombre de ejercicio del entreno) y pierde
+  la racha de al lado; el contador de vueltas se queda tal cual. El nombre del programa
+  va a 14 —el único escalón entre el 16 del cliente y el 12 de la meta— y en <b>text</b>: es un
+  nombre, no un dato secundario. Los avisos NO le siguen: se quedan en 12, que es donde se escanean.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap bad"><b>ANTES</b>Black 16 · programa en gris · puntos de ciclo · racha</p>
+    <div class="phone"><div class="cc">
+      <div class="ctop">
+        <div class="cname old">Marta Iglesias</div>
+        <div class="cstreak">racha 3 sem</div>
+        <div class="ccycle">Ciclo <b>03</b></div>
+      </div>
+      <div class="cbody"><div class="cmain">
+        <div class="cprog old">Hipertrofia Q1<span> · Acumulación</span></div>
+        <div class="cmeta">
+          <div class="cpace"><b>1,5</b><i> cic/sem</i></div>
+          <div class="cdots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+          <div class="clast">hace 2 días</div>
+        </div>
+      </div></div>
+    </div></div>
+    <p class="note">Cuatro cuerpos distintos (16 / 14 / 12 / 12), el nombre del programa en gris de
+      metadato, una barra de progreso de 6&nbsp;px que nadie lee como barra, y una racha que ni
+      sabías que estaba.</p>
+  </div>
+  <div class="col">
+    <p class="cap"><b>AHORA</b>Bold 16 · programa Bold 14 en <i>text</i> · adherencia · ritmo · avance</p>
+    <div class="phone"><div class="cc">
+      <div class="ctop">
+        <div class="cname">Marta Iglesias</div>
+          <div class="ccycle">Ciclo <b>03</b></div>
+      </div>
+      <div class="cbody"><div class="cmain">
+        <div class="cprog">Hipertrofia Q1<span> · Acumulación</span></div>
+        <div class="cmeta">
+          <div class="cpace"><b>92</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div>
+          <div class="clast">hace 2 días</div>
+        </div>
+      </div></div>
+    </div></div>
+    <p class="note">El nombre del programa es un <b>nombre</b>, no un metadato: va en
+      <b>text</b>, y su etapa se queda en gris detrás. La jerarquía dentro de la línea la marca el
+      color; contra el nombre del cliente la marca el cuerpo (16 contra 14). El contador de sesiones
+      va entero en el peso de la unidad: es el dato que más se mueve y en negrita se llevaba el
+      vistazo que le toca a la adherencia.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2>2 · Todas las variantes, ya aplicadas <span class="tagfix">APLICADO</span></h2>
+<p class="sub">Ocho estados reales de la tarjeta. El hueco de la derecha es un multiplexor por
+  prioridad: CTA › sin revisar › estado manual › fecha.</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>ESTADO NORMAL Y ADHERENCIA</b>el % es el único que emite veredicto, y el único que se colorea</p>
+    <div class="phone"><div class="stack">
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Marta Iglesias</div>
+          <div class="ccycle">Ciclo <b>07</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Hipertrofia Q1<span> · Acumulación</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b>92</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div>
+            <div class="clast">hace 2 días</div></div>
+        </div></div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Diego Sanz</div>
+          <div class="ccycle">Ciclo <b>02</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Fuerza base<span> · Intensificación</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b class="slip">61</b><i class="slip">%</i><i> · </i><b>1,0</b><i> cic/sem</i><i> · 2/4 del ciclo</i></div>
+            <div class="clast">hace 6 días</div></div>
+        </div></div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Elena Ruiz</div>
+          <div class="ccycle">Ciclo <b>05</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Full Body<span> · Adaptación</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b class="risk">28</b><i class="risk">%</i><i> · </i><b>0,5</b><i> cic/sem</i><i> · 1/3 del ciclo</i></div>
+            <div class="clast risk">hace 19 días</div></div>
+        </div></div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Pablo Otero</div>
+          <div class="ccycle">Ciclo <b>08</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Push Pull Legs<span> · Choque</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b>88</b><i>%</i><i> · </i><b>2,0</b><i> cic/sem</i><i> · 4/4 del ciclo</i></div>
+            <div class="cunrev"><i></i><span>3 sin revisar</span></div></div>
+        </div></div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Laura Benito</div>
+          <div class="ccycle">Ciclo <b>04</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Fuerza base<span> · Descarga</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b>1,0</b><i> cic/sem</i><i> · 2/4 del ciclo</i></div>
+            <div class="clast">Pausado</div></div>
+        </div></div>
+      </div>
+
+    </div></div>
+    <p class="note">El último: pausado e inactivo ocupan el hueco de la fecha y ya <b>no</b> pintan
+      porcentaje — pausar silencia la adherencia, así que un “100&nbsp;%” junto a “Pausado” se leía
+      como un cálculo roto.</p>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>ESTADOS QUE PIDEN ACCIÓN</b>el CTA se come el hueco de la fecha</p>
+    <div class="phone"><div class="stack">
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Nuria Vidal</div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso none"><div class="cdot"></div><div class="cavisotx">Sin programa activo</div></div>
+          </div>
+          <div class="ccta">Programa</div>
+        </div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Iván Márquez</div>
+          <div class="ccycle">Ciclo <b>09</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso blue"><div class="cdot"></div><div class="cavisotx">Cambios sin enviar</div></div>
+            <div class="cmeta"><div class="cpace"><b>75</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Enviar</div>
+        </div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Sara Peña</div>
+          <div class="ccycle">Ciclo <b>12</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso"><div class="cdot"></div><div class="cavisotx">Etapa bloqueada</div></div>
+            <div class="cmeta"><div class="cpace"><b>96</b><i>%</i><i> · </i><b>2,0</b><i> cic/sem</i><i> · 4/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta orange">Desbloquear</div>
+        </div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Óscar Lema</div>
+          <div class="ccycle">Ciclo <b>06</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso"><div class="cdot"></div><div class="cavisotx">Bloque terminado</div></div>
+            <div class="cmeta"><div class="cpace"><b>84</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta orange">Planificar</div>
+        </div>
+      </div>
+
+      <div class="cc">
+        <div class="ctop"><div class="cname">Rocío Abad</div>
+          <div class="ccycle">Ciclo <b>03</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="cprog">Hipertrofia Q1<span> · Acumulación</span></div>
+            <div class="cmeta"><div class="cpace"><b>90</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Enviar</div>
+        </div>
+      </div>
+
+    </div></div>
+    <p class="note">Ya separados por color: <b>azul</b> = la pelota la tienes tú y es
+      sincronización; <b>naranja</b> = el programa está parado. Sigue en pie que con CTA presente
+      <b>no ves la última actividad</b> — se probó subirla a la línea 1 y se descartó.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2>3 · La pildora “En riesgo” <span class="tagfix">APLICADO</span></h2>
+<p class="sub">No era gusto, era AA. <code style="color:#ff5e58">#ff0900</code> es el rojo de
+  <i>relleno</i> de Figma; usado como tinta sobre su propio tinte da 4,3:1, y sin nada de verde en el
+  canal, a ojo vibra. <code style="color:#ff5e58">#ff5e58</code> —el mismo del que Figma deriva
+  <code style="color:#ff5e58">tint/red-50</code>, no un color inventado— sube a 5,7:1.</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap bad"><b>ANTES</b>el relleno usado como tinta</p>
+    <div class="phone"><div class="pillrow">
+      <div class="pill" style="background:rgba(255,9,0,.12);color:#ff0900">En riesgo <u style="background:rgba(255,9,0,.2);color:#ff0900">2</u></div>
+      <div class="pill" style="background:#ff0900;color:#151515">En riesgo <u style="background:rgba(21,21,21,.25);color:#151515">2</u></div>
+      <div class="pill" style="background:rgba(170,226,22,.12);color:#aae216">Sin revisar <u style="background:rgba(170,226,22,.2);color:#aae216">5</u></div>
+    </div></div>
+    <p class="note">Inactiva 4,3:1 · activa 4,6:1. Las dos por debajo (o rozando) el 4,5:1 de AA
+      a 12&nbsp;px — y negro sobre rojo puro es lo peor del par.</p>
+  </div>
+  <div class="col">
+    <p class="cap"><b>AHORA</b>dos tonos por familia, igual que el acento</p>
+    <div class="phone"><div class="pillrow">
+      <div class="pill" style="background:rgba(255,94,88,.12);color:#ff5e58">En riesgo <u style="background:rgba(255,94,88,.2);color:#ff5e58">2</u></div>
+      <div class="pill" style="background:#ff5e58;color:#151515">En riesgo <u style="background:rgba(21,21,21,.25);color:#151515">2</u></div>
+      <div class="pill" style="background:rgba(251,146,60,.12);color:#fb923c">Aflojando <u style="background:rgba(251,146,60,.2);color:#fb923c">4</u></div>
+      <div class="pill" style="background:rgba(170,226,22,.12);color:#aae216">Sin revisar <u style="background:rgba(170,226,22,.2);color:#aae216">5</u></div>
+    </div></div>
+    <p class="note">Inactiva 5,7:1 · activa 6,1:1. El token nuevo es <b>redText</b> y lo devuelve
+      <b>adherenceColor()</b>, así que arregla también la fecha roja de la tarjeta y el % de la ficha.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2>4 · mutedLight: sí, era demasiado oscuro <span class="tagfix">APLICADO</span></h2>
+<p class="sub">
+  Y la causa no es el gris — es que <b>formaFit subió las superficies y dejó el gris donde estaba</b>.
+  En el tema <i>dark</i>, <code>#9a9a9a</code> sobre <code>#0a0a0a</code> da 7,0:1: ese es el número
+  que cita el comentario de <code>theme.js</code> para justificar que la meta baje a 12&nbsp;px. Pero
+  formaFit pinta las tarjetas a #1f1f1f y los controles a #272727 con un gris <i>más apagado</i>.
+  El razonamiento se escribió contra otra paleta.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="rlabel">ANTES · #818181</p>
+    <div class="ramp">
+      <div class="band b1"><div class="sw" style="background:#818181"></div><div class="t" style="color:#818181">hace 2 días · 5 ejercicios</div><div class="r meh">4,69</div></div>
+      <div class="band b2"><div class="sw" style="background:#818181"></div><div class="t" style="color:#818181">hace 2 días · 5 ejercicios</div><div class="r ko">4,23</div></div>
+      <div class="band b3"><div class="sw" style="background:#818181"></div><div class="t" style="color:#818181">hace 2 días · 5 ejercicios</div><div class="r ko">3,83</div></div>
+    </div>
+    <p class="note">bg · surface · surface2. Dos de tres suspenden, y surface2 es donde viven
+      buscador, segmentados y pills.</p>
+  </div>
+  <div class="col">
+    <p class="rlabel">MÍNIMO QUE PASABA · #8f8f8f</p>
+    <div class="ramp">
+      <div class="band b1"><div class="sw" style="background:#8f8f8f"></div><div class="t" style="color:#8f8f8f">hace 2 días · 5 ejercicios</div><div class="r ok">5,65</div></div>
+      <div class="band b2"><div class="sw" style="background:#8f8f8f"></div><div class="t" style="color:#8f8f8f">hace 2 días · 5 ejercicios</div><div class="r ok">5,10</div></div>
+      <div class="band b3"><div class="sw" style="background:#8f8f8f"></div><div class="t" style="color:#8f8f8f">hace 2 días · 5 ejercicios</div><div class="r ok">4,62</div></div>
+    </div>
+    <p class="note">Pasa justo, sin margen: 4,62 en surface2. Cualquier tinte encima lo vuelve a
+      tumbar.</p>
+  </div>
+  <div class="col">
+    <p class="rlabel" style="color:#aae216">APLICADO · #949494</p>
+    <div class="ramp">
+      <div class="band b1"><div class="sw" style="background:#949494"></div><div class="t" style="color:#949494">hace 2 días · 5 ejercicios</div><div class="r ok">6,02</div></div>
+      <div class="band b2"><div class="sw" style="background:#949494"></div><div class="t" style="color:#949494">hace 2 días · 5 ejercicios</div><div class="r ok">5,43</div></div>
+      <div class="band b3"><div class="sw" style="background:#949494"></div><div class="t" style="color:#949494">hace 2 días · 5 ejercicios</div><div class="r ok">4,92</div></div>
+    </div>
+    <p class="note">Margen en las tres. Y sigue muy por debajo de <b>text</b> (13,2:1), así que la
+      jerarquía de color no se aplana.</p>
+  </div>
+</div>
+
+<p class="sub" style="margin-top:26px">
+  <b style="color:#ff5e58">Y tiene un hermano peor.</b> <code style="color:#ff5e58">muted</code>
+  (#4d4d4d) da <b>1,95:1</b> sobre surface —invisible— y lo usan <b>108</b> estilos de texto de la
+  app. Míralos seguidos sobre la misma tarjeta:
+</p>
+<div class="ramp" style="width:774px">
+  <div class="band b2"><div class="sw" style="background:#4d4d4d"></div><div class="t" style="color:#4d4d4d">muted #4d4d4d — “5 ejercicios · 55 min · ayer”</div><div class="r ko">1,95</div></div>
+  <div class="band b2"><div class="sw" style="background:#818181"></div><div class="t" style="color:#818181">mutedLight #818181 — “5 ejercicios · 55 min · ayer”</div><div class="r ko">4,23</div></div>
+  <div class="band b2"><div class="sw" style="background:#949494"></div><div class="t" style="color:#949494">mutedLight aplicado #949494 — “5 ejercicios · 55 min · ayer”</div><div class="r ok">5,43</div></div>
+  <div class="band b2"><div class="sw" style="background:#e6e6e6"></div><div class="t" style="color:#e6e6e6">text #e6e6e6 — “5 ejercicios · 55 min · ayer”</div><div class="r ok">13,2</div></div>
+</div>
+<p class="note" style="max-width:774px">Entre 4,9 y 13,2 caben de sobra tres niveles de gris. El
+  cuarto —<b>muted</b> como letra— no cabe en ninguna paleta oscura: ése es color de punto, de línea
+  y de desactivado, no de texto.</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2>5 · Lo demás <span class="tagfix">A · B · C APLICADOS</span>
+    <span class="tagfix tagopen">D DESCARTADO</span></h2>
+<p class="sub">El único que no entra es el D: mover la última actividad a la línea 1. Se queda
+  como está — el CTA sigue tapándola, y es un coste asumido a cambio de no mover el dato de sitio
+  según el estado de la tarjeta.</p>
+<div class="rack">
+
+  <div class="col">
+    <p class="cap"><b>A · PILDORA “AFLOJANDO”</b>el estado intermedio ya se puede filtrar</p>
+    <div class="phone"><div class="pillrow">
+      <div class="pill" style="background:rgba(255,94,88,.12);color:#ff5e58">En riesgo <u style="background:rgba(255,94,88,.2);color:#ff5e58">2</u></div>
+      <div class="pill" style="background:rgba(251,146,60,.12);color:#fb923c">Aflojando <u style="background:rgba(251,146,60,.2);color:#fb923c">4</u></div>
+      <div class="pill" style="background:rgba(170,226,22,.12);color:#aae216">Sin revisar <u style="background:rgba(170,226,22,.2);color:#aae216">5</u></div>
+    </div></div>
+    <p class="note"><b>requiresAttention()</b> ya incluye SLIPPING y la tarjeta lo pinta de naranja,
+      pero no hay pildora ni contador. Filtras por “En riesgo” cuando ya es tarde; el naranja es el
+      momento en que aún llegas a tiempo.</p>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>B · EL CICLO, EN NÚMEROS</b>lo que se fue con los puntos, de vuelta</p>
+    <div class="phone"><div class="stack">
+      <div class="cc">
+        <div class="ctop"><div class="cname">Marta Iglesias</div>
+          <div class="ccycle">Ciclo <b>02</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Hipertrofia Q1<span> · Acumulación</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b>92</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div>
+            <div class="clast">hace 2 días</div></div>
+        </div></div>
+      </div>
+      <div class="cc">
+        <div class="ctop"><div class="cname">Elena Ruiz</div>
+          <div class="ccycle">Ciclo <b>09</b></div></div>
+        <div class="cbody"><div class="cmain">
+          <div class="cprog">Full Body<span> · Adaptación</span></div>
+          <div class="cmeta">
+            <div class="cpace"><b class="risk">28</b><i class="risk">%</i><i> · </i><b>0,5</b><i> cic/sem</i><i> · 1/3 del ciclo</i></div>
+            <div class="clast risk">hace 19 días</div></div>
+        </div></div>
+      </div>
+    </div></div>
+    <p class="note">El contador de vueltas (“Ciclo 03”) se ha ido, así que “3/4” tenía que decir
+      por su cuenta de qué eran esas cuatro: <b>del ciclo</b>. Y va entero en el peso de la unidad: es el dato
+      que más se mueve —sube en cada sesión— y en negrita competía con la adherencia, que es el
+      número que emite el veredicto.</p>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>C · LOS TRES NARANJAS, SEPARADOS</b>el color dice de quién es la pelota</p>
+    <div class="phone"><div class="stack">
+      <div class="cc">
+        <div class="ctop"><div class="cname">Iván Márquez</div>
+          <div class="ccycle">Ciclo <b>04</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso"><div class="cdot" style="background:#4c85ff"></div>
+              <div class="cavisotx" style="color:#4c85ff">Cambios sin enviar</div></div>
+            <div class="cmeta"><div class="cpace"><b>75</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div>
+              <div class="clast">hace 1 día</div></div>
+          </div>
+          <div class="ccta blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Enviar</div>
+        </div>
+      </div>
+      <div class="cc">
+        <div class="ctop"><div class="cname">Sara Peña</div>
+          <div class="ccycle">Ciclo <b>03</b></div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso"><div class="cdot"></div><div class="cavisotx">Etapa bloqueada</div></div>
+            <div class="cmeta"><div class="cpace"><b>96</b><i>%</i><i> · </i><b>2,0</b><i> cic/sem</i><i> · 4/4 del ciclo</i></div>
+              <div class="clast">hace 3 días</div></div>
+          </div>
+          <div class="ccta orange">Desbloquear</div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note">Azul = entrenador / sincronización, la regla que ya seguía la app. El naranja
+      queda sólo para “el programa está parado”. Junta bajo el mismo azul “subir programa” y
+      “enviar prescripción”, que es correcto: las dos son lo tuyo sin enviar.</p>
+  </div>
+
+  <div class="col">
+    <p class="cap bad"><b>D · DESCARTADO</b>subir la fecha a la línea 1</p>
+    <div class="phone"><div class="stack">
+      <div class="cc">
+        <div class="ctop"><div class="cname">Sara Peña</div>
+          <div class="ccycle">Ciclo <b>02</b></div>
+          <div class="cstreak" style="color:#949494">hace 3 días</div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso"><div class="cdot"></div><div class="cavisotx">Etapa bloqueada</div></div>
+            <div class="cmeta"><div class="cpace"><b>96</b><i>%</i><i> · </i><b>2,0</b><i> cic/sem</i><i> · 4/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta orange">Desbloquear</div>
+        </div>
+      </div>
+      <div class="cc">
+        <div class="ctop"><div class="cname">Iván Márquez</div>
+          <div class="ccycle">Ciclo <b>03</b></div>
+          <div class="cstreak" style="color:#949494">hace 1 día</div></div>
+        <div class="cbody">
+          <div class="cmain">
+            <div class="caviso blue"><div class="cdot"></div><div class="cavisotx">Cambios sin enviar</div></div>
+            <div class="cmeta"><div class="cpace"><b>75</b><i>%</i><i> · </i><b>1,5</b><i> cic/sem</i><i> · 3/4 del ciclo</i></div></div>
+          </div>
+          <div class="ccta blue">Enviar</div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>No se aplica.</b> Queda aquí como registro de lo que se probó: la fecha
+      siempre visible a cambio de que el dato cambie de sitio según haya CTA o no. El hueco de
+      abajo a la derecha se queda con su orden de prioridad de siempre.</p>
+  </div>
+
+</div>
+
+</body>
+</html>

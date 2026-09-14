@@ -31,6 +31,13 @@ const SYSTEM_FONTS = { display: undefined, body: undefined };
 // Each set carries the full key surface used across the app so any screen can
 // migrate without missing a token.
 
+// `red` es el tono de RELLENO y `redText` el de TEXTO — la misma regla de dos
+// tonos por familia que ya sigue el acento en formaFit (sólido para rellenos,
+// claro para texto pequeño sobre fondo). En los cuatro temas legados coinciden
+// porque su rojo ya es legible a 12 px; en formaFit no: el #ff0900 de Figma da
+// 4.1:1 sobre `surface` y 4.3:1 sobre su propio tinte, los dos por debajo de
+// AA. `redText` es el #ff5e58 del que sale `tint/red-50` del propio Figma, no
+// un color inventado: 5.7:1.
 const darkColors = {
   bg:         '#0a0a0a',
   surface:    '#141414',
@@ -47,6 +54,7 @@ const darkColors = {
   green:      '#4ade80',
   orange:     '#fb923c',
   red:        '#f87171',
+  redText:    '#f87171',
   blue:       '#57a8ff',
   day1: '#e8ff47', day2: '#ff6b35', day3: '#7eb8ff',
   day4: '#a78bfa', day5: '#34d399', day6: '#f472b6',
@@ -68,6 +76,7 @@ const midnightColors = {
   green:      '#00e8a0',
   orange:     '#fb923c',
   red:        '#f87171',
+  redText:    '#f87171',
   blue:       '#60a5fa',
   day1: '#00c8f0', day2: '#9b74f7', day3: '#00e8a0',
   day4: '#f472b6', day5: '#fbbf24', day6: '#60a5fa',
@@ -89,6 +98,7 @@ const earthyColors = {
   green:      '#5a8c48',
   orange:     '#b85c30',
   red:        '#b83838',
+  redText:    '#b83838',
   blue:       '#486888',
   day1: '#9e5838', day2: '#527848', day3: '#486888',
   day4: '#8c5858', day5: '#786830', day6: '#605880',
@@ -111,6 +121,7 @@ const spaceColors = {
   green:      '#1a7a30',
   orange:     '#a04010',
   red:        '#a02020',
+  redText:    '#a02020',
   blue:       '#335599',
   day1: '#111111', day2: '#335599', day3: '#226644',
   day4: '#774499', day5: '#aa5500', day6: '#995566',
@@ -127,7 +138,12 @@ const formaFitColors = {
   surface:    '#1f1f1f',
   surface2:   '#272727',
   text:       '#e6e6e6',
-  mutedLight: '#818181',
+  // #818181 era el gris de Figma, pero Figma lo fijó antes de que este tema
+  // subiera las superficies: sobre `surface` daba 4.23:1 y sobre `surface2`
+  // 3.83:1, los dos por debajo de AA, y `mutedLight` es el color de TODA la
+  // meta de la app (234 estilos) a 12 px. #949494 da 5.43 y 4.92 sin acercarse
+  // a `text` (13.2:1), así que la jerarquía de color sigue intacta.
+  mutedLight: '#949494',
   muted:      '#4d4d4d',
   muted2:     '#4d4d4d',
   accent:     '#aae216',
@@ -138,6 +154,7 @@ const formaFitColors = {
   green:      '#66fa39',
   orange:     '#fb923c',
   red:        '#ff0900',
+  redText:    '#ff5e58',
   blue:       '#4c85ff',
   day1: '#aae216', day2: '#ff6b35', day3: '#4c85ff',
   day4: '#a78bfa', day5: '#66fa39', day6: '#f472b6',
