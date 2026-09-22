@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -6,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
+import { navigationRef }   from './navigationRef';
 import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
@@ -144,6 +146,34 @@ export default function RootNavigator() {
   const hasHydrated  = useStore((s) => s._hasHydrated);
   const initialRoute = useStore((s) => s._initialRoute ?? 'Main');
 
+  // Workout nunca es la raíz de la pila: con una sola ruta, el atrás físico
+  // de Android sale de la app en vez de volver a Home. Si el arranque tocaba
+  // ser Workout (sesión a medias al matar la app), el Stack nace en Main y el
+  // efecto de abajo apila Workout encima en cuanto el contenedor está listo.
+  const stackInitialRoute = initialRoute === 'Workout' ? 'Main' : initialRoute;
+
+  // Disparo único tras la hidratación, solo si tocaba arrancar en Workout.
+  // El efecto de RootNavigator corre después de los de sus hijos (Stack.Navigator
+  // ya montado) dentro del mismo commit, así que `isReady()` es de fiar aquí;
+  // el listener de `state` es solo la red de seguridad por si no lo fuera.
+  const resetToWorkoutDone = useRef(false);
+  useEffect(() => {
+    if (!hasHydrated || resetToWorkoutDone.current || initialRoute !== 'Workout') return;
+    resetToWorkoutDone.current = true;
+    const resetStack = () => navigationRef.reset({
+      index: 1,
+      routes: [{ name: 'Main' }, { name: 'Workout' }],
+    });
+    if (navigationRef.isReady()) {
+      resetStack();
+    } else {
+      const unsubscribe = navigationRef.addListener('state', () => {
+        unsubscribe();
+        resetStack();
+      });
+    }
+  }, [hasHydrated, initialRoute]);
+
   // Block render until AsyncStorage has been read. This prevents a brief flash
   // of MainTabs on first launch (new device → should open Setup/Onboarding).
   if (!hasHydrated) {
@@ -153,7 +183,7 @@ export default function RootNavigator() {
   return (
     <View style={styles.root}>
       <Stack.Navigator
-        initialRouteName={initialRoute}
+        initialRouteName={stackInitialRoute}
         screenOptions={{
           headerShown:  false,
           contentStyle: styles.stackContent,
