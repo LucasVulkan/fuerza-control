@@ -27,6 +27,13 @@ import { sessionSlots } from '../utils/sessionSlots';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
 
+// Velo bajo los botones de Android. Curva de entrada suave (t²) en vez de
+// rampa lineal: con un color casi negro, un tramo empinado en pocos píxeles se
+// ve a franjas. La altura extra por encima de la barra es lo que le da pixeles
+// al fundido.
+const SCRIM_FADE  = 28;
+const SCRIM_STOPS = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => [t, Math.round(t * t * 100) / 100]);
+
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
 // following real training order: exercise 1 → 2 → …, and within a superset
@@ -776,15 +783,15 @@ export default function WorkoutScreen() {
       {insets.bottom > 0 && (
         <Svg
           pointerEvents="none"
-          style={[styles.navScrim, { height: insets.bottom + spacing.xxl }]}
+          style={[styles.navScrim, { height: insets.bottom + SCRIM_FADE }]}
           width="100%"
-          height={insets.bottom + spacing.xxl}
+          height={insets.bottom + SCRIM_FADE}
         >
           <Defs>
             <LinearGradient id="navScrim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0"   stopColor={th.colors.bg} stopOpacity={0} />
-              <Stop offset="0.5" stopColor={th.colors.bg} stopOpacity={0.75} />
-              <Stop offset="1"   stopColor={th.colors.bg} stopOpacity={1} />
+              {SCRIM_STOPS.map(([offset, opacity]) => (
+                <Stop key={offset} offset={offset} stopColor={th.colors.bg} stopOpacity={opacity} />
+              ))}
             </LinearGradient>
           </Defs>
           <Rect width="100%" height="100%" fill="url(#navScrim)" />
