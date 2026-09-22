@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -770,6 +770,27 @@ export default function WorkoutScreen() {
         </Modal>
       )}
 
+      {/* La lista pasa por debajo de los botones de Android (sin zona segura
+          abajo, a propósito): un velo del color del fondo los despega del
+          contenido. No captura toques. */}
+      {insets.bottom > 0 && (
+        <Svg
+          pointerEvents="none"
+          style={[styles.navScrim, { height: insets.bottom + spacing.xxl }]}
+          width="100%"
+          height={insets.bottom + spacing.xxl}
+        >
+          <Defs>
+            <LinearGradient id="navScrim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0"   stopColor={th.colors.bg} stopOpacity={0} />
+              <Stop offset="0.5" stopColor={th.colors.bg} stopOpacity={0.75} />
+              <Stop offset="1"   stopColor={th.colors.bg} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#navScrim)" />
+        </Svg>
+      )}
+
       {/* Floating rest timer — sits above everything, swipe right to dismiss */}
       <RestTimerFloat
         timer={restTimer}
@@ -786,6 +807,12 @@ const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
     backgroundColor: th.colors.bg,
+  },
+  navScrim: {
+    position: 'absolute',
+    left:     0,
+    right:    0,
+    bottom:   0,
   },
   errorText: {
     ...textStyles.body,
