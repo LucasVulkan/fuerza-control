@@ -25,6 +25,7 @@ import { lastExerciseRef } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
+import { backToMain } from '../navigation/navigationRef';
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -458,7 +459,7 @@ export default function WorkoutScreen() {
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      navigation.navigate('Main', { screen: 'Home' });
+      backToMain(navigation, { screen: 'Home' });
     }
   }
 

@@ -18,6 +18,7 @@
 import { Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { backToMain } from '../navigation/navigationRef';
 
 export function useEditorExit(navigation) {
   const { t } = useTranslation();
@@ -35,11 +36,13 @@ export function useEditorExit(navigation) {
     showToast(t('editor.toastProgramEdited'), 2200, 'success');
   }
 
-  // El check. `navigate` a una ruta que ya está en la pila vuelve a ella, así
-  // que esto desapila el editor entero en vez de apilar otro Home encima.
+  // El check. En React Navigation 7 `navigate('Main', …)` APILA otro Main en
+  // vez de volver al que ya está en la pila; `backToMain` desapila el editor
+  // entero. Sin params, Main conserva la pestaña desde la que se abrió el
+  // editor (Clientes, Plantillas, Programa o Home).
   function done() {
     commit();
-    navigation.navigate('Main', { screen: 'Home' });
+    backToMain(navigation);
   }
 
   return { commit, done };

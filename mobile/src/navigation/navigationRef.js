@@ -40,12 +40,35 @@ export function viewToRoute(view) {
 }
 
 /**
+ * Vuelve a Main desapilando lo que tenga encima. Con `params` elige pestaña;
+ * sin ellos Main conserva la que tenía (el editor vuelve a donde se abrió).
+ * Si Main no está en la pila (arranque en Workout tras matar la app), la pila
+ * pasa a ser solo Main: apilarla dejaría debajo una pantalla muerta.
+ * En React Navigation 7 `navigate` a una ruta ya apilada APILA otra: por eso
+ * existe esto.
+ */
+export function backToMain(navigation, params) {
+  const inStack = navigation.getState()?.routes?.some((r) => r.name === 'Main');
+  if (inStack) navigation.popTo('Main', params);
+  else navigation.reset({ index: 0, routes: [{ name: 'Main', params }] });
+}
+
+/**
  * Navigate imperatively from outside React components.
  * Called by the store's `navigate` action.
+ *
+ * En v7 `navigate` a una ruta ya apilada apila otra encima; `Main` necesita
+ * la misma regla que `backToMain` pero mirando la pila raíz del contenedor.
  */
 export function navigateTo(view) {
   if (!navigationRef.isReady()) return;
   const route = viewToRoute(view);
   if (!route) return;
-  navigationRef.navigate(route.screen, route.params);
+  if (route.screen === 'Main') {
+    const inStack = navigationRef.getRootState()?.routes?.some((r) => r.name === 'Main');
+    if (inStack) navigationRef.navigate(route.screen, route.params, { pop: true });
+    else navigationRef.reset({ index: 0, routes: [{ name: 'Main', params: route.params }] });
+    return;
+  }
+  navigationRef.navigate(route.screen, route.params, { pop: true });
 }

@@ -34,6 +34,7 @@ import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDi
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+import { backToMain } from '../navigation/navigationRef';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 
@@ -579,7 +580,7 @@ export default function SessionRecapScreen({ navigation, route }) {
         {/* Done */}
         <TouchableOpacity
           style={styles.doneBtn}
-          onPress={() => navigation.navigate('Main', { screen: 'Home' })}
+          onPress={() => backToMain(navigation, { screen: 'Home' })}
           activeOpacity={0.85}
         >
           <Text style={styles.doneBtnText}>{t('recap.done')}</Text>
