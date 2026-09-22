@@ -2,7 +2,7 @@
 
 > Tema: ui
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 que no son de conexión: atrás tras una sesión llevaba a una pantalla negra y el check del editor siempre iba a Sesiones; Progreso restaba kg de repeticiones; la gráfica de ejercicio pintaba un frame y saltaba; y la Barlow no salía en iPhone.
-> Fase U24 · pendiente · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
+> Fase U24 · hecho · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
 > Fase U25 · pendiente · Progreso sin mezclar unidades (bug 7) · §4
 > Fase U26 · pendiente · La gráfica de ejercicio entra sin salto (bug 9) · §5
 > Fase U27 · pendiente · Barlow en iOS por su nombre PostScript (bug 3) · §6
@@ -268,7 +268,7 @@ sesión de hoy en Home salen en Barlow Condensed cursiva, igual que en Android.
 
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
-| U24 | `backToMain` + 4 llamadas | pendiente | 🟢 |
+| U24 | `backToMain` + 4 llamadas; además la pila nunca nace con Workout como raíz (el atrás de Android cerraba la app) | ✅ `9d30ca3` · `4cb0a4f` — probada en dispositivo 22-sep | 🟢 |
 | U25 | `utils/improvement.js` con la regla de métrica por serie + borrar código muerto | pendiente | 🟡 |
 | U26 | `useWeightUnit` memoizado + `key` de serie en la gráfica | pendiente | 🟢 |
 | U27 | Nombre PostScript en iOS + build EAS | pendiente | 🟢 código · build aparte |
