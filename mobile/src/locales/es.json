@@ -224,7 +224,7 @@
       "name": "Mejora",
       "what": "Indica si los pesos que mueves suben o bajan de media en el período, juntando todos tus ejercicios en un porcentaje.",
       "formula": "línea de tendencia (regresión lineal) sobre las sesiones de cada ejercicio; el porcentaje es el cambio entre sus extremos, promediado entre ejercicios",
-      "rules": "Todos los ejercicios pesan lo mismo en el promedio, independientemente de cuántas sesiones tengan.",
+      "rules": "Todos los ejercicios pesan lo mismo en el promedio, independientemente de cuántas sesiones tengan. Cada ejercicio se mide en una sola unidad: en kilos si alguna vez llevó peso, si no en repeticiones. Uno de peso corporal que empieza sin lastre no suma, porque no hay porcentaje sobre 0 kg.",
       "caveat": "Es la pendiente de una recta ajustada a todas tus sesiones, no la diferencia entre la primera y la última. Un ejercicio recién estrenado, con pocos puntos, puede mover el resultado más de lo que le corresponde."
     },
     "lastSessionDelta": {

@@ -32,7 +32,11 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, borders, withOpacity, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate }    from '../../utils/formatters';
-import { bestSetE1RM, recentE1RM } from '../../utils/oneRm';
+import { recentE1RM } from '../../utils/oneRm';
+import {
+  getExerciseLogsFrom, seriesMetric, metricValue, linearRegressionPct, computeOverallImprovement,
+  computeLastLoadDelta, computeExPR, computeExSessionDeltas, lastSessionDelta,
+} from '../../utils/improvement';
 import { recapStats }     from '../../utils/sessionRecap';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { filterBySearch } from '../../utils/searchText';
@@ -80,29 +84,11 @@ function filterLog(log, scope, period, programTemplateIds) {
   return filtered;
 }
 
-function getExerciseLogsFrom(exerciseId, sourceLog) {
-  return sourceLog
-    .filter((log) =>
-      log.exercises.some(
-        (e) => e.exerciseId === exerciseId &&
-               e.sets.some((s) => s.done || s.weight || s.reps || s.time)
-      )
-    )
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .map((log) => ({
-      timestamp:         log.timestamp,
-      sessionTemplateId: log.sessionTemplateId,
-      exercise:          log.exercises.find((e) => e.exerciseId === exerciseId),
-    }));
-}
-
 function getMetrics(def, allLogs, weightLabel = 'kg', t) {
   const model = def?.progressionModel;
   if (model === 'time_progression') return [{ id: 'time', label: t('stats.metricSeconds') }];
   if (model === 'submax')           return [{ id: 'reps', label: t('stats.metricReps') }];
-  const hasWeight = allLogs.some(({ exercise }) =>
-    exercise?.sets?.some((s) => parseFloat(s.weight) > 0)
-  );
+  const hasWeight = seriesMetric(allLogs, def) === 'kg';
   const m = [{ id: 'reps', label: t('stats.metricReps') }];
   if (hasWeight) {
     // 1RM se queda literal: es la misma sigla en los dos idiomas, igual que el
@@ -112,83 +98,6 @@ function getMetrics(def, allLogs, weightLabel = 'kg', t) {
     m.push({ id: 'e1rm', label: '1RM' });
   }
   return m;
-}
-
-function computeValue(sets, metricId) {
-  const done = sets?.filter((s) => s.done || s.weight || s.reps || s.time) ?? [];
-  if (!done.length) return null;
-  if (metricId === 'time') {
-    const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean);
-    return ts.length ? Math.max(...ts) : null;
-  }
-  if (metricId === 'kg') {
-    const v = Math.max(...done.map((s) => parseFloat(s.weight) || 0));
-    return v > 0 ? v : null;
-  }
-  if (metricId === 'reps') {
-    const v = done.reduce((a, s) => a + (parseInt(s.reps) || 0), 0);
-    return v > 0 ? v : null;
-  }
-  if (metricId === 'vol') {
-    const v = done.reduce(
-      (a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0
-    );
-    return v > 0 ? Math.round(v) : null;
-  }
-  if (metricId === 'e1rm') {
-    const v = bestSetE1RM(done);
-    return v !== null ? Math.round(v * 10) / 10 : null;
-  }
-  return null;
-}
-
-function linearRegressionPct(logs, def) {
-  if (!logs || logs.length < 2) return null;
-  const model  = def?.progressionModel;
-  const metric = model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg';
-  const pts = [];
-  for (let i = 0; i < logs.length; i++) {
-    const v = computeValue(logs[i].exercise?.sets, metric)
-           ?? computeValue(logs[i].exercise?.sets, 'reps');
-    if (v !== null) pts.push({ x: i, y: v });
-  }
-  if (pts.length < 2) return null;
-  const N     = pts.length;
-  const sumX  = pts.reduce((s, p) => s + p.x, 0);
-  const sumY  = pts.reduce((s, p) => s + p.y, 0);
-  const sumXY = pts.reduce((s, p) => s + p.x * p.y, 0);
-  const sumX2 = pts.reduce((s, p) => s + p.x * p.x, 0);
-  const denom = N * sumX2 - sumX * sumX;
-  if (denom === 0) return 0;
-  const slope     = (N * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / N;
-  const firstEst  = intercept;
-  const lastEst   = intercept + slope * (pts[pts.length - 1].x);
-  if (!firstEst || firstEst <= 0) return null;
-  const pct = ((lastEst - firstEst) / firstEst) * 100;
-  return Math.round(Math.max(-100, Math.min(200, pct)));
-}
-
-function computeOverallImprovement(workoutLog, allExercises) {
-  const ids = [...new Set(
-    workoutLog.flatMap((l) =>
-      l.exercises
-        .filter((e) => e.sets.some((s) => s.done || s.weight || s.reps || s.time))
-        .map((e) => e.exerciseId)
-    )
-  )];
-  const improvements = [];
-  for (const id of ids) {
-    const logs = getExerciseLogsFrom(id, workoutLog);
-    const pct  = linearRegressionPct(logs, allExercises[id]);
-    if (pct !== null) improvements.push(pct);
-  }
-  if (!improvements.length) return null;
-  return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length);
-}
-
-function computeExerciseImprovement(logs, def) {
-  return linearRegressionPct(logs, def);
 }
 
 function fmtAxisVal(v) {
@@ -296,27 +205,6 @@ function computeLastSessionDelta(filteredLog) {
   return Math.round((last - prev) / prev * 100);
 }
 
-function computeLastLoadDelta(filteredLog, allExercises) {
-  if (filteredLog.length < 2) return null;
-  const sorted = [...filteredLog].sort((a, b) => a.timestamp - b.timestamp);
-  const last   = sorted[sorted.length - 1];
-  const prev   = sorted[sorted.length - 2];
-  const improvements = [];
-  for (const lastEx of last.exercises) {
-    const prevEx = prev.exercises.find((e) => e.exerciseId === lastEx.exerciseId);
-    if (!prevEx) continue;
-    const def    = allExercises[lastEx.exerciseId];
-    const model  = def?.progressionModel;
-    const metric = model === 'time_progression' ? 'time' : 'kg';
-    const lastVal = computeValue(lastEx.sets, metric) ?? computeValue(lastEx.sets, 'reps');
-    const prevVal = computeValue(prevEx.sets, metric) ?? computeValue(prevEx.sets, 'reps');
-    if (!prevVal || !lastVal || prevVal === 0) continue;
-    improvements.push((lastVal - prevVal) / prevVal * 100);
-  }
-  if (!improvements.length) return null;
-  return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length);
-}
-
 function computeExVolumeImprovePct(logs) {
   if (logs.length < 2) return null;
   const getVol = ({ exercise }) => {
@@ -327,45 +215,6 @@ function computeExVolumeImprovePct(logs) {
   const last  = getVol(logs[logs.length - 1]);
   if (!first) return null;
   return Math.round((last - first) / first * 100);
-}
-
-function computeExPR(logs, def) {
-  const model  = def?.progressionModel;
-  const metric = model === 'time_progression' ? 'time' : 'kg';
-  let bestVal  = null;
-  let bestTs   = null;
-  let bestMet  = metric;
-  for (const { timestamp, exercise } of logs) {
-    const primary  = computeValue(exercise?.sets, metric);
-    const fallback = primary === null ? computeValue(exercise?.sets, 'reps') : null;
-    const v        = primary ?? fallback;
-    const m        = primary !== null ? metric : 'reps';
-    if (v !== null && (bestVal === null || v >= bestVal)) {
-      bestVal = v; bestTs = timestamp; bestMet = m;
-    }
-  }
-  return bestVal !== null ? { value: bestVal, timestamp: bestTs, metric: bestMet } : null;
-}
-
-function computeExSessionDeltas(logs, def, metricOverride = null) {
-  const model     = def?.progressionModel;
-  const primaryId = metricOverride
-    ?? (model === 'time_progression' ? 'time' : model === 'submax' ? 'reps' : 'kg');
-  let bestSoFar   = null;
-  return logs.map(({ timestamp, exercise, sessionTemplateId }, i) => {
-    const pv       = computeValue(exercise?.sets, primaryId);
-    const fv       = pv === null ? computeValue(exercise?.sets, 'reps') : null;
-    const val      = pv ?? fv;
-    const metricId = pv !== null ? primaryId : (fv !== null ? 'reps' : primaryId);
-    const prev     = i > 0
-      ? (computeValue(logs[i - 1].exercise?.sets, primaryId) ?? computeValue(logs[i - 1].exercise?.sets, 'reps'))
-      : null;
-    // Raw absolute delta (same unit as val: kg, reps, or seconds)
-    const delta    = prev !== null && val !== null ? val - prev : null;
-    const isPR = val !== null && bestSoFar !== null && val > bestSoFar;
-    if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val);
-    return { timestamp, val, delta, isPR, metricId, exercise, sessionTemplateId };
-  });
 }
 
 // ── SVG line chart ─────────────────────────────────────────────────────────────
@@ -728,17 +577,11 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
   const activeMetric = chartMetric ?? metrics[0]?.id;
   const metricLabel  = pctMode ? '%' : (metrics.find((m) => m.id === activeMetric)?.label ?? '');
 
-  const loadImprovePct   = useMemo(() => computeExerciseImprovement(filteredLogs, def), [filteredLogs, def]);
-  const lastSesLoadDelta = useMemo(() => {
-    if (filteredLogs.length < 2) return null;
-    const primId = def?.progressionModel === 'time_progression' ? 'time' : 'kg';
-    const last = computeValue(filteredLogs[filteredLogs.length - 1].exercise?.sets, primId)
-      ?? computeValue(filteredLogs[filteredLogs.length - 1].exercise?.sets, 'reps');
-    const prev = computeValue(filteredLogs[filteredLogs.length - 2].exercise?.sets, primId)
-      ?? computeValue(filteredLogs[filteredLogs.length - 2].exercise?.sets, 'reps');
-    if (last === null || prev === null) return null;
-    return last - prev;
-  }, [filteredLogs, def]);
+  // La métrica de "Tendencia" se decide sobre todo el alcance, no sobre el
+  // periodo: así coincide con la del selector de la gráfica (U25).
+  const loadMetric       = useMemo(() => seriesMetric(effectiveLogs, def), [effectiveLogs, def]);
+  const loadImprovePct   = useMemo(() => linearRegressionPct(filteredLogs, def, loadMetric), [filteredLogs, def, loadMetric]);
+  const lastSesLoadDelta = useMemo(() => lastSessionDelta(filteredLogs, def, loadMetric), [filteredLogs, def, loadMetric]);
 
   const volImprovePct  = useMemo(() => computeExVolumeImprovePct(filteredLogs), [filteredLogs]);
   const lastSesVolDelta = useMemo(() => {
@@ -765,7 +608,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     const needsConv = activeMetric === 'kg' || activeMetric === 'vol' || activeMetric === 'e1rm';
     const rawData = filteredLogs
       .map(({ timestamp, exercise }) => {
-        const raw   = computeValue(exercise?.sets, activeMetric);
+        const raw   = metricValue(exercise?.sets, activeMetric, def);
         const value = raw !== null && needsConv
           ? (activeMetric === 'vol' ? Math.round(wDisplay(1) * raw * 10) / 10 : wDisplay(raw))
           : raw;
@@ -783,7 +626,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
       }));
     }
     return rawData;
-  }, [filteredLogs, activeMetric, wDisplay, pctMode]);
+  }, [filteredLogs, activeMetric, wDisplay, pctMode, def]);
 
   // Deltas: accent si >=0 o null, orange si <0 (mismo patrón que ProgressTab arriba).
   const loadImpStr    = loadImprovePct !== null ? `${loadImprovePct > 0 ? '+' : ''}${loadImprovePct}%` : '—';
@@ -793,11 +636,8 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
     if (lastSesLoadDelta === null) return null;
     const sign = lastSesLoadDelta >= 0 ? '+' : '−';
     const abs  = Math.abs(lastSesLoadDelta);
-    const model = def?.progressionModel;
-    if (model === 'time_progression') return `${sign}${abs}s ${t('stats.lastShort')}`;
-    const hasWeight = filteredLogs.length > 0 &&
-      computeValue(filteredLogs[filteredLogs.length - 1]?.exercise?.sets, 'kg') !== null;
-    return hasWeight
+    if (loadMetric === 'time') return `${sign}${abs}s ${t('stats.lastShort')}`;
+    return loadMetric === 'kg'
       ? `${sign}${fmtWeight(abs)} ${t('stats.lastShort')}`
       : `${sign}${abs} ${t('stats.metricReps').toLowerCase()} ${t('stats.lastShort')}`;
   })();
@@ -1113,7 +953,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, rawLogs, progr
   const sessionsCount  = (periodLogs ?? effectiveLogs).length;
   const name           = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : '—';
   const improvePct     = useMemo(
-    () => computeExerciseImprovement(periodLogs ?? effectiveLogs, def),
+    () => linearRegressionPct(periodLogs ?? effectiveLogs, def, seriesMetric(effectiveLogs, def)),
     [periodLogs, effectiveLogs, def]
   );
 

@@ -224,7 +224,7 @@
       "name": "Trend",
       "what": "Tells you whether the weights you move are going up or down on average during the period, combining all your exercises into one percentage.",
       "formula": "trend line (linear regression) over each exercise's sessions; the percentage is the change between its ends, averaged across exercises",
-      "rules": "Every exercise carries the same weight in the average, regardless of how many sessions it has.",
+      "rules": "Every exercise carries the same weight in the average, regardless of how many sessions it has. Each exercise is measured in a single unit: kilos if it ever carried weight, otherwise reps. A bodyweight exercise that starts with no added load doesn't count, since there is no percentage over 0 kg.",
       "caveat": "It's the slope of a line fitted to all your sessions, not the difference between the first and the last. A brand-new exercise with few points can move the result more than it should."
     },
     "lastSessionDelta": {

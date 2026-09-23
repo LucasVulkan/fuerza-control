@@ -28,7 +28,6 @@ import SessionRecapScreen    from '../screens/SessionRecapScreen';
 import NextSessionScreen      from '../screens/NextSessionScreen';
 import ExerciseSelectorScreen from '../screens/ExerciseSelectorScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
-import ExerciseHistoryScreen    from '../screens/ExerciseHistoryScreen';
 import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
@@ -254,11 +253,6 @@ export default function RootNavigator() {
         <Stack.Screen
           name="CustomExercise"
           component={CustomExerciseScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="ExerciseHistory"
-          component={ExerciseHistoryScreen}
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
