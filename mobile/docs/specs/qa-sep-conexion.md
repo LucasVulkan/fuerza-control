@@ -5,7 +5,7 @@
 > Fase C15 · hecho · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
 > Fase C16 · hecho · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
 > Fase C17 · hecho · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
-> Fase C18 · pendiente · "Preparar sesión" abre la que toca (bug 4) · §6
+> Fase C18 · hecho · "Preparar sesión" abre la que toca (bug 4) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (22-sep-2026). Diagnóstico hecho
 > contra el código; cada fase dice el origen con fichero y línea. Las cuatro son
@@ -362,6 +362,15 @@ mano "la siguiente del ciclo", copiando la regla de `sessionPlan()`
 
 Sin test nuevo: `sessionPlan` ya tiene los suyos.
 
+**Añadido al implementar (23-sep-2026), a petición del usuario:** la pantalla era
+de las pocas con la UI anterior al rediseño y se migró en la misma fase, sin nodo
+en Figma. Cada pieza sale de una pantalla ya migrada: `ScreenHeader` y el
+`SegmentedControl` de sesiones y el resumen de `SessionEditorScreen`; la tarjeta
+(cabecera `surface2` con número y prescripción), la rejilla de celdas de `SetRow`
+y la tira de nota del entrenador de `workout/ExerciseCard`. Los valores escritos
+van en azul, como el objetivo del entrenador en el Workout del cliente. El
+resumen marca con "LE TOCA" la sesión que devuelve `sessionPlan()`.
+
 **Probar en dispositivo.** Cliente que ha hecho A y B del ciclo en curso: en el
 entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 
@@ -372,4 +381,4 @@ entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 | C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | ✅ `8f8de70` — progreso en la lista verificado en Supabase real; resto pendiente de probar en dispositivo (con dos móviles, §3.2-ter) | 🟡 medio: store + 3 utils + tests |
 | C16 | Recuento fresco al descargar + efecto de la ficha + aviso → Historial | ✅ `b7646ec` — pendiente de probar en dispositivo | 🟢 |
 | C17 | Firma de lo subido, `markProgramDirtyForClients` compara, StagePlanner marca | ✅ `5259dfe` — pendiente de probar en dispositivo | 🟢 |
-| C18 | `NextSession` y tarjeta por `sessionPlan()` | pendiente | 🟢 |
+| C18 | `NextSession` y tarjeta por `sessionPlan()` + pantalla migrada al rediseño | ✅ `1c6e25a` — pendiente de probar en dispositivo | 🟢 |
