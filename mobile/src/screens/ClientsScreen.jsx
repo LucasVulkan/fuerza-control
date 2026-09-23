@@ -2104,8 +2104,10 @@ export default function ClientsScreen() {
   }, [selectedClient, t]);
 
   const filteredLog = useMemo(() => {
+    // Las libres cuentan como del programa activo: el cliente solo sube las
+    // posteriores a vincularse (qa-sep-conexion.md §3, bug 14).
     let log = scopeFilter === 'active'
-      ? clientBaseLog.filter((e) => activeClientTemplateIds.has(e.sessionTemplateId))
+      ? clientBaseLog.filter((e) => e.sessionTemplateId === '__free__' || activeClientTemplateIds.has(e.sessionTemplateId))
       : clientBaseLog;
     if (periodFilter !== 'all') {
       const days = periodFilter === '7d' ? 7 : 30;

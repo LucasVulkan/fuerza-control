@@ -5,7 +5,7 @@
  * React Native / Expo surface to `test/native-stub.js`.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 
@@ -1398,5 +1398,95 @@ describe('updateFreeSessionPreset — retocar la plantilla, no fundar una copia'
     expect(useStore.getState().freeSessionPresets[1]).toEqual(
       { presetId: 'fpre_2', name: 'Otra', exercises: [], blocks: [] },
     );
+  });
+});
+
+describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () => {
+  const stages = [
+    { id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_c', label: 'A' }] },
+    { id: 'st_2', name: 'Pico', days: [{ sessionTemplateId: 'tpl_c', label: 'A' }] },
+  ];
+  const prog = {
+    id: 'prog_c', name: 'Del entrenador', owner: 'me', kind: 'program', status: 'active', stages,
+    currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 0, totalWeeksCompleted: 0,
+  };
+  const entry = { id: 'log_c1', sessionTemplateId: 'tpl_c', timestamp: Date.parse('2026-09-20'), exercises: [] };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    syncMock.uploadHistory.mockReset();
+    syncMock.uploadHistory.mockResolvedValue(undefined);
+    useStore.setState((s) => ({
+      _hasHydrated: true,
+      programs:   { prog_c: prog },
+      profile:    { ...s.profile, activeProgramId: 'prog_c' },
+      workoutLog: [entry],
+      ui:         { ...s.ui, restTimer: { ...s.ui.restTimer, active: false } },
+      clientSync: {
+        ...s.clientSync, slotId: 'slot_c', trainerProgramIds: ['prog_c'],
+        linkedAt: '2026-09-01T00:00:00Z', pendingUpload: false,
+      },
+    }));
+    // Lo que haya dejado programado el propio montaje no cuenta.
+    vi.advanceTimersByTime(5000);
+    syncMock.uploadHistory.mockClear();
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('el RPE del recap sube una sola vez aunque se toque tres veces seguidas', () => {
+    const { setSessionFeedback } = useStore.getState();
+    setSessionFeedback('log_c1', { sessionRpe: 6 });
+    setSessionFeedback('log_c1', { sessionRpe: 7 });
+    setSessionFeedback('log_c1', { sessionRpe: 8 });
+
+    vi.advanceTimersByTime(1999);
+    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
+    expect(syncMock.uploadHistory.mock.calls[0][1][0].sessionRpe).toBe(8);
+  });
+
+  it('avanzar de etapa sube el blob nuevo sin esperar a entrenar', () => {
+    useStore.getState().advanceStage('prog_c');
+    vi.advanceTimersByTime(2000);
+
+    expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
+    expect(syncMock.uploadHistory.mock.calls[0][3]).toMatchObject({ programId: 'prog_c', currentStageIndex: 1 });
+  });
+
+  it('una sesión libre se sube y para el temporizador de descanso', () => {
+    useStore.setState((s) => ({
+      ui: { ...s.ui, restTimer: { ...s.ui.restTimer, active: true, remaining: 60, total: 90 } },
+      activeSession: {
+        ...s.activeSession, templateId: '__free__', startedAt: Date.now() - 60000,
+        adHocExercises: [{ exerciseId: 'ex_1', setsState: [{ weight: '50', reps: '5', time: '', done: true }] }],
+      },
+    }));
+
+    const res = useStore.getState().saveSession();
+    expect(res.ok).toBe(true);
+    expect(useStore.getState().ui.restTimer.active).toBe(false);
+
+    vi.advanceTimersByTime(2000);
+    expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
+    expect(syncMock.uploadHistory.mock.calls[0][1].map((e) => e.id)).toContain(res.entryId);
+  });
+
+  it('sin entrenador no se sube nunca', () => {
+    useStore.setState((s) => ({ clientSync: { ...s.clientSync, slotId: null } }));
+    useStore.getState().setSessionFeedback('log_c1', { sessionRpe: 9 });
+    useStore.getState().advanceStage('prog_c');
+    vi.advanceTimersByTime(5000);
+
+    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
+  });
+
+  it('vincularse no dispara una subida por sí solo', () => {
+    useStore.setState((s) => ({ clientSync: { ...s.clientSync, slotId: null } }));
+    useStore.setState((s) => ({ clientSync: { ...s.clientSync, slotId: 'slot_c', lastAppliedStageActivation: '2026-09-22' } }));
+    vi.advanceTimersByTime(5000);
+
+    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
   });
 });

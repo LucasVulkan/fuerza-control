@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, clientStageIndex,
+  advanceCycle, progressBlob, progressChanged, progressFromBlob, mergeProgressOnImport, clientStageIndex,
   withStages, ensureStages, closeOpenStage, stageDays, stageDaysAt, allProgramDays,
 } from './stageProgress';
 
@@ -112,6 +112,28 @@ describe('progressBlob / progressFromBlob', () => {
   it('lleva el sello de activación bajo el que se calculó la posición', () => {
     expect(progressBlob(program, 'T1').appliedActivation).toBe('T1');
     expect(progressBlob(program).appliedActivation).toBeNull();
+  });
+});
+
+describe('progressChanged', () => {
+  const prog = {
+    id: 'p1', currentStageIndex: 1, cycleCompletedIds: ['a'], stageWeeksCompleted: 2, totalWeeksCompleted: 5,
+  };
+
+  it('mismos contadores → false, aunque el programa sea otro objeto', () => {
+    expect(progressChanged(prog, { ...prog, name: 'renombrado' })).toBe(false);
+  });
+
+  it.each([
+    ['currentStageIndex', 2], ['cycleCompletedIds', ['a']], ['stageWeeksCompleted', 3], ['totalWeeksCompleted', 6],
+  ])('cambia %s → true', (key, value) => {
+    expect(progressChanged(prog, { ...prog, [key]: value })).toBe(true);
+  });
+
+  it('programa que aparece o desaparece → true', () => {
+    expect(progressChanged(undefined, prog)).toBe(true);
+    expect(progressChanged(prog, undefined)).toBe(true);
+    expect(progressChanged(undefined, undefined)).toBe(false);
   });
 });
 

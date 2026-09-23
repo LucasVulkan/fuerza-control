@@ -193,7 +193,7 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
       state.clients[clientId] = { ...state.clients[clientId], progress };
       if (Object.keys(customExercises).length) Object.assign(state.customExercises, customExercises);
       const existing = state.clientLogs[clientId] ?? [];
-      const merged   = mergeClientLog(existing, history);
+      const merged   = mergeClientLog(existing, history, { update: true });
       state.clientLogs[clientId] = merged;
       return merged.length - existing.length;
     },
@@ -357,6 +357,21 @@ describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
     expect(trainer.pull('ana')).toBe(1); // primera descarga añade 1
     expect(trainer.pull('ana')).toBe(0); // segunda no añade nada
     expect(trainer.state.clientLogs.ana).toHaveLength(1);
+  });
+
+  test('el RPE puesto después de la primera descarga llega en la siguiente (bug 2)', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    // El recap parchea la entrada ya guardada — nueva referencia, como el store.
+    client.state.workoutLog = client.state.workoutLog.map((e) => ({ ...e, sessionRpe: 8 }));
+    client.upload();
+    trainer.pull('ana');
+
+    expect(trainer.state.clientLogs.ana).toHaveLength(1);
+    expect(trainer.state.clientLogs.ana[0].sessionRpe).toBe(8);
   });
 
   test('las sesiones nuevas se acumulan en descargas sucesivas, ordenadas por fecha', () => {

@@ -52,6 +52,22 @@ describe('mergeClientLog', () => {
   test('safe on undefined', () => {
     expect(mergeClientLog(undefined, undefined)).toEqual([]);
   });
+
+  test('without update, a changed copy of a known entry is ignored (file imports)', () => {
+    const existing = [{ id: 'e1', timestamp: 100 }];
+    expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 7 }])).toBe(existing);
+  });
+
+  test('update: a changed copy replaces the entry; absent entries are kept', () => {
+    const existing = [{ id: 'e1', timestamp: 100 }, { id: 'e2', timestamp: 200 }];
+    const merged = mergeClientLog(existing, [{ id: 'e2', timestamp: 200, sessionRpe: 8 }], { update: true });
+    expect(merged).toEqual([{ id: 'e1', timestamp: 100 }, { id: 'e2', timestamp: 200, sessionRpe: 8 }]);
+  });
+
+  test('update: identical content keeps the same reference', () => {
+    const existing = [{ id: 'e1', timestamp: 100, sessionRpe: 8 }];
+    expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 8 }], { update: true })).toBe(existing);
+  });
 });
 
 describe('reidProgramFile', () => {

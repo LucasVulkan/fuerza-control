@@ -39,7 +39,7 @@ import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '.
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
+import { advanceCycle, progressBlob, progressChanged, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../src/utils/sessionOverride';
@@ -2144,6 +2144,19 @@ export const useStore = create(
         const { activeSession, getEffectiveTemplate, workoutLog, programs } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
 
+        // Lo que toca después de guardar, en las dos ramas. El envío al
+        // entrenador ya no va aquí: lo dispara el cambio de `workoutLog`
+        // (suscriptor al final del fichero, qa-sep-conexion.md §3.2 a).
+        const finish = (entryId) => {
+          get().stopRestTimer();
+          // Per-session Drive backup (fire and forget, non-blocking)
+          const driveState = get().driveBackup;
+          if (driveState.enabled && driveState.frequency === 'session') {
+            get().performDriveBackup().catch(() => {});
+          }
+          return { ok: true, entryId };
+        };
+
         // ── Free session — no template, only ad-hoc exercises ─────────────────
         if (activeSession.templateId === '__free__') {
           const adHoc = activeSession.adHocExercises ?? [];
@@ -2183,7 +2196,7 @@ export const useStore = create(
             activeSession: INITIAL_ACTIVE_SESSION,
             ui:            { ...s.ui, homeTab: 'session' },
           }));
-          return { ok: true, entryId: logEntry.id };
+          return finish(logEntry.id);
         }
 
         // ── Regular template session ───────────────────────────────────────────
@@ -2317,20 +2330,7 @@ export const useStore = create(
           } : {}),
         }));
 
-        get().stopRestTimer();
-
-        // Per-session Drive backup (fire and forget, non-blocking)
-        const driveState = get().driveBackup;
-        if (driveState.enabled && driveState.frequency === 'session') {
-          get().performDriveBackup().catch(() => {});
-        }
-
-        // Upload history to trainer if client is connected (fire and forget)
-        if (get().clientSync.slotId) {
-          get().uploadHistoryToTrainer().catch(() => {});
-        }
-
-        return { ok: true, entryId: logEntry.id };
+        return finish(logEntry.id);
       },
 
       discardSession: () => {
@@ -3320,8 +3320,9 @@ export const useStore = create(
           // Merge into this client's separated log — never into the trainer's own
           // workoutLog. Append-only by id: entries absent from the upload (client
           // deleted them, or reinstalled) are kept — this is the trainer's record.
+          // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history);
+          const merged    = mergeClientLog(existing, history, { update: true });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -3373,7 +3374,8 @@ export const useStore = create(
 
       /**
        * Fetches all trainer slots from Supabase and updates each local client's
-       * remoteSessionsCount. Lightweight — only reads sessions_count (no history JSON).
+       * remoteSessionsCount and mirrored progress. Lightweight — reads sessions_count
+       * and only the `progress` key of the history JSON, never the entries.
        * Called on ClientsScreen mount and pull-to-refresh.
        */
       refreshTrainerSlots: async () => {
@@ -3439,6 +3441,9 @@ export const useStore = create(
                 ...next[clientId],
                 remoteSessionsCount: slot.sessions_count ?? 0,
                 syncLinked:          !!slot.client_id,
+                // La etapa que pinta la lista sigue al cliente sin abrir su
+                // ficha (qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
+                progress:            slot.progress ?? next[clientId].progress,
               };
             }
 
@@ -3638,6 +3643,10 @@ export const useStore = create(
         const { clientSync } = get();
         if (!clientSync.slotId) return;
 
+        // Corre al arrancar y al volver a primer plano: buen momento para
+        // reintentar una subida que falló, sin esperar al botón del aviso.
+        if (clientSync.pendingUpload) get().uploadHistoryToTrainer().catch(() => {});
+
         try {
           const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
 
@@ -3736,7 +3745,8 @@ export const useStore = create(
        * Scope-filtered for privacy: only sessions of the trainer's program(s),
        * plus free sessions logged after connecting. The rest of the client's
        * personal history never leaves the device.
-       * Called after each session save. Sets pendingUpload on failure.
+       * Called whenever history or progress changes (subscriber at the end of
+       * this file). Sets pendingUpload on failure.
        */
       uploadHistoryToTrainer: async () => {
         const { clientSync, workoutLog, customExercises, programs, profile } = get();
@@ -4366,6 +4376,34 @@ useStore.subscribe((s, prev) => {
     AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(s.activeSession))
       .catch(() => {});
   }
+});
+
+// Lo que el entrenador espeja del cliente —historial y progreso— sube cuando
+// CAMBIA, no solo al guardar una sesión: el RPE del recap, avanzar de etapa o
+// aplicar un programa también cuentan (docs/specs/qa-sep-conexion.md §3).
+// En el móvil del entrenador `slotId` es null y no hace nada.
+// ponytail: si la app muere dentro de la espera, lo cubre el siguiente cambio,
+// que sube el log entero. Marcar `pendingUpload` al programar la subida lo
+// cerraría, pero hoy ese flag enciende el aviso de error de AppHeader.
+const UPLOAD_DEBOUNCE_MS = 2000;
+let uploadTimer = null;
+useStore.subscribe((s, prev) => {
+  // Sin hidratar: rehidratar cambia `workoutLog` de [] al persistido y
+  // subiría el log en cada arranque. Con slotId recién estrenado: vincularse
+  // no ha subido nunca, y el cliente que rechazó fusionar su historial pisaría
+  // la copia del hueco con su log local nada más entrar.
+  const slotId = s.clientSync?.slotId;
+  if (!slotId || slotId !== prev.clientSync?.slotId || !prev._hasHydrated) return;
+  const pid = s.profile?.activeProgramId;
+  const changed = s.workoutLog !== prev.workoutLog
+    || pid !== prev.profile?.activeProgramId
+    || s.clientSync.lastAppliedStageActivation !== prev.clientSync.lastAppliedStageActivation
+    || progressChanged(s.programs?.[pid], prev.programs?.[pid]);
+  if (!changed) return;
+  clearTimeout(uploadTimer);
+  uploadTimer = setTimeout(() => {
+    useStore.getState().uploadHistoryToTrainer().catch(() => {});
+  }, UPLOAD_DEBOUNCE_MS);
 });
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────

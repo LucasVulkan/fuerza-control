@@ -105,13 +105,32 @@ export function scopeFilterForUpload({
   return { entries, customExercises: relevantCustom };
 }
 
-/** Merges incoming entries into a client log — deduped by id, sorted by timestamp. */
-export function mergeClientLog(existing, incoming) {
+/**
+ * Merges incoming entries into a client log — deduped by id, sorted by timestamp.
+ *
+ * `update: true` (the trainer's download from the slot) also lets an incoming
+ * copy REPLACE the entry with its id when the content differs: the client
+ * patches entries after saving them (the recap's RPE and body weight), and
+ * without this the trainer kept the first copy forever. Entries absent from
+ * `incoming` are kept either way. File imports leave it off so they never
+ * overwrite the trainer's copy (docs/specs/qa-sep-conexion.md §3.2 d).
+ *
+ * Returns `existing` itself when nothing is added or replaced (no re-render).
+ */
+export function mergeClientLog(existing, incoming, { update = false } = {}) {
   const base = existing ?? [];
-  const ids  = new Set(base.map((e) => e.id));
-  const fresh = (incoming ?? []).filter((e) => e.id && !ids.has(e.id));
-  if (!fresh.length) return base;
-  return [...base, ...fresh].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  const byId = new Map(base.map((e) => [e.id, e]));
+  const fresh = [];
+  const replaced = new Map();
+  for (const e of incoming ?? []) {
+    if (!e.id) continue;
+    const old = byId.get(e.id);
+    if (!old) fresh.push(e);
+    else if (update && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);
+  }
+  if (!fresh.length && !replaced.size) return base;
+  return [...base.map((e) => replaced.get(e.id) ?? e), ...fresh]
+    .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 }
 
 /**

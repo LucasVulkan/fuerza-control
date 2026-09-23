@@ -160,6 +160,19 @@ export function progressBlob(program, appliedActivation = null) {
 }
 
 /**
+ * Whether any counter `progressBlob` ships differs between two versions of a
+ * program — the client uploads when this flips (qa-sep-conexion.md §3.2 a).
+ * The array by reference: every writer replaces it, none mutates it.
+ */
+export function progressChanged(a, b) {
+  return a?.id !== b?.id
+    || a?.currentStageIndex   !== b?.currentStageIndex
+    || a?.cycleCompletedIds   !== b?.cycleCompletedIds
+    || a?.stageWeeksCompleted !== b?.stageWeeksCompleted
+    || a?.totalWeeksCompleted !== b?.totalWeeksCompleted;
+}
+
+/**
  * The counters from a blob, ready to spread onto a program — but only if the
  * blob describes that same program. Anything else returns null so the caller
  * keeps what it has instead of adopting a stale stage index.

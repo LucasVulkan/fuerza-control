@@ -341,7 +341,7 @@ export async function transferClientSlot(slotId, oldClientId, newClientId) {
 export async function getTrainerSlots(trainerId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, client_name, client_code, client_id, history_updated_at, disconnected_at, sessions_count')
+    .select('id, client_name, client_code, client_id, history_updated_at, disconnected_at, sessions_count, progress:history_json->progress')
     .eq('trainer_id', trainerId)
     .order('created_at', { ascending: true });
 

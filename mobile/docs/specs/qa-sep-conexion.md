@@ -2,7 +2,7 @@
 
 > Tema: conexión
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 en la conexión entrenador↔cliente: el RPE, las sesiones libres y el cambio de etapa no llegaban al entrenador; el aviso "sin revisar" no se apagaba al mirar; "subir cambios" salía sin cambios; y "Preparar sesión" abría siempre la A.
-> Fase C15 · pendiente · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
+> Fase C15 · implementada, falta probar en dispositivo · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
 > Fase C16 · pendiente · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
 > Fase C17 · pendiente · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
 > Fase C18 · pendiente · "Preparar sesión" abre la que toca (bug 4) · §6
@@ -151,6 +151,50 @@ lista sigue al cliente en cuanto él sube, sin abrir su ficha.
 > ⚠️ Verificar (e) contra el Supabase real antes de dar la fase por cerrada: si
 > la ruta JSON diera error, el `select` entero falla y la lista de clientes deja
 > de refrescarse. Probarlo con un `console.log(slots[0])` en dispositivo.
+
+### 3.2-bis Lo que cambió al implementar (23-sep-2026)
+
+- El suscriptor tampoco sube en la transición que **crea** el vínculo
+  (`slotId` pasa de `null` a un valor). Hoy vincularse no sube, y si lo hiciera,
+  un cliente que rechazó fusionar su historial pisaría la copia del hueco con su
+  log local nada más entrar.
+- El `ponytail:` del suscriptor citaba el reintento de `pendingUpload` como red
+  para "la app muere dentro de la espera". No lo es: ese flag solo se enciende
+  cuando la subida falla, no mientras espera. Lo cubre el siguiente cambio.
+  Encenderlo al programar la subida cerraría el hueco, pero hoy ese flag pinta
+  el aviso de error de `AppHeader`.
+- `progressChanged` compara también `id`, para que un programa que aparece o
+  desaparece cuente como cambio.
+- El filtro "Programa activo" del historial del cliente (lado entrenador,
+  `ClientsScreen` `filteredLog`) incluye también las sesiones libres. Sin esto,
+  el bug 14 seguía pareciendo abierto: la sesión libre llegaba al entrenador pero
+  el filtro por defecto la escondía. El cliente solo sube las posteriores a
+  vincularse, así que pertenecen a su etapa con el entrenador.
+- `getTrainerSlots` con `progress:history_json->progress` verificado contra el
+  Supabase real (23-sep): sin error, y el blob llega a la lista.
+
+### 3.2-ter No soportado: el mismo móvil como entrenador y como su propio cliente
+
+Visto en el QA de C15 (23-sep-2026). Si un móvil que ya tiene al cliente X como
+entrenador se vincula como X, las sesiones del cliente **nunca suben**.
+Reproducido con un test del store:
+
+1. La copia del entrenador tiene el id `P` y dueño X. El programa llega con el
+   mismo `P` y dueño `me`. `importData` (regla §3.4 bis) ve el choque y hace una
+   copia con `reidProgramFile`: programa `P'` y plantillas nuevas.
+2. `linkToTrainer` guarda `trainerProgramIds: [programJson.program.id]`, que es
+   `P`, la copia del entrenador, no `P'`.
+3. `scopeFilterForUpload` solo sube las sesiones de las plantillas de `P`. Las
+   del cliente son de `P'` y se suben 0.
+4. El blob de progreso lleva `programId: P'`, así que en el lado del entrenador
+   `progressFromBlob` no lo adopta. Además, `_restoreFromSlot` escribe los
+   contadores sobre `P`, la copia del entrenador.
+
+Guardar el id efectivo al vincular solo arregla la primera subida: cada
+actualización del programa (`applyPendingProgramUpdate`) vuelve a chocar y crea
+otra copia. Soportarlo exige rediseñar a quién pertenece cada copia en un mismo
+store. **Decisión del usuario: no soportado.** Con dos móviles no choca nada. Las
+pruebas de conexión se hacen siempre con dos dispositivos.
 
 ### 3.3 Fuera de alcance
 
@@ -317,7 +361,7 @@ entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
-| C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | pendiente | 🟡 medio: store + 3 utils + tests |
+| C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | implementada (23-sep), falta dispositivo | 🟡 medio: store + 3 utils + tests |
 | C16 | Recuento fresco al descargar + efecto de la ficha + aviso → Historial | pendiente | 🟢 |
 | C17 | Firma de lo subido, `markProgramDirtyForClients` compara, StagePlanner marca | pendiente | 🟢 |
 | C18 | `NextSession` y tarjeta por `sessionPlan()` | pendiente | 🟢 |
