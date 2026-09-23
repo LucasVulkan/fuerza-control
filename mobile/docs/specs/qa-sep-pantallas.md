@@ -5,7 +5,7 @@
 > Fase U24 · hecho · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
 > Fase U25 · hecho · Progreso sin mezclar unidades (bug 7) · §4
 > Fase U26 · hecho · La gráfica de ejercicio entra sin salto (bug 9) · §5
-> Fase U27 · pendiente · Barlow en iOS por su nombre PostScript (bug 3) · §6
+> Fase U27 · hecho · Barlow en iOS por su nombre PostScript (bug 3) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (22-sep-2026). Fases independientes
 > entre sí. U24, U25 y U26 tienen el origen confirmado leyendo el código; **U27
@@ -285,4 +285,4 @@ sesión de hoy en Home salen en Barlow Condensed cursiva, igual que en Android.
 | U24 | `backToMain` + 4 llamadas; además la pila nunca nace con Workout como raíz (el atrás de Android cerraba la app) | ✅ `9d30ca3` · `4cb0a4f` — probada en dispositivo 22-sep | 🟢 |
 | U25 | `utils/improvement.js` con la regla de métrica por serie + borrar código muerto | ✅ `e850382` — pendiente de probar en dispositivo | 🟡 |
 | U26 | `useWeightUnit` memoizado + `key` de serie en la gráfica | ✅ `1b1931d` — pendiente de probar en dispositivo | 🟢 |
-| U27 | Nombre PostScript en iOS + build EAS | pendiente | 🟢 código · build aparte |
+| U27 | Nombre PostScript en iOS + build EAS | ✅ `16ee9be` — código hecho; pendiente de build EAS en iPhone | 🟢 código · build aparte |
