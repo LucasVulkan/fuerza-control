@@ -368,8 +368,9 @@ en Figma. Cada pieza sale de una pantalla ya migrada: `ScreenHeader` y el
 `SegmentedControl` de sesiones y el resumen de `SessionEditorScreen`; la tarjeta
 (cabecera `surface2` con número y prescripción), la rejilla de celdas de `SetRow`
 y la tira de nota del entrenador de `workout/ExerciseCard`. Los valores escritos
-van en azul, como el objetivo del entrenador en el Workout del cliente. El
-resumen marca con "LE TOCA" la sesión que devuelve `sessionPlan()`.
+van en azul, como el objetivo del entrenador en el Workout del cliente. QA
+(23-sep): el resumen es una sola línea "A · nombre" a `heading` con la ayuda a
+`body`, y la nota va a `body` sobre `bg`, como las celdas.
 
 **Probar en dispositivo.** Cliente que ha hecho A y B del ciclo en curso: en el
 entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.

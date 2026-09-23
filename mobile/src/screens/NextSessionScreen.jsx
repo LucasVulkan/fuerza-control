@@ -9,9 +9,9 @@
  *
  * Sin nodo en Figma: cada pieza se copia de una pantalla ya migrada, como el
  * Recap. Cabecera, segmentado de sesiones y resumen del editor de sesión
- * (`SessionEditorScreen`); tarjeta, rejilla de celdas y tira de nota del
- * entrenador del Workout (`workout/ExerciseCard` + `SetRow`) — lo que se
- * escribe aquí es lo que el cliente verá en esa misma tarjeta, en azul.
+ * (`SessionEditorScreen`); tarjeta y rejilla de celdas del Workout
+ * (`workout/ExerciseCard` + `SetRow`) — lo que se escribe aquí es lo que el
+ * cliente verá en esa misma tarjeta, en azul.
  */
 
 import { useState, useMemo } from 'react';
@@ -26,12 +26,11 @@ import { targetLabel } from '../utils/prescription';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { GRID } from '../components/workout/grid';
-import { spacing, textStyles, lh, withOpacity } from '../theme';
+import { spacing, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
-// Radios de la tarjeta de ejercicio del Workout (`ExerciseCard`: R_CARD / R_SMALL).
+// Radio de la tarjeta de ejercicio del Workout (`ExerciseCard`: R_CARD).
 const R_CARD  = 16;
-const R_SMALL = 9;
 
 /** Input type for an exercise (matches ExerciseCard's fallback logic). */
 function inputTypeFor(exConfig, def) {
@@ -223,13 +222,10 @@ export default function NextSessionScreen({ navigation, route }) {
             {/* Resumen — anatomía del resumen del editor de sesión */}
             {template && (
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryTag}>
-                  {t('nextSession.sessionTag', { label: template.label ?? '' })}
-                  {selectedId === nextId
-                    ? <Text style={styles.summaryNext}>{`  ·  ${t('nextSession.upNext')}`}</Text>
-                    : null}
+                <Text style={styles.summaryMain} numberOfLines={2}>
+                  <Text style={styles.summaryLabel}>{template.label ?? ''}</Text>
+                  {` · ${template.name ?? ''}`}
                 </Text>
-                <Text style={styles.summaryMain} numberOfLines={2}>{template.name ?? ''}</Text>
                 <Text style={styles.summaryHint}>{t('nextSession.hint')}</Text>
               </View>
             )}
@@ -280,14 +276,14 @@ export default function NextSessionScreen({ navigation, route }) {
                       ))}
                     </View>
 
-                    {/* Tira de nota del entrenador — la misma que ve el cliente */}
+                    {/* Nota de un solo uso — mismo material que las celdas */}
                     <TextInput
                       style={styles.noteInput}
                       value={d.note ?? ''}
                       onChangeText={(v) => setField(exerciseId, 'note', v)}
                       onBlur={() => commitField(exerciseId, 'note')}
                       placeholder={t('nextSession.notePlaceholder')}
-                      placeholderTextColor={th.colors.mutedLight}
+                      placeholderTextColor={th.colors.muted}
                       multiline
                     />
                   </View>
@@ -336,10 +332,9 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryNext: { color: th.tint.accent50 },
-  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summaryHint: { ...textStyles.label, lineHeight: lh(textStyles.label.fontSize), color: th.colors.mutedLight },
+  summaryMain:  { ...textStyles.heading, color: th.colors.text },
+  summaryLabel: { color: th.colors.accent },
+  summaryHint:  { ...textStyles.body, lineHeight: lh(textStyles.body.fontSize), color: th.colors.mutedLight },
 
   // ── Tarjeta ── (`workout/ExerciseCard`: card / header / body)
   card: {
@@ -414,15 +409,16 @@ const makeStyles = (th) => StyleSheet.create({
     textAlign:         'center',
     fontVariant:       ['tabular-nums'],
   },
-  // Tira de nota puntual (`ExerciseCard` coachNote): azul al 10 %, sin borde.
+  // Nota puntual: el mismo material que las celdas de encima (fondo `bg`,
+  // radio de celda), y a tamaño de lectura — a 12 no se leía (QA 23-sep).
   noteInput: {
-    ...textStyles.label,
-    lineHeight:        lh(textStyles.label.fontSize),
+    ...textStyles.body,
+    lineHeight:        lh(textStyles.body.fontSize),
     marginTop:         12,
     minHeight:         GRID.CELL_H,
-    backgroundColor:   withOpacity(th.colors.blue, 0.1),
-    borderRadius:      R_SMALL,
-    paddingHorizontal: 10,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      GRID.RADIUS,
+    paddingHorizontal: spacing.md,
     paddingVertical:   spacing.sm2,
     color:             th.colors.text,
     textAlignVertical: 'top',
