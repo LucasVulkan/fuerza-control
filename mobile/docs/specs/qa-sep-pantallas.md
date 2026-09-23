@@ -3,7 +3,7 @@
 > Tema: ui
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 que no son de conexión: atrás tras una sesión llevaba a una pantalla negra y el check del editor siempre iba a Sesiones; Progreso restaba kg de repeticiones; la gráfica de ejercicio pintaba un frame y saltaba; y la Barlow no salía en iPhone.
 > Fase U24 · hecho · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
-> Fase U25 · pendiente · Progreso sin mezclar unidades (bug 7) · §4
+> Fase U25 · hecho · Progreso sin mezclar unidades (bug 7) · §4
 > Fase U26 · pendiente · La gráfica de ejercicio entra sin salto (bug 9) · §5
 > Fase U27 · pendiente · Barlow en iOS por su nombre PostScript (bug 3) · §6
 >
@@ -167,6 +167,20 @@ y 230) y nadie navega a ella.
 3. Borrar `ExerciseHistoryScreen.jsx`, `components/charts/MiniLineChart.jsx` y su
    registro en `RootNavigator.jsx`. Comprobar con `grep` que nada más los importa.
 
+### 4.3-bis Lo que cambió al implementar (23-sep-2026)
+
+- `linearRegressionPct` y `lastSessionDelta` aceptan la métrica como tercer
+  argumento. El detalle del ejercicio la decide sobre todo el alcance
+  (`effectiveLogs`) y no sobre el periodo, para que "Tendencia" y el selector de
+  la gráfica hablen la misma unidad; la fila de la lista hace lo mismo.
+- `computeLastLoadDelta` decide la métrica de cada ejercicio sobre el par de
+  sesiones que compara: es todo el historial que tiene a mano.
+- `getExerciseLogsFrom` se mudó también a `improvement.js` (la necesita
+  `computeOverallImprovement`); `computeExerciseImprovement` desaparece, era un
+  alias.
+- La ficha de transparencia "Mejora" (`metrics.loadTrend.rules`) cuenta la regla
+  y que un ejercicio de peso corporal que empieza sin lastre no suma.
+
 ### 4.4 Tests (`src/utils/improvement.test.js`)
 
 - El caso del informe con un `def` de peso corporal: sesión 1 `0 kg × 15/15/15`,
@@ -269,6 +283,6 @@ sesión de hoy en Home salen en Barlow Condensed cursiva, igual que en Android.
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
 | U24 | `backToMain` + 4 llamadas; además la pila nunca nace con Workout como raíz (el atrás de Android cerraba la app) | ✅ `9d30ca3` · `4cb0a4f` — probada en dispositivo 22-sep | 🟢 |
-| U25 | `utils/improvement.js` con la regla de métrica por serie + borrar código muerto | pendiente | 🟡 |
+| U25 | `utils/improvement.js` con la regla de métrica por serie + borrar código muerto | ✅ `e850382` — pendiente de probar en dispositivo | 🟡 |
 | U26 | `useWeightUnit` memoizado + `key` de serie en la gráfica | pendiente | 🟢 |
 | U27 | Nombre PostScript en iOS + build EAS | pendiente | 🟢 código · build aparte |
