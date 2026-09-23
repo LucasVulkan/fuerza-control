@@ -1490,3 +1490,24 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
     expect(syncMock.uploadHistory).not.toHaveBeenCalled();
   });
 });
+
+describe('"sin revisar" se apaga al mirar — qa-sep-conexion C16', () => {
+  it('descargar refresca el recuento, y marcar visto guarda el fresco', async () => {
+    syncMock.downloadHistory.mockReset();
+    syncMock.downloadHistory.mockResolvedValue({
+      history: [1, 2, 3, 4, 5].map((n) => ({ id: `log_${n}`, timestamp: n, exercises: [] })),
+      customExercises: {}, progress: null, updatedAt: null,
+    });
+    useStore.setState((s) => ({
+      clients:    { cli_c16: { id: 'cli_c16', name: 'Ana', syncSlotId: 'slot_c16', remoteSessionsCount: 3 } },
+      clientLogs: {},
+      trainerSync: { ...s.trainerSync, lastSeenSessionsCount: { cli_c16: 3 } },
+    }));
+
+    await useStore.getState().downloadClientHistory('cli_c16');
+    useStore.getState().markHistoryViewed('cli_c16');
+
+    expect(useStore.getState().clients.cli_c16.remoteSessionsCount).toBe(5);
+    expect(useStore.getState().trainerSync.lastSeenSessionsCount.cli_c16).toBe(5);
+  });
+});

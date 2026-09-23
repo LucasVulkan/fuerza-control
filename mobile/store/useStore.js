@@ -3301,11 +3301,20 @@ export const useStore = create(
             await downloadHistory(client.syncSlotId);
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
-          if (progress) {
-            set((s) => ({
-              clients: { ...s.clients, [clientId]: { ...s.clients[clientId], progress } },
-            }));
-          }
+          // The session count comes fresh with them: it is the same number the
+          // server keeps in `sessions_count` (both written by `uploadHistory`
+          // from one list), and `markHistoryViewed` must not mark a stale one
+          // as seen (qa-sep-conexion.md §4).
+          set((s) => ({
+            clients: {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId],
+                remoteSessionsCount: history?.length ?? 0,
+                ...(progress ? { progress } : {}),
+              },
+            },
+          }));
           if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }

@@ -1523,7 +1523,7 @@ function AttentionPill({ label, count, color, ink = color, active, onPress }) {
 
 function ClientListCard({
   client, activeProgram, lastActivityTs, isConnected,
-  adherence, onPress, onOpenEditor, onUploadProgram, onViewProgress, onOpenActions,
+  adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
 }) {
   const { t, i18n } = useTranslation();
@@ -1704,7 +1704,7 @@ function ClientListCard({
                 {!cta && (newSessionsCount > 0 ? (
                   <TouchableOpacity
                     style={styles.cUnreviewed}
-                    onPress={onViewProgress}
+                    onPress={onViewUnreviewed}
                     hitSlop={8}
                     activeOpacity={0.7}
                   >
@@ -2185,14 +2185,7 @@ export default function ClientsScreen() {
     setView('detail');
   }
 
-  /**
-   * Abre el detalle de un cliente en la pestaña que lee su historial.
-   *
-   * Las sesiones "sin revisar" viven en el slot, no en `clientLogs`: entrar sin
-   * descargarlas enseñaba el progreso viejo hasta que alguien tiraba del refresh.
-   * Se marcan como vistas DESPUÉS de bajarlas — si la descarga falla, el aviso
-   * tiene que seguir ahí.
-   */
+  /** Abre el detalle de un cliente en la pestaña que lee su historial. */
   function openClientHistoryTab(clientId, tab) {
     setSelectedClientId(clientId);
     setActiveTab(tab);
@@ -2200,15 +2193,28 @@ export default function ClientsScreen() {
     setPeriodFilter('all');
     setOpenSections({ status: false, personal: true, weight: false, billing: false });
     setView('detail');
-    (async () => {
-      try {
-        if (clients[clientId]?.syncSlotId) await downloadClientHistory(clientId);
-        markHistoryViewed(clientId);
-      } catch {
-        // silencioso: lo ya cargado sigue siendo válido y el aviso se queda
-      }
-    })();
   }
+
+  // Abrir la ficha —por la tarjeta, por un atajo o cambiando de pestaña— baja
+  // el historial del cliente, y el hero de Programas enseña así su etapa real.
+  // Las sesiones "sin revisar" viven en el slot, no en `clientLogs`: se marcan
+  // como vistas solo al mirar Historial o Progreso y DESPUÉS de bajarlas — si la
+  // descarga falla, el aviso tiene que seguir ahí (qa-sep-conexion.md §4).
+  // ponytail: una descarga por cambio de pestaña; cachear por cliente si se nota.
+  const detailSyncSlot = view === 'detail' && trainerSync.mode && trainerSync.mode !== 'offline'
+    ? clients[selectedClientId]?.syncSlotId : null;
+  useEffect(() => {
+    if (!detailSyncSlot) return;
+    let cancelled = false;
+    downloadClientHistory(selectedClientId)
+      .then(() => {
+        if (!cancelled && (activeTab === 'history' || activeTab === 'progress')) {
+          markHistoryViewed(selectedClientId);
+        }
+      })
+      .catch(() => {}); // silencioso: lo ya cargado sigue valiendo y el aviso se queda
+    return () => { cancelled = true; };
+  }, [detailSyncSlot, selectedClientId, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelectClientProgress(clientId) {
     openClientHistoryTab(clientId, 'progress');
@@ -3243,7 +3249,7 @@ export default function ClientsScreen() {
                     if (client.activeProgramId) setEditingProgram(client.activeProgramId);
                     else handleSelectClient(client.id);
                   }}
-                  onViewProgress={() => handleSelectClientProgress(client.id)}
+                  onViewUnreviewed={() => handleSelectClientHistory(client.id)}
                   onUploadProgram={async () => {
                     if (!client.activeProgramId) return;
                     try {
