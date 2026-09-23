@@ -4,7 +4,7 @@
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 en la conexión entrenador↔cliente: el RPE, las sesiones libres y el cambio de etapa no llegaban al entrenador; el aviso "sin revisar" no se apagaba al mirar; "subir cambios" salía sin cambios; y "Preparar sesión" abría siempre la A.
 > Fase C15 · hecho · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
 > Fase C16 · hecho · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
-> Fase C17 · pendiente · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
+> Fase C17 · hecho · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
 > Fase C18 · pendiente · "Preparar sesión" abre la que toca (bug 4) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (22-sep-2026). Diagnóstico hecho
@@ -371,5 +371,5 @@ entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 |---|---|---|---|
 | C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | ✅ `8f8de70` — progreso en la lista verificado en Supabase real; resto pendiente de probar en dispositivo (con dos móviles, §3.2-ter) | 🟡 medio: store + 3 utils + tests |
 | C16 | Recuento fresco al descargar + efecto de la ficha + aviso → Historial | ✅ `b7646ec` — pendiente de probar en dispositivo | 🟢 |
-| C17 | Firma de lo subido, `markProgramDirtyForClients` compara, StagePlanner marca | pendiente | 🟢 |
+| C17 | Firma de lo subido, `markProgramDirtyForClients` compara, StagePlanner marca | ✅ `5259dfe` — pendiente de probar en dispositivo | 🟢 |
 | C18 | `NextSession` y tarjeta por `sessionPlan()` | pendiente | 🟢 |
