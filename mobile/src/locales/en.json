@@ -1405,6 +1405,8 @@
   },
   "nextSession": {
     "title": "Next session",
+    "sessionTag": "SESSION {{label}}",
+    "upNext": "UP NEXT",
     "hint": "Adjust only what you want to change. Anything you leave keeps its progression.",
     "last": "Last: {{summary}}",
     "noLast": "No previous data",

@@ -40,6 +40,7 @@ import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
 import { computeAdherence, requiresAttention, adherencePct, adherenceColor, STATUS } from '../utils/adherence';
 import { progressFromBlob, clientStageIndex, stageDays, stageDaysAt, allProgramDays } from '../utils/stageProgress';
+import { sessionPlan } from '../utils/sessionPlan';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
@@ -317,11 +318,15 @@ function AssignedProgramCard({
   const currentDays  = stageDaysAt(program, stageIdx);
   const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
-  // ── Next session in the rotation ── first one NOT done this cycle. By
-  // template, not by position: an index breaks as soon as the client trains out
-  // of rotation order.
-  const doneIds     = new Set(mine?.cycleCompletedIds ?? program.cycleCompletedIds ?? []);
-  const nextDayIdx  = currentDays.findIndex((d) => !doneIds.has(d.sessionTemplateId));
+  // ── Next session in the rotation ── la misma regla que la Home del cliente
+  // y "Preparar sesión": `sessionPlan()`, no una copia de ella (qa-sep-conexion
+  // §6). Cuando el modelo pase de ciclos a semanas, cambiará en un solo sitio.
+  const nextId      = sessionPlan({
+    days: currentDays.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
+    cycleCompletedIds: mine?.cycleCompletedIds ?? program.cycleCompletedIds,
+    t,
+  }).heroTemplateId;
+  const nextDayIdx  = currentDays.findIndex((d) => d.sessionTemplateId === nextId);
   const nextDay     = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
   const nextTpl     = nextDay ? getEffectiveTemplate(nextDay.sessionTemplateId) : null;
   const nextLabel   = nextTpl?.label ?? String.fromCharCode(65 + Math.max(0, nextDayIdx));

@@ -6,6 +6,12 @@
  * Per session (selector at top), each exercise shows what the client did last
  * time and an editable target (weight / reps) + a one-off note. "Enviar"
  * uploads the overrides to the client's slot.
+ *
+ * Sin nodo en Figma: cada pieza se copia de una pantalla ya migrada, como el
+ * Recap. Cabecera, segmentado de sesiones y resumen del editor de sesión
+ * (`SessionEditorScreen`); tarjeta, rejilla de celdas y tira de nota del
+ * entrenador del Workout (`workout/ExerciseCard` + `SetRow`) — lo que se
+ * escribe aquí es lo que el cliente verá en esa misma tarjeta, en azul.
  */
 
 import { useState, useMemo } from 'react';
@@ -14,21 +20,33 @@ import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { clientStageIndex, stageDaysAt } from '../utils/stageProgress';
-import { spacing, textStyles, borders, withOpacity } from '../theme';
+import { clientStageIndex, stageDaysAt, progressFromBlob } from '../utils/stageProgress';
+import { sessionPlan } from '../utils/sessionPlan';
+import { targetLabel } from '../utils/prescription';
+import ScreenHeader from '../components/ui/ScreenHeader';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import { GRID } from '../components/workout/grid';
+import { spacing, textStyles, lh, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+
+// Radios de la tarjeta de ejercicio del Workout (`ExerciseCard`: R_CARD / R_SMALL).
+const R_CARD  = 16;
+const R_SMALL = 9;
 
 /** Input type for an exercise (matches ExerciseCard's fallback logic). */
 function inputTypeFor(exConfig, def) {
   return exConfig.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
 }
 
-/** Editable target fields for an exercise: [key, label] pairs. */
-function fieldsFor(inputType, trackRpe) {
-  const base = inputType === 'reps'        ? [['reps', 'reps']]
-             : inputType === 'time'        ? [['time', 's']]
-             : inputType === 'weight_time' ? [['weight', 'kg'], ['time', 's']]
-             :                               [['weight', 'kg'], ['reps', 'reps']];
+/** Editable target fields for an exercise: [key, column label] pairs. */
+function fieldsFor(inputType, trackRpe, t) {
+  const reps = ['reps', t('workout.reps')];
+  const time = ['time', t('workout.timeSec')];
+  const kg   = ['weight', 'kg'];
+  const base = inputType === 'reps'        ? [reps]
+             : inputType === 'time'        ? [time]
+             : inputType === 'weight_time' ? [kg, time]
+             :                               [kg, reps];
   if (trackRpe) base.push(['rpe', 'RPE']);
   return base;
 }
@@ -90,9 +108,20 @@ export default function NextSessionScreen({ navigation, route }) {
     return days.map((d) => d.sessionTemplateId);
   }, [activeProgram, client]);
 
+  // La que le toca, por la misma regla que la Home del cliente y la tarjeta de
+  // Clientes: `sessionPlan()` sobre su ciclo espejado (qa-sep-conexion.md §6).
+  // Antes abría siempre la primera, la A.
+  const nextId = useMemo(() => {
+    if (!activeProgram) return null;
+    const cycleCompletedIds = progressFromBlob(client?.progress, activeProgram.id)?.cycleCompletedIds
+      ?? activeProgram.cycleCompletedIds;
+    const days = templateIds.map((tid) => ({ templateId: tid, label: getEffectiveTemplate(tid)?.label }));
+    return sessionPlan({ days, cycleCompletedIds, t }).heroTemplateId;
+  }, [activeProgram, client, templateIds, getEffectiveTemplate, t]);
+
   // Selected session — clamped during render so it stays valid without an effect.
   const [selRaw, setSelRaw] = useState(null);
-  const selectedId = (selRaw && templateIds.includes(selRaw)) ? selRaw : (templateIds[0] ?? null);
+  const selectedId = (selRaw && templateIds.includes(selRaw)) ? selRaw : (nextId ?? templateIds[0] ?? null);
 
   const template = selectedId ? getEffectiveTemplate(selectedId) : null;
   const override = client?.nextOverrides?.[selectedId] ?? null;
@@ -107,8 +136,8 @@ export default function NextSessionScreen({ navigation, route }) {
 
   // Local draft seeded from the stored override; committed on blur. Reset when
   // the session changes via the render-time reset pattern (no effect needed).
-  const buildSeed = () => {
-    const ex = override?.exercises ?? {};
+  const buildSeed = (ov = override) => {
+    const ex = ov?.exercises ?? {};
     const seed = {};
     (template?.exercises ?? []).forEach(({ exerciseId }) => {
       const o = ex[exerciseId] ?? {};
@@ -157,109 +186,118 @@ export default function NextSessionScreen({ navigation, route }) {
 
   function handleClear() {
     clearOverride(clientId, selectedId);
-    const cleared = {};
-    (template?.exercises ?? []).forEach(({ exerciseId }) => { cleared[exerciseId] = { weight: '', reps: '', note: '' }; });
-    setDraft(cleared);
+    setDraft(buildSeed(null));
   }
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.headerKicker}>{t('nextSession.title').toUpperCase()}</Text>
-          <Text style={styles.headerName} numberOfLines={1}>{client.name}</Text>
-        </View>
-        {hasTargets && (
-          <TouchableOpacity onPress={handleClear} hitSlop={8} style={styles.clearBtn}>
-            <Text style={styles.clearText}>{t('nextSession.clear')}</Text>
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('nextSession.title')}
+        title={client.name}
+        right={hasTargets ? (ink) => (
+          <TouchableOpacity onPress={handleClear} hitSlop={12} accessibilityRole="button">
+            <Text style={[styles.clearText, { color: ink }]}>{t('nextSession.clear')}</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        ) : undefined}
+      />
 
       {!activeProgram ? (
         <View style={styles.empty}><Text style={styles.emptyText}>{t('nextSession.noProgram')}</Text></View>
       ) : (
         <>
-          {/* Session selector */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.selectorWrap}
-            contentContainerStyle={styles.selector}
-          >
-            {templateIds.map((tid) => {
-              const tpl = getEffectiveTemplate(tid);
-              const sel = tid === selectedId;
-              return (
-                <TouchableOpacity
-                  key={tid}
-                  style={[styles.sessTab, sel && styles.sessTabActive]}
-                  onPress={() => setSelRaw(tid)}
-                >
-                  <Text style={[styles.sessTabText, sel && styles.sessTabTextActive]} numberOfLines={1}>
-                    {`${tpl?.label ?? ''} · ${tpl?.name ?? ''}`}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={styles.hint}>{t('nextSession.hint')}</Text>
-
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 90 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xxl }]}
             keyboardShouldPersistTaps="handled"
           >
-            {(template?.exercises ?? []).map((exConfig) => {
+            {/* Sesiones de la etapa — el mismo segmentado que el editor de sesión */}
+            {templateIds.length > 1 && (
+              <SegmentedControl
+                options={templateIds.map((id) => ({ id, label: getEffectiveTemplate(id)?.label ?? '·' }))}
+                value={selectedId}
+                onChange={setSelRaw}
+              />
+            )}
+
+            {/* Resumen — anatomía del resumen del editor de sesión */}
+            {template && (
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTag}>
+                  {t('nextSession.sessionTag', { label: template.label ?? '' })}
+                  {selectedId === nextId
+                    ? <Text style={styles.summaryNext}>{`  ·  ${t('nextSession.upNext')}`}</Text>
+                    : null}
+                </Text>
+                <Text style={styles.summaryMain} numberOfLines={2}>{template.name ?? ''}</Text>
+                <Text style={styles.summaryHint}>{t('nextSession.hint')}</Text>
+              </View>
+            )}
+
+            {(template?.exercises ?? []).map((exConfig, i) => {
               const exerciseId = exConfig.exerciseId;
               const def       = allExercises[exerciseId];
               const inputType = inputTypeFor(exConfig, def);
-              const fields    = fieldsFor(inputType, !!exConfig.trackRpe);
+              const fields    = fieldsFor(inputType, !!exConfig.trackRpe, t);
               const last      = lastLog?.exercises?.find((e) => e.exerciseId === exerciseId);
               const summary   = lastSummary(last, inputType);
+              const target    = targetLabel(def, exConfig, t);
               const d = draft[exerciseId] ?? {};
               return (
-                <View key={exerciseId} style={styles.exCard}>
-                  <Text style={styles.exName} numberOfLines={1}>{def?.name ?? exerciseId}</Text>
-                  <Text style={styles.exLast}>
-                    {summary ? t('nextSession.last', { summary }) : t('nextSession.noLast')}
-                  </Text>
-                  <View style={styles.fieldsRow}>
-                    {fields.map(([key, label]) => (
-                      <View key={key} style={styles.field}>
-                        <Text style={styles.fieldLabel}>{label}</Text>
+                <View key={exerciseId} style={styles.card}>
+                  {/* Header de la tarjeta del Workout: número + nombre + prescripción */}
+                  <View style={styles.header}>
+                    <Text style={styles.num}>{String(i + 1).padStart(2, '0')}</Text>
+                    <View style={styles.nameBlock}>
+                      <Text style={styles.name} numberOfLines={2}>{def?.name ?? exerciseId}</Text>
+                      {target ? <Text style={styles.target} numberOfLines={2}>{target}</Text> : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.body}>
+                    <Text style={styles.lastLine}>
+                      {summary ? t('nextSession.last', { summary }) : t('nextSession.noLast')}
+                    </Text>
+
+                    {/* Rejilla del Workout: cabeceras de columna + una fila de celdas */}
+                    <View style={styles.colHeader}>
+                      {fields.map(([key, label]) => (
+                        <Text key={key} style={styles.colLabel}>{label.toUpperCase()}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.cellRow}>
+                      {fields.map(([key]) => (
                         <TextInput
-                          style={styles.fieldInput}
+                          key={key}
+                          style={styles.cell}
                           value={d[key] ?? ''}
                           onChangeText={(v) => setField(exerciseId, key, v)}
                           onBlur={() => commitField(exerciseId, key)}
                           keyboardType={key === 'reps' || key === 'time' ? 'numeric' : 'decimal-pad'}
-                          placeholder="—"
-                          placeholderTextColor={th.colors.muted2}
+                          placeholder="–"
+                          placeholderTextColor={th.colors.muted}
                         />
-                      </View>
-                    ))}
+                      ))}
+                    </View>
+
+                    {/* Tira de nota del entrenador — la misma que ve el cliente */}
+                    <TextInput
+                      style={styles.noteInput}
+                      value={d.note ?? ''}
+                      onChangeText={(v) => setField(exerciseId, 'note', v)}
+                      onBlur={() => commitField(exerciseId, 'note')}
+                      placeholder={t('nextSession.notePlaceholder')}
+                      placeholderTextColor={th.colors.mutedLight}
+                      multiline
+                    />
                   </View>
-                  <TextInput
-                    style={styles.noteInput}
-                    value={d.note ?? ''}
-                    onChangeText={(v) => setField(exerciseId, 'note', v)}
-                    onBlur={() => commitField(exerciseId, 'note')}
-                    placeholder={t('nextSession.notePlaceholder')}
-                    placeholderTextColor={th.colors.muted2}
-                    multiline
-                  />
                 </View>
               );
             })}
           </ScrollView>
 
-          {/* Send */}
+          {/* Enviar — geometría del botón de guardar del Workout, en el azul del
+              CTA "enviar a clientes" de Clientes: es una acción del entrenador */}
           <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
             <TouchableOpacity
               style={[styles.sendBtn, !hasTargets && styles.sendBtnDisabled]}
@@ -268,7 +306,7 @@ export default function NextSessionScreen({ navigation, route }) {
               activeOpacity={0.85}
             >
               <Text style={[styles.sendText, !hasTargets && styles.sendTextDisabled]}>
-                {t('nextSession.send', { name: client.name })}
+                {t('nextSession.send', { name: client.name }).toUpperCase()}
               </Text>
             </TouchableOpacity>
             <Text style={styles.footerNote}>{t('nextSession.onlyNext')}</Text>
@@ -281,66 +319,129 @@ export default function NextSessionScreen({ navigation, route }) {
 
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
+  clearText: { ...textStyles.labelStrong },
 
+  // ── Contenido ── (el de `SessionEditorScreen`)
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    gap:               spacing.md,
+  },
+
+  // ── Resumen ── (`SessionEditorScreen` summaryCard: tint/accent-10, sin borde)
+  summaryCard: {
+    backgroundColor:   th.tint.accent10,
+    borderRadius:      th.radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    gap:               spacing.sm,
+  },
+  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
+  summaryNext: { color: th.tint.accent50 },
+  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
+  summaryHint: { ...textStyles.label, lineHeight: lh(textStyles.label.fontSize), color: th.colors.mutedLight },
+
+  // ── Tarjeta ── (`workout/ExerciseCard`: card / header / body)
+  card: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    R_CARD,
+    overflow:        'hidden',
+    // Mismo borde transparente que la del Workout: sin él, Android no recorta
+    // de forma fiable una vista con overflow hidden + radio.
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
-    borderBottomWidth: borders.thin, borderBottomColor: th.colors.border,
-  },
-  backBtn: { padding: spacing.xs },
-  backIcon: { ...textStyles.title, color: th.colors.mutedLight, lineHeight: 30 },
-  headerKicker: { ...textStyles.caps, color: th.colors.muted },
-  headerName:   { ...textStyles.itemTitleQuiet, color: th.colors.text },
-  clearBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  clearText: { ...textStyles.label, color: th.colors.mutedLight },
-
-  selectorWrap: { flexGrow: 0, borderBottomWidth: borders.thin, borderBottomColor: th.colors.border },
-  selector: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.xs },
-  sessTab: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm - 1,
-    borderRadius: th.radius.full, borderWidth: borders.thin, borderColor: th.colors.border,
+    flexDirection:   'row',
+    alignItems:      'flex-start',
+    gap:             10,
     backgroundColor: th.colors.surface2,
+    paddingTop:      14,
+    paddingRight:    12,
+    paddingBottom:   14,
+    paddingLeft:     16,
   },
-  sessTabActive: { backgroundColor: withOpacity(th.colors.blue, 0.14), borderColor: withOpacity(th.colors.blue, 0.5) },
-  sessTabText: { ...textStyles.label, color: th.colors.muted, maxWidth: 180 },
-  sessTabTextActive: { color: th.colors.blue },
-
-  hint: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-
-  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
-  exCard: {
-    backgroundColor: th.colors.surface, borderWidth: borders.thin, borderColor: th.colors.border,
-    borderLeftWidth: 3, borderLeftColor: withOpacity(th.colors.blue, 0.55),
-    borderRadius: th.radius.md, padding: spacing.md,
+  num: {
+    ...textStyles.itemTitle,
+    lineHeight:  22,
+    minWidth:    22,
+    color:       th.colors.accent,
+    fontVariant: ['tabular-nums'],
   },
-  exName: { ...textStyles.bodyStrong, color: th.colors.text },
-  exLast: { ...textStyles.label, color: th.colors.muted, marginTop: 3, marginBottom: spacing.sm },
-  fieldsRow: { flexDirection: 'row', gap: spacing.sm },
-  field: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border,
-    borderRadius: th.radius.sm, paddingHorizontal: spacing.sm,
+  nameBlock: { flex: 1, minWidth: 0 },
+  name: {
+    ...textStyles.itemTitleQuiet,
+    lineHeight: 22,
+    color:      th.colors.text,
   },
-  fieldLabel: { ...textStyles.label, color: th.colors.muted2 },
-  fieldInput: {
+  target: {
     ...textStyles.bodyStrong,
-    flex: 1, textAlign: 'right', color: th.colors.blue,
-    paddingVertical: spacing.sm,
+    color:       th.colors.mutedLight,
+    marginTop:   3,
+    fontVariant: ['tabular-nums'],
   },
-  noteInput: {
-    marginTop: spacing.sm, backgroundColor: th.colors.surface2,
-    borderWidth: borders.thin, borderColor: th.colors.border, borderRadius: th.radius.sm,
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
-    ...textStyles.body, color: th.colors.text, minHeight: 38,
+  body: {
+    paddingTop:        12,
+    paddingBottom:     14,
+    paddingHorizontal: 16,
+  },
+  lastLine: {
+    ...textStyles.body,
+    lineHeight:   lh(textStyles.body.fontSize),
+    color:        th.colors.mutedLight,
+    marginBottom: 12,
   },
 
-  footer: {
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md,
-    borderTopWidth: borders.thin, borderTopColor: th.colors.border, backgroundColor: th.colors.bg,
+  // Rejilla (`ExerciseCard` colHeader/colLabel + celda de `SetRow`). El valor va
+  // en azul: es el objetivo del entrenador, y así lo pinta el Workout del cliente.
+  colHeader: { flexDirection: 'row', gap: GRID.GAP, marginBottom: 8 },
+  colLabel: {
+    ...textStyles.caps,
+    flex:      1,
+    color:     th.colors.muted,
+    textAlign: 'center',
   },
-  sendBtn: { backgroundColor: th.colors.blue, borderRadius: th.radius.md, paddingVertical: spacing.md, alignItems: 'center' },
-  sendBtnDisabled: { backgroundColor: th.colors.surface2, borderWidth: borders.thin, borderColor: th.colors.border },
-  sendText: { ...textStyles.button, color: th.colors.onAccent },
+  cellRow: { flexDirection: 'row', gap: GRID.GAP },
+  cell: {
+    ...textStyles.itemTitle,
+    flex:              1,
+    height:            GRID.CELL_H,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      GRID.RADIUS,
+    paddingHorizontal: spacing.xs,
+    paddingVertical:   0,
+    color:             th.colors.blue,
+    textAlign:         'center',
+    fontVariant:       ['tabular-nums'],
+  },
+  // Tira de nota puntual (`ExerciseCard` coachNote): azul al 10 %, sin borde.
+  noteInput: {
+    ...textStyles.label,
+    lineHeight:        lh(textStyles.label.fontSize),
+    marginTop:         12,
+    minHeight:         GRID.CELL_H,
+    backgroundColor:   withOpacity(th.colors.blue, 0.1),
+    borderRadius:      R_SMALL,
+    paddingHorizontal: 10,
+    paddingVertical:   spacing.sm2,
+    color:             th.colors.text,
+    textAlignVertical: 'top',
+  },
+
+  // ── Enviar ──
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    backgroundColor:   th.colors.bg,
+  },
+  sendBtn: {
+    borderRadius:    th.radius.md,
+    paddingVertical: spacing.md + 4,
+    alignItems:      'center',
+    backgroundColor: th.colors.blue,
+  },
+  sendBtnDisabled:  { backgroundColor: th.colors.surface2 },
+  sendText:         { ...textStyles.button, color: th.colors.onAccent },
   sendTextDisabled: { color: th.colors.muted },
   footerNote: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center', marginTop: spacing.sm },
 
