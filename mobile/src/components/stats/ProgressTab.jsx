@@ -827,7 +827,14 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                   onChange={(id) => { setChartMetric(id); setPctMode(false); }}
                 />
               )}
-              <MiniLineChart data={chartData} metricLabel={metricLabel} />
+              {/* Una serie nueva se monta de cero: con el recorte a 0 y sin
+                  ancho medido no hay frame con la geometría de la anterior
+                  (qa-sep-pantallas.md §5). */}
+              <MiniLineChart
+                key={`${activeId}|${activeMetric}|${modalPeriod}|${modalScope}|${pctMode}`}
+                data={chartData}
+                metricLabel={metricLabel}
+              />
             </View>
 
             {/* Lista de sesiones — "listed items" agrupados, desglose por bloque de peso */}
