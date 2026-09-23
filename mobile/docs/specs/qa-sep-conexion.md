@@ -2,8 +2,8 @@
 
 > Tema: conexión
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 en la conexión entrenador↔cliente: el RPE, las sesiones libres y el cambio de etapa no llegaban al entrenador; el aviso "sin revisar" no se apagaba al mirar; "subir cambios" salía sin cambios; y "Preparar sesión" abría siempre la A.
-> Fase C15 · implementada, falta probar en dispositivo · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
-> Fase C16 · pendiente · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
+> Fase C15 · hecho · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
+> Fase C16 · hecho · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
 > Fase C17 · pendiente · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
 > Fase C18 · pendiente · "Preparar sesión" abre la que toca (bug 4) · §6
 >
@@ -271,6 +271,14 @@ muestra la etapa nueva sin que el cliente haya entrenado.
    `onViewUnreviewed` (solo la usa ese aviso) para que el nombre diga lo que hace.
    La hoja de acciones (`ClientActionsSheet`, fila "Progreso") no cambia.
 
+### 4.2-bis Lo que cambió al implementar (23-sep-2026)
+
+- El efecto no descarga con el entrenador en modo `offline` (el mismo guard que
+  usa la ficha para `syncEnabled`). Sin eso, cada apertura de ficha sin
+  sincronización encendía `syncErrorAt` en el cliente.
+- Si la pestaña cambia antes de que acabe la descarga, esa descarga ya no marca
+  como visto (flag `cancelled` en la limpieza del efecto).
+
 ### 4.3 Tests
 
 `useStore.test.js`: tras `downloadClientHistory` con 5 entradas y
@@ -361,7 +369,7 @@ entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
-| C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | implementada (23-sep), falta dispositivo | 🟡 medio: store + 3 utils + tests |
-| C16 | Recuento fresco al descargar + efecto de la ficha + aviso → Historial | pendiente | 🟢 |
+| C15 | Disparador único + reintento + final común de `saveSession` + fusión por id + progreso en la lista | ✅ `8f8de70` — progreso en la lista verificado en Supabase real; resto pendiente de probar en dispositivo (con dos móviles, §3.2-ter) | 🟡 medio: store + 3 utils + tests |
+| C16 | Recuento fresco al descargar + efecto de la ficha + aviso → Historial | ✅ `b7646ec` — pendiente de probar en dispositivo | 🟢 |
 | C17 | Firma de lo subido, `markProgramDirtyForClients` compara, StagePlanner marca | pendiente | 🟢 |
 | C18 | `NextSession` y tarjeta por `sessionPlan()` | pendiente | 🟢 |
