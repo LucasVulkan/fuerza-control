@@ -9,6 +9,8 @@
  * To add a light theme in the future: create a lightColors object and swap at runtime.
  */
 
+import { Platform } from 'react-native';
+
 // ─── Color tokens ─────────────────────────────────────────────────────────────
 export const colors = {
   // Backgrounds
@@ -123,7 +125,14 @@ export const radius = {
 // que a 8–12px se leía más fina de lo que el diseño suponía. La regla de
 // fidelidad de AGENTS.md queda suspendida para la escala tipográfica — no para
 // color, radio ni layout.
-const BARLOW = 'BarlowCondensed_800ExtraBold_Italic';
+// iOS resuelve una fuente embebida por su nombre PostScript (tabla `name` del
+// .ttf: `BarlowCondensed-ExtraBoldItalic`); el alias que registra `useFonts`
+// era lo que fallaba en iPhone (docs/specs/qa-sep-pantallas.md §6). Inter sigue
+// por alias porque ahí sí sale — si algún día falla igual, mismo remedio.
+const BARLOW = Platform.select({
+  ios:     'BarlowCondensed-ExtraBoldItalic',
+  default: 'BarlowCondensed_800ExtraBold_Italic',
+});
 
 export const textStyles = {
   // ── Identidad: la tarjeta de hoy ────────────────────────────────────────────
