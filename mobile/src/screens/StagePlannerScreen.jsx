@@ -43,7 +43,7 @@
  * Spec: `mobile/docs/specs/stage-planner.md` §14.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Text, TextInput } from '../components/ui/Text';
@@ -388,6 +388,7 @@ export default function StagePlannerScreen({ navigation, route }) {
   const removeStage     = useStore((s) => s.removeStageFromProgram);
   const addStage        = useStore((s) => s.addStageToProgram);
   const addStageLadder  = useStore((s) => s.addStageLadder);
+  const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const showToast       = useStore((s) => s.showToast);
 
   const [openStageId, setOpenStageId] = useState(null);
@@ -407,6 +408,11 @@ export default function StagePlannerScreen({ navigation, route }) {
   const programId = route?.params?.programId ?? ui._editingProgramId ?? profile.activeProgramId;
   const program   = programs[programId];
   const stages    = program?.stages ?? [];
+
+  // Desde la ficha del cliente nadie pasa por `useEditorExit`: sin esto, las
+  // etapas añadidas aquí no se ofrecían para subir (qa-sep-conexion.md §5).
+  // La acción compara firmas, así que salir sin cambios no marca nada.
+  useEffect(() => () => markProgramDirtyForClients(programId), [programId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!program || stages.length === 0) return null;
 

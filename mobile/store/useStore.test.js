@@ -1511,3 +1511,33 @@ describe('"sin revisar" se apaga al mirar — qa-sep-conexion C16', () => {
     expect(useStore.getState().trainerSync.lastSeenSessionsCount.cli_c16).toBe(5);
   });
 });
+
+describe('"subir cambios" solo cuando hay cambios — qa-sep-conexion C17', () => {
+  it('sin cambios queda limpio, un cambio lo ensucia y deshacerlo lo limpia', async () => {
+    syncMock.uploadProgram.mockReset();
+    syncMock.uploadProgram.mockResolvedValue(undefined);
+    const stages = [{ id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_c17', label: 'A' }] }];
+    useStore.setState({
+      programs: { prog_c17: { id: 'prog_c17', name: 'De Ana', owner: 'cli_c17', kind: 'program', status: 'active', stages, currentStageIndex: 0 } },
+      sessionTemplates: {
+        tpl_c17: { id: 'tpl_c17', programId: 'prog_c17', name: 'A', exercises: [{ exerciseId: 'squat', sets: 3, minReps: 5, maxReps: 5 }] },
+      },
+      clients: { cli_c17: { id: 'cli_c17', name: 'Ana', activeProgramId: 'prog_c17', syncSlotId: 'slot_c17', programDirty: true } },
+    });
+    const st = () => useStore.getState();
+
+    await st().uploadProgramToClient('cli_c17', 'prog_c17');
+    expect(st().clients.cli_c17.programDirty).toBe(false);
+
+    st().markProgramDirtyForClients('prog_c17');
+    expect(st().clients.cli_c17.programDirty).toBe(false);
+
+    st().updateExerciseParams('tpl_c17', 'squat', { sets: 4 });
+    st().markProgramDirtyForClients('prog_c17');
+    expect(st().clients.cli_c17.programDirty).toBe(true);
+
+    st().updateExerciseParams('tpl_c17', 'squat', { sets: 3 });
+    st().markProgramDirtyForClients('prog_c17');
+    expect(st().clients.cli_c17.programDirty).toBe(false);
+  });
+});

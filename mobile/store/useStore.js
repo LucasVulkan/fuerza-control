@@ -39,6 +39,7 @@ import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '.
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
+import { programSignature } from '../src/utils/programSignature';
 import { advanceCycle, progressBlob, progressChanged, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
@@ -699,15 +700,20 @@ export const useStore = create(
       },
 
       /**
-       * Mark programDirty = true for every client that has this program as their active one
-       * and has a sync slot configured. Call this after saving/editing a program.
+       * Recomputes programDirty for every client that has this program as their
+       * active one and a sync slot: dirty means "what I would upload now differs
+       * from what I last uploaded" (qa-sep-conexion.md §5). Safe to call on
+       * every editor exit — leaving without changes, or undoing them, stays
+       * clean. A client never uploaded to (no stored signature) is dirty.
        */
       markProgramDirtyForClients: (programId) => {
+        const sig = get()._programSig(programId);
         set((s) => {
           const updated = {};
           Object.entries(s.clients).forEach(([cid, c]) => {
             if (c.activeProgramId === programId && c.syncSlotId) {
-              updated[cid] = { ...c, programDirty: true };
+              const programDirty = sig !== c.programUploadedSig;
+              if (programDirty !== !!c.programDirty) updated[cid] = { ...c, programDirty };
             }
           });
           return Object.keys(updated).length > 0
@@ -2615,6 +2621,12 @@ export const useStore = create(
 
       // ── Build program JSON payload (shared helper) ──────────────────────────
 
+      /** Firma de lo que `uploadProgramToClient` subiría ahora; null sin programa. */
+      _programSig: (programId) => {
+        const payload = get()._buildProgramJson(programId, false);
+        return payload ? programSignature(JSON.parse(payload.json)) : null;
+      },
+
       _buildProgramJson: (programId, withLog = false) => {
         const s = get();
         const { programs, sessionTemplates, customExercises, workoutLog, clientLogs } = s;
@@ -3202,6 +3214,8 @@ export const useStore = create(
         const payload = get()._buildProgramJson(programId, false);
         if (!payload) throw new Error('Programa no encontrado.');
         const programData   = JSON.parse(payload.json);
+        // Firma ANTES de sellar trainerName: el sello no es un cambio del programa.
+        const uploadedSig   = programSignature(programData);
         const trainerName   = get().trainerSync.trainerName;
         if (trainerName?.trim()) {
           // Stamp trainerName into every session template so clients see attribution
@@ -3214,7 +3228,12 @@ export const useStore = create(
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], programDirty: false, programUploadedAt: new Date().toISOString() },
+            [clientId]: {
+              ...s.clients[clientId],
+              programDirty:       false,
+              programUploadedAt:  new Date().toISOString(),
+              programUploadedSig: uploadedSig,
+            },
           },
         }));
       },
