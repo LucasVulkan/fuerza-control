@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDaysAt } from '../utils/stageProgress';
+import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
@@ -111,7 +111,7 @@ function WeekSelector({ workoutLog }) {
 
 // ── Sesiones ──────────────────────────────────────────────────────────────
 //
-// Una sola lista en orden de ciclo. Cada sesión es una fila plegable y la que
+// Una sola lista en el orden del programa. Cada sesión es una fila plegable y la que
 // toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
 // botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
 // (docs/specs/home-sesiones-plegables.md §5).
@@ -315,9 +315,9 @@ function CheckIcon({ size = 16, color }) {
 }
 
 // ── Section header ──────────────────────────────────────────────────────────────
-// SESIONES lleva a la derecha el contador del ciclo, que sale entero de
+// SESIONES lleva a la derecha el contador de la semana, que sale entero de
 // `sessionPlan`: la pantalla no compone la frase, solo decide si hay hueco para
-// ella (sin ciclo que contar, el subtítulo viene a null y no se pinta nada).
+// ella (sin sesiones que contar, el subtítulo viene a null y no se pinta nada).
 
 function SectionHeader({ label, count }) {
   const styles = useThemedStyles(makeStyles);
@@ -359,7 +359,9 @@ export default function HomeScreen() {
   const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
   const clientSync           = useStore((s) => s.clientSync);
   const advanceStage         = useStore((s) => s.advanceStage);
-  const dismissStageAdvance  = useStore((s) => s.dismissStageAdvance);
+  const extendStage          = useStore((s) => s.extendStage);
+  const snoozeStageBanner    = useStore((s) => s.snoozeStageBanner);
+  const stageBannerSnooze    = useStore((s) => s.stageBannerSnooze);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
 
@@ -425,13 +427,17 @@ export default function HomeScreen() {
         <WeekSelector workoutLog={workoutLog} />
 
         {activeProgram ? (() => {
-          const hasStages   = (activeProgram.stages?.length ?? 0) > 0;
-          const stageIdx    = activeProgram.currentStageIndex ?? 0;
-          const currentStage = hasStages ? activeProgram.stages[stageIdx] : null;
-          const nextStage    = hasStages ? activeProgram.stages[stageIdx + 1] : null;
+          // Dónde va de la etapa: la misma cuenta que ve su entrenador
+          // (weeks-model.md §3.7). El día se lee al pintar.
+          const today       = localDay();
+          const progress    = athleteProgress(activeProgram);
+          const status      = stageStatus(activeProgram, progress, today);
+          const stageIdx    = status.stageIdx;
+          const currentStage = status.stage;
+          const nextStage    = activeProgram.stages?.[stageIdx + 1] ?? null;
           const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
-          // Current session templates in cycle order.
+          // Las sesiones de la etapa, en el orden del programa.
           const currentDays = stageDaysAt(activeProgram, stageIdx);
           const days = currentDays
             .map(({ sessionTemplateId }) => ({
@@ -445,10 +451,60 @@ export default function HomeScreen() {
           // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
           const plan = sessionPlan({
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
-            cycleCompletedIds: activeProgram.cycleCompletedIds,
-            activeTemplateId:  activeSession.templateId,
+            log:              workoutLog,
+            activeTemplateId: activeSession.templateId,
             t,
           });
+
+          // ── Aviso de fin de etapa (weeks-model.md §6.1) ──
+          // Cuatro casos y un solo sitio que decide si sale (`stageBannerDue`,
+          // el mismo que enciende el punto del tab). Cada uno dice qué ha pasado
+          // y ofrece una acción principal y otra discreta.
+          const pid     = activeProgram.id;
+          const names   = { current: currentStage?.name ?? t('home.currentStageDefault'), next: nextStage?.name ?? '' };
+          const advance = {
+            label:   t('home.advanceTo', { name: names.next.toUpperCase() }),
+            onPress: () => advanceStage(pid),
+          };
+          const banner = !nextStage || !stageBannerDue(activeProgram, progress, stageBannerSnooze?.[pid], today)
+            ? null
+            : nextStageLocked
+              // No puede avanzar: sigue en la etapa (stage-locks §0.1). Se le
+              // recuerda cada semana mientras su entrenador no la abra.
+              ? {
+                title: t('home.stageLockedTitle'),
+                text:  t('home.stageLockedText', names),
+                hint:  t('home.stageLockedHint'),
+                quiet: { label: t('home.understood'), onPress: () => snoozeStageBanner(pid, addDays(today, 7)) },
+              }
+              : status.ended && status.missingWeeks > 0
+                // Terminó por fecha sin entrenar lo que tocaba: se propone
+                // alargar, pero avanzar sigue a un toque.
+                ? {
+                  title: t('home.stageEndedTitle'),
+                  text:  t('home.stageBehindText', { ...names, done: status.done, expected: status.expected, count: status.missingWeeks }),
+                  main:  { label: t('home.extendWeeks', { count: status.missingWeeks }), onPress: () => extendStage(pid, status.missingWeeks) },
+                  quiet: advance,
+                }
+                : status.ended
+                  ? {
+                    title: t('home.stageCompleted'),
+                    text:  t('home.stageAdvanceText', names),
+                    main:  advance,
+                    // Con el aplazamiento: sin él, la semana añadida sería ya
+                    // la última con todo hecho y el aviso volvería al instante.
+                    quiet: {
+                      label:   t('home.oneMoreWeek'),
+                      onPress: () => { extendStage(pid, 1); snoozeStageBanner(pid, addDays(status.endsOn, 7)); },
+                    },
+                  }
+                  // Anticipado: última semana y todas las sesiones hechas.
+                  : {
+                    title: t('home.stageCompleted'),
+                    text:  t('home.stageEarlyText', { ...names, expected: status.expected }),
+                    main:  advance,
+                    quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
+                  };
           // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
           // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
           // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
@@ -486,67 +542,39 @@ export default function HomeScreen() {
 
                 {/* Etapa terminada: el único "algo terminó" que persiste en la
                     Home. Va ENCIMA del hero y no lo sustituye — la sesión que
-                    toca sigue siendo la que toca. Con la siguiente etapa
-                    bloqueada el cliente no se queda sin nada que hacer: sigue en
-                    la actual (spec stage-locks §0.1), así que el banner solo
-                    cambia de mensaje. */}
-                {activeProgram.stageAdvancePending && nextStage && (
+                    toca sigue siendo la que toca. Sin acción principal (etapa
+                    siguiente bloqueada) el botón que queda va en lima. */}
+                {banner && (
                   <View style={styles.stageBanner}>
-                    {nextStageLocked ? (
-                      <>
-                        <Text style={styles.stageBannerLabel}>{t('home.stageLockedTitle').toUpperCase()}</Text>
-                        <Text style={styles.stageBannerText}>
-                          {t('home.stageLockedText', {
-                            current: currentStage?.name ?? t('home.currentStageDefault'),
-                            next: nextStage.name,
-                          })}
+                    <Text style={styles.stageBannerLabel}>{banner.title.toUpperCase()}</Text>
+                    <Text style={styles.stageBannerText}>{banner.text}</Text>
+                    {!!banner.hint && <Text style={styles.stageBannerHint}>{banner.hint}</Text>}
+                    <View style={styles.stageBannerBtns}>
+                      {banner.main && (
+                        <TouchableOpacity
+                          style={[styles.stageBannerBtn, { flex: 2 }]}
+                          onPress={banner.main.onPress}
+                          activeOpacity={0.85}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.stageBannerBtnText}>{banner.main.label}</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.stageBannerBtn, banner.main && styles.stageBannerBtnQuiet]}
+                        onPress={banner.quiet.onPress}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.stageBannerBtnText, banner.main && styles.stageBannerBtnTextQuiet]}>
+                          {banner.quiet.label}
                         </Text>
-                        <Text style={styles.stageBannerHint}>{t('home.stageLockedHint')}</Text>
-                        <View style={styles.stageBannerBtns}>
-                          <TouchableOpacity
-                            style={styles.stageBannerBtn}
-                            onPress={() => dismissStageAdvance(activeProgram.id)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.stageBannerBtnText}>{t('home.understood')}</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.stageBannerLabel}>{t('home.stageCompleted').toUpperCase()}</Text>
-                        <Text style={styles.stageBannerText}>
-                          {t('home.stageAdvanceText', {
-                            current: currentStage?.name ?? t('home.currentStageDefault'),
-                            next: nextStage.name,
-                          })}
-                        </Text>
-                        <View style={styles.stageBannerBtns}>
-                          <TouchableOpacity
-                            style={[styles.stageBannerBtn, { flex: 2 }]}
-                            onPress={() => advanceStage(activeProgram.id)}
-                            activeOpacity={0.85}
-                          >
-                            <Text style={styles.stageBannerBtnText}>
-                              {t('home.advanceTo', { name: (nextStage.name ?? '').toUpperCase() })}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.stageBannerBtn, styles.stageBannerBtnQuiet]}
-                            onPress={() => dismissStageAdvance(activeProgram.id)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={[styles.stageBannerBtnText, styles.stageBannerBtnTextQuiet]}>
-                              {t('home.close').toUpperCase()}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
 
-                {/* Todas las sesiones, en orden de ciclo: la que toca es una
+                {/* Todas las sesiones, en el orden del programa: la que toca es una
                     más, en su hueco y a otra escala. NO es la lista agrupada de
                     Progreso: cada sesión es una tarjeta suelta con su radio
                     entero, porque cualquiera de ellas puede crecer. */}

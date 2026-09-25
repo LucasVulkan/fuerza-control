@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
+import { localDay, addDays } from '../src/utils/stageProgress';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -728,42 +729,46 @@ describe('program-model — owner/kind', () => {
     ];
     const local = {
       id: 'prog_x', name: 'Mío', owner: 'me', kind: 'program', status: 'active', stages,
-      currentStageIndex: 1, cycleCompletedIds: ['tpl_x'], stageWeeksCompleted: 3,
-      totalWeeksCompleted: 9, stageActivatedAt: '2026-08-01',
+      currentStageIndex: 1, stageStartedOn: '2026-09-07', stageSessionsDone: 5,
+      stageExtraWeeks: 1, programStartedOn: '2026-07-06', stageActivatedAt: '2026-08-01',
     };
+    // Llega con la copia del emisor, que nunca cuenta — y con los campos de
+    // ciclos de un emisor viejo, que no deben sobrevivir al import.
     const incoming = (stageActivatedAt) => ({
       version: '3', exportType: 'program',
       program: {
         id: 'prog_x', name: 'Mío v2', owner: 'me', kind: 'program', status: 'active', stages,
-        currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 0,
-        totalWeeksCompleted: 0, stageActivatedAt,
+        currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0,
+        programStartedOn: null, stageWeeksCompleted: 0, cycleCompletedIds: [], stageActivatedAt,
       },
       sessionTemplates: {}, userPrograms: {},
     });
 
-    it('el programa se actualiza y el ciclo se queda donde estaba', () => {
+    it('el programa se actualiza y el progreso se queda donde estaba', () => {
       useStore.setState({ programs: { prog_x: local } });
 
       useStore.getState().importData(incoming('2026-08-01'), { program: true }, { silent: true });
 
       const p = useStore.getState().programs.prog_x;
       expect(p.name).toBe('Mío v2');
-      expect(p.currentStageIndex).toBe(1);
-      expect(p.stageWeeksCompleted).toBe(3);
-      expect(p.cycleCompletedIds).toEqual(['tpl_x']);
-      expect(p.totalWeeksCompleted).toBe(9);
+      expect(p).toMatchObject({
+        currentStageIndex: 1, stageStartedOn: '2026-09-07', stageSessionsDone: 5,
+        stageExtraWeeks: 1, programStartedOn: '2026-07-06',
+      });
+      expect(p).not.toHaveProperty('stageWeeksCompleted');
+      expect(p).not.toHaveProperty('cycleCompletedIds');
     });
 
-    it('salvo que el entrenador active otra etapa: entonces manda él y empieza de cero', () => {
+    it('salvo que el entrenador active otra etapa: entonces manda él y queda sin empezar', () => {
       useStore.setState({ programs: { prog_x: local } });
 
       useStore.getState().importData(incoming('2026-09-02'), { program: true }, { silent: true });
 
       const p = useStore.getState().programs.prog_x;
-      expect(p.currentStageIndex).toBe(0);
-      expect(p.stageWeeksCompleted).toBe(0);
-      expect(p.cycleCompletedIds).toEqual([]);
-      expect(p.totalWeeksCompleted).toBe(9);   // acumulado de por vida, nunca se reinicia
+      expect(p).toMatchObject({
+        currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0,
+        programStartedOn: '2026-07-06',   // el inicio del programa no se reinicia
+      });
     });
   });
 
@@ -834,6 +839,158 @@ describe('program-model — owner/kind', () => {
  * `.fitdata` que un entrenador ya mandó a su cliente entrase como programa de
  * un cliente que en ese móvil no existe: invisible, y sin un error.
  */
+/**
+ * Ciclos → semanas (`docs/specs/weeks-model.md` §5): lo que escriben las
+ * acciones de etapa y la migración al rehidratar.
+ */
+describe('weeks-model — acciones de etapa', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, stageBannerSnooze: {},
+      clients: {}, clientLogs: {}, workoutLog: [],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  function programa(n = 2, durationWeeks = 4) {
+    const pid = useStore.getState().createEmptyProgram(n, 'Mío', 'program', durationWeeks);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+    return pid;
+  }
+  const prog = (pid) => useStore.getState().programs[pid];
+  function entrenar(templateId) {
+    useStore.getState().startSession(templateId);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '100', reps: '5', time: '', done: true }] } },
+    }));
+    return useStore.getState().saveSession();
+  }
+
+  it('una sesion de otra etapa no cuenta', () => {
+    const pid = programa();
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+
+    expect(entrenar(prog(pid).stages[1].days[0].sessionTemplateId).ok).toBe(true);
+    expect(prog(pid).stageSessionsDone ?? 0).toBe(0);
+    expect(prog(pid).stageStartedOn ?? null).toBeNull();
+  });
+
+  it('avanzar deja la etapa sin empezar, conserva el inicio del programa y olvida el aviso aplazado', () => {
+    const pid = programa();
+    entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+    useStore.getState().extendStage(pid, 1);
+    useStore.getState().snoozeStageBanner(pid, '2099-01-01');
+
+    useStore.getState().advanceStage(pid);
+
+    expect(prog(pid)).toMatchObject({
+      currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0,
+      programStartedOn: localDay(),
+    });
+    expect(useStore.getState().stageBannerSnooze[pid]).toBeUndefined();
+  });
+
+  it('elegir etapa hace lo mismo', () => {
+    const pid = programa();
+    entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+
+    useStore.getState().setCurrentStage(pid, 1);
+
+    expect(prog(pid)).toMatchObject({ currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0 });
+  });
+
+  it('alargar suma semanas al progreso del atleta, no a la etapa', () => {
+    const pid = programa();
+    useStore.getState().extendStage(pid);
+    useStore.getState().extendStage(pid, 2);
+
+    expect(prog(pid).stageExtraWeeks).toBe(3);
+    expect(prog(pid).stages[0].durationWeeks).toBe(4);
+  });
+
+  it('alargar no toca el programa de un cliente en el movil del entrenador', () => {
+    const pid = useStore.getState().createProgramForClient('cli_x', 2, 'De cliente', 4);
+    useStore.getState().extendStage(pid);
+    expect(prog(pid).stageExtraWeeks ?? 0).toBe(0);
+  });
+
+  it('una copia de un programa entrenado empieza sin empezar', () => {
+    const pid = programa();
+    entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+    useStore.getState().extendStage(pid);
+
+    const copia = useStore.getState().cloneProgramFromTemplate(pid, { owner: 'me' });
+
+    expect(prog(copia)).toMatchObject({
+      currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
+    });
+  });
+
+  it('aplazar el aviso lo guarda en el estado que se persiste', () => {
+    const pid = programa();
+    useStore.getState().snoozeStageBanner(pid, '2026-10-05');
+    const persisted = useStore.persist.getOptions().partialize(useStore.getState());
+    expect(persisted.stageBannerSnooze).toEqual({ [pid]: '2026-10-05' });
+  });
+
+  it('añadir una etapa detrás cierra la abierta en las semanas completas', () => {
+    const pid = programa(3, null);
+    entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+
+    expect(prog(pid).stages[0].durationWeeks).toBe(1);   // empezada esta semana: 0 completas → 1
+  });
+
+  it('en el movil del entrenador, la etapa abierta se cierra por donde va el CLIENTE', () => {
+    // Su copia del programa no se mueve (está a cero): cerraría en 1 semana.
+    const pid = useStore.getState().createProgramForClient('cli_1', 2, 'De cliente', null);
+    useStore.setState((s) => ({
+      clients: { ...s.clients, cli_1: {
+        ...s.clients.cli_1, id: 'cli_1',
+        progress: { programId: pid, currentStageIndex: 0, stageStartedOn: addDays(localDay(), -28), stageSessionsDone: 8 },
+      } },
+    }));
+
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+
+    expect(prog(pid).stages[0].durationWeeks).toBeGreaterThanOrEqual(3);
+  });
+
+  it('al rehidratar, los ciclos pasan a sesiones y fechas, y los campos viejos desaparecen', () => {
+    const state = {
+      profile:    { activeProgramId: 'p' },
+      programs:   { p: {
+        id: 'p', owner: 'me', kind: 'program', currentStageIndex: 0,
+        stages: [{ id: 's', durationWeeks: 4, days: [{ sessionTemplateId: 'a' }, { sessionTemplateId: 'b' }] }],
+        cycleCompletedIds: ['a'], stageWeeksCompleted: 1, totalWeeksCompleted: 1, stageAdvancePending: false,
+      } },
+      clients:    {},
+      workoutLog: [],
+    };
+
+    rehydrateCallback()(state, undefined);
+    const migrado = state.programs.p;
+    rehydrateCallback()(state, undefined);   // idempotente
+
+    expect(state.programs.p).toEqual(migrado);
+    expect(migrado.stageSessionsDone).toBe(3);
+    expect(migrado.stageStartedOn).not.toBeNull();
+    ['cycleCompletedIds', 'stageWeeksCompleted', 'totalWeeksCompleted', 'stageAdvancePending']
+      .forEach((k) => expect(migrado).not.toHaveProperty(k));
+  });
+});
+
 describe('program-model — ficheros v1/v2', () => {
   beforeEach(() => {
     useStore.setState({
@@ -1137,7 +1294,7 @@ describe('program-model — un solo diccionario de sesiones', () => {
  *
  * Lo que estos tests protegen no es el borrado: es que NADA de lo que colgaba
  * del espejo se caiga con el. El espejo alimentaba tres cosas que importan —el
- * contador de ciclo, el alcance del historial que el cliente sube a su
+ * contador de progreso, el alcance del historial que el cliente sube a su
  * entrenador, y el que se borra al purgar— y las tres tienen que seguir en pie
  * leyendo los dias de su etapa.
  */
@@ -1188,33 +1345,19 @@ describe('program-model — sin espejo `days`', () => {
     });
   });
 
-  // EL test de esta fase: el contador de ciclo leia `stage.days`, pero la rama
-  // de al lado leia el espejo. Si el ciclo dejara de cerrarse, el cliente se
-  // quedaria clavado en la semana 1 para siempre.
-  it('el ciclo se cierra al completar TODAS las sesiones, y no antes', () => {
+  // EL test de esta fase: el contador leia `stage.days`, pero la rama de al
+  // lado leia el espejo. Si dejara de contar, el cliente no empezaria nunca la
+  // etapa y se quedaria clavado en la semana 1.
+  it('guardar una sesion de la etapa cuenta, y la primera la empieza', () => {
     const { pid, ids } = programaDeDos();
 
     expect(entrenar(ids[0]).ok).toBe(true);
     let p = useStore.getState().programs[pid];
-    expect(p.cycleCompletedIds).toEqual([ids[0]]);        // media rotacion
-    expect(p.stageWeeksCompleted ?? 0).toBe(0);
+    expect(p).toMatchObject({ stageSessionsDone: 1, stageStartedOn: localDay(), programStartedOn: localDay() });
 
-    expect(entrenar(ids[1]).ok).toBe(true);
+    entrenar(ids[0]);   // repetir tambien cuenta: la fecha es la que manda
     p = useStore.getState().programs[pid];
-    expect(p.cycleCompletedIds).toEqual([]);              // rotacion cerrada y reiniciada
-    expect(p.stageWeeksCompleted).toBe(1);
-    expect(p.totalWeeksCompleted).toBe(1);
-  });
-
-  it('repetir la misma sesion no cierra el ciclo', () => {
-    const { pid, ids } = programaDeDos();
-
-    entrenar(ids[0]);
-    entrenar(ids[0]);
-
-    const p = useStore.getState().programs[pid];
-    expect(p.cycleCompletedIds).toEqual([ids[0]]);
-    expect(p.stageWeeksCompleted ?? 0).toBe(0);
+    expect(p.stageSessionsDone).toBe(2);
   });
 
   // El alcance: que sube el cliente a su entrenador, que cuenta como "del
@@ -1408,7 +1551,7 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
   ];
   const prog = {
     id: 'prog_c', name: 'Del entrenador', owner: 'me', kind: 'program', status: 'active', stages,
-    currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 0, totalWeeksCompleted: 0,
+    currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
   };
   const entry = { id: 'log_c1', sessionTemplateId: 'tpl_c', timestamp: Date.parse('2026-09-20'), exercises: [] };
 

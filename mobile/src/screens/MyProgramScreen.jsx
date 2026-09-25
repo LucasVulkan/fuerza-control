@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays } from '../utils/stageProgress';
+import { stageDays, athleteProgress, stageStatus, weeklySessions, stageDetail } from '../utils/stageProgress';
 import { ownerClient } from '../utils/programOwnership';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
@@ -41,44 +41,29 @@ import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STAT
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-// Los dos vienen enteros de `HomeScreen`, que era donde vivía la tarjeta.
 
 /**
- * Contador global de ciclos. `totalWeeksCompleted` sube en el programa cada vez
- * que se cierra un ciclo completo, sea cual sea la etapa; cambiar de etapa no
- * lo reinicia.
- */
-function computeWeekNum(program) {
-  return (program.totalWeeksCompleted ?? 0) + 1;
-}
-
-/**
- * Datos del bloque de etapa de la tarjeta (null cuando no hay nada que
- * enseñar).
+ * El bloque de etapa de la tarjeta (null cuando no hay nada que enseñar), todo
+ * sacado de `stageStatus`: la misma cuenta que ve el entrenador del cliente.
  *
- * `totalWeeks` es null cuando la etapa no tiene techo de ciclos
- * (`durationWeeks: null`), y quien lo lea no puede contar hacia él.
+ * `totalWeeks` son las semanas de la etapa CON las añadidas, y es null cuando no
+ * tiene techo (`durationWeeks: null`): quien lo lea no puede contar hacia él.
  */
-function computeStageInfo(program, t) {
-  const stages = program.stages ?? [];
-  if (stages.length === 0) return null;
-  const stageIdx         = program.currentStageIndex ?? 0;
-  const stage            = stages[stageIdx];
+function computeStageInfo(program, status, t) {
+  const { stage, stageIdx } = status;
   if (!stage) return null;
-  const totalWeeks       = stage.durationWeeks ?? null;
   // Una sola etapa y sin límite = programa sin periodizar. No hay nada que
-  // contar ni total para la tira de ciclos, así que el bloque no se pinta.
-  if (stages.length === 1 && totalWeeks == null) return null;
-  // Un ciclo es una rotación cerrada, no un número de sesiones — repetir una
-  // sesión no puede mover esto. Ver `docs/specs/stage-locks.md` §3.
-  const cyclesDone       = program.stageWeeksCompleted ?? 0;
-  const weekInStage      = totalWeeks == null ? cyclesDone + 1 : Math.min(cyclesDone + 1, totalWeeks);
-  const defaultLabel     = t('home.stageDefault', { n: stageIdx + 1 });
+  // contar ni total para los puntos, así que el bloque no se pinta.
+  if ((program.stages?.length ?? 0) === 1 && status.lengthWeeks == null) return null;
+
+  const defaultLabel = t('home.stageDefault', { n: stageIdx + 1 });
   return {
-    stageLabel: defaultLabel,
-    stageName:  stage.name ?? defaultLabel,
-    weekInStage,
-    totalWeeks,
+    stageLabel:  defaultLabel,
+    stageName:   stage.name ?? defaultLabel,
+    weekInStage: status.weekInStage,
+    totalWeeks:  status.lengthWeeks,
+    started:     status.started,
+    detail:      stageDetail(status, t),
   };
 }
 
@@ -124,9 +109,10 @@ function StageList({ program, onSelect }) {
             labelColor={isActive ? th.colors.accent : undefined}
             sub={locked
               ? t('home.stageLockedShort')
-              : stage.durationWeeks == null
-                ? t('home.stageMetaOpen', { sessions: stage.days?.length ?? 0 })
-                : t('home.stageMeta',     { cycles: stage.durationWeeks, sessions: stage.days?.length ?? 0 })}
+              : [
+                stage.durationWeeks == null ? t('home.stageOpen') : t('home.stageWeeks', { count: stage.durationWeeks }),
+                t('home.stageSessionsPerWeek', { count: weeklySessions(stage) }),
+              ].join(' · ')}
             minHeight={62}
             disabled={locked}
             onPress={() => onSelect(idx)}
@@ -153,7 +139,7 @@ export default function MyProgramScreen() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const [cycleDoc,    setCycleDoc]    = useState(false);
+  const [weekDoc,    setWeekDoc]    = useState(false);
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
@@ -181,16 +167,20 @@ export default function MyProgramScreen() {
   // ── Los 3 datos de la tarjeta ────────────────────────────────────────────────
   // Las mismas tres cifras que el entrenador ve del cliente, calculadas aquí del
   // lado del atleta: se ve de sí mismo exactamente lo que ven de él.
-  const sessionsPerCycle = activeProgram ? Math.max(1, stageDays(activeProgram).length) : 0;
+  // Los entrenos por semana de la etapa en la que está: son el objetivo de la
+  // adherencia (weeks-model.md §4.3).
+  const perWeek = activeProgram
+    ? weeklySessions(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
+    : 0;
 
   const adherence = useMemo(() => computeAdherence({
     sessions: workoutLog,
-    sessionsPerCycle,
-  }), [workoutLog, sessionsPerCycle]);
+    perWeek,
+  }), [workoutLog, perWeek]);
 
   const adherence4w = useMemo(
-    () => adherencePct({ sessions: workoutLog, sessionsPerCycle }),
-    [workoutLog, sessionsPerCycle],
+    () => adherencePct({ sessions: workoutLog, perWeek }),
+    [workoutLog, perWeek],
   );
 
   // Carga media: media de carga externa de los últimos 7 días frente a la de los
@@ -206,11 +196,14 @@ export default function MyProgramScreen() {
     return Math.round((avg(ext.slice(-7)) / m28 - 1) * 100);
   }, [workoutLog, allExercises]);
 
+  // Dónde va de la etapa. Sin memo: depende del día, y es aritmética de nada.
+  const status = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram)) : null;
+
   /**
    * Cambiar de etapa se confirma. No es solo por el gesto: `setCurrentStage`
-   * pone `stageWeeksCompleted: 0` y `cycleCompletedIds: []`, o sea que **borra
-   * el ciclo en curso** — las sesiones que llevaras marcadas de esta rotación.
-   * Eso pasaba sin decir nada.
+   * deja la etapa nueva sin empezar, así que **lo que llevas de la etapa en
+   * curso deja de contar** (semanas y sesiones). Si aún no la habías empezado,
+   * no se pierde nada y el aviso lo dice.
    *
    * El aviso va aquí y no dentro de la acción del store: `advanceStage` y el
    * editor de programa la llaman también, con su propio contexto, y un `Alert`
@@ -218,12 +211,11 @@ export default function MyProgramScreen() {
    */
   const confirmStage = (idx) => {
     if (!activeProgram || idx === (activeProgram.currentStageIndex ?? 0)) return;
-    const name    = activeProgram.stages[idx]?.name ?? t('home.stageDefault', { n: idx + 1 });
-    const pending = activeProgram.cycleCompletedIds?.length ?? 0;
+    const name = activeProgram.stages[idx]?.name ?? t('home.stageDefault', { n: idx + 1 });
     Alert.alert(
       t('myProgram.stageConfirm.title', { name }),
-      pending > 0
-        ? t('myProgram.stageConfirm.bodyReset', { count: pending })
+      status?.started
+        ? t('myProgram.stageConfirm.bodyStarted', { name })
         : t('myProgram.stageConfirm.body'),
       [
         { text: t('common.cancel'), style: 'cancel' },
@@ -232,7 +224,7 @@ export default function MyProgramScreen() {
     );
   };
 
-  const stageIdx  = activeProgram?.currentStageIndex ?? 0;
+  const stageIdx  = status?.stageIdx ?? 0;
 
   // Las mismas condiciones que tenía el visualizador, que es de donde vienen
   // estas dos acciones. Aquí el programa es el activo por construcción, así que
@@ -250,7 +242,7 @@ export default function MyProgramScreen() {
     archiveProgram(activeProgram.id, clearHistory);
     setArchiveOpen(false);
   };
-  const stageInfo = activeProgram ? computeStageInfo(activeProgram, t) : null;
+  const stageInfo = activeProgram ? computeStageInfo(activeProgram, status, t) : null;
 
   // El nombre del entrenador sale de la primera plantilla que lo traiga, igual
   // que en la Home. Sin memo a propósito: `getEffectiveTemplate` es estable y un
@@ -270,18 +262,20 @@ export default function MyProgramScreen() {
           <ProgramCard
             variant="self"
             name={activeProgram.name}
-            cycleNum={computeWeekNum(activeProgram)}
+            weekNum={status?.programWeek}
             trainerName={trainerName}
             stage={stageInfo && {
               label:       stageInfo.stageLabel,
               name:        stageInfo.stageName,
               weekInStage: stageInfo.weekInStage,
               totalWeeks:  stageInfo.totalWeeks,
+              started:     stageInfo.started,
+              detail:      stageInfo.detail,
             }}
             // La barra pinta el PROGRAMA: un tramo por etapa, de ancho
-            // proporcional a sus ciclos. La etapa abierta no tiene techo y la
+            // proporcional a sus semanas. La etapa abierta no tiene techo y la
             // tarjeta le da el peso mínimo.
-            stages={activeProgram.stages?.map((s) => ({ cycles: s.durationWeeks }))}
+            stages={activeProgram.stages?.map((s) => ({ weeks: s.durationWeeks }))}
             stageIdx={stageIdx}
             adherence={adherence4w}
             adherenceColor={requiresAttention(adherence.status) ? adherenceColor(th, adherence.status) : null}
@@ -291,7 +285,7 @@ export default function MyProgramScreen() {
             // del tab de Programa nada de eso hace falta desambiguar, y el pie
             // metía tres celdas con filetes dentro de una tarjeta que ya tiene
             // dos bloques. Las acciones van sueltas debajo, en botones.
-            onCycleInfo={() => setCycleDoc(true)}
+            onWeekInfo={() => setWeekDoc(true)}
           />
         ) : (
           <NoProgram />
@@ -351,7 +345,7 @@ export default function MyProgramScreen() {
 
       </ScrollView>
 
-      <DocSheet visible={cycleDoc} sectionId="cycle" onClose={() => setCycleDoc(false)} />
+      <DocSheet visible={weekDoc} sectionId="week" onClose={() => setWeekDoc(false)} />
 
       {/* Las dos hojas del `⋯`, movidas enteras desde el visualizador: la lista
           de acciones y, dentro, la de archivar con sus dos salidas. */}

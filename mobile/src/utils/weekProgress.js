@@ -21,7 +21,7 @@ function startOfDay(ts) {
  * ningún día coincide con `startOfDay(e.timestamp)` — la tira sale toda sin
  * entrenar. `trainingLoad.js` y `adherence.js` ya lo hacen así.
  */
-function startOfWeek(ts) {
+export function startOfWeek(ts) {
   const d = new Date(ts);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));

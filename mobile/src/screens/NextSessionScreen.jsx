@@ -20,7 +20,7 @@ import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { clientStageIndex, stageDaysAt, progressFromBlob } from '../utils/stageProgress';
+import { clientStageIndex, stageDaysAt } from '../utils/stageProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { targetLabel } from '../utils/prescription';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -108,15 +108,13 @@ export default function NextSessionScreen({ navigation, route }) {
   }, [activeProgram, client]);
 
   // La que le toca, por la misma regla que la Home del cliente y la tarjeta de
-  // Clientes: `sessionPlan()` sobre su ciclo espejado (qa-sep-conexion.md §6).
-  // Antes abría siempre la primera, la A.
+  // Clientes: `sessionPlan()` sobre SU historial — la que más tiempo lleva sin
+  // hacer (qa-sep-conexion.md §6, weeks-model.md §3.5). Antes abría siempre la A.
   const nextId = useMemo(() => {
     if (!activeProgram) return null;
-    const cycleCompletedIds = progressFromBlob(client?.progress, activeProgram.id)?.cycleCompletedIds
-      ?? activeProgram.cycleCompletedIds;
     const days = templateIds.map((tid) => ({ templateId: tid, label: getEffectiveTemplate(tid)?.label }));
-    return sessionPlan({ days, cycleCompletedIds, t }).heroTemplateId;
-  }, [activeProgram, client, templateIds, getEffectiveTemplate, t]);
+    return sessionPlan({ days, log: clientLogs?.[clientId] ?? [], t }).heroTemplateId;
+  }, [activeProgram, templateIds, getEffectiveTemplate, clientLogs, clientId, t]);
 
   // Selected session — clamped during render so it stays valid without an effect.
   const [selRaw, setSelRaw] = useState(null);

@@ -40,7 +40,10 @@ import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
 import { programSignature } from '../src/utils/programSignature';
-import { advanceCycle, progressBlob, progressChanged, progressFromBlob, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays } from '../src/utils/stageProgress';
+import {
+  progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
+  athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
+} from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../src/utils/sessionOverride';
@@ -139,7 +142,9 @@ function mergeFileSessions(current, file) {
  * dueño después (spec §3.2).
  */
 function normalizeIncomingProgram(p) {
-  const staged = ensureStages(p);
+  // El progreso, en la forma de semanas: un `.fitdata` viejo trae ciclos
+  // (weeks-model.md §5.4).
+  const staged = normalizeProgress(ensureStages(p));
   if (staged.owner) return staged;                  // v3
   const { mode, clientId, ...rest } = staged;       // v1 / v2
   return {
@@ -249,8 +254,11 @@ const INITIAL_UI = {
   homeTab: 'session',
 };
 
-// ─── Sesiones de un ciclo ──────────────────────────────────────────────────────
-// Las letras llegan hasta G: el alta manual permite 7 sesiones por ciclo, el
+/** Una copia del objeto sin esa clave. */
+const withoutKey = (obj, key) => Object.fromEntries(Object.entries(obj ?? {}).filter(([k]) => k !== key));
+
+// ─── Sesiones de una etapa ─────────────────────────────────────────────────────
+// Las letras llegan hasta G: el alta manual permite 7 sesiones por semana, el
 // mismo techo que la pregunta de días del onboarding. Los colores de día son 6
 // y se repiten (`% DAY_COLORS.length`), que es como estaba escrito ya.
 // Estaban copiados en las tres acciones que crean sesiones; ahí el índice 6
@@ -407,6 +415,11 @@ export const useStore = create(
       // trato que `blockPresets`: copias congeladas del PLAN de una sesión libre
       // (docs/specs/home-sessions.md §7).
       freeSessionPresets: [],
+      // { [programId]: 'YYYY-MM-DD' } — el aviso de fin de etapa no se enseña
+      // antes de ese día (weeks-model.md §6.1). Local de este móvil: no viaja.
+      // Persistido y no en `ui`, que no lo está: un «Una semana más» no puede
+      // olvidarse al cerrar la app.
+      stageBannerSnooze: {},
       _editSnapshot: null,
 
       // ── Trainer / client Supabase sync ────────────────────────────────────
@@ -1330,7 +1343,7 @@ export const useStore = create(
       },
 
       // Reorders the sessions of a stage to match `orderedTemplateIds`. The
-      // A/B/C… label means "position in the cycle", not an identity — same
+      // A/B/C… label means "position in the stage", not an identity — same
       // convention as addSessionToProgram — so labels are reassigned by
       // position. The session NAME is left alone: a session called "Sesión A"
       // that moves to slot B keeps its name until the user renames it.
@@ -1431,34 +1444,19 @@ export const useStore = create(
 
         // Al añadir una etapa detrás, la que está en curso se cierra por donde
         // de hecho va el ATLETA — ver `closeOpenStage`, que explica por qué no
-        // es opcional y por qué devuelve `advancePending`.
+        // es opcional.
         //
-        // El progreso hay que leerlo de quien lo tiene. En el móvil del
-        // entrenador, `program.stageWeeksCompleted` es de SU copia y no se
-        // mueve nunca (él no entrena el programa del cliente): cerraría la
-        // etapa en 1 ciclo por muchos que lleve hecho el cliente. El contador
-        // bueno viaja en el blob de progreso — misma lección que
-        // `clientStageIndex` (stage-locks.md §9).
-        const owner    = ownerClient(clients, program);
-        const progress = progressFromBlob(owner?.progress, program.id);
-        const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
-        const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
-
-        const { stages: closed, advancePending } = closeOpenStage(existingStages, curIdx, cycles);
-        const updatedStages = [...closed, newStage];
+        // El progreso hay que leerlo de quien lo tiene: en el móvil del
+        // entrenador, los campos del programa son de SU copia y no se mueven
+        // nunca (él no entrena el programa del cliente), así que cerraría la
+        // etapa en 1 semana por muchas que lleve el cliente. `athleteProgress`
+        // lee el blob del cliente (stage-locks.md §9, weeks-model.md §3.7).
+        const progress = athleteProgress(program, ownerClient(clients, program));
+        const updatedStages = [...closeOpenStage(existingStages, progress.currentStageIndex, progress), newStage];
 
         set((s) => ({
           sessionTemplates: updatedSessionTemplates,
-          programs: {
-            ...s.programs,
-            [programId]: {
-              ...withStages(program, updatedStages),
-              // En el móvil del cliente esto enciende el banner de "avanzar"
-              // ya; en el del entrenador viaja en el program_json y el cliente
-              // lo recalcula igualmente en `mergeProgressOnImport`.
-              ...(advancePending ? { stageAdvancePending: true } : {}),
-            },
-          },
+          programs: { ...s.programs, [programId]: withStages(program, updatedStages) },
         }));
       },
 
@@ -1510,21 +1508,12 @@ export const useStore = create(
 
         // Misma razón que en `addStageToProgram`: con una etapa abierta delante
         // el cliente no puede salir de ella nunca.
-        const owner    = ownerClient(clients, program);
-        const progress = progressFromBlob(owner?.progress, program.id);
-        const curIdx   = progress?.currentStageIndex   ?? program.currentStageIndex   ?? 0;
-        const cycles   = progress?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
-        const { stages: closed, advancePending } = closeOpenStage(existingStages, curIdx, cycles);
+        const progress = athleteProgress(program, ownerClient(clients, program));
+        const closed   = closeOpenStage(existingStages, progress.currentStageIndex, progress);
 
         set((s) => ({
           sessionTemplates: updatedSessionTemplates,
-          programs: {
-            ...s.programs,
-            [programId]: {
-              ...withStages(program, [...closed, ...newStages]),
-              ...(advancePending ? { stageAdvancePending: true } : {}),
-            },
-          },
+          programs: { ...s.programs, [programId]: withStages(program, [...closed, ...newStages]) },
         }));
         return existingStages.length;
       },
@@ -1636,14 +1625,12 @@ export const useStore = create(
         set((s) => ({
           programs: {
             ...s.programs,
-            [programId]: {
-              ...withStages(program, newStages, stageIndex),
+            [programId]: applyProgress(withStages(program, newStages, stageIndex), {
               ...(isAuthor ? { stageActivatedAt: new Date().toISOString() } : {}),
-              stageWeeksCompleted: 0,
-              cycleCompletedIds: [],
-              stageAdvancePending: false,
-            },
+              ...stageReset(stageIndex),
+            }),
           },
+          stageBannerSnooze: withoutKey(s.stageBannerSnooze, programId),
         }));
       },
 
@@ -1658,26 +1645,31 @@ export const useStore = create(
         set((s) => ({
           programs: {
             ...s.programs,
-            [programId]: {
-              ...withStages(program, program.stages, nextIdx),
-              stageWeeksCompleted: 0,
-              cycleCompletedIds: [],
-              stageAdvancePending: false,
-            },
+            [programId]: applyProgress(withStages(program, program.stages, nextIdx), stageReset(nextIdx)),
           },
+          stageBannerSnooze: withoutKey(s.stageBannerSnooze, programId),
         }));
       },
 
-      dismissStageAdvance: (programId) => {
-        const { programs } = get();
-        const program = programs[programId];
-        if (!program) return;
+      // Semanas que el ATLETA añade a su etapa desde el aviso de fin
+      // (weeks-model.md §6.1). Es progreso, no definición: `durationWeeks` es
+      // del autor y la duración real es la suma. En el móvil del entrenador,
+      // para el programa de un cliente, no hace nada — él cambia la duración
+      // en el editor.
+      extendStage: (programId, weeks = 1) => {
+        const program = get().programs[programId];
+        // `owner` y no `ownerClient`: este devuelve null si el cliente ya no está
+        // en la lista, y dejaría pasar su programa.
+        if (!program || (program.owner && program.owner !== 'me')) return;
+        const extra = athleteProgress(program).stageExtraWeeks + weeks;
         set((s) => ({
-          programs: {
-            ...s.programs,
-            [programId]: { ...program, stageAdvancePending: false },
-          },
+          programs: { ...s.programs, [programId]: applyProgress(program, { stageExtraWeeks: extra }) },
         }));
+      },
+
+      // Oculta el aviso de fin de etapa hasta `until` ('YYYY-MM-DD'). Local.
+      snoozeStageBanner: (programId, until) => {
+        set((s) => ({ stageBannerSnooze: { ...s.stageBannerSnooze, [programId]: until } }));
       },
 
       setEditingProgram: (programId) => {
@@ -1718,15 +1710,18 @@ export const useStore = create(
           days: cloneDays(stage.days ?? []),
         }));
 
-        const newProgram = withStages(
+        const newIdx = stagedSrc.currentStageIndex ?? 0;
+        // Programa nuevo, progreso nuevo: el del origen (lo que se entrenó con
+        // él, si alguien lo hizo) no es de quien recibe la copia.
+        const newProgram = applyProgress(withStages(
           {
             ...stagedSrc, id: newProgramId, name: name ?? stagedSrc.name,
             owner, kind, status: 'active', archivedAt: null,
             createdAt: new Date().toISOString().split('T')[0],
           },
           newStages,
-          stagedSrc.currentStageIndex ?? 0,
-        );
+          newIdx,
+        ), { ...stageReset(Math.min(newIdx, newStages.length - 1)), programStartedOn: null });
         const forClient = owner !== 'me';
 
         set((s) => {
@@ -2281,35 +2276,25 @@ export const useStore = create(
           ],
         };
 
-        // Stage / cycle progress tracking
+        // Progreso de etapa. Guardar es el ÚNICO escritor de las fechas de
+        // inicio (weeks-model.md §3.2): la primera sesión de la etapa la
+        // empieza. Solo cuenta una sesión de la etapa en la que se está; la
+        // regla vive en `recordSession` para que el espejo del entrenador no
+        // pueda desviarse de ella.
+        //
+        // Todo programa del store tiene etapas —`ensureStages` corre al
+        // rehidratar y en las dos puertas de importación—, así que no hay rama
+        // para programas sin ellas.
         const ownerProgramId = template?.programId;
         const ownerProgram = ownerProgramId ? programs[ownerProgramId] : null;
         let stageUpdate = null;
-        // A week = one full rotation through the DISTINCT sessions of the cycle;
-        // repeating a session never advances it. The rule lives in advanceCycle
-        // so the trainer's mirror can't drift from it — see
-        // `docs/specs/stage-locks.md` §3.
         if (ownerProgram?.stages?.length > 0) {
-          // ── Staged program ─────────────────────────────────────────────────
-          const stageIdx = ownerProgram.currentStageIndex ?? 0;
-          const stage = ownerProgram.stages[stageIdx];
-          const stageTplIds = (stage?.days ?? []).map((d) => d.sessionTemplateId);
-          if (stage && stageTplIds.includes(activeSession.templateId)) {
-            stageUpdate = {
-              programId: ownerProgramId,
-              ...advanceCycle(ownerProgram, activeSession.templateId, stageTplIds, {
-                durationWeeks: stage.durationWeeks,
-                isLastStage:   stageIdx >= ownerProgram.stages.length - 1,
-              }),
-            };
-          }
+          const progress = athleteProgress(ownerProgram);
+          const inCurrentStage = (ownerProgram.stages[progress.currentStageIndex]?.days ?? [])
+            .some((d) => d.sessionTemplateId === activeSession.templateId);
+          const patch = recordSession(progress, { inCurrentStage, today: localDay() });
+          if (inCurrentStage) stageUpdate = { programId: ownerProgramId, patch };
         }
-        // Aquí había una segunda rama para programas SIN etapas, que leía el
-        // espejo `program.days`. Era inalcanzable: todo programa del store
-        // tiene etapas —`ensureStages` corre al rehidratar y en las dos puertas
-        // de importación— y los diez caminos de escritura pasan por
-        // `withStages`. Con el espejo borrado habría dejado de contar ciclos en
-        // silencio, que es justo lo que no puede pasar con el progreso.
 
         set((s) => ({
           workoutLog: [...s.workoutLog, logEntry],
@@ -2325,13 +2310,7 @@ export const useStore = create(
           ...(stageUpdate ? {
             programs: {
               ...s.programs,
-              [stageUpdate.programId]: {
-                ...s.programs[stageUpdate.programId],
-                cycleCompletedIds:   stageUpdate.cycleCompletedIds,
-                stageWeeksCompleted: stageUpdate.stageWeeksCompleted,
-                stageAdvancePending: stageUpdate.stageAdvancePending,
-                totalWeeksCompleted: stageUpdate.totalWeeksCompleted,
-              },
+              [stageUpdate.programId]: applyProgress(s.programs[stageUpdate.programId], stageUpdate.patch),
             },
           } : {}),
         }));
@@ -2807,16 +2786,13 @@ export const useStore = create(
               // del entrenador, normalmente a cero). El canal conectado ya lo
               // hacía en `applyPendingProgramUpdate`; aquí lo hereda también
               // quien importa el fichero a mano — el cliente de WhatsApp perdía
-              // su ciclo y su etapa en cada actualización.
+              // su progreso y su etapa en cada actualización.
               personalPrograms[id] = local
-                ? {
-                  ...incoming,
-                  ...mergeProgressOnImport({
-                    blob:           progressBlob(local),
-                    program:        incoming,
-                    lastActivation: local.stageActivatedAt ?? null,
-                  }),
-                }
+                ? applyProgress(incoming, mergeProgressOnImport({
+                  blob:           progressBlob(local),
+                  program:        incoming,
+                  lastActivation: local.stageActivatedAt ?? null,
+                }))
                 : incoming;
             });
             const savedActiveId = data.profile?.activeProgramId;
@@ -3540,18 +3516,25 @@ export const useStore = create(
         };
       },
 
-      /** Escribe los contadores de ciclo en un programa. */
+      /**
+       * Escribe el progreso en un programa (quitando los campos de ciclos que
+       * arrastre). Si cambia la etapa o su inicio, el aviso de fin de etapa que
+       * estuviera aplazado era de la anterior: se olvida.
+       */
       _writeProgress: (programId, counters) => {
         const prog = get().programs[programId];
         if (!prog) return;
+        const moved = counters.currentStageIndex !== prog.currentStageIndex
+          || counters.stageStartedOn !== prog.stageStartedOn;
         set((s) => ({
-          programs: { ...s.programs, [programId]: { ...prog, ...counters } },
+          programs: { ...s.programs, [programId]: applyProgress(prog, counters) },
+          ...(moved ? { stageBannerSnooze: withoutKey(s.stageBannerSnooze, programId) } : {}),
         }));
       },
 
       /**
        * Pulls the client's own slice back out of their slot after a (re)connect:
-       * their cycle/stage counters ALWAYS, their workout log only if they
+       * their stage progress ALWAYS, their workout log only if they
        * accepted the merge — progress is state, not a reading of the log, so a
        * client who declines the history still lands where they left off
        * (spec §6.4).
@@ -4176,6 +4159,7 @@ export const useStore = create(
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         freeSessionPresets: state.freeSessionPresets,
+        stageBannerSnooze: state.stageBannerSnooze,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,
@@ -4277,6 +4261,15 @@ export const useStore = create(
             Object.entries(state.programs).forEach(([id, p]) => {
               const staged = ensureStages(p);
               if (staged !== p) state.programs[id] = staged;
+            });
+
+            // migración pre-publicación
+            // Ciclos → semanas (weeks-model.md §5.4): los contadores de ciclos
+            // pasan a sesiones y fechas. VA DESPUÉS de `ensureStages`: necesita
+            // las sesiones de la etapa en curso para saber cuánto era un ciclo.
+            // Idempotente — un programa ya migrado sale igual.
+            Object.entries(state.programs).forEach(([id, p]) => {
+              state.programs[id] = normalizeProgress(p);
             });
 
             // migración pre-publicación

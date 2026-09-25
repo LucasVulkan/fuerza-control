@@ -11,9 +11,6 @@
  *  · De 4 botones + icono de compartir a UNO: `Asignar`. Todo lo demás (ver,
  *    editar, duplicar, compartir, exportar, eliminar) vive en la hoja que abre
  *    la propia tarjeta al pulsarla — el botón de `···` desapareció en QA.
- *  · El stat del medio dice CICLOS, no "SEMANAS" como el mock: `durationWeeks`
- *    tiene nombre legado pero cuenta vueltas al ciclo (misma decisión ya cerrada
- *    en el editor de programa y en el banner de Home).
  *  · Cabecera calcada de Clientes (`PLANTILLAS · N` + `+ Plantilla` a 42), sin
  *    buscador: Figma no lo dibuja aquí y con pocas plantillas sería ruido.
  *
@@ -39,22 +36,17 @@ import { ToggleRow } from '../components/ui/EditorRows';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
+import { programTotals } from '../utils/stageProgress';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
- * Los 3 stats de la tarjeta. `open` = alguna etapa sin límite de ciclos, lo que
- * deja ciclos y sesiones indeterminados → se pintan con "+" (mismo criterio que
+ * Los 3 stats de la tarjeta. `open` = alguna etapa sin límite, lo que deja
+ * semanas y sesiones indeterminadas → se pintan con "+" (mismo criterio que
  * `editor.programSummaryOpen`).
  */
 function templateStats(program) {
-  const stages = program.stages ?? [];
-  return {
-    stages:   stages.length,
-    cycles:   stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
-    sessions: stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
-    open:     stages.some((s) => s.durationWeeks == null),
-  };
+  return { stages: program.stages?.length ?? 0, ...programTotals(program) };
 }
 
 // ── Template card (Sesion Card / variante Plantillas `204:1901`) ───────────────
@@ -83,7 +75,7 @@ function TemplateCard({ program, onAssign, onMenu }) {
         <Text style={styles.cardName} numberOfLines={2}>{program.name}</Text>
         <View style={styles.statsRow}>
           <Stat value={String(s.stages)} label={t('templates.statStages',   { count: s.stages })} />
-          <Stat value={`${s.cycles}${more}`}   label={t('templates.statCycles',   { count: s.cycles })} />
+          <Stat value={`${s.weeks}${more}`}    label={t('templates.statWeeks',   { count: s.weeks })} />
           <Stat value={`${s.sessions}${more}`} label={t('templates.statSessions', { count: s.sessions })} />
         </View>
       </TouchableOpacity>
@@ -107,13 +99,13 @@ function CreateSheet({ visible, onClose, onCreate }) {
   const styles = useThemedStyles(makeStyles);
   const [name,     setName]     = useState('');
   const [sessions, setSessions] = useState(3);
-  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
-  const [cycles,   setCycles]   = useState(4);
+  // null = sin límite de semanas (la etapa dura hasta que se añada la siguiente)
+  const [weeks,    setWeeks]    = useState(4);
 
   function handleCreate() {
     if (!name.trim()) return;
-    onCreate(name.trim(), sessions, cycles);
-    setName(''); setSessions(3); setCycles(4);
+    onCreate(name.trim(), sessions, weeks);
+    setName(''); setSessions(3); setWeeks(4);
     onClose();
   }
 
@@ -148,17 +140,17 @@ function CreateSheet({ visible, onClose, onCreate }) {
         </View>
 
         <View>
-          <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
+          <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
           {/* "Sin límite" es un estado del propio ajuste, no otra opción de una
               lista: va en el `Switch` compartido de `ui/EditorRows` y, cuando
               está activo, el stepper desaparece porque no hay número que contar.
               La explicación va DEBAJO del control, no entre el título y él. */}
-          {cycles != null && (
+          {weeks != null && (
             <StepField
               horizontal
               label={t('editor.stageWeeksUnit')}
-              value={cycles}
-              onChange={setCycles}
+              value={weeks}
+              onChange={setWeeks}
               min={1}
               max={52}
             />
@@ -166,12 +158,11 @@ function CreateSheet({ visible, onClose, onCreate }) {
           <View style={styles.toggleWrap}>
             <ToggleRow
               label={t('templates.newModal.noLimitLabel')}
-              hint={t('editor.cyclesNoLimit')}
-              value={cycles == null}
-              onChange={(on) => setCycles(on ? null : 4)}
+              hint={t('editor.weeksNoLimit')}
+              value={weeks == null}
+              onChange={(on) => setWeeks(on ? null : 4)}
             />
           </View>
-          <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
         </View>
 
         <TouchableOpacity

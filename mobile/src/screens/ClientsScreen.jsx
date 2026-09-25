@@ -39,7 +39,9 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
 import { computeAdherence, requiresAttention, adherencePct, adherenceColor, STATUS } from '../utils/adherence';
-import { progressFromBlob, clientStageIndex, stageDays, stageDaysAt, allProgramDays } from '../utils/stageProgress';
+import {
+  athleteProgress, stageStatus, stageDetail, weeklySessions, stageDaysAt, allProgramDays,
+} from '../utils/stageProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
@@ -50,16 +52,19 @@ import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/Edi
 import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import ProgramCard from '../components/ui/ProgramCard';
 
-// Sesiones por ciclo — el mismo rango que el alta manual del onboarding.
+// Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Expected sessions per week = days in the program's CURRENT cycle (active stage). */
-function weeklyTarget(program) {
+/**
+ * Entrenos que se esperan por semana: las sesiones de la etapa en la que está EL
+ * CLIENTE (weeks-model.md §0.4). No la de la copia del entrenador, que es la que
+ * él activó y no se mueve — el fallo de stage-locks §9 que seguía vivo aquí.
+ */
+function weeklyTarget(program, client) {
   if (!program) return 0;
-  const days = stageDays(program);
-  return days.length;
+  return weeklySessions(program.stages?.[athleteProgress(program, client).currentStageIndex]);
 }
 
 // ── Shared small components ────────────────────────────────────────────────────
@@ -291,12 +296,12 @@ function UploadIcon({ size = 12, color }) {
 
 // ── Tarjeta de programa asignado (tab de Programa) ──────────────────────────────
 // Pinta el bloque entero del tab: los avisos que te paran, la tarjeta de dos
-// colores (nombre + ciclo · barra de etapa · adherencia/ritmo/carga), la fila de
+// colores (nombre + semana · barra de etapa · adherencia/ritmo/carga), la fila de
 // acciones con el "⋯" que guarda todo lo demás, y la sección de próxima sesión.
 
 function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
-  dirty, progress, archivedCount,
+  dirty, client, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
 }) {
@@ -305,25 +310,21 @@ function AssignedProgramCard({
   const styles = useThemedStyles(makeStyles);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ── Mesocycle position ──
-  // Mirrored from the client's last upload, never recomputed here: the trainer's
-  // own copy of the program has counters that only its owner's device moves, and
-  // re-deriving from the log would drift the moment the client deletes an entry
-  // (spec §3.1). Falls back to the local copy for clients who never sync.
-  const mine         = progressFromBlob(progress, program.id);
+  // ── Dónde va el cliente ──
+  // Espejado de su última subida, nunca recalculado aquí: la copia del programa
+  // en este móvil es la del entrenador y no se mueve (weeks-model.md §3.7).
+  // `stageStatus` es la misma cuenta que ve el cliente en su Home.
   const stages       = program.stages ?? [];
-  const hasStages    = stages.length > 0;
-  const stageIdx     = clientStageIndex({ progress }, program);
-  const currentStage = hasStages ? stages[stageIdx] : null;
+  const status       = stageStatus(program, athleteProgress(program, client));
+  const stageIdx     = status.stageIdx;
+  const currentStage = status.stage;
   const currentDays  = stageDaysAt(program, stageIdx);
-  const weeksDone    = mine?.stageWeeksCompleted ?? program.stageWeeksCompleted ?? 0;
 
-  // ── Next session in the rotation ── la misma regla que la Home del cliente
-  // y "Preparar sesión": `sessionPlan()`, no una copia de ella (qa-sep-conexion
-  // §6). Cuando el modelo pase de ciclos a semanas, cambiará en un solo sitio.
+  // ── La sesión que le toca ── la misma regla que la Home del cliente y
+  // "Preparar sesión": `sessionPlan()` sobre SU historial (qa-sep-conexion §6).
   const nextId      = sessionPlan({
     days: currentDays.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
-    cycleCompletedIds: mine?.cycleCompletedIds ?? program.cycleCompletedIds,
+    log,
     t,
   }).heroTemplateId;
   const nextDayIdx  = currentDays.findIndex((d) => d.sessionTemplateId === nextId);
@@ -333,23 +334,17 @@ function AssignedProgramCard({
   const nextName    = nextTpl?.name ?? '';
   const nextStats   = nextTpl ? sessionStats(nextTpl, allExercises) : null;
 
-  // "Ciclo NN" = vueltas COMPLETAS al ciclo + 1 — el mismo contador que el
-  // banner de Home y la tarjeta del listado, espejado del blob del cliente.
-  const cycleNum = (mine?.totalWeeksCompleted ?? program.totalWeeksCompleted ?? 0) + 1;
-
-  // ── Stage progress bar (multi-stage with a defined length) ──
-  const stageWeeks    = currentStage?.durationWeeks ?? null;
-  const weekInStage   = stageWeeks ? Math.min(stageWeeks, weeksDone + 1) : null;
+  // ── Barra de etapas (varias etapas y con techo) ──
   // Con una sola etapa no hay nada que situar: la barra mediría el programa
-  // entero contra sí mismo. Sin techo de ciclos tampoco hay tira que dibujar.
-  const showStageBar  = stages.length > 1 && stageWeeks != null;
+  // entero contra sí mismo. Sin techo de semanas tampoco hay puntos que contar.
+  const showStageBar  = stages.length > 1 && status.lengthWeeks != null;
 
   // ── Did they finish the stage, and can they move on? ──
   // `isStageLocked` is no use here: it answers for the device it runs on, and
   // the trainer has no slot. The question is about the client, so it's the raw
   // flag on the stage that follows theirs.
   const nextStage    = stages[stageIdx + 1] ?? null;
-  const stageEnded   = stageWeeks != null && weeksDone >= stageWeeks;
+  const stageEnded   = status.ended;
   const stageDone    = stageEnded && !!nextStage;
   const nextLocked   = stageDone && !!nextStage.locked;
   // Terminó la ÚLTIMA etapa: repetirá el bloque para siempre y en silencio, que
@@ -427,20 +422,24 @@ function AssignedProgramCard({
       <ProgramCard
         variant="client"
         name={program.name}
-        cycleNum={cycleNum}
+        weekNum={status.programWeek}
         stage={showStageBar && {
           label:       t('home.stageDefault', { n: stageIdx + 1 }),
           name:        currentStage?.name,
-          weekInStage,
-          totalWeeks:  stageWeeks,
+          weekInStage: status.weekInStage,
+          totalWeeks:  status.lengthWeeks,
+          started:     status.started,
+          // «Semana 5 de 5 (+1) · 9 de 12 sesiones»: lo que el cliente lleva y
+          // si alargó la etapa, en las mismas palabras que ve él.
+          detail:      stageDetail(status, t),
         }}
         // La barra pinta el PROGRAMA: un tramo por etapa, de ancho proporcional
-        // a sus ciclos. Los puntos de dentro de la etapa los saca la tarjeta de
+        // a sus semanas. Los puntos de dentro de la etapa los saca la tarjeta de
         // `stage.weekInStage`/`totalWeeks`.
-        stages={stages.map((s) => ({ cycles: s.durationWeeks }))}
+        stages={stages.map((s) => ({ weeks: s.durationWeeks }))}
         stageIdx={stageIdx}
         // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
-        // ("hazme un ciclo más"), así que se informa sin alarmar — el naranja se
+        // ("una semana más"), así que se informa sin alarmar — el naranja se
         // reserva para cuando NO puede avanzar.
         stageNote={stageDone && !nextLocked
           ? t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })
@@ -703,10 +702,9 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
  * existen: `SegmentedControl` para elegir origen, `StepField` para los dos
  * contadores y la fila de "sin límite" del editor de programa.
  *
- * Ojo con la etiqueta de las sesiones: el modal viejo decía "SESIONES POR
- * SEMANA", pero `createProgramForClient` usa ese número para crear las sesiones
- * distintas del ciclo (A, B, C…), no para repartirlas por semana. Es el mismo
- * concepto que el onboarding ya llama "sesiones por ciclo".
+ * La etiqueta de las sesiones dice "Sesiones por semana": el número crea las
+ * sesiones distintas de la etapa (A, B, C…), y esas SON los entrenos que se
+ * esperan cada semana (weeks-model.md §0.4).
  */
 function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
   const th     = useTheme();
@@ -717,7 +715,7 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
   const [tab,              setTab]              = useState('blank');
   const [name,             setName]             = useState('');
   const [numSessions,      setNumSessions]      = useState(3);
-  // null = sin límite de ciclos (la etapa dura hasta que se añada la siguiente)
+  // null = sin límite de semanas (la etapa dura hasta que se añada la siguiente)
   const [durationWeeks,    setDurationWeeks]    = useState(4);
   const [fromTemplateId,   setFromTemplateId]   = useState('');
   const [fromTemplateName, setFromTemplateName] = useState('');
@@ -763,7 +761,7 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
             </View>
 
             <View>
-              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerCycle')}</Text>
+              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerWeek')}</Text>
               {/* Los mismos chips y el mismo rango que el alta manual del
                   onboarding: el rango es corto, así que se ve entero y se
                   acierta de un toque. */}
@@ -771,17 +769,16 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
             </View>
 
             <View>
-              <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
-              <Text style={styles.sheetHint}>{t('editor.cyclesExplain')}</Text>
+              <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
               {/* "Sin límite" (`durationWeeks: null`) es un booleano, así que
                   va en la fila de conmutador de la app (`ToggleRow`) y no en
                   una fila pintada a mano. Va SIEMPRE arriba y el contador
                   aparece debajo: si se intercambiaran, el conmutador saltaría
                   de sitio al activarlo. */}
-              <View style={styles.cyclesGroup}>
+              <View style={styles.weeksGroup}>
                 <ToggleRow
-                  label={t('editor.cyclesOpen')}
-                  hint={t('editor.cyclesNoLimit')}
+                  label={t('editor.weeksOpen')}
+                  hint={t('editor.weeksNoLimit')}
                   value={durationWeeks == null}
                   onChange={(on) => setDurationWeeks(on ? null : 4)}
                 />
@@ -1527,7 +1524,7 @@ function AttentionPill({ label, count, color, ink = color, active, onPress }) {
 }
 
 function ClientListCard({
-  client, activeProgram, lastActivityTs, isConnected,
+  client, activeProgram, log, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
 }) {
@@ -1548,29 +1545,30 @@ function ClientListCard({
     else                     lastStr = t('dayCard.daysAgo', { count: diffDays });
   }
 
-  // Program info — posición espejada del último envío del cliente (§3.1 de
-  // `docs/specs/stage-locks.md`); la copia local sirve de respaldo para clientes
-  // que nunca sincronizan.
-  const mine           = progressFromBlob(client.progress, activeProgram?.id);
-  const hasStages      = (activeProgram?.stages?.length ?? 0) > 0;
-  const stageIdx       = clientStageIndex(client, activeProgram);
-  const currentStage   = hasStages ? activeProgram.stages[stageIdx] : null;
+  // Program info — posición espejada del último envío del cliente, leída con
+  // la misma cuenta que su Home (`stageStatus`, weeks-model.md §3.7).
+  const status         = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram, client)) : null;
+  const stageIdx       = status?.stageIdx ?? 0;
+  const currentStage   = status?.stage ?? null;
   const currentDays    = stageDaysAt(activeProgram, stageIdx);
-  const sessPerCycle   = Math.max(1, currentDays.length);
-  const cycleDoneIds   = new Set(mine?.cycleCompletedIds ?? activeProgram?.cycleCompletedIds ?? []);
-  const doneInCycle    = currentDays.filter((d) => cycleDoneIds.has(d.sessionTemplateId)).length;
+  // Entrenos de esta semana contra las sesiones de su etapa: la misma cuenta y
+  // la misma frase que su Home ("2 de 3 esta semana"), sobre su historial.
+  const weekTotal      = Math.max(1, currentDays.length);
+  const weekDone       = sessionPlan({
+    days: currentDays.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
+    log,
+    t,
+  }).weekDone;
   // Parado, en cualquiera de sus dos formas — mismo cálculo que el hero, aquí
   // solo para encender el aviso en la fila. Esperando a que le abras la etapa
   // siguiente, o a que la montes porque no hay ninguna detrás.
-  const stageEnded     = hasStages
-    && (mine?.stageWeeksCompleted ?? activeProgram?.stageWeeksCompleted ?? 0) >= (currentStage?.durationWeeks ?? Infinity);
+  const stageEnded     = !!status?.ended;
   const stageStuck     = stageEnded && !!activeProgram.stages[stageIdx + 1]?.locked;
   const blockStuck     = stageEnded && !activeProgram.stages[stageIdx + 1];
-  // "Ciclo NN" = vueltas COMPLETAS al ciclo + 1, el mismo contador que el banner
-  // de Home (`totalWeeksCompleted`), espejado del blob del cliente. Antes aquí se
-  // pintaban semanas de calendario desde el log, que es otro número.
-  const cycleNum       = (mine?.totalWeeksCompleted ?? activeProgram?.totalWeeksCompleted ?? 0) + 1;
-  // Ritmo real (media de ciclos/semana). Ya no se colorea por "va por debajo
+  // "Semana NN" = semana del programa desde su primera sesión, espejada del
+  // blob del cliente. Sin empezar, «—».
+  const weekNum        = status?.programWeek ?? null;
+  // Ritmo real (media de sesiones/semana). Ya no se colorea por "va por debajo
   // del objetivo": eso es exactamente lo que dice la adherencia, que ahora se
   // pinta al lado en crudo. Un solo veredicto por fila.
   const paceRaw      = adherence?.recentPerWeek ?? 0;
@@ -1616,13 +1614,13 @@ function ClientListCard({
       delayLongPress={350}
       activeOpacity={0.75}
     >
-      {/* ── Línea 1: nombre · Ciclo NN ── */}
+      {/* ── Línea 1: nombre · Semana NN ── */}
       <View style={styles.cTop}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         {activeProgram && (
-          <Text style={styles.cCycle}>
-            {t('clients.cycleLabel')}{' '}
-            <Text style={styles.cCycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
+          <Text style={styles.cWeek}>
+            {t('clients.weekLabel')}{' '}
+            <Text style={styles.cWeekNum}>{weekNum != null ? String(weekNum).padStart(2, '0') : '—'}</Text>
           </Text>
         )}
       </View>
@@ -1672,14 +1670,14 @@ function ClientListCard({
                 </View>
               )}
 
-              {/* Adherencia · ritmo · avance del ciclo. Los puntos eran una barra
+              {/* Adherencia · ritmo · entrenos de esta semana. Los puntos eran una barra
                   de progreso de 6 px que no se leía como barra; el dato que
                   daban ("3 de 4 hechas") vuelve en números.
                   La adherencia es el único que emite un veredicto, así que es el
                   único que se colorea — la regla que ya sigue `ProgramCard`.
                   El primer hueco y el último están siempre: así ningún " · " se
                   queda huérfano y no hacen falta guardas cruzadas.
-                  "3/4" lleva la coletilla "del ciclo" para decir de qué son esas
+                  "3/4" lleva la coletilla "esta semana" para decir de qué son esas
                   cuatro, y va entero en el peso de la unidad: es el dato que más
                   se mueve de la tarjeta (sube en cada sesión) y en negrita se
                   llevaba el vistazo que le toca a la adherencia. */}
@@ -1697,11 +1695,11 @@ function ClientListCard({
                     <>
                       <Text style={styles.cPaceUnit}>{' · '}</Text>
                       <Text style={styles.cPaceNum}>{paceRateStr}</Text>
-                      <Text style={styles.cPaceUnit}> {t('clients.cyclesPerWeek')}</Text>
+                      <Text style={styles.cPaceUnit}> {t('clients.sessionsPerWeek')}</Text>
                     </>
                   )}
                   <Text style={styles.cPaceUnit}>
-                    {' · '}{doneInCycle}/{sessPerCycle} {t('clients.ofCycle')}
+                    {' · '}{weekDone}/{weekTotal} {t('clients.thisWeek')}
                   </Text>
                 </Text>
 
@@ -1902,12 +1900,12 @@ export default function ClientsScreen() {
     const out = {};
     Object.values(clients ?? {}).forEach((c) => {
       const sessions = clientLogs[c.id] ?? [];
-      const target   = weeklyTarget(programs[c.activeProgramId]);
+      const target   = weeklyTarget(programs[c.activeProgramId], c);
       // `pct` viaja pegado al estado porque la tarjeta ya recibe este objeto:
       // añadirlo aquí sale gratis y evita un segundo prop por cliente.
       out[c.id] = {
-        ...computeAdherence({ sessions, sessionsPerCycle: target, manualStatus: c.status ?? 'active' }),
-        pct: adherencePct({ sessions, sessionsPerCycle: target }),
+        ...computeAdherence({ sessions, perWeek: target, manualStatus: c.status ?? 'active' }),
+        pct: adherencePct({ sessions, perWeek: target }),
       };
     });
     return out;
@@ -2462,8 +2460,8 @@ export default function ClientsScreen() {
       { id: 'info',     label: t('clients.tabs.info')     },
     ];
     // Línea de estado bajo el nombre: la semana en curso + cuándo entrenó por
-    // última vez. Sin puntos — los del ciclo viven en la tarjeta de programa y
-    // miden otra cosa (el ciclo, no la semana).
+    // última vez. Sin puntos — los de la etapa viven en la tarjeta de programa y
+    // miden otra cosa (sus semanas, no los entrenos de esta).
     // `daysSince` ya lo calcula `computeAdherence` dentro de su memo, así que
     // aquí no hace falta volver a mirar el reloj durante el render.
     const d = adherenceByClient[selectedClientId]?.daysSince;
@@ -2563,7 +2561,8 @@ export default function ClientsScreen() {
                   adherence4w={clientAdherencePct}
                   loadPct={clientLoadPct}
                   dirty={selectedClient.programDirty ?? false}
-                  progress={selectedClient.progress}
+                  client={selectedClient}
+                  log={clientBaseLog}
                   archivedCount={previousPrograms.length}
                   onView={() => setPrintingProgram(activeProgram.id)}
                   onEdit={() => setEditingProgram(activeProgram.id)}
@@ -3245,6 +3244,7 @@ export default function ClientsScreen() {
                 <ClientListCard
                   client={client}
                   activeProgram={activeProgram}
+                  log={clientSessions}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   adherence={adherenceByClient[client.id]}
@@ -3962,7 +3962,7 @@ const makeStyles = (th) => StyleSheet.create({
   // (`itemTitleQuiet`, ExerciseCard): en esta tarjeta el nombre no compite con
   // nadie por el vistazo —ya manda por posición y tamaño—, y la Black a 16
   // pesaba más que el dato que el entrenador viene a cazar, que es el estado.
-  // Línea 1: nombre · Ciclo NN (Figma: gap 6, alineado a la línea base)
+  // Línea 1: nombre · Semana NN (Figma: gap 6, alineado a la línea base)
   cTop: {
     flexDirection: 'row',
     alignItems:    'baseline',
@@ -3974,12 +3974,12 @@ const makeStyles = (th) => StyleSheet.create({
     flex:     1,
     minWidth: 0,
   },
-  cCycle: {
+  cWeek: {
     ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
-  cCycleNum: {
+  cWeekNum: {
     ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
@@ -4082,7 +4082,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.orange,
     flexShrink: 1,
   },
-  // Línea de meta: "83% · 1,2 cic/sem · 3/4 del ciclo" ····· fecha / sin revisar
+  // Línea de meta: "83% · 1,5 ses/sem · 3/4 esta semana" ····· fecha / sin revisar
   cPaceRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -4683,7 +4683,7 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 1,
   },
   // Importe a `card-type` (12) y no a `card-title` (16): es el mismo peso que el
-  // número de "Ciclo NN" en la tarjeta de cliente, y deja el nombre de titular.
+  // número de "Semana NN" en la tarjeta de cliente, y deja el nombre de titular.
   billCardAmount: {
     ...textStyles.labelStrong,
     color:       th.colors.text,
@@ -4746,7 +4746,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       spacing.sm,
   },
   sheetCtaText: { ...textStyles.button, color: th.colors.onAccent },
-  cyclesGroup: { gap: spacing.sm },
+  weeksGroup: { gap: spacing.sm },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
   // del planificador.

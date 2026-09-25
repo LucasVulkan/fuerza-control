@@ -1,7 +1,7 @@
 /**
  * DocsScreen — "Documentación" del menú principal.
  *
- * Explica la terminología de la app (etapa, ciclo, bloque, dropset…). El texto
+ * Explica la terminología de la app (semana, etapa, bloque, dropset…). El texto
  * vive entero en i18n (`docs.sections` en src/locales/{es,en}.json) como una
  * lista de `{ id, title, points: [] }`: añadir, reordenar o repuntear apartados es
  * editar ese array, no esta pantalla.

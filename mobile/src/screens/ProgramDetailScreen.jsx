@@ -5,7 +5,7 @@
  *
  * Es un VISUALIZADOR, no un tracker: no dice en qué etapa va el atleta ni por
  * qué semana. Dice qué ES el programa — cuántas etapas, cuánto volumen por
- * grupo lleva cada ciclo y qué se hace en cada sesión. Por eso la cabecera
+ * grupo lleva cada semana y qué se hace en cada sesión. Por eso la cabecera
  * lleva el resumen y no el estado, y por eso el selector de etapas cambia lo
  * que se mira sin tocar la etapa activa del programa.
  *
@@ -395,9 +395,9 @@ export default function ProgramDetailScreen() {
     )
   ), [idx, baseSessions, sessions, sessionTemplates, stages, t]);
 
-  const totalCycles = useMemo(() => (
+  const totalWeeks = useMemo(() => (
     stages.some((s) => s.durationWeeks == null)
-      ? t('programView.cyclesOpen')
+      ? t('programView.weeksOpen')
       : String(stages.reduce((acc, s) => acc + (s.durationWeeks ?? 0), 0))
   ), [stages, t]);
 
@@ -445,7 +445,7 @@ export default function ProgramDetailScreen() {
         {byline ? <Text style={styles.byline}>{byline}</Text> : null}
         <View style={styles.stats}>
           <Stat value={String(stages.length)} label={t('programView.statStages')} />
-          <Stat value={totalCycles}           label={t('programView.statCycles')} />
+          <Stat value={totalWeeks}           label={t('programView.statWeeks')} />
           <Stat value={String(sessions.length)} label={t('programView.statSessions')} />
         </View>
 
@@ -465,8 +465,8 @@ export default function ProgramDetailScreen() {
                 // ahora hay sitio. El "{{count}} c." de los chips era una
                 // abreviatura que solo existía por la falta de ancho.
                 meta: s.durationWeeks == null
-                  ? t('editor.cyclesOpen')
-                  : t('editor.cyclesShort', { count: s.durationWeeks }),
+                  ? t('editor.weeksOpen')
+                  : t('editor.weeksShort', { count: s.durationWeeks }),
               }))}
               value={stages[idx]?.id ?? String(idx)}
               onChange={(id) => {
@@ -480,7 +480,7 @@ export default function ProgramDetailScreen() {
           </>
         )}
 
-        {/* ── Volumen del ciclo ────────────────────────────────────────────── */}
+        {/* ── Volumen de la semana ─────────────────────────────────────────── */}
         {volume.rows.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHead}>

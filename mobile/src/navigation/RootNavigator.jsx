@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
+import { athleteProgress, stageBannerDue } from '../utils/stageProgress';
 import { navigationRef }   from './navigationRef';
 import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -64,10 +65,13 @@ function MainTabs() {
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = isPro || !proTabsHidden;
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
-  // Etapa terminada esperando decisión: el punto del tab de Programa.
-  const stageAdvancePending = useStore((s) =>
-    !!s.programs?.[s.profile?.activeProgramId]?.stageAdvancePending
-  );
+  // Etapa terminada esperando decisión: el punto del tab de Programa. La misma
+  // regla que el aviso de la Home (`stageBannerDue`). El día se lee al pintar:
+  // si cambia con la app abierta, el punto sale en el siguiente render.
+  const stageBannerNow = useStore((s) => {
+    const program = s.programs?.[s.profile?.activeProgramId];
+    return !!program && stageBannerDue(program, athleteProgress(program), s.stageBannerSnooze?.[program.id]);
+  });
   const pendingClients = useStore((s) =>
     Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
   );
@@ -107,7 +111,7 @@ function MainTabs() {
         options={{
           tabBarLabel: t('tabs.program'),
           tabBarIcon:  tabIcon('layers'),
-          tabBarBadge: stageAdvancePending ? '' : undefined,
+          tabBarBadge: stageBannerNow ? '' : undefined,
           tabBarBadgeStyle: { backgroundColor: th.colors.accent, minWidth: 8, maxHeight: 8, borderRadius: 4 },
         }}
       />

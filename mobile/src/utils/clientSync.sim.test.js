@@ -25,7 +25,9 @@ import {
   splitClientLogEntries,
 } from './clientLogs';
 import { assignActiveProgram } from './programOwnership';
-import { advanceCycle, progressBlob, progressFromBlob, mergeProgressOnImport } from './stageProgress';
+import {
+  progressBlob, mergeProgressOnImport, applyProgress, athleteProgress, recordSession, ensureStages, localDay, stageStatus,
+} from './stageProgress';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -188,8 +190,8 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     // nunca en el workoutLog personal del entrenador. Append-only por id.
     pull(clientId) {
       const { history, customExercises, progress } = db.downloadHistory(state.clients[clientId].slotId);
-      // La posición en el ciclo se ESPEJA, nunca se recalcula del historial
-      // (spec stage-locks §3.1) — por eso borrar sesiones no la mueve.
+      // El progreso se ESPEJA, nunca se recalcula del historial (stage-locks
+      // §3.1, weeks-model §3.1) — por eso borrar sesiones no lo mueve.
       state.clients[clientId] = { ...state.clients[clientId], progress };
       if (Object.keys(customExercises).length) Object.assign(state.customExercises, customExercises);
       const existing = state.clientLogs[clientId] ?? [];
@@ -223,7 +225,7 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
       // actualización en vivo: el blob gana salvo que el programa traiga un sello
       // de activación más nuevo que aquel bajo el que se calculó el blob.
       const { history, progress } = db.downloadHistory(slot.id);
-      Object.assign(state.programs[data.program.id], mergeProgressOnImport({
+      state.programs[data.program.id] = applyProgress(state.programs[data.program.id], mergeProgressOnImport({
         blob:           progress,
         program:        state.programs[data.program.id],
         lastActivation: progress?.appliedActivation ?? null,
@@ -234,15 +236,17 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
         state.workoutLog.push(...history.filter((e) => !localIds.has(e.id)));
       }
     },
-    // Guardar sesión: registra la entrada Y mueve los contadores del programa,
-    // igual que saveSession en el store.
+    // Guardar sesión: registra la entrada Y mueve el progreso del programa,
+    // igual que saveSession en el store (weeks-model.md §3.2).
     logSession(entry) {
       state.workoutLog.push(entry);
-      const program = state.programs[state.activeProgramId];
-      const cycle   = (program?.days ?? []).map((d) => d.sessionTemplateId);
-      if (cycle.includes(entry.sessionTemplateId)) {
-        Object.assign(program, advanceCycle(program, entry.sessionTemplateId, cycle));
-      }
+      const id = state.activeProgramId;
+      const program = ensureStages(state.programs[id]);
+      if (!program) return;
+      const progress = athleteProgress(program);
+      const inCurrentStage = (program.stages[progress.currentStageIndex]?.days ?? [])
+        .some((d) => d.sessionTemplateId === entry.sessionTemplateId);
+      state.programs[id] = applyProgress(program, recordSession(progress, { inCurrentStage, today: localDay(entry.timestamp) }));
     },
     deleteSession(id)   { state.workoutLog = state.workoutLog.filter((e) => e.id !== id); },
     // El entrenador cambió el programa: el cliente lo descarga y lo adopta.
@@ -387,25 +391,45 @@ describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
   });
 });
 
-// El requisito duro de la spec de bloqueo de etapas: la posición del cliente en
-// el ciclo y la que ve el entrenador NO pueden divergir, pase lo que pase.
+// El requisito duro de la spec de bloqueo de etapas: el progreso del cliente y
+// el que ve el entrenador NO pueden divergir, pase lo que pase.
 describe('progresión espejada — cliente y entrenador nunca divergen', () => {
   // Las dos caras de lo mismo: lo que el cliente tiene en su programa y lo que
-  // el entrenador guardó del último envío, normalizados a la misma forma.
-  const enCliente   = (client, programId)  => progressFromBlob(progressBlob(client.state.programs[programId]), programId);
-  const enEntrenador = (trainer, programId) => progressFromBlob(trainer.state.clients.ana.progress, programId);
+  // el entrenador lee del último envío — ambas por `athleteProgress`, la única
+  // puerta (weeks-model.md §3.7). El entrenador pasa SU copia del programa,
+  // que no se mueve: si la leyera, estaría siempre en la etapa 0 y a cero.
+  const copiaEntrenador = (programId) => ensureStages(programFile(programId, ['tplA', 'tplB']).program);
+  const enCliente    = (client, programId) => athleteProgress(ensureStages(client.state.programs[programId]));
+  const enEntrenador = (trainer, programId) => athleteProgress(copiaEntrenador(programId), trainer.state.clients.ana);
 
-  test('el entrenador ve la misma posición de ciclo que el cliente', () => {
+  test('el entrenador ve el mismo progreso que el cliente', () => {
     const { trainer, client } = linkedSetup();
     client.logSession(session('s1', 'tplA', LINK_TS + DAY));
     client.upload();
     trainer.pull('ana');
 
     expect(enEntrenador(trainer, 'prog_trainer')).toEqual(enCliente(client, 'prog_trainer'));
-    expect(enEntrenador(trainer, 'prog_trainer').cycleCompletedIds).toEqual(['tplA']);
+    expect(enEntrenador(trainer, 'prog_trainer')).toMatchObject({
+      stageSessionsDone: 1,
+      stageStartedOn:    localDay(LINK_TS + DAY),   // la primera sesión empieza la etapa
+      programStartedOn:  localDay(LINK_TS + DAY),
+    });
   });
 
-  test('repetir una sesión no avanza el ciclo en ninguno de los dos lados', () => {
+  test('y calculan la misma semana y el mismo estado de etapa', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', 'tplB', LINK_TS + 3 * DAY));
+    client.upload();
+    trainer.pull('ana');
+
+    const program = copiaEntrenador('prog_trainer');
+    const hoy     = localDay(LINK_TS + 20 * DAY);
+    expect(stageStatus(program, enEntrenador(trainer, 'prog_trainer'), hoy))
+      .toEqual(stageStatus(program, enCliente(client, 'prog_trainer'), hoy));
+  });
+
+  test('repetir una sesión cuenta igual en los dos lados', () => {
     const { trainer, client } = linkedSetup();
     client.logSession(session('s1', 'tplA', LINK_TS + DAY));
     client.logSession(session('s2', 'tplA', LINK_TS + 2 * DAY));
@@ -414,20 +438,24 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     trainer.pull('ana');
 
     expect(enEntrenador(trainer, 'prog_trainer')).toEqual(enCliente(client, 'prog_trainer'));
-    expect(enEntrenador(trainer, 'prog_trainer').totalWeeksCompleted).toBe(0);
+    expect(enEntrenador(trainer, 'prog_trainer').stageSessionsDone).toBe(3);
+  });
 
-    // Al hacer la que falta, el ciclo cierra en ambos.
-    client.logSession(session('s4', 'tplB', LINK_TS + 4 * DAY));
+  test('una sesión libre no cuenta en ninguno de los dos', () => {
+    const { trainer, client } = linkedSetup();
+    client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+    client.logSession(session('s2', '__free__', LINK_TS + 2 * DAY));
     client.upload();
     trainer.pull('ana');
-    expect(enEntrenador(trainer, 'prog_trainer').totalWeeksCompleted).toBe(1);
-    expect(enEntrenador(trainer, 'prog_trainer').cycleCompletedIds).toEqual([]);
+
+    expect(enEntrenador(trainer, 'prog_trainer').stageSessionsDone).toBe(1);
+    expect(enCliente(client, 'prog_trainer').stageSessionsDone).toBe(1);
   });
 
   test('borrar sesiones del historial no hace retroceder el programa', () => {
     const { trainer, client } = linkedSetup();
     client.logSession(session('s1', 'tplA', LINK_TS + DAY));
-    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));  // cierra ciclo
+    client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
     client.upload();
     trainer.pull('ana');
     const antes = enEntrenador(trainer, 'prog_trainer');
@@ -439,11 +467,11 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
 
     expect(enCliente(client, 'prog_trainer')).toEqual(antes);
     expect(enEntrenador(trainer, 'prog_trainer')).toEqual(antes);
-    expect(antes.totalWeeksCompleted).toBe(1);
+    expect(antes.stageSessionsDone).toBe(2);
   });
 
   test('reinstalar y reconectar devuelve al cliente donde lo dejó', () => {
-    const { db, trainer, client } = linkedSetup();
+    const { db, client } = linkedSetup();
     client.logSession(session('s1', 'tplA', LINK_TS + DAY));
     client.logSession(session('s2', 'tplB', LINK_TS + 2 * DAY));
     client.logSession(session('s3', 'tplA', LINK_TS + 3 * DAY));
@@ -455,14 +483,14 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     nuevo.connect('CODE-1', { at: LINK_TS + 4 * DAY });
 
     expect(enCliente(nuevo, 'prog_trainer')).toEqual(antes);
-    expect(nuevo.state.workoutLog).toEqual([]);          // rechazó fusionar historial…
-    expect(antes.cycleCompletedIds).toEqual(['tplA']);   // …y aun así conserva el ciclo abierto
+    expect(nuevo.state.workoutLog).toEqual([]);             // rechazó fusionar historial…
+    expect(antes.stageStartedOn).toBe(localDay(LINK_TS + DAY));   // …y aun así conserva su semana
   });
 
   test('una activación enviada mientras el cliente estaba desconectado gana al blob al reconectar', () => {
     const { db, trainer, client } = linkedSetup();
     client.logSession(session('s1', 'tplA', LINK_TS + DAY));
-    client.upload();   // el blob queda en el slot: etapa 0, ciclo abierto
+    client.upload();   // el blob queda en el slot: etapa 0, empezada
 
     // Con el cliente sin la app, el entrenador activa la etapa 2 y la reenvía.
     const file = programFile('prog_trainer', ['tplA', 'tplB']);
@@ -475,11 +503,14 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     trainer.pushProgram('ana', file);
 
     // Reinstala y reconecta: el sello es nuevo para este dispositivo → gana el
-    // movimiento del entrenador, no la posición vieja del blob.
+    // movimiento del entrenador, no la posición vieja del blob. La etapa nueva
+    // queda sin empezar; el programa conserva su inicio.
     const nuevo = makeClient(db, { uid: 'client-uid-1' });
     nuevo.connect('CODE-1', { at: LINK_TS + 5 * DAY });
-    expect(nuevo.state.programs.prog_trainer.currentStageIndex).toBe(1);
-    expect(nuevo.state.programs.prog_trainer.stageWeeksCompleted).toBe(0);
+    expect(enCliente(nuevo, 'prog_trainer')).toEqual({
+      currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0,
+      programStartedOn: localDay(LINK_TS + DAY),
+    });
   });
 
   test('un blob de otro programa no se adopta', () => {
@@ -489,7 +520,8 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     trainer.pull('ana');
 
     // El entrenador cambia de programa: el blob pendiente es del anterior.
-    expect(progressFromBlob(trainer.state.clients.ana.progress, 'prog_otro')).toBeNull();
+    const otro = ensureStages(programFile('prog_otro', ['tplX']).program);
+    expect(athleteProgress(otro, trainer.state.clients.ana).stageSessionsDone).toBe(0);
   });
 });
 

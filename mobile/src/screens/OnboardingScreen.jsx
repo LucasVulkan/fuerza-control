@@ -40,7 +40,6 @@ import { adaptArchetype } from '../utils/archetypeAdapter';
 import { diffAdaptations, computeAdjustments } from '../utils/adaptationDiff';
 import ImportModal from '../components/ImportModal';
 import ClientCodeModal from '../components/ClientCodeModal';
-import CycleWeeks from '../components/onboarding/CycleWeeks';
 import AdjustSheet from '../components/onboarding/AdjustSheet';
 import AdaptationPanel from '../components/onboarding/AdaptationPanel';
 import { ArrowIcon, ChevronDown } from '../components/ui/EditorIcons';
@@ -57,8 +56,8 @@ import { parseImportFile } from '../utils/importFile';
 import { templatesOf } from '../utils/programOwnership';
 import { allProgramDays } from '../utils/stageProgress';
 
-// Opciones de "días por semana" y de "sesiones por ciclo": el mismo rango en
-// las dos preguntas — una sola sesión ya es un ciclo válido y siete es el techo.
+// Opciones de "días por semana" y de "sesiones por semana": el mismo rango en
+// las dos preguntas — una sola sesión ya es un programa válido y siete es el techo.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
 // ─── Datos estáticos (IDs) — igual que el original ────────────────────────────
@@ -212,7 +211,7 @@ function QuestionCard({ title, subtitle, selected, onPress }) {
 
 // ─── Piezas compartidas por propuestas y programa elegido ─────────────────────
 
-/** Sesiones distintas del ciclo, en orden de aparición. */
+/** Sesiones distintas del programa, en orden de aparición. */
 function uniqueSessionTemplates(program, templates) {
   const days = program.stages?.length > 0 ? (program.stages[0].days ?? []) : (program.days ?? []);
   const seen = new Set();
@@ -246,12 +245,22 @@ function dedupSubstitutions(substitutions) {
 }
 
 // Orden de gravedad: una nota, la primera que aplique. `needsBarbell` nunca
-// se emite aquí (§9: no se rankea con `equipment`) y `rotates` no se pinta —
-// `CycleWeeks` lo enseña mejor que una frase.
-const NOTE_PRIORITY = ['slowCycle', 'levelStretch', 'lowFrequency'];
+// se emite aquí (§9: no se rankea con `equipment`). `slowCycle` y `rotates`, las
+// del generador sobre días y sesiones, tampoco: las sustituye la comparación de
+// abajo, que es exacta y no depende de sus umbrales.
+const NOTE_PRIORITY = ['levelStretch', 'lowFrequency'];
 
 /** El aviso que manda, o `null` si no hay nada que decir. */
 function proposalNote(t, entry, daysPerWeek) {
+  // Las sesiones del programa son sus entrenos por semana (weeks-model.md §0.4),
+  // y el generador puede proponer más o menos que los días elegidos: se acepta y
+  // se ajusta en el editor (§8.1). Es lo primero que hay que saber, así que manda.
+  const sessions = entry.sessionsPerCycle;
+  if (daysPerWeek && sessions !== daysPerWeek) {
+    return t(`onboarding.proposals.notes.${sessions > daysPerWeek ? 'moreSessions' : 'fewerSessions'}`, {
+      sessions, count: daysPerWeek,
+    });
+  }
   const note = NOTE_PRIORITY.find((n) => entry.notes.includes(n));
   if (!note) return null;
   return t(`onboarding.proposals.notes.${note}`, {
@@ -292,7 +301,7 @@ function Pips({ filled, total = 3 }) {
   );
 }
 
-/** Una sesión del ciclo, plegable, con sus ejercicios. Se conserva (§6.4):
+/** Una sesión del programa, plegable, con sus ejercicios. Se conserva (§6.4):
  * sin borde y con `ChevronDown` girando en vez del triángulo relleno. */
 function SessionRow({ tpl, index, allEx, exName, expanded, onToggle, countsWarmup }) {
   const th     = useTheme();
@@ -743,19 +752,11 @@ export default function OnboardingScreen() {
               calentamiento general — decirlo, porque los datos de arriba
               dependen de ello y nunca usan `sessionStats`. */}
           {!countsWarmup && (
-            <Text style={styles.previewCycleHint}>
+            <Text style={styles.previewNote}>
               {t('onboarding.preview.noWarmupNote',
                 'Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios.')}
             </Text>
           )}
-
-          <View>
-            <Text style={styles.sectionLabel}>{t('onboarding.preview.cycleSectionLabel', 'Cómo se reparte')}</Text>
-            <CycleWeeks templates={uniqueTemplates} daysPerWeek={answers.daysPerWeek} />
-            {/* El dibujo del ciclo sin decir qué es un ciclo no explica nada:
-                misma frase que la pantalla de programa vacío. */}
-            <Text style={[styles.qHint, styles.hintGap]}>{t('onboarding.cycleExplainer')}</Text>
-          </View>
 
           <View>
             <Text style={styles.sectionLabel}>{t('onboarding.preview.adjustSectionLabel', 'Ajustes')}</Text>
@@ -823,8 +824,8 @@ export default function OnboardingScreen() {
   }
 
   // ── Propuestas ───────────────────────────────────────────────────────────────
-  // Todavía sin saber el material: la tarjeta enseña la ESTRUCTURA (sesiones,
-  // ciclo y semanas), que no depende de lo que el usuario tenga.
+  // Todavía sin saber el material: la tarjeta enseña la ESTRUCTURA (sesiones
+  // por semana y semanas), que no depende de lo que el usuario tenga.
   if (mode === 'auto' && autoPhase === 'proposals') {
     const visible = showAll ? ranked : ranked.slice(0, 3);
     const levelLabel = t(`onboarding.levels.${answers.level}.label`, answers.level ?? '');
@@ -974,15 +975,12 @@ export default function OnboardingScreen() {
           </View>
 
           <View>
-            <Text style={styles.sectionLabel}>{t('onboarding.sessionsPerCycle')}</Text>
+            <Text style={styles.sectionLabel}>{t('onboarding.sessionsPerWeek')}</Text>
             {/* Mismo rango que la pregunta de días (1-7): una sola sesión es un
-                ciclo válido, y siete es el techo en las dos pantallas. */}
+                programa válido, y siete es el techo en las dos pantallas. */}
             <NumberChips values={SESSION_CHOICES} value={manualSessions} onChange={setManualSessions} />
             <Text style={[styles.qHint, styles.hintGap]}>
               {t('onboarding.emptySessionsHint', { count: manualSessions })}
-            </Text>
-            <Text style={[styles.qHint, styles.hintGap]}>
-              {t('onboarding.cycleExplainer')}
             </Text>
           </View>
         </ScrollView>
@@ -1161,8 +1159,8 @@ function StepDays({ answers, set_, onNext, onBack }) {
       dotsDone={3}
       onBack={onBack}
       sectionLabel={t('onboarding.stepDays.subtitleFrequency', '¿Cuántos días a la semana entrenas?')}
-      hint={t('onboarding.stepDays.cycleHint',
-        'Hay programas con más sesiones que días. Su ciclo dura más de una semana — te lo enseñamos en cada uno.')}
+      hint={t('onboarding.stepDays.daysHint',
+        'Cada sesión del programa es un entreno a la semana. Si un programa no cuadra con tus días, te lo decimos.')}
     >
       <NumberChips
         values={SESSION_CHOICES}
@@ -1288,7 +1286,7 @@ const makeStyles = (th) => StyleSheet.create({
   byline: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Programa elegido
-  previewCycleHint: { ...textStyles.body, color: th.colors.accent },
+  previewNote:      { ...textStyles.body, color: th.colors.accent },
   previewList: {
     paddingHorizontal: spacing.xl,
     paddingTop:        spacing.xl,

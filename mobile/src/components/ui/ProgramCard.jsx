@@ -2,7 +2,7 @@
  * ProgramCard — el programa, dónde vas y sus tres cifras, en una sola tarjeta.
  *
  * Sale de `AssignedProgramCard` (tab de Programa de la ficha de cliente), que
- * ya era esta tarjeta: mismo bloque nombre + ciclo, misma barra de etapa, mismas
+ * ya era esta tarjeta: mismo bloque nombre + semana, misma barra de etapa, mismas
  * acciones. Las dos pantallas convergían sin saberlo, así que ahora la
  * comparten (docs/specs/home-sessions.md §4).
  *
@@ -27,14 +27,15 @@
  * navegable (es el contenido del tab) y el "⋯" guarda las diez acciones del
  * entrenador. Se pinta solo si llega alguna de sus tres funciones.
  *
- * ── Progreso: barra de etapas + puntos de ciclo ────────────────────────────
+ * ── Progreso: barra de etapas + puntos de semana ───────────────────────────
  *
  * Dos preguntas, dos objetos. La barra es el PROGRAMA entero: un tramo por
- * etapa, de ancho proporcional a sus ciclos, con las cumplidas en lima apagado
- * y la de ahora en lima sólido. Los puntos son los CICLOS de la etapa actual,
- * que son tres o cuatro y se cuentan de un vistazo. Antes ambas cosas
- * compartían una sola barra de ciclos y no había forma de saber por dónde ibas
- * del programa.
+ * etapa, de ancho proporcional a sus semanas, con las cumplidas en lima apagado
+ * y la de ahora en lima sólido. Los puntos son las SEMANAS de la etapa actual,
+ * que son tres o cuatro y se cuentan de un vistazo; debajo, lo mismo con
+ * palabras (`stage.detail`: semana y sesiones hechas). Antes ambas cosas
+ * compartían una sola barra y no había forma de saber por dónde ibas del
+ * programa.
  *
  * Dos variantes:
  *   · `self`   (Home)    — eyebrow "Tu programa" y, si el programa viene de un
@@ -106,10 +107,10 @@ function PressZone({ onPress, style, accessibilityLabel, children }) {
 
 export default function ProgramCard({
   variant = 'self',
-  name, cycleNum, trainerName,
+  name, weekNum, trainerName,
   stage, stages, stageIdx = 0, stageNote,
   adherence, adherenceColor, pace, loadPct,
-  onPress, onStagePress, onCycleInfo,
+  onPress, onStagePress, onWeekInfo,
   onEdit, onView, onMore,
 }) {
   const { t, i18n } = useTranslation();
@@ -117,8 +118,8 @@ export default function ProgramCard({
   const styles = useThemedStyles(makeStyles);
   const isEs   = i18n.language?.startsWith('es');
 
-  // El ritmo se redondea a medios ciclos: "1,2 cic/sem" con dos decimales es
-  // una precisión que el dato no tiene.
+  // El ritmo (sesiones por semana) se redondea a medias: "1,25 ses/sem" es una
+  // precisión que el dato no tiene.
   const paceRounded = pace != null ? Math.round(pace * 2) / 2 : null;
   const paceStr = paceRounded == null || paceRounded <= 0
     ? null
@@ -129,7 +130,7 @@ export default function ProgramCard({
   // Con una sola etapa no hay nada que situar: la barra mediría el programa
   // entero contra sí mismo.
   const showBar  = (stages?.length ?? 0) > 1;
-  // Sin techo de ciclos no hay puntos que contar (etapa abierta).
+  // Sin techo de semanas no hay puntos que contar (etapa abierta).
   const showPips = stage?.totalWeeks != null;
   const hasFoot  = !!(onEdit || onView || onMore);
 
@@ -158,18 +159,19 @@ export default function ProgramCard({
             </View>
           )}
         </View>
-        <View style={styles.headCycle}>
+        <View style={styles.headWeek}>
           {/* El disparador es la ETIQUETA y no el bloque (misma regla que
               `InfoLabel` en Progreso): abre la ficha del apartado, no el
               glosario entero. Sin ⓘ — la etiqueta ya invita a pulsarla. */}
-          {onCycleInfo ? (
-            <TouchableOpacity onPress={onCycleInfo} hitSlop={10} activeOpacity={0.7}>
-              <Text style={styles.eyebrowRight}>{t('home.cycle')}</Text>
+          {onWeekInfo ? (
+            <TouchableOpacity onPress={onWeekInfo} hitSlop={10} activeOpacity={0.7}>
+              <Text style={styles.eyebrowRight}>{t('programCard.week')}</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={styles.eyebrowRight}>{t('home.cycle')}</Text>
+            <Text style={styles.eyebrowRight}>{t('programCard.week')}</Text>
           )}
-          <Text style={styles.cycleNum}>{String(cycleNum).padStart(2, '0')}</Text>
+          {/* La semana del PROGRAMA, desde su primera sesión. Sin empezar, «—». */}
+          <Text style={styles.weekNum}>{weekNum != null ? String(weekNum).padStart(2, '0') : '—'}</Text>
         </View>
       </PressZone>
 
@@ -188,18 +190,21 @@ export default function ProgramCard({
               <Text style={styles.stageLabel}>{stage.label}</Text>
               {stage.name && stage.name !== stage.label ? ` ${stage.name}` : ''}
             </Text>
-            {/* Un punto por ciclo de la etapa; el ciclo en curso ya cuenta como
-                encendido, que es lo que dice el número grande de la cabecera. */}
+            {/* Un punto por semana de la etapa (las añadidas incluidas); la
+                semana en curso ya cuenta como encendida. Sin empezar, ninguna. */}
             {showPips && (
               <View style={styles.pips}>
                 {Array.from({ length: stage.totalWeeks }, (_, i) => (
-                  <View key={i} style={[styles.pip, i < stage.weekInStage && styles.pipOn]} />
+                  <View key={i} style={[styles.pip, stage.started && i < stage.weekInStage && styles.pipOn]} />
                 ))}
               </View>
             )}
           </View>
 
-          {/* Un tramo por etapa, de ancho proporcional a sus ciclos. La etapa
+          {/* Dónde va, con palabras: semana y sesiones (weeks-model.md §6.3). */}
+          {!!stage.detail && <Text style={styles.stageDetail}>{stage.detail}</Text>}
+
+          {/* Un tramo por etapa, de ancho proporcional a sus semanas. La etapa
               abierta (sin techo) pesa 1 para no comerse la barra. */}
           {showBar && (
             <View style={styles.bar}>
@@ -208,7 +213,7 @@ export default function ProgramCard({
                   key={i}
                   style={[
                     styles.seg,
-                    { flex: Math.max(1, s.cycles ?? 1) },
+                    { flex: Math.max(1, s.weeks ?? 1) },
                     i <  stageIdx && styles.segDone,
                     i === stageIdx && styles.segNow,
                   ]}
@@ -236,7 +241,7 @@ export default function ProgramCard({
         <View style={styles.stat}>
           <Text style={styles.statVal} {...FIT}>
             {paceStr ?? '—'}
-            <Text style={styles.statUnit}> {t('programCard.cyclesPerWeek')}</Text>
+            <Text style={styles.statUnit}> {t('programCard.sessionsPerWeek')}</Text>
           </Text>
           <Text style={styles.statKey} {...FIT}>{t('programCard.statPace')}</Text>
         </View>
@@ -300,7 +305,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:       PAD,
   },
   headName:   { flex: 1, minWidth: 0 },
-  headCycle:  { flexShrink: 0, alignItems: 'flex-end' },
+  headWeek:   { flexShrink: 0, alignItems: 'flex-end' },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
   eyebrow: {
     ...textStyles.caps,
@@ -314,8 +319,8 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.mutedLight,
   },
   // El tracking de `spacing-tag` deja un hueco DETRÁS de la última letra que RN
-  // no mete en el ancho medido, así que alineado a la derecha se comía la "O"
-  // de CICLO. El padding lo absorbe y el margen negativo devuelve la alineación.
+  // no mete en el ancho medido, así que alineado a la derecha se comía la última
+  // letra de la etiqueta. El padding lo absorbe y el margen negativo devuelve la alineación.
   eyebrowRight: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,
@@ -323,7 +328,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:  spacing.xs,
     marginRight:   -spacing.xs,
   },
-  // El nombre del programa y el contador de ciclos hablan como los nombres de
+  // El nombre del programa y el contador de semanas hablan como los nombres de
   // las sesiones de la lista de abajo (`itemTitle`): es la misma pantalla y son
   // el mismo tipo de dato. A `title` (22) la tarjeta competía con el hero.
   name: {
@@ -331,7 +336,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:     th.colors.text,
     marginTop: -spacing.xs,
   },
-  cycleNum: {
+  weekNum: {
     ...textStyles.itemTitle,
     color:       th.colors.accent,
     marginTop:   -spacing.xs,
@@ -359,6 +364,7 @@ const makeStyles = (th) => StyleSheet.create({
   pips: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginLeft: 'auto', flexShrink: 0 },
   pip:  { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.border },
   pipOn: { backgroundColor: th.colors.accent },
+  stageDetail: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
 
   bar: { flexDirection: 'row', gap: spacing.xs2, marginTop: spacing.md },
   seg: {

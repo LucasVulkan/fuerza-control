@@ -21,13 +21,13 @@
  *
  * Mismo patrón que el panel de Info de la ficha de cliente (`InfoSection`):
  * cabecera con el resumen a la derecha, filete a sangre y `collapseOut` al
- * plegar. Plegada se lee de un vistazo; desplegada trae nombre, ciclos, candado,
+ * plegar. Plegada se lee de un vistazo; desplegada trae nombre, semanas, candado,
  * duplicar y eliminar — todo lo que iba a vivir en una hoja aparte, que así no
  * hace falta.
  *
- * El stepper de ciclos SOLO existe desplegada: pedía la fila entera (76 px de
+ * El stepper de semanas SOLO existe desplegada: pedía la fila entera (76 px de
  * celda más dos botones) para un número que se toca una vez en la vida de la
- * etapa. Plegada, los ciclos son texto.
+ * etapa. Plegada, las semanas son texto.
  *
  * ── Lo que no cambia ─────────────────────────────────────────────────────────
  *
@@ -63,7 +63,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import {
   LADDER_IDS, RX_FIELDS, SCOPES, buildRungs, newRung, describeRx, isNoopRx, fieldLabelKey,
 } from '../utils/stageRx';
-import { clientStageIndex, progressFromBlob } from '../utils/stageProgress';
+import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
 import { sessionStats } from '../utils/sessionStats';
 
 const CHIP = 21;   // marcador de la línea de tiempo
@@ -123,8 +123,8 @@ function Marker({ state, n, open }) {
 // ─── Tarjeta de etapa ─────────────────────────────────────────────────────────
 
 function StageCard({
-  stage, n, state, cyclesDone, volume, canDelete, canLock, open, onToggle,
-  onRename, onCycles, onLock, onDuplicate, onDelete,
+  stage, n, state, nowLabel, volume, canDelete, canLock, open, onToggle,
+  onRename, onWeeks, onLock, onDuplicate, onDelete,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -141,10 +141,10 @@ function StageCard({
   // dicen el ✓ y la tarjeta atenuada— y de la etapa en curso interesa cuánto
   // lleva, no una etiqueta.
   const duration = stage.durationWeeks == null
-    ? t('editor.cyclesOpen')
+    ? t('editor.weeksOpen')
     : state === 'now'
-      ? t('planner.cyclesProgress', { done: cyclesDone, total: stage.durationWeeks })
-      : t('editor.cyclesShort', { count: stage.durationWeeks });
+      ? nowLabel
+      : t('editor.weeksShort', { count: stage.durationWeeks });
 
   return (
     <Reanimated.View
@@ -213,15 +213,15 @@ function StageCard({
             </View>
 
             {stage.durationWeeks == null ? (
-              <TouchableOpacity style={styles.noLimitBtn} onPress={() => onCycles(4)} activeOpacity={0.7}>
-                <Text style={styles.noLimitText}>{t('editor.cyclesOpen')}</Text>
+              <TouchableOpacity style={styles.noLimitBtn} onPress={() => onWeeks(4)} activeOpacity={0.7}>
+                <Text style={styles.noLimitText}>{t('editor.weeksOpen')}</Text>
               </TouchableOpacity>
             ) : (
               <StepField
                 horizontal flat
                 label={t('editor.stageWeeksUnit')}
                 value={stage.durationWeeks}
-                onChange={onCycles}
+                onChange={onWeeks}
                 min={1}
                 max={52}
               />
@@ -416,13 +416,13 @@ export default function StagePlannerScreen({ navigation, route }) {
 
   if (!program || stages.length === 0) return null;
 
-  const owner      = ownerClient(clients, program);
-  const activeIdx  = clientStageIndex(owner, program);
-  const cyclesDone = progressFromBlob(owner?.progress, program.id)?.stageWeeksCompleted
-    ?? program.stageWeeksCompleted ?? 0;
+  // Donde va el ATLETA: en el móvil del entrenador, su blob — no la copia del
+  // programa (weeks-model.md §3.7).
+  const owner       = ownerClient(clients, program);
+  const status      = stageStatus(program, athleteProgress(program, owner));
+  const activeIdx   = status.stageIdx;
   const defaultBase = baseStageIdx(stages);
   const baseIdx     = sourceIdx ?? defaultBase;
-  const perCycle    = stages[activeIdx]?.days?.length ?? 0;
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
   // Mismo criterio que la hoja de etapa del editor: bloquear solo tiene efecto
@@ -433,8 +433,7 @@ export default function StagePlannerScreen({ navigation, route }) {
 
   // Una etapa sin límite hace el total indeterminado: se suman las que sí lo
   // tienen y se marca con "+".
-  const anyOpen     = stages.some((s) => s.durationWeeks == null);
-  const totalCycles = stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0);
+  const totals = programTotals(program);
 
   const workCountBefore = (i) => rungs.slice(0, i).filter((r) => r.kind === 'work').length;
 
@@ -540,11 +539,11 @@ export default function StagePlannerScreen({ navigation, route }) {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTag}>{t('planner.summaryTag')}</Text>
           <Text style={styles.summaryMain}>
-            {anyOpen
-              ? t('planner.summaryOpen', { cycles: totalCycles, stages: stages.length })
-              : t('planner.summary',     { cycles: totalCycles, stages: stages.length })}
+            {totals.open
+              ? t('planner.summaryOpen', { weeks: totals.weeks, stages: stages.length })
+              : t('planner.summary',     { weeks: totals.weeks, stages: stages.length })}
           </Text>
-          <Text style={styles.summaryHint}>{t('planner.summaryPerCycle', { count: perCycle })}</Text>
+          <Text style={styles.summaryHint}>{t('planner.summaryPerWeek', { count: status.perWeek })}</Text>
         </View>
 
         <Text style={styles.secTitle}>{t('planner.sectionStages')}</Text>
@@ -562,14 +561,14 @@ export default function StagePlannerScreen({ navigation, route }) {
               stage={stage}
               n={idx + 1}
               state={idx < activeIdx ? 'done' : idx === activeIdx ? 'now' : 'next'}
-              cyclesDone={cyclesDone}
+              nowLabel={stageWeekLabel(status, t)}
               volume={stageVolume(stage, sessionTemplates, allExercises)}
               canDelete={stages.length > 1}
               canLock={canLock(idx)}
               open={openStageId === (stage.id ?? idx)}
               onToggle={() => setOpenStageId((cur) => (cur === (stage.id ?? idx) ? null : (stage.id ?? idx)))}
               onRename={(name) => updateStage(programId, idx, { name })}
-              onCycles={(v) => updateStage(programId, idx, { durationWeeks: v })}
+              onWeeks={(v) => updateStage(programId, idx, { durationWeeks: v })}
               onLock={() => updateStage(programId, idx, { locked: !stage.locked })}
               onDuplicate={() => handleDuplicate(idx)}
               onDelete={() => handleDelete(idx)}
