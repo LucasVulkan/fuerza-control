@@ -42,7 +42,8 @@
    programas** (no solo desde el modal de Home). **Superado en sep-2026**: el
    cliente ya no entra al editor de los programas del entrenador (§2.1), así que
    ese camino desaparece. El guard del store se queda igualmente.
-6. **Un ciclo se cierra al completar las sesiones DISTINTAS del ciclo**
+6. ⚠️ **Sustituida por [weeks-model.md](weeks-model.md)** (sep-2026): la app cuenta semanas, no ciclos.
+   **Un ciclo se cierra al completar las sesiones DISTINTAS del ciclo**
    (A→B→C→D). Repetir una sesión no lo cierra, y **no** se le pregunta nada al
    cliente en el recap (§3.2).
 7. **Borrar logs no hace retroceder el programa.** El progreso es un contador,
