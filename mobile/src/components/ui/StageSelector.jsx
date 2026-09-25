@@ -3,7 +3,7 @@
  *
  * No es una prop más de `SegmentedControl`: aquel es la variante "Group
  * together" (1 línea, radius/full, segmentos siempre a ancho igual) y lo usan 4
- * pantallas. Ésta es la de 2 líneas (nombre + nº de ciclos), contenedor
+ * pantallas. Ésta es la de 2 líneas (nombre + nº de semanas), contenedor
  * radius/md, y añade dos cosas que el otro no tiene ni necesita: scroll
  * horizontal a partir de 5 etapas y un "+" fijo a la derecha.
  *

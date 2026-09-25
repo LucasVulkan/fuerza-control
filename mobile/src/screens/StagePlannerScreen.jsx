@@ -141,10 +141,10 @@ function StageCard({
   // dicen el ✓ y la tarjeta atenuada— y de la etapa en curso interesa cuánto
   // lleva, no una etiqueta.
   const duration = stage.durationWeeks == null
-    ? t('editor.cyclesOpen')
+    ? t('editor.weeksOpen')
     : state === 'now'
       ? nowLabel
-      : t('editor.cyclesShort', { count: stage.durationWeeks });
+      : t('editor.weeksShort', { count: stage.durationWeeks });
 
   return (
     <Reanimated.View
@@ -214,7 +214,7 @@ function StageCard({
 
             {stage.durationWeeks == null ? (
               <TouchableOpacity style={styles.noLimitBtn} onPress={() => onWeeks(4)} activeOpacity={0.7}>
-                <Text style={styles.noLimitText}>{t('editor.cyclesOpen')}</Text>
+                <Text style={styles.noLimitText}>{t('editor.weeksOpen')}</Text>
               </TouchableOpacity>
             ) : (
               <StepField
@@ -543,7 +543,7 @@ export default function StagePlannerScreen({ navigation, route }) {
               ? t('planner.summaryOpen', { weeks: totals.weeks, stages: stages.length })
               : t('planner.summary',     { weeks: totals.weeks, stages: stages.length })}
           </Text>
-          <Text style={styles.summaryHint}>{t('planner.summaryPerCycle', { count: status.perWeek })}</Text>
+          <Text style={styles.summaryHint}>{t('planner.summaryPerWeek', { count: status.perWeek })}</Text>
         </View>
 
         <Text style={styles.secTitle}>{t('planner.sectionStages')}</Text>

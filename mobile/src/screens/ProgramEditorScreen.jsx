@@ -276,8 +276,8 @@ export default function ProgramEditorScreen({ navigation }) {
               // entrenador `isStageLocked` siempre es false (no tiene slot).
               locked: isStageLocked(activeProgram, idx, clientSync),
               meta:   stage.durationWeeks == null
-                ? t('editor.cyclesOpen')
-                : t('editor.cyclesShort', { count: stage.durationWeeks }),
+                ? t('editor.weeksOpen')
+                : t('editor.weeksShort', { count: stage.durationWeeks }),
             }))}
             value={activeProgram.stages[selectedStageIdx]?.id ?? String(selectedStageIdx)}
             onChange={(id) => {
@@ -395,7 +395,7 @@ export default function ProgramEditorScreen({ navigation }) {
                   onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: 4 })}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.noLimitTextActive}>{t('editor.cyclesNoLimit')}</Text>
+                  <Text style={styles.noLimitTextActive}>{t('editor.weeksNoLimit')}</Text>
                 </TouchableOpacity>
               ) : (
                 <>
@@ -412,7 +412,7 @@ export default function ProgramEditorScreen({ navigation }) {
                     onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: null })}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.noLimitText}>{t('editor.cyclesNoLimit')}</Text>
+                    <Text style={styles.noLimitText}>{t('editor.weeksNoLimit')}</Text>
                   </TouchableOpacity>
                 </>
               )}

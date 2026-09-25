@@ -345,7 +345,7 @@ export default function MyProgramScreen() {
 
       </ScrollView>
 
-      <DocSheet visible={weekDoc} sectionId="cycle" onClose={() => setWeekDoc(false)} />
+      <DocSheet visible={weekDoc} sectionId="week" onClose={() => setWeekDoc(false)} />
 
       {/* Las dos hojas del `⋯`, movidas enteras desde el visualizador: la lista
           de acciones y, dentro, la de archivar con sus dos salidas. */}

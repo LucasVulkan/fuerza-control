@@ -257,8 +257,8 @@ const INITIAL_UI = {
 /** Una copia del objeto sin esa clave. */
 const withoutKey = (obj, key) => Object.fromEntries(Object.entries(obj ?? {}).filter(([k]) => k !== key));
 
-// ─── Sesiones de un ciclo ──────────────────────────────────────────────────────
-// Las letras llegan hasta G: el alta manual permite 7 sesiones por ciclo, el
+// ─── Sesiones de una etapa ─────────────────────────────────────────────────────
+// Las letras llegan hasta G: el alta manual permite 7 sesiones por semana, el
 // mismo techo que la pregunta de días del onboarding. Los colores de día son 6
 // y se repiten (`% DAY_COLORS.length`), que es como estaba escrito ya.
 // Estaban copiados en las tres acciones que crean sesiones; ahí el índice 6
@@ -1343,7 +1343,7 @@ export const useStore = create(
       },
 
       // Reorders the sessions of a stage to match `orderedTemplateIds`. The
-      // A/B/C… label means "position in the cycle", not an identity — same
+      // A/B/C… label means "position in the stage", not an identity — same
       // convention as addSessionToProgram — so labels are reassigned by
       // position. The session NAME is left alone: a session called "Sesión A"
       // that moves to slot B keeps its name until the user renames it.
@@ -2786,7 +2786,7 @@ export const useStore = create(
               // del entrenador, normalmente a cero). El canal conectado ya lo
               // hacía en `applyPendingProgramUpdate`; aquí lo hereda también
               // quien importa el fichero a mano — el cliente de WhatsApp perdía
-              // su ciclo y su etapa en cada actualización.
+              // su progreso y su etapa en cada actualización.
               personalPrograms[id] = local
                 ? applyProgress(incoming, mergeProgressOnImport({
                   blob:           progressBlob(local),
@@ -3516,7 +3516,6 @@ export const useStore = create(
         };
       },
 
-      /** Escribe los contadores de ciclo en un programa. */
       /**
        * Escribe el progreso en un programa (quitando los campos de ciclos que
        * arrastre). Si cambia la etapa o su inicio, el aviso de fin de etapa que
@@ -3535,7 +3534,7 @@ export const useStore = create(
 
       /**
        * Pulls the client's own slice back out of their slot after a (re)connect:
-       * their cycle/stage counters ALWAYS, their workout log only if they
+       * their stage progress ALWAYS, their workout log only if they
        * accepted the merge — progress is state, not a reading of the log, so a
        * client who declines the history still lands where they left off
        * (spec §6.4).

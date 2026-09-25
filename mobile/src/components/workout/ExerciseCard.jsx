@@ -431,7 +431,7 @@ export default function ExerciseCard({
           algo que editar — que hoy son solo los ejercicios añadidos sobre la
           marcha (`onEditTarget`). En los de plantilla sigue siendo texto: ahí
           el plan es del programa y se cambia en el editor de sesión, no en
-          mitad del entreno. Misma regla que la etiqueta CICLO de la Home: el
+          mitad del entreno. Misma regla que la etiqueta SEMANA de la tarjeta de programa: el
           disparador es el dato, no un icono al lado. */}
       {(targetLabel || exConfig.tempo || exConfig.isKey) ? (
         <Text

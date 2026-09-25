@@ -13,7 +13,7 @@ import { startOfWeek } from './weekProgress';
  * Desde weeks-model.md §3.5 no hay rotación guardada: toca **la que más tiempo
  * llevas sin hacer**. En el uso normal es la misma rotación (A B C A B → C; si
  * te saltas C y repites A, sigue siendo C) y con 3 sesiones y 4 días reproduce
- * `weekPattern`. Al leerse del historial, borrar una sesión cambia la
+ * la rotación de siempre. Al leerse del historial, borrar una sesión cambia la
  * sugerencia — es una sugerencia, no progreso.
  *
  * @param {object}   args
@@ -60,7 +60,7 @@ export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.
       // Cadena corta, no "la letra": el hueco de marcador aguanta tres
       // caracteres sin que nada se rompa.
       marker:     d.label ?? '',
-      // Hecha ESTA semana (weeks-model.md §3.6), no "en este ciclo".
+      // Hecha ESTA semana (weeks-model.md §3.6).
       isDone:     (lastDone[d.templateId] ?? -Infinity) >= weekStart,
       isHero:     d.templateId === hero?.templateId,
     })),

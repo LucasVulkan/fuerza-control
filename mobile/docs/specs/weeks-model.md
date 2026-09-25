@@ -658,6 +658,59 @@ Cada resultado que quede tiene que ser uno de estos: interno del generador (§8.
 `UNIT_CYCLE` de `BlockEditorInline` (ciclar unidades, no tiene nada que ver) o un
 comentario histórico que explica por qué algo es como es.
 
+### 8.5 Lo que hizo la P40
+
+- **Onboarding sin rotación.** Fuera «Cómo se reparte» (`CycleWeeks`, que dibujaba
+  cómo rotan N sesiones en D días) junto con `weekPattern` y su test: con §0.4 una
+  semana son las sesiones del programa y el dibujo no decía nada. Fuera también
+  `cycleExplainer` («un ciclo es tu semana, con una diferencia…») en la vista
+  previa y en el alta manual.
+- **La tarjeta de propuesta avisa del desajuste** entre días elegidos y sesiones
+  del programa (§8.1): «Son 3 sesiones por semana, menos que los 4 días que
+  elegiste. Puedes añadir alguna en el editor» (`notes.moreSessions` /
+  `fewerSessions`, con plural en los días). Se compara `sessionsPerCycle` del
+  ranking contra `answers.daysPerWeek` directamente: las notas `slowCycle` y
+  `rotates` del generador dependían de umbrales y no cubrían todos los casos (con
+  5 días y 4 sesiones no avisaba ninguna). El generador no se toca: sigue
+  emitiéndolas y el onboarding las ignora.
+- La pregunta de días dice «Cada sesión del programa es un entreno a la semana.
+  Si un programa no cuadra con tus días, te lo decimos» (`stepDays.daysHint`).
+- **Glosario**: la sección «Ciclo» pasa a «Semana» (id `week`, que es la que abre
+  «SEMANA» en la tarjeta de programa): sesión ⊂ semana ⊂ etapa ⊂ programa. La
+  etapa explica la comprobación de fin, el alargar y el avance anticipado. La
+  ficha de métrica `stageProgress` se reescribe con §3.3-§3.4.
+- **Volumen**: «SERIES POR GRUPO Y SEMANA» y el hint sin la advertencia. El
+  cálculo no cambia (§8.3).
+- **Barrido de claves**: renombradas las que se usan (`editor.cycles*` →
+  `editor.weeks*`, `clients.cyclesPerWeek`/`ofCycle`/`cycleLabel` →
+  `sessionsPerWeek`/`thisWeek`/`weekLabel`, `templates`/`programView.statCycles`
+  → `statWeeks`, `programView.cyclesOpen` → `weeksOpen`,
+  `planner.summaryPerCycle` → `summaryPerWeek`, `onboarding.sessionsPerCycle` →
+  `sessionsPerWeek`) y borradas 28 líneas: las que ya no leía nadie (restos de
+  `home.cycle*`, de las pantallas viejas del onboarding, `editor.cyclesExplain`,
+  `clients.cycleDays`, `planner.cyclesProgress`, un `cyclesShort` duplicado…) y
+  las del dibujo retirado y su explicación (`cycleExplainer`,
+  `preview.cycleSectionLabel`, `preview.weekLabel`). Comprobado con un script: toda
+  clave literal que pide el código existe en `es` y en `en`, y los dos idiomas
+  tienen exactamente las mismas claves.
+
+**Resultado del barrido (§8.4).** Lo que queda con «cycle/ciclo» en `mobile/src` y
+`mobile/store`: el interno del generador (`archetypes`, `archetypeAdapter`,
+`weeklyVolume`, `exerciseLinks`, `entry.sessionsPerCycle`, las notas `slowCycle`/
+`rotates`), la migración (`LEGACY_KEYS`, `fromLegacyProgress` y sus comentarios),
+términos de entrenamiento («microciclo», «mesociclo», «macrociclo»), el «full
+cycle» de los intervalos EMOM, un ciclo de imports en `useStore.js` y la mención
+histórica a `CycleDots` en el onboarding.
+
+Fallo previo encontrado de paso, NO arreglado aquí: `t('common.error')` en el
+onboarding no existe en ningún idioma (ya faltaba en `main`).
+
+**Probar en dispositivo.** Onboarding: elegir 4 días y abrir una propuesta de 3
+sesiones → la tarjeta avisa «Son 3 sesiones por semana, menos que los 4 días…».
+La vista previa ya no enseña «Cómo se reparte». Documentación: la sección
+«Semana» existe y la de «Ciclo» no; en la tarjeta de programa, pulsar «SEMANA»
+abre esa sección.
+
 ## 9. Orden y reparto
 
 | Fase | Depende de | Coste | Notas |
@@ -666,7 +719,7 @@ comentario histórico que explica por qué algo es como es.
 | P37 | P36 | 🟡 | ✅ 6d16c83 — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
 | P38 | P37 | 🟡 | ✅ 0003916 — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
 | P39 | P37 | 🟢 | ✅ 9aef98a — ficha y tarjeta de cliente, Preparar sesión, adherencia por la etapa del cliente (§7.1) |
-| P40 | P36 | 🟢 | Casi todo textos |
+| P40 | P36 | 🟢 | ✅ ver commit — onboarding sin rotación, glosario, volumen y barrido de claves (§8.5) |
 
 Rama propia (`feat/weeks-model`). Entre P37 y P39 la app queda a medias (el
 entrenador aún lee campos que ya no existen): no se fusiona a `main` hasta P39.

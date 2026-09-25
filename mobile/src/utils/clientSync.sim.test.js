@@ -190,8 +190,8 @@ function makeTrainer(db, { userId = 'trainer-1', trainerName = 'Carlos' } = {}) 
     // nunca en el workoutLog personal del entrenador. Append-only por id.
     pull(clientId) {
       const { history, customExercises, progress } = db.downloadHistory(state.clients[clientId].slotId);
-      // La posición en el ciclo se ESPEJA, nunca se recalcula del historial
-      // (spec stage-locks §3.1) — por eso borrar sesiones no la mueve.
+      // El progreso se ESPEJA, nunca se recalcula del historial (stage-locks
+      // §3.1, weeks-model §3.1) — por eso borrar sesiones no lo mueve.
       state.clients[clientId] = { ...state.clients[clientId], progress };
       if (Object.keys(customExercises).length) Object.assign(state.customExercises, customExercises);
       const existing = state.clientLogs[clientId] ?? [];
@@ -391,8 +391,8 @@ describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
   });
 });
 
-// El requisito duro de la spec de bloqueo de etapas: la posición del cliente en
-// el ciclo y la que ve el entrenador NO pueden divergir, pase lo que pase.
+// El requisito duro de la spec de bloqueo de etapas: el progreso del cliente y
+// el que ve el entrenador NO pueden divergir, pase lo que pase.
 describe('progresión espejada — cliente y entrenador nunca divergen', () => {
   // Las dos caras de lo mismo: lo que el cliente tiene en su programa y lo que
   // el entrenador lee del último envío — ambas por `athleteProgress`, la única

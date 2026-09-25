@@ -6,7 +6,7 @@
  * Documentación y la hoja que se abre desde un concepto suelto pinten lo mismo
  * y no diverjan al primer retoque (mismo motivo que `MenuList` o `EditorRows`).
  *
- * `DocSheet` es lo que se abre al pulsar "CICLO" en el banner de Home: el
+ * `DocSheet` es lo que se abre al pulsar "SEMANA" en la tarjeta de programa: el
  * apartado que resuelve la duda, no el glosario entero.
  */
 import { View, StyleSheet } from 'react-native';

@@ -1294,7 +1294,7 @@ describe('program-model — un solo diccionario de sesiones', () => {
  *
  * Lo que estos tests protegen no es el borrado: es que NADA de lo que colgaba
  * del espejo se caiga con el. El espejo alimentaba tres cosas que importan —el
- * contador de ciclo, el alcance del historial que el cliente sube a su
+ * contador de progreso, el alcance del historial que el cliente sube a su
  * entrenador, y el que se borra al purgar— y las tres tienen que seguir en pie
  * leyendo los dias de su etapa.
  */
@@ -1551,7 +1551,7 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
   ];
   const prog = {
     id: 'prog_c', name: 'Del entrenador', owner: 'me', kind: 'program', status: 'active', stages,
-    currentStageIndex: 0, cycleCompletedIds: [], stageWeeksCompleted: 0, totalWeeksCompleted: 0,
+    currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
   };
   const entry = { id: 'log_c1', sessionTemplateId: 'tpl_c', timestamp: Date.parse('2026-09-20'), exercises: [] };
 

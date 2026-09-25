@@ -75,7 +75,7 @@ function TemplateCard({ program, onAssign, onMenu }) {
         <Text style={styles.cardName} numberOfLines={2}>{program.name}</Text>
         <View style={styles.statsRow}>
           <Stat value={String(s.stages)} label={t('templates.statStages',   { count: s.stages })} />
-          <Stat value={`${s.weeks}${more}`}    label={t('templates.statCycles',   { count: s.weeks })} />
+          <Stat value={`${s.weeks}${more}`}    label={t('templates.statWeeks',   { count: s.weeks })} />
           <Stat value={`${s.sessions}${more}`} label={t('templates.statSessions', { count: s.sessions })} />
         </View>
       </TouchableOpacity>
@@ -140,7 +140,7 @@ function CreateSheet({ visible, onClose, onCreate }) {
         </View>
 
         <View>
-          <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
+          <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
           {/* "Sin límite" es un estado del propio ajuste, no otra opción de una
               lista: va en el `Switch` compartido de `ui/EditorRows` y, cuando
               está activo, el stepper desaparece porque no hay número que contar.
@@ -158,7 +158,7 @@ function CreateSheet({ visible, onClose, onCreate }) {
           <View style={styles.toggleWrap}>
             <ToggleRow
               label={t('templates.newModal.noLimitLabel')}
-              hint={t('editor.cyclesNoLimit')}
+              hint={t('editor.weeksNoLimit')}
               value={weeks == null}
               onChange={(on) => setWeeks(on ? null : 4)}
             />

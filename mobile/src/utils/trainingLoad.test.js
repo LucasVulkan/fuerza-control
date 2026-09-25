@@ -624,7 +624,7 @@ describe('setsByMuscleGroup', () => {
 });
 
 describe('plannedSetsByGroup', () => {
-  it('suma las series prescritas de todas las sesiones del ciclo, por grupo', () => {
+  it('suma las series prescritas de todas las sesiones de la etapa, por grupo', () => {
     const templates = [
       { exercises: [{ exerciseId: 'squat_barbell', sets: 4 }, { exerciseId: 'pull_up_weighted', sets: 3 }] },
       { exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] },

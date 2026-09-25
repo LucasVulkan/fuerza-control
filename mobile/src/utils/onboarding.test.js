@@ -77,7 +77,7 @@ function checkInvariants(result, answers, normalizedEquipment, archetype) {
   } else {
     // `null` = sin límite (plantilla sin fases y camino procedural); un entero
     // positivo = la duración de la primera fase (program-templates.md §6.1).
-    // Lo que no vale es 0, negativo o `undefined`, que romperían `advanceCycle`.
+    // Lo que no vale es 0, negativo o `undefined`, que romperían `stageStatus`.
     const weeks = program.stages[0].durationWeeks;
     if (weeks !== null && !(Number.isInteger(weeks) && weeks > 0)) {
       violations.push(`stage durationWeeks: got ${weeks}, expected null or a positive integer`);

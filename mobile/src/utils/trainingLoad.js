@@ -649,8 +649,8 @@ export function setsByMuscleGroup(log, allExercises, { from = null, to = Date.no
 }
 
 /**
- * Series PRESCRITAS por grupo muscular en un ciclo (= una vuelta a las sesiones
- * que se le pasen). La gemela de `setsByMuscleGroup`: una cuenta lo planificado
+ * Series PRESCRITAS por grupo muscular en una vuelta a las sesiones que se le
+ * pasen — con las de una etapa, una semana (weeks-model.md §0.4). La gemela de `setsByMuscleGroup`: una cuenta lo planificado
  * y otra lo hecho, y viven pegadas a propósito — si las reglas de atribución
  * divergen, comparar el programa con lo entrenado deja de significar nada.
  *

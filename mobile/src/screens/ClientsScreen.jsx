@@ -761,7 +761,7 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
             </View>
 
             <View>
-              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerCycle')}</Text>
+              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerWeek')}</Text>
               {/* Los mismos chips y el mismo rango que el alta manual del
                   onboarding: el rango es corto, así que se ve entero y se
                   acierta de un toque. */}
@@ -769,16 +769,16 @@ function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate
             </View>
 
             <View>
-              <Text style={styles.sheetLabel}>{t('editor.cyclesQuestion')}</Text>
+              <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
               {/* "Sin límite" (`durationWeeks: null`) es un booleano, así que
                   va en la fila de conmutador de la app (`ToggleRow`) y no en
                   una fila pintada a mano. Va SIEMPRE arriba y el contador
                   aparece debajo: si se intercambiaran, el conmutador saltaría
                   de sitio al activarlo. */}
-              <View style={styles.cyclesGroup}>
+              <View style={styles.weeksGroup}>
                 <ToggleRow
-                  label={t('editor.cyclesOpen')}
-                  hint={t('editor.cyclesNoLimit')}
+                  label={t('editor.weeksOpen')}
+                  hint={t('editor.weeksNoLimit')}
                   value={durationWeeks == null}
                   onChange={(on) => setDurationWeeks(on ? null : 4)}
                 />
@@ -1618,9 +1618,9 @@ function ClientListCard({
       <View style={styles.cTop}>
         <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         {activeProgram && (
-          <Text style={styles.cCycle}>
-            {t('clients.cycleLabel')}{' '}
-            <Text style={styles.cCycleNum}>{weekNum != null ? String(weekNum).padStart(2, '0') : '—'}</Text>
+          <Text style={styles.cWeek}>
+            {t('clients.weekLabel')}{' '}
+            <Text style={styles.cWeekNum}>{weekNum != null ? String(weekNum).padStart(2, '0') : '—'}</Text>
           </Text>
         )}
       </View>
@@ -1695,11 +1695,11 @@ function ClientListCard({
                     <>
                       <Text style={styles.cPaceUnit}>{' · '}</Text>
                       <Text style={styles.cPaceNum}>{paceRateStr}</Text>
-                      <Text style={styles.cPaceUnit}> {t('clients.cyclesPerWeek')}</Text>
+                      <Text style={styles.cPaceUnit}> {t('clients.sessionsPerWeek')}</Text>
                     </>
                   )}
                   <Text style={styles.cPaceUnit}>
-                    {' · '}{weekDone}/{weekTotal} {t('clients.ofCycle')}
+                    {' · '}{weekDone}/{weekTotal} {t('clients.thisWeek')}
                   </Text>
                 </Text>
 
@@ -3974,12 +3974,12 @@ const makeStyles = (th) => StyleSheet.create({
     flex:     1,
     minWidth: 0,
   },
-  cCycle: {
+  cWeek: {
     ...textStyles.label,
     color:      th.colors.mutedLight,
     flexShrink: 0,
   },
-  cCycleNum: {
+  cWeekNum: {
     ...textStyles.labelStrong,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
@@ -4746,7 +4746,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       spacing.sm,
   },
   sheetCtaText: { ...textStyles.button, color: th.colors.onAccent },
-  cyclesGroup: { gap: spacing.sm },
+  weeksGroup: { gap: spacing.sm },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
   // del planificador.

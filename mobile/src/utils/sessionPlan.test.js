@@ -69,7 +69,7 @@ describe('sessionPlan — toca la que más tiempo llevas sin hacer', () => {
 
   it('entrenando lo que toca sale la rotación continua, también cruzando el lunes', () => {
     // Del jueves 3 al jueves 10 de septiembre: la rotación no se reinicia el
-    // lunes 7, que es lo que hace `weekPattern` (con 4 días, la semana 2 empieza por B).
+    // lunes 7.
     const entries = [];
     const picks   = [];
     for (let i = 0; i < 8; i++) {
