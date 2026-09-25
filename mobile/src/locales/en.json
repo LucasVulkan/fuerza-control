@@ -671,6 +671,7 @@
     "adapted": "Adapted",
     "moreOptions": "More options",
     "cycleCount": "{{done}} of {{total}} this cycle",
+    "weekCount": "{{done}} of {{total}} this week",
     "sessionMeta": "{{count}} exercises · ~{{minutes}} min",
     "rowMinutes": "~{{minutes}} min",
     "heroMetaLast": "last {{rel}}",

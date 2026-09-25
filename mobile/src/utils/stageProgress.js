@@ -284,3 +284,197 @@ export function advanceCycle(program, templateId, cycleTplIds, { durationWeeks, 
     stageAdvancePending: (reachedEnd && !isLastStage) || (program.stageAdvancePending ?? false),
   };
 }
+
+// ── Semanas (docs/specs/weeks-model.md) ──────────────────────────────────────
+//
+// El modelo que sustituye a los ciclos. Lo de arriba que habla de ciclos
+// (`advanceCycle`, el blob, `mergeProgressOnImport`, `closeOpenStage`) sigue
+// vivo hasta que la P37 cambie el store que lo llama: quitarlo antes dejaría la
+// app y sus tests a medias.
+//
+// Las fechas del progreso son DÍAS LOCALES en texto ('YYYY-MM-DD'), no
+// instantes: la semana 1 la fija el calendario del atleta y el entrenador la lee
+// tal cual (§3.2). La aritmética se hace en UTC sobre esos días, así que el
+// cambio de hora no desplaza nada.
+
+const DAY_MS = 86400000;
+const pad2 = (n) => String(n).padStart(2, '0');
+const dayToUTC = (day) => {
+  const [y, m, d] = day.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
+/** Día de la semana, 0 = lunes … 6 = domingo. */
+const dowOf = (day) => (new Date(dayToUTC(day)).getUTCDay() + 6) % 7;
+const utcToDay = (ms) => {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+};
+
+/** El día local de un instante, como 'YYYY-MM-DD'. */
+export function localDay(ts = Date.now()) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export const addDays     = (day, n) => utcToDay(dayToUTC(day) + n * DAY_MS);
+export const daysBetween = (from, to) => Math.round((dayToUTC(to) - dayToUTC(from)) / DAY_MS);
+
+/**
+ * El lunes de la semana 1 a partir del día en que se empezó (§0.3): de lunes a
+ * miércoles cuenta esa misma semana; de jueves a domingo, la siguiente — ya no
+ * da tiempo a entrenar una semana entera, y las sesiones de esos días suman
+ * igual.
+ */
+export function weekOne(startedOn) {
+  if (!startedOn) return null;
+  const dow = dowOf(startedOn);
+  return addDays(startedOn, dow <= 2 ? -dow : 7 - dow);
+}
+
+/** Semana 1, 2, 3… contada desde `weekOne(startedOn)`. Nunca menos de 1. */
+function weekNumber(startedOn, today) {
+  return Math.max(1, Math.floor(daysBetween(weekOne(startedOn), today) / 7) + 1);
+}
+
+/**
+ * Entrenos por semana de una etapa. Sin fijar, son tantos como sesiones tiene:
+ * el valor por defecto NO se guarda, para que una etapa a la que se le añade una
+ * sesión pase a esperar una más sin que nadie lo tenga que tocar. Solo lo fija
+ * quien lo elige (editor de etapa, generador).
+ */
+export function stageDaysPerWeek(stage) {
+  const n = stage?.daysPerWeek ?? stage?.days?.length ?? 1;
+  return Math.max(1, Math.min(7, n));
+}
+
+/**
+ * El progreso del ATLETA en un programa, esté en su móvil (los campos del
+ * propio programa) o espejado en el del entrenador (`client.progress`, el blob
+ * que sube el cliente). Es la única puerta para leer el progreso (§3.7): en el
+ * móvil del entrenador, los campos del programa son de SU copia y no se mueven.
+ *
+ * Un blob de otro programa no se adopta: se cae a los campos del programa.
+ */
+export function athleteProgress(program, client = null) {
+  const blob = client?.progress;
+  const src  = blob && blob.programId === program?.id ? blob : (program ?? {});
+  const last = Math.max(0, (program?.stages?.length ?? 1) - 1);
+  return {
+    currentStageIndex: Math.max(0, Math.min(src.currentStageIndex ?? 0, last)),
+    stageStartedOn:    src.stageStartedOn    ?? null,
+    stageSessionsDone: src.stageSessionsDone ?? 0,
+    stageExtraWeeks:   src.stageExtraWeeks   ?? 0,
+    programStartedOn:  src.programStartedOn  ?? null,
+  };
+}
+
+/**
+ * Lo que escribe guardar una sesión, como parche para esparcir sobre el
+ * programa. Solo cuenta una sesión de la etapa en la que se está; la primera
+ * fija el día de inicio de la etapa y, si es la primera del programa, el suyo.
+ * `saveSession` es el ÚNICO escritor de esas fechas (§3.2).
+ */
+export function recordSession(progress, { inCurrentStage, today }) {
+  if (!inCurrentStage) return {};
+  return {
+    stageSessionsDone: (progress?.stageSessionsDone ?? 0) + 1,
+    stageStartedOn:    progress?.stageStartedOn   ?? today,
+    programStartedOn:  progress?.programStartedOn ?? today,
+  };
+}
+
+/**
+ * Lo que escriben avanzar, cambiar de etapa y el import con salto. La etapa
+ * queda "sin empezar" hasta su primera sesión. `programStartedOn` no se toca.
+ */
+export function stageReset(stageIndex) {
+  return { currentStageIndex: stageIndex, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0 };
+}
+
+/**
+ * Todo lo que una pantalla necesita saber de la etapa en curso (§3.4), igual en
+ * el móvil del atleta y en el del entrenador — por eso es una función pura del
+ * programa, el progreso y el día.
+ *
+ * - `expected` NO cuenta las semanas añadidas: se alarga para recuperar lo que
+ *   falta, no para deber una semana más. Si las contara, alargar 1 semana y
+ *   entrenarla entera dejaría el mismo déficit.
+ * - `missingWeeks` redondea: es la tolerancia (1 sesión de 12 no pide nada).
+ *   Solo tiene sentido con `ended`.
+ * - Sin límite (`durationWeeks: null`) no hay fin: `lengthWeeks`, `expected` y
+ *   `endsOn` son null.
+ *
+ * @param {object} program
+ * @param {object} progress  de `athleteProgress`
+ * @param {string} today     'YYYY-MM-DD' local
+ */
+export function stageStatus(program, progress, today = localDay()) {
+  const stages   = program?.stages ?? [];
+  const last     = Math.max(0, stages.length - 1);
+  const stageIdx = Math.max(0, Math.min(progress?.currentStageIndex ?? 0, last));
+  const stage    = stages[stageIdx] ?? null;
+  const perWeek  = stageDaysPerWeek(stage);
+
+  const startedOn   = progress?.stageStartedOn ?? null;
+  const started     = !!startedOn;
+  const weekInStage = started ? weekNumber(startedOn, today) : 1;
+
+  const duration    = stage?.durationWeeks ?? null;
+  const lengthWeeks = duration == null ? null : duration + (progress?.stageExtraWeeks ?? 0);
+  const expected    = duration == null ? null : duration * perWeek;
+  const done        = progress?.stageSessionsDone ?? 0;
+  const missing     = expected == null ? 0 : Math.max(0, expected - done);
+
+  const endsOn = started && lengthWeeks != null ? addDays(weekOne(startedOn), 7 * lengthWeeks) : null;
+  const ended  = endsOn != null && today >= endsOn;   // 'YYYY-MM-DD' ordena como fecha
+
+  return {
+    stageIdx,
+    stage,
+    daysPerWeek:  perWeek,
+    started,
+    weekInStage,
+    lengthWeeks,
+    expected,
+    done,
+    missingWeeks: Math.round(missing / perWeek),
+    ended,
+    earlyReady:   !ended && started && lengthWeeks != null
+                  && weekInStage === lengthWeeks && done >= expected,
+    endsOn,
+    isLast:       stageIdx >= last,
+    programWeek:  progress?.programStartedOn ? weekNumber(progress.programStartedOn, today) : null,
+  };
+}
+
+/**
+ * Pasa un progreso contado en ciclos al modelo de semanas (§5.4): el estado
+ * persistido de antes de la migración y un blob viejo restaurado al reinstalar.
+ * Idempotente — lo ya migrado vuelve tal cual.
+ *
+ * Las fechas se reconstruyen hacia atrás desde hoy, una semana por ciclo
+ * cerrado: es lo más cerca que se puede estar sin fechas guardadas.
+ *
+ * @param {object} p               programa o blob con los contadores viejos
+ * @param {number} stageDaysCount  sesiones de la etapa en curso (un ciclo)
+ * @param {string} today           'YYYY-MM-DD'
+ */
+export function fromLegacyProgress(p, stageDaysCount, today) {
+  if (!p || p.stageSessionsDone !== undefined) return p;
+  // eslint-disable-next-line no-unused-vars
+  const { cycleCompletedIds, stageWeeksCompleted, totalWeeksCompleted, stageAdvancePending, ...rest } = p;
+  const weeks = stageWeeksCompleted ?? 0;
+  const total = totalWeeksCompleted ?? 0;
+  const done  = weeks * stageDaysCount + (cycleCompletedIds?.length ?? 0);
+  // Desde el LUNES de esta semana y no desde hoy: un viernes menos dos semanas
+  // es otro viernes, que `weekOne` manda al lunes siguiente — y el atleta
+  // perdería una semana en la migración.
+  const monday = addDays(today, -dowOf(today));
+  return {
+    ...rest,
+    stageSessionsDone: done,
+    stageStartedOn:    done > 0 ? addDays(monday, -7 * weeks) : null,
+    stageExtraWeeks:   0,
+    programStartedOn:  done > 0 || total > 0 ? addDays(monday, -7 * total) : null,
+  };
+}

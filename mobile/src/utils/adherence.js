@@ -55,8 +55,8 @@ function weeklyStreak(timestamps, target, now) {
  * steady client look like they've slowed down). Falls back to the current
  * week for brand-new clients who only have this week's data.
  *
- * This is the client's REAL training pace — distinct from the program's cycle
- * progress (the dots) and from this-week's raw count.
+ * This is the client's REAL training pace — distinct from the stage progress
+ * (the dots) and from this-week's raw count.
  */
 function recentWeeklyAverage(timestamps, now, window = 4) {
   if (!timestamps.length) return 0;
@@ -119,11 +119,11 @@ export function adherenceColor(th, status) {
  */
 export function adherencePct({
   sessions = [],
-  sessionsPerCycle = 0,
+  perWeek = 0,
   weeks = 4,
   now = Date.now(),
 } = {}) {
-  const target = Math.max(1, sessionsPerCycle);
+  const target = Math.max(1, perWeek);
   const stamps = sessions
     .map((s) => s?.timestamp)
     .filter((ts) => typeof ts === 'number' && ts <= now);
@@ -148,7 +148,7 @@ export function adherencePct({
  *
  * @param {object}   args
  * @param {Array}    [args.sessions]         Client entries — each { timestamp }.
- * @param {number}   [args.sessionsPerCycle] Expected sessions per week (active program).
+ * @param {number}   [args.perWeek]          Entrenos por semana de la etapa del atleta (`stageDaysPerWeek`).
  * @param {string}   [args.manualStatus]     'active' | 'paused' | 'inactive'.
  * @param {number}   [args.now]              Injectable clock for tests.
  * @returns {{
@@ -159,11 +159,11 @@ export function adherencePct({
  */
 export function computeAdherence({
   sessions = [],
-  sessionsPerCycle = 0,
+  perWeek = 0,
   manualStatus = 'active',
   now = Date.now(),
 } = {}) {
-  const target = Math.max(1, sessionsPerCycle);
+  const target = Math.max(1, perWeek);
   const stamps = sessions
     .map((s) => s?.timestamp)
     .filter((ts) => typeof ts === 'number')
@@ -172,8 +172,8 @@ export function computeAdherence({
   const weekDone   = stamps.filter((ts) => ts >= startOfWeek(now)).length;
   const lastTs     = stamps.length ? stamps[stamps.length - 1] : null;
   const daysSince  = lastTs != null ? Math.floor((now - lastTs) / DAY) : null;
-  const perWeek    = recentWeeklyAverage(stamps, now);
-  const base       = { daysSince, weekDone, weekTarget: target, recentPerWeek: perWeek, streak: 0 };
+  const recent     = recentWeeklyAverage(stamps, now);
+  const base       = { daysSince, weekDone, weekTarget: target, recentPerWeek: recent, streak: 0 };
 
   // Manual pause/inactive silences adherence entirely.
   if (manualStatus === 'paused' || manualStatus === 'inactive') {

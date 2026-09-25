@@ -87,7 +87,7 @@ entrenador (stage-locks §2.1).
 | Campo | Tipo | Notas |
 |---|---|---|
 | `stage.durationWeeks` | `number \| null` | Semanas. `null` = sin límite |
-| `stage.daysPerWeek` | `number` 1-7 | **Nuevo.** Por defecto `clamp(stage.days.length, 1, 7)` |
+| `stage.daysPerWeek` | `number` 1-7, o ausente | **Nuevo.** Ausente = tantos como sesiones, calculado al leer (`stageDaysPerWeek`), nunca guardado (§4.1) |
 | `stage.locked` | `boolean` | Sin cambios |
 | `program.stageActivatedAt` | ISO | Sin cambios: sello de «el autor movió la etapa a propósito» |
 
@@ -226,94 +226,117 @@ ese programa, y si no los campos del propio programa. Es la generalización de
 
 Todo en `src/utils/`, sin store ni React, con tests en vitest.
 
-### 4.1 `stageProgress.js`
+**La P36 es ADITIVA.** Las funciones de sincronización que hablan de ciclos
+(`advanceCycle`, el blob, `mergeProgressOnImport`, `closeOpenStage`) las llama el
+store, y `useStore.test.js` y `clientSync.sim.test.js` las ejercitan a través de
+él. Cambiarlas aquí dejaba la suite en rojo hasta la P37, así que se cambian
+allí, en el mismo commit que el store (§5.0). La P36 deja el modelo nuevo entero
+y probado al lado del viejo.
 
-Se borra `advanceCycle`. Se añaden:
+### 4.1 `stageProgress.js` — lo nuevo
+
+Sección «Semanas» al final del fichero:
 
 ```js
-/** Días locales 'YYYY-MM-DD'. `today` siempre inyectable para los tests. */
-export function localDay(ts = Date.now()) {}
-export function weekOne(startedOn) {}              // §3.3; null → null
+localDay(ts = Date.now())            // 'YYYY-MM-DD' local
+addDays(day, n) · daysBetween(a, b)  // aritmética de calendario en UTC: el cambio de hora no mueve nada
+weekOne(startedOn)                   // §3.3; null → null
+stageDaysPerWeek(stage)              // stage.daysPerWeek ?? nº de sesiones, entre 1 y 7
 
-/** El progreso del atleta, esté en su móvil o espejado en el del entrenador (§3.7). */
-export function athleteProgress(program, client = null) {}
+athleteProgress(program, client = null)
 // → { currentStageIndex, stageStartedOn, stageSessionsDone, stageExtraWeeks, programStartedOn }
-//   índice ya clampado a las etapas que existen (lo que hacía clientStageIndex)
+//   blob del cliente si es de ese programa; si no, los campos del programa. Índice clampado.
 
-/** Lo que `saveSession` escribe. `inCurrentStage` = la plantilla es de la etapa actual. */
-export function recordSession(progress, { inCurrentStage, today }) {}
-// inCurrentStage → stageSessionsDone+1, stageStartedOn ??= today, programStartedOn ??= today
-// si no → progress sin cambios
+recordSession(progress, { inCurrentStage, today })   // PARCHE a esparcir; {} si no es de la etapa
+stageReset(stageIndex)                               // parche; no toca programStartedOn
 
-/** Lo que escriben avanzar, cambiar de etapa y el import con salto. */
-export function stageReset(stageIndex) {}
-// → { currentStageIndex, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0 }
-
-/** Todo lo que una pantalla necesita saber de la etapa actual. */
-export function stageStatus(program, progress, today) {}
-// → { stageIdx, stage, started, weekInStage, lengthWeeks, expected, done,
+stageStatus(program, progress, today = localDay())
+// → { stageIdx, stage, daysPerWeek, started, weekInStage, lengthWeeks, expected, done,
 //     missingWeeks, ended, earlyReady, endsOn, isLast, programWeek }
+
+fromLegacyProgress(p, stageDaysCount, today)         // §5.4; idempotente
 ```
 
-Cambian:
+**Cambio sobre la spec original: el valor por defecto de `daysPerWeek` NO se
+guarda.** La spec pedía que `ensureStages` lo rellenara. Pero así quedaría
+congelado en el momento de la primera escritura: una etapa creada con 3 sesiones
+a la que luego se le añade una cuarta seguiría esperando 3 por semana sin que
+nadie lo hubiera elegido. `stage.daysPerWeek` solo existe cuando alguien lo fija
+(editor de etapa, generador), y todos los lectores pasan por `stageDaysPerWeek`.
+`ensureStages` no se toca.
 
-- `closeOpenStage(stages, stageIndex, progress, today)`: al añadir una etapa detrás
-  de una sin límite, esta se cierra en `max(1, weekInStage − 1)` semanas (las
-  completas). Ya no devuelve `advancePending`: con `ended` derivado, el aviso sale
-  solo si toca.
-- `ensureStages`: además de `days`, garantiza `daysPerWeek` en cada etapa
-  (`clamp(days.length, 1, 7)`). Es la puerta por la que pasa todo programa
-  (rehidratar, `importData`, `importForClient`), así que ningún lector necesita
-  fallback. Mantener el «devuelve el mismo objeto si no falta nada»: la
-  rehidratación compara identidad.
-- `progressBlob`, `progressChanged`, `progressFromBlob`: los cinco campos de §3.1
-  más `appliedActivation` y `updatedAt`, que se quedan como están.
-- `mergeProgressOnImport`: misma lógica de salto por sello. Con salto →
-  `stageReset(etapaEntrante)` y, si el programa es otro, además
-  `programStartedOn: null`. Sin salto → los campos del cliente tal cual, índice
-  clampado. Deja de calcular `stageAdvancePending`.
-- `fromLegacyProgress(p, stageDaysCount, today)`: **nuevo**, migración de §5.4.
-  Lo usan la rehidratación y `progressFromBlob` (un blob viejo restaurado tras
-  reinstalar).
+`fromLegacyProgress` ancla las fechas reconstruidas al **lunes de la semana de
+hoy**, no a hoy: un viernes menos dos semanas es otro viernes, que `weekOne`
+manda al lunes siguiente, y el atleta perdía una semana al migrar.
 
 ### 4.2 `sessionPlan.js`
 
-Entrada nueva: `lastDoneAt` (mapa `templateId → timestamp`) y `weekStart`
-(timestamp del lunes). Sale `cycleCompletedIds`.
+**Cambio sobre la spec original:** en vez de un helper `lastDoneMap` aparte,
+`sessionPlan` recibe el historial y lo recorre él. Quien llama solo le pasa
+su log (el propio o `clientLogs[clientId]`):
+
+```js
+sessionPlan({ days, log, daysPerWeek, activeTemplateId, now, t })
+```
 
 - `heroTemplateId`: §3.5.
-- `rows[].isDone`: `lastDoneAt[tid] >= weekStart`.
-- `subtitle`: `t('home.weekCount', { done, total: dpw })`. `dpw` entra como
-  parámetro y `done` se calcula con las fechas del historial (§3.6), no con las
-  filas marcadas: con 2 días y 3 sesiones la semana se completa con dos filas.
-
-Hace falta un helper `lastDoneMap(log, templateIds)` al lado. Lo usan la Home, la
-tarjeta de cliente y Preparar sesión, cada uno con su historial (el propio, o
-`clientLogs[clientId]`).
+- `rows[].isDone`: hecha desde el lunes (`startOfWeek`, ahora exportado de
+  `weekProgress.js`, que ya lo tenía).
+- `subtitle`: `t('home.weekCount', { done, total: daysPerWeek ?? días })`, con
+  `done` = entrenos de la semana, repeticiones incluidas. La clave `home.weekCount`
+  ya está en los dos idiomas; `home.cycleCount` se borra en el barrido de §8.4.
 
 ### 4.3 `adherence.js`
 
 `sessionsPerCycle` pasa a llamarse `perWeek` en las dos funciones. Quien llama le
-pasa el `daysPerWeek` de la etapa **del atleta** (`stageStatus(...).stage.daysPerWeek`).
+pasa `stageStatus(...).daysPerWeek` de la etapa **del atleta**.
 
-### 4.4 Tests que tienen que existir
+### 4.4 Tests
 
-- `weekOne` para los 7 días de la semana, y cruzando fin de mes y fin de año.
-- `stageStatus`: sin empezar; semana 2 de 4; terminada sin déficit; terminada con 1
-  y con 2 semanas de déficit; déficit de 1 sesión (no propone nada); alargada 1
-  semana y completada (sin déficit al acabar); `earlyReady` en la última semana;
-  sin límite; última etapa; `daysPerWeek` distinto del nº de sesiones.
-- `recordSession`: la primera fija las fechas y las siguientes no; una sesión de
-  otra etapa no toca nada.
-- `mergeProgressOnImport`: sin salto conserva; con sello nuevo resetea; programa
-  distinto resetea también `programStartedOn`; índice fuera de rango se clampa.
-- `fromLegacyProgress`.
-- `sessionPlan`: nunca hechas por orden; la más antigua; la sesión a medias manda;
-  el check solo cuenta esta semana.
-- `adherence`: el objetivo es `perWeek`.
-- `clientSync.sim.test.js`: la ida y vuelta del blob con los campos nuevos.
+- `stageProgress.weeks.test.js` (**nuevo**, 49 tests): fechas y cambio de hora;
+  `weekOne` para los 7 días y cruzando mes y año; `stageDaysPerWeek`;
+  `athleteProgress` (propio, blob, blob ajeno, índice recortado);
+  `recordSession`/`stageReset`; `stageStatus` (sin empezar, semanas, jueves,
+  fin, tabla de déficit con su tolerancia, alargada sin subir lo esperado,
+  anticipado, `daysPerWeek` ≠ sesiones, sin límite, última etapa, semana del
+  programa, y **entrenador y cliente dan lo mismo con el mismo progreso**);
+  `fromLegacyProgress`. Vive aparte para que la P37, al borrar los tests de
+  ciclos de `stageProgress.test.js`, no lo toque.
+- `sessionPlan.test.js` reescrito (13): nunca hechas por orden, la más antigua,
+  saltarse la C, la sesión a medias, rotación continua cruzando el lunes, check
+  y contador de esta semana.
+- `adherence.test.js`: `perWeek`.
+
+Comprobado que los tests muerden: con `expected` contando las semanas añadidas,
+`ceil` en vez de `round` y `weekOne` sin el corte del jueves fallan 9.
+
+**Entre P36 y P38/P39 la Home y la tarjeta de cliente no reciben aún `log` ni
+`perWeek`**: el hero sale siempre A y la adherencia mide contra 1 por semana.
+Es la rama; `main` no se toca hasta P39.
 
 ## 5. P37 — Store, migración y sincronización
+
+### 5.0 Lo que la P36 dejó para aquí
+
+Cambian en `stageProgress.js`, en el mismo commit que el store que las llama:
+
+- **Se borra `advanceCycle`** (y sus tests en `stageProgress.test.js`).
+- `closeOpenStage(stages, stageIndex, progress, today)`: al añadir una etapa detrás
+  de una sin límite, esta se cierra en `max(1, weekInStage − 1)` semanas (las
+  completas). Ya no devuelve `advancePending`: con `ended` derivado, el aviso sale
+  solo si toca.
+- `progressBlob`, `progressChanged`, `progressFromBlob`: los cinco campos de §3.1
+  más `appliedActivation` y `updatedAt`, que se quedan como están.
+  `progressFromBlob` pasa el blob por `fromLegacyProgress`.
+- `mergeProgressOnImport`: misma lógica de salto por sello. Con salto →
+  `stageReset(etapaEntrante)` y, si el programa es otro, además
+  `programStartedOn: null`. Sin salto → los campos del cliente tal cual, índice
+  clampado. Deja de calcular `stageAdvancePending`.
+- `clientStageIndex` pasa a ser `athleteProgress(...).currentStageIndex`.
+- Tests: `mergeProgressOnImport` (sin salto conserva; sello nuevo resetea; programa
+  distinto resetea también `programStartedOn`; índice fuera de rango se recorta),
+  `closeOpenStage` nuevo, y `clientSync.sim.test.js` (su `logSession` usa
+  `recordSession`; las aserciones de ciclo pasan a `stageSessionsDone` y fechas).
 
 ### 5.1 Escrituras, una por una
 
@@ -327,7 +350,7 @@ pasa el `daysPerWeek` de la etapa **del atleta** (`stageStatus(...).stage.daysPe
 | `snoozeStageBanner(programId, until)` | — | **nueva**, local (§6.1) |
 | `addStageToProgram` / peldaños (:1383, :1469) | `closeOpenStage` con ciclos + `stageAdvancePending` | `closeOpenStage` con el progreso de `athleteProgress(program, owner)`. La etapa nueva hereda `daysPerWeek` de la etapa de origen |
 | duplicar etapa (:1580) | — | copia `daysPerWeek` |
-| creación de programas (:849, :1209) y onboarding (:527) | `durationWeeks` | + `daysPerWeek`: el de las respuestas del onboarding en todas sus etapas; en los programas en blanco lo pone `ensureStages` |
+| creación de programas (:849, :1209) y onboarding (:527) | `durationWeeks` | + `daysPerWeek`: el de las respuestas del onboarding en todas sus etapas; en los programas en blanco no se escribe (§4.1) |
 | `applyPendingProgramUpdate` (:3734), `_restoreFromSlot` (:3547), import de fichero (:2814) | `mergeProgressOnImport` | igual, con la función nueva |
 | upload (:3803) | `progressBlob` | igual, con los campos nuevos |
 | suscriptor (:4418) | `progressChanged` | igual, con los campos nuevos |
@@ -491,7 +514,7 @@ Todo pasa por `athleteProgress(program, client)` + `stageStatus` (§3.7).
   semana» (del historial del cliente, §3.6); «cic/sem» → «ses/sem».
 - **Ficha** (:310-352): `weeksDone`, `cycleNum`, `weekInStage` y `stageEnded` salen
   de `stageStatus`. `stageEnded` = `ended`. La siguiente sesión, de `sessionPlan`
-  con `lastDoneMap(clientLogs[cid], …)`. Nuevo en la ficha: «9/12 sesiones» y, si
+  con `log: clientLogs[cid]`. Nuevo en la ficha: «9/12 sesiones» y, si
   hay semanas añadidas por el cliente, «(+1)».
 - **`weeklyTarget`** (:59): se borra. La adherencia recibe el `daysPerWeek` de la
   etapa **del cliente**. Hoy lee `stageDays(program)`, o sea la etapa activa en la
