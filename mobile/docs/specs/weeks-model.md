@@ -4,11 +4,11 @@
 > En corto: La app deja de contar «ciclos» (vueltas completas a todas las sesiones) y pasa a contar semanas de calendario: entrenos por semana, etapas de N semanas y, al acabar una, una comprobación de si se entrenó lo que tocaba que propone alargarla.
 > Fase P36 · hecho · Modelo puro: semanas, estado de etapa, sesión que toca · §4
 > Fase P37 · hecho · Store, migración y sincronización cliente ↔ entrenador · §5
-> Fase P38 · pendiente · Pantallas del atleta · §6
+> Fase P38 · hecho · Pantallas del atleta · §6
 > Fase P39 · pendiente · Pantallas del entrenador · §7
 > Fase P40 · pendiente · Onboarding, Documentación, volumen semanal y textos · §8
 >
-> Estado: **P36 y P37 hechas** en la rama `feat/weeks-model` (25-sep-2026); P38-P40 pendientes. La rama no se fusiona hasta la P39. Sustituye
+> Estado: **P36, P37 y P38 hechas** en la rama `feat/weeks-model` (25-sep-2026); P39-P40 pendientes. La rama no se fusiona hasta la P39. Sustituye
 > la regla de progreso de [stage-locks.md](stage-locks.md) §0.6 y §3.2 (un ciclo =
 > una vuelta a las sesiones distintas) y la regla del hero de
 > [home-sessions.md](home-sessions.md) / `sessionPlan`. **Todo lo demás de
@@ -642,7 +642,7 @@ comentario histórico que explica por qué algo es como es.
 |---|---|---|---|
 | P36 | — | 🟢 | ✅ 4967dc6 — aditiva (§4): el modelo nuevo al lado del viejo, 1342 tests |
 | P37 | P36 | 🟡 | ✅ 6d16c83 — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
-| P38 | P37 | 🟡 | ✅ ver commit — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
+| P38 | P37 | 🟡 | ✅ 0003916 — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
 | P39 | P37 | 🟢 | Se puede hacer en paralelo con P38 |
 | P40 | P36 | 🟢 | Casi todo textos |
 
