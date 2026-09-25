@@ -1437,9 +1437,6 @@ export const useStore = create(
           name: name ?? `Etapa ${existingStages.length + 1}`,
           durationWeeks,
           days: cloneDays(source.days ?? []),
-          // Hereda los entrenos por semana de la etapa de origen solo si allí se
-          // fijaron: sin fijar, siguen a las sesiones (`stageDaysPerWeek`).
-          ...(source.daysPerWeek != null ? { daysPerWeek: source.daysPerWeek } : {}),
           // Procedencia, para que la hoja de etapa pueda decir "derivada de
           // Acumulación · +1 serie". NADA en runtime la lee.
           ...(rx ? { rx, derivedFromStageId: source.id ?? null } : {}),
@@ -1493,7 +1490,6 @@ export const useStore = create(
           id: generateId('stage'),
           name,
           durationWeeks: durationWeeks ?? 4,
-          ...(source.daysPerWeek != null ? { daysPerWeek: source.daysPerWeek } : {}),
           days: (source.days ?? []).map(({ sessionTemplateId, label }) => {
             const src = sessionTemplates[sessionTemplateId];
             const newTplId = generateId('tpl');
@@ -1571,7 +1567,6 @@ export const useStore = create(
           id: generateId('stage'),
           name: `${src.name} (copia)`,
           durationWeeks: src.durationWeeks ?? 4,
-          ...(src.daysPerWeek != null ? { daysPerWeek: src.daysPerWeek } : {}),
           days: newDays,
         };
         const newStages = [

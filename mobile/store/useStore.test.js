@@ -943,16 +943,13 @@ describe('weeks-model — acciones de etapa', () => {
     expect(persisted.stageBannerSnooze).toEqual({ [pid]: '2026-10-05' });
   });
 
-  it('la etapa nueva hereda los entrenos por semana fijados y cierra la abierta', () => {
+  it('añadir una etapa detrás cierra la abierta en las semanas completas', () => {
     const pid = programa(3, null);
-    useStore.getState().updateStage(pid, 0, { daysPerWeek: 4 });
     entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
 
     useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
 
-    const { stages } = prog(pid);
-    expect(stages[1].daysPerWeek).toBe(4);
-    expect(stages[0].durationWeeks).toBe(1);   // empezada esta semana: 0 completas → 1
+    expect(prog(pid).stages[0].durationWeeks).toBe(1);   // empezada esta semana: 0 completas → 1
   });
 
   it('en el movil del entrenador, la etapa abierta se cierra por donde va el CLIENTE', () => {
@@ -968,12 +965,6 @@ describe('weeks-model — acciones de etapa', () => {
     useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
 
     expect(prog(pid).stages[0].durationWeeks).toBeGreaterThanOrEqual(3);
-  });
-
-  it('sin fijarlos, la etapa nueva no los escribe: siguen a sus sesiones', () => {
-    const pid = programa();
-    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
-    expect(prog(pid).stages[1]).not.toHaveProperty('daysPerWeek');
   });
 
   it('al rehidratar, los ciclos pasan a sesiones y fechas, y los campos viejos desaparecen', () => {

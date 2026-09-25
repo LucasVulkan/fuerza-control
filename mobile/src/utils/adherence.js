@@ -148,7 +148,7 @@ export function adherencePct({
  *
  * @param {object}   args
  * @param {Array}    [args.sessions]         Client entries — each { timestamp }.
- * @param {number}   [args.perWeek]          Entrenos por semana de la etapa del atleta (`stageDaysPerWeek`).
+ * @param {number}   [args.perWeek]          Entrenos por semana: las sesiones de la etapa del atleta (`weeklySessions`).
  * @param {string}   [args.manualStatus]     'active' | 'paused' | 'inactive'.
  * @param {number}   [args.now]              Injectable clock for tests.
  * @returns {{

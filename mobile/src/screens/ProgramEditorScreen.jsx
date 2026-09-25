@@ -19,7 +19,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
-import { clientStageIndex, programTotals, stageDaysPerWeek } from '../utils/stageProgress';
+import { clientStageIndex, programTotals } from '../utils/stageProgress';
 import { useEditorExit } from '../hooks/useEditorExit';
 
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
@@ -416,23 +416,6 @@ export default function ProgramEditorScreen({ navigation }) {
                   </TouchableOpacity>
                 </>
               )}
-            </View>
-
-            {/* Cuántas sesiones se esperan cada semana: lo que mide la adherencia
-                y la comprobación de fin de etapa (weeks-model.md §3.4). Pueden
-                ser menos que las sesiones de la etapa —se van alternando— o más.
-                Sin tocarlo, el stepper enseña tantas como sesiones hay y no se
-                guarda nada (`stageDaysPerWeek`). */}
-            <View>
-              <Text style={styles.sheetLabel}>{t('editor.stageFrequencyLabel')}</Text>
-              <StepField
-                horizontal
-                label={t('editor.stageDaysUnit')}
-                value={stageDaysPerWeek(selectedStage)}
-                onChange={(v) => updateStage(editingId, selectedStageIdx, { daysPerWeek: v })}
-                min={1}
-                max={7}
-              />
             </View>
 
             <View>

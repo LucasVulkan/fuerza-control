@@ -63,7 +63,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import {
   LADDER_IDS, RX_FIELDS, SCOPES, buildRungs, newRung, describeRx, isNoopRx, fieldLabelKey,
 } from '../utils/stageRx';
-import { athleteProgress, stageStatus, stageDaysPerWeek, stageWeekLabel, programTotals } from '../utils/stageProgress';
+import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
 import { sessionStats } from '../utils/sessionStats';
 
 const CHIP = 21;   // marcador de la línea de tiempo
@@ -124,7 +124,7 @@ function Marker({ state, n, open }) {
 
 function StageCard({
   stage, n, state, nowLabel, volume, canDelete, canLock, open, onToggle,
-  onRename, onWeeks, onDaysPerWeek, onLock, onDuplicate, onDelete,
+  onRename, onWeeks, onLock, onDuplicate, onDelete,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -226,17 +226,6 @@ function StageCard({
                 max={52}
               />
             )}
-
-            {/* Entrenos por semana: sin tocar, tantos como sesiones, y no se
-                guarda (`stageDaysPerWeek`). */}
-            <StepField
-              horizontal flat
-              label={t('editor.stageDaysUnit')}
-              value={stageDaysPerWeek(stage)}
-              onChange={onDaysPerWeek}
-              min={1}
-              max={7}
-            />
 
             <View style={styles.actions}>
               <TouchableOpacity style={styles.action} onPress={onDuplicate} activeOpacity={0.8}>
@@ -554,7 +543,7 @@ export default function StagePlannerScreen({ navigation, route }) {
               ? t('planner.summaryOpen', { weeks: totals.weeks, stages: stages.length })
               : t('planner.summary',     { weeks: totals.weeks, stages: stages.length })}
           </Text>
-          <Text style={styles.summaryHint}>{t('planner.summaryPerCycle', { count: status.daysPerWeek })}</Text>
+          <Text style={styles.summaryHint}>{t('planner.summaryPerCycle', { count: status.perWeek })}</Text>
         </View>
 
         <Text style={styles.secTitle}>{t('planner.sectionStages')}</Text>
@@ -580,7 +569,6 @@ export default function StagePlannerScreen({ navigation, route }) {
               onToggle={() => setOpenStageId((cur) => (cur === (stage.id ?? idx) ? null : (stage.id ?? idx)))}
               onRename={(name) => updateStage(programId, idx, { name })}
               onWeeks={(v) => updateStage(programId, idx, { durationWeeks: v })}
-              onDaysPerWeek={(v) => updateStage(programId, idx, { daysPerWeek: v })}
               onLock={() => updateStage(programId, idx, { locked: !stage.locked })}
               onDuplicate={() => handleDuplicate(idx)}
               onDelete={() => handleDelete(idx)}

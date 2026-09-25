@@ -452,7 +452,6 @@ export default function HomeScreen() {
           const plan = sessionPlan({
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
             log:              workoutLog,
-            daysPerWeek:      status.daysPerWeek,
             activeTemplateId: activeSession.templateId,
             t,
           });

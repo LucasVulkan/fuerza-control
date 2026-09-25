@@ -2,7 +2,7 @@
 // stageProgress.test.js para que la P37, al borrar los ciclos, no toque esto.
 import { describe, it, expect } from 'vitest';
 import {
-  localDay, addDays, daysBetween, weekOne, stageDaysPerWeek, athleteProgress, recordSession,
+  localDay, addDays, daysBetween, weekOne, weeklySessions, athleteProgress, recordSession,
   stageReset, stageStatus, fromLegacyProgress, programTotals, stageWeekLabel,
 } from './stageProgress';
 
@@ -47,28 +47,27 @@ describe('weekOne — la semana 1 empieza en el lunes más cercano', () => {
   });
 });
 
-describe('stageDaysPerWeek', () => {
-  it('el valor fijado manda', () => {
-    expect(stageDaysPerWeek({ daysPerWeek: 2, days: [{}, {}, {}] })).toBe(2);
+describe('weeklySessions — las sesiones de la etapa son los entrenos de cada semana', () => {
+  it('tantos como sesiones, y siguen a las sesiones si cambian', () => {
+    expect(weeklySessions({ days: [{}, {}, {}] })).toBe(3);
+    expect(weeklySessions({ days: [{}, {}, {}, {}] })).toBe(4);
   });
 
-  it('sin fijar, tantos como sesiones — y sigue a las sesiones si cambian', () => {
-    expect(stageDaysPerWeek({ days: [{}, {}, {}] })).toBe(3);
-    expect(stageDaysPerWeek({ days: [{}, {}, {}, {}] })).toBe(4);
+  it('un campo `daysPerWeek` suelto no cuenta: no existe tal dato', () => {
+    expect(weeklySessions({ daysPerWeek: 2, days: [{}, {}, {}] })).toBe(3);
   });
 
-  it('siempre entre 1 y 7', () => {
-    expect(stageDaysPerWeek({ days: [] })).toBe(1);
-    expect(stageDaysPerWeek(null)).toBe(1);
-    expect(stageDaysPerWeek({ days: Array(9).fill({}) })).toBe(7);
+  it('nunca menos de 1: una etapa vacía no divide por cero', () => {
+    expect(weeklySessions({ days: [] })).toBe(1);
+    expect(weeklySessions(null)).toBe(1);
   });
 });
 
 describe('programTotals', () => {
-  it('las sesiones salen de los entrenos por semana, no de las sesiones distintas', () => {
+  it('sesiones de cada etapa × sus semanas', () => {
     const program = { stages: [
-      { durationWeeks: 4, days: [{}, {}, {}] },                  // 3 días por defecto → 12
-      { durationWeeks: 3, daysPerWeek: 2, days: [{}, {}, {}] },  // 2 días → 6
+      { durationWeeks: 4, days: [{}, {}, {}] },   // 3 por semana → 12
+      { durationWeeks: 3, days: [{}, {}] },       // 2 por semana → 6
     ] };
     expect(programTotals(program)).toEqual({ weeks: 7, sessions: 18, open: false });
   });
@@ -157,7 +156,7 @@ describe('stageStatus — dónde va la etapa', () => {
   const sessions = (n) => Array.from({ length: n }, (_, i) => ({ sessionTemplateId: `t${i}` }));
   const program = { id: 'p1', stages: [
     { durationWeeks: 4, days: sessions(3) },                  // 3 días (por defecto)
-    { durationWeeks: 3, daysPerWeek: 2, days: sessions(3) },  // 3 sesiones, 2 días
+    { durationWeeks: 3, days: sessions(2) },                  // 2 sesiones = 2 por semana
     { durationWeeks: null, days: sessions(3) },               // sin límite
   ] };
   // Etapa 1 empezada el lunes 21-sep: termina el lunes 19-oct.
@@ -223,9 +222,9 @@ describe('stageStatus — dónde va la etapa', () => {
     expect(stageStatus(program, p, '2026-10-20').earlyReady).toBe(true);
   });
 
-  it('lo esperado usa los entrenos por semana de la etapa, no sus sesiones', () => {
+  it('lo esperado usa las sesiones de ESA etapa, que pueden ser otras que las de la anterior', () => {
     const s = stageStatus(program, at({ currentStageIndex: 1, stageSessionsDone: 5 }), '2026-10-12');
-    expect(s).toMatchObject({ daysPerWeek: 2, expected: 6, ended: true, missingWeeks: 1 });
+    expect(s).toMatchObject({ perWeek: 2, expected: 6, ended: true, missingWeeks: 1 });
   });
 
   it('sin límite: la semana sube y nunca termina', () => {

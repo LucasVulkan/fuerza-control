@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, athleteProgress, stageStatus, stageDaysPerWeek, stageWeekLabel } from '../utils/stageProgress';
+import { stageDays, athleteProgress, stageStatus, weeklySessions, stageWeekLabel } from '../utils/stageProgress';
 import { ownerClient } from '../utils/programOwnership';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
@@ -114,7 +114,7 @@ function StageList({ program, onSelect }) {
               ? t('home.stageLockedShort')
               : [
                 stage.durationWeeks == null ? t('home.stageOpen') : t('home.stageWeeks', { count: stage.durationWeeks }),
-                t('home.stageDaysPerWeek', { count: stageDaysPerWeek(stage) }),
+                t('home.stageSessionsPerWeek', { count: weeklySessions(stage) }),
               ].join(' · ')}
             minHeight={62}
             disabled={locked}
@@ -173,7 +173,7 @@ export default function MyProgramScreen() {
   // Los entrenos por semana de la etapa en la que está: son el objetivo de la
   // adherencia (weeks-model.md §4.3).
   const perWeek = activeProgram
-    ? stageDaysPerWeek(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
+    ? weeklySessions(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
     : 0;
 
   const adherence = useMemo(() => computeAdherence({

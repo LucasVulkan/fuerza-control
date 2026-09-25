@@ -19,7 +19,6 @@ import { startOfWeek } from './weekProgress';
  * @param {object}   args
  * @param {Array}    args.days             `[{ templateId, label }]` de la etapa, en orden A→F.
  * @param {Array}    [args.log]            Historial: `[{ sessionTemplateId, timestamp }]`.
- * @param {number}   [args.daysPerWeek]    Entrenos por semana de la etapa (`stageDaysPerWeek`).
  * @param {string}   [args.activeTemplateId] Sesión a medias, si la hay.
  * @param {number}   [args.now]            Reloj inyectable.
  * @param {Function} args.t                i18n.
@@ -30,7 +29,7 @@ import { startOfWeek } from './weekProgress';
  *   subtitle:       string|null,  // null ⇒ no se pinta contador
  * }}
  */
-export function sessionPlan({ days = [], log = [], daysPerWeek, activeTemplateId, now = Date.now(), t }) {
+export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.now(), t }) {
   const ids       = new Set(days.map((d) => d.templateId));
   const weekStart = startOfWeek(now);
   const lastDone  = {};
@@ -64,11 +63,11 @@ export function sessionPlan({ days = [], log = [], daysPerWeek, activeTemplateId
       isDone:     (lastDone[d.templateId] ?? -Infinity) >= weekStart,
       isHero:     d.templateId === hero?.templateId,
     })),
-    // Sesiones de la semana contra los entrenos por semana, no filas marcadas:
-    // con 2 días y 3 sesiones la semana se completa con dos filas, y repetir la
-    // A cuenta como un entreno más.
+    // Entrenos de la semana contra las sesiones de la etapa, que son los que se
+    // esperan cada semana (weeks-model.md §0.4). Se cuentan entrenos y no filas
+    // marcadas: repetir la A cuenta como uno más.
     subtitle: days.length
-      ? t('home.weekCount', { done: weekDone, total: daysPerWeek ?? days.length })
+      ? t('home.weekCount', { done: weekDone, total: days.length })
       : null,
   };
 }

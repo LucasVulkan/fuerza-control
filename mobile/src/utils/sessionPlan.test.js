@@ -105,18 +105,14 @@ describe('sessionPlan — esta semana', () => {
     expect(plan.rows.map((r) => r.isDone)).toEqual([false, true, false]);
   });
 
-  it('el contador cuenta entrenos de la semana contra los entrenos por semana', () => {
+  it('el contador cuenta entrenos de la semana contra las sesiones de la etapa', () => {
     const plan = sessionPlan({
       days: DAYS,
-      daysPerWeek: 4,
       log: log(['a', at(2026, 9, 18)], ['a', at(2026, 9, 21)], ['a', at(2026, 9, 23)]),
       now: NOW, t,
     });
     // Repetir la A cuenta como un entreno más; lo de la semana pasada, no.
-    expect(plan.subtitle).toBe('home.weekCount:{"done":2,"total":4}');
+    expect(plan.subtitle).toBe('home.weekCount:{"done":2,"total":3}');
   });
 
-  it('sin entrenos por semana fijados, tantos como sesiones', () => {
-    expect(sessionPlan({ days: DAYS, now: NOW, t }).subtitle).toBe('home.weekCount:{"done":0,"total":3}');
-  });
 });

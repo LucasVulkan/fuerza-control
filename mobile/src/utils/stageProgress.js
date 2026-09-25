@@ -10,8 +10,8 @@
  * entreno no coincidían con las sesiones del programa.
  *
  * Qué se GUARDA (§3.1), y nada más:
- *  - En la etapa (lo escribe el autor del programa): `durationWeeks`,
- *    `daysPerWeek` (opcional), `locked`.
+ *  - En la etapa (lo escribe el autor del programa): `durationWeeks` y `locked`.
+ *    Sus SESIONES son los entrenos que se esperan cada semana (`weeklySessions`).
  *  - En el programa del atleta (lo escribe SOLO él, y viaja al entrenador en el
  *    blob `progress` del historial): `currentStageIndex`, `stageStartedOn`,
  *    `stageSessionsDone`, `stageExtraWeeks`, `programStartedOn`.
@@ -100,26 +100,22 @@ export function ensureStages(program, stageName = 'Etapa 1') {
 }
 
 /**
- * Entrenos por semana de una etapa. Sin fijar, son tantos como sesiones tiene:
- * el valor por defecto NO se guarda, para que una etapa a la que se le añade una
- * sesión pase a esperar una más sin que nadie lo tenga que tocar. Solo lo fija
- * quien lo elige (editor de etapa, generador).
+ * Entrenos que se esperan cada semana en una etapa: SUS SESIONES, y punto. Una
+ * etapa de 4 sesiones son 4 entrenos por semana; si la siguiente tiene 2, son 2.
+ * No hay un dato aparte que configurar (weeks-model.md §0.4).
  */
-export function stageDaysPerWeek(stage) {
-  const n = stage?.daysPerWeek ?? stage?.days?.length ?? 1;
-  return Math.max(1, Math.min(7, n));
-}
+export const weeklySessions = (stage) => Math.max(1, stage?.days?.length ?? 0);
 
 /**
  * Lo que dura y lo que pide un programa entero, sumando etapa a etapa: semanas,
- * y sesiones = entrenos por semana × semanas. Una etapa sin límite deja el
+ * y sesiones = sesiones de la etapa × semanas. Una etapa sin límite deja el
  * total indeterminado: se suman las demás y `open` avisa para pintar un «+».
  */
 export function programTotals(program) {
   const stages = program?.stages ?? [];
   return {
     weeks:    stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
-    sessions: stages.reduce((a, s) => a + stageDaysPerWeek(s) * (s.durationWeeks ?? 0), 0),
+    sessions: stages.reduce((a, s) => a + weeklySessions(s) * (s.durationWeeks ?? 0), 0),
     open:     stages.some((s) => s.durationWeeks == null),
   };
 }
@@ -269,7 +265,7 @@ export function stageStatus(program, progress, today = localDay()) {
   const last     = Math.max(0, stages.length - 1);
   const stageIdx = Math.max(0, Math.min(progress?.currentStageIndex ?? 0, last));
   const stage    = stages[stageIdx] ?? null;
-  const perWeek  = stageDaysPerWeek(stage);
+  const perWeek  = weeklySessions(stage);
 
   const startedOn   = progress?.stageStartedOn ?? null;
   const started     = !!startedOn;
@@ -287,7 +283,7 @@ export function stageStatus(program, progress, today = localDay()) {
   return {
     stageIdx,
     stage,
-    daysPerWeek:  perWeek,
+    perWeek,
     started,
     weekInStage,
     lengthWeeks,

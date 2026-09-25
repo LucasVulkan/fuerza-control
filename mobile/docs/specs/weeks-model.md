@@ -27,8 +27,12 @@
    lunes más cercano al día en que se empieza la etapa: **de lunes a miércoles
    cuenta esa semana; de jueves a domingo, la semana 1 empieza el lunes
    siguiente** y las sesiones de esos días suman igualmente.
-4. **Entrenos por semana es un dato DE CADA ETAPA** (`stage.daysPerWeek`), no del
-   programa: una etapa puede ser de 3 días y la siguiente de 2.
+4. **Las sesiones de una etapa SON los entrenos que se esperan cada semana. Punto.**
+   Una etapa de 4 sesiones son 4 entrenos por semana; si la siguiente tiene 2, son
+   2. Es lo que antes era «sesiones por ciclo», y **no hay un dato aparte** que
+   configurar. (Corregido el 25-sep: la P36-P38 habían metido un
+   `stage.daysPerWeek` independiente de las sesiones por una mala lectura de esta
+   decisión; se quitó entero, ver §6.6.)
 5. **Al acabar una etapa se comprueba lo entrenado.** Si faltan sesiones por valor
    de al menos una semana, el aviso te deja avanzar pero **propone alargar la etapa**
    las semanas que falten.
@@ -42,14 +46,8 @@
 ## 1. Por qué
 
 Un ciclo era «una semana que no avanza el lunes sino cuando completas todas sus
-sesiones». Cierto en teoría, imposible de explicar, y además **mentía** en cuanto
-los días de entreno no coincidían con las sesiones del programa: el generador crea
-programas de 3 sesiones para quien entrena 4 días (`weekPattern.js`), y entonces:
+sesiones». Cierto en teoría e imposible de explicar. Además:
 
-- una etapa de «4 ciclos» dura 3 semanas de calendario;
-- la adherencia se mide contra 3 sesiones/semana cuando el usuario eligió 4
-  (`weeklyTarget` en [ClientsScreen.jsx:59](../../src/screens/ClientsScreen.jsx),
-  `sessionsPerCycle` en [MyProgramScreen.jsx:184](../../src/screens/MyProgramScreen.jsx));
 - el ritmo, que es sesiones por semana (`recentPerWeek`), se etiqueta «cic/sem»
   ([ProgramCard.jsx:239](../../src/components/ui/ProgramCard.jsx),
   [ClientsScreen.jsx:1700](../../src/screens/ClientsScreen.jsx)). Bug de etiqueta
@@ -62,14 +60,12 @@ resuelven las semanas más la comprobación de §3.4.
 
 | Término | Qué es | Dónde vive |
 |---|---|---|
-| **Sesiones de la etapa** | Las plantillas distintas (A, B, C…). El menú | `stage.days` (ya existe) |
-| **Entrenos por semana** | Cuántas sesiones se esperan cada semana. Pueden ser menos o más que las sesiones de la etapa: con 3 sesiones y 2 días se van alternando | `stage.daysPerWeek` (**nuevo**) |
+| **Sesiones de la etapa** | Las plantillas distintas (A, B, C…), y a la vez **los entrenos que se esperan cada semana** (§0.4) | `stage.days` (ya existe); se leen con `weeklySessions(stage)` |
 | **Duración** | Semanas de la etapa, o `null` = sin límite | `stage.durationWeeks` (ya existe, cambia de significado: antes eran ciclos) |
 | **Semana de la etapa** | 1, 2, 3… contadas desde la semana 1 (§0.3) | derivada, nunca se guarda |
 | **Semana del programa** | Semanas desde que se empezó el programa | derivada, nunca se guarda |
 
-La palabra «rotación» no se usa en la UI. Que las sesiones se alternen es una
-consecuencia del hero (§3.5), no un concepto que haya que enseñar.
+La palabra «rotación» no se usa en la UI.
 
 ## 3. El modelo
 
@@ -87,7 +83,6 @@ entrenador (stage-locks §2.1).
 | Campo | Tipo | Notas |
 |---|---|---|
 | `stage.durationWeeks` | `number \| null` | Semanas. `null` = sin límite |
-| `stage.daysPerWeek` | `number` 1-7, o ausente | **Nuevo.** Ausente = tantos como sesiones, calculado al leer (`stageDaysPerWeek`), nunca guardado (§4.1) |
 | `stage.locked` | `boolean` | Sin cambios |
 | `program.stageActivatedAt` | ISO | Sin cambios: sello de «el autor movió la etapa a propósito» |
 
@@ -157,7 +152,7 @@ La semana del programa es la misma cuenta sobre `programStartedOn`.
 ### 3.4 Fin de etapa y comprobación
 
 Para la etapa actual, con `D = stage.durationWeeks`, `E = stageExtraWeeks` y
-`dpw = stage.daysPerWeek`:
+`dpw = weeklySessions(stage)` (sus sesiones, §0.4):
 
 ```js
 lengthWeeks = D + E                         // null si D es null (sin límite)
@@ -194,8 +189,7 @@ hero = sesiónAMedias
 ```
 
 Reproduce la rotación en el uso normal: A B C A B, hero C. Si te saltas C y
-repites A, sigue siendo C. Con 3 sesiones y 4 días reproduce exactamente
-`weekPattern` (la segunda semana empieza por B). Una etapa nueva tiene plantillas
+repites A, sigue siendo C. Una etapa nueva tiene plantillas
 nuevas (`tpl_*` materializadas, stage-planner §4), así que empieza por A.
 
 Como es una lectura del historial, borrar una sesión cambia la sugerencia. Es
@@ -241,7 +235,7 @@ Sección «Semanas» al final del fichero:
 localDay(ts = Date.now())            // 'YYYY-MM-DD' local
 addDays(day, n) · daysBetween(a, b)  // aritmética de calendario en UTC: el cambio de hora no mueve nada
 weekOne(startedOn)                   // §3.3; null → null
-stageDaysPerWeek(stage)              // stage.daysPerWeek ?? nº de sesiones, entre 1 y 7
+weeklySessions(stage)                // sus sesiones (§0.4); nunca menos de 1
 
 athleteProgress(program, client = null)
 // → { currentStageIndex, stageStartedOn, stageSessionsDone, stageExtraWeeks, programStartedOn }
@@ -251,19 +245,11 @@ recordSession(progress, { inCurrentStage, today })   // PARCHE a esparcir; {} si
 stageReset(stageIndex)                               // parche; no toca programStartedOn
 
 stageStatus(program, progress, today = localDay())
-// → { stageIdx, stage, daysPerWeek, started, weekInStage, lengthWeeks, expected, done,
+// → { stageIdx, stage, perWeek, started, weekInStage, lengthWeeks, expected, done,
 //     missingWeeks, ended, earlyReady, endsOn, isLast, programWeek }
 
 fromLegacyProgress(p, stageDaysCount, today)         // §5.4; idempotente
 ```
-
-**Cambio sobre la spec original: el valor por defecto de `daysPerWeek` NO se
-guarda.** La spec pedía que `ensureStages` lo rellenara. Pero así quedaría
-congelado en el momento de la primera escritura: una etapa creada con 3 sesiones
-a la que luego se le añade una cuarta seguiría esperando 3 por semana sin que
-nadie lo hubiera elegido. `stage.daysPerWeek` solo existe cuando alguien lo fija
-(editor de etapa, generador), y todos los lectores pasan por `stageDaysPerWeek`.
-`ensureStages` no se toca.
 
 `fromLegacyProgress` ancla las fechas reconstruidas al **lunes de la semana de
 hoy**, no a hoy: un viernes menos dos semanas es otro viernes, que `weekOne`
@@ -276,29 +262,29 @@ manda al lunes siguiente, y el atleta perdía una semana al migrar.
 su log (el propio o `clientLogs[clientId]`):
 
 ```js
-sessionPlan({ days, log, daysPerWeek, activeTemplateId, now, t })
+sessionPlan({ days, log, activeTemplateId, now, t })
 ```
 
 - `heroTemplateId`: §3.5.
 - `rows[].isDone`: hecha desde el lunes (`startOfWeek`, ahora exportado de
   `weekProgress.js`, que ya lo tenía).
-- `subtitle`: `t('home.weekCount', { done, total: daysPerWeek ?? días })`, con
+- `subtitle`: `t('home.weekCount', { done, total: días.length })`, con
   `done` = entrenos de la semana, repeticiones incluidas. La clave `home.weekCount`
   ya está en los dos idiomas; `home.cycleCount` se borra en el barrido de §8.4.
 
 ### 4.3 `adherence.js`
 
 `sessionsPerCycle` pasa a llamarse `perWeek` en las dos funciones. Quien llama le
-pasa `stageStatus(...).daysPerWeek` de la etapa **del atleta**.
+pasa `weeklySessions` de la etapa **del atleta**.
 
 ### 4.4 Tests
 
 - `stageProgress.weeks.test.js` (**nuevo**, 49 tests): fechas y cambio de hora;
-  `weekOne` para los 7 días y cruzando mes y año; `stageDaysPerWeek`;
+  `weekOne` para los 7 días y cruzando mes y año; `weeklySessions`;
   `athleteProgress` (propio, blob, blob ajeno, índice recortado);
   `recordSession`/`stageReset`; `stageStatus` (sin empezar, semanas, jueves,
   fin, tabla de déficit con su tolerancia, alargada sin subir lo esperado,
-  anticipado, `daysPerWeek` ≠ sesiones, sin límite, última etapa, semana del
+  anticipado, etapas con distinto nº de sesiones, sin límite, última etapa, semana del
   programa, y **entrenador y cliente dan lo mismo con el mismo progreso**);
   `fromLegacyProgress`. Vive aparte para que la P37, al borrar los tests de
   ciclos de `stageProgress.test.js`, no lo toque.
@@ -348,9 +334,7 @@ Cambian en `stageProgress.js`, en el mismo commit que el store que las llama:
 | `dismissStageAdvance` (:1672) | baja el flag | **se borra** |
 | `extendStage(programId, weeks)` | — | **nueva**: `stageExtraWeeks += weeks`. Solo en programas donde el móvil es el atleta; en el del entrenador, para un cliente, el entrenador cambia `durationWeeks` en el editor |
 | `snoozeStageBanner(programId, until)` | — | **nueva**, local (§6.1) |
-| `addStageToProgram` / peldaños (:1383, :1469) | `closeOpenStage` con ciclos + `stageAdvancePending` | `closeOpenStage` con el progreso de `athleteProgress(program, owner)`. La etapa nueva hereda `daysPerWeek` de la etapa de origen |
-| duplicar etapa (:1580) | — | copia `daysPerWeek` |
-| creación de programas (:849, :1209) y onboarding (:527) | `durationWeeks` | + `daysPerWeek`: el de las respuestas del onboarding en todas sus etapas; en los programas en blanco no se escribe (§4.1) |
+| `addStageToProgram` / peldaños (:1383, :1469) | `closeOpenStage` con ciclos + `stageAdvancePending` | `closeOpenStage` con el progreso de `athleteProgress(program, owner)` |
 | `applyPendingProgramUpdate` (:3734), `_restoreFromSlot` (:3547), import de fichero (:2814) | `mergeProgressOnImport` | igual, con la función nueva |
 | upload (:3803) | `progressBlob` | igual, con los campos nuevos |
 | suscriptor (:4418) | `progressChanged` | igual, con los campos nuevos |
@@ -374,8 +358,8 @@ pasa a ser el selector de §6.1 («hay aviso que enseñar»), no el flag.
                  uploadHistory({ entries, progress }) ──────┘
                                                             │
                  applyPendingProgramUpdate ◄── program_json ◄── Enviar programa
-                 (definición: durationWeeks,                    (editor / planificador)
-                  daysPerWeek, locked, stageActivatedAt)
+                 (definición: durationWeeks, sesiones,          (editor / planificador)
+                  locked, stageActivatedAt)
 ```
 
 - **Progreso: cliente → entrenador.** Una sola dirección, sin excepciones.
@@ -387,7 +371,7 @@ pasa a ser el selector de §6.1 («hay aviso que enseñar»), no el flag.
   mismo. Pueden diferir un rato por dos motivos, y los dos se arreglan solos:
   1. el cliente ha entrenado y aún no ha subido (sin cobertura: reintenta con
      `pendingUpload`);
-  2. el entrenador ha cambiado la definición (p. ej. `daysPerWeek`) y aún no la ha
+  2. el entrenador ha cambiado la definición (p. ej. añadió una sesión) y aún no la ha
      enviado, o el cliente aún no la ha aplicado. Mientras, cada uno calcula con su
      copia.
 - **Alargar desde el cliente no toca la definición.** `durationWeeks` es del
@@ -405,7 +389,7 @@ pasa a ser el selector de §6.1 («hay aviso que enseñar»), no el flag.
 | Entrenador activa otra etapa | Sello → `stageReset` al importar. La etapa empieza en la primera sesión |
 | Entrenador devuelve al cliente a una etapa anterior | Igual: empieza de cero (stage-locks §6.3) |
 | Entrenador borra etapas por debajo de la del cliente | Índice clampado, contadores intactos. Como hoy |
-| Entrenador cambia `daysPerWeek` a mitad de etapa | Lo esperado se recalcula en los dos lados en cuanto el cliente aplica la actualización |
+| Entrenador añade o quita sesiones a mitad de etapa | Lo esperado se recalcula en los dos lados en cuanto el cliente aplica la actualización |
 | Etapa activada y sin entrenar tres semanas | `started: false`; el reloj no corre. El entrenador ve «sin empezar» y la adherencia en rojo |
 | Cliente con la app vieja y entrenador con la nueva (o al revés) | **No soportado**: el blob cambia de forma. Actualizar los dos móviles a la vez. `progressFromBlob` convierte un blob viejo (§5.4) para no dejar a nadie en blanco, pero con el cliente subiendo el formato viejo la fecha de inicio se recalcularía cada día |
 
@@ -462,8 +446,6 @@ etapa y a su semana.
   cerrar), no `{ stages }`.
 - Normalizan el progreso (`normalizeProgress`): la rehidratación y
   `normalizeIncomingProgram`, que es la puerta de `importData` e `importForClient`.
-- El generador escribe `daysPerWeek` en la etapa base (`archetypeAdapter`); las
-  fases siguientes lo heredan al derivarse de ella. Adelanta esa línea de la §8.1.
 
 **Entre P37 y P39 la app no se puede probar en el móvil**: el store ya habla
 semanas y las pantallas aún leen ciclos: la Home no enseña el aviso de fin de
@@ -508,8 +490,8 @@ antigüedad. Estructura de la lista sin cambios
   etapa (`lengthWeeks`), y además `done/expected` en texto pequeño.
 - Ritmo: la unidad pasa a «ses/sem» (`programCard.sessionsPerWeek`). Arregla el bug
   de etiqueta de §1.
-- Adherencia con `perWeek = stage.daysPerWeek`.
-- `StageList`: `home.stageMeta` → «4 semanas · 3 días/semana».
+- Adherencia con `perWeek = weeklySessions(stage)`.
+- `StageList`: `home.stageMeta` → «4 semanas · 3 sesiones por semana».
 - `confirmStage`: desaparece el «perderás las sesiones marcadas del ciclo»
   (`bodyReset_*`). Lo que se pierde ahora es la cuenta de la etapa en curso:
   «Empezarás Intensificación desde la semana 1» si `started`, y el texto sin aviso
@@ -519,16 +501,15 @@ antigüedad. Estructura de la lista sin cambios
 
 ### 6.4 Editor de programa, planificador, visualizador, pestaña de programas
 
-- **Editor de etapa** ([ProgramEditorScreen.jsx:389](../../src/screens/ProgramEditorScreen.jsx))
-  y fila del planificador ([StagePlannerScreen.jsx:215](../../src/screens/StagePlannerScreen.jsx)):
-  junto a la duración, un `StepField` nuevo **«Entrenos por semana»** (1-7). Las
-  reglas del `StepField` de su cabecera se respetan.
+- ~~Editor de etapa y planificador: un `StepField` «Entrenos por semana»~~.
+  **Retirado** (§0.4, §6.6): los entrenos por semana son las sesiones, que ya se
+  editan añadiendo o quitando sesiones.
 - Textos: `editor.cyclesQuestion` → «¿Cuántas semanas dura esta etapa?»,
   `cyclesExplain` → fuera, `cyclesShort` → «N semanas», `cyclesNoLimit` →
   «Sin límite — la etapa dura hasta que añadas la siguiente».
 - **Totales** (ProgramEditor :138-139, ProgramScreen :54-55, ProgramDetail :399-401,
   StagePlanner :437): las sesiones del programa pasan de `Σ días.length × durationWeeks`
-  a **`Σ daysPerWeek × durationWeeks`**, y «ciclos» a «semanas».
+  se quedan en `Σ sesiones × durationWeeks` (§0.4), y «ciclos» pasa a «semanas».
 - Planificador, progreso de la etapa en curso (`planner.cyclesProgress`, :146): lo
   saca de `stageStatus(program, athleteProgress(program, owner), hoy)` en vez de
   `stageWeeksCompleted` (:421).
@@ -539,7 +520,7 @@ antigüedad. Estructura de la lista sin cambios
 
 - **Dos helpers más en `stageProgress.js`**, porque la misma cuenta salía en
   varias pantallas: `programTotals(program)` (semanas y sesiones del programa,
-  sesiones = Σ entrenos por semana × semanas; la usan editor, planificador y
+  sesiones = Σ sesiones de la etapa × semanas; la usan editor, planificador y
   plantillas) y `stageWeekLabel(status, t)` («Semana 3 de 4», «(+1)», «Semana 7»,
   «Sin empezar»; la usan la tarjeta y el planificador, y la ficha de cliente en
   la P39). `t` entra como parámetro, como en `describeRx`: la regla de lint
@@ -554,11 +535,9 @@ antigüedad. Estructura de la lista sin cambios
   (así la ficha de cliente también, desde ya), pero conservan el nombre. El
   renombrado de claves va con el barrido de la §8.4. `editor.cyclesExplain` se
   deja de pintar en la hoja de crear plantilla.
-- **El editor de etapa gana un bloque «Frecuencia»** propio (con su `sheetLabel`,
-  como «Duración» y «Estado») para el stepper de entrenos por semana. En el
-  planificador va dentro de la tarjeta desplegada, bajo el de semanas.
-- **La sesión que toca puede estar hecha esta semana** (semana completa, o más
-  días que sesiones): su botón dice REPETIR, que es lo que es. No se fuerza EMPEZAR.
+- ~~El editor de etapa gana un bloque «Frecuencia»~~ — retirado en §6.6.
+- **La sesión que toca puede estar hecha esta semana** (semana completa): su
+  botón dice REPETIR, que es lo que es. No se fuerza EMPEZAR.
 - La hoja de documentación que abre «SEMANA» en la tarjeta sigue siendo la
   sección `cycle` del glosario: su contenido se reescribe en la P40.
 
@@ -566,10 +545,22 @@ antigüedad. Estructura de la lista sin cambios
 el worktree de la rama: la Home dice «N de M esta semana» y marca solo lo hecho
 esta semana; la sesión que toca es la que más tiempo llevas sin hacer. En la
 tarjeta de Programa: «SEMANA 01» tras la primera sesión, «Semana 1 de 4 · 1 de 12
-sesiones», ritmo en «ses/sem». En el editor de etapa, poner 2 entrenos por semana
-y ver que la tarjeta pasa a «de 8 sesiones». Para ver el aviso de fin de etapa sin
+sesiones», ritmo en «ses/sem». Quitar una sesión a la etapa en el editor y ver
+que la tarjeta pasa a «de 8 sesiones» (4 semanas × 2). Para ver el aviso de fin de etapa sin
 esperar semanas: etapa de 1 semana y hacer todas sus sesiones (sale el anticipado,
 con «Ahora no»).
+
+### 6.6 Corrección: no hay «entrenos por semana» aparte de las sesiones
+
+La P36-P38 metieron un `stage.daysPerWeek` distinto de las sesiones de la etapa
+(con 3 sesiones y 4 días, 4 entrenos esperados), con su stepper en el editor y el
+planificador, herencia entre etapas y escritura desde el generador. Fue una mala
+lectura de §0.4: el usuario lo corrigió —«el número de sesiones de un programa o
+etapa es el número de entrenos que se espera en una semana. Punto»— y se quitó
+entero. `stageDaysPerWeek` pasó a `weeklySessions(stage)` (una línea: sus
+sesiones), `stageStatus` devuelve `perWeek`, `sessionPlan` ya no recibe el dato y
+no queda ningún `daysPerWeek` en etapas ni programas. El que sigue existiendo es
+la RESPUESTA del onboarding (`answers.daysPerWeek`), ver §8.1.
 
 ## 7. P39 — Pantallas del entrenador
 
@@ -582,14 +573,13 @@ Todo pasa por `athleteProgress(program, client)` + `stageStatus` (§3.7).
   de `stageStatus`. `stageEnded` = `ended`. La siguiente sesión, de `sessionPlan`
   con `log: clientLogs[cid]`. Nuevo en la ficha: «9/12 sesiones» y, si
   hay semanas añadidas por el cliente, «(+1)».
-- **`weeklyTarget`** (:59): se borra. La adherencia recibe el `daysPerWeek` de la
+- **`weeklyTarget`** (:59): se borra. La adherencia recibe `weeklySessions` de la
   etapa **del cliente**. Hoy lee `stageDays(program)`, o sea la etapa activa en la
   copia del entrenador: el mismo fallo de stage-locks §9, todavía vivo aquí.
 - **Preparar sesión** ([NextSessionScreen.jsx:113](../../src/screens/NextSessionScreen.jsx)):
   `sessionPlan` con el historial del cliente.
-- **Hoja de crear programa** (:766): «Sesiones por ciclo» → «Sesiones». Los
-  entrenos por semana se quedan en el valor por defecto y se ajustan en el editor
-  de etapa. No se añade otro control a la hoja.
+- **Hoja de crear programa** (:766): «Sesiones por ciclo» → «Sesiones por semana»
+  (son lo mismo, §0.4).
 
 [client-triage.md](client-triage.md) (sin implementar) define «bloque terminado»
 con `stageWeeksCompleted`; al implementarlo, usar `stageStatus(...).ended && isLast`.
@@ -598,22 +588,24 @@ con `stageWeeksCompleted`; al implementarlo, usar `stageStatus(...).ended && isL
 
 ### 8.1 Onboarding
 
-- El generador escribe `daysPerWeek = answers.daysPerWeek` en **todas** las etapas
-  del programa generado.
-- `onboarding.sessionsPerCycle` → «Sesiones distintas»; `cycleExplainer`,
-  `stepDays.cycleHint`, `proposals.notes.slowCycle` y las claves `*CycleHint` se
-  reescriben sin «ciclo»: «Tus 3 sesiones se van alternando: entrenas 4 días a la
-  semana». `slowCycle` («el ciclo tarda más de una semana») pierde el sentido y se
-  borra de `NOTE_PRIORITY` ([OnboardingScreen.jsx:251](../../src/screens/OnboardingScreen.jsx)).
-- `CycleWeeks` / `weekPattern` se quedan: ya pintan semanas. No se renombran.
+- ⚠️ **PENDIENTE DE DECIDIR con el usuario.** Con §0.4, el programa que sale del
+  onboarding espera tantos entrenos por semana como sesiones tiene. Pero el
+  generador elige plantillas de 3-4 sesiones para una respuesta de 1-7 días
+  (`answers.daysPerWeek`), así que quien dice «4 días» puede recibir 3 sesiones
+  (= 3 por semana) y quien dice «2 días», 4 (= 4 por semana). Hay que decidir
+  cómo cuadra: que el generador saque tantas sesiones como días, que el onboarding
+  pregunte directamente las sesiones por semana, u otra cosa.
+- `onboarding.sessionsPerCycle` → «Sesiones por semana»; `cycleExplainer`,
+  `stepDays.cycleHint`, `proposals.notes.slowCycle`, las claves `*CycleHint`,
+  `CycleWeeks` y `weekPattern` dependen de la decisión de arriba.
 - `archetypes.js` y `rankArchetypes` usan `sessionsPerCycle` y `cycleSpeed`
   internamente; no salen a la UI y **no se tocan**.
 
 ### 8.2 Documentación
 
 - Glosario (`es.json` :112-134 y su espejo en `en.json`): «Ciclo» desaparece. Queda
-  sesión → etapa → programa, y la etapa se define como «N semanas, con X entrenos
-  por semana». Una línea explica la comprobación de fin de etapa.
+  sesión → etapa → programa, y la etapa se define como «N semanas; cada semana
+  se hacen sus sesiones». Una línea explica la comprobación de fin de etapa.
 - Ficha de métrica `stageProgress` (`es.json` :370-373, «una semana = una vuelta completa…»): se reescribe
   con §3.3 y §3.4.
 
@@ -621,10 +613,9 @@ con `stageWeeksCompleted`; al implementarlo, usar `stageStatus(...).ended && isL
 
 [ProgramDetailScreen.jsx:487](../../src/screens/ProgramDetailScreen.jsx):
 «SERIES POR GRUPO Y CICLO» → «SERIES POR GRUPO Y SEMANA», calculado con
-`weeklySetsByGroup(sesiones, stage.daysPerWeek)`, que ya existe
-([weeklyVolume.js:88](../../src/utils/weeklyVolume.js)). El hint pierde la
-advertencia de «si haces más de un ciclo por semana…»: ahora la referencia se
-aplica tal cual.
+la misma suma de series de las sesiones de la etapa: con §0.4, una vuelta a las
+sesiones ES una semana. El hint pierde la advertencia de «si haces más de un ciclo
+por semana…»: ahora la referencia se aplica tal cual.
 
 ### 8.4 Barrido final
 
