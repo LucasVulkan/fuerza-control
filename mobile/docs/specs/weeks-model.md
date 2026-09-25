@@ -114,7 +114,7 @@ aviso se **deriva** de la fecha (§3.4).
 
 | Campo | Qué es |
 |---|---|
-| `ui.stageBannerSnooze[programId]` | `'YYYY-MM-DD'`: el aviso de etapa no se enseña antes de ese día (§6.1) |
+| `stageBannerSnooze[programId]` | `'YYYY-MM-DD'`: el aviso de etapa no se enseña antes de ese día (§6.1). Estado de primer nivel y **persistido**: `ui` no se persiste, y un «Una semana más» no puede olvidarse al cerrar la app (§5.5) |
 
 **Historial** (`workoutLog`, `entry.sessionTemplateId` + `entry.timestamp`). Del
 historial se leen SOLO tres cosas de presentación, que pueden cambiar si se borra
@@ -327,7 +327,7 @@ Cambian en `stageProgress.js`, en el mismo commit que el store que las llama:
   solo si toca.
 - `progressBlob`, `progressChanged`, `progressFromBlob`: los cinco campos de §3.1
   más `appliedActivation` y `updatedAt`, que se quedan como están.
-  `progressFromBlob` pasa el blob por `fromLegacyProgress`.
+  (Hecho distinto: la conversión de lo viejo vive en `athleteProgress`, §5.5.)
 - `mergeProgressOnImport`: misma lógica de salto por sello. Con salto →
   `stageReset(etapaEntrante)` y, si el programa es otro, además
   `programStartedOn: null`. Sin salto → los campos del cliente tal cual, índice
@@ -343,7 +343,7 @@ Cambian en `stageProgress.js`, en el mismo commit que el store que las llama:
 | Acción ([useStore.js](../../store/useStore.js)) | Hoy | Pasa a |
 |---|---|---|
 | `saveSession` (:2283-2335) | `advanceCycle` sobre la etapa actual | `recordSession(athleteProgress(prog), { inCurrentStage, today: localDay() })`. Misma condición: la plantilla está en `stage.days` |
-| `advanceStage` (:1650) | resetea contadores | `stageReset(next)` + limpia `ui.stageBannerSnooze[id]` |
+| `advanceStage` (:1650) | resetea contadores | `stageReset(next)` + limpia `stageBannerSnooze[id]` |
 | `setCurrentStage` (:1616) | resetea contadores + sello si es autor | igual, con `stageReset(idx)` |
 | `dismissStageAdvance` (:1672) | baja el flag | **se borra** |
 | `extendStage(programId, weeks)` | — | **nueva**: `stageExtraWeeks += weeks`. Solo en programas donde el móvil es el atleta; en el del entrenador, para un cliente, el entrenador cambia `durationWeeks` en el editor |
@@ -438,6 +438,36 @@ cliente borra esa sesión: en los dos sigue 1/12. El entrenador activa la etapa 
 la envía: el cliente pasa a «sin empezar», entrena, y los dos ven la semana 1 de la
 etapa 2. Reinstalar el cliente y reconectar sin fusionar historial: vuelve a su
 etapa y a su semana.
+
+### 5.5 Lo que la P37 hizo distinto de lo escrito
+
+- **La conversión de progreso viejo vive en `athleteProgress`**, no en
+  `progressFromBlob`. Es la puerta única de lectura, así que cubre sin código en
+  cada sitio los tres caminos por los que entra un blob contado en ciclos: lo que
+  el entrenador tenía guardado de sus clientes, el blob que se restaura al
+  reinstalar y un `.fitdata` viejo. `progressFromBlob` queda como lectura
+  estructural y solo la usan pantallas que la P39 reescribe.
+- **`fromLegacyProgress` detecta lo viejo por los campos de ciclos**, no por la
+  falta de `stageSessionsDone`. Con la regla de la spec, un programa recién creado
+  al que solo se le había escrito `stageExtraWeeks` se «migraba» en cada lectura y
+  las semanas añadidas volvían a 0 (lo cazó el test de `extendStage`). Con los dos
+  juegos de campos a la vez, mandan los nuevos.
+- **`stageBannerSnooze` es de primer nivel y persistido**, no `ui.*`: `ui` no se
+  persiste.
+- **`extendStage` se niega por `program.owner`**, no por `ownerClient`, que
+  devuelve null si el cliente ya no está en la lista y dejaría pasar su programa.
+- **Clonar un programa resetea su progreso** (`cloneProgramFromTemplate`). Con
+  ciclos ya pasaba: la copia heredaba los contadores del origen.
+- **`closeOpenStage` devuelve el array de etapas** (el mismo si no hay nada que
+  cerrar), no `{ stages }`.
+- Normalizan el progreso (`normalizeProgress`): la rehidratación y
+  `normalizeIncomingProgram`, que es la puerta de `importData` e `importForClient`.
+- El generador escribe `daysPerWeek` en la etapa base (`archetypeAdapter`); las
+  fases siguientes lo heredan al derivarse de ella. Adelanta esa línea de la §8.1.
+
+**Entre P37 y P39 la app no se puede probar en el móvil**: el store ya habla
+semanas y las pantallas aún leen ciclos: la Home no enseña el aviso de fin de
+etapa (lee un flag que ya no se escribe) y los contadores de etapa salen a cero.
 
 ## 6. P38 — Pantallas del atleta
 
@@ -575,7 +605,7 @@ comentario histórico que explica por qué algo es como es.
 | Fase | Depende de | Coste | Notas |
 |---|---|---|---|
 | P36 | — | 🟢 | ✅ 4967dc6 — aditiva (§4): el modelo nuevo al lado del viejo, 1342 tests |
-| P37 | P36 | 🟡 | El punto delicado. Revisar línea a línea el circuito de §5.2 contra el código antes de dar la fase por buena |
+| P37 | P36 | 🟡 | ✅ ver commit — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
 | P38 | P37 | 🟡 | Muchas pantallas, poca lógica |
 | P39 | P37 | 🟢 | Se puede hacer en paralelo con P38 |
 | P40 | P36 | 🟢 | Casi todo textos |

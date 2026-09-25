@@ -273,10 +273,22 @@ describe('fromLegacyProgress — de ciclos a semanas', () => {
     expect(fromLegacyProgress(blob, 3, TODAY)).toMatchObject({ programId: 'p1', appliedActivation: 'T1', updatedAt: 'x' });
   });
 
-  it('sin nada entrenado, sin fechas', () => {
-    expect(fromLegacyProgress({ id: 'p1' }, 3, TODAY)).toEqual({
+  it('ciclos a cero: sin fechas', () => {
+    expect(fromLegacyProgress({ id: 'p1', stageWeeksCompleted: 0, cycleCompletedIds: [] }, 3, TODAY)).toEqual({
       id: 'p1', stageSessionsDone: 0, stageStartedOn: null, stageExtraWeeks: 0, programStartedOn: null,
     });
+  });
+
+  it('sin campos de ciclos no es viejo: un programa recién creado vuelve tal cual', () => {
+    // Si se tratara como viejo, cada lectura pisaría lo ya escrito: aquí, la
+    // semana añadida volvería a 0.
+    const nuevo = { id: 'p1', stageExtraWeeks: 1 };
+    expect(fromLegacyProgress(nuevo, 3, TODAY)).toBe(nuevo);
+  });
+
+  it('con los dos juegos de campos mandan los nuevos, y los viejos se van', () => {
+    const mezcla = { id: 'p1', stageSessionsDone: 5, stageStartedOn: '2026-09-01', stageWeeksCompleted: 9, cycleCompletedIds: ['a'] };
+    expect(fromLegacyProgress(mezcla, 3, TODAY)).toEqual({ id: 'p1', stageSessionsDone: 5, stageStartedOn: '2026-09-01' });
   });
 
   it('una rotación abierta en la primera semana ya cuenta como empezada', () => {

@@ -364,6 +364,10 @@ export function adaptArchetype(archetype, answers) {
       id: generateId('stage'),
       name: phases?.[0]?.name ?? 'Etapa 1',
       durationWeeks: phases?.[0]?.durationWeeks ?? null,
+      // Los días que eligió, no las sesiones de la plantilla: con 3 sesiones y
+      // 4 días se esperan 4 entrenos por semana (weeks-model.md §8.1). Las
+      // fases siguientes lo heredan al derivarse de esta etapa.
+      ...(answers.daysPerWeek ? { daysPerWeek: answers.daysPerWeek } : {}),
       days: programDays,
     }],
     0,

@@ -1,28 +1,31 @@
 /**
- * Cycle / stage progress — the single rule for "how far into the program is the
- * athlete", shared by the athlete's device and (from phase 2 of the stage-locks
- * spec) the trainer's mirror of it.
+ * Progreso por etapas — la ÚNICA regla de «por dónde va el atleta», igual en su
+ * móvil y en el espejo que ve su entrenador. Spec: `docs/specs/weeks-model.md`.
  *
- * ONE definition of a week: **a week is one full rotation through the DISTINCT
- * sessions of the cycle**. Repeating a session does not close the cycle and
- * therefore does not advance the stage — a cycle of A/B/C only closes once all
- * three have been logged, in any order.
+ * Una etapa dura SEMANAS de calendario, contadas desde el lunes de la semana 1
+ * (`weekOne`), que la fija la primera sesión guardada en ella. Al acabar se
+ * comprueba lo entrenado contra lo esperado (semanas × entrenos por semana).
+ * Hasta sep-2026 se contaban «ciclos» —vueltas completas a las sesiones
+ * distintas—, que eran imposibles de explicar y mentían en cuanto los días de
+ * entreno no coincidían con las sesiones del programa.
  *
- * That used to be inconsistent: `cycleCompletedIds` counted distinct templates
- * (correct) while the end-of-stage threshold counted raw saves, so repeating A
- * twelve times finished a 4-week × 3-session stage without ever doing B or C.
- * The raw counter (`stageSessionsCompleted`) is gone; `stageWeeksCompleted`
- * replaces it and only ever moves when a rotation closes.
+ * Qué se GUARDA (§3.1), y nada más:
+ *  - En la etapa (lo escribe el autor del programa): `durationWeeks`,
+ *    `daysPerWeek` (opcional), `locked`.
+ *  - En el programa del atleta (lo escribe SOLO él, y viaja al entrenador en el
+ *    blob `progress` del historial): `currentStageIndex`, `stageStartedOn`,
+ *    `stageSessionsDone`, `stageExtraWeeks`, `programStartedOn`.
+ * Todo lo demás —semana de la etapa, si terminó, cuánto falta— se DERIVA con
+ * `stageStatus`, en los dos móviles con la misma función.
  *
- * Progress is a COUNTER, never a read of the workout log: deleting entries must
- * not roll the athlete back, and a reinstall restores the counters rather than
- * recomputing them. See `mobile/docs/specs/stage-locks.md` §3.
- *
- * A cycle can never contain the same template twice — every way of adding a day
- * to a program mints a fresh `tpl_*` id — so `size` comparisons are exact.
+ * El progreso sigue siendo un CONTADOR, no una lectura del historial (stage-locks
+ * §0.7-§0.9): borrar sesiones no hace retroceder, y reinstalar devuelve al
+ * atleta donde estaba porque las fechas y el contador viajan en el blob.
  */
 
 import { generateId } from './formatters';
+
+// ── Etapas ────────────────────────────────────────────────────────────────────
 
 /**
  * EVERY program owns at least one stage (`docs/specs/stage-planner.md` §3).
@@ -47,7 +50,7 @@ export function withStages(program, stages, currentStageIndex) {
 export const stageDaysAt = (program, idx) => program?.stages?.[idx]?.days ?? [];
 
 /**
- * Los días de la etapa activa del programa — el ciclo que toca ahora.
+ * Los días de la etapa activa del programa.
  *
  * OJO en el móvil del entrenador: `currentStageIndex` es la etapa que ÉL activó,
  * no donde está el cliente. Para eso va `stageDaysAt(program, clientStageIndex(...))`.
@@ -69,43 +72,9 @@ export const allProgramDays = (program) =>
  * esta lectura dejaría esos programas sin sesiones.
  *
  * `durationWeeks: null` — "no limit" — is deliberate, and it is what makes the
- * migration behaviour-preserving: a program without stages never had an
- * end-of-stage threshold, because `advanceCycle` only sets one when it is given
- * a duration. Handing the migrated stage a number would invent an ending nobody
- * asked for, and start showing "week 4 of 4" on a program that had been running
- * for fifteen cycles.
+ * migration behaviour-preserving: a program without stages never had an end.
+ * Handing the migrated stage a number would invent an ending nobody asked for.
  */
-/**
- * Closes an open-ended stage (`durationWeeks: null`) at the number of cycles
- * already completed, which is what "the stage lasted as long as it lasted"
- * means. Called when a stage is appended after it.
- *
- * It has to happen: an unlimited stage NEVER ends, so leaving one in front of
- * another locks the athlete inside it forever — `advanceCycle` cannot reach a
- * threshold that does not exist, and the "move on" banner never appears.
- *
- * `advancePending` is returned rather than assumed: closing a stage at the
- * cycles done makes it finished *right now*, and nothing else recomputes that
- * flag until the next saved session — which would cost the athlete a whole
- * extra rotation before being allowed to move on. It stays false when no cycle
- * has closed yet (a brand-new program), because then the stage really is still
- * ahead of them.
- *
- * @param {array}  stages
- * @param {number} stageIndex   the stage the ATHLETE is in (not the trainer's)
- * @param {number} cyclesDone   their `stageWeeksCompleted`
- * @returns {{ stages: array, advancePending: boolean }}
- */
-export function closeOpenStage(stages, stageIndex, cyclesDone = 0) {
-  const stage = stages?.[stageIndex];
-  if (!stage || stage.durationWeeks != null) return { stages, advancePending: false };
-  const durationWeeks = Math.max(1, cyclesDone);
-  return {
-    stages: stages.map((s, i) => (i === stageIndex ? { ...s, durationWeeks } : s)),
-    advancePending: cyclesDone >= durationWeeks,
-  };
-}
-
 export function ensureStages(program, stageName = 'Etapa 1') {
   if (!program) return program;
 
@@ -131,166 +100,17 @@ export function ensureStages(program, stageName = 'Etapa 1') {
 }
 
 /**
- * The client's progress, as it travels to the trainer alongside their history
- * and comes back on a reinstall. `programId` lets the receiver reject a blob
- * that belongs to a program the client is no longer on.
- *
- * `stageAdvancePending` is deliberately absent: it is a dismissable UI state,
- * and the trainer can tell a finished stage from `stageWeeksCompleted` against
- * the stage's own `durationWeeks`.
- *
- * @returns {object|null} null when the program has no id (nothing to sync)
+ * Entrenos por semana de una etapa. Sin fijar, son tantos como sesiones tiene:
+ * el valor por defecto NO se guarda, para que una etapa a la que se le añade una
+ * sesión pase a esperar una más sin que nadie lo tenga que tocar. Solo lo fija
+ * quien lo elige (editor de etapa, generador).
  */
-export function progressBlob(program, appliedActivation = null) {
-  if (!program?.id) return null;
-  return {
-    programId:           program.id,
-    currentStageIndex:   program.currentStageIndex   ?? 0,
-    cycleCompletedIds:   program.cycleCompletedIds   ?? [],
-    stageWeeksCompleted: program.stageWeeksCompleted ?? 0,
-    totalWeeksCompleted: program.totalWeeksCompleted ?? 0,
-    // The activation stamp this position was computed under. On a reconnect the
-    // restore compares it against the incoming program's stamp: a newer stamp
-    // there means the trainer moved the client while this blob sat in the slot,
-    // and the move must win over the blob — same rule as a live update. Without
-    // this, a reinstall silently swallowed a pending activation.
-    appliedActivation,
-    updatedAt:           new Date().toISOString(),
-  };
+export function stageDaysPerWeek(stage) {
+  const n = stage?.daysPerWeek ?? stage?.days?.length ?? 1;
+  return Math.max(1, Math.min(7, n));
 }
 
-/**
- * Whether any counter `progressBlob` ships differs between two versions of a
- * program — the client uploads when this flips (qa-sep-conexion.md §3.2 a).
- * The array by reference: every writer replaces it, none mutates it.
- */
-export function progressChanged(a, b) {
-  return a?.id !== b?.id
-    || a?.currentStageIndex   !== b?.currentStageIndex
-    || a?.cycleCompletedIds   !== b?.cycleCompletedIds
-    || a?.stageWeeksCompleted !== b?.stageWeeksCompleted
-    || a?.totalWeeksCompleted !== b?.totalWeeksCompleted;
-}
-
-/**
- * The counters from a blob, ready to spread onto a program — but only if the
- * blob describes that same program. Anything else returns null so the caller
- * keeps what it has instead of adopting a stale stage index.
- */
-export function progressFromBlob(blob, programId) {
-  if (!blob || blob.programId !== programId) return null;
-  return {
-    currentStageIndex:   blob.currentStageIndex   ?? 0,
-    cycleCompletedIds:   blob.cycleCompletedIds   ?? [],
-    stageWeeksCompleted: blob.stageWeeksCompleted ?? 0,
-    totalWeeksCompleted: blob.totalWeeksCompleted ?? 0,
-  };
-}
-
-/**
- * Where the athlete actually is in a program, seen from the TRAINER's device.
- *
- * `program.currentStageIndex` on that device means something different: it is
- * the stage the trainer has activated for them, and it only moves when the
- * trainer moves it. Reading it as "where the client is" is wrong the moment the
- * client advances on their own — which is what made "prepare next session" load
- * the wrong stage's sessions.
- *
- * Falls back to the program's own index for clients who have never synced.
- */
-export function clientStageIndex(client, program) {
-  const idx = progressFromBlob(client?.progress, program?.id)?.currentStageIndex
-    ?? program?.currentStageIndex
-    ?? 0;
-  // Clamped: the trainer may have deleted stages below where the blob says the
-  // client is, and an out-of-range index renders an empty stage everywhere.
-  const last = (program?.stages?.length ?? 0) - 1;
-  return last >= 0 ? Math.max(0, Math.min(idx, last)) : Math.max(0, idx);
-}
-
-/**
- * Which counters the client keeps when an updated program lands from their
- * trainer. Progress belongs to the client, so whatever the incoming copy
- * carries is discarded — with ONE exception: if the trainer deliberately
- * activated a stage since the last import, the client jumps there and that
- * stage starts from zero.
- *
- * That exception is why editing a program does not send anyone back to stage 1:
- * an edit leaves `stageActivatedAt` untouched, so nothing moves.
- *
- * Intent is read from the STAMP, not from comparing stage indices. The trainer's
- * copy falls behind as soon as the client advances on their own, so a trainer
- * sending someone back to a stage their own copy already pointed at changes no
- * number at all — and an index comparison would call that "no move".
- *
- * @param {object} blob              the client's own progress
- * @param {object} program           the freshly imported program
- * @param {string} lastActivation    `stageActivatedAt` already applied, if any
- */
-export function mergeProgressOnImport({ blob, program, lastActivation = null }) {
-  const kept          = progressFromBlob(blob, program?.id);
-  const incomingStage = program?.currentStageIndex ?? 0;
-  const activation    = program?.stageActivatedAt ?? null;
-  // No blob for THIS program means a different program arrived, not an update.
-  const jump          = !kept || (!!activation && activation !== lastActivation);
-
-  const stages     = program?.stages ?? [];
-  const stageCount = Math.max(1, stages.length);
-  const stage      = Math.max(0, Math.min(jump ? incomingStage : kept.currentStageIndex, stageCount - 1));
-  const weeks      = jump ? 0 : kept.stageWeeksCompleted;
-  const duration   = stages[stage]?.durationWeeks;
-
-  return {
-    currentStageIndex:   stage,
-    cycleCompletedIds:   jump ? [] : kept.cycleCompletedIds,
-    stageWeeksCompleted: weeks,
-    totalWeeksCompleted: kept?.totalWeeksCompleted ?? 0,   // lifetime, never reset
-    // Recomputed rather than carried: the incoming copy's flag is the trainer's,
-    // and the client's was just overwritten by the import.
-    stageAdvancePending: duration != null && weeks >= duration && stage < stages.length - 1,
-  };
-}
-
-/**
- * Applies one saved session to a program's cycle counters.
- *
- * @param {object}   program        the program that owns the session's template
- * @param {string}   templateId     template just completed
- * @param {string[]} cycleTplIds    every distinct templateId in the current cycle
- * @param {object}  [opts]
- * @param {number}  [opts.durationWeeks]  stage length; omit for non-staged programs
- * @param {boolean} [opts.isLastStage]    no advance is ever pending on the last stage
- * @returns {{cycleCompletedIds: string[], stageWeeksCompleted: number,
- *            totalWeeksCompleted: number, stageAdvancePending: boolean}}
- */
-export function advanceCycle(program, templateId, cycleTplIds, { durationWeeks, isLastStage = false } = {}) {
-  const valid = new Set(cycleTplIds);
-  // Filtrado, no confiado: `cycleCompletedIds` sobrevive a los reajustes de etapa
-  // del entrenador (`mergeProgressOnImport` lo conserva si no hay salto), y un id
-  // que ya no pertenece al ciclo no puede contar para cerrarlo. Los consumidores
-  // de la lista preguntan por pertenencia y no les molestaba; aquí se cuenta.
-  const cycleIds = new Set((program.cycleCompletedIds ?? []).filter((id) => valid.has(id)));
-  cycleIds.add(templateId);
-  const cycleClosed = cycleIds.size >= valid.size;
-
-  const stageWeeksCompleted = (program.stageWeeksCompleted ?? 0) + (cycleClosed ? 1 : 0);
-  // Once pending, it stays pending until the athlete advances or dismisses it.
-  const reachedEnd = durationWeeks != null && stageWeeksCompleted >= durationWeeks;
-
-  return {
-    cycleCompletedIds:   cycleClosed ? [] : [...cycleIds],
-    stageWeeksCompleted,
-    totalWeeksCompleted: (program.totalWeeksCompleted ?? 0) + (cycleClosed ? 1 : 0),
-    stageAdvancePending: (reachedEnd && !isLastStage) || (program.stageAdvancePending ?? false),
-  };
-}
-
-// ── Semanas (docs/specs/weeks-model.md) ──────────────────────────────────────
-//
-// El modelo que sustituye a los ciclos. Lo de arriba que habla de ciclos
-// (`advanceCycle`, el blob, `mergeProgressOnImport`, `closeOpenStage`) sigue
-// vivo hasta que la P37 cambie el store que lo llama: quitarlo antes dejaría la
-// app y sus tests a medias.
+// ── Días de calendario ───────────────────────────────────────────────────────
 //
 // Las fechas del progreso son DÍAS LOCALES en texto ('YYYY-MM-DD'), no
 // instantes: la semana 1 la fija el calendario del atleta y el entrenador la lee
@@ -336,37 +156,59 @@ function weekNumber(startedOn, today) {
   return Math.max(1, Math.floor(daysBetween(weekOne(startedOn), today) / 7) + 1);
 }
 
-/**
- * Entrenos por semana de una etapa. Sin fijar, son tantos como sesiones tiene:
- * el valor por defecto NO se guarda, para que una etapa a la que se le añade una
- * sesión pase a esperar una más sin que nadie lo tenga que tocar. Solo lo fija
- * quien lo elige (editor de etapa, generador).
- */
-export function stageDaysPerWeek(stage) {
-  const n = stage?.daysPerWeek ?? stage?.days?.length ?? 1;
-  return Math.max(1, Math.min(7, n));
-}
+// ── El progreso del atleta ───────────────────────────────────────────────────
+
+/** Los campos de progreso que se guardan y viajan (§3.1). */
+const PROGRESS_KEYS = [
+  'currentStageIndex', 'stageStartedOn', 'stageSessionsDone', 'stageExtraWeeks', 'programStartedOn',
+];
+/** Los del modelo de ciclos. Solo se leen para migrarlos (`fromLegacyProgress`). */
+const LEGACY_KEYS = ['cycleCompletedIds', 'stageWeeksCompleted', 'totalWeeksCompleted', 'stageAdvancePending'];
+const withoutLegacy = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !LEGACY_KEYS.includes(k)));
 
 /**
  * El progreso del ATLETA en un programa, esté en su móvil (los campos del
  * propio programa) o espejado en el del entrenador (`client.progress`, el blob
- * que sube el cliente). Es la única puerta para leer el progreso (§3.7): en el
- * móvil del entrenador, los campos del programa son de SU copia y no se mueven.
+ * que sube el cliente). Es la ÚNICA puerta para leer el progreso (§3.7): en el
+ * móvil del entrenador, los campos del programa son de SU copia y no se mueven,
+ * y leerlos ahí es el fallo que más veces ha vuelto (stage-locks §9).
  *
  * Un blob de otro programa no se adopta: se cae a los campos del programa.
+ *
+ * Convierte al vuelo un progreso contado en ciclos (`fromLegacyProgress`): por
+ * aquí pasan el blob que el entrenador guardó antes de actualizar, el que se
+ * restaura al reinstalar y el de un `.fitdata` viejo, sin que ninguno de esos
+ * caminos tenga que acordarse.
+ *
+ * @returns {{ currentStageIndex, stageStartedOn, stageSessionsDone, stageExtraWeeks, programStartedOn }}
  */
-export function athleteProgress(program, client = null) {
+export function athleteProgress(program, client = null, today = localDay()) {
   const blob = client?.progress;
-  const src  = blob && blob.programId === program?.id ? blob : (program ?? {});
-  const last = Math.max(0, (program?.stages?.length ?? 1) - 1);
+  const raw  = blob && blob.programId === program?.id ? blob : (program ?? {});
+  const src  = fromLegacyProgress(raw, stageDaysAt(program, raw.currentStageIndex ?? 0).length, today);
+  const idx  = Math.max(0, src.currentStageIndex ?? 0);
+  const n    = program?.stages?.length ?? 0;
   return {
-    currentStageIndex: Math.max(0, Math.min(src.currentStageIndex ?? 0, last)),
+    // Recortado: el entrenador puede haber borrado etapas por debajo de donde
+    // está el cliente, y un índice fuera de rango pinta una etapa vacía.
+    currentStageIndex: n ? Math.min(idx, n - 1) : idx,
     stageStartedOn:    src.stageStartedOn    ?? null,
     stageSessionsDone: src.stageSessionsDone ?? 0,
     stageExtraWeeks:   src.stageExtraWeeks   ?? 0,
     programStartedOn:  src.programStartedOn  ?? null,
   };
 }
+
+/**
+ * Escribe un parche de progreso en un programa, quitando de paso los campos de
+ * ciclos que pudiera arrastrar: que no quede un `stageWeeksCompleted` fantasma
+ * que alguien lea.
+ */
+export const applyProgress = (program, patch) => ({ ...withoutLegacy(program), ...patch });
+
+/** Un programa con su progreso en la forma de semanas. Lo usan la rehidratación y la entrada de programas. */
+export const normalizeProgress = (program, today = localDay()) =>
+  (program ? applyProgress(program, athleteProgress(program, null, today)) : program);
 
 /**
  * Lo que escribe guardar una sesión, como parche para esparcir sobre el
@@ -448,9 +290,127 @@ export function stageStatus(program, progress, today = localDay()) {
 }
 
 /**
+ * ¿Toca enseñar el aviso de fin de etapa? (§6.1). Lo leen la Home y el punto del
+ * tab de Programa, así que es un solo sitio. La última etapa no avisa: no hay a
+ * dónde pasar. `snoozeUntil` es local del móvil (`stageBannerSnooze`).
+ */
+export function stageBannerDue(program, progress, snoozeUntil = null, today = localDay()) {
+  const st = stageStatus(program, progress, today);
+  return !st.isLast && (st.ended || st.earlyReady) && !(snoozeUntil && today < snoozeUntil);
+}
+
+/**
+ * Cierra una etapa sin límite (`durationWeeks: null`) en las semanas COMPLETAS
+ * que el atleta lleva en ella. Se llama al añadir una etapa detrás.
+ *
+ * Tiene que pasar: una etapa sin límite no termina nunca, así que dejarla
+ * delante de otra encierra al atleta en ella para siempre. Ya no hace falta
+ * encender nada: con el fin derivado de la fecha, si las semanas cerradas ya
+ * pasaron el aviso sale solo. Sin empezar, o en su primera semana, queda en 1.
+ *
+ * @param {array}  stages
+ * @param {number} stageIndex  la etapa en la que está el ATLETA (no la del entrenador)
+ * @param {object} progress    de `athleteProgress`
+ * @returns {array} las etapas (el mismo array si no había nada que cerrar)
+ */
+export function closeOpenStage(stages, stageIndex, progress, today = localDay()) {
+  const stage = stages?.[stageIndex];
+  if (!stage || stage.durationWeeks != null) return stages;
+  const { started, weekInStage } = stageStatus({ stages }, { ...progress, currentStageIndex: stageIndex }, today);
+  const durationWeeks = Math.max(1, started ? weekInStage - 1 : 0);
+  return stages.map((s, i) => (i === stageIndex ? { ...s, durationWeeks } : s));
+}
+
+// ── Sincronización cliente → entrenador ──────────────────────────────────────
+
+/**
+ * The client's progress, as it travels to the trainer alongside their history
+ * and comes back on a reinstall. `programId` lets the receiver reject a blob
+ * that belongs to a program the client is no longer on.
+ *
+ * @returns {object|null} null when the program has no id (nothing to sync)
+ */
+export function progressBlob(program, appliedActivation = null) {
+  if (!program?.id) return null;
+  return {
+    programId: program.id,
+    ...athleteProgress(program),
+    // The activation stamp this position was computed under. On a reconnect the
+    // restore compares it against the incoming program's stamp: a newer stamp
+    // there means the trainer moved the client while this blob sat in the slot,
+    // and the move must win over the blob — same rule as a live update. Without
+    // this, a reinstall silently swallowed a pending activation.
+    appliedActivation,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Whether any field `progressBlob` ships differs between two versions of a
+ * program — the client uploads when this flips (qa-sep-conexion.md §3.2 a).
+ */
+export function progressChanged(a, b) {
+  return a?.id !== b?.id || PROGRESS_KEYS.some((k) => a?.[k] !== b?.[k]);
+}
+
+/**
+ * Los campos de un blob, pero solo si es de ese programa; si no, null para que
+ * quien llama se quede con lo que tiene. Lectura estructural, sin convertir: para
+ * leer el progreso de verdad, `athleteProgress`.
+ */
+export function progressFromBlob(blob, programId) {
+  if (!blob || blob.programId !== programId) return null;
+  const {
+    currentStageIndex = 0, stageStartedOn = null, stageSessionsDone = 0, stageExtraWeeks = 0, programStartedOn = null,
+  } = blob;
+  return { currentStageIndex, stageStartedOn, stageSessionsDone, stageExtraWeeks, programStartedOn };
+}
+
+/** Where the athlete actually is in a program, seen from the TRAINER's device. */
+export const clientStageIndex = (client, program) => athleteProgress(program, client).currentStageIndex;
+
+/**
+ * Which progress the client keeps when an updated program lands from their
+ * trainer. Progress belongs to the client, so whatever the incoming copy
+ * carries is discarded — with ONE exception: if the trainer deliberately
+ * activated a stage since the last import, the client jumps there and that
+ * stage starts from zero (sin empezar hasta su primera sesión).
+ *
+ * That exception is why editing a program does not send anyone back to stage 1:
+ * an edit leaves `stageActivatedAt` untouched, so nothing moves.
+ *
+ * Intent is read from the STAMP, not from comparing stage indices. The trainer's
+ * copy falls behind as soon as the client advances on their own, so a trainer
+ * sending someone back to a stage their own copy already pointed at changes no
+ * number at all — and an index comparison would call that "no move".
+ *
+ * @param {object} blob              the client's own progress
+ * @param {object} program           the freshly imported program
+ * @param {string} lastActivation    `stageActivatedAt` already applied, if any
+ * @returns {object} los cinco campos de progreso, listos para `applyProgress`
+ */
+export function mergeProgressOnImport({ blob, program, lastActivation = null, today = localDay() }) {
+  // No blob for THIS program means a different program arrived, not an update.
+  const kept       = blob && blob.programId === program?.id ? athleteProgress(program, { progress: blob }, today) : null;
+  const activation = program?.stageActivatedAt ?? null;
+  const jump       = !kept || (!!activation && activation !== lastActivation);
+  if (!jump) return kept;
+
+  const n   = program?.stages?.length ?? 0;
+  const idx = Math.max(0, program?.currentStageIndex ?? 0);
+  return {
+    ...stageReset(n ? Math.min(idx, n - 1) : idx),
+    // Moverle de etapa no le reinicia el programa; cambiarle de programa, sí.
+    programStartedOn: kept?.programStartedOn ?? null,
+  };
+}
+
+// ── Migración ────────────────────────────────────────────────────────────────
+
+/**
  * Pasa un progreso contado en ciclos al modelo de semanas (§5.4): el estado
- * persistido de antes de la migración y un blob viejo restaurado al reinstalar.
- * Idempotente — lo ya migrado vuelve tal cual.
+ * persistido de antes de la migración y un blob viejo. Idempotente — lo ya
+ * migrado vuelve tal cual.
  *
  * Las fechas se reconstruyen hacia atrás desde hoy, una semana por ciclo
  * cerrado: es lo más cerca que se puede estar sin fechas guardadas.
@@ -460,18 +420,21 @@ export function stageStatus(program, progress, today = localDay()) {
  * @param {string} today           'YYYY-MM-DD'
  */
 export function fromLegacyProgress(p, stageDaysCount, today) {
-  if (!p || p.stageSessionsDone !== undefined) return p;
-  // eslint-disable-next-line no-unused-vars
-  const { cycleCompletedIds, stageWeeksCompleted, totalWeeksCompleted, stageAdvancePending, ...rest } = p;
-  const weeks = stageWeeksCompleted ?? 0;
-  const total = totalWeeksCompleted ?? 0;
-  const done  = weeks * stageDaysCount + (cycleCompletedIds?.length ?? 0);
+  // Viejo = trae campos de ciclos. NO "le falta `stageSessionsDone`": un
+  // programa recién creado no tiene ninguno, y tratarlo como viejo en cada
+  // lectura pisaba lo que ya se le hubiera escrito (las semanas añadidas).
+  if (!p || !LEGACY_KEYS.some((k) => k in p)) return p;
+  // Con los dos juegos a la vez (un emisor a medio migrar), mandan los nuevos.
+  if (p.stageSessionsDone !== undefined) return withoutLegacy(p);
+  const weeks = p.stageWeeksCompleted ?? 0;
+  const total = p.totalWeeksCompleted ?? 0;
+  const done  = weeks * stageDaysCount + (p.cycleCompletedIds?.length ?? 0);
   // Desde el LUNES de esta semana y no desde hoy: un viernes menos dos semanas
   // es otro viernes, que `weekOne` manda al lunes siguiente — y el atleta
   // perdería una semana en la migración.
   const monday = addDays(today, -dowOf(today));
   return {
-    ...rest,
+    ...withoutLegacy(p),
     stageSessionsDone: done,
     stageStartedOn:    done > 0 ? addDays(monday, -7 * weeks) : null,
     stageExtraWeeks:   0,

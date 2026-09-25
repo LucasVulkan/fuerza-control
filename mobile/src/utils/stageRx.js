@@ -209,9 +209,8 @@ function scaleIncrement(increment, factor) {
  * Aplica una regla de etapa a los ejercicios de una sesión.
  *
  * Nunca toca `exerciseId`, `order`, `linkGroup`, `supersetWithNext`, `dropset`,
- * `warmup`, `trainerNote`, `limitationNote` ni ningún id: la aritmética de
- * cierre de ciclo depende de que los ids no cambien (`advanceCycle` cuenta
- * plantillas distintas).
+ * `warmup`, `trainerNote`, `limitationNote` ni ningún id: el historial, la
+ * vinculación y la progresión los usan de clave.
  *
  * @param {array}  exercises     exConfig[] de la sesión de origen
  * @param {object} rx            regla; ausente o identidad ⇒ devuelve el array tal cual

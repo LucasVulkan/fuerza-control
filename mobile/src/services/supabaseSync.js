@@ -115,10 +115,10 @@ export async function updateTrainerNameForSlots(trainerId, trainerName) {
  * Payload format: { entries, customExercises, progress }
  *  - entries:         WorkoutEntry[] — pre-filtered by the client to trainer scope
  *  - customExercises: Record<id, def> — only defs referenced by entries
- *  - progress:        the client's cycle/stage counters — the trainer MIRRORS
- *                     these rather than recomputing them from `entries`, and the
- *                     client restores them from here after a reinstall.
- *                     See `docs/specs/stage-locks.md` §3.
+ *  - progress:        the client's stage progress (etapa, día de inicio, sesiones
+ *                     hechas, semanas añadidas) — the trainer MIRRORS it rather
+ *                     than recomputing it from `entries`, and the client restores
+ *                     it from here after a reinstall. See `docs/specs/weeks-model.md` §3.1.
  * Backward-compat: old clients uploaded a plain array — downloadHistory handles both.
  */
 export async function uploadHistory(slotId, entries, customExercises = {}, progress = null) {
