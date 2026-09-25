@@ -113,6 +113,7 @@ describe('sessionPlan — esta semana', () => {
     });
     // Repetir la A cuenta como un entreno más; lo de la semana pasada, no.
     expect(plan.subtitle).toBe('home.weekCount:{"done":2,"total":3}');
+    expect(plan.weekDone).toBe(2);
   });
 
 });

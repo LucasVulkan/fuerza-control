@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   localDay, addDays, daysBetween, weekOne, weeklySessions, athleteProgress, recordSession,
-  stageReset, stageStatus, fromLegacyProgress, programTotals, stageWeekLabel,
+  stageReset, stageStatus, fromLegacyProgress, programTotals, stageWeekLabel, stageDetail,
 } from './stageProgress';
 
 describe('fechas locales', () => {
@@ -282,6 +282,14 @@ describe('stageWeekLabel', () => {
 
   it('sin límite, sin total', () => {
     expect(label({ currentStageIndex: 1, stageStartedOn: '2026-09-21' }, '2026-10-05'))
+      .toBe('programCard.stageWeekOpen:{"week":3}');
+  });
+
+  it('stageDetail añade las sesiones cuando hay total, y no cuando no lo hay', () => {
+    const detail = (progress, today) => stageDetail(stageStatus({ stages }, progress, today), t);
+    expect(detail({ stageStartedOn: '2026-09-21', stageSessionsDone: 4 }, '2026-09-29'))
+      .toBe('programCard.stageWeek:{"week":2,"total":4} · programCard.stageSessions:{"done":4,"expected":12}');
+    expect(detail({ currentStageIndex: 1, stageStartedOn: '2026-09-21' }, '2026-10-05'))
       .toBe('programCard.stageWeekOpen:{"week":3}');
   });
 });

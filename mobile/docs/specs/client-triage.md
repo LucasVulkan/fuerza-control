@@ -77,8 +77,11 @@ Se cumple cuando **todas**:
    cliente avanza solo ([stage-locks.md](stage-locks.md) §9).
 3. `stage.durationWeeks != null` — una etapa sin límite no termina nunca (§2.2
    de [stage-planner.md](stage-planner.md)).
-4. `progress.stageWeeksCompleted >= stage.durationWeeks`, leyendo `progress` con
-   `progressFromBlob(client.progress, program.id)`.
+4. ~~`progress.stageWeeksCompleted >= stage.durationWeeks`~~. **Desde
+   [weeks-model.md](weeks-model.md) (sep-2026) ya no hay contador de semanas**: la
+   etapa termina por fecha. Los puntos 2-5 son `const st = stageStatus(program,
+   athleteProgress(program, client)); st.ended && st.isLast` — la misma cuenta
+   que la ficha de cliente (`blockDone` en `AssignedProgramCard`).
 5. **No hay etapa siguiente**: el índice es el último de `program.stages`.
 
 El estado manual del cliente (`paused`/`inactive`) silencia la bandera, igual
@@ -215,7 +218,7 @@ hero + su botón. En `src/locales/es.json` Y `en.json`.
 | Etapa terminada y la siguiente bloqueada | El aviso de stage-locks, **no** el nuevo. Son excluyentes |
 | Cliente en riesgo Y plano | Solo "En riesgo". La exclusión de §3.3 |
 | Cliente con 5 semanas de historial | Nunca "estancado": mínimo 8 |
-| Cliente que solo hace sesiones libres | No cuentan para el ciclo (ya era así), así que su etapa no termina |
+| Cliente que solo hace sesiones libres | No cuentan como sesiones de la etapa, pero la etapa termina igual por fecha (weeks-model.md §3.4), con déficit |
 | El entrenador borra etapas por debajo de donde está el cliente | `clientStageIndex` recorta al rango; sin crash |
 | 20 clientes con 3 años de log | La lista no puede tiritar al abrirse (§4) |
 

@@ -27,6 +27,7 @@ import { startOfWeek } from './weekProgress';
  *   heroLabel:      string|null,
  *   rows:           Array<{ templateId: string, marker: string, isDone: boolean, isHero: boolean }>,
  *   subtitle:       string|null,  // null ⇒ no se pinta contador
+ *   weekDone:       number,       // entrenos de la etapa desde el lunes, repeticiones incluidas
  * }}
  */
 export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.now(), t }) {
@@ -69,5 +70,7 @@ export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.
     subtitle: days.length
       ? t('home.weekCount', { done: weekDone, total: days.length })
       : null,
+    // El número suelto, para quien compone su propia frase (tarjeta de cliente).
+    weekDone,
   };
 }

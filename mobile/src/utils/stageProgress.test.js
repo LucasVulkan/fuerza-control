@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  progressBlob, progressChanged, progressFromBlob, mergeProgressOnImport, clientStageIndex,
+  progressBlob, progressChanged, mergeProgressOnImport, clientStageIndex,
   withStages, ensureStages, closeOpenStage, stageDays, stageDaysAt, allProgramDays,
   applyProgress, normalizeProgress, stageBannerDue, athleteProgress, stageStatus,
 } from './stageProgress';
@@ -14,20 +14,21 @@ const MINE = {
   stageExtraWeeks: 1, programStartedOn: '2026-08-03',
 };
 
-describe('progressBlob / progressFromBlob', () => {
+describe('progressBlob — lo que sube el cliente, leído por el entrenador', () => {
   const program = { id: 'prog_1', stages: [{}, {}, {}], ...MINE };
+  // La copia del entrenador: mismo programa, progreso a cero.
+  const copia   = { id: 'prog_1', stages: [{}, {}, {}] };
 
   it('survives a round trip', () => {
-    expect(progressFromBlob(progressBlob(program), 'prog_1')).toEqual(MINE);
+    expect(athleteProgress(copia, { progress: progressBlob(program) })).toEqual(MINE);
   });
 
   it('rejects a blob from another program instead of adopting its stage', () => {
-    expect(progressFromBlob(progressBlob(program), 'prog_2')).toBeNull();
-    expect(progressFromBlob(null, 'prog_1')).toBeNull();
+    expect(athleteProgress({ ...copia, id: 'prog_2' }, { progress: progressBlob(program) }).stageSessionsDone).toBe(0);
   });
 
   it('fills defaults for a program that has never been trained', () => {
-    expect(progressFromBlob(progressBlob({ id: 'prog_1' }), 'prog_1')).toEqual({
+    expect(athleteProgress(copia, { progress: progressBlob({ id: 'prog_1' }) })).toEqual({
       currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
     });
   });

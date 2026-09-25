@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, athleteProgress, stageStatus, weeklySessions, stageWeekLabel } from '../utils/stageProgress';
+import { stageDays, athleteProgress, stageStatus, weeklySessions, stageDetail } from '../utils/stageProgress';
 import { ownerClient } from '../utils/programOwnership';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
@@ -56,7 +56,6 @@ function computeStageInfo(program, status, t) {
   // contar ni total para los puntos, así que el bloque no se pinta.
   if ((program.stages?.length ?? 0) === 1 && status.lengthWeeks == null) return null;
 
-  const week = stageWeekLabel(status, t);
   const defaultLabel = t('home.stageDefault', { n: stageIdx + 1 });
   return {
     stageLabel:  defaultLabel,
@@ -64,9 +63,7 @@ function computeStageInfo(program, status, t) {
     weekInStage: status.weekInStage,
     totalWeeks:  status.lengthWeeks,
     started:     status.started,
-    detail:      status.expected != null
-      ? `${week} · ${t('programCard.stageSessions', { done: status.done, expected: status.expected })}`
-      : week,
+    detail:      stageDetail(status, t),
   };
 }
 

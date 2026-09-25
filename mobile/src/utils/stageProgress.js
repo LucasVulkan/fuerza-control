@@ -317,6 +317,18 @@ export function stageWeekLabel(status, t) {
 }
 
 /**
+ * La línea de detalle de la etapa: «Semana 3 de 4 · 8 de 12 sesiones», o solo la
+ * semana si la etapa no tiene techo (no hay total de sesiones que dar). La pintan
+ * la tarjeta del atleta y la ficha del cliente.
+ */
+export function stageDetail(status, t) {
+  const week = stageWeekLabel(status, t);
+  return status.expected != null
+    ? `${week} · ${t('programCard.stageSessions', { done: status.done, expected: status.expected })}`
+    : week;
+}
+
+/**
  * ¿Toca enseñar el aviso de fin de etapa? (§6.1). Lo leen la Home y el punto del
  * tab de Programa, así que es un solo sitio. La última etapa no avisa: no hay a
  * dónde pasar. `snoozeUntil` es local del móvil (`stageBannerSnooze`).
@@ -378,19 +390,6 @@ export function progressBlob(program, appliedActivation = null) {
  */
 export function progressChanged(a, b) {
   return a?.id !== b?.id || PROGRESS_KEYS.some((k) => a?.[k] !== b?.[k]);
-}
-
-/**
- * Los campos de un blob, pero solo si es de ese programa; si no, null para que
- * quien llama se quede con lo que tiene. Lectura estructural, sin convertir: para
- * leer el progreso de verdad, `athleteProgress`.
- */
-export function progressFromBlob(blob, programId) {
-  if (!blob || blob.programId !== programId) return null;
-  const {
-    currentStageIndex = 0, stageStartedOn = null, stageSessionsDone = 0, stageExtraWeeks = 0, programStartedOn = null,
-  } = blob;
-  return { currentStageIndex, stageStartedOn, stageSessionsDone, stageExtraWeeks, programStartedOn };
 }
 
 /** Where the athlete actually is in a program, seen from the TRAINER's device. */

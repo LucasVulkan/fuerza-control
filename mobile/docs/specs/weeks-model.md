@@ -581,8 +581,35 @@ Todo pasa por `athleteProgress(program, client)` + `stageStatus` (§3.7).
 - **Hoja de crear programa** (:766): «Sesiones por ciclo» → «Sesiones por semana»
   (son lo mismo, §0.4).
 
-[client-triage.md](client-triage.md) (sin implementar) define «bloque terminado»
-con `stageWeeksCompleted`; al implementarlo, usar `stageStatus(...).ended && isLast`.
+[client-triage.md](client-triage.md) (sin implementar) definía «bloque terminado»
+con `stageWeeksCompleted`; su punto 4 ya dice `stageStatus(...).ended && isLast`.
+
+### 7.1 Lo que la P39 hizo distinto de lo escrito
+
+- **La ficha y la tarjeta del listado reciben el historial del cliente** (`log`,
+  de `clientLogs`), que antes no tenían: lo necesitan la sesión que toca y «x/y
+  esta semana». La ficha recibe además `client` en vez de `progress`.
+- **`sessionPlan` devuelve también `weekDone`** (el número suelto), para que la
+  tarjeta del listado componga su «2/3 esta semana» con la misma cuenta que la
+  Home del cliente en vez de repetirla.
+- **`stageDetail(status, t)`** en `stageProgress.js`: la línea «Semana 3 de 4 ·
+  8 de 12 sesiones» que pintan la tarjeta del atleta y la ficha del cliente.
+- **`weeklyTarget` no se borra**: se queda como helper de una línea que recibe
+  el cliente (`weeklyTarget(program, client)`), porque la adherencia se calcula
+  para todos los clientes en un bucle.
+- **`progressFromBlob` se borra**: ya no la usaba nadie. Toda lectura del
+  progreso pasa por `athleteProgress` (comprobado con `grep`: ninguna pantalla
+  lee `client.progress` ni los campos de progreso directamente).
+- Textos, mismo criterio que la P38 (valor sí, clave no): `clients.cycleLabel`
+  → «Semana», `clients.cyclesPerWeek` → «ses/sem», `clients.ofCycle` → «esta
+  semana», `onboarding.sessionsPerCycle` → «Sesiones por semana» (también lo lee
+  la hoja de crear programa). La hoja deja de pintar `editor.cyclesExplain`.
+
+**Probar en dispositivo.** Los dos móviles con la rama. Es la prueba de §5.4 más
+lo que pinta el entrenador: tras la primera sesión del cliente, su tarjeta en
+Clientes dice «SEMANA 01», «1/3 esta semana» y ritmo en ses/sem; la ficha, «Semana
+1 de 4 · 1 de 12 sesiones» y la sesión que le toca es la que más tiempo lleva sin
+hacer. Si el cliente alarga la etapa desde su aviso, la ficha lo enseña con «(+1)».
 
 ## 8. P40 — Onboarding, Documentación, volumen y textos
 
@@ -638,7 +665,7 @@ comentario histórico que explica por qué algo es como es.
 | P36 | — | 🟢 | ✅ 4967dc6 — aditiva (§4): el modelo nuevo al lado del viejo, 1342 tests |
 | P37 | P36 | 🟡 | ✅ 6d16c83 — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
 | P38 | P37 | 🟡 | ✅ 0003916 — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
-| P39 | P37 | 🟢 | Se puede hacer en paralelo con P38 |
+| P39 | P37 | 🟢 | ✅ ver commit — ficha y tarjeta de cliente, Preparar sesión, adherencia por la etapa del cliente (§7.1) |
 | P40 | P36 | 🟢 | Casi todo textos |
 
 Rama propia (`feat/weeks-model`). Entre P37 y P39 la app queda a medias (el
