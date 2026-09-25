@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   localDay, addDays, daysBetween, weekOne, stageDaysPerWeek, athleteProgress, recordSession,
-  stageReset, stageStatus, fromLegacyProgress,
+  stageReset, stageStatus, fromLegacyProgress, programTotals, stageWeekLabel,
 } from './stageProgress';
 
 describe('fechas locales', () => {
@@ -61,6 +61,21 @@ describe('stageDaysPerWeek', () => {
     expect(stageDaysPerWeek({ days: [] })).toBe(1);
     expect(stageDaysPerWeek(null)).toBe(1);
     expect(stageDaysPerWeek({ days: Array(9).fill({}) })).toBe(7);
+  });
+});
+
+describe('programTotals', () => {
+  it('las sesiones salen de los entrenos por semana, no de las sesiones distintas', () => {
+    const program = { stages: [
+      { durationWeeks: 4, days: [{}, {}, {}] },                  // 3 días por defecto → 12
+      { durationWeeks: 3, daysPerWeek: 2, days: [{}, {}, {}] },  // 2 días → 6
+    ] };
+    expect(programTotals(program)).toEqual({ weeks: 7, sessions: 18, open: false });
+  });
+
+  it('una etapa sin límite suma cero y marca el total como abierto', () => {
+    const program = { stages: [{ durationWeeks: 4, days: [{}, {}] }, { durationWeeks: null, days: [{}] }] };
+    expect(programTotals(program)).toEqual({ weeks: 4, sessions: 8, open: true });
   });
 });
 
@@ -245,6 +260,30 @@ describe('stageStatus — dónde va la etapa', () => {
     const mirror = athleteProgress({ ...program, currentStageIndex: 2 }, { progress: blob });
     const own    = athleteProgress({ ...program, ...at({ stageSessionsDone: 7 }) });
     expect(stageStatus(program, mirror, '2026-10-05')).toEqual(stageStatus(program, own, '2026-10-05'));
+  });
+});
+
+describe('stageWeekLabel', () => {
+  const t = (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key);
+  const stages = [{ durationWeeks: 4, days: [{}, {}, {}] }, { durationWeeks: null, days: [{}] }];
+  const label = (progress, today) => stageWeekLabel(stageStatus({ stages }, progress, today), t);
+
+  it('sin empezar', () => {
+    expect(label({ currentStageIndex: 0 }, '2026-09-21')).toBe('programCard.stageNotStarted');
+  });
+
+  it('semana de un total', () => {
+    expect(label({ stageStartedOn: '2026-09-21' }, '2026-09-29')).toBe('programCard.stageWeek:{"week":2,"total":4}');
+  });
+
+  it('alargada: el total incluye las añadidas y se dicen aparte', () => {
+    expect(label({ stageStartedOn: '2026-09-21', stageExtraWeeks: 1 }, '2026-10-19'))
+      .toBe('programCard.stageWeekExtra:{"week":5,"total":5,"extra":1}');
+  });
+
+  it('sin límite, sin total', () => {
+    expect(label({ currentStageIndex: 1, stageStartedOn: '2026-09-21' }, '2026-10-05'))
+      .toBe('programCard.stageWeekOpen:{"week":3}');
   });
 });
 

@@ -19,7 +19,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
-import { clientStageIndex } from '../utils/stageProgress';
+import { clientStageIndex, programTotals, stageDaysPerWeek } from '../utils/stageProgress';
 import { useEditorExit } from '../hooks/useEditorExit';
 
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
@@ -127,16 +127,16 @@ export default function ProgramEditorScreen({ navigation }) {
   // ── Program summary ─────────────────────────────────────────────────────────
   // Todo programa tiene etapas, así que "periodizado" ya no es "¿tiene etapas?"
   // sino "¿tiene más de una?". Con una sola, el resumen sigue siendo el simple
-  // de siempre: contar "1 etapa · 0 ciclos" no le dice nada a nadie.
+  // de siempre: contar "1 etapa · 0 semanas" no le dice nada a nadie.
   const isPeriodized = (activeProgram.stages?.length ?? 0) > 1;
-  // Una etapa sin límite hace el total indeterminado: se suman las que sí lo
-  // tienen y se marca con "+".
-  const hasOpenStage = (activeProgram.stages ?? []).some((s) => s.durationWeeks == null);
+  // Una etapa sin límite hace el total indeterminado: `programTotals` suma las
+  // que sí lo tienen y avisa para marcarlo con "+".
+  const totals = programTotals(activeProgram);
   const summaryLine = isPeriodized
-    ? t(hasOpenStage ? 'editor.programSummaryOpen' : 'editor.programSummary', {
+    ? t(totals.open ? 'editor.programSummaryOpen' : 'editor.programSummary', {
         stages:   activeProgram.stages.length,
-        weeks:    activeProgram.stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
-        sessions: activeProgram.stages.reduce((a, s) => a + (s.days?.length ?? 0) * (s.durationWeeks ?? 0), 0),
+        weeks:    totals.weeks,
+        sessions: totals.sessions,
       })
     : t('editor.programSummarySimple', {
         sessions: editorDays.length,
@@ -386,7 +386,7 @@ export default function ProgramEditorScreen({ navigation }) {
 
             <View>
               <Text style={styles.sheetLabel}>{t('editor.stageDurationLabel')}</Text>
-              {/* `durationWeeks: null` = sin límite de ciclos: la etapa no
+              {/* `durationWeeks: null` = sin límite de semanas: la etapa no
                   termina sola. El stepper no puede representarlo, así que la
                   opción vive en su propia fila y lo sustituye. */}
               {selectedStage.durationWeeks == null ? (
@@ -416,6 +416,23 @@ export default function ProgramEditorScreen({ navigation }) {
                   </TouchableOpacity>
                 </>
               )}
+            </View>
+
+            {/* Cuántas sesiones se esperan cada semana: lo que mide la adherencia
+                y la comprobación de fin de etapa (weeks-model.md §3.4). Pueden
+                ser menos que las sesiones de la etapa —se van alternando— o más.
+                Sin tocarlo, el stepper enseña tantas como sesiones hay y no se
+                guarda nada (`stageDaysPerWeek`). */}
+            <View>
+              <Text style={styles.sheetLabel}>{t('editor.stageFrequencyLabel')}</Text>
+              <StepField
+                horizontal
+                label={t('editor.stageDaysUnit')}
+                value={stageDaysPerWeek(selectedStage)}
+                onChange={(v) => updateStage(editingId, selectedStageIdx, { daysPerWeek: v })}
+                min={1}
+                max={7}
+              />
             </View>
 
             <View>
@@ -582,7 +599,7 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom:  spacing.sm,
   },
-  // "Sin límite de ciclos" — fila propia porque el stepper no puede
+  // "Sin límite de semanas" — fila propia porque el stepper no puede
   // representar la ausencia de número.
   noLimitRow: {
     marginTop:         spacing.sm,

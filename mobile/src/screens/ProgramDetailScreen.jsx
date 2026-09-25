@@ -395,7 +395,7 @@ export default function ProgramDetailScreen() {
     )
   ), [idx, baseSessions, sessions, sessionTemplates, stages, t]);
 
-  const totalCycles = useMemo(() => (
+  const totalWeeks = useMemo(() => (
     stages.some((s) => s.durationWeeks == null)
       ? t('programView.cyclesOpen')
       : String(stages.reduce((acc, s) => acc + (s.durationWeeks ?? 0), 0))
@@ -445,7 +445,7 @@ export default function ProgramDetailScreen() {
         {byline ? <Text style={styles.byline}>{byline}</Text> : null}
         <View style={styles.stats}>
           <Stat value={String(stages.length)} label={t('programView.statStages')} />
-          <Stat value={totalCycles}           label={t('programView.statCycles')} />
+          <Stat value={totalWeeks}           label={t('programView.statCycles')} />
           <Stat value={String(sessions.length)} label={t('programView.statSessions')} />
         </View>
 

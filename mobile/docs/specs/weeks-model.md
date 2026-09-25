@@ -535,6 +535,42 @@ antigüedad. Estructura de la lista sin cambios
 - `ProgramScreen.jsx:14`: el comentario «dice CICLOS, no SEMANAS como el mock» se
   borra; el stat vuelve a ser SEMANAS, como en Figma.
 
+### 6.5 Lo que la P38 hizo distinto de lo escrito
+
+- **Dos helpers más en `stageProgress.js`**, porque la misma cuenta salía en
+  varias pantallas: `programTotals(program)` (semanas y sesiones del programa,
+  sesiones = Σ entrenos por semana × semanas; la usan editor, planificador y
+  plantillas) y `stageWeekLabel(status, t)` («Semana 3 de 4», «(+1)», «Semana 7»,
+  «Sin empezar»; la usan la tarjeta y el planificador, y la ficha de cliente en
+  la P39). `t` entra como parámetro, como en `describeRx`: la regla de lint
+  prohíbe exportar funciones desde un fichero de componente.
+- **`ProgramCard` cambia de API**: `cycleNum` → `weekNum` (null pinta «—»),
+  `onCycleInfo` → `onWeekInfo`, `stages[].cycles` → `stages[].weeks`, y `stage`
+  gana `started` (sin empezar no enciende puntos) y `detail` (la línea
+  «Semana 3 de 4 · 8 de 12 sesiones»). **La ficha de cliente aún pasa la API
+  vieja** hasta la P39: sin número de semana y con la barra en tramos iguales.
+- **Textos: cambia el VALOR, no la clave.** `editor.cyclesShort`,
+  `cyclesQuestion`, `templates.statCycles`, `planner.summary`… ya dicen semanas
+  (así la ficha de cliente también, desde ya), pero conservan el nombre. El
+  renombrado de claves va con el barrido de la §8.4. `editor.cyclesExplain` se
+  deja de pintar en la hoja de crear plantilla.
+- **El editor de etapa gana un bloque «Frecuencia»** propio (con su `sheetLabel`,
+  como «Duración» y «Estado») para el stepper de entrenos por semana. En el
+  planificador va dentro de la tarjeta desplegada, bajo el de semanas.
+- **La sesión que toca puede estar hecha esta semana** (semana completa, o más
+  días que sesiones): su botón dice REPETIR, que es lo que es. No se fuerza EMPEZAR.
+- La hoja de documentación que abre «SEMANA» en la tarjeta sigue siendo la
+  sección `cycle` del glosario: su contenido se reescribe en la P40.
+
+**Probar en dispositivo.** Con un programa propio (sin entrenador), servido desde
+el worktree de la rama: la Home dice «N de M esta semana» y marca solo lo hecho
+esta semana; la sesión que toca es la que más tiempo llevas sin hacer. En la
+tarjeta de Programa: «SEMANA 01» tras la primera sesión, «Semana 1 de 4 · 1 de 12
+sesiones», ritmo en «ses/sem». En el editor de etapa, poner 2 entrenos por semana
+y ver que la tarjeta pasa a «de 8 sesiones». Para ver el aviso de fin de etapa sin
+esperar semanas: etapa de 1 semana y hacer todas sus sesiones (sale el anticipado,
+con «Ahora no»).
+
 ## 7. P39 — Pantallas del entrenador
 
 Todo pasa por `athleteProgress(program, client)` + `stageStatus` (§3.7).
@@ -606,7 +642,7 @@ comentario histórico que explica por qué algo es como es.
 |---|---|---|---|
 | P36 | — | 🟢 | ✅ 4967dc6 — aditiva (§4): el modelo nuevo al lado del viejo, 1342 tests |
 | P37 | P36 | 🟡 | ✅ 6d16c83 — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
-| P38 | P37 | 🟡 | Muchas pantallas, poca lógica |
+| P38 | P37 | 🟡 | ✅ ver commit — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
 | P39 | P37 | 🟢 | Se puede hacer en paralelo con P38 |
 | P40 | P36 | 🟢 | Casi todo textos |
 

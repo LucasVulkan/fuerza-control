@@ -110,6 +110,20 @@ export function stageDaysPerWeek(stage) {
   return Math.max(1, Math.min(7, n));
 }
 
+/**
+ * Lo que dura y lo que pide un programa entero, sumando etapa a etapa: semanas,
+ * y sesiones = entrenos por semana × semanas. Una etapa sin límite deja el
+ * total indeterminado: se suman las demás y `open` avisa para pintar un «+».
+ */
+export function programTotals(program) {
+  const stages = program?.stages ?? [];
+  return {
+    weeks:    stages.reduce((a, s) => a + (s.durationWeeks ?? 0), 0),
+    sessions: stages.reduce((a, s) => a + stageDaysPerWeek(s) * (s.durationWeeks ?? 0), 0),
+    open:     stages.some((s) => s.durationWeeks == null),
+  };
+}
+
 // ── Días de calendario ───────────────────────────────────────────────────────
 //
 // Las fechas del progreso son DÍAS LOCALES en texto ('YYYY-MM-DD'), no
@@ -287,6 +301,23 @@ export function stageStatus(program, progress, today = localDay()) {
     isLast:       stageIdx >= last,
     programWeek:  progress?.programStartedOn ? weekNumber(progress.programStartedOn, today) : null,
   };
+}
+
+/**
+ * Dónde va de la etapa, con palabras: «Semana 3 de 4», «Semana 5 de 5 (+1)» si
+ * alargó, «Semana 7» si no tiene techo, «Sin empezar». La usan la tarjeta de programa, el
+ * planificador y la ficha de cliente, así que dicen lo mismo. `t` entra como
+ * parámetro, como en `describeRx`: este módulo no conoce i18n.
+ *
+ * @param {object} status  de `stageStatus`
+ */
+export function stageWeekLabel(status, t) {
+  if (!status.started) return t('programCard.stageNotStarted');
+  if (status.lengthWeeks == null) return t('programCard.stageWeekOpen', { week: status.weekInStage });
+  const extra = status.lengthWeeks - (status.stage?.durationWeeks ?? status.lengthWeeks);
+  return extra > 0
+    ? t('programCard.stageWeekExtra', { week: status.weekInStage, total: status.lengthWeeks, extra })
+    : t('programCard.stageWeek', { week: status.weekInStage, total: status.lengthWeeks });
 }
 
 /**
