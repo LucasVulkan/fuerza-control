@@ -8,7 +8,7 @@
 > Fase P39 · hecho · Pantallas del entrenador · §7
 > Fase P40 · hecho · Onboarding, Documentación, volumen semanal y textos · §8
 >
-> Estado: **✅ IMPLEMENTADA** en la rama `feat/weeks-model` (P36-P40, 25-sep-2026), **pendiente de probar en los dos móviles** antes de fusionar a `main`. Los bloques «Probar en dispositivo» de §5.4, §6.5, §7.1 y §8.5 son la lista. Sustituye
+> Estado: **✅ IMPLEMENTADA y fusionada a `main`** (P36-P40, merge `f7016d0`, 25-sep-2026). Las pruebas en los dos móviles son los bloques «Probar en dispositivo» de §5.4, §6.5, §7.1 y §8.5. Sustituye
 > la regla de progreso de [stage-locks.md](stage-locks.md) §0.6 y §3.2 (un ciclo =
 > una vuelta a las sesiones distintas) y la regla del hero de
 > [home-sessions.md](home-sessions.md) / `sessionPlan`. **Todo lo demás de
