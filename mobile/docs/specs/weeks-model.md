@@ -6,9 +6,9 @@
 > Fase P37 · hecho · Store, migración y sincronización cliente ↔ entrenador · §5
 > Fase P38 · hecho · Pantallas del atleta · §6
 > Fase P39 · hecho · Pantallas del entrenador · §7
-> Fase P40 · pendiente · Onboarding, Documentación, volumen semanal y textos · §8
+> Fase P40 · hecho · Onboarding, Documentación, volumen semanal y textos · §8
 >
-> Estado: **P36-P39 hechas** en la rama `feat/weeks-model` (25-sep-2026); P40 pendiente. La rama ya se puede fusionar tras probarla en los dos móviles. Sustituye
+> Estado: **✅ IMPLEMENTADA** en la rama `feat/weeks-model` (P36-P40, 25-sep-2026), **pendiente de probar en los dos móviles** antes de fusionar a `main`. Los bloques «Probar en dispositivo» de §5.4, §6.5, §7.1 y §8.5 son la lista. Sustituye
 > la regla de progreso de [stage-locks.md](stage-locks.md) §0.6 y §3.2 (un ciclo =
 > una vuelta a las sesiones distintas) y la regla del hero de
 > [home-sessions.md](home-sessions.md) / `sessionPlan`. **Todo lo demás de
@@ -719,7 +719,7 @@ abre esa sección.
 | P37 | P36 | 🟡 | ✅ 6d16c83 — circuito de §5.2 revisado contra el código; 5 mutaciones de la sincronización, todas cazadas por un test (§5.5) |
 | P38 | P37 | 🟡 | ✅ 0003916 — Home, Programa, tarjeta, editor, planificador, visualizador y plantillas (§6.5) |
 | P39 | P37 | 🟢 | ✅ 9aef98a — ficha y tarjeta de cliente, Preparar sesión, adherencia por la etapa del cliente (§7.1) |
-| P40 | P36 | 🟢 | ✅ ver commit — onboarding sin rotación, glosario, volumen y barrido de claves (§8.5) |
+| P40 | P36 | 🟢 | ✅ d16e8d3 — onboarding sin rotación, glosario, volumen y barrido de claves (§8.5) |
 
 Rama propia (`feat/weeks-model`). Entre P37 y P39 la app queda a medias (el
 entrenador aún lee campos que ya no existen): no se fusiona a `main` hasta P39.
