@@ -588,16 +588,20 @@ con `stageWeeksCompleted`; al implementarlo, usar `stageStatus(...).ended && isL
 
 ### 8.1 Onboarding
 
-- ⚠️ **PENDIENTE DE DECIDIR con el usuario.** Con §0.4, el programa que sale del
-  onboarding espera tantos entrenos por semana como sesiones tiene. Pero el
-  generador elige plantillas de 3-4 sesiones para una respuesta de 1-7 días
-  (`answers.daysPerWeek`), así que quien dice «4 días» puede recibir 3 sesiones
-  (= 3 por semana) y quien dice «2 días», 4 (= 4 por semana). Hay que decidir
-  cómo cuadra: que el generador saque tantas sesiones como días, que el onboarding
-  pregunte directamente las sesiones por semana, u otra cosa.
-- `onboarding.sessionsPerCycle` → «Sesiones por semana»; `cycleExplainer`,
-  `stepDays.cycleHint`, `proposals.notes.slowCycle`, las claves `*CycleHint`,
-  `CycleWeeks` y `weekPattern` dependen de la decisión de arriba.
+- **Decidido con el usuario (25-sep): el generador se queda como está, por
+  ahora.** Con §0.4, el programa que sale del onboarding espera tantos entrenos
+  por semana como sesiones tiene, y el generador elige plantillas de 3-4 sesiones
+  para una respuesta de 1-7 días (`answers.daysPerWeek`): quien dice «4 días»
+  puede recibir 3 sesiones (= 3 por semana). Se acepta; quien quiera otra cosa
+  añade o quita sesiones en el editor. Descartadas de momento: que el generador
+  saque tantas sesiones como días, y que el onboarding pregunte las sesiones por
+  semana en vez de los días.
+- Lo que SÍ toca la P40: que el onboarding no prometa una rotación que ya no
+  existe. `onboarding.sessionsPerCycle` → «Sesiones por semana»; `cycleExplainer`,
+  `stepDays.cycleHint`, `proposals.notes.slowCycle` y las claves `*CycleHint`
+  («tus 3 sesiones rotan… entrenas 4 días») se reescriben o se quitan, y
+  `CycleWeeks`/`weekPattern` (que dibujan esa rotación semana a semana) se
+  revisan con el mismo criterio.
 - `archetypes.js` y `rankArchetypes` usan `sessionsPerCycle` y `cycleSpeed`
   internamente; no salen a la UI y **no se tocan**.
 
