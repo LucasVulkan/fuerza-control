@@ -1463,6 +1463,20 @@ describe('clearWorkoutLog — fallo 18', () => {
     expect(useStore.getState().workoutLog).toHaveLength(0);
   });
 
+  it("'off_program' conserva las libres que sustituyen a una sesión (free-sessions §8)", () => {
+    useStore.setState({
+      programs: { p1: { id: 'p1', owner: 'me', stages: [{ days: [{ sessionTemplateId: 't1' }] }] } },
+      profile:  { ...useStore.getState().profile, activeProgramId: 'p1' },
+      workoutLog: [
+        { id: 'a', sessionTemplateId: 't1' },
+        { id: 'b', sessionTemplateId: '__free__', free: true },
+        { id: 'c', sessionTemplateId: '__free__', free: true, countsAs: 't1' },
+      ],
+    });
+    expect(useStore.getState().clearWorkoutLog('off_program')).toBe(1);
+    expect(useStore.getState().workoutLog.map((e) => e.id)).toEqual(['a', 'c']);
+  });
+
   it("'off_program' sin programa activo no borra", () => {
     // Sin programa no hay nada "del programa": borrarlo todo sería un borrado
     // total por sorpresa.

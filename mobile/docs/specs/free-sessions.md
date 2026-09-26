@@ -441,6 +441,8 @@ export const programTemplateOf = (e) => (isFreeEntry(e) ? e.countsAs ?? null : e
 | Adherencia — `MyProgramScreen.jsx:176`, `:182` y `ClientsScreen.jsx:1907`, `:1908` | `sessions` = log filtrado a `!isFreeEntry(e) \|\| e.countsAs`. Hoy cuentan todas las libres |
 | Progreso, «programa actual» — `ProgressTab.jsx:77` y `:566` | `ids.has(e.sessionTemplateId) \|\| ids.has(e.countsAs)` |
 | Entrenador, «programa actual» — `ClientsScreen.jsx:2113` | Hoy mete **todas** las libres (`=== '__free__' \|\|`, comentario del bug 14). Pasa a `activeClientTemplateIds.has(e.countsAs) \|\|`. **Es un cambio de comportamiento intencionado**: decisión §2.3. Actualizar el comentario |
+| Historial, «programa actual» y «borrar lo que no es del programa» — `HistoryList.jsx`, `clearWorkoutLog` | `programTemplateOf`: las libres marcadas se ven con el filtro y **no se borran** al limpiar lo ajeno. *Se escapó en T23; arreglado tras QA 26-sep* |
+| Ficha de cliente, nº de sesiones y última actividad por programa — `ClientsScreen` `getSessionCount` / `getLastActivity` | Igual: cuentan las sustituciones |
 | Subida al entrenador — `clientLogs.js:93` | `isFreeEntry(e) && ts >= linkedTs` en vez de `=== '__free__'` (§4.2) |
 | Historial — `SessionCard.jsx:75` | `isFree = isFreeEntry(session)` → ★ y `sessionName`. En el móvil del entrenador la plantilla no existe y es la única pista |
 | Recap — `SessionRecapScreen.jsx:168` | `isFree = isFreeEntry(entry)`; §7 elige bloque según sea `'__free__'` o no |

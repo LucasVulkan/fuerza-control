@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { programTemplateIds as programTemplateIds_ } from '../../utils/clientLogs';
+import { programTemplateOf } from '../../utils/freeSessions';
 import DragSheet from '../DragSheet';
 import SheetRow from '../ui/SheetRow';
 import { Section, MenuRow } from '../ui/MenuList';
@@ -111,7 +112,8 @@ export default function HistoryList() {
   const filtered = useMemo(() => {
     let list = [...workoutLog];
     if (scope === 'program' && effectiveTemplateIds.size > 0) {
-      list = list.filter((e) => effectiveTemplateIds.has(e.sessionTemplateId));
+      // Las libres marcadas «Cuenta como» son del programa (free-sessions.md §8).
+      list = list.filter((e) => effectiveTemplateIds.has(programTemplateOf(e)));
     }
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scope, effectiveTemplateIds]);
@@ -124,7 +126,7 @@ export default function HistoryList() {
   function confirmClear(scopeId) {
     const willDelete = scopeId === 'all'
       ? workoutLog.length
-      : workoutLog.filter((e) => !programTemplateIds.has(e.sessionTemplateId)).length;
+      : workoutLog.filter((e) => !programTemplateIds.has(programTemplateOf(e))).length;
 
     if (willDelete === 0) {
       showToast(t('history.clearNothing'), 2200, 'neutral');

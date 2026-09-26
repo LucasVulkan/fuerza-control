@@ -38,7 +38,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
-import { presetFromEntry, freeTemplateFromPreset, isFreeEntry } from '../src/utils/freeSessions';
+import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
@@ -2448,8 +2448,10 @@ export const useStore = create(
        *
        *   'all'          → todo.
        *   'off_program'  → lo que NO pertenece al programa activo. Las sesiones
-       *                    libres ('__free__') cuentan como ajenas, que es justo
-       *                    lo que se quiere limpiar (pruebas, semillas, sueltas).
+       *                    libres cuentan como ajenas, que es justo lo que se
+       *                    quiere limpiar (pruebas, semillas, sueltas) — salvo
+       *                    las que sustituyen a una sesión: esas son del
+       *                    programa (free-sessions.md §8).
        *
        * Devuelve cuántas se borraron, para el toast.
        */
@@ -2467,7 +2469,7 @@ export const useStore = create(
           // Sin programa activo no hay nada "del programa": no borrar nada a
           // ciegas, que sería equivalente a un borrado total por sorpresa.
           if (ids.size === 0) return 0;
-          keep = workoutLog.filter((e) => ids.has(e.sessionTemplateId));
+          keep = workoutLog.filter((e) => ids.has(programTemplateOf(e)));
         }
         const removed = workoutLog.length - keep.length;
         if (removed > 0) set({ workoutLog: keep });

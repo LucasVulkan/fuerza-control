@@ -2362,12 +2362,12 @@ export default function ClientsScreen() {
 
   function getSessionCount(program) {
     const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    return clientBaseLog.filter((e) => ids.has(e.sessionTemplateId)).length;
+    return clientBaseLog.filter((e) => ids.has(programTemplateOf(e))).length;
   }
 
   function getLastActivity(program) {
     const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    const sessions = clientBaseLog.filter((e) => ids.has(e.sessionTemplateId));
+    const sessions = clientBaseLog.filter((e) => ids.has(programTemplateOf(e)));
     return sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : null;
   }
 
