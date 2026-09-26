@@ -7,6 +7,7 @@
  */
 
 import { generateId } from './formatters';
+import { isFreeEntry } from './freeSessions';
 
 /** Collects every sessionTemplateId referenced by a program (staged or flat). */
 export function programTemplateIds(program) {
@@ -90,7 +91,7 @@ export function scopeFilterForUpload({
 
   const entries = (workoutLog ?? []).filter((e) =>
     tplIds.has(e.sessionTemplateId) ||
-    (e.sessionTemplateId === '__free__' && (e.timestamp ?? 0) >= linkedTs)
+    (isFreeEntry(e) && (e.timestamp ?? 0) >= linkedTs)
   );
 
   // Only ship custom-exercise defs the uploaded entries actually reference.

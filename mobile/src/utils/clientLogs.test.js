@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { splitClientLogEntries, mergeClientLog, reidProgramFile } from './clientLogs';
+import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from './clientLogs';
 
 describe('splitClientLogEntries', () => {
   const programs = {
@@ -125,5 +125,22 @@ describe('reidProgramFile', () => {
     reidProgramFile(data);
     expect(data.program.id).toBe('prog_orig');
     expect(data.workoutLog[0].sessionTemplateId).toBe('tpl_1');
+  });
+});
+
+describe('scopeFilterForUpload — sesiones libres (free-sessions.md §4.2)', () => {
+  const programs = { prog_t: { id: 'prog_t', owner: 'me', stages: [{ days: [{ sessionTemplateId: 'tpl_t' }] }] } };
+  const base = { programs, customExercises: {}, trainerProgramIds: ['prog_t'], linkedAt: '1970-01-01T00:00:00.200Z' };
+
+  test('sube las libres guardadas (free: true) igual que las sobre la marcha, desde la conexión', () => {
+    const workoutLog = [
+      { id: 'a', sessionTemplateId: 'tpl_t', timestamp: 100 },
+      { id: 'b', sessionTemplateId: '__free__', timestamp: 100 },          // antes de conectar
+      { id: 'c', sessionTemplateId: '__free__', timestamp: 300 },
+      { id: 'd', sessionTemplateId: 'tpl_libre', free: true, timestamp: 300 },
+      { id: 'e', sessionTemplateId: 'tpl_otro_programa', timestamp: 300 },
+    ];
+    const { entries } = scopeFilterForUpload({ ...base, workoutLog });
+    expect(entries.map((e) => e.id)).toEqual(['a', 'c', 'd']);
   });
 });

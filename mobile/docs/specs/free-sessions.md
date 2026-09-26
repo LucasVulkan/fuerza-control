@@ -2,13 +2,37 @@
 
 > Tema: entrenamiento
 > En corto: Una sesión libre guardada pasa a ser una sesión normal sin programa: se edita con el mismo editor, puede estar a la vista en Inicio, progresa por su cuenta y, al acabarla, puedes decir que sustituye a una sesión del programa.
-> Fase T19 · pendiente · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
-> Fase T20 · pendiente · Editor de sesión en modo libre · §5
-> Fase T21 · pendiente · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
-> Fase T22 · pendiente · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
-> Fase T23 · pendiente · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
+> Fase T19 · hecho · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
+> Fase T20 · hecho · Editor de sesión en modo libre · §5
+> Fase T21 · hecho · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
+> Fase T22 · hecho · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
+> Fase T23 · hecho · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
 >
-> Estado: **spec cerrada, SIN implementar** (25-sep-2026). Sale de una sesión de
+> Estado: **✅ IMPLEMENTADA ENTERA** (26-sep-2026, rama `feat/free-sessions`:
+> T19 `93ee875`, T20 `c45f078`, T21 `2b8dd59`, T22 `aa24148`, T23 `0538ed0`,
+> más dos arreglos de QA `c8a64ab` y `2b31670`), pendiente de probar en
+> dispositivo (§11). Cosas que salieron distintas de lo escrito:
+> - El botón «Guardar como sesión libre» del recap (§7.1) entró ya en T19: sin
+>   él la app se quedaba sin forma de guardar tras borrar las plantillas viejas.
+> - Botones de las filas de Inicio (QA 26-sep, vale para TODAS las filas salvo
+>   la de hoy): sólidos y a todo el ancho. EMPEZAR/CONTINUAR en `accent` con
+>   texto `onAccent`; REPETIR (sesión ya hecha esta semana) y EDITAR en
+>   `surface2` sin borde, la variante Secondary de la app.
+> - `targetLabel` leía la progresión solo de la librería: un ejercicio submáx en
+>   la librería (flexiones, burpees…) pasado a doble en la sesión seguía saliendo
+>   «submáx», y sin rango pintaba «null». Ahora manda la sesión, y lo que falta
+>   sale de `DEFAULT_TARGET` (`progression.js`: 8–12 reps / 20–40 s), el mismo
+>   valor que ya enseñaba el editor y usaba el motor. Caso real: el paseo del
+>   granjero (doble progresión, sin rango en la librería) salía «submáx» en
+>   Inicio mientras el editor decía «8–12, automática».
+> - Las claves de texto del editor van en `freeSession.*` (`badge`,
+>   `toastSaved`), no en `editor.*`: son de la sesión libre, no del editor.
+> - «Cuenta como» usa el `SegmentedControl` (opción «No» + una por sesión), así
+>   que no hace falta «tocar la elegida para quitarla»: se elige «No».
+> - La regla de §8 vive en dos helpers de `freeSessions.js`:
+>   `programTemplateOf(e)` y `countsForProgram(e)`.
+>
+> Spec escrita el 25-sep-2026. Sale de una sesión de
 > diseño Opus + usuario. Las tres decisiones de §2 las cerró el usuario. Se
 > escribió **después** de leer el código, y cada afirmación sobre él lleva
 > fichero y línea. Aun así, antes de cada fase hay que comprobar contra el código
@@ -417,6 +441,9 @@ export const programTemplateOf = (e) => (isFreeEntry(e) ? e.countsAs ?? null : e
 | Adherencia — `MyProgramScreen.jsx:176`, `:182` y `ClientsScreen.jsx:1907`, `:1908` | `sessions` = log filtrado a `!isFreeEntry(e) \|\| e.countsAs`. Hoy cuentan todas las libres |
 | Progreso, «programa actual» — `ProgressTab.jsx:77` y `:566` | `ids.has(e.sessionTemplateId) \|\| ids.has(e.countsAs)` |
 | Entrenador, «programa actual» — `ClientsScreen.jsx:2113` | Hoy mete **todas** las libres (`=== '__free__' \|\|`, comentario del bug 14). Pasa a `activeClientTemplateIds.has(e.countsAs) \|\|`. **Es un cambio de comportamiento intencionado**: decisión §2.3. Actualizar el comentario |
+| Historial, «programa actual» y «borrar lo que no es del programa» — `HistoryList.jsx`, `clearWorkoutLog` | `programTemplateOf`: las libres marcadas se ven con el filtro y **no se borran** al limpiar lo ajeno. *Se escapó en T23; arreglado tras QA 26-sep* |
+| Progreso → Ejercicios con «programa actual» — `ProgressTab` `exercisesWithLogs` | Además de filtrar entradas, la lista solo admitía ejercicios que estén en las sesiones del programa. Admite también los de las libres que sustituyen a una. *Se escapó en T23; arreglado tras QA 26-sep* |
+| Ficha de cliente, nº de sesiones y última actividad por programa — `ClientsScreen` `getSessionCount` / `getLastActivity` | Igual: cuentan las sustituciones |
 | Subida al entrenador — `clientLogs.js:93` | `isFreeEntry(e) && ts >= linkedTs` en vez de `=== '__free__'` (§4.2) |
 | Historial — `SessionCard.jsx:75` | `isFree = isFreeEntry(session)` → ★ y `sessionName`. En el móvil del entrenador la plantilla no existe y es la única pista |
 | Recap — `SessionRecapScreen.jsx:168` | `isFree = isFreeEntry(entry)`; §7 elige bloque según sea `'__free__'` o no |
@@ -502,10 +529,10 @@ comprueba con grep al cerrar T21/T22.
 
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
-| T19 | §4: forma (con `owner`), `free`, acciones, `freeSessions.js` + tests, migración | — | Tests verdes; las plantillas viejas migran con `owner: 'me'`; una sesión libre guardada se puede empezar con `startSession` y se guarda con `free: true`; `clientLogs` la sube |
-| T20 | §5: editor en modo libre, `useEditorExit`, limpieza de vacías | T19 | Se crea, se edita, se oculta de Inicio y se borra desde el editor sin marcar el programa |
-| T21 | §6: sección en Inicio (también sin programa), hoja, Workout | T19, T20 | Los cinco caminos de la tabla de §6.2 |
-| T22 | §7: recap, `substitutionPatch` + test | T19 | Guardar, añadir ejercicios y «Cuenta como» en los dos sentidos |
-| T23 | §8: `programTemplateOf`, adherencia, filtros, historial, glosario | T22 | Test de `sessionPlan`; grep de `'__free__'` limpio |
+| T19 ✅ `93ee875` | §4: forma (con `owner`), `free`, acciones, `freeSessions.js` + tests, migración | — | Tests verdes; las plantillas viejas migran con `owner: 'me'`; una sesión libre guardada se puede empezar con `startSession` y se guarda con `free: true`; `clientLogs` la sube |
+| T20 ✅ `c45f078` | §5: editor en modo libre, `useEditorExit`, limpieza de vacías | T19 | Se crea, se edita, se oculta de Inicio y se borra desde el editor sin marcar el programa |
+| T21 ✅ `2b8dd59` | §6: sección en Inicio (también sin programa), hoja, Workout | T19, T20 | Los cinco caminos de la tabla de §6.2 |
+| T22 ✅ `aa24148` | §7: recap, `substitutionPatch` + test | T19 | Guardar, añadir ejercicios y «Cuenta como» en los dos sentidos |
+| T23 ✅ `0538ed0` | §8: `programTemplateOf`, adherencia, filtros, historial, glosario | T22 | Test de `sessionPlan`; grep de `'__free__'` limpio |
 
 T19 va sola primero. Después, T20+T21 y T22+T23 son independientes entre sí.

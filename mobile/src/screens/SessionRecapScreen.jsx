@@ -35,6 +35,9 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { backToMain } from '../navigation/navigationRef';
+import { isFreeEntry } from '../utils/freeSessions';
+import { athleteProgress } from '../utils/stageProgress';
+import SegmentedControl from '../components/ui/SegmentedControl';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 
@@ -116,13 +119,15 @@ export default function SessionRecapScreen({ navigation, route }) {
   const customExercises  = useStore((s) => s.customExercises);
   const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
   const setSessionFeedback = useStore((s) => s.setSessionFeedback);
-  const saveFreeSessionPreset   = useStore((s) => s.saveFreeSessionPreset);
-  const updateFreeSessionPreset = useStore((s) => s.updateFreeSessionPreset);
-  const freeSessionPresets      = useStore((s) => s.freeSessionPresets);
+  const saveEntryAsFreeTemplate = useStore((s) => s.saveEntryAsFreeTemplate);
+  const addEntryExercisesToTemplate = useStore((s) => s.addEntryExercisesToTemplate);
+  const setEntryCountsAs  = useStore((s) => s.setEntryCountsAs);
+  const activeProgramId   = useStore((s) => s.profile.activeProgramId);
   const showToast          = useStore((s) => s.showToast);
-  // Una plantilla por sesión: guardada, el botón se queda diciéndolo. Guardarla
-  // dos veces daría dos plantillas idénticas y ninguna forma de saberlo.
-  const [templateSaved, setTemplateSaved] = useState(null); // null | 'new' | 'updated'
+  // Una por sesión: guardada, el botón se queda diciéndolo. Guardarla dos
+  // veces daría dos sesiones idénticas y ninguna forma de saberlo.
+  const [templateSaved, setTemplateSaved] = useState(false);
+  const [exercisesAdded, setExercisesAdded] = useState(false);
 
   const entry = workoutLog.find((e) => e.id === entryId);
 
@@ -165,12 +170,30 @@ export default function SessionRecapScreen({ navigation, route }) {
     return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
   };
 
-  const isFree = entry.sessionTemplateId === '__free__';
-  // La plantilla de la que salió esta sesión, si salió de una y sigue existiendo.
-  const sourcePreset = entry.freePresetId
-    ? (freeSessionPresets ?? []).find((p) => p.presetId === entry.freePresetId) ?? null
-    : null;
+  const isFree = isFreeEntry(entry);
+  // Sobre la marcha: la única que se puede guardar como sesión libre. Tras
+  // guardarla la entrada se reapunta a la sesión nueva, así que el botón se
+  // sostiene con `templateSaved` para seguir diciendo «Guardada».
+  const onTheFly = entry.sessionTemplateId === '__free__' || templateSaved;
   const template = !isFree ? sessionTemplates[entry.sessionTemplateId] : null;
+
+  // Sesión libre GUARDADA con ejercicios añadidos en el entreno (§7.2).
+  const freeTpl  = isFree && !onTheFly ? sessionTemplates[entry.sessionTemplateId] : null;
+  const newExIds = freeTpl
+    ? (entry.exercises ?? []).filter((ex) => ex.isAdHoc
+      && !freeTpl.exercises.some((e) => e.exerciseId === ex.exerciseId))
+    : [];
+
+  // «Cuenta como Sesión X» (§7.3): las sesiones de la etapa en curso del
+  // programa activo. Sin programa o sin sesiones no hay nada que sustituir.
+  const activeProgram = isFree ? programs[activeProgramId] : null;
+  const stageDays = activeProgram?.stages?.length
+    ? (activeProgram.stages[athleteProgress(activeProgram).currentStageIndex]?.days ?? [])
+    : [];
+  const countsAsLabel = entry.countsAs
+    ? (stageDays.find((d) => d.sessionTemplateId === entry.countsAs)?.label
+      ?? sessionTemplates[entry.countsAs]?.label ?? '')
+    : null;
   const program  = template?.programId ? programs[template.programId] : null;
   const stageName = program?.stages?.length
     ? program.stages[program.currentStageIndex ?? 0]?.name
@@ -526,52 +549,71 @@ export default function SessionRecapScreen({ navigation, route }) {
           </View>
         ) : null}
 
-        {/* Guardar como plantilla — solo la sesión libre, y solo aquí: al
-            empezarla no sabes si merece guardarse, al acabarla sí
-            (docs/specs/home-sessions.md §7.3). Secundario, que el primario es
-            salir.
-
-            Si la sesión SALIÓ de una plantilla, lo normal es que los retoques
-            de hoy quieran ir a esa plantilla, no fundar una copia: manda
-            "actualizar" y "guardar como nueva" se queda al lado, más estrecha.
-            Si la plantilla se borró mientras tanto, no hay nada que actualizar
-            y vuelve el botón único. */}
-        {isFree && (
-          <View style={styles.tplRow}>
-            {!!sourcePreset && (
-              <TouchableOpacity
-                style={[styles.tplBtn, { flex: 2 }, templateSaved && styles.tplBtnDone]}
-                onPress={() => {
-                  updateFreeSessionPreset(sourcePreset.presetId, entry);
-                  setTemplateSaved('updated');
-                  showToast(t('freeSession.templateUpdated'), 2200, 'success');
-                }}
-                disabled={!!templateSaved}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-              >
-                <Text style={styles.tplBtnText} numberOfLines={1}>
-                  {templateSaved === 'updated'
-                    ? t('freeSession.templateUpdated')
-                    : t('freeSession.updateTemplate', { name: sourcePreset.name ?? t('freeSession.templateUnnamed') })}
-                </Text>
-              </TouchableOpacity>
+        {/* Cuenta para el programa (free-sessions.md §7.3): la sesión libre
+            sustituye a una de la etapa. Cambia en los dos sentidos mientras se
+            está aquí; el contador de la etapa lo sigue. */}
+        {isFree && stageDays.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>{t('recap.countsAsTitle')}</Text>
+            <SegmentedControl
+              options={[
+                { id: 'none', label: t('recap.countsAsNone') },
+                ...stageDays.map((d) => ({
+                  id:    d.sessionTemplateId,
+                  label: d.label ?? sessionTemplates[d.sessionTemplateId]?.label ?? '·',
+                })),
+              ]}
+              value={entry.countsAs ?? 'none'}
+              onChange={(id) => setEntryCountsAs(entry.id, id === 'none' ? null : id)}
+            />
+            {countsAsLabel != null && (
+              <Text style={styles.countsHint}>{t('recap.countsAsHint', { label: countsAsLabel })}</Text>
             )}
+          </View>
+        )}
+
+        {/* Añadir a la sesión libre lo que se añadió en el entreno (§7.2). Solo
+            añade: la sesión tiene configuración que la entrada no lleva. */}
+        {(newExIds.length > 0 || exercisesAdded) && (
+          <View style={styles.tplRow}>
             <TouchableOpacity
-              style={[styles.tplBtn, { flex: 1 }, templateSaved && styles.tplBtnDone]}
+              style={[styles.tplBtn, { flex: 1 }, exercisesAdded && styles.tplBtnDone]}
               onPress={() => {
-                saveFreeSessionPreset(entry);
-                setTemplateSaved('new');
-                showToast(t('freeSession.templateSaved'), 2200, 'success');
+                addEntryExercisesToTemplate(entry.id);
+                setExercisesAdded(true);
+                showToast(t('freeSession.exercisesAdded'), 2200, 'success');
               }}
-              disabled={!!templateSaved}
+              disabled={exercisesAdded}
               activeOpacity={0.75}
               accessibilityRole="button"
             >
               <Text style={styles.tplBtnText} numberOfLines={1}>
-                {templateSaved === 'new'
-                  ? t('freeSession.templateSaved')
-                  : sourcePreset ? t('freeSession.saveAsNew') : t('freeSession.saveAsTemplate')}
+                {exercisesAdded
+                  ? t('freeSession.exercisesAdded')
+                  : t('freeSession.addExercises', { count: newExIds.length })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Guardar como sesión libre — solo la sobre la marcha, y solo aquí: al
+            empezarla no sabes si merece guardarse, al acabarla sí. Secundario,
+            que el primario es salir (free-sessions.md §7.1). */}
+        {onTheFly && (
+          <View style={styles.tplRow}>
+            <TouchableOpacity
+              style={[styles.tplBtn, { flex: 1 }, templateSaved && styles.tplBtnDone]}
+              onPress={() => {
+                saveEntryAsFreeTemplate(entry.id);
+                setTemplateSaved(true);
+                showToast(t('freeSession.saved'), 2200, 'success');
+              }}
+              disabled={templateSaved}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.tplBtnText} numberOfLines={1}>
+                {templateSaved ? t('freeSession.saved') : t('freeSession.saveAsFree')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -804,6 +846,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   tplBtnDone:  { borderColor: th.colors.border },
+  countsHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm },
   tplBtnText:  { ...textStyles.button, color: th.colors.accent },
 
   doneBtn: {

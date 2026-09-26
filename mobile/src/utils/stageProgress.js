@@ -236,6 +236,26 @@ export function recordSession(progress, { inCurrentStage, today }) {
 }
 
 /**
+ * «Cuenta como Sesión X» de una sesión libre (free-sessions.md §7.3): el patch
+ * del contador al marcar, desmarcar o cambiar la sesión sustituida.
+ *
+ * - De no contar a contar: lo mismo que guardar una sesión de la etapa.
+ * - De contar a no contar: una menos, sin bajar de cero.
+ * - De A a C, o de nada a nada: el contador no se mueve.
+ *
+ * ponytail: quitarla no deshace `stageStartedOn` si fue la primera sesión de la
+ * etapa — la etapa arrancó ese día igualmente. Y quien llama deduce
+ * `wasCounted` de la etapa ACTUAL, cosa que solo vale mientras esto se use en
+ * el recap recién guardado. Si se edita desde el historial, guardar en la
+ * entrada en qué etapa contó.
+ */
+export function substitutionPatch(progress, { wasCounted, countsNow, today }) {
+  if (wasCounted === countsNow) return {};
+  if (countsNow) return recordSession(progress, { inCurrentStage: true, today });
+  return { stageSessionsDone: Math.max(0, (progress?.stageSessionsDone ?? 0) - 1) };
+}
+
+/**
  * Lo que escriben avanzar, cambiar de etapa y el import con salto. La etapa
  * queda "sin empezar" hasta su primera sesión. `programStartedOn` no se toca.
  */

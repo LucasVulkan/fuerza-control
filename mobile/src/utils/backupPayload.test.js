@@ -24,12 +24,12 @@ const estado = () => ({
 });
 
 describe('buildBackupPayload', () => {
-  it('lleva los diez campos de datos y la cabecera del formato', () => {
+  it('lleva los nueve campos de datos y la cabecera del formato', () => {
     const payload = buildBackupPayload(estado());
 
     expect(Object.keys(payload).sort()).toEqual([
       'appName', 'blockPresets', 'clientLogs', 'clients', 'customExercises',
-      'exportDate', 'exportType', 'freeSessionPresets', 'profile', 'programs',
+      'exportDate', 'exportType', 'profile', 'programs',
       'sessionTemplates', 'tagRegistry', 'version', 'workoutLog',
     ]);
     expect(payload.version).toBe('4');
@@ -45,9 +45,9 @@ describe('buildBackupPayload', () => {
 
     expect(payload.tagRegistry).toEqual([{ id: 'tag_1', name: 'Lesionado' }]);
     expect(payload.blockPresets).toEqual([{ presetId: 'pre_1', format: 'amrap' }]);
-    // Las plantillas de sesión libre viajan con ellos: son lo mismo, contenido
-    // reutilizable del propio dispositivo (home-sessions §7.4).
-    expect(payload.freeSessionPresets).toEqual([{ presetId: 'fpre_1', name: 'Corta' }]);
+    // Las sesiones libres ya no van aparte: son `sessionTemplates` sin
+    // programa (free-sessions.md §4.5), y la clave vieja no viaja.
+    expect(payload.freeSessionPresets).toBeUndefined();
   });
 
   it('no filtra credenciales ni configuración local', () => {

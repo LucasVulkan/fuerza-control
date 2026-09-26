@@ -25,7 +25,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { done } = useEditorExit(navigation);
+  const { done } = useEditorExit(navigation, templateId);
 
   // El ejercicio abierto es estado local (no parámetro de ruta) para que el
   // desplegable de la cabecera salte a otro sin apilar pantallas.

@@ -2,7 +2,7 @@
 // stageProgress.test.js para que la P37, al borrar los ciclos, no toque esto.
 import { describe, it, expect } from 'vitest';
 import {
-  localDay, addDays, daysBetween, weekOne, weeklySessions, athleteProgress, recordSession,
+  localDay, addDays, daysBetween, weekOne, weeklySessions, athleteProgress, recordSession, substitutionPatch,
   stageReset, stageStatus, fromLegacyProgress, programTotals, stageWeekLabel, stageDetail,
 } from './stageProgress';
 
@@ -346,5 +346,25 @@ describe('fromLegacyProgress — de ciclos a semanas', () => {
     const migrado = { id: 'p1', stageSessionsDone: 4, stageStartedOn: '2026-09-01' };
     expect(fromLegacyProgress(migrado, 3, TODAY)).toBe(migrado);
     expect(fromLegacyProgress(null, 3, TODAY)).toBeNull();
+  });
+});
+
+describe('substitutionPatch — «Cuenta como Sesión X» (free-sessions §7.3)', () => {
+  const today = '2026-09-26';
+  it('de no contar a contar: suma una y arranca la etapa si era la primera', () => {
+    expect(substitutionPatch({ stageSessionsDone: 0 }, { wasCounted: false, countsNow: true, today }))
+      .toMatchObject({ stageSessionsDone: 1, stageStartedOn: today });
+    expect(substitutionPatch({ stageSessionsDone: 3, stageStartedOn: '2026-09-01' }, { wasCounted: false, countsNow: true, today }))
+      .toMatchObject({ stageSessionsDone: 4, stageStartedOn: '2026-09-01' });
+  });
+  it('de contar a no contar: resta una sin bajar de cero', () => {
+    expect(substitutionPatch({ stageSessionsDone: 4 }, { wasCounted: true, countsNow: false, today }))
+      .toEqual({ stageSessionsDone: 3 });
+    expect(substitutionPatch({ stageSessionsDone: 0 }, { wasCounted: true, countsNow: false, today }))
+      .toEqual({ stageSessionsDone: 0 });
+  });
+  it('de A a C, o de nada a nada, no mueve el contador', () => {
+    expect(substitutionPatch({ stageSessionsDone: 2 }, { wasCounted: true, countsNow: true, today })).toEqual({});
+    expect(substitutionPatch({ stageSessionsDone: 2 }, { wasCounted: false, countsNow: false, today })).toEqual({});
   });
 });

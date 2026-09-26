@@ -1463,6 +1463,20 @@ describe('clearWorkoutLog — fallo 18', () => {
     expect(useStore.getState().workoutLog).toHaveLength(0);
   });
 
+  it("'off_program' conserva las libres que sustituyen a una sesión (free-sessions §8)", () => {
+    useStore.setState({
+      programs: { p1: { id: 'p1', owner: 'me', stages: [{ days: [{ sessionTemplateId: 't1' }] }] } },
+      profile:  { ...useStore.getState().profile, activeProgramId: 'p1' },
+      workoutLog: [
+        { id: 'a', sessionTemplateId: 't1' },
+        { id: 'b', sessionTemplateId: '__free__', free: true },
+        { id: 'c', sessionTemplateId: '__free__', free: true, countsAs: 't1' },
+      ],
+    });
+    expect(useStore.getState().clearWorkoutLog('off_program')).toBe(1);
+    expect(useStore.getState().workoutLog.map((e) => e.id)).toEqual(['a', 'c']);
+  });
+
   it("'off_program' sin programa activo no borra", () => {
     // Sin programa no hay nada "del programa": borrarlo todo sería un borrado
     // total por sorpresa.
@@ -1509,38 +1523,177 @@ describe('setAdHocSets — bajar el contador no borra lo registrado', () => {
   });
 });
 
-describe('updateFreeSessionPreset — retocar la plantilla, no fundar una copia', () => {
+describe('sesiones libres — free-sessions.md T19', () => {
   const ENTRY = {
-    sessionTemplateId: '__free__',
-    sessionName: 'Corta v2',
-    exercises: [{ exerciseId: 'row', sets: [{ weight: '40', reps: '10', time: '', done: true }] }],
+    id: 'log_f1', sessionTemplateId: '__free__', sessionName: 'Agarre', free: true, timestamp: 1000,
+    exercises: [{ exerciseId: 'squat', isAdHoc: true, sets: [{ weight: '100', reps: '5', time: '', done: true }] }],
   };
 
   beforeEach(() => {
-    useStore.setState({ freeSessionPresets: [
-      { presetId: 'fpre_1', name: 'Corta', exercises: [{ exerciseId: 'bench', sets: 3 }], blocks: [] },
-      { presetId: 'fpre_2', name: 'Otra',  exercises: [], blocks: [] },
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clients: {}, clientLogs: {}, workoutLog: [ENTRY],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('crear: sesión sin programa, mía, visible en Inicio', () => {
+    const id = useStore.getState().createFreeTemplate();
+    expect(tpl(id)).toMatchObject({ programId: null, owner: 'me', onHome: true, exercises: [], blocks: [] });
+  });
+
+  it('guardar una sobre la marcha reapunta la entrada a la sesión nueva', () => {
+    const id = useStore.getState().saveEntryAsFreeTemplate('log_f1');
+    expect(tpl(id).name).toBe('Agarre');
+    expect(tpl(id).exercises.map((e) => e.exerciseId)).toEqual(['squat']);
+    expect(useStore.getState().workoutLog[0]).toMatchObject({ sessionTemplateId: id, free: true });
+  });
+
+  it('entrenarla la guarda como libre y sin tocar ningún programa', () => {
+    const id = useStore.getState().saveEntryAsFreeTemplate('log_f1');
+    useStore.getState().startSession(id);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '105', reps: '5', time: '', done: true }] } },
+    }));
+    const res = useStore.getState().saveSession();
+    expect(res.ok).toBe(true);
+    const saved = useStore.getState().workoutLog.find((e) => e.id === res.entryId);
+    expect(saved).toMatchObject({ sessionTemplateId: id, sessionName: 'Agarre', free: true });
+  });
+
+  it('una sin nombre se guarda con sessionName null, no cadena vacía', () => {
+    const id = useStore.getState().createFreeTemplate({ exercises: [{ exerciseId: 'squat', sets: 1 }] });
+    useStore.getState().startSession(id);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '60', reps: '5', time: '', done: true }] } },
+    }));
+    const res = useStore.getState().saveSession();
+    expect(useStore.getState().workoutLog.find((e) => e.id === res.entryId).sessionName).toBeNull();
+  });
+
+  it('la sobre la marcha también lleva free: true', () => {
+    useStore.getState().startFreeSession();
+    useStore.getState().addAdHocExercise('squat');
+    useStore.getState().updateAdHocSet('squat', 0, 'reps', '5');
+    const res = useStore.getState().saveSession();
+    const saved = useStore.getState().workoutLog.find((e) => e.id === res.entryId);
+    expect(saved).toMatchObject({ sessionTemplateId: '__free__', free: true });
+  });
+
+  it('mostrar en Inicio solo se aplica a sesiones libres', () => {
+    const id = useStore.getState().createFreeTemplate();
+    useStore.getState().setFreeTemplateOnHome(id, false);
+    expect(tpl(id).onHome).toBe(false);
+  });
+
+  it('borrar: nunca la sesión en curso; el historial se queda', () => {
+    const id = useStore.getState().saveEntryAsFreeTemplate('log_f1');
+    useStore.getState().startSession(id);
+    expect(useStore.getState().deleteFreeTemplate(id)).toBe(false);
+    expect(tpl(id)).toBeDefined();
+
+    useStore.setState({ activeSession: { templateId: null, setsState: {}, startedAt: null } });
+    expect(useStore.getState().deleteFreeTemplate(id)).toBe(true);
+    expect(tpl(id)).toBeUndefined();
+    expect(useStore.getState().workoutLog).toHaveLength(1);
+  });
+
+  it('borrar no toca sesiones de un programa', () => {
+    useStore.setState({ sessionTemplates: { tpl_p: { id: 'tpl_p', programId: 'prog_1', exercises: [] } } });
+    expect(useStore.getState().deleteFreeTemplate('tpl_p')).toBe(false);
+    expect(tpl('tpl_p')).toBeDefined();
+  });
+
+  it('un backup viejo trae sus plantillas como sesiones libres, sin duplicar al reimportar', () => {
+    const backup = { freeSessionPresets: [{ presetId: 'fpre_1', name: 'Corta', exercises: [{ exerciseId: 'squat', sets: 2 }], blocks: [] }] };
+    useStore.getState().importData(backup, { customExercises: true }, { silent: true });
+    useStore.getState().importData(backup, { customExercises: true }, { silent: true });
+    const libres = Object.values(useStore.getState().sessionTemplates).filter((t) => !t.programId);
+    expect(libres).toHaveLength(1);
+    expect(libres[0]).toMatchObject({ name: 'Corta', owner: 'me', onHome: true });
+    expect(libres[0].exercises[0]).toMatchObject({ exerciseId: 'squat', sets: 2 });
+    expect(useStore.getState().freeSessionPresets).toBeUndefined();
+  });
+
+  it('al arrancar, las plantillas viejas se migran y la clave desaparece', () => {
+    const state = {
+      ...useStore.getState(),
+      freeSessionPresets: [{ presetId: 'fpre_9', name: 'Movilidad', exercises: [{ exerciseId: 'squat', sets: 1 }], blocks: [] }],
+    };
+    rehydrateCallback()(state, undefined);
+    expect(state.freeSessionPresets).toBeUndefined();
+    expect(state.sessionTemplates.tpl_fpre_9).toMatchObject({ programId: null, owner: 'me', name: 'Movilidad' });
+  });
+});
+
+describe('sesiones libres en el recap — free-sessions.md T22', () => {
+  beforeEach(() => {
+    useStore.setState({
+      exerciseLibrary: { squat: { id: 'squat' }, bench_press_barbell: { id: 'bench_press_barbell' } },
+      programs: {}, sessionTemplates: {}, clients: {}, clientLogs: {}, workoutLog: [],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  const progreso = (pid) => athleteProgressOf(useStore.getState().programs[pid]);
+  const athleteProgressOf = (p) => ({ done: p.stageSessionsDone ?? 0, started: p.stageStartedOn ?? null });
+
+  function conPrograma() {
+    const pid  = useStore.getState().createEmptyProgram(3, 'Mío', 'program', 4);
+    const days = useStore.getState().programs[pid].stages[0].days.map((d) => d.sessionTemplateId);
+    useStore.setState({ workoutLog: [
+      { id: 'log_l', sessionTemplateId: '__free__', free: true, timestamp: Date.parse('2026-09-20T10:00:00'), exercises: [] },
     ] });
+    return { pid, days };
+  }
+  const entrada = () => useStore.getState().workoutLog[0];
+
+  it('marcar «Cuenta como C» suma una a la etapa y lo apunta en la entrada', () => {
+    const { pid, days } = conPrograma();
+    useStore.getState().setEntryCountsAs('log_l', days[2]);
+    expect(entrada().countsAs).toBe(days[2]);
+    expect(progreso(pid)).toEqual({ done: 1, started: '2026-09-20' });
   });
 
-  it('conserva el presetId y su sitio en la lista', () => {
-    useStore.getState().updateFreeSessionPreset('fpre_1', ENTRY);
-    const list = useStore.getState().freeSessionPresets;
-    expect(list.map((p) => p.presetId)).toEqual(['fpre_1', 'fpre_2']);
-    expect(list[0].exercises).toEqual([{ exerciseId: 'row', sets: 1 }]);
-    expect(list[0].name).toBe('Corta v2');
+  it('cambiar de C a A no mueve el contador; quitarla lo devuelve', () => {
+    const { pid, days } = conPrograma();
+    useStore.getState().setEntryCountsAs('log_l', days[2]);
+    useStore.getState().setEntryCountsAs('log_l', days[0]);
+    expect(progreso(pid).done).toBe(1);
+    expect(entrada().countsAs).toBe(days[0]);
+    useStore.getState().setEntryCountsAs('log_l', null);
+    expect(progreso(pid).done).toBe(0);
+    expect('countsAs' in entrada()).toBe(false);
   });
 
-  it('sin nombre en la sesión, la plantilla se queda con el suyo', () => {
-    useStore.getState().updateFreeSessionPreset('fpre_1', { ...ENTRY, sessionName: '  ' });
-    expect(useStore.getState().freeSessionPresets[0].name).toBe('Corta');
+  it('una sesión del programa no se puede marcar como sustituta', () => {
+    const { days } = conPrograma();
+    useStore.setState({ workoutLog: [{ id: 'log_p', sessionTemplateId: days[0], timestamp: 1, exercises: [] }] });
+    useStore.getState().setEntryCountsAs('log_p', days[1]);
+    expect(useStore.getState().workoutLog[0].countsAs).toBeUndefined();
   });
 
-  it('no toca las demás', () => {
-    useStore.getState().updateFreeSessionPreset('fpre_1', ENTRY);
-    expect(useStore.getState().freeSessionPresets[1]).toEqual(
-      { presetId: 'fpre_2', name: 'Otra', exercises: [], blocks: [] },
-    );
+  it('los ejercicios añadidos en el entreno pasan a la sesión libre, sin tocar los que ya tenía', () => {
+    const id = useStore.getState().createFreeTemplate({ exercises: [{ exerciseId: 'squat', sets: 3 }] });
+    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'submax' });
+    useStore.setState({ workoutLog: [{
+      id: 'log_t', sessionTemplateId: id, free: true, timestamp: 1,
+      exercises: [
+        { exerciseId: 'squat', sets: [{ reps: '5', done: true }] },
+        { exerciseId: 'bench_press_barbell', isAdHoc: true, minReps: 6, maxReps: 8,
+          sets: [{ reps: '8', done: true }, { reps: '7', done: true }] },
+      ],
+    }] });
+    expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(1);
+    const exs = useStore.getState().sessionTemplates[id].exercises;
+    expect(exs.map((e) => e.exerciseId)).toEqual(['squat', 'bench_press_barbell']);
+    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'submax' });
+    expect(exs[1]).toMatchObject({ sets: 2, minReps: 6, maxReps: 8 });
+    // Repetirlo no los duplica.
+    expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(0);
   });
 });
 

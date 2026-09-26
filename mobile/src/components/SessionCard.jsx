@@ -26,6 +26,7 @@ import { formatDate } from '../utils/formatters';
 import { formatBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
+import { isFreeEntry } from '../utils/freeSessions';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
@@ -72,7 +73,9 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
   const customExercises      = useStore((s) => s.customExercises);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  const isFree   = session.sessionTemplateId === '__free__';
+  // Las dos clases de sesión libre (free-sessions.md §4.2); en el móvil del
+  // entrenador la plantilla no existe y la entrada es la única pista.
+  const isFree   = isFreeEntry(session);
   const template = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
   const label    = template?.label ?? '?';
   const name     = session.sessionName ?? (isFree ? t('freeSession.historyLabel') : (template?.name ?? session.sessionTemplateId));

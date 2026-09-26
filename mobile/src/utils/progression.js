@@ -58,6 +58,15 @@ export const PROGRESSION_TYPES  = ['double', 'weight', 'reps', 'time', 'none'];
 export const EVALUATION_MODES   = ['all_complete', 'pct', 'rpe', 'custom'];
 export const INCREMENT_TYPES    = ['fixed', 'pct', 'stepped'];
 
+/**
+ * El objetivo cuando ni la sesión ni la librería lo fijan (hay ejercicios de
+ * doble progresión sin rango en la librería: paseo del granjero, paseo con
+ * maleta, empuje de trineo). UNA sola fuente: el editor lo enseña, el motor
+ * progresa con él y la prescripción lo pinta. Cuando cada uno tenía el suyo,
+ * el editor decía «8–12, automática» y Inicio «submáx».
+ */
+export const DEFAULT_TARGET = { minReps: 8, maxReps: 12, minTime: 20, maxTime: 40 };
+
 /** Maps new type names ↔ legacy progressionModel strings (for backward compat). */
 export const LEGACY_TYPE_MAP = {
   double: 'double_progression',
@@ -416,10 +425,10 @@ export function getProgression(exConfig, def, lastSets, t) {
   if (prog.type === 'none') return null;
 
   // Effective params: exConfig values override def defaults
-  const minReps   = exConfig?.minReps  ?? def?.minReps  ?? 8;
-  const maxReps   = exConfig?.maxReps  ?? def?.maxReps  ?? 12;
-  const minTime   = exConfig?.minTime  ?? def?.minTime  ?? 20;
-  const maxTime   = exConfig?.maxTime  ?? def?.maxTime  ?? 40;
+  const minReps   = exConfig?.minReps  ?? def?.minReps  ?? DEFAULT_TARGET.minReps;
+  const maxReps   = exConfig?.maxReps  ?? def?.maxReps  ?? DEFAULT_TARGET.maxReps;
+  const minTime   = exConfig?.minTime  ?? def?.minTime  ?? DEFAULT_TARGET.minTime;
+  const maxTime   = exConfig?.maxTime  ?? def?.maxTime  ?? DEFAULT_TARGET.maxTime;
   const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length;
 
   // Descarga: la progresión se suspende ANTES de mirar el rendimiento. Da igual

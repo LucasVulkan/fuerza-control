@@ -51,6 +51,7 @@ import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
 import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
 import ProgramCard from '../components/ui/ProgramCard';
+import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
 // Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
@@ -1899,7 +1900,8 @@ export default function ClientsScreen() {
   const adherenceByClient = useMemo(() => {
     const out = {};
     Object.values(clients ?? {}).forEach((c) => {
-      const sessions = clientLogs[c.id] ?? [];
+      // Las libres solo cuentan si sustituyen a una sesión (free-sessions.md §8).
+      const sessions = (clientLogs[c.id] ?? []).filter(countsForProgram);
       const target   = weeklyTarget(programs[c.activeProgramId], c);
       // `pct` viaja pegado al estado porque la tarjeta ya recibe este objeto:
       // añadirlo aquí sale gratis y evita un segundo prop por cliente.
@@ -2039,7 +2041,7 @@ export default function ClientsScreen() {
 
   // All sessions for this client (no scope/period filter) — for ProgressTab.
   // Comes straight from the client's separated log, so it also includes
-  // free sessions ('__free__') that template filtering used to hide.
+  // free sessions that template filtering used to hide.
   const clientBaseLog = useMemo(() => {
     return selectedClientId ? (clientLogs[selectedClientId] ?? []) : [];
   }, [clientLogs, selectedClientId]);
@@ -2107,10 +2109,11 @@ export default function ClientsScreen() {
   }, [selectedClient, t]);
 
   const filteredLog = useMemo(() => {
-    // Las libres cuentan como del programa activo: el cliente solo sube las
-    // posteriores a vincularse (qa-sep-conexion.md §3, bug 14).
+    // «Programa actual»: sus sesiones y las libres que sustituyen a una
+    // (free-sessions.md §8). Antes entraban TODAS las libres (bug 14); desde
+    // que existe «Cuenta como», las demás se ven en «Todo», no aquí.
     let log = scopeFilter === 'active'
-      ? clientBaseLog.filter((e) => e.sessionTemplateId === '__free__' || activeClientTemplateIds.has(e.sessionTemplateId))
+      ? clientBaseLog.filter((e) => activeClientTemplateIds.has(programTemplateOf(e)))
       : clientBaseLog;
     if (periodFilter !== 'all') {
       const days = periodFilter === '7d' ? 7 : 30;
@@ -2359,12 +2362,12 @@ export default function ClientsScreen() {
 
   function getSessionCount(program) {
     const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    return clientBaseLog.filter((e) => ids.has(e.sessionTemplateId)).length;
+    return clientBaseLog.filter((e) => ids.has(programTemplateOf(e))).length;
   }
 
   function getLastActivity(program) {
     const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    const sessions = clientBaseLog.filter((e) => ids.has(e.sessionTemplateId));
+    const sessions = clientBaseLog.filter((e) => ids.has(programTemplateOf(e)));
     return sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : null;
   }
 

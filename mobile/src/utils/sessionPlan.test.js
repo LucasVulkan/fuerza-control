@@ -117,3 +117,25 @@ describe('sessionPlan — esta semana', () => {
   });
 
 });
+
+describe('sessionPlan — sesiones libres (free-sessions.md §8)', () => {
+  const libre = (ts, extra = {}) => ({ sessionTemplateId: 'tpl_libre', free: true, timestamp: ts, ...extra });
+
+  it('una libre sin marcar no cuenta: ni marca, ni mueve el hero, ni suma a la semana', () => {
+    const plan = sessionPlan({ days: DAYS, log: [libre(at(2026, 9, 22))], now: NOW, t });
+    expect(plan.heroTemplateId).toBe('a');
+    expect(plan.rows.map((r) => r.isDone)).toEqual([false, false, false]);
+    expect(plan.weekDone).toBe(0);
+  });
+
+  it('«Cuenta como C» la marca hecha, mueve el hero y suma a la semana', () => {
+    const plan = sessionPlan({
+      days: DAYS,
+      log: [...log(['a', at(2026, 9, 21)], ['b', at(2026, 9, 22)]), libre(at(2026, 9, 23), { countsAs: 'c' })],
+      now: NOW, t,
+    });
+    expect(plan.rows.map((r) => r.isDone)).toEqual([true, true, true]);
+    expect(plan.heroTemplateId).toBe('a');
+    expect(plan.weekDone).toBe(3);
+  });
+});

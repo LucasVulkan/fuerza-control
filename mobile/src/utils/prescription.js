@@ -15,15 +15,22 @@
  *   targetLabel(def, ex, t)                    → "4 × 5 reps"
  *   targetLabel(def, ex, t, { compact: true }) → "4×5"
  */
+import { DEFAULT_TARGET } from './progression';
+
 export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   if (!def) return '';
   const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
-  const model      = def.progressionModel;
+  // La sesión manda sobre la librería: un ejercicio que en la librería es
+  // submáx (flexiones, burpees…) y en la sesión se pasó a doble progresión se
+  // tiene que leer como doble. Leer solo `def` lo dejaba en «submáx» siempre.
+  const model      = exConfig.progressionModel ?? def.progressionModel;
   const sets       = exConfig.sets ?? 0;
-  const minReps    = exConfig.minReps ?? def.minReps;
-  const maxReps    = exConfig.maxReps ?? def.maxReps;
-  const minTime    = exConfig.minTime ?? def.minTime;
-  const maxTime    = exConfig.maxTime ?? def.maxTime;
+  // Lo que falta sale del mismo sitio que en el editor y el motor: si no, el
+  // editor enseña «8–12» y aquí no hay nada que pintar.
+  const minReps    = exConfig.minReps ?? def.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps    = exConfig.maxReps ?? def.maxReps ?? DEFAULT_TARGET.maxReps;
+  const minTime    = exConfig.minTime ?? def.minTime ?? DEFAULT_TARGET.minTime;
+  const maxTime    = exConfig.maxTime ?? def.maxTime ?? DEFAULT_TARGET.maxTime;
   // En compacto el «por lado» se cae: la fila no da para el matiz, y el nombre
   // del ejercicio ya suele decirlo.
   const unilateral = (!compact && (exConfig.isUnilateral ?? def.isUnilateral))

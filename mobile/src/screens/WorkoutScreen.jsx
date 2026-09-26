@@ -456,8 +456,14 @@ export default function WorkoutScreen() {
 
   // Header content — sessionLabel/titleText cubren ambos modos (plantilla y
   // sesión libre); el reloj se concatena dentro de HeaderEyebrow/HeaderCompactSummary.
-  const sessionLabel    = isFree ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label: template?.label ?? '' });
-  const titleText       = isFree ? (activeSession.freeSessionName ?? '') : (template?.name ?? '');
+  // Una sesión libre GUARDADA va por el camino de plantilla (`isFree` es solo la
+  // sobre la marcha), pero no tiene letra: se rotula como libre
+  // (free-sessions.md §6.3). Se renombra en el editor, no aquí.
+  const isFreeTpl       = !isFree && !!template && !template.programId;
+  const sessionLabel    = (isFree || isFreeTpl) ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label: template?.label ?? '' });
+  const titleText       = isFree
+    ? (activeSession.freeSessionName ?? '')
+    : (isFreeTpl ? (template.name || t('freeSession.templateUnnamed')) : (template?.name ?? ''));
   const hasSessionNotes = (activeSession.notes?.trim().length ?? 0) > 0;
 
   function handleGoBack() {

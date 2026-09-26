@@ -178,7 +178,7 @@ function ExerciseLines({ template, allExercises }) {
  */
 function SessionRow({
   marker, name, meta, done, adapted, open,
-  cta, onToggle, onStart, a11yLabel, children,
+  cta, onToggle, onStart, onEdit, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -209,16 +209,32 @@ function SessionRow({
         >
           <View style={styles.sesBodyRule} />
           {children}
-          <TouchableOpacity
-            style={styles.sesBtn}
-            onPress={onStart}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-            accessibilityLabel={cta}
-          >
-            <Text style={styles.sesBtnText}>{cta}</Text>
-            <HeroChevron color={th.colors.accent} />
-          </TouchableOpacity>
+          {/* Botones sólidos a todo el ancho (QA 26-sep): primario en acento;
+              una sesión ya hecha esta semana repite con el secundario, que la
+              que toca es otra. Con `onEdit` (sesiones libres, free-sessions.md
+              §6.1) EDITAR va al lado, también secundario. */}
+          <View style={styles.sesBtnRow}>
+            <TouchableOpacity
+              style={[styles.sesBtn, done && styles.sesBtnSecondary]}
+              onPress={onStart}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={cta}
+            >
+              <Text style={[styles.sesBtnText, done && styles.sesBtnTextSecondary]}>{cta}</Text>
+              <HeroChevron color={done ? th.colors.text : th.colors.onAccent} />
+            </TouchableOpacity>
+            {onEdit && (
+              <TouchableOpacity
+                style={[styles.sesBtn, styles.sesBtnSecondary, styles.sesBtnEdit]}
+                onPress={onEdit}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.sesBtnText, styles.sesBtnTextSecondary]}>{t('home.edit').toUpperCase()}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </Reanimated.View>
       )}
     </Reanimated.View>
@@ -338,7 +354,7 @@ export default function HomeScreen() {
   const styles     = useThemedStyles(makeStyles);
 
   const [freeSheet,   setFreeSheet]   = useState(false);
-  const [freeTpls,    setFreeTpls]    = useState(false);
+  const [freeList,    setFreeList]    = useState(false);
   // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
   // recuerda al volver — es una preferencia de un segundo, no un ajuste.
   const [openId,      setOpenId]      = useState(null);
@@ -346,17 +362,14 @@ export default function HomeScreen() {
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
   const workoutLog           = useStore((s) => s.workoutLog);
-  // Suscrito SOLO para que la pantalla se repinte al editar una sesion: los
-  // datos se leen con `getEffectiveTemplate`, que es una funcion estable y por
-  // si sola nunca dispara un render.
-  // eslint-disable-next-line no-unused-vars
+  // Las del programa se leen con `getEffectiveTemplate`; la suscripción es la
+  // que repinta al editarlas, y de aquí salen las sesiones libres.
   const sessionTemplates     = useStore((s) => s.sessionTemplates);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const getLastSession       = useStore((s) => s.getLastSession);
   const startSession         = useStore((s) => s.startSession);
   const startFreeSession     = useStore((s) => s.startFreeSession);
-  const freeSessionPresets   = useStore((s) => s.freeSessionPresets);
-  const deleteFreePreset     = useStore((s) => s.deleteFreeSessionPreset);
+  const createFreeTemplate   = useStore((s) => s.createFreeTemplate);
   const clientSync           = useStore((s) => s.clientSync);
   const advanceStage         = useStore((s) => s.advanceStage);
   const extendStage          = useStore((s) => s.extendStage);
@@ -382,38 +395,42 @@ export default function HomeScreen() {
     );
   };
 
-  const startFree = (preset) => {
-    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession(preset)); return; }
-    startFreeSession(preset);
+  // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
+  // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
+  // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
+  // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
+  const requestStart = (templateId) => {
+    if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
+    if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
+    startSession(templateId);
   };
 
-  // La hoja de "nueva / desde plantilla" SOLO existe cuando hay plantillas: sin
-  // ninguna, el botón va directo a la sesión en blanco como siempre. Misma regla
-  // que la fila de presets del editor de sesión, y la del hero (§5.3) en otra
-  // pieza — la interfaz no promete lo que no tiene.
+  const startFree = () => {
+    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession()); return; }
+    startFreeSession();
+  };
+
+  // ── Sesiones libres (free-sessions.md §6) ──
+  // Solo las MÍAS (§4.1.1): las de un cliente o un grupo no salen en mi Inicio.
+  // `Object.values` conserva el orden de alta, que es el de la lista.
+  const myFree   = Object.values(sessionTemplates).filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me');
+  const homeFree = myFree.filter((tpl) => tpl.onHome !== false);
+  const freeName = (tpl) => tpl.name || t('freeSession.templateUnnamed');
+  const editFree = (templateId) => navigation.navigate('SessionEditor', { templateId });
+
+  // La hoja se abre siempre: además de empezar en blanco se puede crear una en
+  // el editor. Solo la sobre la marcha a medias va directa a seguir con ella.
   const handleFreePress = () => {
     if (activeSession.templateId === '__free__') { navigation.navigate('Workout'); return; }
-    if ((freeSessionPresets ?? []).length > 0) { setFreeSheet(true); return; }
-    startFree(null);
+    setFreeSheet(true);
   };
 
-  const freePresetMeta = (preset) => [
-    t('freeSession.templateExercises', { count: preset.exercises?.length ?? 0 }),
-    (preset.blocks?.length ?? 0) > 0
-      ? t('freeSession.templateBlocks', { count: preset.blocks.length })
+  const freeMeta = (tpl) => [
+    t('freeSession.templateExercises', { count: tpl.exercises?.length ?? 0 }),
+    (tpl.blocks?.length ?? 0) > 0
+      ? t('freeSession.templateBlocks', { count: tpl.blocks.length })
       : null,
   ].filter(Boolean).join(' · ');
-
-  const confirmDeleteFreePreset = (preset) => {
-    Alert.alert(
-      t('freeSession.deleteTemplate'),
-      t('freeSession.deleteTemplateConfirm', { name: preset.name ?? t('freeSession.templateUnnamed') }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('freeSession.deleteTemplate'), style: 'destructive', onPress: () => deleteFreePreset(preset.presetId) },
-      ],
-    );
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -505,16 +522,6 @@ export default function HomeScreen() {
                     main:  advance,
                     quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
                   };
-          // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
-          // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
-          // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
-          // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
-          const requestStart = (templateId) => {
-            if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
-            if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
-            startSession(templateId);
-          };
-
           // La meta de la tarjeta de hoy: los dos primeros datos salen de
           // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
           // vez. Con la sesión a medias cambia entera — cuánto llevas y desde
@@ -640,24 +647,6 @@ export default function HomeScreen() {
                     );
                   })}
                 </View>
-
-                {/* Sesión libre. Con `layout` porque al plegar una sesión sube
-                    o baja: sin él daba el salto de golpe mientras la tarjeta
-                    seguía animando. Lo mismo la tarjeta de programa. */}
-                <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
-                <TouchableOpacity
-                  style={styles.freeSessionBtn}
-                  onPress={handleFreePress}
-                  activeOpacity={0.75}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.freeSessionBtnText}>
-                    {activeSession.templateId === '__free__'
-                      ? t('freeSession.btnContinue')
-                      : t('freeSession.btn')}
-                  </Text>
-                </TouchableOpacity>
-                </Reanimated.View>
               </View>
 
             </>
@@ -666,62 +655,132 @@ export default function HomeScreen() {
           <NoProgram />
         )}
 
+        {/* ── Sesiones libres (free-sessions.md §6.1) ── También sin programa:
+            tener sesiones sueltas sin programa es justo uno de sus usos. Con
+            `layout` porque al plegar una sesión de arriba sube o baja: sin él
+            daba el salto de golpe mientras la tarjeta seguía animando. */}
+        <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+          {homeFree.length > 0 && (
+            <View style={styles.freeSection}>
+              <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
+              <View style={styles.group}>
+                {homeFree.map((tpl) => {
+                  const open   = openId === tpl.id;
+                  const active = activeSession.templateId === tpl.id;
+                  const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
+                  const name   = freeName(tpl);
+                  return (
+                    <SessionRow
+                      key={tpl.id}
+                      // Sin letra: el hueco se queda para que los nombres se
+                      // alineen con los de las sesiones del programa.
+                      marker=""
+                      name={name}
+                      meta={rel
+                        ? rel.toLowerCase()
+                        : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
+                      done={false}
+                      open={open}
+                      cta={startCta(t, '', { active, done: false })}
+                      onToggle={() => setOpenId(open ? null : tpl.id)}
+                      onStart={() => requestStart(tpl.id)}
+                      onEdit={() => editFree(tpl.id)}
+                      a11yLabel={`${t('freeSession.badge')}, ${name}`}
+                    >
+                      <ExerciseLines template={tpl} allExercises={allExercises} />
+                    </SessionRow>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.freeSessionBtn}
+            onPress={handleFreePress}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+          >
+            <Text style={styles.freeSessionBtnText}>
+              {activeSession.templateId === '__free__'
+                ? t('freeSession.btnContinue')
+                : t('freeSession.btn')}
+            </Text>
+          </TouchableOpacity>
+        </Reanimated.View>
+
       </ScrollView>
 
       {/* Modals */}
-      {/* ── Sesión libre: en blanco o desde plantilla (§7.2) ── */}
+      {/* ── ＋ Sesión libre (free-sessions.md §6.2) ── */}
       {freeSheet && (
         <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
           <View style={styles.sheetGroup}>
             <MenuRow
               isFirst
-              label={t('freeSession.startBlank')}
-              sub={t('freeSession.startBlankDesc')}
+              label={t('freeSession.startNow')}
+              sub={t('freeSession.startNowDesc')}
               subLines={0}
               minHeight={62}
-              onPress={() => { setFreeSheet(false); startFree(null); }}
+              onPress={() => { setFreeSheet(false); startFree(); }}
             />
             <MenuRow
-              isLast
-              label={t('freeSession.startFromTemplate')}
-              sub={t('freeSession.startFromTemplateDesc')}
+              isLast={myFree.length === 0}
+              label={t('freeSession.create')}
+              sub={t('freeSession.createDesc')}
               subLines={0}
               minHeight={62}
-              onPress={() => { setFreeSheet(false); setFreeTpls(true); }}
+              onPress={() => {
+                setFreeSheet(false);
+                editFree(createFreeTemplate());
+              }}
             />
+            {myFree.length > 0 && (
+              <MenuRow
+                isLast
+                label={t('freeSession.mine', { count: myFree.length })}
+                sub={t('freeSession.mineDesc')}
+                subLines={0}
+                minHeight={62}
+                onPress={() => { setFreeSheet(false); setFreeList(true); }}
+              />
+            )}
           </View>
         </DragSheet>
       )}
 
-      {freeTpls && (
-        <DragSheet visible onClose={() => setFreeTpls(false)} title={t('freeSession.templatesTitle')}>
-          <View style={styles.sheetGroup}>
-            {freeSessionPresets.map((preset, i) => (
-              <MenuRow
-                key={preset.presetId}
-                isFirst={i === 0}
-                isLast={i === freeSessionPresets.length - 1}
-                label={preset.name ?? t('freeSession.templateUnnamed')}
-                sub={freePresetMeta(preset)}
-                minHeight={62}
-                onPress={() => { setFreeTpls(false); startFree(preset); }}
-                // La ✕ por fila, como en el selector de presets de bloque: la
-                // plantilla se borra donde se elige, que es donde estorba.
-                control={(
-                  <TouchableOpacity
-                    onPress={() => confirmDeleteFreePreset(preset)}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('freeSession.deleteTemplate')}
-                  >
-                    <Text style={styles.freeTplRemove}>✕</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            ))}
-          </View>
-        </DragSheet>
-      )}
+      {/* Todas las mías, primero las de Inicio. Es el único camino al editor
+          de las que no están en Inicio; borrar va en el editor, donde se ve lo
+          que se borra. */}
+      {freeList && (() => {
+        const list = [...homeFree, ...myFree.filter((tpl) => tpl.onHome === false)];
+        return (
+          <DragSheet visible onClose={() => setFreeList(false)} title={t('freeSession.mineTitle')}>
+            <View style={styles.sheetGroup}>
+              {list.map((tpl, i) => (
+                <MenuRow
+                  key={tpl.id}
+                  isFirst={i === 0}
+                  isLast={i === list.length - 1}
+                  label={freeName(tpl)}
+                  sub={freeMeta(tpl)}
+                  minHeight={62}
+                  onPress={() => { setFreeList(false); requestStart(tpl.id); }}
+                  control={(
+                    <TouchableOpacity
+                      onPress={() => { setFreeList(false); editFree(tpl.id); }}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.freeTplEdit}>{t('home.edit').toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              ))}
+            </View>
+          </DragSheet>
+        );
+      })()}
     </View>
   );
 }
@@ -832,19 +891,24 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent50,
     marginBottom:    spacing.sm2,
   },
-  // Contorno y no relleno: el lima sólido es de la que toca (§1.1).
+  // Sólido y a todo el ancho (QA 26-sep: el contorno se leía flojo y, dentro
+  // de la fila de botones, no llenaba). Primario en acento; secundario en
+  // `surface2` sin borde, la variante Secondary ya cerrada en la app.
+  sesBtnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: 12 },
   sesBtn: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    borderWidth:    borders.thin,
-    borderColor:    th.colors.accent,
-    borderRadius:   th.radius.md,
-    padding:        14,
-    marginTop:      12,
+    flex:            1,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
+    padding:         14,
   },
-  // `button`, como todo lo que se pulsa y lleva palabra.
-  sesBtnText: { ...textStyles.button, color: th.colors.accent },
+  sesBtnText:          { ...textStyles.button, color: th.colors.onAccent },
+  sesBtnSecondary:     { backgroundColor: th.colors.surface2 },
+  sesBtnTextSecondary: { color: th.colors.text },
+  // EDITAR: lo justo para su palabra, que EMPEZAR es lo principal.
+  sesBtnEdit:          { flex: 0, justifyContent: 'center' },
 
   // ── La que toca hoy ─────────────────────────────────────────────────
   // La única pieza en color de la pantalla, así que dentro el acento es el
@@ -1005,6 +1069,9 @@ const makeStyles = (th) => StyleSheet.create({
   programBlock: { marginTop: spacing.xl },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
+  // Más aire que entre dos rótulos cualesquiera: es otra zona, no otra lista
+  // del programa (QA 26-sep).
+  freeSection: { marginTop: spacing.xl },
   freeSessionBtn: {
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.sm,
@@ -1043,7 +1110,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
-  freeTplRemove:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  freeTplEdit:    { ...textStyles.labelStrong, color: th.colors.accent },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },

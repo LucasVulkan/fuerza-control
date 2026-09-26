@@ -36,6 +36,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { ToggleRow } from '../components/ui/EditorRows';
 import { defaultBlock } from '../utils/conditioningBlocks';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -233,7 +234,10 @@ export default function SessionEditorScreen({ navigation, route }) {
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
   const reorderBlocks         = useStore((s) => s.reorderBlocks);
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
-  const { done }              = useEditorExit(navigation);
+  const setFreeTemplateOnHome = useStore((s) => s.setFreeTemplateOnHome);
+  const deleteFreeTemplate    = useStore((s) => s.deleteFreeTemplate);
+  const activeTemplateId      = useStore((s) => s.activeSession.templateId);
+  const { done }              = useEditorExit(navigation, templateId);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = sessionTemplates[templateId];
@@ -243,6 +247,20 @@ export default function SessionEditorScreen({ navigation, route }) {
   const days       = stage?.days ?? [];
   const sessionIds = days.map((d) => d.sessionTemplateId);
   const canDelete  = sessionIds.length > 1;
+
+  // Sesión libre (free-sessions.md §5): sin programa, sin hermanas A/B/C.
+  const isFree = !!template && !template.programId;
+
+  // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
+  // añadir nada, no puede quedar una sesión vacía en Inicio. Solo al desmontar
+  // —las pantallas que se abren encima (selector, ejercicio) no lo desmontan.
+  useEffect(() => () => {
+    const st  = useStore.getState();
+    const tpl = st.sessionTemplates[initialTemplateId];
+    if (tpl && !tpl.programId && !tpl.exercises?.length && !tpl.blocks?.length) {
+      st.deleteFreeTemplate(initialTemplateId);
+    }
+  }, [initialTemplateId]);
 
   const [openRowId, setOpenRowId]           = useState(null); // fila con el panel de acciones abierto
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
@@ -380,6 +398,28 @@ export default function SessionEditorScreen({ navigation, route }) {
     );
   }
 
+  function handleDeleteFree() {
+    setMenuOpen(false);
+    if (activeTemplateId === templateId) {
+      Alert.alert(t('freeSession.delete'), t('freeSession.deleteActive'));
+      return;
+    }
+    Alert.alert(
+      t('freeSession.delete'),
+      t('freeSession.deleteConfirm', { name: template.name || t('freeSession.templateUnnamed') }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('freeSession.delete'), style: 'destructive',
+          onPress: () => {
+            navigation.goBack();
+            deleteFreeTemplate(templateId);
+          },
+        },
+      ]
+    );
+  }
+
   function commitName() {
     setEditingName(false);
     const trimmed = nameValue.trim();
@@ -397,8 +437,8 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={t('editor.sessionEyebrow', { label: template.label ?? '' })}
-        title={template.name ?? ''}
+        eyebrow={isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
+        title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
         renaming={editingName}
         draft={nameValue}
         onDraftChange={setNameValue}
@@ -433,9 +473,25 @@ export default function SessionEditorScreen({ navigation, route }) {
           />
         )}
 
+        {/* ── Mostrar en Inicio: la única opción de una sesión libre, a la vista
+            y no dentro del menú (free-sessions.md §5). Solo en las mías: la de
+            un cliente no sale en mi Inicio. ── */}
+        {isFree && template.owner === 'me' && (
+          <View style={styles.homeToggle}>
+            <ToggleRow
+              label={t('freeSession.showOnHome')}
+              hint={t('freeSession.showOnHomeHint')}
+              value={template.onHome !== false}
+              onChange={(v) => setFreeTemplateOnHome(templateId, v)}
+            />
+          </View>
+        )}
+
         {/* ── Resumen (208:1936) ── */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>{t('editor.summarySession', { label: template.label ?? '' })}</Text>
+          <Text style={styles.summaryTag}>
+            {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
+          </Text>
           <Text style={styles.summaryMain}>
             {stats.minutes > 0
               ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
@@ -514,7 +570,14 @@ export default function SessionEditorScreen({ navigation, route }) {
             label={t('editor.renameOption')}
             onPress={startEditName}
           />
-          <SheetRow
+          {isFree && (
+            <SheetRow
+              label={t('freeSession.delete')}
+              danger
+              onPress={handleDeleteFree}
+            />
+          )}
+          {!isFree && <SheetRow
             label={t('editor.sessionDuplicateBtn')}
             onPress={() => {
               const newId = duplicateSessionInProgram(programId, templateId);
@@ -523,7 +586,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
               }
             }}
-          />
+          />}
           {canDelete && programId && (
             <SheetRow
               label={t('editor.sessionDeleteBtn')}
@@ -675,6 +738,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
+  homeToggle: { borderRadius: th.radius.md, overflow: 'hidden' },
   summaryCard: {
     backgroundColor:   th.tint.accent10,
     borderRadius:      th.radius.md,

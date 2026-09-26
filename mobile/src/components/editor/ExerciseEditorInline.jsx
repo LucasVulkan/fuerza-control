@@ -25,7 +25,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { resolveProgressionConfig, LEGACY_TYPE_MAP } from '../../utils/progression';
+import { resolveProgressionConfig, LEGACY_TYPE_MAP, DEFAULT_TARGET } from '../../utils/progression';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../utils/exerciseLinks';
 import { warmupSteps } from '../../utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -145,10 +145,10 @@ function computeInitial(exConfig, def) {
   return {
     sets:           exConfig.sets         ?? 3,
     restSec:        exConfig.restSec      ?? 90,
-    minReps:        exConfig.minReps      ?? def?.minReps ?? 8,
-    maxReps:        exConfig.maxReps      ?? def?.maxReps ?? 12,
-    minTime:        exConfig.minTime      ?? def?.minTime ?? 20,
-    maxTime:        exConfig.maxTime      ?? def?.maxTime ?? 40,
+    minReps:        exConfig.minReps      ?? def?.minReps ?? DEFAULT_TARGET.minReps,
+    maxReps:        exConfig.maxReps      ?? def?.maxReps ?? DEFAULT_TARGET.maxReps,
+    minTime:        exConfig.minTime      ?? def?.minTime ?? DEFAULT_TARGET.minTime,
+    maxTime:        exConfig.maxTime      ?? def?.maxTime ?? DEFAULT_TARGET.maxTime,
     metric:         initMetric,
     isKey:          exConfig.isKey        ?? false,
     isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
