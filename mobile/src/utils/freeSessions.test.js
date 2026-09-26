@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { presetFromEntry, freeTemplateFromPreset, isFreeEntry } from './freeSessions';
+import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf, countsForProgram } from './freeSessions';
 
 const ENTRY = {
   sessionTemplateId: '__free__',
@@ -101,5 +101,18 @@ describe('isFreeEntry', () => {
     expect(isFreeEntry({ sessionTemplateId: 'tpl_x', free: true })).toBe(true);
     expect(isFreeEntry({ sessionTemplateId: 'tpl_x' })).toBe(false);
     expect(isFreeEntry(undefined)).toBe(false);
+  });
+});
+
+describe('programTemplateOf / countsForProgram — quién cuenta qué (§8)', () => {
+  it('una del programa cuenta como ella misma', () => {
+    expect(programTemplateOf({ sessionTemplateId: 'tpl_a' })).toBe('tpl_a');
+    expect(countsForProgram({ sessionTemplateId: 'tpl_a' })).toBe(true);
+  });
+  it('una libre sin marcar no cuenta; marcada, cuenta como la sustituida', () => {
+    expect(programTemplateOf({ sessionTemplateId: '__free__' })).toBeNull();
+    expect(countsForProgram({ sessionTemplateId: 'tpl_l', free: true })).toBe(false);
+    expect(programTemplateOf({ sessionTemplateId: 'tpl_l', free: true, countsAs: 'tpl_c' })).toBe('tpl_c');
+    expect(countsForProgram({ sessionTemplateId: '__free__', countsAs: 'tpl_c' })).toBe(true);
   });
 });

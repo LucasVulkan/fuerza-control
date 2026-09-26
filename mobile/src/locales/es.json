@@ -116,6 +116,12 @@
         "Dentro de la etapa se nombran por orden: A, B, C…",
         "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
       ] },
+      { "id": "free", "title": "Sesión libre", "points": [
+        "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Inicio.",
+        "No toca el programa: sus pesos progresan por su cuenta y no avanza la semana ni la etapa.",
+        "Si sustituye a una sesión, márcalo al acabar con «Cuenta para el programa»: cuenta como esa sesión en la semana, la etapa y la adherencia.",
+        "La carga la cuenta siempre: el cansancio es real aunque la sesión no sea del programa."
+      ] },
       { "id": "week", "title": "Semana", "points": [
         "Cada semana se hacen las sesiones de la etapa: si tiene A, B y C, son tres entrenos por semana. En entrenamiento, el microciclo.",
         "Son semanas de calendario, de lunes a domingo.",

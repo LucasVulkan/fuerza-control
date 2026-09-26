@@ -1,4 +1,5 @@
 import { startOfWeek } from './weekProgress';
+import { programTemplateOf } from './freeSessions';
 
 /**
  * sessionPlan — «¿cuál sesión toca, y por qué?».
@@ -35,7 +36,11 @@ export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.
   const weekStart = startOfWeek(now);
   const lastDone  = {};
   let weekDone    = 0;
-  log.forEach(({ sessionTemplateId: tid, timestamp: ts }) => {
+  log.forEach((entry) => {
+    // Una sesión libre marcada «Cuenta como C» cuenta como la C
+    // (free-sessions.md §8): la marca hecha, mueve el hero y suma a la semana.
+    const tid = programTemplateOf(entry);
+    const ts  = entry.timestamp;
     if (!ids.has(tid) || typeof ts !== 'number') return;
     if (!(lastDone[tid] >= ts)) lastDone[tid] = ts;
     if (ts >= weekStart) weekDone += 1;

@@ -43,6 +43,7 @@ import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
+import { programTemplateOf } from '../../utils/freeSessions';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
 
@@ -74,7 +75,8 @@ const periodOptions = (t) => [
 function filterLog(log, scope, period, programTemplateIds) {
   let filtered = [...log];
   if (scope === 'program' && programTemplateIds.size > 0) {
-    filtered = filtered.filter((e) => programTemplateIds.has(e.sessionTemplateId));
+    // Las libres entran solo si sustituyen a una sesión (free-sessions.md §8).
+    filtered = filtered.filter((e) => programTemplateIds.has(programTemplateOf(e)));
   }
   if (period !== 'all') {
     const days   = period === '7d' ? 7 : period === '1m' ? 30 : period === '3m' ? 90 : 365;
@@ -563,7 +565,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
 
   const effectiveLogs = useMemo(() => {
     if (modalScope !== 'program' || !programTemplateIds?.size) return baseLogs;
-    return baseLogs.filter((l) => programTemplateIds.has(l.sessionTemplateId));
+    return baseLogs.filter((l) => programTemplateIds.has(programTemplateOf(l)));
   }, [baseLogs, modalScope, programTemplateIds]);
 
   const filteredLogs = useMemo(() => {

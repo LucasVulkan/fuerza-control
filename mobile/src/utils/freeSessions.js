@@ -27,6 +27,18 @@ const pickTarget = (o) => Object.fromEntries(
 export const isFreeEntry = (e) => e?.free === true || e?.sessionTemplateId === '__free__';
 
 /**
+ * ¿Como qué sesión del programa cuenta esta entrada? (§8). La suya si es del
+ * programa; la sustituida si es libre y se marcó «Cuenta como»; ninguna si es
+ * libre sin marcar. Todo lo que mira el programa —sesión que toca, «N de M esta
+ * semana», adherencia, filtro «programa actual»— pasa por aquí. La carga, la
+ * tira de la semana y el progreso de cada ejercicio NO: esas cuentan siempre.
+ */
+export const programTemplateOf = (e) => (isFreeEntry(e) ? e.countsAs ?? null : e?.sessionTemplateId ?? null);
+
+/** Entradas que cuentan para la adherencia: todas salvo las libres sin marcar. */
+export const countsForProgram = (e) => programTemplateOf(e) != null;
+
+/**
  * Congela el PLAN de una entrada de sesión libre del historial.
  *
  * Lo que se guarda: qué ejercicios, cuántas series cada uno, el objetivo que se

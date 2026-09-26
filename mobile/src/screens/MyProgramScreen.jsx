@@ -39,6 +39,7 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
+import { countsForProgram } from '../utils/freeSessions';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -173,14 +174,18 @@ export default function MyProgramScreen() {
     ? weeklySessions(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
     : 0;
 
+  // Las sesiones libres solo cuentan si sustituyen a una del programa
+  // (free-sessions.md §8); la carga, en cambio, las cuenta todas.
+  const programLog = useMemo(() => workoutLog.filter(countsForProgram), [workoutLog]);
+
   const adherence = useMemo(() => computeAdherence({
-    sessions: workoutLog,
+    sessions: programLog,
     perWeek,
-  }), [workoutLog, perWeek]);
+  }), [programLog, perWeek]);
 
   const adherence4w = useMemo(
-    () => adherencePct({ sessions: workoutLog, perWeek }),
-    [workoutLog, perWeek],
+    () => adherencePct({ sessions: programLog, perWeek }),
+    [programLog, perWeek],
   );
 
   // Carga media: media de carga externa de los últimos 7 días frente a la de los
