@@ -38,7 +38,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
-import { presetFromEntry, freeSessionFromPreset } from '../src/utils/freeSessionPreset';
+import { presetFromEntry, freeTemplateFromPreset } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
@@ -129,6 +129,18 @@ function updateLastSetDrops(setsState, exerciseId, updater) {
  * `userPrograms` (la capa de ediciones encima)— y desde v4 en una. Al leer una
  * v1/v2/v3 gana `userPrograms`, que era lo que su dueño veía en pantalla.
  */
+/**
+ * Las viejas `freeSessionPresets` convertidas en sesiones libres
+ * (free-sessions.md §4.5). Id derivado del `presetId`: importar dos veces el
+ * mismo backup pisa la misma sesión en vez de duplicarla.
+ */
+function freeTemplatesFromPresets(presets, lib) {
+  return Object.fromEntries((presets ?? []).map((preset) => {
+    const id = `tpl_${preset.presetId}`;
+    return [id, freeTemplateFromPreset(preset, { id, newBlockId: () => generateId('blk'), lib })];
+  }));
+}
+
 function mergeFileSessions(current, file) {
   return { ...current, ...(file.sessionTemplates ?? {}), ...(file.userPrograms ?? {}) };
 }
@@ -227,7 +239,6 @@ const INITIAL_ACTIVE_SESSION = {
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
   adHocExercises: [],
   freeSessionName: '',
-  freePresetId: null,  // plantilla de la que salió la sesión libre, si salió de una
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
 };
@@ -411,10 +422,6 @@ export const useStore = create(
       tagRegistry: [],   // [{ id, name }] — global tag list
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
-      // [{ presetId, name, exercises: [{exerciseId, sets}], blocks }] — mismo
-      // trato que `blockPresets`: copias congeladas del PLAN de una sesión libre
-      // (docs/specs/home-sessions.md §7).
-      freeSessionPresets: [],
       // { [programId]: 'YYYY-MM-DD' } — el aviso de fin de etapa no se enseña
       // antes de ese día (weeks-model.md §6.1). Local de este móvil: no viaja.
       // Persistido y no en `ui`, que no lo está: un «Una semana más» no puede
@@ -1136,34 +1143,58 @@ export const useStore = create(
       // Plantillas de sesión libre — se congelan desde una entrada YA guardada
       // del historial (el recap es quien las ofrece), no desde la sesión en
       // curso: al empezar no sabes si merece guardarse, al acabarla sí.
-      saveFreeSessionPreset: (entry) => {
-        const preset = { presetId: generateId('fpre'), ...presetFromEntry(entry) };
-        set((s) => ({ freeSessionPresets: [...(s.freeSessionPresets ?? []), preset] }));
-        return preset.presetId;
+      // ── Sesiones libres (docs/specs/free-sessions.md §4.3) ────────────────
+      // Una sesión libre es un `sessionTemplate` con `programId: null`: todo lo
+      // que edita plantillas (ejercicios, bloques, nombre) le vale tal cual.
+
+      /** Crea una sesión libre, vacía o desde un plan (`presetFromEntry`). */
+      createFreeTemplate: (plan = null, owner = 'me') => {
+        const id = generateId('tpl');
+        const tpl = freeTemplateFromPreset(plan, {
+          id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
+        });
+        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
+        return id;
       },
 
       /**
-       * Reescribe una plantilla con lo que se acaba de hacer, conservando su
-       * `presetId` — así no se mueve de sitio en la lista y las sesiones que ya
-       * salieron de ella siguen apuntando a la misma.
-       *
-       * El nombre lo manda la sesión si tiene uno; si se lo quitaste, se queda
-       * el que tenía la plantilla en vez de dejarla sin nombre.
+       * Guarda una sesión hecha sobre la marcha como sesión libre y le
+       * REAPUNTA la entrada: esa primera vez pasa a ser su historial, así que la
+       * próxima sale con los pesos puestos y el recap tiene con qué comparar.
        */
-      updateFreeSessionPreset: (presetId, entry) => {
+      saveEntryAsFreeTemplate: (entryId) => {
+        const entry = get().workoutLog.find((e) => e.id === entryId);
+        if (!entry) return null;
+        const id = get().createFreeTemplate(presetFromEntry(entry));
         set((s) => ({
-          freeSessionPresets: (s.freeSessionPresets ?? []).map((p) => {
-            if (p.presetId !== presetId) return p;
-            const next = presetFromEntry(entry);
-            return { ...next, presetId, name: next.name ?? p.name };
-          }),
+          workoutLog: s.workoutLog.map((e) => (
+            e.id === entryId ? { ...e, sessionTemplateId: id, free: true } : e
+          )),
         }));
+        return id;
       },
 
-      deleteFreeSessionPreset: (presetId) => {
-        set((s) => ({
-          freeSessionPresets: (s.freeSessionPresets ?? []).filter((p) => p.presetId !== presetId),
-        }));
+      setFreeTemplateOnHome: (templateId, onHome) => {
+        const tpl = get().sessionTemplates[templateId];
+        if (!tpl || tpl.programId) return;
+        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...tpl, onHome } } }));
+      },
+
+      /**
+       * Borra una sesión libre. Nunca la que está en curso. El historial no se
+       * toca: sus entradas llevan `sessionName` y `free`, que es todo lo que
+       * necesitan para pintarse sin la plantilla.
+       */
+      deleteFreeTemplate: (templateId) => {
+        const tpl = get().sessionTemplates[templateId];
+        if (!tpl || tpl.programId) return false;
+        if (get().activeSession.templateId === templateId) return false;
+        set((s) => {
+          const sessionTemplates = { ...s.sessionTemplates };
+          delete sessionTemplates[templateId];
+          return { sessionTemplates };
+        });
+        return true;
       },
 
       // Transient handoff for the block movement picker: ExerciseSelectorScreen
@@ -1767,19 +1798,11 @@ export const useStore = create(
         get().navigate('workout');
       },
 
-      // Con `preset` arranca desde una plantilla: mismos ejercicios y bloques,
-      // series vacías. Sin él, en blanco como siempre.
-      startFreeSession: (preset) => {
+      // Sobre la marcha, siempre en blanco. Una sesión libre guardada se
+      // empieza con `startSession`, como cualquier plantilla.
+      startFreeSession: () => {
         set({
-          activeSession: {
-            templateId: '__free__',
-            setsState: {},
-            startedAt: Date.now(),
-            notes: '',
-            exerciseNotes: {},
-            blockState: {},
-            ...freeSessionFromPreset(preset, () => generateId('blk')),
-          },
+          activeSession: { ...INITIAL_ACTIVE_SESSION, templateId: '__free__', startedAt: Date.now() },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
@@ -2174,10 +2197,7 @@ export const useStore = create(
             id:                generateId('log'),
             sessionTemplateId: '__free__',
             sessionName:       activeSession.freeSessionName?.trim() || null,
-            // De qué plantilla salió — el recap trabaja sobre la entrada, no
-            // sobre la sesión (que a estas alturas ya está reseteada), y sin
-            // esto no podría ofrecer actualizarla.
-            ...(activeSession.freePresetId ? { freePresetId: activeSession.freePresetId } : {}),
+            free:              true,
             timestamp:         Date.now(),
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',
@@ -2253,10 +2273,15 @@ export const useStore = create(
         // Tag the entry if the trainer had prescribed targets for this session.
         const wasAdapted = !!get().clientSync.pendingOverrides?.[activeSession.templateId];
 
+        // Sesión libre guardada (free-sessions.md §4.2): la entrada lo dice
+        // ella misma, porque en el móvil del entrenador la plantilla no existe.
+        const isFreeTpl = !template.programId;
+
         const logEntry = {
           id: generateId('log'),
           sessionTemplateId: activeSession.templateId,
-          sessionName: template.name,
+          sessionName: isFreeTpl ? (template.name?.trim() || null) : template.name,
+          ...(isFreeTpl ? { free: true } : {}),
           timestamp: Date.now(),
           duration: activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
@@ -2868,13 +2893,14 @@ export const useStore = create(
                 ...presets.filter((p) => !known.has(p.presetId)),
               ];
             }
-            const freePresets = data.freeSessionPresets ?? [];
-            if (freePresets.length) {
-              const known = new Set((s.freeSessionPresets ?? []).map((p) => p.presetId));
-              updates.freeSessionPresets = [
-                ...(s.freeSessionPresets ?? []),
-                ...freePresets.filter((p) => !known.has(p.presetId)),
-              ];
+            // Backups de antes de free-sessions.md: sus plantillas de sesión
+            // libre entran como sesiones libres de verdad (§4.5).
+            if (data.freeSessionPresets?.length) {
+              const lib = { ...s.exerciseLibrary, ...(updates.customExercises ?? s.customExercises) };
+              updates.sessionTemplates = {
+                ...(updates.sessionTemplates ?? s.sessionTemplates),
+                ...freeTemplatesFromPresets(data.freeSessionPresets, lib),
+              };
             }
           }
           if (sections.clients) {
@@ -4158,7 +4184,6 @@ export const useStore = create(
         clientLogs: state.clientLogs,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
-        freeSessionPresets: state.freeSessionPresets,
         stageBannerSnooze: state.stageBannerSnooze,
         programs: state.programs,
         sessionTemplates: state.sessionTemplates,
@@ -4318,6 +4343,18 @@ export const useStore = create(
             });
           };
           migrateTemplates(state.sessionTemplates);
+
+          // migración pre-publicación
+          // Las plantillas de sesión libre pasan a ser sesiones libres de verdad
+          // (free-sessions.md §4.5). Una sola vez: la clave se borra.
+          if (state.freeSessionPresets) {
+            const lib = { ...EXERCISE_LIBRARY, ...(state.customExercises ?? {}) };
+            state.sessionTemplates = {
+              ...(state.sessionTemplates ?? {}),
+              ...freeTemplatesFromPresets(state.freeSessionPresets, lib),
+            };
+            delete state.freeSessionPresets;
+          }
 
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);
