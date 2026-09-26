@@ -43,7 +43,7 @@ import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown }   from '../ui/EditorIcons';
-import { programTemplateOf } from '../../utils/freeSessions';
+import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
 
@@ -1111,8 +1111,16 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           .map((e) => e.exerciseId)
       )
     )];
+    // «Programa actual» enseña los ejercicios del programa… y los de las
+    // sesiones libres que sustituyen a una (free-sessions.md §8): si el
+    // entreno cuenta como del programa, lo que se hizo en él también. En
+    // `filteredLog` ya solo quedan las libres marcadas.
+    const allowed = new Set([
+      ...programExerciseIds,
+      ...filteredLog.filter(isFreeEntry).flatMap((log) => log.exercises.map((e) => e.exerciseId)),
+    ]);
     const scoped = (scope === 'program' && hasProgramScope)
-      ? allIds.filter((id) => programExerciseIds.has(id))
+      ? allIds.filter((id) => allowed.has(id))
       : allIds;
     return scoped.filter((id) => getExerciseLogsFrom(id, filteredLog).length > 0);
   }, [filteredLog, scope, hasProgramScope, programExerciseIds]);
