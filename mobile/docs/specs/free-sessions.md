@@ -20,8 +20,11 @@
 >   `surface2` sin borde, la variante Secondary de la app.
 > - `targetLabel` leía la progresión solo de la librería: un ejercicio submáx en
 >   la librería (flexiones, burpees…) pasado a doble en la sesión seguía saliendo
->   «submáx», y sin rango pintaba «null». Ahora manda la sesión y, sin objetivo,
->   se lee submáx.
+>   «submáx», y sin rango pintaba «null». Ahora manda la sesión, y lo que falta
+>   sale de `DEFAULT_TARGET` (`progression.js`: 8–12 reps / 20–40 s), el mismo
+>   valor que ya enseñaba el editor y usaba el motor. Caso real: el paseo del
+>   granjero (doble progresión, sin rango en la librería) salía «submáx» en
+>   Inicio mientras el editor decía «8–12, automática».
 > - Las claves de texto del editor van en `freeSession.*` (`badge`,
 >   `toastSaved`), no en `editor.*`: son de la sesión libre, no del editor.
 >

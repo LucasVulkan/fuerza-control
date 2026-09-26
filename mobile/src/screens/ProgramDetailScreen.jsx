@@ -35,6 +35,7 @@ import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../utils/trainingLoad';
+import { DEFAULT_TARGET } from '../utils/progression';
 
 // Misma escala mínima que las barras de `LoadTab`: sin suelo, un programa de
 // 6 series por grupo pinta barras llenas y parece que va sobrado.
@@ -48,17 +49,16 @@ function prescription(exConfig, def, t) {
   const model   = exConfig.progressionModel ?? def?.progressionModel;
   const timed   = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time'
                || model === 'time_progression';
-  const minReps = exConfig.minReps ?? def?.minReps;
-  const maxReps = exConfig.maxReps ?? def?.maxReps;
-  const minTime = exConfig.minTime ?? def?.minTime;
-  const maxTime = exConfig.maxTime ?? def?.maxTime;
+  const minReps = exConfig.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps = exConfig.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
+  const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
+  const maxTime = exConfig.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime;
 
   let range;
-  if (timed)                       range = `${minTime ?? 20}–${maxTime ?? 40} s`;
+  if (timed)                       range = `${minTime}–${maxTime} s`;
   else if (model === 'submax')     range = t('workout.submax');
-  else if (minReps == null)        range = '—';
   else if (minReps === maxReps)    range = `${minReps}`;
-  else                             range = `${minReps}–${maxReps ?? minReps}`;
+  else                             range = `${minReps}–${maxReps}`;
   if (def?.isUnilateral)           range += ` ${t('workout.perSide')}`;
 
   return { main: `${sets} × ${range}`, restSec: exConfig.restSec ?? def?.restSec ?? null };

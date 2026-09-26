@@ -15,6 +15,8 @@
  *   targetLabel(def, ex, t)                    → "4 × 5 reps"
  *   targetLabel(def, ex, t, { compact: true }) → "4×5"
  */
+import { DEFAULT_TARGET } from './progression';
+
 export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   if (!def) return '';
   const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
@@ -23,10 +25,12 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   // tiene que leer como doble. Leer solo `def` lo dejaba en «submáx» siempre.
   const model      = exConfig.progressionModel ?? def.progressionModel;
   const sets       = exConfig.sets ?? 0;
-  const minReps    = exConfig.minReps ?? def.minReps;
-  const maxReps    = exConfig.maxReps ?? def.maxReps;
-  const minTime    = exConfig.minTime ?? def.minTime;
-  const maxTime    = exConfig.maxTime ?? def.maxTime;
+  // Lo que falta sale del mismo sitio que en el editor y el motor: si no, el
+  // editor enseña «8–12» y aquí no hay nada que pintar.
+  const minReps    = exConfig.minReps ?? def.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps    = exConfig.maxReps ?? def.maxReps ?? DEFAULT_TARGET.maxReps;
+  const minTime    = exConfig.minTime ?? def.minTime ?? DEFAULT_TARGET.minTime;
+  const maxTime    = exConfig.maxTime ?? def.maxTime ?? DEFAULT_TARGET.maxTime;
   // En compacto el «por lado» se cae: la fila no da para el matiz, y el nombre
   // del ejercicio ya suele decirlo.
   const unilateral = (!compact && (exConfig.isUnilateral ?? def.isUnilateral))
@@ -34,21 +38,14 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
     : '';
   const x = compact ? '×' : ' × ';
 
-  const submax = `${sets}${x}${t('workout.submax', 'submáx')}`;
-  if (model === 'submax') return submax;
+  if (model === 'submax') return `${sets}${x}${t('workout.submax', 'submáx')}`;
 
-  // Sin objetivo en la sesión ni en la librería no hay rango que pintar: sin
-  // esto salía «3 × null–null». Es lo que significa submáx — series sin meta.
   if (inputType === 'time' || inputType === 'weight_time') {
-    if (minTime == null && maxTime == null) return submax;
-    return `${sets}${x}${minTime ?? maxTime}–${maxTime ?? minTime} s${unilateral}`;
+    return `${sets}${x}${minTime}–${maxTime} s${unilateral}`;
   }
 
   // reps y weight_reps (por defecto)
-  if (minReps == null && maxReps == null) return submax;
-  const lo = minReps ?? maxReps;
-  const hi = maxReps ?? minReps;
-  const r = lo === hi ? `${lo}` : `${lo}–${hi}`;
+  const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
   return compact ? `${sets}${x}${r}` : `${sets}${x}${r} reps${unilateral}`;
 }
 

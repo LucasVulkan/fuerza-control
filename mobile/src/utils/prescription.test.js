@@ -15,12 +15,14 @@ describe('targetLabel', () => {
       { sets: 3, progressionModel: 'submax' }, t)).toBe('3 × submáx');
   });
 
-  it('nunca pinta null: sin objetivo se lee como submáx', () => {
-    const def = { progressionModel: 'submax', minReps: null, maxReps: null };
-    const ex  = { sets: 3, progressionModel: 'double_progression' };
-    expect(targetLabel(def, ex, t)).toBe('3 × submáx');
-    expect(targetLabel({}, { sets: 2, inputType: 'time' }, t)).toBe('2 × submáx');
-    expect(targetLabel({}, { sets: 2, minReps: 10 }, t)).toBe('2 × 10 reps');
+  it('sin objetivo en sesión ni librería, el mismo por defecto que el editor', () => {
+    // Paseo del granjero: doble progresión y sin rango en la librería.
+    const farmer = { progressionModel: 'double_progression', minReps: null, maxReps: null };
+    expect(targetLabel(farmer, { sets: 3 }, t)).toBe('3 × 8–12 reps');
+    expect(targetLabel({}, { sets: 2, inputType: 'time' }, t)).toBe('2 × 20–40 s');
+    // Pasado a doble en la sesión sin tocar el rango: tampoco pinta null.
+    const pushUp = { progressionModel: 'submax', minReps: null, maxReps: null };
+    expect(targetLabel(pushUp, { sets: 3, progressionModel: 'double_progression' }, t)).toBe('3 × 8–12 reps');
   });
 
   it('sin definición de ejercicio no hay frase', () => {
