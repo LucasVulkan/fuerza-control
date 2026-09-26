@@ -26,7 +26,8 @@
 > en que ya no saca el hero de `rows`), los modos (§6) y la sesión libre (§7).
 >
 > Estado: **todas las fases implementadas** (sep 2026, U06/U07/U08 en 97ae57d y
-> U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. Sale de una sesión de
+> U09 en 94e77f6), a falta de las dos pruebas en dispositivo de arriba. **Las plantillas
+> de sesión libre de §7 (U09) las sustituye [free-sessions.md](free-sessions.md)** (T19-T23). Sale de una sesión de
 > diseño Opus + usuario sobre la zona de sesiones de la Home: seis rondas de
 > maquetas, cada corrección del usuario sobre la anterior. Las decisiones están
 > cerradas y los valores son exactos; lo que faltaba era escribirlo.
