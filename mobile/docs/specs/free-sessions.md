@@ -2,13 +2,25 @@
 
 > Tema: entrenamiento
 > En corto: Una sesión libre guardada pasa a ser una sesión normal sin programa: se edita con el mismo editor, puede estar a la vista en Inicio, progresa por su cuenta y, al acabarla, puedes decir que sustituye a una sesión del programa.
-> Fase T19 · pendiente · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
-> Fase T20 · pendiente · Editor de sesión en modo libre · §5
-> Fase T21 · pendiente · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
+> Fase T19 · hecho · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
+> Fase T20 · hecho · Editor de sesión en modo libre · §5
+> Fase T21 · hecho · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
 > Fase T22 · pendiente · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
 > Fase T23 · pendiente · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
 >
-> Estado: **spec cerrada, SIN implementar** (25-sep-2026). Sale de una sesión de
+> Estado: **T19-T21 implementadas** (26-sep-2026, rama `feat/free-sessions`:
+> `93ee875`, `c45f078`, `2b8dd59`), pendientes de probar en dispositivo (§11).
+> Quedan T22 (recap: añadir ejercicios y «Cuenta como») y T23. Tres cosas que
+> salieron distintas de lo escrito:
+> - El botón «Guardar como sesión libre» del recap (§7.1) entró ya en T19: sin
+>   él la app se quedaba sin forma de guardar tras borrar las plantillas viejas.
+> - EDITAR en la fila de Inicio usa el contorno apagado de
+>   `stageBannerBtnQuiet` (`border` + texto `mutedLight`), no `accent-50`: se leía
+>   al mismo peso que EMPEZAR.
+> - Las claves de texto del editor van en `freeSession.*` (`badge`,
+>   `toastSaved`), no en `editor.*`: son de la sesión libre, no del editor.
+>
+> Spec escrita el 25-sep-2026. Sale de una sesión de
 > diseño Opus + usuario. Las tres decisiones de §2 las cerró el usuario. Se
 > escribió **después** de leer el código, y cada afirmación sobre él lleva
 > fichero y línea. Aun así, antes de cada fase hay que comprobar contra el código
@@ -502,9 +514,9 @@ comprueba con grep al cerrar T21/T22.
 
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
-| T19 | §4: forma (con `owner`), `free`, acciones, `freeSessions.js` + tests, migración | — | Tests verdes; las plantillas viejas migran con `owner: 'me'`; una sesión libre guardada se puede empezar con `startSession` y se guarda con `free: true`; `clientLogs` la sube |
-| T20 | §5: editor en modo libre, `useEditorExit`, limpieza de vacías | T19 | Se crea, se edita, se oculta de Inicio y se borra desde el editor sin marcar el programa |
-| T21 | §6: sección en Inicio (también sin programa), hoja, Workout | T19, T20 | Los cinco caminos de la tabla de §6.2 |
+| T19 ✅ `93ee875` | §4: forma (con `owner`), `free`, acciones, `freeSessions.js` + tests, migración | — | Tests verdes; las plantillas viejas migran con `owner: 'me'`; una sesión libre guardada se puede empezar con `startSession` y se guarda con `free: true`; `clientLogs` la sube |
+| T20 ✅ `c45f078` | §5: editor en modo libre, `useEditorExit`, limpieza de vacías | T19 | Se crea, se edita, se oculta de Inicio y se borra desde el editor sin marcar el programa |
+| T21 ✅ `2b8dd59` | §6: sección en Inicio (también sin programa), hoja, Workout | T19, T20 | Los cinco caminos de la tabla de §6.2 |
 | T22 | §7: recap, `substitutionPatch` + test | T19 | Guardar, añadir ejercicios y «Cuenta como» en los dos sentidos |
 | T23 | §8: `programTemplateOf`, adherencia, filtros, historial, glosario | T22 | Test de `sessionPlan`; grep de `'__free__'` limpio |
 
