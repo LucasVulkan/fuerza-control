@@ -38,11 +38,12 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
-import { presetFromEntry, freeTemplateFromPreset } from '../src/utils/freeSessions';
+import { presetFromEntry, freeTemplateFromPreset, isFreeEntry } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
+  substitutionPatch,
 } from '../src/utils/stageProgress';
 import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
@@ -1172,6 +1173,64 @@ export const useStore = create(
           )),
         }));
         return id;
+      },
+
+      /**
+       * Los ejercicios añadidos durante el entreno de una sesión libre pasan a
+       * la sesión (§7.2), con las series que se hicieron y el objetivo que se
+       * les puso. SOLO se añaden: reescribir la sesión con lo hecho borraría su
+       * configuración (progresión, calentamiento…), que la entrada no lleva.
+       */
+      addEntryExercisesToTemplate: (entryId) => {
+        const entry = get().workoutLog.find((e) => e.id === entryId);
+        const tplId = entry?.sessionTemplateId;
+        const tpl   = get().sessionTemplates[tplId];
+        if (!tpl || tpl.programId) return 0;
+        const have  = new Set(tpl.exercises.map((ex) => ex.exerciseId));
+        const added = (entry.exercises ?? []).filter((ex) => ex.isAdHoc && !have.has(ex.exerciseId));
+        added.forEach((ex) => {
+          get().addExercise(tplId, ex.exerciseId);
+          const target = Object.fromEntries(
+            ['minReps', 'maxReps', 'minTime', 'maxTime', 'restSec']
+              .filter((k) => ex[k] != null).map((k) => [k, ex[k]]),
+          );
+          get().updateExerciseParams(tplId, ex.exerciseId, { sets: Math.max(1, ex.sets?.length ?? 1), ...target });
+        });
+        return added.length;
+      },
+
+      /**
+       * «Cuenta como Sesión X» (§7.3): una sesión libre sustituye a una sesión de
+       * la etapa en curso del programa activo, o deja de hacerlo (`null`). El
+       * contador lo mueve `substitutionPatch`; el resto de la app lo lee de
+       * `entry.countsAs`.
+       */
+      setEntryCountsAs: (entryId, templateId) => {
+        const s     = get();
+        const entry = s.workoutLog.find((e) => e.id === entryId);
+        if (!entry || !isFreeEntry(entry)) return;
+        const program = s.programs[s.profile.activeProgramId];
+        let programs  = s.programs;
+        if (program?.stages?.length) {
+          const progress = athleteProgress(program);
+          const days = new Set((program.stages[progress.currentStageIndex]?.days ?? [])
+            .map((d) => d.sessionTemplateId));
+          const patch = substitutionPatch(progress, {
+            wasCounted: days.has(entry.countsAs),
+            countsNow:  days.has(templateId),
+            today:      localDay(entry.timestamp),
+          });
+          if (Object.keys(patch).length) programs = { ...programs, [program.id]: applyProgress(program, patch) };
+        }
+        set({
+          programs,
+          workoutLog: s.workoutLog.map((e) => {
+            if (e.id !== entryId) return e;
+            const next = { ...e };
+            if (templateId) next.countsAs = templateId; else delete next.countsAs;
+            return next;
+          }),
+        });
       },
 
       setFreeTemplateOnHome: (templateId, onHome) => {

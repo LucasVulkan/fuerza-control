@@ -36,6 +36,8 @@ import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { backToMain } from '../navigation/navigationRef';
 import { isFreeEntry } from '../utils/freeSessions';
+import { athleteProgress } from '../utils/stageProgress';
+import SegmentedControl from '../components/ui/SegmentedControl';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 
@@ -118,10 +120,14 @@ export default function SessionRecapScreen({ navigation, route }) {
   const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
   const setSessionFeedback = useStore((s) => s.setSessionFeedback);
   const saveEntryAsFreeTemplate = useStore((s) => s.saveEntryAsFreeTemplate);
+  const addEntryExercisesToTemplate = useStore((s) => s.addEntryExercisesToTemplate);
+  const setEntryCountsAs  = useStore((s) => s.setEntryCountsAs);
+  const activeProgramId   = useStore((s) => s.profile.activeProgramId);
   const showToast          = useStore((s) => s.showToast);
   // Una por sesión: guardada, el botón se queda diciéndolo. Guardarla dos
   // veces daría dos sesiones idénticas y ninguna forma de saberlo.
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [exercisesAdded, setExercisesAdded] = useState(false);
 
   const entry = workoutLog.find((e) => e.id === entryId);
 
@@ -170,6 +176,24 @@ export default function SessionRecapScreen({ navigation, route }) {
   // sostiene con `templateSaved` para seguir diciendo «Guardada».
   const onTheFly = entry.sessionTemplateId === '__free__' || templateSaved;
   const template = !isFree ? sessionTemplates[entry.sessionTemplateId] : null;
+
+  // Sesión libre GUARDADA con ejercicios añadidos en el entreno (§7.2).
+  const freeTpl  = isFree && !onTheFly ? sessionTemplates[entry.sessionTemplateId] : null;
+  const newExIds = freeTpl
+    ? (entry.exercises ?? []).filter((ex) => ex.isAdHoc
+      && !freeTpl.exercises.some((e) => e.exerciseId === ex.exerciseId))
+    : [];
+
+  // «Cuenta como Sesión X» (§7.3): las sesiones de la etapa en curso del
+  // programa activo. Sin programa o sin sesiones no hay nada que sustituir.
+  const activeProgram = isFree ? programs[activeProgramId] : null;
+  const stageDays = activeProgram?.stages?.length
+    ? (activeProgram.stages[athleteProgress(activeProgram).currentStageIndex]?.days ?? [])
+    : [];
+  const countsAsLabel = entry.countsAs
+    ? (stageDays.find((d) => d.sessionTemplateId === entry.countsAs)?.label
+      ?? sessionTemplates[entry.countsAs]?.label ?? '')
+    : null;
   const program  = template?.programId ? programs[template.programId] : null;
   const stageName = program?.stages?.length
     ? program.stages[program.currentStageIndex ?? 0]?.name
@@ -525,6 +549,53 @@ export default function SessionRecapScreen({ navigation, route }) {
           </View>
         ) : null}
 
+        {/* Cuenta para el programa (free-sessions.md §7.3): la sesión libre
+            sustituye a una de la etapa. Cambia en los dos sentidos mientras se
+            está aquí; el contador de la etapa lo sigue. */}
+        {isFree && stageDays.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>{t('recap.countsAsTitle')}</Text>
+            <SegmentedControl
+              options={[
+                { id: 'none', label: t('recap.countsAsNone') },
+                ...stageDays.map((d) => ({
+                  id:    d.sessionTemplateId,
+                  label: d.label ?? sessionTemplates[d.sessionTemplateId]?.label ?? '·',
+                })),
+              ]}
+              value={entry.countsAs ?? 'none'}
+              onChange={(id) => setEntryCountsAs(entry.id, id === 'none' ? null : id)}
+            />
+            {countsAsLabel != null && (
+              <Text style={styles.countsHint}>{t('recap.countsAsHint', { label: countsAsLabel })}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Añadir a la sesión libre lo que se añadió en el entreno (§7.2). Solo
+            añade: la sesión tiene configuración que la entrada no lleva. */}
+        {(newExIds.length > 0 || exercisesAdded) && (
+          <View style={styles.tplRow}>
+            <TouchableOpacity
+              style={[styles.tplBtn, { flex: 1 }, exercisesAdded && styles.tplBtnDone]}
+              onPress={() => {
+                addEntryExercisesToTemplate(entry.id);
+                setExercisesAdded(true);
+                showToast(t('freeSession.exercisesAdded'), 2200, 'success');
+              }}
+              disabled={exercisesAdded}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.tplBtnText} numberOfLines={1}>
+                {exercisesAdded
+                  ? t('freeSession.exercisesAdded')
+                  : t('freeSession.addExercises', { count: newExIds.length })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Guardar como sesión libre — solo la sobre la marcha, y solo aquí: al
             empezarla no sabes si merece guardarse, al acabarla sí. Secundario,
             que el primario es salir (free-sessions.md §7.1). */}
@@ -775,6 +846,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   tplBtnDone:  { borderColor: th.colors.border },
+  countsHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm },
   tplBtnText:  { ...textStyles.button, color: th.colors.accent },
 
   doneBtn: {

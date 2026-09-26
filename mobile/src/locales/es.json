@@ -768,6 +768,9 @@
     "templateBlocks_other": "{{count}} bloques",
     "saveAsFree": "Guardar como sesión libre",
     "saved": "Guardada en tus sesiones libres",
+    "addExercises_one": "Añadir {{count}} ejercicio a la sesión",
+    "addExercises_other": "Añadir {{count}} ejercicios a la sesión",
+    "exercisesAdded": "Añadidos a la sesión",
     "showOnHome": "Mostrar en Inicio",
     "showOnHomeHint": "Aparece en Inicio junto a las sesiones del programa",
     "delete": "Eliminar sesión libre",
@@ -1534,6 +1537,9 @@
     "rpeHigh": "Máxima",
     "bodyWeight": "Peso corporal",
     "sessionLoad": "Carga de la sesión",
+    "countsAsTitle": "Cuenta para el programa",
+    "countsAsNone": "No",
+    "countsAsHint": "Cuenta como la Sesión {{label}}: avanza la semana y la etapa.",
     "vsMean7d": "vs media 7d"
   },
   "load": {

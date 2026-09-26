@@ -768,6 +768,9 @@
     "templateBlocks_other": "{{count}} blocks",
     "saveAsFree": "Save as free session",
     "saved": "Saved to your free sessions",
+    "addExercises_one": "Add {{count}} exercise to the session",
+    "addExercises_other": "Add {{count}} exercises to the session",
+    "exercisesAdded": "Added to the session",
     "showOnHome": "Show on Home",
     "showOnHomeHint": "Appears on Home next to your program sessions",
     "delete": "Delete free session",
@@ -1534,6 +1537,9 @@
     "rpeHigh": "Maximal",
     "bodyWeight": "Body weight",
     "sessionLoad": "Session load",
+    "countsAsTitle": "Counts toward program",
+    "countsAsNone": "No",
+    "countsAsHint": "Counts as Session {{label}}: moves your week and stage forward.",
     "vsMean7d": "vs 7d average"
   },
   "load": {

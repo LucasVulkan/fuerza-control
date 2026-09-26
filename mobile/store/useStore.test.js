@@ -1614,6 +1614,75 @@ describe('sesiones libres — free-sessions.md T19', () => {
   });
 });
 
+describe('sesiones libres en el recap — free-sessions.md T22', () => {
+  beforeEach(() => {
+    useStore.setState({
+      exerciseLibrary: { squat: { id: 'squat' }, bench_press_barbell: { id: 'bench_press_barbell' } },
+      programs: {}, sessionTemplates: {}, clients: {}, clientLogs: {}, workoutLog: [],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  const progreso = (pid) => athleteProgressOf(useStore.getState().programs[pid]);
+  const athleteProgressOf = (p) => ({ done: p.stageSessionsDone ?? 0, started: p.stageStartedOn ?? null });
+
+  function conPrograma() {
+    const pid  = useStore.getState().createEmptyProgram(3, 'Mío', 'program', 4);
+    const days = useStore.getState().programs[pid].stages[0].days.map((d) => d.sessionTemplateId);
+    useStore.setState({ workoutLog: [
+      { id: 'log_l', sessionTemplateId: '__free__', free: true, timestamp: Date.parse('2026-09-20T10:00:00'), exercises: [] },
+    ] });
+    return { pid, days };
+  }
+  const entrada = () => useStore.getState().workoutLog[0];
+
+  it('marcar «Cuenta como C» suma una a la etapa y lo apunta en la entrada', () => {
+    const { pid, days } = conPrograma();
+    useStore.getState().setEntryCountsAs('log_l', days[2]);
+    expect(entrada().countsAs).toBe(days[2]);
+    expect(progreso(pid)).toEqual({ done: 1, started: '2026-09-20' });
+  });
+
+  it('cambiar de C a A no mueve el contador; quitarla lo devuelve', () => {
+    const { pid, days } = conPrograma();
+    useStore.getState().setEntryCountsAs('log_l', days[2]);
+    useStore.getState().setEntryCountsAs('log_l', days[0]);
+    expect(progreso(pid).done).toBe(1);
+    expect(entrada().countsAs).toBe(days[0]);
+    useStore.getState().setEntryCountsAs('log_l', null);
+    expect(progreso(pid).done).toBe(0);
+    expect('countsAs' in entrada()).toBe(false);
+  });
+
+  it('una sesión del programa no se puede marcar como sustituta', () => {
+    const { days } = conPrograma();
+    useStore.setState({ workoutLog: [{ id: 'log_p', sessionTemplateId: days[0], timestamp: 1, exercises: [] }] });
+    useStore.getState().setEntryCountsAs('log_p', days[1]);
+    expect(useStore.getState().workoutLog[0].countsAs).toBeUndefined();
+  });
+
+  it('los ejercicios añadidos en el entreno pasan a la sesión libre, sin tocar los que ya tenía', () => {
+    const id = useStore.getState().createFreeTemplate({ exercises: [{ exerciseId: 'squat', sets: 3 }] });
+    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'submax' });
+    useStore.setState({ workoutLog: [{
+      id: 'log_t', sessionTemplateId: id, free: true, timestamp: 1,
+      exercises: [
+        { exerciseId: 'squat', sets: [{ reps: '5', done: true }] },
+        { exerciseId: 'bench_press_barbell', isAdHoc: true, minReps: 6, maxReps: 8,
+          sets: [{ reps: '8', done: true }, { reps: '7', done: true }] },
+      ],
+    }] });
+    expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(1);
+    const exs = useStore.getState().sessionTemplates[id].exercises;
+    expect(exs.map((e) => e.exerciseId)).toEqual(['squat', 'bench_press_barbell']);
+    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'submax' });
+    expect(exs[1]).toMatchObject({ sets: 2, minReps: 6, maxReps: 8 });
+    // Repetirlo no los duplica.
+    expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(0);
+  });
+});
+
 describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () => {
   const stages = [
     { id: 'st_1', name: 'Base', days: [{ sessionTemplateId: 'tpl_c', label: 'A' }] },
