@@ -209,27 +209,29 @@ function SessionRow({
         >
           <View style={styles.sesBodyRule} />
           {children}
-          {/* Con `onEdit` (sesiones libres, free-sessions.md §6.1) EDITAR va al
-              lado, discreto: empezar sigue siendo lo principal. */}
+          {/* Botones sólidos a todo el ancho (QA 26-sep): primario en acento;
+              una sesión ya hecha esta semana repite con el secundario, que la
+              que toca es otra. Con `onEdit` (sesiones libres, free-sessions.md
+              §6.1) EDITAR va al lado, también secundario. */}
           <View style={styles.sesBtnRow}>
             <TouchableOpacity
-              style={[styles.sesBtn, onEdit && styles.sesBtnFlex]}
+              style={[styles.sesBtn, done && styles.sesBtnSecondary]}
               onPress={onStart}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={cta}
             >
-              <Text style={styles.sesBtnText}>{cta}</Text>
-              <HeroChevron color={th.colors.accent} />
+              <Text style={[styles.sesBtnText, done && styles.sesBtnTextSecondary]}>{cta}</Text>
+              <HeroChevron color={done ? th.colors.text : th.colors.onAccent} />
             </TouchableOpacity>
             {onEdit && (
               <TouchableOpacity
-                style={[styles.sesBtn, styles.sesBtnQuiet]}
+                style={[styles.sesBtn, styles.sesBtnSecondary, styles.sesBtnEdit]}
                 onPress={onEdit}
                 activeOpacity={0.75}
                 accessibilityRole="button"
               >
-                <Text style={[styles.sesBtnText, styles.sesBtnTextQuiet]}>{t('home.edit').toUpperCase()}</Text>
+                <Text style={[styles.sesBtnText, styles.sesBtnTextSecondary]}>{t('home.edit').toUpperCase()}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -659,7 +661,7 @@ export default function HomeScreen() {
             daba el salto de golpe mientras la tarjeta seguía animando. */}
         <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
           {homeFree.length > 0 && (
-            <>
+            <View style={styles.freeSection}>
               <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
               <View style={styles.group}>
                 {homeFree.map((tpl) => {
@@ -690,7 +692,7 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            </>
+            </View>
           )}
 
           <TouchableOpacity
@@ -889,25 +891,24 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent50,
     marginBottom:    spacing.sm2,
   },
-  // Contorno y no relleno: el lima sólido es de la que toca (§1.1).
+  // Sólido y a todo el ancho (QA 26-sep: el contorno se leía flojo y, dentro
+  // de la fila de botones, no llenaba). Primario en acento; secundario en
+  // `surface2` sin borde, la variante Secondary ya cerrada en la app.
+  sesBtnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: 12 },
   sesBtn: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    borderWidth:    borders.thin,
-    borderColor:    th.colors.accent,
-    borderRadius:   th.radius.md,
-    padding:        14,
-    marginTop:      12,
+    flex:            1,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    backgroundColor: th.colors.accent,
+    borderRadius:    th.radius.md,
+    padding:         14,
   },
-  // `button`, como todo lo que se pulsa y lleva palabra.
-  sesBtnText: { ...textStyles.button, color: th.colors.accent },
-  sesBtnRow:  { flexDirection: 'row', gap: spacing.sm },
-  sesBtnFlex: { flex: 1 },
-  // EDITAR de una sesión libre: el contorno apagado de `stageBannerBtnQuiet`,
-  // para que EMPEZAR siga siendo lo que se lee primero.
-  sesBtnQuiet:     { borderColor: th.colors.border },
-  sesBtnTextQuiet: { color: th.colors.mutedLight },
+  sesBtnText:          { ...textStyles.button, color: th.colors.onAccent },
+  sesBtnSecondary:     { backgroundColor: th.colors.surface2 },
+  sesBtnTextSecondary: { color: th.colors.text },
+  // EDITAR: lo justo para su palabra, que EMPEZAR es lo principal.
+  sesBtnEdit:          { flex: 0, justifyContent: 'center' },
 
   // ── La que toca hoy ─────────────────────────────────────────────────
   // La única pieza en color de la pantalla, así que dentro el acento es el
@@ -1068,6 +1069,9 @@ const makeStyles = (th) => StyleSheet.create({
   programBlock: { marginTop: spacing.xl },
 
   // ── Sesión libre ──────────────────────────────────────────────────────────────
+  // Más aire que entre dos rótulos cualesquiera: es otra zona, no otra lista
+  // del programa (QA 26-sep).
+  freeSection: { marginTop: spacing.xl },
   freeSessionBtn: {
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.sm,

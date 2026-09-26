@@ -6,6 +6,23 @@ import { targetLabel } from './prescription';
 const t = (key, fallback) => fallback ?? key;
 
 describe('targetLabel', () => {
+  it('manda la progresión de la sesión, no la de la librería', () => {
+    const def = { progressionModel: 'submax', minReps: null, maxReps: null };
+    expect(targetLabel(def, { sets: 3 }, t)).toBe('3 × submáx');
+    expect(targetLabel(def, { sets: 3, progressionModel: 'double_progression', minReps: 8, maxReps: 12 }, t))
+      .toBe('3 × 8–12 reps');
+    expect(targetLabel({ progressionModel: 'double_progression', minReps: 5, maxReps: 8 },
+      { sets: 3, progressionModel: 'submax' }, t)).toBe('3 × submáx');
+  });
+
+  it('nunca pinta null: sin objetivo se lee como submáx', () => {
+    const def = { progressionModel: 'submax', minReps: null, maxReps: null };
+    const ex  = { sets: 3, progressionModel: 'double_progression' };
+    expect(targetLabel(def, ex, t)).toBe('3 × submáx');
+    expect(targetLabel({}, { sets: 2, inputType: 'time' }, t)).toBe('2 × submáx');
+    expect(targetLabel({}, { sets: 2, minReps: 10 }, t)).toBe('2 × 10 reps');
+  });
+
   it('sin definición de ejercicio no hay frase', () => {
     expect(targetLabel(null, { sets: 3 }, t)).toBe('');
   });

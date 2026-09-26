@@ -14,9 +14,14 @@
 > salieron distintas de lo escrito:
 > - El botón «Guardar como sesión libre» del recap (§7.1) entró ya en T19: sin
 >   él la app se quedaba sin forma de guardar tras borrar las plantillas viejas.
-> - EDITAR en la fila de Inicio usa el contorno apagado de
->   `stageBannerBtnQuiet` (`border` + texto `mutedLight`), no `accent-50`: se leía
->   al mismo peso que EMPEZAR.
+> - Botones de las filas de Inicio (QA 26-sep, vale para TODAS las filas salvo
+>   la de hoy): sólidos y a todo el ancho. EMPEZAR/CONTINUAR en `accent` con
+>   texto `onAccent`; REPETIR (sesión ya hecha esta semana) y EDITAR en
+>   `surface2` sin borde, la variante Secondary de la app.
+> - `targetLabel` leía la progresión solo de la librería: un ejercicio submáx en
+>   la librería (flexiones, burpees…) pasado a doble en la sesión seguía saliendo
+>   «submáx», y sin rango pintaba «null». Ahora manda la sesión y, sin objetivo,
+>   se lee submáx.
 > - Las claves de texto del editor van en `freeSession.*` (`badge`,
 >   `toastSaved`), no en `editor.*`: son de la sesión libre, no del editor.
 >

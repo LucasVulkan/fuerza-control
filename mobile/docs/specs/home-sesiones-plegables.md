@@ -16,6 +16,10 @@
 > no da un salto brusco — es lo único de la animación que no se puede juzgar
 > sobre la maqueta.
 >
+> **QA 26-sep-2026:** los botones de las filas (no el de la de hoy) dejan el
+> contorno: sólidos y a todo el ancho, primario `accent` y REPETIR en `surface2`.
+> Ver [free-sessions.md](free-sessions.md), cabecera.
+>
 > Estado: **las dos fases implementadas** (sep 2026, `f2f79f0`), a falta de las
 > dos pruebas en dispositivo de arriba. Sale de una sesión de diseño Opus +
 > usuario sobre la Home: siete rondas de maquetas y un prototipo funcional, cada

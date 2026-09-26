@@ -18,7 +18,10 @@
 export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   if (!def) return '';
   const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
-  const model      = def.progressionModel;
+  // La sesión manda sobre la librería: un ejercicio que en la librería es
+  // submáx (flexiones, burpees…) y en la sesión se pasó a doble progresión se
+  // tiene que leer como doble. Leer solo `def` lo dejaba en «submáx» siempre.
+  const model      = exConfig.progressionModel ?? def.progressionModel;
   const sets       = exConfig.sets ?? 0;
   const minReps    = exConfig.minReps ?? def.minReps;
   const maxReps    = exConfig.maxReps ?? def.maxReps;
@@ -31,14 +34,21 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
     : '';
   const x = compact ? '×' : ' × ';
 
-  if (model === 'submax') return `${sets}${x}${t('workout.submax', 'submáx')}`;
+  const submax = `${sets}${x}${t('workout.submax', 'submáx')}`;
+  if (model === 'submax') return submax;
 
+  // Sin objetivo en la sesión ni en la librería no hay rango que pintar: sin
+  // esto salía «3 × null–null». Es lo que significa submáx — series sin meta.
   if (inputType === 'time' || inputType === 'weight_time') {
-    return `${sets}${x}${minTime}–${maxTime} s${unilateral}`;
+    if (minTime == null && maxTime == null) return submax;
+    return `${sets}${x}${minTime ?? maxTime}–${maxTime ?? minTime} s${unilateral}`;
   }
 
   // reps y weight_reps (por defecto)
-  const r = minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
+  if (minReps == null && maxReps == null) return submax;
+  const lo = minReps ?? maxReps;
+  const hi = maxReps ?? minReps;
+  const r = lo === hi ? `${lo}` : `${lo}–${hi}`;
   return compact ? `${sets}${x}${r}` : `${sets}${x}${r} reps${unilateral}`;
 }
 
