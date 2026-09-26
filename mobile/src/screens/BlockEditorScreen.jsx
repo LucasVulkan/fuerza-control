@@ -25,7 +25,7 @@ export default function BlockEditorScreen({ navigation, route }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { done } = useEditorExit(navigation);
+  const { done } = useEditorExit(navigation, templateId);
 
   const [blockId, setBlockId] = useState(initialBlockId);
   // Mismo contador de saltos que en `ExerciseEditorScreen`: sube en cada

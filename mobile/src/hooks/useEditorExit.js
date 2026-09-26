@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { backToMain } from '../navigation/navigationRef';
 
-export function useEditorExit(navigation) {
+// `templateId`: la sesión que se edita, si la hay. Una sesión libre no es de
+// ningún programa, así que salir de ella no puede marcar el activo como
+// pendiente de reenviar ni decir «Programa editado» (free-sessions.md §5).
+export function useEditorExit(navigation, templateId = null) {
   const { t } = useTranslation();
   const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
   const showToast                  = useStore((s) => s.showToast);
@@ -31,6 +34,13 @@ export function useEditorExit(navigation) {
   function commit() {
     Keyboard.dismiss();
     const st = useStore.getState();
+    const tpl = templateId ? st.sessionTemplates[templateId] : null;
+    if (tpl && !tpl.programId) {
+      // ponytail: el dueño siempre es 'me' hasta group-classes.md §4.2; ahí esto
+      // marcará a ESE cliente como pendiente de reenviar.
+      showToast(t('freeSession.toastSaved'), 2200, 'success');
+      return;
+    }
     const programId = st.ui._editingProgramId ?? st.profile?.activeProgramId;
     if (programId) markProgramDirtyForClients(programId);
     showToast(t('editor.toastProgramEdited'), 2200, 'success');
