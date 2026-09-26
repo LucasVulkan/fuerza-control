@@ -1,7 +1,7 @@
 # Spec — Clases y sesiones asignadas
 
 > Tema: conexión
-> En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir cualquier sesión en modo pizarra para darla y apuntar «clase dada».
+> En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir la clase que toca en modo pizarra y apuntar «clase dada».
 > Fase C23 · pendiente · El grupo como tipo de cliente · §3
 > Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
 > Fase C25 · pendiente · Modo pizarra · §5
@@ -12,9 +12,21 @@
 > de leer el código, con fichero y línea, pero hay que volver a comprobarlas
 > antes de cada fase.
 >
+> **Revisada el mismo 26-sep** tras el análisis por tipo de entrenador. Cambios:
+> los grupos van en **su propia sección** de la lista en vez de un filtro (§3.2),
+> la pizarra se abre **desde la lista** (§3.2), la ficha de un grupo reutiliza la
+> lista de sesiones de Inicio con PIZARRA como acción (§5.1), la pizarra es **solo
+> para grupos** (§2.6) y el WOD diario queda aparcado (§8). Segunda vuelta con el
+> usuario: el programa de un grupo **avanza igual que siempre** (§2.5), y un grupo
+> **de clases sueltas** no pide programa y elige la clase en dos toques (§2.8).
+> Maquetas: [`trainer-models.html`](../mockups/trainer-models.html) y
+> [`board.html`](../mockups/board.html) (la pizarra).
+>
 > **Depende de [free-sessions.md](free-sessions.md) T19-T21** para la C24
-> (sesiones libres con `owner`, §4.1.1 de esa spec). La C23 y la C25 no
-> dependen de nada.
+> (sesiones libres con `owner`, §4.1.1 de esa spec; ya en main). La C25 reutiliza
+> las piezas de lista de sesiones que extrae la C19 de
+> [trainer-logging.md](trainer-logging.md) §3.1; si la C25 llega antes, la
+> extracción la hace ella.
 
 ---
 
@@ -44,39 +56,110 @@ cosas que el entrenador no puede hacer:
 4. **Futuro, fuera de alcance**: que los alumnos «entren» en una clase y
    apunten sus resultados, ellos o el profe (§8). La entrada de «clase dada» es
    donde se colgarán esos resultados, así que no hay que rehacer nada.
+5. **El programa de un grupo avanza exactamente igual que el de un cliente**:
+   la siguiente es la que más tiempo lleva sin darse (`sessionPlan`), y cada
+   clase dada cuenta. Consecuencia conocida y aceptada por ahora: si el mismo
+   grupo se da a varias horas, la rotación avanza **por clase**, y a las 19:00
+   toca la B aunque esa gente no haya hecho la A. Cualquier fila abre su
+   pizarra, así que se elige otra a mano. Lo que lo resolvería de verdad está
+   en «Por explorar» (§8): sesiones ligadas a un día de la semana.
+6. **La pizarra es solo para grupos.** Para ver la sesión de un cliente
+   individual (problema 3) basta con abrir su fila en la ficha: enseña los
+   ejercicios, como en Inicio ([trainer-logging.md](trainer-logging.md) §3.1 y
+   §4.1 aquí). Un VER más sería un botón que repite lo que ya está.
+7. **Un grupo cuenta como un cliente** en el freemium 2+2 de
+   [monetizacion.md](monetizacion.md) §4. Es la regla más simple, y un estudio
+   con varias clases ya pasa por caja, que es razonable.
+8. **Dos formas de grupo, sin ajuste que elegir**: se deducen de lo que tiene.
+   - **Con programa**: sesiones que rotan y etapas. La pizarra abre la que
+     toca en **un toque**.
+   - **Solo con sesiones libres** (clases sueltas, el profe elige cada día): no
+     es «un grupo al que le falta programa». La tarjeta dice cuántas sesiones
+     tiene, y la pizarra abre una hoja con todas para elegir: **dos toques**.
 
 ## 3. Fase C23 — El grupo como tipo de cliente
 
 `client.kind: 'individual' | 'group'`. Si falta, vale `'individual'`.
 
-**Crear.** La hoja de nuevo cliente añade un selector «Cliente / Grupo».
-`createClient(name, { kind })` (`useStore.js:606`). **Un grupo no crea slot en
-Supabase**: sin conexión posible, el slot sería un código que no sirve para
-nada (hoy se crea en `useStore.js:621` si el entrenador está en modo nube).
+### 3.1 Crear
 
-**La ficha de un grupo** (`ClientsScreen`, pestañas en `:2456`):
+La hoja de nuevo cliente añade un `SegmentedControl` **Cliente / Grupo** encima
+del nombre. `createClient(name, { kind })` (`useStore.js:606`). Con Grupo:
+- El marcador de posición del nombre es «Ej.: Funcional, Pilates…».
+- **No crea slot en Supabase**: sin conexión posible, el slot sería un código
+  que no sirve para nada (hoy se crea en `useStore.js:621` si el entrenador está
+  en modo nube).
+
+### 3.2 En la lista de clientes
+
+- **Sección propia arriba**: etiqueta **GRUPOS** con su número (tratamiento de
+  `SectionHeader` de Inicio) y sus tarjetas; después la etiqueta **CLIENTES** y
+  el resto. **Sin grupos, no se pinta ninguna etiqueta**: la lista del
+  entrenador 1 a 1 se queda exactamente como hoy. La búsqueda filtra las dos
+  secciones; el orden y los filtros de la hoja solo afectan a CLIENTES.
+- **No hace falta filtro Clientes / Grupos**: la sección ya los separa. El
+  contador de la cabecera («CLIENTES · 9») cuenta solo individuales.
+- **Tarjeta de grupo**, misma anatomía que `ClientListCard`
+  (`ClientsScreen.jsx:1527`):
+  - Línea 1: nombre · «Semana NN» si el programa tiene semanas.
+  - Línea 2: programa · etapa.
+  - Línea 3: «2/3 esta semana · 12 asist.» (media de asistentes de las últimas
+    clases que lo tengan; sin datos, no se pinta). **Sin porcentaje**: un grupo
+    no tiene adherencia.
+  - Hueco derecho: **Pizarra · B**, que abre la pizarra de la clase que toca en
+    un toque. Tratamiento *quieto*, `tint.accent10` + texto accent (el de
+    «Preparar»), no el relleno sólido de los CTA urgentes: es la acción de
+    siempre, no un aviso.
+- **Tarjeta de un grupo de clases sueltas** (sin programa, con sesiones libres,
+  §2.8). **Sin el aviso «Sin programa activo»**: no le falta nada.
+  - Línea 1: nombre, sin «Semana».
+  - Línea 2: «6 sesiones» (`bodyStrong`, en el sitio del programa).
+  - Línea 3: «2 esta semana · 12 asist.».
+  - Hueco derecho: **Pizarra**, mismo tratamiento quieto, que abre la hoja
+    «Elegir clase» (§5.1).
+- Un grupo **vacío** (sin programa ni sesiones libres): el aviso y el
+  **+ Programa** de siempre.
+- **No entra en la adherencia ni en los avisos** («requiere atención»,
+  `ClientsScreen.jsx:1907`, píldoras de riesgo y el aviso de cambios sin
+  enviar), ni en las banderas de [client-triage.md](client-triage.md) cuando se
+  implemente. Un grupo que no da clase una semana no es un cliente abandonando.
+- Pulsación larga: Pizarra, Editar programa, Info.
+
+### 3.3 La ficha de un grupo
+
+Pestañas (`ClientsScreen.jsx:2459`):
 
 | Pestaña | En un grupo |
 |---|---|
-| Programas | Igual: programa activo, anteriores, editar |
+| Programa | `ProgramCard` + lista de sesiones con PIZARRA (§5.1) + sesiones libres (§4) |
 | Historial | Pasa a llamarse **Clases**: la lista de clases dadas (§6) |
 | Progreso | **No aparece**: no hay datos individuales |
 | Info | Nombre, notas y facturación. Sin peso corporal ni código de conexión |
 
-**En la lista de clientes:**
-- El grupo lleva un marcador de grupo junto al nombre.
-- **No entra en la adherencia ni en los avisos** («requiere atención»,
-  `ClientsScreen.jsx:1907`), ni en las banderas de
-  [client-triage.md](client-triage.md) cuando se implemente. Un grupo que no da
-  clase una semana no es un cliente abandonando.
-- La línea de estado dice «Última clase hace 3 días».
-- Filtro de la lista: «Clientes / Grupos / Todos», dentro de los filtros
-  unificados que ya existen.
+`ProgramCard` en un grupo: la ceja dice «Programa del grupo» y las cifras son
+dos, **Ritmo** (clases por semana, `recentPerWeek` sobre su log) y **Asistencia**
+(media de asistentes). Sin adherencia ni carga. Hasta que exista la C26 el log
+está vacío y las dos salen «—».
 
-**Probar en dispositivo.**
+**Grupo de clases sueltas**: sin `ProgramCard` y **sin la caja «Sin programa
+activo»** (`noActiveBox`, `ClientsScreen.jsx:2588`). La pestaña empieza
+directamente por SESIONES LIBRES (§4.1), con PIZARRA en cada fila. Debajo de
+«＋ Sesión libre», un enlace terciario **Añadir programa** por si algún día lo
+quiere.
+
+### 3.4 Probar en dispositivo
+
 > **Probar en dispositivo.** Crear un grupo con el entrenador en modo nube: no
-> aparece código de conexión, la ficha no tiene Progreso y el grupo no sale en
-> «requiere atención» aunque no tenga clases.
+> aparece código de conexión, la ficha tiene Programa · Clases · Info, y el grupo
+> sale en la sección GRUPOS de la lista, no en «requiere atención» aunque no
+> tenga clases.
+
+> **Probar en dispositivo.** Entrenador sin grupos: la lista de clientes se ve
+> **idéntica** a antes (sin etiquetas de sección).
+
+> **Probar en dispositivo.** Grupo sin programa y con 3 sesiones libres (tras la
+> C24): la tarjeta dice «3 sesiones», sin aviso de programa, y **Pizarra** abre
+> la hoja para elegir clase. Dos toques hasta la pizarra.
 
 ## 4. Fase C24 — Sesiones libres de un cliente o de un grupo
 
@@ -85,14 +168,20 @@ Se apoya en [free-sessions.md](free-sessions.md) §4.1.1: una sesión libre con
 
 ### 4.1 En la ficha
 
-Pestaña Programas, debajo del programa: sección **SESIONES LIBRES**, con la
-misma sección que Inicio (free-sessions §6.1 la deja reutilizable por props).
-- Filas con las sesiones libres del cliente. Al desplegar: **VER** (pizarra,
-  §5) y **EDITAR**.
-- Debajo, «＋ Sesión libre» → `createFreeTemplate(null, clientId)` → editor en
-  modo libre.
-- En un cliente **sin conectar**, además, REGISTRAR
-  ([trainer-logging.md](trainer-logging.md) §3, si está hecha).
+Pestaña Programa, debajo de las sesiones del programa: **SESIONES LIBRES**, con
+las mismas filas plegables que Inicio (`SessionRow` sin letra, free-sessions
+§6.1). Abierta, la fila enseña los ejercicios y sus botones dependen de la
+ficha:
+
+| Ficha | Botones de la fila abierta |
+|---|---|
+| Cliente conectado | EDITAR · COMPARTIR |
+| Cliente sin conectar | EMPEZAR · EDITAR ([trainer-logging.md](trainer-logging.md) §3) |
+| Grupo | PIZARRA · EDITAR |
+
+Debajo, «＋ Sesión libre» (contorno, como en Inicio) →
+`createFreeTemplate(null, clientId)` → editor en modo libre. Sin sesiones libres,
+solo sale ese botón, sin etiqueta de sección.
 
 ### 4.2 Editarlas
 
@@ -137,59 +226,103 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
   entrenador (free-sessions §4.2) y pueden sustituir un día (free-sessions
   §7.3).
 
-**Probar en dispositivo.**
+### 4.5 Probar en dispositivo
+
 > **Probar en dispositivo (dos móviles).** El entrenador crea una sesión libre
 > para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
 > {entrenador}», sin EDITAR, y puede hacerla. El entrenador la borra y reenvía:
 > desaparece del móvil del cliente, y el historial del cliente la conserva.
 
 > **Probar en dispositivo.** Crear una sesión libre para un grupo: aparece en su
-> ficha y **no** en tu Inicio.
+> ficha con PIZARRA y **no** en tu Inicio.
 
 ## 5. Fase C25 — Modo pizarra
 
-Una pantalla nueva, **`BoardScreen`**, para ver una sesión mientras se da. Es de
-solo lectura: no se apunta nada. Se abre con `{ templateId, clientId }` desde:
-- la ficha de un grupo: sesiones del programa y sesiones libres, botón
-  **PIZARRA** (en un grupo sustituye a EMPEZAR);
-- la ficha de un cliente individual: botón **VER** en sus sesiones. Esto cubre
-  el punto 3 del problema sin tocar «Ver programa».
+### 5.1 Desde dónde se abre
 
-**Contenido, de arriba abajo:**
-- Cabecera: nombre del grupo o cliente y nombre de la sesión.
-- Los ejercicios en el orden de la sesión, con superseries y bloques agrupados
-  como en el Workout (`sessionSlots`, `sessionSlots.js:21`). Por ejercicio:
-  nombre, prescripción (`targetLabel`, `prescription.js:18`) y la nota o
-  limitación si la tiene.
+Una pantalla nueva, **`BoardScreen`**, para ver una sesión mientras se da. Se
+abre con `{ templateId, clientId }` desde tres sitios, todos de un grupo:
+- **La lista de clientes**: el CTA de la tarjeta (§3.2). Con programa,
+  **Pizarra · B** abre la clase que toca en un toque. De clases sueltas,
+  **Pizarra** abre la hoja **Elegir clase**: una `DragSheet` con una fila por
+  sesión (nombre y «última hace X días», la que más tiempo lleva sin darse
+  primero). Al tocar una, pizarra. Dos toques.
+- **La ficha del grupo**: la lista de sesiones de Inicio (las piezas que extrae
+  [trainer-logging.md](trainer-logging.md) §3.1), con la clase que toca en lima,
+  ceja «Siguiente clase» y **PIZARRA · CLASE B**. Las demás en filas plegables
+  con PIZARRA y COMPARTIR (C21). Contador «2 de 3 esta semana» como en Inicio.
+- **Las sesiones libres del grupo** (§4.1).
+
+Debajo de la lista, **Apuntar clase dada** (contorno): la hoja de §6 sin pasar
+por la pizarra, para la clase que se dio sin abrir la app.
+
+### 5.2 Contenido
+
+Maqueta: [`board.html`](../mockups/board.html). Pendiente de la ronda de QA del
+usuario antes de implementarla.
+
+**Todo a la vista, en una lista. Nunca un ejercicio a la vez.** En una clase
+cada uno va a su ritmo y un circuito se hace en distinto orden por estaciones.
+Mostrar un ejercicio a la vez obligaría a todos a ir juntos y al profe a pasar
+pantallas. La pizarra enseña **qué hay que hacer**, no por dónde va nadie.
+
+De arriba abajo:
+- **Cabecera compacta y fija**: ‹, el grupo en `caps` y la sesión («B · Pierna
+  y core») en `heading`. Así la lista de debajo se queda con toda la altura.
+- **Los ejercicios en el orden de la sesión**, agrupados como en el Workout
+  (`sessionSlots`, `sessionSlots.js:21`). Una fila por ejercicio:
+  - el número en `title` y `muted`;
+  - el nombre en `heroName` (Barlow Condensed 28), que al ser condensada cabe
+    entero a esa escala;
+  - la prescripción (`targetLabel` compacto, `prescription.js:18`) a la derecha,
+    en `heroGlyph` (34) y **lima**: es lo que se busca desde lejos;
+  - debajo, en `body` y `mutedLight`, la carga, el descanso y la nota o
+    limitación si las hay.
+- **Superseries y circuitos**: un marco `surface` con cabecera `caps`. Con 2
+  miembros, «Superserie · 3 rondas» (la cadena del Workout,
+  `workout.supersetHeader`, sin «alternando»). Con 3 o más, **«Circuito · 4
+  vueltas»** (clave nueva `board.circuitHeader`): en una clase, una cadena
+  larga se hace por estaciones y no siempre en orden.
 - Los bloques AMRAP/EMOM/For time con **su reloj**: `ConditioningBlockCard` ya
   funciona solo por props (`block`, `state`, `onStart`, `onFinish`…,
   `ConditioningBlockCard.jsx:78`). La pizarra le pasa un estado local
   (`useState`), sin tocar la sesión en curso del store. `ponytail:` si la app
   se cierra a mitad de un bloque, el reloj se pierde (el Workout lo recupera y
   la pizarra no). Si molesta en clase, guardar ese estado en el store como
-  `blockState`.
-- Pie: **CLASE DADA** (§6), solo en grupos.
+  `blockState`. El reloj ya va a 44 px (`clock`, única excepción de la escala
+  en ese componente) y se lee a distancia. **Sin contador de rondas**: en la
+  pizarra nadie apunta. Hay que comprobar si `ConditioningBlockCard` puede
+  esconderlo por props; si no, una prop `scoring={false}`.
+- Pie fijo: **TERMINAR CLASE**, que abre la hoja de §6 con «Hoy» marcado.
+- **Tablet en vertical** (ancho ≥ 600): el mismo contenido en **dos columnas**,
+  para que una sesión normal quepa entera sin desplazar. Mismos roles de texto:
+  no se agranda nada, se aprovecha el ancho.
 
 **Pantalla siempre encendida** mientras la pizarra está abierta
 (`expo-keep-awake`, ya instalado y usado en `ConditioningBlockCard.jsx:29`).
 
 **Diseño: sin nodo de Figma.** La pizarra se lee a un metro, así que el cuerpo
 de letra sube. Pero **sin `fontSize` propios**: se usan roles de `textStyles`
-(regla de `AGENTS.md`). Probablemente `heroName` para el nombre del ejercicio y
-`title` o `heading` para la prescripción (roles en `src/theme.js:143`). **Antes de implementar, una ronda de
-maquetas con el usuario**, como se hizo con el recap. Vertical siempre
-(decisión §2.3).
+(regla de `AGENTS.md`). Los roles elegidos están arriba; los dos más grandes
+de la escala (`heroGlyph` y `heroName`) son los de la tarjeta lima de Inicio, así
+que la pizarra habla como «lo que toca». Vertical siempre (decisión §2.3).
 
-**Probar en dispositivo.**
-> **Probar en dispositivo.** Abrir la pizarra de una sesión con un AMRAP en el
-> móvil y en una tablet, a un metro: se lee sin acercarse, la pantalla no se
-> apaga y el reloj del AMRAP funciona.
+### 5.3 Probar en dispositivo
+
+> **Probar en dispositivo.** Desde la lista de clientes, Pizarra · B de un grupo
+> abre la clase que toca en un toque. Con un AMRAP, en el móvil y en una tablet,
+> a un metro: se lee sin acercarse, la pantalla no se apaga y el reloj del AMRAP
+> funciona.
 
 ## 6. Fase C26 — Clase dada
 
-Al pulsar CLASE DADA en la pizarra se abre una hoja pequeña:
-- **Cuándo**: chips de los últimos 7 días, «Hoy» marcado. Son los mismos chips
-  que trainer-logging §3.1; si esa spec ya está hecha, se reutilizan.
+Al pulsar TERMINAR CLASE en la pizarra, o **Apuntar clase dada** en la ficha
+(§5.1), se abre una hoja pequeña:
+- **Qué clase**: solo al venir de la ficha. Chips con las sesiones de la etapa,
+  la que toca marcada; las libres del grupo al final.
+- **Cuándo**: chips de hoy y los 6 días anteriores, «Hoy» marcado. Son los
+  mismos chips que trainer-logging §3.2; si esa spec ya está hecha, se
+  reutilizan.
 - **Asistentes**: un contador opcional (`StepField`), vacío por defecto.
 - **GUARDAR**.
 
@@ -204,31 +337,34 @@ Al pulsar CLASE DADA en la pizarra se abre una hoja pequeña:
 
 - **La que toca:** `sessionPlan` con el log del grupo funciona sin cambios. La
   sesión que más tiempo lleva sin darse es la siguiente, que es la rotación de
-  clases. Las filas marcan las dadas esta semana.
+  clases. Las filas marcan las dadas esta semana. **Varias clases el mismo día**
+  son varias entradas, y la rotación avanza una por clase (§2.5).
 - **Etapas:** si el programa del grupo tiene etapas por semanas, `logClass`
   aplica `recordSession` como cualquier entreno (`useStore.js:2295`), así que
   sirve para planificar un trimestre.
-- **Pestaña Clases:** una fila por clase dada: sesión, fecha y asistentes. Hay
-  que comprobar que `SessionCard` (`SessionCard.jsx`) aguanta una entrada sin
-  ejercicios. Si no, fila propia con `GroupedRow`.
-- **Los grupos no entran en la carga**: no tienen Progreso (§3), así que el
+- **Pestaña Clases:** una fila por clase dada: letra, sesión, fecha y
+  asistentes. Hay que comprobar que `SessionCard` (`SessionCard.jsx`) aguanta
+  una entrada sin ejercicios. Si no, fila propia con `GroupedRow`.
+- **Los grupos no entran en la carga**: no tienen Progreso (§3.3), así que el
   panel de carga no se pinta. Ninguna otra pantalla lee el log de un grupo.
 
 **Probar en dispositivo.**
-> **Probar en dispositivo.** Grupo con programa A/B/C: dar la A y marcar CLASE
-> DADA. En la ficha la siguiente pasa a ser la B, y la pestaña Clases muestra la
-> A de hoy con sus asistentes. Marcar una clase de ayer: aparece en su día.
+> **Probar en dispositivo.** Grupo con programa A/B/C: dar la A desde la pizarra
+> y TERMINAR CLASE con 12 asistentes. En la ficha la siguiente pasa a ser la B,
+> la tarjeta de la lista dice «Pizarra · B» y «1/3 esta semana · 12 asist.», y la
+> pestaña Clases muestra la A de hoy. Apuntar desde la ficha una clase de ayer:
+> aparece en su día.
 
 ## 7. Orden
 
 ```
-free-sessions T19-T21 ──→ C24 (sesiones libres de clientes y grupos)
-C23 (grupo) ──┬──────────→ C24
-              └→ C25 (pizarra) ──→ C26 (clase dada)
+C19 (trainer-logging: extrae la lista de sesiones) ─┐
+C23 (grupo) ─────────────────────────────────────────┼→ C25 (pizarra) ──→ C26 (clase dada)
+free-sessions T19-T21 (hecha) + C23 ───────────────────→ C24 (sesiones libres de clientes y grupos)
 ```
 
-C23 y C25 pueden empezar ya. Con C23 + C25 + C26 hay clases con programa; la
-C24 añade las clases sueltas y las sesiones asignadas a clientes.
+Con C23 + C25 + C26 hay clases con programa; la C24 añade las clases sueltas y
+las sesiones asignadas a clientes.
 
 ## 8. Fuera de alcance
 
@@ -237,16 +373,30 @@ C24 añade las clases sueltas y las sesiones asignadas a clientes.
   entrada `kind: 'class'` (p. ej. `results: [{ name, … }]`) y el modelo de
   «grupo» ya está.
 - **Resultados de la clase tipo box** (ranking de un for time). Mismo sitio.
+- **WOD diario (box)**: aparcado. Una sesión nueva cada día acumula decenas de
+  sesiones libres en la ficha, ordenadas por creación y sin archivar. Si se
+  retoma, lo mínimo es esconder las ya dadas o enseñar solo las últimas N.
 - **Pizarra en horizontal o en una tele** (§2.3).
 - **Varios clientes en el mismo programa** (circuitos): el usuario lo aparcó.
-- **Bonos de sesiones** que se descuentan al dar una clase o registrar una
-  sesión: su propia spec (ver trainer-logging §7).
+- **Bonos de sesiones**: aparcado; la facturación actual podría desaparecer
+  (ver trainer-logging §7).
+
+### Por explorar: sesiones ligadas a un día de la semana
+
+Idea del usuario, sin decidir. Que las sesiones de un programa puedan llevar un
+día de la semana (A = lunes, B = miércoles…). **La que toca la decide el
+calendario y no el historial**: no avanza al hacerla, sino al llegar el día. Se
+puede hacer cualquier sesión cuando quieras; el día es la lógica de partida. Así
+funciona un estudio que da la misma clase a todas las horas del día, y se acaba
+el problema de §2.5. Afectaría también a los programas individuales, así que va
+en su propia spec, cruzada con [weeks-model.md](weeks-model.md) (hoy la semana
+cuenta sesiones, no días).
 
 ## Fases
 
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
-| C23 | §3: `kind: 'group'`, sin slot, ficha y lista | — | Prueba de §3 |
-| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21, C23 | Pruebas de §4 (una con dos móviles) |
-| C25 | §5: `BoardScreen` con bloques y pantalla encendida, tras la ronda de maquetas | — | Prueba de §5 |
-| C26 | §6: `logClass`, pestaña Clases | C23, C25 | Prueba de §6 |
+| C23 | §3: `kind: 'group'`, sin slot, sección GRUPOS con su tarjeta, ficha y hoja de alta | — | Pruebas de §3.4 |
+| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21, C23 | Pruebas de §4.5 (una con dos móviles) |
+| C25 | §5: lista de sesiones del grupo con PIZARRA, `BoardScreen` con bloques y pantalla encendida, tras la ronda de maquetas | C23, lista de sesiones de C19 | Prueba de §5.3 |
+| C26 | §6: `logClass`, hoja de clase dada, pestaña Clases | C23, C25 | Prueba de §6 |

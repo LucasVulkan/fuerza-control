@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pizarra — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --lima: #b8ff00; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+  }
+  /* Roles de textStyles — la pizarra no inventa tamaños */
+  .t-heroGlyph { font: italic 800 34px/36px 'Barlow Condensed'; text-transform: uppercase; }
+  .t-heroName  { font: italic 800 28px/30px 'Barlow Condensed'; }
+  .t-title   { font: 900 22px/24px Inter; letter-spacing: -.5px; }
+  .t-heading { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-item    { font: 900 16px Inter; letter-spacing: -.2px; }
+  .t-body    { font: 500 14px Inter; }
+  .t-bodyS   { font: 700 14px Inter; }
+  .t-button  { font: 900 14px Inter; }
+  .t-label   { font: 500 12px Inter; }
+  .t-labelS  { font: 800 12px Inter; }
+  .t-caps    { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+  /* La única excepción de la escala que ya existe: el reloj de ConditioningBlockCard */
+  .clock     { font: 900 44px/46px Inter; letter-spacing: -.88px; font-variant-numeric: tabular-nums; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead, .sub { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 900px; margin-bottom: 14px; }
+  .lead b, .sub b, .note b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 50px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; }
+  .cap b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .cap.bad b { color: #ff5e58; }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+
+  /* ══════ PANTALLA ══════ */
+  .phone { width: 375px; height: 812px; background: var(--bg); border-radius: 26px; overflow: hidden;
+           border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
+  .tablet { width: 744px; height: 1000px; border-radius: 30px; }
+  .scroll { flex: 1; overflow-y: auto; padding: 4px 15px 16px; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+
+  /* Cabecera compacta y fija */
+  .bh { display: flex; align-items: center; gap: 10px; padding: 14px 15px 10px; flex-shrink: 0; }
+  .back { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--surface2); display: grid;
+          place-items: center; color: var(--mutedLight); font: 900 22px/22px Inter; padding-bottom: 3px; flex-shrink: 0; }
+  .bh .who { flex: 1; min-width: 0; }
+  .bh .who .t-caps { color: var(--mutedLight); }
+  .bh .who .t-heading { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bh .who .t-heading em { font-style: normal; color: var(--accent); }
+  .bh .dur { color: var(--mutedLight); flex-shrink: 0; }
+
+  /* Pie fijo */
+  .bf { padding: 10px 15px 18px; flex-shrink: 0; border-top: 1px solid #1d1d1d; }
+  .endbtn { background: var(--accent); color: #000; border-radius: var(--r-md); padding: 15px; text-align: center; }
+
+  /* Lista */
+  .stack { display: flex; flex-direction: column; gap: 6px; }
+  .card { background: var(--surface); border-radius: var(--r-md); overflow: hidden; }
+  .row { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; }
+  .row + .row { border-top: 1px solid #2a2a2a; }
+  .num { width: 30px; flex-shrink: 0; color: var(--muted); }
+  .main { flex: 1; min-width: 0; }
+  .presc { color: var(--accent); flex-shrink: 0; text-align: right; }
+  .presc small { font: 500 12px Inter; color: var(--mutedLight); text-transform: none; margin-left: 2px; }
+  .det { color: var(--mutedLight); margin-top: 3px; }
+  .det b { color: var(--text); font-weight: 700; }
+
+  .ghead { display: flex; align-items: center; gap: 8px; background: var(--surface2); padding: 9px 14px; }
+  .ghead .t-caps { color: var(--accent); }
+  .ghead .t-label { color: var(--mutedLight); margin-left: auto; }
+
+  /* Bloque (ConditioningBlockCard) */
+  .blk { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .blkh { display: flex; gap: 10px; background: var(--surface2); padding: 14px 12px 14px 16px; align-items: flex-start; }
+  .blkh .n { color: var(--accent); min-width: 22px; line-height: 22px; }
+  .blkh .nm { flex: 1; }
+  .blkh .nm .t-item { line-height: 22px; }
+  .blkh .nm .t-label { color: var(--mutedLight); margin-top: 3px; }
+  .blkb { padding: 12px 16px 6px; }
+  .timer { display: flex; align-items: center; gap: 14px; background: var(--bg); border-radius: 12px; padding: 14px 16px; }
+  .timer .clock.on { color: var(--accent); }
+  .timer .side { margin-left: auto; text-align: right; }
+  .timer .side .t-caps { color: var(--muted); }
+  .timer .side .t-item { color: var(--mutedLight); }
+  .startbtn { margin-left: auto; background: var(--accent); color: #000; border-radius: 12px; padding: 12px 16px; }
+  .blk .row { padding: 10px 0; }
+  .blk .row .num { width: 0; }
+
+  /* Tablet: dos columnas */
+  .two { columns: 2; column-gap: 8px; }
+  .two > * { break-inside: avoid; margin-bottom: 8px; }
+
+  /* Hoja */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-top-left-radius: var(--r-lg);
+           border-top-right-radius: var(--r-lg); border: 1px solid var(--border); border-bottom: 0; padding: 6px 15px 22px; }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 12px; }
+  .srws { display: flex; flex-direction: column; gap: 4px; }
+  .srw { display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: var(--r-sm); padding: 11px 10px; }
+  .srw .t { flex: 1; font: 800 14px Inter; }
+  .srw .m { color: var(--mutedLight); }
+  .srw .ch { color: var(--mutedLight); font: 900 14px Inter; }
+  .srw.first .t { color: var(--accent); }
+
+  /* Descartado: un ejercicio a la vez */
+  .solo { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; padding: 0 24px; text-align: center; }
+  .solo .t-caps { color: var(--mutedLight); }
+  .solo .t-heroGlyph { color: var(--accent); }
+  .solo .nav { display: flex; gap: 8px; width: 100%; margin-top: 20px; }
+  .solo .nav div { flex: 1; background: var(--surface2); border-radius: var(--r-md); padding: 14px; }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 7px; height: 7px; border-radius: 4px; background: var(--border); }
+  .dots i.on { background: var(--accent); }
+
+  /* Listado detrás de la hoja (ficha del grupo, resumida) */
+  .bgrow { background: var(--surface); border-radius: var(--r-md); height: 60px; margin: 0 15px 4px; }
+</style>
+</head>
+<body>
+
+<h1>Pizarra — ver la clase mientras se da</h1>
+<p class="lead">
+  Maqueta de la <b>C25</b> (group-classes.md §5) con los tokens y roles de texto reales. Hay una sola idea
+  de fondo: la pizarra enseña <b>qué hay que hacer</b>, no por dónde va cada uno. En una clase cada persona
+  va a su ritmo, y un circuito se hace por estaciones en distinto orden. Por eso es <b>una lista con todo a la
+  vista</b>, sin pasar pantallas ni apuntar nada.
+</p>
+<p class="lead">
+  Para leerla a un metro usa los dos roles más grandes de la escala, los de la tarjeta lima de Inicio:
+  <b>heroName</b> (Barlow Condensed 28) para el ejercicio y <b>heroGlyph</b> (34, en lima) para lo que hay que
+  hacer. El reloj del bloque es el del Workout, a 44. No hay ni un tamaño nuevo. Las pantallas se pueden
+  desplazar como en el móvil.
+</p>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2>1 · Móvil</h2>
+<div class="rack">
+
+  <div class="col">
+    <p class="cap"><b>LA CLASE ENTERA</b>ejercicio suelto, superserie, circuito, AMRAP en marcha y vuelta a la calma</p>
+    <div class="phone">
+      <div class="bh">
+        <div class="back">‹</div>
+        <div class="who"><div class="t-caps">Funcional mañanas</div><div class="t-heading"><em>B</em> · Pierna y core</div></div>
+        <div class="dur t-label">~50 min</div>
+      </div>
+      <div class="scroll"><div class="stack">
+
+        <div class="card">
+          <div class="row"><span class="num t-title">1</span>
+            <div class="main"><div class="t-heroName">Sentadilla goblet</div><div class="det t-body"><b>16–24 kg</b> · descanso 90 s</div></div>
+            <span class="presc t-heroGlyph">4×10</span></div>
+        </div>
+
+        <div class="card">
+          <div class="ghead"><span class="t-caps">Superserie · 3 rondas</span><span class="t-label">60 s tras cada ronda</span></div>
+          <div class="row"><span class="num t-title">2a</span>
+            <div class="main"><div class="t-heroName">Zancada inversa</div><div class="det t-body">Cada pierna</div></div>
+            <span class="presc t-heroGlyph">×8</span></div>
+          <div class="row"><span class="num t-title">2b</span>
+            <div class="main"><div class="t-heroName">Puente de glúteo</div></div>
+            <span class="presc t-heroGlyph">×15</span></div>
+        </div>
+
+        <div class="card">
+          <div class="ghead"><span class="t-caps">Circuito · 4 vueltas</span><span class="t-label">en el orden que quieras</span></div>
+          <div class="row"><span class="num t-title">3a</span>
+            <div class="main"><div class="t-heroName">Kettlebell swing</div><div class="det t-body"><b>16 kg</b></div></div>
+            <span class="presc t-heroGlyph">×15</span></div>
+          <div class="row"><span class="num t-title">3b</span>
+            <div class="main"><div class="t-heroName">Remo en TRX</div></div>
+            <span class="presc t-heroGlyph">×12</span></div>
+          <div class="row"><span class="num t-title">3c</span>
+            <div class="main"><div class="t-heroName">Plancha frontal</div><div class="det t-body">Nota: rodillas al suelo si hace falta</div></div>
+            <span class="presc t-heroGlyph">40<small>s</small></span></div>
+          <div class="row"><span class="num t-title">3d</span>
+            <div class="main"><div class="t-heroName">Salto a la comba</div></div>
+            <span class="presc t-heroGlyph">60<small>s</small></span></div>
+        </div>
+
+        <div class="blk">
+          <div class="blkh"><span class="n t-item">4</span>
+            <div class="nm"><div class="t-item">AMRAP 8'</div><div class="t-label">3 movimientos · máximas rondas</div></div></div>
+          <div class="blkb">
+            <div class="timer"><span class="clock on">05:12</span>
+              <div class="side"><div class="t-caps">de</div><div class="t-item">8:00</div></div></div>
+            <div class="row"><div class="main"><div class="t-heroName">Wall ball</div></div><span class="presc t-heroGlyph">×10</span></div>
+            <div class="row"><div class="main"><div class="t-heroName">Burpee</div></div><span class="presc t-heroGlyph">×8</span></div>
+            <div class="row"><div class="main"><div class="t-heroName">Remo ergómetro</div></div><span class="presc t-heroGlyph">200<small>m</small></span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row"><span class="num t-title">5</span>
+            <div class="main"><div class="t-heroName">Estiramiento de cadera</div><div class="det t-body">Cada lado</div></div>
+            <span class="presc t-heroGlyph">2×45<small>s</small></span></div>
+        </div>
+
+      </div></div>
+      <div class="bf"><div class="endbtn t-button">TERMINAR CLASE</div></div>
+    </div>
+    <div class="note">
+      <ul>
+        <li><b>Cabecera mínima y fija</b>: el grupo, la letra en lima y el nombre. Toda la altura es para la clase.</li>
+        <li><b>Una fila por ejercicio</b>: número apagado, nombre grande y lo que hay que hacer en lima a la derecha, que es donde va la vista desde lejos. Debajo, en pequeño, carga, descanso y notas: eso lo lee el profe, no la sala.</li>
+        <li>Dentro de un grupo, las repeticiones van <b>sin series</b> («×15»): las vueltas ya las dice la cabecera.</li>
+        <li><b>Pie fijo</b> con TERMINAR CLASE, que abre la hoja de clase dada con Hoy marcado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>GRUPO DE CLASES SUELTAS → PIZARRA</b>el segundo toque: elegir la clase</p>
+    <div class="phone">
+      <div class="bh"><div class="back">‹</div><div class="who"><div class="t-caps">Clientes</div><div class="t-heading">Yoga tarde</div></div></div>
+      <div style="padding-top:10px"><div class="bgrow"></div><div class="bgrow"></div><div class="bgrow"></div><div class="bgrow"></div><div class="bgrow"></div><div class="bgrow"></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="t-bodyS" style="padding-bottom:12px">Yoga tarde · elegir clase</div>
+        <div class="srws">
+          <div class="srw first"><span class="t">Flow de cadera</span><span class="m t-label">hace 12 días</span><span class="ch">›</span></div>
+          <div class="srw"><span class="t">Yin, espalda</span><span class="m t-label">hace 9 días</span><span class="ch">›</span></div>
+          <div class="srw"><span class="t">Saludos al sol</span><span class="m t-label">hace 6 días</span><span class="ch">›</span></div>
+          <div class="srw"><span class="t">Equilibrios</span><span class="m t-label">hace 4 días</span><span class="ch">›</span></div>
+          <div class="srw"><span class="t">Vinyasa suave</span><span class="m t-label">hace 2 días</span><span class="ch">›</span></div>
+          <div class="srw"><span class="t">Respiración y core</span><span class="m t-label">ayer</span><span class="ch">›</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <ul>
+        <li>Se abre desde <b>Pizarra</b> en la tarjeta del grupo, en la lista de clientes. Un toque para abrir la hoja y otro para elegir.</li>
+        <li><b>Arriba, la que más tiempo lleva sin darse</b>, con el nombre en lima: no se impone, pero ayuda a no repetir siempre las mismas.</li>
+        <li>Un grupo <b>con programa</b> se salta esta hoja: su Pizarra abre directamente la que toca.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap bad"><b>DESCARTADO · UN EJERCICIO A LA VEZ</b>más grande, pero obliga a toda la sala a ir junta</p>
+    <div class="phone">
+      <div class="bh">
+        <div class="back">‹</div>
+        <div class="who"><div class="t-caps">Funcional mañanas</div><div class="t-heading"><em>B</em> · Pierna y core</div></div>
+      </div>
+      <div class="solo">
+        <div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="t-caps">Circuito · vuelta 2 de 4</div>
+        <div class="t-heroName">Remo en TRX</div>
+        <div class="t-heroGlyph">×12</div>
+        <div class="nav"><div class="t-button">‹ ANTERIOR</div><div class="t-button">SIGUIENTE ›</div></div>
+      </div>
+      <div class="bf"><div class="endbtn t-button">TERMINAR CLASE</div></div>
+    </div>
+    <div class="note">
+      Con los mismos roles de texto ni siquiera se gana tamaño: el nombre ya va al máximo de la escala en
+      la lista. Lo que añade es un problema. <b>Alguien tiene que pasar pantallas</b>, la sala entera ve un
+      solo ejercicio, y el circuito que cada uno hace empezando por una estación distinta deja de tener
+      sentido. Se queda aquí solo como registro de lo que se probó.
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Tablet en vertical</h2>
+<p class="sub">
+  La misma pantalla con <b>dos columnas</b> a partir de 600 de ancho. No se agranda nada: se aprovecha el
+  ancho para que una clase normal quepa entera sin desplazar, que es lo que importa con la tablet apoyada
+  en la pared. Aquí el AMRAP aún no ha empezado: el profe lo arranca con el botón del propio bloque.
+</p>
+<div class="rack">
+  <div class="phone tablet">
+    <div class="bh" style="padding:18px 20px 12px">
+      <div class="back">‹</div>
+      <div class="who"><div class="t-caps">Funcional mañanas</div><div class="t-heading"><em>B</em> · Pierna y core</div></div>
+      <div class="dur t-label">~50 min</div>
+    </div>
+    <div class="scroll" style="padding:4px 20px 16px"><div class="two">
+
+      <div class="card">
+        <div class="row"><span class="num t-title">1</span>
+          <div class="main"><div class="t-heroName">Sentadilla goblet</div><div class="det t-body"><b>16–24 kg</b> · descanso 90 s</div></div>
+          <span class="presc t-heroGlyph">4×10</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ghead"><span class="t-caps">Superserie · 3 rondas</span><span class="t-label">60 s tras cada ronda</span></div>
+        <div class="row"><span class="num t-title">2a</span>
+          <div class="main"><div class="t-heroName">Zancada inversa</div><div class="det t-body">Cada pierna</div></div>
+          <span class="presc t-heroGlyph">×8</span></div>
+        <div class="row"><span class="num t-title">2b</span>
+          <div class="main"><div class="t-heroName">Puente de glúteo</div></div>
+          <span class="presc t-heroGlyph">×15</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ghead"><span class="t-caps">Circuito · 4 vueltas</span><span class="t-label">en el orden que quieras</span></div>
+        <div class="row"><span class="num t-title">3a</span>
+          <div class="main"><div class="t-heroName">Kettlebell swing</div><div class="det t-body"><b>16 kg</b></div></div>
+          <span class="presc t-heroGlyph">×15</span></div>
+        <div class="row"><span class="num t-title">3b</span>
+          <div class="main"><div class="t-heroName">Remo en TRX</div></div>
+          <span class="presc t-heroGlyph">×12</span></div>
+        <div class="row"><span class="num t-title">3c</span>
+          <div class="main"><div class="t-heroName">Plancha frontal</div><div class="det t-body">Nota: rodillas al suelo si hace falta</div></div>
+          <span class="presc t-heroGlyph">40<small>s</small></span></div>
+        <div class="row"><span class="num t-title">3d</span>
+          <div class="main"><div class="t-heroName">Salto a la comba</div></div>
+          <span class="presc t-heroGlyph">60<small>s</small></span></div>
+      </div>
+
+      <div class="blk">
+        <div class="blkh"><span class="n t-item">4</span>
+          <div class="nm"><div class="t-item">AMRAP 8'</div><div class="t-label">3 movimientos · máximas rondas</div></div></div>
+        <div class="blkb">
+          <div class="timer"><span class="clock">8:00</span><div class="startbtn t-button">EMPEZAR</div></div>
+          <div class="row"><div class="main"><div class="t-heroName">Wall ball</div></div><span class="presc t-heroGlyph">×10</span></div>
+          <div class="row"><div class="main"><div class="t-heroName">Burpee</div></div><span class="presc t-heroGlyph">×8</span></div>
+          <div class="row"><div class="main"><div class="t-heroName">Remo ergómetro</div></div><span class="presc t-heroGlyph">200<small>m</small></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="num t-title">5</span>
+          <div class="main"><div class="t-heroName">Estiramiento de cadera</div><div class="det t-body">Cada lado</div></div>
+          <span class="presc t-heroGlyph">2×45<small>s</small></span></div>
+      </div>
+
+    </div></div>
+    <div class="bf" style="padding:12px 20px 22px"><div class="endbtn t-button" style="max-width:360px;margin:0 auto">TERMINAR CLASE</div></div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2>3 · Decisiones que la maqueta da por buenas</h2>
+<p class="sub">
+  <b>«Circuito · 4 vueltas»</b> para las cadenas de 3 o más ejercicios. Es una clave nueva, porque el
+  «Superserie · alternando» del Workout implica un orden que en una clase no siempre existe. La coletilla
+  «en el orden que quieras» es texto fijo de la pizarra, no un ajuste de la sesión.<br>
+  <b>El bloque es el del Workout</b> (<code>ConditioningBlockCard</code>), con su reloj de 44 y <b>sin el
+  contador de rondas</b>, porque en la pizarra nadie apunta. Hay que ver si se puede esconder por props.<br>
+  <b>Tocar una fila no hace nada.</b> Tacharla o marcarla como hecha supondría suponer que toda la sala va
+  por el mismo sitio.<br>
+  <b>Pantalla siempre encendida</b> mientras está abierta (<code>expo-keep-awake</code>, ya instalado).
+</p>
+
+</body>
+</html>
