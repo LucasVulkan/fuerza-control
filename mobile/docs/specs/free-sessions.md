@@ -5,13 +5,13 @@
 > Fase T19 · hecho · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
 > Fase T20 · hecho · Editor de sesión en modo libre · §5
 > Fase T21 · hecho · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
-> Fase T22 · pendiente · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
-> Fase T23 · pendiente · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
+> Fase T22 · hecho · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
+> Fase T23 · hecho · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
 >
-> Estado: **T19-T21 implementadas** (26-sep-2026, rama `feat/free-sessions`:
-> `93ee875`, `c45f078`, `2b8dd59`), pendientes de probar en dispositivo (§11).
-> Quedan T22 (recap: añadir ejercicios y «Cuenta como») y T23. Tres cosas que
-> salieron distintas de lo escrito:
+> Estado: **✅ IMPLEMENTADA ENTERA** (26-sep-2026, rama `feat/free-sessions`:
+> T19 `93ee875`, T20 `c45f078`, T21 `2b8dd59`, T22 `aa24148`, T23 `0538ed0`,
+> más dos arreglos de QA `c8a64ab` y `2b31670`), pendiente de probar en
+> dispositivo (§11). Cosas que salieron distintas de lo escrito:
 > - El botón «Guardar como sesión libre» del recap (§7.1) entró ya en T19: sin
 >   él la app se quedaba sin forma de guardar tras borrar las plantillas viejas.
 > - Botones de las filas de Inicio (QA 26-sep, vale para TODAS las filas salvo
@@ -27,6 +27,10 @@
 >   Inicio mientras el editor decía «8–12, automática».
 > - Las claves de texto del editor van en `freeSession.*` (`badge`,
 >   `toastSaved`), no en `editor.*`: son de la sesión libre, no del editor.
+> - «Cuenta como» usa el `SegmentedControl` (opción «No» + una por sesión), así
+>   que no hace falta «tocar la elegida para quitarla»: se elige «No».
+> - La regla de §8 vive en dos helpers de `freeSessions.js`:
+>   `programTemplateOf(e)` y `countsForProgram(e)`.
 >
 > Spec escrita el 25-sep-2026. Sale de una sesión de
 > diseño Opus + usuario. Las tres decisiones de §2 las cerró el usuario. Se
@@ -525,7 +529,7 @@ comprueba con grep al cerrar T21/T22.
 | T19 ✅ `93ee875` | §4: forma (con `owner`), `free`, acciones, `freeSessions.js` + tests, migración | — | Tests verdes; las plantillas viejas migran con `owner: 'me'`; una sesión libre guardada se puede empezar con `startSession` y se guarda con `free: true`; `clientLogs` la sube |
 | T20 ✅ `c45f078` | §5: editor en modo libre, `useEditorExit`, limpieza de vacías | T19 | Se crea, se edita, se oculta de Inicio y se borra desde el editor sin marcar el programa |
 | T21 ✅ `2b8dd59` | §6: sección en Inicio (también sin programa), hoja, Workout | T19, T20 | Los cinco caminos de la tabla de §6.2 |
-| T22 | §7: recap, `substitutionPatch` + test | T19 | Guardar, añadir ejercicios y «Cuenta como» en los dos sentidos |
-| T23 | §8: `programTemplateOf`, adherencia, filtros, historial, glosario | T22 | Test de `sessionPlan`; grep de `'__free__'` limpio |
+| T22 ✅ `aa24148` | §7: recap, `substitutionPatch` + test | T19 | Guardar, añadir ejercicios y «Cuenta como» en los dos sentidos |
+| T23 ✅ `0538ed0` | §8: `programTemplateOf`, adherencia, filtros, historial, glosario | T22 | Test de `sessionPlan`; grep de `'__free__'` limpio |
 
 T19 va sola primero. Después, T20+T21 y T22+T23 son independientes entre sí.
