@@ -52,6 +52,7 @@ import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
+import { useSteadyFold } from '../components/ui/useSteadyFold';
 import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
@@ -256,7 +257,7 @@ function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
   dirty, client, link, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
-  onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
+  onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -408,7 +409,7 @@ function AssignedProgramCard({
           hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
       {link === 'none' ? (
-        <ClientSessions client={client} program={program} days={currentDays} log={log} />
+        <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
       ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
@@ -1631,6 +1632,9 @@ export default function ClientsScreen() {
   const billLang = i18n.language?.startsWith('en') ? 'en' : 'es';
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  // Las sesiones de la ficha: un solo acordeón entre las del programa y las
+  // libres, y sin saltos al plegar cerca del final (como Inicio).
+  const fold       = useSteadyFold();
 
   // ── Store ──────────────────────────────────────────────────────────────────
   const clients                = useStore((s) => s.clients);
@@ -2457,7 +2461,7 @@ export default function ClientsScreen() {
           );
 
           return (
-            <ScrollView contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+            <ScrollView {...fold.scrollProps} contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
               {/* Invitado: lo primero es que canjee el código. Se retira sola
                   cuando lo hace, y el código queda en Info (C28 §4.0.6). */}
               {linkOf(selectedClient) === 'invited' && (
@@ -2502,6 +2506,7 @@ export default function ClientsScreen() {
                   // segundo se monta mientras el primero aún se está cerrando y
                   // en Android se queda sin presentar. Se abre al terminar.
                   onShowArchived={() => setTimeout(() => setShowPrevious(true), 250)}
+                  fold={fold}
                 />
               ) : (
                 // Un título y la acción principal, en acento. La pista de debajo
@@ -2516,7 +2521,7 @@ export default function ClientsScreen() {
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
                   necesita uno (group-classes.md §4.1, C24). */}
-              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} />
+              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
 
               {/* Programas anteriores — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
@@ -2542,6 +2547,7 @@ export default function ClientsScreen() {
                   ))}
                 </View>
               </DragSheet>
+              <View style={{ height: fold.pad }} />
             </ScrollView>
           );
         })()}

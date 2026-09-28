@@ -96,7 +96,7 @@ export function ExerciseLines({ template, allExercises }) {
  */
 export function SessionRow({
   marker, markerMuted, name, meta, done, adapted, by, open,
-  cta, onToggle, onStart, onEdit, onShare, a11yLabel, children,
+  cta, onToggle, onStart, onEdit, onShare, onBodyLayout, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -125,6 +125,7 @@ export function SessionRow({
         <Reanimated.View
           entering={FadeIn.duration(180)}
           exiting={collapseOut}
+          onLayout={onBodyLayout}
           style={styles.sesBody}
         >
           <View style={styles.sesBodyRule} />
@@ -185,7 +186,7 @@ export function SessionRow({
  * por dentro y no lo mueve de sitio.
  */
 export function TodayCard({
-  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, a11yLabel, children,
+  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, onBodyLayout, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -219,6 +220,7 @@ export function TodayCard({
         <Reanimated.View
           entering={FadeIn.duration(180)}
           exiting={collapseOut}
+          onLayout={onBodyLayout}
           style={styles.todayBox}
         >
           {children}

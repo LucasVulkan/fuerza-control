@@ -14,6 +14,7 @@ import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
 import { Text } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
+import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +23,7 @@ import DragSheet from './DragSheet';
 import SheetRow from './ui/SheetRow';
 import { ROW_ICON } from './ui/rowIcons';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
+import { FOLD_MS } from './ui/collapseOut';
 import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
@@ -197,13 +199,12 @@ function LogPastSheet({ visible, sessions, heroId, onClose, onLog, onPaste }) {
   );
 }
 
-export default function ClientSessions({ client, program, days, log }) {
+export default function ClientSessions({ client, program, days, log, fold }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const navigation = useNavigation();
-  const [openId,  setOpenId]  = useState(null);
   const [logPast, setLogPast] = useState(false);
 
   const { activeSession, activeId, start, logAt } = useClientStart(client);
@@ -252,10 +253,8 @@ export default function ClientSessions({ client, program, days, log }) {
         {plan.rows.map((row) => {
           const d = byId.get(row.templateId);
           if (!d) return null;
-          const open   = openId === row.templateId;
           const active = activeId === row.templateId;
           const cta    = startCta(t, d.label, { active, done: row.isDone });
-          const toggle = () => setOpenId(open ? null : row.templateId);
           const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${d.name}`;
           const lines  = <ExerciseLines template={d.template} allExercises={allExercises} />;
 
@@ -268,9 +267,8 @@ export default function ClientSessions({ client, program, days, log }) {
                 flag={active ? t('home.sessionActive') : t('clients.sessionFlag')}
                 name={d.name}
                 meta={heroMeta(d)}
-                open={open}
+                {...fold.row(row.templateId)}
                 cta={cta}
-                onToggle={toggle}
                 onStart={() => start(row.templateId)}
                 onShare={() => share(row.templateId)}
                 a11yLabel={`${plan.heroLabel}, ${a11y}`}
@@ -289,9 +287,8 @@ export default function ClientSessions({ client, program, days, log }) {
                 ? rel.toLowerCase()
                 : t('home.rowMinutes', { minutes: sessionStats(d.template, allExercises).minutes })}
               done={row.isDone}
-              open={open}
+              {...fold.row(row.templateId)}
               cta={cta}
-              onToggle={toggle}
               onStart={() => start(row.templateId)}
               onShare={() => share(row.templateId)}
               a11yLabel={a11y}
@@ -302,15 +299,19 @@ export default function ClientSessions({ client, program, days, log }) {
         })}
       </View>
 
-      <TouchableOpacity
-        style={styles.logPastBtn}
-        onPress={() => setLogPast(true)}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-      >
-        <PencilGlyph color={th.colors.text} />
-        <Text style={styles.logPastText}>{t('clients.logPast.open')}</Text>
-      </TouchableOpacity>
+      {/* Con `layout`, como todo lo que queda debajo de una sesión: sin él
+          salta a su sitio mientras la tarjeta sigue plegándose. */}
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+        <TouchableOpacity
+          style={styles.logPastBtn}
+          onPress={() => setLogPast(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          <PencilGlyph color={th.colors.text} />
+          <Text style={styles.logPastText}>{t('clients.logPast.open')}</Text>
+        </TouchableOpacity>
+      </Reanimated.View>
 
       {/* Montada solo mientras está abierta: así arranca siempre en la que
           toca y en Hoy. */}
@@ -333,11 +334,10 @@ export default function ClientSessions({ client, program, days, log }) {
  * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
  * con app le llegan con su programa y aquí solo se consultan y se editan.
  */
-export function ClientFreeSessions({ client, canStart, log }) {
+export function ClientFreeSessions({ client, canStart, log, fold }) {
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
-  const [openId, setOpenId] = useState(null);
   // null · 'menu' · 'templates': las dos hojas de «+ Sesión libre», como en Inicio.
   const [sheet,  setSheet]  = useState(null);
 
@@ -367,13 +367,12 @@ export function ClientFreeSessions({ client, canStart, log }) {
   ].filter(Boolean).join(' · ');
 
   return (
-    <View style={styles.freeWrap}>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.freeWrap}>
       {his.length > 0 && (
         <>
           <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
           <View style={styles.group}>
             {his.map((tpl, i) => {
-              const open = openId === tpl.id;
               const rel  = relativeTime(lastOfIn(log, tpl.id)?.timestamp, t);
               return (
                 <SessionRow
@@ -386,9 +385,8 @@ export function ClientFreeSessions({ client, canStart, log }) {
                     ? rel.toLowerCase()
                     : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
                   done={false}
-                  open={open}
+                  {...fold.row(tpl.id)}
                   cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
-                  onToggle={() => setOpenId(open ? null : tpl.id)}
                   // Solo sin app se empieza desde aquí: con código, la
                   // entrena él (trainer-logging.md §4.0.2).
                   onStart={canStart ? () => start(tpl.id) : undefined}
@@ -404,9 +402,11 @@ export function ClientFreeSessions({ client, canStart, log }) {
         </>
       )}
 
-      <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
-        <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
-      </TouchableOpacity>
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+        <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
+          <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
+        </TouchableOpacity>
+      </Reanimated.View>
 
       {sheet === 'menu' && (
         <DragSheet visible onClose={() => setSheet(null)} title={t('clients.freeSheet.title', { name: client.name })}>
@@ -467,7 +467,7 @@ export function ClientFreeSessions({ client, canStart, log }) {
           </View>
         </DragSheet>
       )}
-    </View>
+    </Reanimated.View>
   );
 }
 

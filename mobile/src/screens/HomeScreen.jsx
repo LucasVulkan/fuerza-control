@@ -22,6 +22,7 @@ import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
+import { useSteadyFold } from '../components/ui/useSteadyFold';
 import {
   ExerciseLines, SessionRow, TodayCard, SectionHeader,
 } from '../components/SessionList';
@@ -100,7 +101,8 @@ export default function HomeScreen() {
   const [tplList,     setTplList]     = useState(false);
   // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
   // recuerda al volver — es una preferencia de un segundo, no un ajuste.
-  const [openId,      setOpenId]      = useState(null);
+  // Sin saltos de golpe al plegar cerca del final: `useSteadyFold`.
+  const fold = useSteadyFold();
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -195,6 +197,7 @@ export default function HomeScreen() {
       <ProgramUpdateModal />
 
       <ScrollView
+        {...fold.scrollProps}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -364,11 +367,9 @@ export default function HomeScreen() {
                   {plan.rows.map((row) => {
                     const day = byId.get(row.templateId);
                     if (!day) return null;
-                    const open   = openId === row.templateId;
                     const active = activeSession.templateId === row.templateId;
                     const name   = day.template.name ?? '';
                     const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
-                    const toggle = () => setOpenId(open ? null : row.templateId);
                     const start  = () => requestStart(row.templateId);
                     const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
                     const lines  = (
@@ -383,9 +384,8 @@ export default function HomeScreen() {
                           flag={plan.heroLabel}
                           name={name}
                           meta={todayMeta(day)}
-                          open={open}
+                          {...fold.row(row.templateId)}
                           cta={cta}
-                          onToggle={toggle}
                           onStart={start}
                           a11yLabel={`${plan.heroLabel}, ${a11y}`}
                         >
@@ -411,9 +411,8 @@ export default function HomeScreen() {
                         // "Adaptada" es texto, no una pastilla: menos ruido, y el
                         // azul sigue significando entrenador.
                         adapted={!!clientSync.pendingOverrides?.[row.templateId]}
-                        open={open}
+                        {...fold.row(row.templateId)}
                         cta={cta}
-                        onToggle={toggle}
                         onStart={start}
                         a11yLabel={a11y}
                       >
@@ -440,7 +439,6 @@ export default function HomeScreen() {
               <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
               <View style={styles.group}>
                 {homeFree.map((tpl, i) => {
-                  const open   = openId === tpl.id;
                   const active = activeSession.templateId === tpl.id;
                   const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
                   const name   = freeName(tpl);
@@ -456,9 +454,8 @@ export default function HomeScreen() {
                         ? rel.toLowerCase()
                         : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
                       done={false}
-                      open={open}
+                      {...fold.row(tpl.id)}
                       cta={startCta(t, '', { active, done: false })}
-                      onToggle={() => setOpenId(open ? null : tpl.id)}
                       onStart={() => requestStart(tpl.id)}
                       // Las que manda el entrenador no se editan: si quieres
                       // una tuya, la haces con «Crear» (group-classes.md §4.4).
@@ -474,20 +471,25 @@ export default function HomeScreen() {
             </View>
           )}
 
-          <TouchableOpacity
-            style={styles.freeSessionBtn}
-            onPress={handleFreePress}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-          >
-            <Text style={styles.freeSessionBtnText}>
-              {activeSession.templateId === '__free__'
-                ? t('freeSession.btnContinue')
-                : t('freeSession.btn')}
-            </Text>
-          </TouchableOpacity>
+          {/* Con `layout` propio: al abrir una sesión libre se mueve dentro de
+              la sección, y el `layout` de fuera no lo cubre. */}
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+            <TouchableOpacity
+              style={styles.freeSessionBtn}
+              onPress={handleFreePress}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.freeSessionBtnText}>
+                {activeSession.templateId === '__free__'
+                  ? t('freeSession.btnContinue')
+                  : t('freeSession.btn')}
+              </Text>
+            </TouchableOpacity>
+          </Reanimated.View>
         </Reanimated.View>
 
+        <View style={{ height: fold.pad }} />
       </ScrollView>
 
       {/* Modals */}
