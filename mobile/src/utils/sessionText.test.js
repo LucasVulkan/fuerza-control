@@ -180,14 +180,15 @@ describe('textos reales', () => {
 });
 
 describe('textos reales, las reps', () => {
-  it('QA 28-sep: «80 70 60 x13» son 13 en las tres; pegado, solo en la última', () => {
+  it('QA 28-sep: «80 70 60 x13» son 13 en las tres, con espacio o pegado', () => {
     const rx = { sets: 3, reps: 12 };
     const w  = (list) => list.map((s) => [s.weight, s.reps]);
     expect(w(readAnswer('80 70 60 x13', rx))).toEqual([[80, 13], [70, 13], [60, 13]]);
     expect(w(readAnswer('80, 70, 60 x 13', rx))).toEqual([[80, 13], [70, 13], [60, 13]]);
     expect(w(readAnswer('80/70/60 x13 @8', rx))).toEqual([[80, 13], [70, 13], [60, 13]]);
     expect(readAnswer('80 70 60 x13 @8', rx).map((s) => s.rpe)).toEqual(['8', '8', '8']);
-    expect(w(readAnswer('100 100 95x5', rx))).toEqual([[100, 12], [100, 12], [95, 5]]);
+    expect(w(readAnswer('80 70 60x13', rx))).toEqual([[80, 13], [70, 13], [60, 13]]);
+    expect(w(readAnswer('100 100 95x5', rx))).toEqual([[100, 5], [100, 5], [95, 5]]);
     // «3 x 10» sigue siendo series × reps: hace falta una lista delante.
     expect(w(readAnswer('3 x 10', null))).toEqual(Array(3).fill(['', 10]));
   });

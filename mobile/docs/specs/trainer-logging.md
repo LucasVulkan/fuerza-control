@@ -632,7 +632,7 @@ Lo de detrás (`readAnswer`):
 | `105` · `105kg` | Ese peso en todas las series de la receta, con sus reps |
 | `100 100 95` | Una serie por número: peso, con las reps de la receta (con rango, las de abajo) |
 | `100x6 100x6 95x5` · `100 x 6, 100 x 6` | Una serie por elemento: peso × reps |
-| `80 70 60 x13` · `80/70/60 x 13` (reps **separadas** tras una lista de pesos) | Esas reps en todas: 80×13, 70×13, 60×13 (QA 28-sep). Pegadas (`100 100 95x5`) son solo de la última |
+| `80 70 60x13` · `80 70 60 x13` · `80/70/60 x 13` (pesos y unas reps al final) | Esas reps en todas: 80×13, 70×13, 60×13, pegadas o no (QA 28-sep: es lo natural) |
 | `4x6 100` · `4x6x100` · `4x6 @100kg` | 4 series de 6 a 100 |
 | `3x10` sin peso | 3 series de 10 |
 | `100x6` suelto, con receta | Más de 10 delante ya es un peso: 100 × 6 en todas las series |
@@ -670,8 +670,10 @@ mayúsculas ni el formato de WhatsApp, en este orden:
 4. Si no hay coincidencia, «Sin reconocer» con **ELEGIR**.
 
 ELEGIR abre el selector de ejercicios en su modo de elegir uno (el de los
-movimientos de un bloque, `blockPicker`, con título «¿Qué ejercicio es?») y lo
-elegido se guarda como alias (`setExerciseAlias`). **No hay coincidencia
+movimientos de un bloque, `blockPicker`, con título «¿Qué ejercicio es?»)
+**con lo que escribió el cliente ya en el buscador** (`search`): «banca» enseña
+de entrada los press de banca. Lo elegido se guarda como alias
+(`setExerciseAlias`). **No hay coincidencia
 aproximada**: «press banca» podría ser con barra o con mancuernas, y
 equivocarse en silencio es peor que preguntar una vez.
 
@@ -723,7 +725,8 @@ De arriba abajo:
 - [ ] Borrar el nombre de la primera línea y pegar: no marca a nadie y pide
   elegir el cliente.
 - [ ] Pegar un texto escrito a mano con «banca 80 80 75»: sale «Sin
-  reconocer» con ELEGIR. Elegir el ejercicio: la fila se reconoce. En el
+  reconocer» con ELEGIR. ELEGIR abre el buscador con «banca» ya escrito.
+  Elegir el ejercicio: la fila se reconoce. En el
   siguiente texto con «banca» ya no lo pide.
 - [ ] Desde la ficha › Apuntar sesión pasada › **Pegar texto**: la misma
   pantalla, sin «De quién».

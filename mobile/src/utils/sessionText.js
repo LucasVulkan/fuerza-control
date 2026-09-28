@@ -162,10 +162,6 @@ export function readAnswer(answer, rx = null, hint = null) {
     .replace(/(\d)\s*(?:kgs?|lbs?)(?=x\d|[^a-z]|$)/g, '$1')
     .replace(/\b(kgs?|lbs?)\b/g, ' ')
     .trim()
-    // «80 70 60 x13»: unas reps SEPARADAS tras una lista de pesos son de todas
-    // (QA 28-sep). Pegadas («100 100 95x5») siguen siendo solo de la última.
-    .replace(new RegExp(String.raw`^(${NUM}(?:[\s,;/]+${NUM})+)\s+[x×*]\s*(\d+)((?:\s+@${NUM})?)$`),
-      (_, ws, r, rpe) => ws.split(/[\s,;/]+/).map((w) => `${w}x${r}`).join(' ') + rpe)
     .replace(/\s*[x×*]\s*(?=\d)/g, 'x');      // 100 x 6 → 100x6
   if (!a) return null;
 
@@ -192,6 +188,7 @@ export function readAnswer(answer, rx = null, hint = null) {
     return { ...base, weight: tk.n1, reps: tk.n2, rpe: tk.rpe };
   };
 
+  const last = (list) => list[list.length - 1];
   let sets;
   const [first, second] = toks;
   if (toks.length === 1 && first.n3 != null) {
@@ -206,6 +203,12 @@ export function readAnswer(answer, rx = null, hint = null) {
   } else if (toks.length === 1 && rx) {
     // Un solo valor con receta: el mismo en todas sus series.
     sets = fill(rx.sets, one(first));
+  } else if (toks.length >= 2 && last(toks).n2 != null && last(toks).n3 == null && !last(toks).unit
+    && toks.slice(0, -1).every((tk) => tk.n2 == null && !tk.unit)) {
+    // «80 70 60x13» · «80 70 60 x13»: pesos y, al final, las reps de todas
+    // (QA 28-sep: pegada o no, es lo natural). Cada serie con su peso.
+    const reps = last(toks).n2;
+    sets = toks.map((tk) => ({ ...base, weight: tk.n1, reps, rpe: tk.rpe }));
   } else {
     // Una lista: una serie por elemento; cada AxB es peso × reps.
     sets = toks.map(one);

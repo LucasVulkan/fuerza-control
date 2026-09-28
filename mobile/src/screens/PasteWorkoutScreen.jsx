@@ -159,7 +159,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   }, [pickerResult, setExerciseAlias, setPickerResult]);
   const pick = (name) => {
     pendingName.current = name;
-    navigation.navigate('ExerciseSelector', { blockPicker: true, eyebrow: `«${name}»`, title: t('paste.pickTitle') });
+    navigation.navigate('ExerciseSelector', { blockPicker: true, eyebrow: `«${name}»`, title: t('paste.pickTitle'), search: name });
   };
 
   function onContinue() {

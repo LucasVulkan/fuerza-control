@@ -67,6 +67,8 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     // Quien usa el modo de elegir uno (`blockPicker`) para otra cosa dice qué
     // se elige: «Sustituir ejercicio» no vale para resolver un nombre pegado.
     title: titleOverride = null,
+    // La búsqueda ya escrita: el nombre que no se reconoció en un texto pegado.
+    search: initialSearch = '',
   } = route.params ?? {};
 
   const language = useStore((s) => s.profile.language);
@@ -101,7 +103,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   // Multi-select only when ADDING (replace/block-picker modes stay a single pick).
   const multiSelect = !currentExerciseId && !blockPicker;
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
   const [patternGroup, setPatternGroup] = useState(
     currentDef ? (GROUP_OF_PATTERN[currentDef.pattern] ?? '') : ''
   );
