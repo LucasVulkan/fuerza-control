@@ -6,7 +6,7 @@
 > Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
 > Fase C25 · pendiente · Modo pizarra · §5
 > Fase C26 · pendiente · Clase dada · §6
-> Fase C27 · pendiente · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
+> Fase C27 · hecho · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de la misma
 > sesión de diseño que [trainer-logging.md](trainer-logging.md). Escrita después
@@ -262,7 +262,8 @@ rutina de movilidad es la misma plantilla que manda a un cliente.
   (`deleteFreeTemplate`). Duplicar = `createFreeTemplate(presetFromTemplate)`
   con el sufijo « (copia)» de las plantillas de programa.
 
-**Asignar** (`assignFreeTemplate(templateId, clientId)`, store):
+**Asignar** (`copyFreeTemplate(templateId, { owner: clientId })`, store; la misma
+acción duplica con `owner: 'me'`):
 - **Copia** la sesión con id nuevo y `owner: clientId`, como `cloneProgramFromTemplate`
   copia un programa. Editar la del cliente no toca la plantilla, y al revés.
 - Hoja de asignar: la lista de clientes individuales de `AssignSheet` sin el
@@ -270,6 +271,9 @@ rutina de movilidad es la misma plantilla que manda a un cliente.
   con **Asignar**. Tras asignar, toast y la hoja se cierra: no se abre el
   editor, porque lo normal es mandarla tal cual.
 - Si el cliente está conectado, queda **pendiente de reenviar** (§4.2, firma).
+- **Límite conocido**: las sesiones libres viajan dentro del programa, así que a
+  un cliente con app **sin programa** no le llegan hasta que tenga uno. La hoja
+  de asignar lo avisa en su fila.
 
 **Desde la ficha** (§4.1): «＋ Sesión libre» abre una hoja con **En blanco** y,
 debajo, tus plantillas de sesión (misma forma que `NewProgramSheet`). Es la misma
@@ -440,10 +444,10 @@ cuenta sesiones, no días).
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
 | C23 | §3: `kind: 'group'`, sin slot, sección GRUPOS con su tarjeta, ficha y hoja de alta | — | Pruebas de §3.4 |
-| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21 (C23 solo para la parte de grupos) | Pruebas de §4.5 (una con dos móviles) |
+| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada. **Parte individual ✅ `a3f84da`** (ficha, firma, borrado, subida y bajada; tests en `useStore.test.js`). Falta la de grupos (filas con PIZARRA), que va con la C23/C25 | free-sessions T19-T21 (C23 solo para la parte de grupos) | Pruebas de §4.5 (una con dos móviles) |
 | C25 | §5: lista de sesiones del grupo con PIZARRA, `BoardScreen` con bloques y pantalla encendida, tras la ronda de maquetas | C23, lista de sesiones de C19 | Prueba de §5.3 |
 | C26 | §6: `logClass`, hoja de clase dada, pestaña Clases | C23, C25 | Prueba de §6 |
-| C27 | §4.6: segmentado Programas / Sesiones en Plantillas, `assignFreeTemplate`, hoja de «＋ Sesión libre» en la ficha | C24 (la sección de la ficha) | Prueba de §4.6 |
+| C27 ✅ `a3f84da` | §4.6: segmentado Programas / Sesiones en Plantillas, asignar (`copyFreeTemplate`), hoja de «＋ Sesión libre» en la ficha | C24 (la sección de la ficha) | Prueba de §4.6 |
 
 **Orden de implementación acordado (28-sep)**: clientes individuales primero.
 C19 ([trainer-logging.md](trainer-logging.md)) → C24 **sin grupos** + C27. Los
