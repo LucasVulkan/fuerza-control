@@ -3,15 +3,15 @@
 > Tema: conexión
 > En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir la clase que toca en modo pizarra y apuntar «clase dada».
 > Fase C23 · aparcado · El grupo como tipo de cliente · §3
-> Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
+> Fase C24 · hecho · Sesiones libres de un cliente (la parte de grupos, aparcada) · §4
 > Fase C25 · aparcado · Modo pizarra · §5
 > Fase C26 · aparcado · Clase dada · §6
 > Fase C27 · hecho · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
 >
 > **Aparcado el 28-sep-2026**: todo lo de grupos (C23, C25, C26) no es
-> prioritario. La C24 sigue pendiente por su parte de clientes (§4.4: que las
-> sesiones libres lleguen al móvil del cliente conectado); lo de grupos que
-> tiene (la fila de un grupo en §4.1, §4.5 segunda casilla) espera a la C23.
+> prioritario. La C24 está hecha en su parte de clientes (`a3f84da`: ficha,
+> firma, borrado, subida y bajada, sin EDITAR en el móvil del cliente); lo de
+> grupos que tiene (la fila de un grupo en §4.1) espera a la C23.
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de la misma
 > sesión de diseño que [trainer-logging.md](trainer-logging.md). Escrita después
@@ -238,10 +238,18 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
 
 - [ ] (dos móviles) El entrenador crea una sesión libre
   para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
-  {entrenador}», sin EDITAR, y puede hacerla. El entrenador la borra y reenvía:
-  desaparece del móvil del cliente, y el historial del cliente la conserva.
-- [ ] Crear una sesión libre para un grupo: aparece en su
-  ficha con PIZARRA y **no** en tu Inicio.
+  {entrenador}», sin EDITAR, y puede hacerla.
+- [ ] (dos móviles) El entrenador **edita** esa sesión (cambia series o añade
+  un ejercicio): al salir del editor, la tarjeta del cliente queda pendiente
+  de reenviar. Reenvía: el cliente ve la versión nueva al volver a la app, y
+  los entrenos que ya hizo con la anterior siguen en su historial.
+- [ ] (dos móviles) El entrenador la borra y reenvía: desaparece del móvil del
+  cliente, y el historial del cliente la conserva.
+- [ ] Asignar una plantilla de sesión a un cliente con app **sin programa**: la
+  hoja de asignar avisa de que no le llegará hasta que tenga uno (§4.6).
+
+Aparcada con los grupos: crear una sesión libre para un grupo, que aparezca en
+su ficha con PIZARRA y **no** en tu Inicio.
 
 ### 4.6 Fase C27 — Plantillas de sesión
 
