@@ -543,6 +543,11 @@ Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el 
 - **La línea de instrucciones** hace que el mensaje se explique solo
   (`sessionText.howTo`). No encaja con ningún ejercicio, así que el lector la
   ignora.
+- **RPE (pendiente, fuera de la C21).** Hoy una sesión no puede pedir un RPE:
+  el submáximo sale como `3 series`. Cuando el submáximo pida RPE, la receta
+  lo dirá (`3 series @8`) y las instrucciones añadirán «@8 detrás de la
+  serie para el RPE». El cliente ya lo puede escribir hoy: la C22 lo lee
+  (§6.2).
 - **La cabecera** (`Sesión C · nombre`, o solo el nombre en una libre) deja a la
   C22 preseleccionar la sesión en «Apuntar sesión pasada».
 
@@ -565,21 +570,21 @@ que es donde nace el lector.
 
 **Probar C21**
 
-- [ ] Ficha de un cliente sin app con programa: en la tarjeta lima, al lado de
+- [x] Ficha de un cliente sin app con programa: en la tarjeta lima, al lado de
   EMPEZAR, el icono de compartir abre la hoja del sistema. En WhatsApp llega
   el texto de §5.2 con la cabecera, una línea por ejercicio acabada en «:» y
   las instrucciones al final.
-- [ ] Una fila cerrada, al abrirla: el icono sale junto a EMPEZAR/REPETIR y
+- [x] Una fila cerrada, al abrirla: el icono sale junto a EMPEZAR/REPETIR y
   comparte ESA sesión, no la que toca.
-- [ ] Con entrenos apuntados a ese cliente, las líneas llevan su peso de hoy
+- [x] Con entrenos apuntados a ese cliente, las líneas llevan su peso de hoy
   (el mismo que propone el Workout al empezar), no el tuyo.
-- [ ] Una sesión con un bloque AMRAP o EMOM: la línea del bloque lleva el
+- [x] Una sesión con un bloque AMRAP o EMOM: la línea del bloque lleva el
   formato y los movimientos, en el mismo orden que en el Workout.
-- [ ] Editor de sesión › ⋯ › **Compartir como texto**: el mismo texto sin pesos.
+- [x] Editor de sesión › ⋯ › **Compartir como texto**: el mismo texto sin pesos.
   Vale en una sesión de programa, en una libre y en una plantilla.
-- [ ] Una sesión libre de un cliente (Sesiones libres de la ficha): la fila
+- [x] Una sesión libre de un cliente (Sesiones libres de la ficha): la fila
   abierta tiene EMPEZAR (o solo EDITAR si tiene app), EDITAR y el icono.
-- [ ] Con la app en inglés, los nombres y las instrucciones salen en inglés.
+- [x] Con la app en inglés, los nombres y las instrucciones salen en inglés.
 
 ## 6. Fase C22 — Pegar un texto y que la app lo entienda
 
@@ -608,7 +613,8 @@ Las formas de `<series>`:
 | `100x8, 100x8, 95x7` (lista separada por comas) | Una serie por elemento: peso × reps |
 | `3x10` sin peso | 3 series de 10, sin peso |
 | `3x40s` · `3x1'` | 3 series por tiempo |
-| `... @8` al final | RPE 8 |
+| `100x6@8` · `100x6 @8` (pegado a una serie) | RPE 8 en **esa** serie (el set ya guarda `rpe` por serie) |
+| `4x6 100 @8` (al final de la línea) | RPE 8 en todas |
 | `kg` / `lb` | Se ignoran; se asume la unidad del usuario |
 | `102,5` · `102.5` | Decimal. **La coma solo separa si lleva espacio detrás** (`100, 95`) |
 
