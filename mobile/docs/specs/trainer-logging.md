@@ -713,24 +713,24 @@ De arriba abajo:
 
 **Probar C22**
 
-- [ ] Ficha de un cliente sin app › compartir una sesión por WhatsApp: la
+- [x] Ficha de un cliente sin app › compartir una sesión por WhatsApp: la
   primera línea lleva su nombre («Ana García · Sesión C · …»).
-- [ ] Copiar ese texto, añadir números como lo haría un cliente (`ok`, `105`,
+- [x] Copiar ese texto, añadir números como lo haría un cliente (`ok`, `105`,
   `100x6 100x6 95x5`, una vacía), copiarlo y en **Clientes** tocar el icono de
   portapapeles: el texto ya está pegado, el cliente y la sesión salen
   marcados, y cada fila dice lo entendido.
-- [ ] CONTINUAR: el Workout de ese cliente, en modo registro, con las series
+- [x] CONTINUAR: el Workout de ese cliente, en modo registro, con las series
   rellenas como en la revisión; la vacía, sin hacer. Guardar: el entreno está
   en su historial con el día elegido.
-- [ ] Borrar el nombre de la primera línea y pegar: no marca a nadie y pide
+- [x] Borrar el nombre de la primera línea y pegar: no marca a nadie y pide
   elegir el cliente.
-- [ ] Pegar un texto escrito a mano con «banca 80 80 75»: sale «Sin
+- [x] Pegar un texto escrito a mano con «banca 80 80 75»: sale «Sin
   reconocer» con ELEGIR. ELEGIR abre el buscador con «banca» ya escrito.
   Elegir el ejercicio: la fila se reconoce. En el
   siguiente texto con «banca» ya no lo pide.
-- [ ] Desde la ficha › Apuntar sesión pasada › **Pegar texto**: la misma
+- [x] Desde la ficha › Apuntar sesión pasada › **Pegar texto**: la misma
   pantalla, sin «De quién».
-- [ ] La cabecera de Clientes ya no tiene el €; la facturación de un cliente
+- [x] La cabecera de Clientes ya no tiene el €; la facturación de un cliente
   sigue en su Info.
 
 ## 7. Fuera de alcance
