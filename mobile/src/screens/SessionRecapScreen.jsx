@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../../store/useStore';
 import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../utils/sessionRecap';
-import { formatBlockScore, compareBlockResults } from '../utils/conditioningBlocks';
+import { describeBlockScore, compareBlockResults } from '../utils/conditioningBlocks';
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -502,8 +502,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                         <Text style={styles.exName}>{block.name ?? t(`blocks.formats.${block.format}`)}</Text>
                       </View>
                       <Text style={styles.blockScore}>
-                        {formatBlockScore(block.result, block.format)}
-                        {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
+                        {describeBlockScore(block, t)}
                       </Text>
                     </View>
                     {blockDeltaText(delta)}

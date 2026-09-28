@@ -35,20 +35,20 @@ export function amrapFinished(block, startedAt, now) {
 }
 
 /**
- * Total EMOM intervals. A "round" is one full cycle through the movements:
- * in rotate mode a round spans movements.length intervals (so every movement
- * is done the same number of times); in 'all' mode each interval already
- * covers every movement, so a round IS an interval. A single-movement (or
- * empty) EMOM has one interval per round either way.
+ * Rondas del EMOM = intervalos, en los dos modos: una ronda es un intervalo de
+ * `intervalSec`. «Rotar» sólo decide qué movimiento toca en cada ronda
+ * (`currentMovement`); con 4 movimientos y 8 rondas, cada uno sale 2 veces.
  */
 export function emomTotalIntervals(block) {
   // `?? 1` no cubre el 0: la app no lo genera (los steppers llevan min={1}) pero
   // un `.fitdata` importado sí, y con total 0 `emomPosition` devuelve interval -1
   // y `currentMovement` lee movements[-1] → undefined.
-  const rounds = Math.max(1, block.rounds ?? 1);
-  const moves  = block.movements?.length ?? 0;
-  if (block.emomMode === 'all' || moves <= 1) return rounds;
-  return rounds * moves;
+  return Math.max(1, block.rounds ?? 1);
+}
+
+/** Vueltas completas a los movimientos de un EMOM rotativo, y rondas sueltas. */
+export function emomLaps(rounds, moves) {
+  return { laps: Math.floor(rounds / moves), rest: rounds % moves };
 }
 
 /**
@@ -155,9 +155,51 @@ export function formatBlockScore(result, format) {
     return `${result.completed}/${result.total}`;
   }
   // for_time
-  const mm = Math.floor(result.timeSec / 60);
-  const ss = Math.floor(result.timeSec % 60);
+  return clock(result.timeSec);
+}
+
+function clock(sec) {
+  const mm = Math.floor(sec / 60);
+  const ss = Math.floor(sec % 60);
   return `${mm}:${String(ss).padStart(2, '0')}`;
+}
+
+// «12 min» si es redondo, «12:30» si no.
+function span(sec) {
+  return sec % 60 === 0 ? `${sec / 60} min` : clock(sec);
+}
+
+/**
+ * Score con palabras para el recap y el historial: «7 rondas + 12 reps · 12 min».
+ * `t` entra por parámetro para que el util no dependa de i18n.
+ */
+export function describeBlockScore(block, t) {
+  const score = blockScoreWords(block.format, block.result, t);
+  if (block.format === 'amrap') return block.capSec ? `${score} · ${span(block.capSec)}` : score;
+  if (block.format === 'emom') {
+    return block.intervalSec ? `${score} · ${span(block.intervalSec * block.result.total)}` : score;
+  }
+  return block.rounds ? `${score} · ${t('blocks.scoreLine.forTime', { count: block.rounds })}` : score;
+}
+
+/** Sólo el score con palabras («7 rondas + 12 reps»), sin la duración del bloque. */
+export function blockScoreWords(format, r, t) {
+  if (format === 'amrap') {
+    return r.extraReps > 0
+      ? t('blocks.scoreLine.amrapReps', { count: r.rounds, reps: r.extraReps })
+      : t('blocks.scoreLine.amrap', { count: r.rounds });
+  }
+  if (format === 'emom') return t('blocks.scoreLine.emom', { done: r.completed, count: r.total });
+  return r.capped ? `${clock(r.timeSec)} ${t('blocks.cappedTag')}` : clock(r.timeSec);
+}
+
+/**
+ * Rejilla de intervalos del EMOM: cuántas columnas caben en `width` sin bajar
+ * de `minCell`, y el ancho de casilla que llena la fila entera.
+ */
+export function emomGridLayout(width, minCell = 44, gap = 6) {
+  const cols = Math.max(1, Math.floor((width + gap) / (minCell + gap)));
+  return { cols, cellW: (width - (cols - 1) * gap) / cols };
 }
 
 /**

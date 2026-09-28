@@ -367,7 +367,7 @@
     "blockDelta": {
       "name": "Comparación de bloques",
       "what": "Indica si mejoraste respecto a la última vez que hiciste ese mismo bloque de acondicionamiento.",
-      "formula": "AMRAP: rondas y repeticiones · EMOM: intervalos completados · For time: tiempo",
+      "formula": "AMRAP: rondas y repeticiones · EMOM: rondas completadas · For time: tiempo",
       "rules": "En los bloques for time menos tiempo es mejor, así que el signo va invertido respecto a los otros dos formatos. Se compara contra la vez anterior de la misma sesión, no contra tu mejor resultado.",
       "caveat": "Los bloques no registran el peso usado, así que dos resultados iguales con cargas distintas se comparan como si fueran equivalentes."
     },
@@ -793,18 +793,19 @@
     "newBlock": "Nuevo bloque",
     "fromPreset": "Desde preset",
     "capLabel": "Tiempo límite",
-    "intervalLabel": "Intervalo",
+    "roundDuration": "Duración",
+    "roundLabel": "Ronda",
     "roundsLabel": "Rondas",
     "noCap": "Sin tope",
     "emomTypeLabel": "Tipo de EMOM",
     "emomModes": { "all": "Repetir bloque", "rotate": "Rotar ejercicios" },
     "emomModeDesc": {
-      "all": "Cada intervalo realiza todos los movimientos y descansas el tiempo restante.",
-      "rotate": "Realiza un ejercicio por intervalo. Rotan automáticamente."
+      "all": "Cada ronda haces todos los movimientos y descansas el tiempo restante.",
+      "rotate": "Cada ronda, un movimiento; rotan en orden."
     },
     "formatDesc": {
       "amrap": "Haz tantas rondas como puedas en un tiempo determinado.",
-      "emom": "Un intervalo fijo que se repite; cada intervalo tiene su trabajo.",
+      "emom": "Rondas de tiempo fijo; cada ronda tiene su trabajo.",
       "for_time": "Completa todas las rondas lo más rápido posible."
     },
     "intervalCustom": "Custom",
@@ -835,8 +836,7 @@
     "roundDone": "Ronda completada",
     "removeRound": "Restar ronda",
     "partialHint": "Al acabar el tiempo podrás ajustar la ronda parcial",
-    "intervalsLabel": "Intervalos",
-    "failHint": "Toca un intervalo para marcarlo como fallado",
+    "failHint": "Toca una ronda para marcarla como fallada",
     "intervalOf": "Intervalo {{k}} / {{n}}",
     "remaining": "restante",
     "toClose": "para cerrar el intervalo",
@@ -844,12 +844,28 @@
     "timeUpEmom": "¡Tiempo! Marca los fallos y finaliza",
     "addMovementsHint": "Añade movimientos al bloque",
     "cappedTag": "(cap)",
+    "lapsTip_one": "Son {{count}} vuelta completa a los {{moves}} movimientos",
+    "lapsTip_other": "Son {{count}} vueltas completas a los {{moves}} movimientos",
+    "lapsRest_one": " y {{count}} ronda suelta",
+    "lapsRest_other": " y {{count}} rondas sueltas",
+    "lapsTipNone": "No llega a una vuelta completa a los {{moves}} movimientos",
     "recapSection": "Bloques",
     "deleteConfirm": "¿Eliminar \"{{name}}\"?",
+    "lastLabel": "Última vez",
+    "scoreLine": {
+      "amrap_one": "{{count}} ronda",
+      "amrap_other": "{{count}} rondas",
+      "amrapReps_one": "{{count}} ronda + {{reps}} reps",
+      "amrapReps_other": "{{count}} rondas + {{reps}} reps",
+      "emom_one": "{{done}}/{{count}} ronda",
+      "emom_other": "{{done}}/{{count}} rondas",
+      "forTime_one": "{{count}} ronda",
+      "forTime_other": "{{count}} rondas"
+    },
     "delta": {
       "roundsShort": "ronda",
       "repsShort": "rep",
-      "completedShort": "int"
+      "completedShort": "ronda"
     },
     "meta": {
       "amrap_one": "{{min}} min · {{count}} movimiento",
@@ -865,10 +881,10 @@
       "amrapMainCount_other": "{{min}} min · {{count}} ejercicios",
       "amrapSub_one": "Recorre el movimiento las veces que puedas",
       "amrapSub_other": "Recorre los {{count}} movimientos las veces que puedas",
-      "emomMain": "{{rounds}} rondas · {{interval}} por intervalo · {{total}} en total",
-      "emomSubOne": "Cada intervalo: el movimiento",
-      "emomSubRotate": "Cada intervalo: 1 movimiento, rotando entre los {{count}}",
-      "emomSubAll": "Cada intervalo: los {{count}} movimientos completos",
+      "emomMain": "{{rounds}} rondas · {{interval}} cada una · {{total}} en total",
+      "emomSubOne": "Cada ronda: el movimiento",
+      "emomSubRotate": "Cada ronda: 1 movimiento, rotando entre los {{count}}",
+      "emomSubAll": "Cada ronda: los {{count}} movimientos completos",
       "forTimeMainCap": "{{rounds}} rondas · tope {{cap}} min",
       "forTimeMainNoCap": "{{rounds}} rondas · sin tope",
       "forTimeSub_one": "En cada ronda: el movimiento",

@@ -29,7 +29,7 @@ import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import {
   amrapRemaining, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
-  buildBlockResult, formatBlockScore,
+  buildBlockResult, formatBlockScore, blockScoreWords, emomGridLayout,
 } from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { textStyles, lh } from '../../theme';
@@ -41,8 +41,10 @@ const R_BOX  = 12;   // .timer / .now
 const R_BTN  = 12;   // .round-btn
 const R_CELL = 10;   // .minute
 const BTN_H  = 56;   // .round-btn / botón primario
-const CELL_W = 54;   // casilla de intervalo (5 por fila en un móvil normal)
+const CELL_W = 54;   // casilla de intervalo hasta medir la rejilla (onLayout)
 const CELL_H = 40;
+const CELL_GAP = 6;
+const CELL_MIN = 36;  // ancho mínimo: números de 1–2 cifras, el alto (40) da el toque
 
 const fmtClock = (sec) => {
   const m = Math.floor(sec / 60);
@@ -77,6 +79,8 @@ function Stepper({ value, onChange, min = 0 }) {
 
 export default function ConditioningBlockCard({
   block, state, allExercises, orderNumber, onStart, onUpdate, onFinish, onReset,
+  // Resultado de la última vez que se hizo este bloque (null si es la primera).
+  lastResult,
   // Sólo la sesión libre lo pasa: sin plantilla, el bloque se edita desde aquí.
   onEdit,
 }) {
@@ -87,6 +91,7 @@ export default function ConditioningBlockCard({
   const status  = !state?.startedAt ? 'idle' : state.finishedAt ? 'finished' : 'running';
   const running = status === 'running';
   const [expanded, setExpanded] = useState(false);
+  const [gridW, setGridW]       = useState(0);
 
   // 1 s repaint while running — la derivación hace el trabajo real.
   const [, setTick] = useState(0);
@@ -117,9 +122,9 @@ export default function ConditioningBlockCard({
     if (!def) return m.exerciseId;
     return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
   };
-  // La unidad sólo se nombra cuando NO son reps (la referencia pinta "10", no
-  // "10 reps"); cal/m/seg sí necesitan decir de qué hablan.
-  const moveUnit   = (m) => ((m.unit ?? 'reps') === 'reps' ? '' : ` ${t(`blocks.units.${m.unit}`)}`);
+  // La unidad se nombra siempre, reps incluidas: un «10» suelto junto a un
+  // «10 seg» se quedaba descolgado (QA sep-2026, contra la referencia v12).
+  const moveUnit   = (m) => ` ${t(`blocks.units.${m.unit ?? 'reps'}`)}`;
   const moveInline = (m) =>
     `${m.amount}${moveUnit(m)} × ${moveName(m)}` + (m.weight != null ? ` · ${fmt(m.weight)}` : '');
 
@@ -228,23 +233,42 @@ export default function ConditioningBlockCard({
           {formatBlockScore(buildBlockResult(block, state, now), block.format)}
           {buildBlockResult(block, state, now).capped ? ` ${t('blocks.cappedTag')}` : ''}
         </Text>
+      ) : lastResult ? (
+        <View style={styles.last}>
+          <Text style={styles.lastLabel}>{t('blocks.lastLabel').toUpperCase()}</Text>
+          <Text style={styles.lastScore}>{blockScoreWords(block.format, lastResult, t)}</Text>
+        </View>
       ) : null}
     </View>
   );
 
-  // Fila de movimiento (.ref-row): cantidad · nombre · carga.
-  const moveRow = (m, i) => (
-    <View key={i} style={styles.moveRow}>
-      <Text style={styles.moveAmount}>
-        {m.amount}
-        {moveUnit(m) ? <Text style={styles.moveUnit}>{moveUnit(m)}</Text> : null}
-      </Text>
-      <Text style={styles.moveName} numberOfLines={1}>{moveName(m)}</Text>
-      {m.weight != null ? <Text style={styles.moveLoad}>{fmt(m.weight)}</Text> : null}
+  // Lista de movimientos (.ref-row): cantidad · nombre · carga. Dos columnas y
+  // no filas: la columna de cantidades toma el ancho de la más larga («10 seg»),
+  // así todos los nombres empiezan a la misma altura.
+  const moveTable = (list) => (
+    <View style={styles.moveTable}>
+      <View>
+        {list.map((m, i) => (
+          <View key={i} style={styles.moveCell}>
+            <Text style={styles.moveAmount}>
+              {m.amount}
+              <Text style={styles.moveUnit}>{moveUnit(m)}</Text>
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={styles.moveNames}>
+        {list.map((m, i) => (
+          <View key={i} style={[styles.moveCell, styles.moveRow]}>
+            <Text style={styles.moveName} numberOfLines={1}>{moveName(m)}</Text>
+            {m.weight != null ? <Text style={styles.moveLoad}>{fmt(m.weight)}</Text> : null}
+          </View>
+        ))}
+      </View>
     </View>
   );
 
-  const moveList = <View style={styles.moveList}>{movements.map(moveRow)}</View>;
+  const moveList = <View style={styles.moveList}>{moveTable(movements)}</View>;
 
   const secLabel = (txt) => <Text style={styles.secLabel}>{txt.toUpperCase()}</Text>;
 
@@ -391,7 +415,7 @@ export default function ConditioningBlockCard({
                 <Text style={[styles.clock, styles.clockAccent]}>{fmtClock(pos.intervalRemaining)}</Text>
                 <View style={styles.side}>
                   <Text style={styles.sideSmall}>{`${pos.interval + 1} / ${emomTotal}`}</Text>
-                  <Text style={styles.sideLabel}>{t('blocks.intervalLabel').toUpperCase()}</Text>
+                  <Text style={styles.sideLabel}>{t('blocks.roundLabel').toUpperCase()}</Text>
                 </View>
               </View>
 
@@ -406,7 +430,7 @@ export default function ConditioningBlockCard({
                   style={styles.nowMain}
                 >
                   {block.emomMode === 'all'
-                    ? movements.map(moveRow)
+                    ? moveTable(movements)
                     : (() => {
                         const m = currentMovement(block, pos.interval);
                         if (!m) return null;
@@ -414,7 +438,7 @@ export default function ConditioningBlockCard({
                           <>
                             <Text style={styles.work}>
                               {m.amount}
-                              {moveUnit(m) ? <Text style={styles.workUnit}>{moveUnit(m)}</Text> : null}
+                              <Text style={styles.workUnit}>{moveUnit(m)}</Text>
                               <Text style={styles.workX}>{'  ×  '}</Text>
                               {moveName(m)}
                             </Text>
@@ -435,8 +459,8 @@ export default function ConditioningBlockCard({
               ) : null}
             </View>
 
-            {secLabel(t('blocks.intervalsLabel'))}
-            <View style={styles.grid}>
+            {secLabel(t('blocks.roundsLabel'))}
+            <View style={styles.grid} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
               {Array.from({ length: emomTotal }, (_, i) => {
                 // Con el tiempo agotado el último intervalo ya es pasado: se
                 // puede marcar como fallado antes de confirmar el bloque.
@@ -451,6 +475,7 @@ export default function ConditioningBlockCard({
                     activeOpacity={0.7}
                     style={[
                       styles.cell,
+                      gridW > 0 && { width: emomGridLayout(gridW, CELL_MIN, CELL_GAP).cellW },
                       isFailed  ? styles.cellFailed
                         : isPast    ? styles.cellDone
                         : isCurrent ? styles.cellCurrent
@@ -581,6 +606,18 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant:       ['tabular-nums'],
   },
 
+  // «Última vez» a la derecha de la cabecera, mismo par valor/etiqueta que el
+  // contador del reloj pero en pequeño.
+  last: { alignItems: 'flex-end', maxWidth: '40%' },
+  lastLabel: { ...textStyles.caps, color: th.colors.muted },
+  lastScore: {
+    ...textStyles.labelStrong,
+    color:       th.colors.mutedLight,
+    marginTop:   3,
+    textAlign:   'right',
+    fontVariant: ['tabular-nums'],
+  },
+
   body: {
     paddingTop:        12,
     paddingBottom:     14,
@@ -682,11 +719,13 @@ const makeStyles = (th) => StyleSheet.create({
 
   // .ref-list / .ref-row
   moveList: { marginBottom: 14 },
+  moveTable: { flexDirection: 'row', gap: 12 },
+  moveNames: { flex: 1, minWidth: 0 },
+  moveCell:  { height: 38, justifyContent: 'center' },
   moveRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           12,
-    height:        38,
   },
   moveAmount: {
     ...textStyles.itemTitle,
@@ -706,7 +745,7 @@ const makeStyles = (th) => StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap:      'wrap',
-    gap:           8,
+    gap:           CELL_GAP,
   },
   cell: {
     width:           CELL_W,

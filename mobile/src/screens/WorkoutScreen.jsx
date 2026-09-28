@@ -21,6 +21,7 @@ import { spacing, textStyles, borders, withOpacity, sheetRowBase, lh } from '../
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
+import { prevBlockResult } from '../utils/sessionRecap';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
@@ -375,6 +376,10 @@ export default function WorkoutScreen() {
         state={activeSession.blockState?.[block.id] ?? null}
         allExercises={allExercises}
         orderNumber={orderNumber}
+        lastResult={prevBlockResult(
+          { id: null, sessionTemplateId: activeSession.templateId, timestamp: Infinity },
+          workoutLog, block.id,
+        )}
         onStart={() => startBlock(block.id)}
         onUpdate={(patch) => updateBlockState(block.id, patch)}
         onFinish={() => finishBlock(block.id)}

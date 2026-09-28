@@ -23,7 +23,7 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, withOpacity, textStyles, lh, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatDate } from '../utils/formatters';
-import { formatBlockScore } from '../utils/conditioningBlocks';
+import { describeBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { isFreeEntry } from '../utils/freeSessions';
@@ -221,21 +221,20 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
         );
       })}
 
-      {/* Conditioning blocks — v1: just the score, one line per block */}
+      {/* Conditioning blocks — misma forma que un ejercicio: nombre arriba, resultado debajo */}
       {(session.blocks ?? []).map((block) => (
-        <View key={block.blockId} style={styles.blockLine}>
-          <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
-            <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
-              {t(`blocks.formats.${block.format}`).toUpperCase()}
+        <View key={block.blockId} style={styles.exSection}>
+          <View style={styles.blockNameRow}>
+            <View style={[styles.badge, styles[BLOCK_BADGE_STYLE[block.format]]]}>
+              <Text style={[styles.badgeText, styles[`${BLOCK_BADGE_STYLE[block.format]}Text`]]}>
+                {t(`blocks.formats.${block.format}`).toUpperCase()}
+              </Text>
+            </View>
+            <Text style={[styles.exName, styles.blockName]} numberOfLines={1}>
+              {block.name ?? t(`blocks.formats.${block.format}`)}
             </Text>
           </View>
-          <Text style={styles.blockLineName} numberOfLines={1}>
-            {block.name ?? t(`blocks.formats.${block.format}`)}
-          </Text>
-          <Text style={styles.blockLineScore}>
-            {formatBlockScore(block.result, block.format)}
-            {block.result.capped ? ` ${t('blocks.cappedTag')}` : ''}
-          </Text>
+          <Text style={styles.blockScore}>{describeBlockScore(block, t)}</Text>
         </View>
       ))}
 
@@ -410,13 +409,13 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: lh(textStyles.body.fontSize),
   },
 
-  // ── Conditioning blocks (v1: one compact line per block) ────────────────────
-  blockLine: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.xs,
-    paddingHorizontal: spacing.md,
+  // ── Conditioning blocks: forma de ejercicio (ver exSection/exName) ─────────
+  blockNameRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.xs,
   },
+  blockName: { flex: 1 },
   badge: {
     paddingHorizontal: spacing.xs + 2,
     paddingVertical:   1,
@@ -429,9 +428,8 @@ const makeStyles = (th) => StyleSheet.create({
   badgeBlockEmomText:    { color: th.colors.blue },
   badgeBlockForTime:     { backgroundColor: withOpacity(th.colors.orange, 0.12) },
   badgeBlockForTimeText: { color: th.colors.orange },
-  blockLineName:  { ...textStyles.body, flex: 1, color: th.colors.text },
-  blockLineScore: {
-    ...textStyles.bodyStrong,
+  blockScore: {
+    ...textStyles.body,
     color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
