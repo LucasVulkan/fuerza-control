@@ -1175,12 +1175,18 @@ export const useStore = create(
       // Una sesión libre es un `sessionTemplate` con `programId: null`: todo lo
       // que edita plantillas (ejercicios, bloques, nombre) le vale tal cual.
 
-      /** Crea una sesión libre, vacía o desde un plan (`presetFromEntry`). */
-      createFreeTemplate: (plan = null, owner = 'me') => {
+      /**
+       * Crea una sesión libre, vacía o desde un plan (`presetFromEntry`).
+       * `asTemplate`: es una plantilla de sesión de la pestaña Plantillas
+       * (`kind: 'template'`, como las de programa), no una sesión mía: no sale
+       * en Inicio ni se entrena, solo se asigna (group-classes.md §4.6).
+       */
+      createFreeTemplate: (plan = null, owner = 'me', { asTemplate = false } = {}) => {
         const id = generateId('tpl');
-        const tpl = freeTemplateFromPreset(plan, {
+        const base = freeTemplateFromPreset(plan, {
           id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
         });
+        const tpl = asTemplate ? { ...base, kind: 'template', onHome: false } : base;
         set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
         if (owner !== 'me') get().markClientDirty(owner);
         return id;
@@ -1262,25 +1268,26 @@ export const useStore = create(
       },
 
       /**
-       * Copia una sesión libre a otro dueño (group-classes.md §4.6): a un
-       * cliente al asignarla, o a mí al duplicarla. Copia y no referencia, como
-       * los programas: editar la del cliente no toca la plantilla. Los bloques
-       * estrenan id para que sus resultados no se comparen con los de la otra.
+       * Copia una sesión libre (group-classes.md §4.6): asignar una plantilla a
+       * un cliente o a mí, o duplicarla dentro de Plantillas (`asTemplate`).
+       * Copia y no referencia, como los programas: adaptar la tuya o la del
+       * cliente no toca la plantilla. Los bloques estrenan id para que sus
+       * resultados no se comparen con los de la otra.
        */
-      copyFreeTemplate: (templateId, { owner = 'me', name } = {}) => {
+      copyFreeTemplate: (templateId, { owner = 'me', name, asTemplate = false } = {}) => {
         const src = get().sessionTemplates[templateId];
         if (!src || src.programId) return null;
         const id   = generateId('tpl');
         const copy = JSON.parse(JSON.stringify(src));
         delete copy.fromTrainer;
         delete copy.trainerName;
+        delete copy.kind;
         const tpl = {
           ...copy, id, owner,
           ...(name != null ? { name } : {}),
           blocks: (copy.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
-          // En Inicio solo lo mío, y una copia hecha en Plantillas es para
-          // asignar, no para entrenarla yo.
-          onHome: false,
+          // Asignada a mí, a Inicio; una plantilla o la de un cliente, no.
+          ...(asTemplate ? { kind: 'template', onHome: false } : { onHome: owner === 'me' }),
         };
         set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
         if (owner !== 'me') get().markClientDirty(owner);

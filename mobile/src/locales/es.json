@@ -2189,6 +2189,7 @@
     "copyNameSuffix": " (copia)",
     "segPrograms": "Programas",
     "segSessions": "Sesiones",
+    "sessionEyebrow": "Plantilla de sesión",
     "sessionsEmpty": "Sin plantillas de sesión todavía.\nCrea sesiones sueltas —movilidad, un circuito, una clase— y asígnalas a tus clientes.",
     "statExercises_one": "ejercicio",
     "statExercises_other": "ejercicios",
@@ -2198,6 +2199,9 @@
     "assignSession": {
       "desc": "Se le crea una copia: lo que cambies después en la plantilla no le llega.",
       "noProgram": "Tiene app y no tiene programa: le llegará cuando le envíes uno.",
+      "me": "Tú",
+      "meSub": "Una copia en tu Inicio, para adaptarla sin tocar la plantilla.",
+      "meToast": "ti",
       "btnMany": "Asignar a {{count}}",
       "toastMany": "Sesión asignada a {{count}} clientes",
       "toast": "Sesión asignada a {{name}}"

@@ -2189,6 +2189,7 @@
     "copyNameSuffix": " (copy)",
     "segPrograms": "Programs",
     "segSessions": "Sessions",
+    "sessionEyebrow": "Session template",
     "sessionsEmpty": "No session templates yet.\nBuild standalone sessions —mobility, a circuit, a class— and assign them to your clients.",
     "statExercises_one": "exercise",
     "statExercises_other": "exercises",
@@ -2198,6 +2199,9 @@
     "assignSession": {
       "desc": "They get a copy: later changes to the template don't reach them.",
       "noProgram": "Uses the app but has no program: it reaches them when you send one.",
+      "me": "You",
+      "meSub": "A copy on your Home, to adapt without touching the template.",
+      "meToast": "you",
       "btnMany": "Assign to {{count}}",
       "toastMany": "Session assigned to {{count}} clients",
       "toast": "Session assigned to {{name}}"

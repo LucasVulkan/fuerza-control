@@ -15,8 +15,9 @@
  *    buscador: Figma no lo dibuja aquí y con pocas plantillas sería ruido.
  *
  * Segmentado Programas / Sesiones (group-classes.md §4.6, C27): las plantillas
- * de sesión SON mis sesiones libres; aquí se crean (sin salir en mi Inicio), se
- * duplican y se asignan a un cliente, que recibe una copia.
+ * de sesión son sesiones libres con `kind: 'template'`, como las de programa.
+ * No salen en Inicio: se asignan, a clientes o a ti, y cada uno recibe su copia
+ * para adaptarla sin tocar la plantilla.
  *
  * Los tres modales propios (crear, menú contextual, asignar) y los dos
  * `Alert.alert` pasan a `DragSheet`, que es el único bottom-sheet de la app.
@@ -305,12 +306,13 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
           <Text style={styles.assignName}>{template.name || t('freeSession.templateUnnamed')}</Text>
           <Text style={styles.sheetHint}>{t('templates.assignSession.desc')}</Text>
         </View>
-        {clientList.length === 0 ? (
-          <Text style={styles.sheetEmpty}>{t('templates.assignModal.noClients')}</Text>
-        ) : (
-          <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+        {/* Nunca vacía: «Tú» siempre está. */}
+        {(
+          <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
             <View style={styles.clientList}>
-              {clientList.map((c) => {
+              {/* Tú, el primero: tu copia sale en tu Inicio y la adaptas sin
+                  tocar la plantilla. Mismo gesto que un cliente. */}
+              {[{ id: 'me', name: t('templates.assignSession.me'), sub: t('templates.assignSession.meSub') }, ...clientList].map((c) => {
                 const active = picked.has(c.id);
                 // Con app, la sesión viaja con su programa: sin programa no le llega.
                 const noRoute = c.syncLinked && !c.activeProgramId;
@@ -328,6 +330,7 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
                       {noRoute && (
                         <Text style={styles.clientReplaces} numberOfLines={2}>{t('templates.assignSession.noProgram')}</Text>
                       )}
+                      {!!c.sub && <Text style={styles.clientSub} numberOfLines={1}>{c.sub}</Text>}
                     </View>
                     {active && <Text style={styles.clientCheck}>✓</Text>}
                   </TouchableOpacity>
@@ -415,17 +418,15 @@ export default function ProgramScreen() {
   const showToast                = useStore((s) => s.showToast);
   const sessionTemplates         = useStore((s) => s.sessionTemplates);
   const createFreeTemplate       = useStore((s) => s.createFreeTemplate);
-  const setFreeTemplateOnHome    = useStore((s) => s.setFreeTemplateOnHome);
   const copyFreeTemplate         = useStore((s) => s.copyFreeTemplate);
   const deleteFreeTemplate       = useStore((s) => s.deleteFreeTemplate);
   const exerciseLibrary          = useStore((s) => s.exerciseLibrary);
   const customExercises          = useStore((s) => s.customExercises);
 
   const templateList = useMemo(() => templatesOf(programs), [programs]);
-  // Plantillas de sesión = mis sesiones libres (§4.6), sin las que me mandara
-  // un entrenador a mí.
+  // Plantillas de sesión (§4.6): las marcadas como tales, no mis sesiones.
   const sessionList = useMemo(() => Object.values(sessionTemplates)
-    .filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me' && !tpl.fromTrainer)
+    .filter((tpl) => !tpl.programId && tpl.kind === 'template')
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [sessionTemplates]);
   const allExercises = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const isSessions   = seg === 'sessions';
@@ -450,10 +451,10 @@ export default function ProgramScreen() {
     ];
   }
 
-  // + Plantilla en Sesiones: al editor, y fuera de mi Inicio — es para asignar.
+  // + Plantilla en Sesiones: al editor. Es una plantilla, no una sesión mía:
+  // para entrenarla, se la asigna uno a sí mismo.
   function handleCreateSession() {
-    const id = createFreeTemplate();
-    setFreeTemplateOnHome(id, false);
+    const id = createFreeTemplate(null, 'me', { asTemplate: true });
     navigation.navigate('SessionEditor', { templateId: id });
   }
 
@@ -664,7 +665,7 @@ export default function ProgramScreen() {
           <SheetRow
             label={t('templates.contextDuplicate')}
             onPress={() => {
-              copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix') });
+              copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix'), asTemplate: true });
               setSesMenu(null);
               showToast(t('templates.toastDuplicated'), 2200, 'success');
             }}
@@ -685,8 +686,9 @@ export default function ProgramScreen() {
           onAssign={(clientIds) => {
             clientIds.forEach((clientId) => copyFreeTemplate(sesAssign, { owner: clientId }));
             setSesAssign(null);
+            const who = (id) => (id === 'me' ? t('templates.assignSession.meToast') : clients[id]?.name ?? '');
             showToast(clientIds.length === 1
-              ? t('templates.assignSession.toast', { name: clients[clientIds[0]]?.name ?? '' })
+              ? t('templates.assignSession.toast', { name: who(clientIds[0]) })
               : t('templates.assignSession.toastMany', { count: clientIds.length }), 2200, 'success');
           }}
         />

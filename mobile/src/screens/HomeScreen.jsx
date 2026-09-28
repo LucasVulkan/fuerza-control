@@ -160,7 +160,8 @@ export default function HomeScreen() {
   // ── Sesiones libres (free-sessions.md §6) ──
   // Solo las MÍAS (§4.1.1): las de un cliente o un grupo no salen en mi Inicio.
   // `Object.values` conserva el orden de alta, que es el de la lista.
-  const myFree   = Object.values(sessionTemplates).filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me');
+  // Sin las plantillas de sesión: esas viven en Plantillas y se asignan (§4.6).
+  const myFree   = Object.values(sessionTemplates).filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me' && tpl.kind !== 'template');
   const homeFree = myFree.filter((tpl) => tpl.onHome !== false);
   const freeName = (tpl) => tpl.name || t('freeSession.templateUnnamed');
   const editFree = (templateId) => navigation.navigate('SessionEditor', { templateId });

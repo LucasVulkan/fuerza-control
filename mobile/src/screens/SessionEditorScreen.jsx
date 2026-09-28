@@ -250,6 +250,9 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Sesión libre (free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
+  // Plantilla de sesión (§4.6): no sale en Inicio, así que no lleva el
+  // interruptor; para entrenarla uno se la asigna.
+  const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
   // añadir nada, no puede quedar una sesión vacía en Inicio. Solo al desmontar
@@ -437,7 +440,7 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
+        eyebrow={isTpl ? t('templates.sessionEyebrow') : isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
         renaming={editingName}
         draft={nameValue}
@@ -476,7 +479,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         {/* ── Mostrar en Inicio: la única opción de una sesión libre, a la vista
             y no dentro del menú (free-sessions.md §5). Solo en las mías: la de
             un cliente no sale en mi Inicio. ── */}
-        {isFree && template.owner === 'me' && (
+        {isFree && template.owner === 'me' && !isTpl && (
           <View style={styles.homeToggle}>
             <ToggleRow
               label={t('freeSession.showOnHome')}

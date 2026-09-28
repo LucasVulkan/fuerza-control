@@ -2107,3 +2107,30 @@ describe('con app o sin app — trainer-logging.md C28 y C20', () => {
     expect(cli(id).programDirty).toBe(true);
   });
 });
+
+describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.6', () => {
+  beforeEach(() => {
+    useStore.setState({ sessionTemplates: {}, clients: {}, programs: {} });
+  });
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('una plantilla no es una sesión mía: no sale en Inicio', () => {
+    const id = useStore.getState().createFreeTemplate(null, 'me', { asTemplate: true });
+    expect(tpl(id)).toMatchObject({ kind: 'template', onHome: false, owner: 'me' });
+  });
+
+  it('asignármela me da una copia mía en Inicio y la plantilla no cambia', () => {
+    const src  = useStore.getState().createFreeTemplate({ name: 'Movilidad', exercises: [], blocks: [] }, 'me', { asTemplate: true });
+    const mine = useStore.getState().copyFreeTemplate(src, { owner: 'me' });
+
+    expect(tpl(mine).kind).toBeUndefined();
+    expect(tpl(mine)).toMatchObject({ owner: 'me', onHome: true, name: 'Movilidad' });
+    expect(tpl(src).kind).toBe('template');
+  });
+
+  it('duplicarla en Plantillas da otra plantilla', () => {
+    const src = useStore.getState().createFreeTemplate(null, 'me', { asTemplate: true });
+    const dup = useStore.getState().copyFreeTemplate(src, { name: 'Copia', asTemplate: true });
+    expect(tpl(dup)).toMatchObject({ kind: 'template', onHome: false, name: 'Copia' });
+  });
+});

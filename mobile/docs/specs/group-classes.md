@@ -243,24 +243,32 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
 Idea del usuario (28-sep): asignar sesiones sueltas desde la pestaña
 **Plantillas**, igual que se asignan programas.
 
-**No hay modelo nuevo.** Las plantillas de sesión **son tus sesiones libres**
-(`owner === 'me'`, `programId: null`), las mismas que ya salen en Inicio y en
-«Mis sesiones libres». Lo que decide si una sale en tu Inicio es el interruptor
-«Mostrar en Inicio» (`onHome`, free-sessions §4.1) que ya tiene el editor. Una
-colección aparte duplicaría el concepto, y un entrenador que se hace su propia
-rutina de movilidad es la misma plantilla que manda a un cliente.
+**Una plantilla de sesión no es una sesión tuya** (QA 28-sep, cambia la primera
+versión). Es una sesión libre con `kind: 'template'`, la misma marca que las
+plantillas de programa. Al principio eran la misma cosa que tus sesiones libres,
+y eso tenía un problema: si te asignabas una plantilla y la adaptabas para ti,
+cambiabas la plantilla. Ahora:
+- Las plantillas viven solo en Plantillas › Sesiones. No salen en tu Inicio ni
+  en «Mis sesiones libres», no se entrenan y su editor no lleva «Mostrar en
+  Inicio» (la ceja dice «Plantilla de sesión»).
+- Para entrenarla, te la asignas: la hoja de asignar tiene **Tú** el primero,
+  con el mismo gesto que un cliente. Recibes una copia en tu Inicio y la
+  adaptas sin tocar la plantilla.
+- Tus sesiones libres de siempre no cambian (Inicio, «Mis sesiones libres» y su
+  interruptor). Las que se crearon desde Plantillas antes de este cambio quedan
+  como sesiones tuyas fuera de Inicio (sin migración).
 
 **La pestaña** (`ProgramScreen.jsx`):
 - Bajo la cabecera, un `SegmentedControl` **Programas / Sesiones**. La cabecera
   dice «PLANTILLAS · N» con el número del segmento, y **+ Plantilla** crea lo
   del segmento.
-- **Sesiones**: una tarjeta por sesión libre mía, con el mismo `TemplateCard`
+- **Sesiones**: una tarjeta por plantilla de sesión, con el mismo `TemplateCard`
   (nombre + 3 cifras: ejercicios, bloques y minutos, de `sessionStats`) y
   **Asignar**. Orden: nombre.
-- **+ Plantilla** en Sesiones: `createFreeTemplate()` con `onHome: false`
-  (es para asignar, no para tu Inicio) → editor en modo libre.
+- **+ Plantilla** en Sesiones: `createFreeTemplate(null, 'me', { asTemplate: true })`
+  → editor en modo libre.
 - **Tocar la tarjeta** → hoja: Editar, Duplicar, Eliminar
-  (`deleteFreeTemplate`). Duplicar = `createFreeTemplate(presetFromTemplate)`
+  (`deleteFreeTemplate`). Duplicar = `copyFreeTemplate(id, { asTemplate: true })`
   con el sufijo « (copia)» de las plantillas de programa.
 
 **Asignar** (`copyFreeTemplate(templateId, { owner: clientId })`, store; la misma
@@ -287,9 +295,12 @@ copia que Asignar.
 - [x] Plantillas → Sesiones → + Plantilla: se abre el
   editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
   su ficha. Editar la del cliente no cambia la plantilla.
-- [ ] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
+- [x] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
   el botón dice «Asignar a 2», y la sesión aparece en la ficha de esos dos y no
   en la del desmarcado.
+- [ ] Una plantilla de sesión no sale en tu Inicio ni en «Mis sesiones libres», y
+  su editor no tiene «Mostrar en Inicio». Asignártela (Tú, arriba del todo): la
+  copia sale en tu Inicio; cambiarle un ejercicio no cambia la plantilla.
 
 ## 5. Fase C25 — Modo pizarra
 

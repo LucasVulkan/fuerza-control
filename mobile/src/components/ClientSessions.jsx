@@ -309,9 +309,8 @@ export function ClientFreeSessions({ client, canStart, log }) {
 
   const all     = Object.values(sessionTemplates).filter((tpl) => !tpl.programId);
   const his     = all.filter((tpl) => tpl.owner === client.id);
-  // Mis plantillas de sesión: mis sesiones libres (§4.6), sin las que me
-  // hubiera mandado a mí un entrenador.
-  const library = all.filter((tpl) => (tpl.owner ?? 'me') === 'me' && !tpl.fromTrainer)
+  // Mis plantillas de sesión (§4.6).
+  const library = all.filter((tpl) => tpl.kind === 'template')
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const nameOf  = (tpl) => tpl.name || t('freeSession.templateUnnamed');
   const edit    = (templateId) => navigation.navigate('SessionEditor', { templateId });
