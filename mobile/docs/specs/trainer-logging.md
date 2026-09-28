@@ -381,21 +381,21 @@ ya está cerrada.
 
 **Probar C28**
 
-- [ ] Crear un cliente «Le apuntas tú», asignarle un
+- [x] Crear un cliente «Le apuntas tú», asignarle un
   programa y editarlo: **no** sale «Cambios sin enviar» en ningún momento, y su
   ficha tiene EMPEZAR. Info › Conexión dice «Sin app».
-- [ ] Crear un cliente «Entrena con la app» sin programa:
+- [x] Crear un cliente «Entrena con la app» sin programa:
   la tarjeta del código pide asignarle uno. Asignarlo: sin aviso de cambios, y
   el código ya se puede canjear. La ficha no tiene EMPEZAR y la tarjeta de la
   lista dice «Esperando código».
 - [ ] (dos móviles) El cliente canjea el código con la
   app del entrenador abierta en otra pestaña. Al volver a Clientes, su tarjeta
   ya no dice «Esperando código», y un cambio en su programa sí saca el aviso.
-- [ ] Un cliente sin app → Pasar a la app → GENERAR
+- [x] Un cliente sin app → Pasar a la app → GENERAR
   CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
   vuelve EMPEZAR y el código viejo ya no sirve.
 - [ ] En la lista, solo los clientes con app llevan el icono del móvil junto al
-  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve.
+  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve. — ❌ 28-sep: el icono sale por debajo de las letras
 
 ### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 

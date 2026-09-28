@@ -4243,15 +4243,18 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'flex-end',
     gap:           spacing.sm,
   },
-  // Apoyado en la línea base del nombre, no en el fondo de su caja: la Inter a
-  // 16 deja ~4 px de descendente bajo la base, y el trazo del icono ya trae
-  // ~1.5 px de aire abajo en su caja de 24 → 3 px sin token.
+  // Apoyado en la línea base del nombre. Con la caja del nombre fija (abajo:
+  // `lineHeight` 20 y sin el relleno de fuente de Android, que la alargaba y
+  // dejaba el icono por debajo de las letras en QA), de la base al fondo hay
+  // ~4.2 px; el trazo del icono trae ~1.5 px de aire abajo → 3 px sin token.
   cAppIcon: { marginBottom: 3 },
   cName: {
     ...textStyles.itemTitleQuiet,
-    color:      th.colors.text,
-    flexShrink: 1,
-    minWidth:   0,
+    lineHeight:         20,
+    includeFontPadding: false,
+    color:              th.colors.text,
+    flexShrink:         1,
+    minWidth:           0,
   },
   cWeek: {
     ...textStyles.label,
