@@ -34,6 +34,7 @@ import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
 import ExternalImportModal   from '../components/ExternalImportModal';
+import { clientLink } from '../utils/clientLink';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -73,7 +74,7 @@ function MainTabs() {
     return !!program && stageBannerDue(program, athleteProgress(program), s.stageBannerSnooze?.[program.id]);
   });
   const pendingClients = useStore((s) =>
-    Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
+    Object.values(s.clients ?? {}).filter((c) => clientLink(c, s.trainerSync) === 'linked' && (c.programDirty || c.overridesDirty)).length
   );
   return (
     <Tab.Navigator

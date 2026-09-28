@@ -41,6 +41,7 @@ import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
+import { clientLink } from '../src/utils/clientLink';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -627,7 +628,13 @@ export const useStore = create(
       // CLIENTS (PRO)
       // ══════════════════════════════════════════════════════════════════════
 
-      createClient: async (name) => {
+      /**
+       * `withApp`: el cliente va a entrenar con la app, así que se le crea el
+       * código. Sin él no se crea nada en el servidor: le apuntas tú, y un
+       * cliente sin código no se queda «pendiente de enviar» para siempre
+       * (trainer-logging.md §4.0).
+       */
+      createClient: async (name, { withApp = false } = {}) => {
         const id = generateId('client');
         const clientBase = {
           id, name: name.trim(),
@@ -641,9 +648,9 @@ export const useStore = create(
 
         set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
 
-        // If trainer is in connected mode, create the Supabase slot
+        // Solo con app, y solo si el entrenador está en la nube.
         const { trainerSync } = get();
-        if (trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
+        if (withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
           try {
             const { slotId, clientCode } = await createClientSlot(trainerSync.userId, name.trim());
             set((s) => ({
@@ -3387,6 +3394,85 @@ export const useStore = create(
         }));
       },
 
+      /**
+       * «Pasar a la app» (C28 §4.0.5): se genera el código, se sube lo que se le
+       * apuntó (C20) y su programa, para que el código funcione en cuanto lo
+       * canjee. Desde aquí es invitado: EMPEZAR desaparece de su ficha.
+       */
+      moveClientToApp: async (clientId) => {
+        await get().connectClientToCloud(clientId);
+        // Lo de después es de lo que ya tiene código: si falla, la subida
+        // silenciosa del invitado lo reintenta.
+        try {
+          await get().pushTrainerLogToSlot(clientId);
+          const programId = get().clients[clientId]?.activeProgramId;
+          if (programId) await get().uploadProgramToClient(clientId, programId);
+        } catch (err) {
+          console.warn('[moveClientToApp]', err.message);
+        }
+      },
+
+      /**
+       * «Cancelar invitación» (C28 §4.0.5): el código deja de valer y el
+       * cliente vuelve a «sin app». Lo que haya en el hueco se va con él.
+       */
+      cancelClientInvitation: async (clientId) => {
+        const client = get().clients[clientId];
+        if (!client?.syncSlotId || client.syncLinked) return;
+        await _ensureTrainerSession(get().trainerSync);
+        await deleteClientSlot(client.syncSlotId);
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              syncSlotId: null, syncCode: null, syncLinked: false,
+              programDirty: false, overridesDirty: false, programUploadedSig: null,
+              remoteSessionsCount: 0,
+            },
+          },
+        }));
+      },
+
+      /**
+       * C20: sube al hueco lo que el entrenador le apuntó (historial, ejercicios
+       * propios y progreso de etapa), en el mismo formato que sube un cliente.
+       * Al canjear el código, la hoja preselecciona fusionarlo.
+       *
+       * Guarda contra pisar al cliente: antes se relee el hueco, y si ya lo ha
+       * canjeado no se sube nada (lo que manda desde entonces es su móvil).
+       * Queda una ventana de segundos entre leer y escribir, en la que el
+       * cliente aún no ha podido entrenar con la app.
+       */
+      pushTrainerLogToSlot: async (clientId) => {
+        const { clients, trainerSync, clientLogs, customExercises, programs } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId || client.syncLinked) return false;
+        await _ensureTrainerSession(trainerSync);
+        const slot = (await getTrainerSlots(trainerSync.userId)).find((x) => x.id === client.syncSlotId);
+        if (slot?.client_id) {
+          set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
+          return false;
+        }
+        const entries = clientLogs[clientId] ?? [];
+        const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
+        const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
+        const program = programs[client.activeProgramId];
+        // El sello de activación es el del propio programa: así, al restaurar,
+        // `mergeProgressOnImport` da por buena esta posición.
+        const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
+        await uploadHistory(client.syncSlotId, entries, custom, progress);
+        // Son mis propios entrenos: no cuentan como «sin revisar».
+        set((s) => ({
+          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], remoteSessionsCount: entries.length } },
+          trainerSync: {
+            ...s.trainerSync,
+            lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
+          },
+        }));
+        return true;
+      },
+
       uploadProgramToClient: async (clientId, programId) => {
         const { clients, trainerSync } = get();
         const client = clients[clientId];
@@ -4642,6 +4728,38 @@ useStore.subscribe((s, prev) => {
   uploadTimer = setTimeout(() => {
     useStore.getState().uploadHistoryToTrainer().catch(() => {});
   }, UPLOAD_DEBOUNCE_MS);
+});
+
+// El invitado (C28 §4.0.4) no tiene aviso de cambios: lo que quede pendiente se
+// le sube solo, venga de donde venga (asignar, editar, sesiones libres,
+// prescribir). Un solo suscriptor en vez de una llamada en cada acción. Si falla,
+// el flag se queda y el siguiente cambio de `clients` —el refresco de los huecos
+// al volver a Clientes— lo reintenta.
+const INVITED_DEBOUNCE_MS = 1500;
+const invitedTimers = {};
+const invitedInFlight = new Set();
+useStore.subscribe((s, prev) => {
+  if (s.clients === prev.clients || !s._hasHydrated) return;
+  Object.values(s.clients).forEach((c) => {
+    if (clientLink(c, s.trainerSync) !== 'invited') return;
+    if (!(c.programDirty && c.activeProgramId) && !c.overridesDirty) return;
+    if (invitedInFlight.has(c.id)) return;
+    clearTimeout(invitedTimers[c.id]);
+    invitedTimers[c.id] = setTimeout(async () => {
+      const st = useStore.getState();
+      const cur = st.clients[c.id];
+      if (!cur || clientLink(cur, st.trainerSync) !== 'invited') return;
+      invitedInFlight.add(c.id);
+      try {
+        if (cur.programDirty && cur.activeProgramId) await st.uploadProgramToClient(c.id, cur.activeProgramId);
+        if (cur.overridesDirty) await st.sendOverrides(c.id);
+      } catch {
+        // Silencioso: se reintenta con el siguiente cambio.
+      } finally {
+        invitedInFlight.delete(c.id);
+      }
+    }, INVITED_DEBOUNCE_MS);
+  });
 });
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────

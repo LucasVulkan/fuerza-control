@@ -7,11 +7,11 @@
  *   'billing' → global billing summary
  */
 
-import { useState, useMemo, useEffect } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -29,6 +29,7 @@ import SheetRow from '../components/ui/SheetRow';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
+import { clientLink } from '../utils/clientLink';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
@@ -303,7 +304,7 @@ function UploadIcon({ size = 12, color }) {
 
 function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
-  dirty, client, log, archivedCount,
+  dirty, client, link, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
 }) {
@@ -458,7 +459,7 @@ function AssignedProgramCard({
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
-      {!client.syncLinked ? (
+      {link === 'none' ? (
         <ClientSessions client={client} program={program} days={currentDays} log={log} />
       ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
@@ -508,25 +509,24 @@ function AssignedProgramCard({
 // Fila de hoja — mismo patrón que los dos editores: surface2, radius/sm,
 // padding space/md, texto card-type y la flecha a la derecha.
 /**
- * ClientCodeBlock — el código de conexión del cliente.
+ * ClientCodeBlock — el código de un cliente con código (trainer-logging.md
+ * §4.0.5-4.0.6, C28). Un cliente sin app no tiene: su Info ofrece «Pasar a la
+ * app», que es lo que lo genera.
  *
- * Vive en dos sitios: en el tab de Programa mientras el cliente NO se ha
- * conectado (es lo primero que hay que hacer con un cliente recién creado) y
- * siempre en Info, que es su casa definitiva.
- *
- * `onDismiss` solo lo pasa el tab de Programa: si nunca vas a conectar a ese
- * cliente, la tarjeta se queda ahí para siempre sin nada que hacer.
+ *   · Tarjeta (Programa, solo invitado): «Esperando a…», el código, Copiar y
+ *     Compartir. Sin programa, Compartir espera: el servidor no deja canjear
+ *     un código sin programa subido.
+ *   · `flat` (Info › Conexión): invitado → código, Compartir, código nuevo y
+ *     Cancelar invitación; con app → una línea y código nuevo.
  */
-function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
+function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const hasLogged = useStore((s) => (s.clientLogs[client.id]?.length ?? 0) > 0);
-  const connectClientToCloud = useStore((s) => s.connectClientToCloud);
-  const reissueClientCode    = useStore((s) => s.reissueClientCode);
-  const [copied, setCopied]         = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [reissuing, setReissuing]   = useState(false);
+  const reissueClientCode      = useStore((s) => s.reissueClientCode);
+  const cancelClientInvitation = useStore((s) => s.cancelClientInvitation);
+  const [copied, setCopied]       = useState(false);
+  const [reissuing, setReissuing] = useState(false);
 
   /**
    * Código nuevo + asiento liberado. Es la única salida de tres situaciones que
@@ -559,102 +559,176 @@ function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
     );
   }
 
-  if (!client.syncSlotId) {
-    return (
-      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
-        <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
-        <Text style={styles.codeExplain}>{t('clients.keyTab.noSlot')}</Text>
-        <TouchableOpacity
-          style={[styles.apBtn, styles.codeConnectBtn, connecting && { opacity: 0.6 }]}
-          disabled={connecting}
-          activeOpacity={0.85}
-          onPress={async () => {
-            setConnecting(true);
+  function handleCancel() {
+    Alert.alert(
+      t('clients.codeCard.cancelConfirmTitle'),
+      t('clients.codeCard.cancelConfirmBody', { name: client.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('clients.codeCard.cancelConfirmCta'),
+          style: 'destructive',
+          onPress: async () => {
             try {
-              await connectClientToCloud(client.id);
+              await cancelClientInvitation(client.id);
+              showToast(t('clients.codeCard.cancelDone'), 2200, 'neutral');
             } catch (err) {
-              Alert.alert('Error', err.message ?? t('clients.keyTab.connectError'));
-            } finally {
-              setConnecting(false);
+              Alert.alert('Error', err?.message ?? '');
             }
-          }}
-        >
-          <Text style={styles.apBtnText}>
-            {connecting ? t('clients.keyTab.connecting') : t('clients.keyTab.connect')}
-          </Text>
-        </TouchableOpacity>
-      {onDismiss && (
-        <TouchableOpacity style={styles.codeDismiss} onPress={onDismiss} activeOpacity={0.6}>
-          <Text style={styles.codeDismissText}>{t('clients.codeCard.dismiss')}</Text>
-        </TouchableOpacity>
-      )}
+          },
+        },
+      ],
+    );
+  }
+
+  async function handleCopy() {
+    await Clipboard.setStringAsync(client.syncCode);
+    setCopied(true);
+    showToast(t('clients.keyTab.copied'), 2200, 'neutral');
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  // ponytail: texto con el código; la invitación con enlace es la M04 y lo
+  // sustituye cuando llegue.
+  function handleShare() {
+    Share.share({ message: t('clients.codeCard.shareText', { code: client.syncCode }) }).catch(() => {});
+  }
+
+  const reissueRow = (
+    <TouchableOpacity style={styles.codeTertiary} onPress={handleReissue} disabled={reissuing} activeOpacity={0.6}>
+      <Text style={styles.codeTertiaryText}>
+        {reissuing ? t('clients.keyTab.connecting') : t('clients.codeCard.reissue')}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Con app: el código ya se usó. Solo queda la salida de siempre.
+  if (link === 'linked') {
+    return (
+      <View style={styles.codeFlat}>
+        <Text style={styles.codeExplain}>{t('clients.codeCard.linkedLine')}</Text>
+        {reissueRow}
       </View>
     );
   }
 
   if (!client.syncCode) {
     return (
-      <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
-        <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
+      <View style={flat ? styles.codeFlat : styles.codeCard}>
         <Text style={styles.codeExplain}>{t('clients.keyTab.connectedNoCode')}</Text>
-      {onDismiss && (
-        <TouchableOpacity style={styles.codeDismiss} onPress={onDismiss} activeOpacity={0.6}>
-          <Text style={styles.codeDismissText}>{t('clients.codeCard.dismiss')}</Text>
+      </View>
+    );
+  }
+
+  const codeRow = (
+    <View style={styles.codeRow}>
+      <View style={styles.codeBox}>
+        <Text style={styles.codeText}>{client.syncCode}</Text>
+      </View>
+      <TouchableOpacity style={styles.codeCopyBtn} activeOpacity={0.75} onPress={handleCopy} accessibilityRole="button">
+        <Svg viewBox="0 0 24 24" width={18} height={18} fill="none"
+          stroke={copied ? th.colors.green : th.colors.accent}
+          strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          {copied
+            ? <Path d="M20 6L9 17l-5-5" />
+            : <Path d="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2zm0 0H6a2 2 0 00-2 2v12" />
+          }
+        </Svg>
+      </TouchableOpacity>
+    </View>
+  );
+  const shareBtn = (
+    <TouchableOpacity
+      style={[styles.codeShare, !hasProgram && styles.codeShareOff]}
+      onPress={handleShare}
+      disabled={!hasProgram}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+    >
+      <Svg viewBox="0 0 24 24" width={16} height={16} fill="none"
+        stroke={hasProgram ? th.colors.onAccent : th.colors.muted}
+        strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+        <Path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+      </Svg>
+      <Text style={[styles.codeShareText, !hasProgram && styles.codeShareTextOff]}>{t('clients.codeCard.share')}</Text>
+    </TouchableOpacity>
+  );
+
+  if (flat) {
+    return (
+      <View style={styles.codeFlat}>
+        {codeRow}
+        {shareBtn}
+        {reissueRow}
+        <TouchableOpacity style={styles.codeTertiary} onPress={handleCancel} activeOpacity={0.6}>
+          <Text style={[styles.codeTertiaryText, { color: th.colors.redText }]}>{t('clients.codeCard.cancel')}</Text>
         </TouchableOpacity>
-      )}
       </View>
     );
   }
 
   return (
-    <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
-      <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
-      {/* Con entrenos apuntados, el código es la puerta del traspaso (C20):
-          al conectarse recibe todo lo que le apuntaste. */}
+    <View style={styles.codeCard}>
+      <Text style={styles.codeTitle}>{t('clients.codeCard.waiting', { name: client.name }).toUpperCase()}</Text>
       <Text style={styles.codeExplain}>
-        {t(hasLogged ? 'clients.codeCard.explainLogged' : 'clients.codeCard.explain', { name: client.name })}
+        {t(hasProgram ? 'clients.codeCard.waitLine' : 'clients.codeCard.needProgram')}
       </Text>
-      <View style={styles.codeRow}>
-        <View style={styles.codeBox}>
-          <Text style={styles.codeText}>{client.syncCode}</Text>
+      {codeRow}
+      {shareBtn}
+    </View>
+  );
+}
+
+/**
+ * «Pasar a la app» (C28 §4.0.5): la hoja dice lo que va a pasar antes de que
+ * pase. Generar el código es la decisión: desde ahí no se le apunta nada.
+ */
+function MoveToAppSheet({ client, loggedCount, onClose }) {
+  const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const moveClientToApp = useStore((s) => s.moveClientToApp);
+  const showToast       = useStore((s) => s.showToast);
+  const [busy, setBusy] = useState(false);
+
+  const steps = [
+    [t('clients.moveToApp.step1'), t('clients.moveToApp.step1Sub')],
+    [loggedCount > 0 ? t('clients.moveToApp.step2', { count: loggedCount }) : t('clients.moveToApp.step2NoLog'),
+      loggedCount > 0 ? t('clients.moveToApp.step2Sub') : null],
+    [t('clients.moveToApp.step3'), t('clients.moveToApp.step3Sub')],
+  ];
+
+  async function handleGo() {
+    setBusy(true);
+    try {
+      await moveClientToApp(client.id);
+      showToast(t('clients.moveToApp.done'), 2200, 'success');
+      onClose();
+    } catch (err) {
+      Alert.alert('Error', err?.message ?? t('clients.keyTab.connectError'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <DragSheet visible onClose={onClose} title={t('clients.moveToApp.title', { name: client.name })}
+      action={{ label: t('common.cancel'), onPress: onClose }}>
+      <View style={styles.formSheetBody}>
+        <View style={styles.moveSteps}>
+          {steps.map(([main, sub], i) => (
+            <View key={i} style={styles.moveStep}>
+              <Text style={styles.moveStepNum}>{i + 1}</Text>
+              <Text style={styles.moveStepText}>
+                {main}{sub ? <Text style={styles.moveStepSub}>{` ${sub}`}</Text> : null}
+              </Text>
+            </View>
+          ))}
         </View>
-        <TouchableOpacity
-          style={styles.codeCopyBtn}
-          activeOpacity={0.75}
-          onPress={async () => {
-            await Clipboard.setStringAsync(client.syncCode);
-            setCopied(true);
-            showToast(t('clients.keyTab.copied'), 2200, 'neutral');
-            setTimeout(() => setCopied(false), 1800);
-          }}
-        >
-          <Svg viewBox="0 0 24 24" width={18} height={18} fill="none"
-            stroke={copied ? th.colors.green : th.colors.accent}
-            strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            {copied
-              ? <Path d="M20 6L9 17l-5-5" />
-              : <Path d="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2zm0 0H6a2 2 0 00-2 2v12" />
-            }
-          </Svg>
+        <TouchableOpacity style={[styles.sheetCta, busy && { opacity: 0.6 }]} onPress={handleGo} disabled={busy} activeOpacity={0.85}>
+          <Text style={styles.sheetCtaText}>{busy ? t('clients.keyTab.connecting') : t('clients.moveToApp.btn')}</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.codeDismiss}
-        onPress={handleReissue}
-        disabled={reissuing}
-        activeOpacity={0.6}
-      >
-        <Text style={styles.codeDismissText}>
-          {reissuing ? t('clients.keyTab.connecting') : t('clients.codeCard.reissue')}
-        </Text>
-      </TouchableOpacity>
-
-      {onDismiss && (
-        <TouchableOpacity style={styles.codeDismiss} onPress={onDismiss} activeOpacity={0.6}>
-          <Text style={styles.codeDismissText}>{t('clients.codeCard.dismiss')}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+    </DragSheet>
   );
 }
 
@@ -1554,7 +1628,7 @@ function ClientListCard({
   client, activeProgram, log, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
-  inProgress = false, onContinue,
+  inProgress = false, onContinue, invited = false,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1634,8 +1708,11 @@ function ClientListCard({
   // Un cliente en pausa o inactivo ocupa el hueco de la última actividad: su
   // adherencia está silenciada, así que la fecha ahí no dice nada.
   const manualStatus = client.status ?? 'active';
+  // El invitado aún no ha canjeado el código: sin fecha que dar, lo dice
+  // (C28 §4.0.4), con el mismo tratamiento que «Pausado».
   const statusLabel  = manualStatus === 'paused'   ? t('clients.statusPaused')
                      : manualStatus === 'inactive' ? t('clients.statusInactive')
+                     : invited                     ? t('clients.statusInvited')
                      : null;
 
   return (
@@ -1827,6 +1904,8 @@ export default function ClientsScreen() {
   const isPro        = profile.isPro ?? false;
   const setProfile   = useStore((s) => s.setProfile);
   const trainerSync  = useStore((s) => s.trainerSync);
+  // Con app o sin app, en un solo sitio (C28): lista, aviso, ficha y hojas.
+  const linkOf = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
 
   // Memoizado porque ahora alimenta los memos de carga: un objeto nuevo en cada
   // render recalculaba `sessionLoads` sobre todo el historial del cliente.
@@ -1876,6 +1955,9 @@ export default function ClientsScreen() {
   const activeFilterCount = tagFilter.length + (statusFilter !== 'active' ? 1 : 0);
   const [showNewClient,    setShowNewClient]     = useState(false);
   const [newClientName,    setNewClientName]     = useState('');
+  // Alta: 'app' | 'self' | null. Sin elegir, CREAR espera (C28 §4.0.3).
+  const [newClientMode,    setNewClientMode]     = useState(null);
+  const [moveToApp,        setMoveToApp]         = useState(false);
 
   // Detail - tags input
   const [newTag,           setNewTag]           = useState('');
@@ -1952,7 +2034,7 @@ export default function ClientsScreen() {
   // «Empezar sesión B» de la pulsación larga: la que toca, contra SU historial.
   const actionsStart = (() => {
     const c       = actionsClientId ? clients[actionsClientId] : null;
-    const program = c && !c.syncLinked ? programs[c.activeProgramId] : null;
+    const program = c && linkOf(c) === 'none' ? programs[c.activeProgramId] : null;
     if (!program) return null;
     const days   = stageDaysAt(program, stageStatus(program, athleteProgress(program, c)).stageIdx);
     const heroId = sessionPlan({
@@ -2005,9 +2087,11 @@ export default function ClientsScreen() {
   );
 
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
+  // Solo los que tienen app: al invitado se le sube solo y al que no tiene no
+  // se le manda nada.
   const pendingClients = useMemo(
-    () => Object.values(clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)),
-    [clients],
+    () => Object.values(clients ?? {}).filter((c) => linkOf(c) === 'linked' && (c.programDirty || c.overridesDirty)),
+    [clients, linkOf],
   );
   const pendingOverrideCount = pendingClients.filter((c) => c.overridesDirty).length;
   const pendingProgramCount  = pendingClients.filter((c) => c.programDirty).length;
@@ -2165,10 +2249,10 @@ export default function ClientsScreen() {
         : pending > 0 ? `${pending.toFixed(2)}€ ${t('clients.pendingLabel').toLowerCase()}`
         : t('clients.info.upToDate'),
       billingTone: pending > 0 ? 'orange' : null,
-      connection:     selectedClient.syncLinked ? t('clients.info.connected') : t('clients.info.notConnected'),
-      connectionTone: selectedClient.syncLinked ? null : 'accent',
+      connection:     t(`clients.info.link_${linkOf(selectedClient)}`),
+      connectionTone: { none: null, invited: 'orange', linked: 'green' }[linkOf(selectedClient)],
     };
-  }, [selectedClient, t]);
+  }, [selectedClient, t, linkOf]);
 
   const filteredLog = useMemo(() => {
     // «Programa actual»: sus sesiones y las libres que sustituyen a una
@@ -2225,6 +2309,15 @@ export default function ClientsScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Y al volver a la pestaña: sin esto, quien canjeaba el código con la app
+  // abierta no se veía hasta reiniciarla. `refreshTrainerSlots` ya tiene su
+  // propio cerrojo, así que un foco seguido de otro no duplica nada.
+  useFocusEffect(useCallback(() => {
+    if (trainerSync.mode && trainerSync.mode !== 'offline' && trainerSync.userId) {
+      refreshTrainerSlots().catch(() => {});
+    }
+  }, [trainerSync.mode, trainerSync.userId, refreshTrainerSlots]));
+
   // ── Badge count helper ──────────────────────────────────────────────────────
 
   function getNewSessionsCount(clientId) {
@@ -2236,6 +2329,8 @@ export default function ClientsScreen() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleSelectClient(clientId) {
+    // ¿Ha canjeado ya el código? Se mira al abrir su ficha (C28 §4.0.4).
+    if (linkOf(clients[clientId]) === 'invited') refreshTrainerSlots().catch(() => {});
     setSelectedClientId(clientId);
     setActiveTab('programs');
     setScopeFilter('active');
@@ -2325,11 +2420,18 @@ export default function ClientsScreen() {
     openClientHistoryTab(clientId, 'history');
   }
 
+  // Sin nube no se pregunta: todos son «sin app» (C28 §4.0.2, decisión 6).
+  const askClientMode = !!trainerSync.mode && trainerSync.mode !== 'offline';
+  const canCreateClient = !!newClientName.trim() && (!askClientMode || newClientMode != null);
+
   async function handleCreateClient() {
-    if (!newClientName.trim()) return;
+    if (!canCreateClient) return;
+    const name = newClientName.trim();
+    const withApp = askClientMode && newClientMode === 'app';
     setNewClientName('');
+    setNewClientMode(null);
     setShowNewClient(false);
-    await createClient(newClientName.trim());
+    await createClient(name, { withApp });
   }
 
   function handleDeleteClient(clientId) {
@@ -2604,15 +2706,15 @@ export default function ClientsScreen() {
 
           return (
             <ScrollView contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
-              {/* Cliente recién creado: lo primero es darle el código. Se retira
-                  solo cuando el cliente lo ha canjeado (`syncLinked`), y a
-                  partir de ahí el código vive únicamente en Info. */}
-              {!selectedClient.syncLinked && !selectedClient.codeHintDismissed && (
+              {/* Invitado: lo primero es que canjee el código. Se retira sola
+                  cuando lo hace, y el código queda en Info (C28 §4.0.6). */}
+              {linkOf(selectedClient) === 'invited' && (
                 <View style={{ marginBottom: spacing.md }}>
                   <ClientCodeBlock
                     client={selectedClient}
+                    link="invited"
+                    hasProgram={!!activeProgram}
                     showToast={showToast}
-                    onDismiss={() => updateClientInfo(selectedClientId, { codeHintDismissed: true })}
                   />
                 </View>
               )}
@@ -2627,6 +2729,7 @@ export default function ClientsScreen() {
                   loadPct={clientLoadPct}
                   dirty={selectedClient.programDirty ?? false}
                   client={selectedClient}
+                  link={linkOf(selectedClient)}
                   log={clientBaseLog}
                   archivedCount={previousPrograms.length}
                   onView={() => setPrintingProgram(activeProgram.id)}
@@ -2661,7 +2764,7 @@ export default function ClientsScreen() {
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
                   necesita uno (group-classes.md §4.1, C24). */}
-              <ClientFreeSessions client={selectedClient} log={clientBaseLog} />
+              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} />
 
               {/* Programas anteriores — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
@@ -3041,8 +3144,39 @@ export default function ClientsScreen() {
                 open={openSections.connection}
                 onToggle={() => setOpenSections((s) => ({ ...s, connection: !s.connection }))}
               >
-                <ClientCodeBlock client={selectedClient} showToast={showToast} flat />
+                {linkOf(selectedClient) === 'none' ? (
+                  <>
+                    <Text style={styles.codeExplain}>{t('clients.info.noAppLine')}</Text>
+                    <TouchableOpacity
+                      style={styles.sheetCta}
+                      onPress={() => {
+                        // Sin nube no hay código que generar: primero la conexión.
+                        if (!trainerSync.mode || trainerSync.mode === 'offline') setShowSyncModal(true);
+                        else setMoveToApp(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.sheetCtaText}>{t('clients.moveToApp.open')}</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <ClientCodeBlock
+                    client={selectedClient}
+                    link={linkOf(selectedClient)}
+                    hasProgram={!!selectedClient.activeProgramId}
+                    showToast={showToast}
+                    flat
+                  />
+                )}
               </InfoSection>
+
+              {moveToApp && (
+                <MoveToAppSheet
+                  client={selectedClient}
+                  loggedCount={clientBaseLog.length}
+                  onClose={() => setMoveToApp(false)}
+                />
+              )}
 
               {/* Eliminar cliente: terciario, como el resto de salidas que no se
                   pulsan a diario. La caja roja de antes pesaba más en la
@@ -3303,7 +3437,9 @@ export default function ClientsScreen() {
           }
           renderItem={({ item: client }) => {
             const activeProgram   = programs[client.activeProgramId];
-            const isConnected     = trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!client.syncSlotId;
+            // Solo con app hay avisos de envío; al invitado se le sube solo (C28).
+            const link            = linkOf(client);
+            const isConnected     = link === 'linked';
             // Last activity across the client's separated history
             const clientSessions  = clientLogs[client.id] ?? [];
             const lastActivityTs  = clientSessions.length ? Math.max(...clientSessions.map((e) => e.timestamp)) : null;
@@ -3316,6 +3452,7 @@ export default function ClientsScreen() {
                   log={clientSessions}
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
+                  invited={link === 'invited'}
                   adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
@@ -3370,7 +3507,7 @@ export default function ClientsScreen() {
           onStart={actionsStart?.onPress}
           onClose={() => setActionsClientId(null)}
           onProgress={() => handleSelectClientProgress(actionsClientId)}
-          onNextSession={clients[actionsClientId].syncLinked
+          onNextSession={linkOf(clients[actionsClientId]) !== 'none'
             ? () => navigation.navigate('NextSession', { clientId: actionsClientId })
             : undefined}
           onEditProgram={() => {
@@ -3583,9 +3720,9 @@ export default function ClientsScreen() {
           avanza. */}
       <DragSheet
         visible={showNewClient}
-        onClose={() => setShowNewClient(false)}
+        onClose={() => { setShowNewClient(false); setNewClientMode(null); }}
         title={t('clients.newClientModal.title')}
-        action={{ label: t('common.cancel'), onPress: () => setShowNewClient(false) }}
+        action={{ label: t('common.cancel'), onPress: () => { setShowNewClient(false); setNewClientMode(null); } }}
       >
         <View style={styles.formSheetBody}>
           <View>
@@ -3601,9 +3738,48 @@ export default function ClientsScreen() {
               onSubmitEditing={handleCreateClient}
             />
           </View>
+
+          {/* Con app o sin app (C28 §4.0.3). Ninguna marcada: es la decisión que
+              luego explica la ficha entera, así que se toma a conciencia. */}
+          {askClientMode && (
+            <View>
+              <Text style={styles.sheetLabel}>{t('clients.newClientModal.modeLabel')}</Text>
+              <View style={styles.templateList}>
+                {[
+                  { id: 'app',  icon: 'M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM11 18h2' },
+                  { id: 'self', icon: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z' },
+                ].map(({ id, icon }) => {
+                  const on = newClientMode === id;
+                  return (
+                    <TouchableOpacity
+                      key={id}
+                      style={[styles.templateRow, styles.modeRow, on && styles.templateRowOn]}
+                      onPress={() => setNewClientMode(id)}
+                      activeOpacity={0.75}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Svg viewBox="0 0 24 24" width={22} height={22} fill="none"
+                        stroke={on ? th.colors.accent : th.colors.mutedLight}
+                        strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <Path d={icon} />
+                      </Svg>
+                      <View style={{ flex: 1, minWidth: 0, gap: spacing.xs2 }}>
+                        <Text style={[styles.modeTitle, on && styles.templateRowNameOn]}>{t(`clients.newClientModal.mode_${id}`)}</Text>
+                        <Text style={styles.modeSub}>{t(`clients.newClientModal.mode_${id}Sub`)}</Text>
+                      </View>
+                      {on && <Text style={styles.clientCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.modeHint}>{t('clients.newClientModal.modeHint')}</Text>
+            </View>
+          )}
+
           <TouchableOpacity
-            style={[styles.sheetCta, !newClientName.trim() && { opacity: 0.4 }]}
-            disabled={!newClientName.trim()}
+            style={[styles.sheetCta, !canCreateClient && { opacity: 0.4 }]}
+            disabled={!canCreateClient}
             onPress={handleCreateClient}
             activeOpacity={0.85}
           >
@@ -4345,10 +4521,9 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.caps,
     color: th.colors.accent,
   },
-  // Dentro de la sección Conexión de Info la tarjeta ya está dentro de otra
-  // `surface`: se queda con su contenido y suelta fondo, radio y padding, que
-  // los pone la sección.
-  codeCardFlat: { backgroundColor: 'transparent', borderRadius: 0, padding: 0 },
+  // Dentro de la sección Conexión de Info ya hay una `surface`: solo el hueco
+  // entre piezas, que lo demás lo pone la sección.
+  codeFlat: { gap: spacing.sm2 },
   codeExplain: {
     ...textStyles.body,
     color:      th.colors.mutedLight,
@@ -4376,19 +4551,37 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  codeConnectBtn: { marginTop: spacing.xs2 },
-  // Terciario: solo texto, sin caja. Descarta la tarjeta en el tab de Programa;
-  // en Info sigue estando, que es donde vive el código de verdad.
-  codeDismiss: {
-    height:         44,
+  // Compartir: el primario de la tarjeta. Sin programa, apagado (el código
+  // aún no se puede canjear).
+  codeShare: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             spacing.sm2,
+    height:          44,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.accent,
+  },
+  codeShareOff:     { backgroundColor: th.colors.surface2 },
+  codeShareText:    { ...textStyles.button, color: th.colors.onAccent },
+  codeShareTextOff: { color: th.colors.muted },
+  // Terciario: solo texto, sin caja (código nuevo, cancelar invitación).
+  codeTertiary: {
+    height:         36,
     alignItems:     'center',
     justifyContent: 'center',
-    marginBottom:   -spacing.md,
   },
-  codeDismissText: {
+  codeTertiaryText: {
     ...textStyles.labelStrong,
     color: th.colors.mutedLight,
   },
+
+  // ── Pasar a la app (C28) ──
+  moveSteps:    { gap: spacing.md },
+  moveStep:     { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md },
+  moveStepNum:  { ...textStyles.itemTitle, width: 14, color: th.colors.accent },
+  moveStepText: { ...textStyles.body, flex: 1, lineHeight: 21, color: th.colors.text },
+  moveStepSub:  { color: th.colors.mutedLight },
 
   // ── Active program hero ──
 
@@ -4430,17 +4623,16 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── No active program ──
+  // Sin borde (§4.6 del rediseño) y a la izquierda, como la tarjeta de
+  // programa que ocupa su sitio. El texto en `muted` no se leía (2.3:1).
   noActiveBox: {
-    padding:         spacing.lg,
+    padding:         16,
     borderRadius:    th.radius.lg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
     backgroundColor: th.colors.surface,
-    alignItems:      'center',
     gap:             spacing.xs,
   },
-  noActiveTitle: { ...textStyles.body,  color: th.colors.muted },
-  noActiveSub:   { ...textStyles.label, color: th.colors.muted2 },
+  noActiveTitle: { ...textStyles.bodyStrong, color: th.colors.text },
+  noActiveSub:   { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight },
 
   // ── Previous (archived) programs ──
   archRow: {
@@ -4833,6 +5025,13 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:     th.tint.accent50,
   },
   templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
+  // Las dos opciones del alta (C28): la fila de plantilla con icono y una
+  // línea que explica la opción.
+  modeRow:   { alignItems: 'flex-start', gap: spacing.md, justifyContent: 'flex-start' },
+  modeTitle: { ...textStyles.bodyStrong, color: th.colors.text },
+  modeSub:   { ...textStyles.body, lineHeight: 19, color: th.colors.mutedLight },
+  modeHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, marginLeft: spacing.xs2 },
+  clientCheck: { ...textStyles.labelStrong, color: th.colors.accent },
   templateRowNameOn: { color: th.colors.accent },
   templateRowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 

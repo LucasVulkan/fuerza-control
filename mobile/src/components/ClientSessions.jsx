@@ -288,7 +288,7 @@ export default function ClientSessions({ client, program, days, log }) {
  * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
  * con app le llegan con su programa y aquí solo se consultan y se editan.
  */
-export function ClientFreeSessions({ client, log }) {
+export function ClientFreeSessions({ client, canStart, log }) {
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -341,8 +341,9 @@ export function ClientFreeSessions({ client, log }) {
                   open={open}
                   cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
                   onToggle={() => setOpenId(open ? null : tpl.id)}
-                  // Con app la entrena él: aquí no se empieza.
-                  onStart={client.syncLinked ? undefined : () => start(tpl.id)}
+                  // Solo sin app se empieza desde aquí: con código, la
+                  // entrena él (trainer-logging.md §4.0.2).
+                  onStart={canStart ? () => start(tpl.id) : undefined}
                   onEdit={() => edit(tpl.id)}
                   a11yLabel={`${t('freeSession.badge')}, ${nameOf(tpl)}`}
                 >

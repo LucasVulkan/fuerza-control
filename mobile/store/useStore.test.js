@@ -2019,3 +2019,91 @@ describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {
     expect(tpl('tpl_x')).toBeUndefined();
   });
 });
+
+describe('con app o sin app — trainer-logging.md C28 y C20', () => {
+  const cloud = { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: 'code', code: null };
+
+  beforeEach(() => {
+    Object.values(syncMock).forEach((fn) => fn.mockReset?.());
+    syncMock.createClientSlot.mockResolvedValue({ slotId: 'slot_1', clientCode: 'K7QM-4XPA' });
+    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: null }]);
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [], clients: {},
+      trainerSync: cloud, _hasHydrated: true,
+    });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const cli = (id) => useStore.getState().clients[id];
+
+  it('crear un cliente sin elegir la app no crea código; con la app, sí', async () => {
+    const sinApp = await useStore.getState().createClient('Carmen');
+    expect(syncMock.createClientSlot).not.toHaveBeenCalled();
+    expect(cli(sinApp).syncSlotId).toBeNull();
+
+    const conApp = await useStore.getState().createClient('Marta', { withApp: true });
+    expect(cli(conApp)).toMatchObject({ syncSlotId: 'slot_1', syncCode: 'K7QM-4XPA' });
+  });
+
+  it('pasar a la app: código, lo apuntado arriba (sin contar como «sin revisar») y su programa', async () => {
+    const id = await useStore.getState().createClient('Carmen');
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+    useStore.setState((s) => ({
+      clients: { ...s.clients, [id]: { ...s.clients[id], activeProgramId: pid } },
+      clientLogs: { [id]: [{ id: 'log_1', sessionTemplateId: 'x', timestamp: 1, exercises: [] }] },
+    }));
+
+    await useStore.getState().moveClientToApp(id);
+
+    expect(cli(id).syncSlotId).toBe('slot_1');
+    const [slotId, entries, , progress] = syncMock.uploadHistory.mock.calls[0];
+    expect(slotId).toBe('slot_1');
+    expect(entries.map((e) => e.id)).toEqual(['log_1']);
+    expect(progress.programId).toBe(pid);
+    expect(useStore.getState().trainerSync.lastSeenSessionsCount[id]).toBe(1);
+    expect(syncMock.uploadProgram).toHaveBeenCalledWith('slot_1', expect.anything(), null);
+  });
+
+  it('no pisa al cliente: si ya canjeó el código, no sube lo apuntado', async () => {
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: 'u_marta' }]);
+
+    expect(await useStore.getState().pushTrainerLogToSlot(id)).toBe(false);
+    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
+    expect(cli(id).syncLinked).toBe(true);
+  });
+
+  it('cancelar la invitación borra el código y lo devuelve a sin app', async () => {
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+
+    await useStore.getState().cancelClientInvitation(id);
+
+    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1');
+    expect(cli(id)).toMatchObject({ syncSlotId: null, syncCode: null, syncLinked: false });
+  });
+
+  it('al invitado se le sube solo lo que quede pendiente', async () => {
+    vi.useFakeTimers();
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+
+    useStore.getState().setClientActiveProgram(id, pid);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(syncMock.uploadProgram).toHaveBeenCalledTimes(1);
+    expect(cli(id).programDirty).toBe(false);
+  });
+
+  it('al que tiene app, no: ahí el aviso decide', async () => {
+    vi.useFakeTimers();
+    const id = await useStore.getState().createClient('Pablo', { withApp: true });
+    useStore.setState((s) => ({ clients: { ...s.clients, [id]: { ...s.clients[id], syncLinked: true } } }));
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+
+    useStore.getState().setClientActiveProgram(id, pid);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(syncMock.uploadProgram).not.toHaveBeenCalled();
+    expect(cli(id).programDirty).toBe(true);
+  });
+});
