@@ -229,20 +229,23 @@ los clientes.
 
 **Probar C19**
 
-- [ ] Cliente sin conectar con programa: la ficha enseña
+- [x] Cliente sin conectar con programa: la ficha enseña
   SESIONES con la que toca en lima. EMPEZAR SESIÓN B → el Workout sale con los
   pesos del **cliente**, no con los tuyos, y con reloj y descansos. Guardar: la
   entrada aparece en el historial del cliente, sube su «N de M» y su etapa, y
   **tu** historial no cambia.
-- [ ] Apuntar sesión pasada → la A → hace 3 días. El
+- [x] Apuntar sesión pasada → la A → hace 3 días. El
   Workout no tiene reloj, y marcar series **no** lanza el descanso ni su
   notificación. En el historial del cliente aparece en ese día, y la carga la
   cuenta con la duración estimada.
-- [ ] Salir del Workout de un cliente a medias: Inicio
+- [x] Salir del Workout de un cliente a medias: Inicio
   muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
   puede continuar desde cualquiera de los dos.
-- [ ] Inicio se ve **idéntico** tras mover `TodayCard` y
-  `SessionRow` a `SessionList.jsx`.
+- [ ] Tu propia pestaña Inicio sigue igual que antes (es una comprobación de que
+  no se ha roto nada: las piezas de su lista se movieron a un fichero compartido
+  para reutilizarlas en la ficha). La tarjeta lima de la sesión que toca, las
+  filas que se despliegan con sus ejercicios, EMPEZAR / REPETIR / CONTINUAR, y
+  las sesiones libres con EMPEZAR y EDITAR se ven y funcionan como siempre.
 
 ## 4. Con app o sin app
 
