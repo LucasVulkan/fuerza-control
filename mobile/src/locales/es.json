@@ -2269,6 +2269,15 @@
     "blockRounds_one": "{{count}} ronda",
     "blockRounds_other": "{{count}} rondas"
   },
+  "sessionText": {
+    "share": "Compartir la sesión",
+    "menu": "Compartir como texto",
+    "sets_one": "{{count}} serie",
+    "sets_other": "{{count}} series",
+    "rounds_one": "{{count}} ronda",
+    "rounds_other": "{{count}} rondas",
+    "howTo": "Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el peso x reps de cada serie (100x6 100x6 95x5). Deja vacío lo que no hiciste."
+  },
   "print": {
     "viewerTitle": "VISOR DEL PROGRAMA",
     "exportPdf": "↓ EXPORTAR PDF",

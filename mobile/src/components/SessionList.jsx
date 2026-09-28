@@ -91,7 +91,7 @@ export function ExerciseLines({ template, allExercises }) {
  */
 export function SessionRow({
   marker, name, meta, done, adapted, by, open,
-  cta, onToggle, onStart, onEdit, a11yLabel, children,
+  cta, onToggle, onStart, onEdit, onShare, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -153,6 +153,17 @@ export function SessionRow({
                 <Text style={[styles.sesBtnText, styles.sesBtnTextSecondary]}>{t('home.edit').toUpperCase()}</Text>
               </TouchableOpacity>
             )}
+            {onShare && (
+              <TouchableOpacity
+                style={[styles.sesBtn, styles.sesBtnSecondary, styles.shareBtn]}
+                onPress={onShare}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={t('sessionText.share')}
+              >
+                <ShareIcon color={th.colors.text} />
+              </TouchableOpacity>
+            )}
           </View>
         </Reanimated.View>
       )}
@@ -169,7 +180,7 @@ export function SessionRow({
  * por dentro y no lo mueve de sitio.
  */
 export function TodayCard({
-  marker, flag, name, meta, open, cta, onToggle, onStart, a11yLabel, children,
+  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -223,6 +234,19 @@ export function TodayCard({
           <Text style={styles.todayBtnText}>{cta}</Text>
           <HeroChevron />
         </TouchableOpacity>
+        {/* Al lado de EMPEZAR y no en el desplegable: a un cliente sin app
+            la sesión se le manda tanto como se entrena con él (§5). */}
+        {onShare && (
+          <TouchableOpacity
+            style={[styles.todayBtn, styles.shareBtn]}
+            onPress={onShare}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('sessionText.share')}
+          >
+            <ShareIcon color={LIMA} />
+          </TouchableOpacity>
+        )}
       </Reanimated.View>
     </Reanimated.View>
   );
@@ -234,6 +258,15 @@ export function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** La de compartir de siempre: la caja con la flecha que sale. */
+export function ShareIcon({ size = 18, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
     </Svg>
   );
 }
@@ -427,11 +460,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   9,
   },
   todayFoot: {
+    flexDirection:     'row',
+    gap:               spacing.sm,
     paddingTop:        11,
     paddingHorizontal: spacing.sm,
     paddingBottom:     spacing.sm,
   },
   todayBtn: {
+    flex:            1,
     flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'space-between',
@@ -440,6 +476,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.lg,
   },
   todayBtnText: { ...textStyles.button, color: LIMA },
+  // COMPARTIR junto a EMPEZAR: lo justo para el icono, con el relleno del botón.
+  shareBtn: { flex: 0, justifyContent: 'center' },
 
   // ── Los ejercicios de la sesión desplegada ──────────────────────────────
   // Sosos a propósito: caja baja, sin filetes y sin lima. Dentro de la tarjeta

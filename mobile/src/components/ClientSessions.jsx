@@ -11,7 +11,7 @@
  * (docs/specs/group-classes.md §4.1 y §4.6).
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
 import { Text } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +25,9 @@ import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
 import { isExerciseDone } from '../utils/exerciseStatus';
+import { sessionToText } from '../utils/sessionText';
+import { lastExerciseRef } from '../utils/exerciseLinks';
+import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -69,6 +72,29 @@ function useClientStart(client) {
       guard(() => startSession(templateId, { forClient: client.id }));
     },
     logAt: (templateId, ts) => guard(() => startSession(templateId, { forClient: client.id, loggedAt: ts, logOnly: true })),
+  };
+}
+
+/**
+ * COMPARTIR (trainer-logging.md §5): la sesión como texto, con los pesos de
+ * hoy sacados de SU historial, a la hoja de compartir del sistema — que ya
+ * trae WhatsApp y «Copiar».
+ */
+function useShareSession(program, log, allExercises) {
+  const { t, i18n } = useTranslation();
+  const { fmt }     = useWeightUnit();
+  const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
+  return (templateId) => {
+    const template = getEffectiveTemplate(templateId);
+    if (!template) return;
+    const message = sessionToText(template, allExercises, t, {
+      language: i18n.language,
+      fmtWeight: fmt,
+      lastExercise: (exConfig) => lastExerciseRef({
+        workoutLog: log, program, templateId, exConfig, getTemplate: getEffectiveTemplate,
+      }),
+    });
+    Share.share({ message }).catch(() => {});
   };
 }
 
@@ -179,6 +205,7 @@ export default function ClientSessions({ client, program, days, log }) {
     .filter((d) => d.template)
     .map((d) => ({ ...d, label: d.template.label ?? '', name: d.template.name ?? '' }));
   const byId = new Map(sessions.map((d) => [d.templateId, d]));
+  const share = useShareSession(program, log, allExercises);
 
   const plan = sessionPlan({
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
@@ -230,6 +257,7 @@ export default function ClientSessions({ client, program, days, log }) {
                 cta={cta}
                 onToggle={toggle}
                 onStart={() => start(row.templateId)}
+                onShare={() => share(row.templateId)}
                 a11yLabel={`${plan.heroLabel}, ${a11y}`}
               >
                 {lines}
@@ -250,6 +278,7 @@ export default function ClientSessions({ client, program, days, log }) {
               cta={cta}
               onToggle={toggle}
               onStart={() => start(row.templateId)}
+              onShare={() => share(row.templateId)}
               a11yLabel={a11y}
             >
               {lines}
@@ -306,6 +335,7 @@ export function ClientFreeSessions({ client, canStart, log }) {
     [exerciseLibrary, customExercises],
   );
   const { activeId, start } = useClientStart(client);
+  const share = useShareSession(null, log, allExercises);
 
   const all     = Object.values(sessionTemplates).filter((tpl) => !tpl.programId);
   const his     = all.filter((tpl) => tpl.owner === client.id);
@@ -344,6 +374,7 @@ export function ClientFreeSessions({ client, canStart, log }) {
                   // entrena él (trainer-logging.md §4.0.2).
                   onStart={canStart ? () => start(tpl.id) : undefined}
                   onEdit={() => edit(tpl.id)}
+                  onShare={() => share(tpl.id)}
                   a11yLabel={`${t('freeSession.badge')}, ${nameOf(tpl)}`}
                 >
                   <ExerciseLines template={tpl} allExercises={allExercises} />

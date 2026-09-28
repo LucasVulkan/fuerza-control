@@ -16,7 +16,7 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
@@ -37,6 +37,8 @@ import SheetRow from '../components/ui/SheetRow';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
+import { sessionToText } from '../utils/sessionText';
+import { useWeightUnit } from '../hooks/useWeightUnit';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -209,7 +211,8 @@ function EditorRow({
 
 export default function SessionEditorScreen({ navigation, route }) {
   const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { fmt: fmtWeight } = useWeightUnit();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
@@ -555,6 +558,16 @@ export default function SessionEditorScreen({ navigation, route }) {
           <SheetRow
             label={t('editor.renameOption')}
             onPress={startEditName}
+          />
+          {/* Sin pesos: aquí no se sabe para quién es (trainer-logging.md §5). */}
+          <SheetRow
+            label={t('sessionText.menu')}
+            onPress={() => {
+              setMenuOpen(false);
+              Share.share({
+                message: sessionToText(template, allExercises, t, { language: i18n.language, fmtWeight }),
+              }).catch(() => {});
+            }}
           />
           {isFree && (
             <SheetRow

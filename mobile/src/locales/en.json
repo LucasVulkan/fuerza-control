@@ -2269,6 +2269,15 @@
     "blockRounds_one": "{{count}} round",
     "blockRounds_other": "{{count}} rounds"
   },
+  "sessionText": {
+    "share": "Share the session",
+    "menu": "Share as text",
+    "sets_one": "{{count}} set",
+    "sets_other": "{{count}} sets",
+    "rounds_one": "{{count}} round",
+    "rounds_other": "{{count}} rounds",
+    "howTo": "Write what you did after each \":\": \"ok\" if it went as written, or the weight x reps of each set (100x6 100x6 95x5). Leave blank what you didn't do."
+  },
   "print": {
     "viewerTitle": "PROGRAM VIEWER",
     "exportPdf": "↓ EXPORT PDF",

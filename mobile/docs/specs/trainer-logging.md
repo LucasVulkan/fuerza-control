@@ -5,7 +5,7 @@
 > Fase C19 · hecho · Entrenar y apuntar para un cliente sin conectar · §3
 > Fase C28 · hecho · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
 > Fase C20 · hecho · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
-> Fase C21 · pendiente · Compartir una sesión como texto · §5
+> Fase C21 · hecho · Compartir una sesión como texto · §5
 > Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de una sesión de
@@ -97,7 +97,9 @@ abajo:
    - La ceja de la tarjeta lima dice «Le toca» (clave nueva), no «Mi entreno de
      hoy».
    - Abierta, cada fila lleva además **COMPARTIR** como secundario (C21, §5). En
-     la tarjeta lima, COMPARTIR va dentro del desplegable, bajo los ejercicios.
+     la tarjeta lima, COMPARTIR va **al lado de EMPEZAR**, siempre a la vista
+     (revisado en la C21: a un cliente sin app la sesión se le manda tanto
+     como se entrena con él).
 4. **Apuntar sesión pasada**: botón de contorno bajo la lista, el mismo
    tratamiento que «+ Sesión libre» de Inicio (`freeSessionBtn`). Abre la hoja
    de §3.2.
@@ -488,34 +490,96 @@ dice «Entrena con su app: lo que haga te llega solo» (clave nueva
 
 ## 5. Fase C21 — Compartir una sesión como texto
 
-**Dónde**: botón **COMPARTIR** en las filas de sesión abiertas de la ficha (§3.1,
-y las de un grupo en [group-classes.md](group-classes.md) §5), y en el menú ⋯ del
-editor de sesión. Abre la hoja de compartir del sistema (`Share` de React
-Native, sin dependencia nueva). Sirve para los tres casos: al cliente que no usa
-la app, al grupo de WhatsApp de una clase, y a un conectado si lo pide.
+> **Revisada el 28-sep al implementarla.** El primer formato
+> (`Sentadilla 4x6 · última 100`) se entendía, pero no dejaba claro dónde
+> escribir, mezclaba lo que manda la app con lo que contesta el cliente
+> (`4x6 100`: ¿receta o resultado?) y un nombre con números («Extensión de
+> espalda 45°») rompía el corte. Lo de abajo sustituye a ese formato.
 
-El texto:
+### 5.1 Dónde
+
+Un icono de compartir (la caja con la flecha) que abre la hoja de compartir del
+sistema (`Share` de React Native, sin dependencia nueva). Esa hoja ya trae
+WhatsApp **y «Copiar»**, así que no hace falta un botón de copiar aparte.
+
+| Sitio | Con pesos |
+|---|---|
+| Ficha de un cliente sin app: **al lado de EMPEZAR** en la tarjeta lima, y junto al botón de la fila al abrirla | Sí, del historial del cliente |
+| Sesiones libres de un cliente (con o sin app), en la fila abierta | Sí |
+| Editor de sesión, menú ⋯ › **Compartir como texto**: cualquier sesión (programa, libre, plantilla) | No: ahí no se sabe para quién es |
+| Grupo ([group-classes.md](group-classes.md) §5, C25) | No, y **sin la línea de instrucciones**: nadie la devuelve. Esa opción la añade la C25 |
+
+### 5.2 El texto
 
 ```
 Sesión C · Pierna fuerza
-Sentadilla 4x6
-Peso muerto rumano 3x8
-Zancada búlgara 3x10
-Plancha 3x40s
+Sentadilla con barra · 4x6 · 102.5kg:
+Peso muerto rumano (barra) · 3x8-12 · 60kg:
+Sentadilla búlgara · 3x10 c/p:
+Plancha · 3x40s:
+Burpee · 3 series:
+AMRAP 12' · 10 Wall ball, 200 m Remo:
+
+Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el peso x reps de cada serie (100x6 100x6 95x5). Deja vacío lo que no hiciste.
 ```
 
-- Una línea por ejercicio: nombre en el idioma de la app + series × objetivo
-  (`targetLabel` en modo compacto, `prescription.js:18`).
-- Los bloques salen con su formato: `AMRAP 12' — 10 wall balls, 10 burpees`.
-- Si el cliente tiene pesos de la última vez, se añaden: `Sentadilla 4x6 · última 100`.
-  En un grupo no (no hay pesos individuales).
+- **Cada línea es `nombre · receta[ · peso]:`.** Los dos puntos del final marcan
+  dónde escribe el cliente. Lo que va delante lo puso la app; lo que va detrás
+  es la respuesta, sin ambigüedad.
+- **El nombre acaba en el primer ` · `**, no «hasta el primer número». Los
+  nombres llevan números y paréntesis.
+- **La receta va con caracteres de teclado** (`x`, `-`, `s`): es lo que el
+  cliente escribe al devolverla. Sale de `targetLabel` compacto
+  (`prescription.js`) con `×`→`x` y `–`→`-`, más el «c/p» que el compacto quita.
+  Un submáximo sale como `3 series`, porque «submáx» fuera de la app no se
+  entiende.
+- **El peso es el de hoy**: `suggestedWeight` de `getProgression`
+  (`progression.js`) y, si no hay, el último, con `lastExerciseRef` sobre el
+  historial del cliente (el mismo que usa el Workout). Así «ok» es una
+  respuesta completa. En la unidad del usuario (`useWeightUnit().fmt`).
+- **Bloques**: `[nombre · ]AMRAP 12'` / `EMOM 10x1'` / `For time 3 rondas`, y
+  sus movimientos separados por comas. En el orden de `sessionSlots`, el mismo
+  del Workout.
+- **La línea de instrucciones** hace que el mensaje se explique solo
+  (`sessionText.howTo`). No encaja con ningún ejercicio, así que el lector la
+  ignora.
+- **La cabecera** (`Sesión C · nombre`, o solo el nombre en una libre) deja a la
+  C22 preseleccionar la sesión en «Apuntar sesión pasada».
 
-La utilidad pura `sessionToText(template, lib, t)` vive en
-`src/utils/sessionText.js`, junto al lector de §6. **Test de ida y vuelta:**
-lo que produce `sessionToText`, con números añadidos, lo entiende `parseSessionText`.
+`sessionToText(template, allExercises, t, { language, fmtWeight, lastExercise })`
+vive en `src/utils/sessionText.js`, donde irá también el lector de §6.
 
-Es lo que hace fiable la C22: el cliente devuelve **el mismo texto con sus
-números**, así que los nombres coinciden al 100 %.
+### 5.3 Test
+
+`sessionText.test.js`: el formato línea a línea, el peso de hoy, y la **ida y
+vuelta de nombres**. Una sesión con los 182 ejercicios de la biblioteca, en los
+dos idiomas: el nombre de cada línea, cortado en el primer ` · `, encuentra por
+coincidencia exacta (sin tildes ni mayúsculas) **su** ejercicio y ningún otro.
+Eso es lo que hace fiable la C22: el cliente devuelve el mismo texto con sus
+números. Un nombre repetido en la biblioteca hace fallar este test.
+
+La ida y vuelta completa (texto → `parseSessionText` → series) pasa a la C22,
+que es donde nace el lector.
+
+### 5.4 Probar en dispositivo
+
+**Probar C21**
+
+- [ ] Ficha de un cliente sin app con programa: en la tarjeta lima, al lado de
+  EMPEZAR, el icono de compartir abre la hoja del sistema. En WhatsApp llega
+  el texto de §5.2 con la cabecera, una línea por ejercicio acabada en «:» y
+  las instrucciones al final.
+- [ ] Una fila cerrada, al abrirla: el icono sale junto a EMPEZAR/REPETIR y
+  comparte ESA sesión, no la que toca.
+- [ ] Con entrenos apuntados a ese cliente, las líneas llevan su peso de hoy
+  (el mismo que propone el Workout al empezar), no el tuyo.
+- [ ] Una sesión con un bloque AMRAP o EMOM: la línea del bloque lleva el
+  formato y los movimientos, en el mismo orden que en el Workout.
+- [ ] Editor de sesión › ⋯ › **Compartir como texto**: el mismo texto sin pesos.
+  Vale en una sesión de programa, en una libre y en una plantilla.
+- [ ] Una sesión libre de un cliente (Sesiones libres de la ficha): la fila
+  abierta tiene EMPEZAR (o solo EDITAR si tiene app), EDITAR y el icono.
+- [ ] Con la app en inglés, los nombres y las instrucciones salen en inglés.
 
 ## 6. Fase C22 — Pegar un texto y que la app lo entienda
 
@@ -528,7 +592,15 @@ de §6.2 se ajusta a lo que salga. **Sin esa tabla, la C22 no empieza.**
 
 ### 6.2 Formato
 
-Una línea por ejercicio: `<nombre> <series>`. Las formas de `<series>`:
+Dos entradas:
+- **El texto de la app (§5.2)**: se parte por el **último `:`**. Lo de delante
+  se sabe (nombre hasta el primer ` · `, receta); lo de detrás es lo que hizo.
+  Vacío = no lo hizo; `ok` / `✓` / `sí` = tal cual, con el peso del texto; un
+  solo número = ese peso en todas las series con las reps de la receta (con
+  un rango, hay que dar las reps).
+- **Un texto escrito a mano**: una línea por ejercicio, `<nombre> <series>`.
+
+Las formas de `<series>`:
 
 | Escrito | Se entiende como |
 |---|---|
@@ -538,6 +610,7 @@ Una línea por ejercicio: `<nombre> <series>`. Las formas de `<series>`:
 | `3x40s` · `3x1'` | 3 series por tiempo |
 | `... @8` al final | RPE 8 |
 | `kg` / `lb` | Se ignoran; se asume la unidad del usuario |
+| `102,5` · `102.5` | Decimal. **La coma solo separa si lleva espacio detrás** (`100, 95`) |
 
 **Regla de la ambigüedad:** `NxR` suelto son series × reps; en una lista, cada
 `AxB` es peso × reps. Es la convención habitual y está escrita en la hoja
@@ -611,5 +684,5 @@ preguntar una vez.
 | C19 ✅ `6416dd9` | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso». COMPARTIR en las filas llega con la C21. Tests en `useStore.test.js` («el entrenador apunta por el cliente») | — | Pruebas de §3.8 |
 | C28 ✅ `a3fc21e` | §4.0: `clientLink` (con test), alta con dos opciones, subida silenciosa del invitado (un suscriptor del store), Info › Conexión por estado, tarjeta del código rehecha, caja «Sin programa activo» sin borde, refresco al enfocar. La hoja de nuevo programa ya usaba las piezas de Plantillas: solo cambió la caja vacía. Tests en `useStore.test.js` («con app o sin app») | C19 | Pruebas de §4.0.7 |
 | C20 ✅ `a3fc21e` | §4: `pushTrainerLogToSlot` al pasar a la app, guarda anti-pisado, preselección de fusionar en la hoja del cliente. Sin `source` ni número de entrenos (§4.2-4.3) | C19, C28 | Pruebas de §4.4, con dos móviles |
-| C21 | §5: `sessionToText` + COMPARTIR | C19 (las filas donde vive el botón) | Test de ida y vuelta |
+| C21 ✅ | §5: `sessionToText` + icono de compartir en la ficha (al lado de EMPEZAR) y en las libres, y «Compartir como texto» en el ⋯ del editor. Formato revisado (§5 nota). Tests en `sessionText.test.js` | C19 (las filas donde vive el botón) | Ida y vuelta de nombres (§5.3) y pruebas de §5.4 |
 | C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |
