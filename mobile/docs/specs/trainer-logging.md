@@ -2,7 +2,7 @@
 
 > Tema: conexión
 > En corto: Para clientes que no usan la app, el entrenador entrena con ellos desde su ficha o apunta después lo que hicieron; si el cliente se conecta más tarde, recibe todo lo apuntado.
-> Fase C19 · pendiente · Entrenar y apuntar para un cliente sin conectar · §3
+> Fase C19 · hecho · Entrenar y apuntar para un cliente sin conectar · §3
 > Fase C20 · pendiente · Traspaso al conectarse: el cliente recibe lo apuntado · §4
 > Fase C21 · pendiente · Compartir una sesión como texto · §5
 > Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
@@ -431,7 +431,7 @@ preguntar una vez.
 
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
-| C19 | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso» | — | Pruebas de §3.8 |
+| C19 ✅ `6416dd9` | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso». COMPARTIR en las filas llega con la C21. Tests en `useStore.test.js` («el entrenador apunta por el cliente») | — | Pruebas de §3.8 |
 | C20 | §4: subir lo apuntado, guarda anti-pisado, hoja del cliente, pista en la ficha | C19 | Pruebas de §4.4, con dos móviles |
 | C21 | §5: `sessionToText` + COMPARTIR | C19 (las filas donde vive el botón) | Test de ida y vuelta |
 | C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |
