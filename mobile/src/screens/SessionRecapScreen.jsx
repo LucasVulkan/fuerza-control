@@ -26,7 +26,7 @@ import Reanimated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
-import { useStore } from '../../store/useStore';
+import { useStore, ownerLogOf } from '../../store/useStore';
 import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../utils/sessionRecap';
 import { formatBlockScore, compareBlockResults } from '../utils/conditioningBlocks';
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
@@ -103,7 +103,9 @@ function fmtDuration(ms) {
 }
 
 export default function SessionRecapScreen({ navigation, route }) {
-  const { entryId } = route.params ?? {};
+  // `clientId`: el entreno era de un cliente sin app (trainer-logging.md §3.3).
+  // Todo se lee de su historial y el recap vuelve a Clientes.
+  const { entryId, clientId = null } = route.params ?? {};
   const { t, i18n } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -112,12 +114,18 @@ export default function SessionRecapScreen({ navigation, route }) {
   const { fmt, toDisplay, toKg, label: weightLabel } = useWeightUnit();
   const round1 = (v) => Math.round(v * 10) / 10;
 
-  const workoutLog       = useStore((s) => s.workoutLog);
+  const workoutLog       = useStore((s) => ownerLogOf(s, clientId));
+  const clientName       = useStore((s) => (clientId ? s.clients[clientId]?.name ?? '' : null));
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
-  const profileBodyWeight = useStore((s) => s.profile.bodyWeight);
+  // El peso de referencia es el del dueño: el mío o el último que se apuntó al
+  // cliente. Nunca el mío para un cliente.
+  const myBodyWeight     = useStore((s) => s.profile.bodyWeight);
+  const profileBodyWeight = clientId
+    ? ([...workoutLog].reverse().find((e) => e.id !== entryId && e.bodyWeight != null)?.bodyWeight ?? null)
+    : myBodyWeight;
   const setSessionFeedback = useStore((s) => s.setSessionFeedback);
   const saveEntryAsFreeTemplate = useStore((s) => s.saveEntryAsFreeTemplate);
   const addEntryExercisesToTemplate = useStore((s) => s.addEntryExercisesToTemplate);
@@ -174,19 +182,19 @@ export default function SessionRecapScreen({ navigation, route }) {
   // Sobre la marcha: la única que se puede guardar como sesión libre. Tras
   // guardarla la entrada se reapunta a la sesión nueva, así que el botón se
   // sostiene con `templateSaved` para seguir diciendo «Guardada».
-  const onTheFly = entry.sessionTemplateId === '__free__' || templateSaved;
+  const onTheFly = !clientId && (entry.sessionTemplateId === '__free__' || templateSaved);
   const template = !isFree ? sessionTemplates[entry.sessionTemplateId] : null;
 
   // Sesión libre GUARDADA con ejercicios añadidos en el entreno (§7.2).
   const freeTpl  = isFree && !onTheFly ? sessionTemplates[entry.sessionTemplateId] : null;
-  const newExIds = freeTpl
+  const newExIds = freeTpl && !clientId
     ? (entry.exercises ?? []).filter((ex) => ex.isAdHoc
       && !freeTpl.exercises.some((e) => e.exerciseId === ex.exerciseId))
     : [];
 
   // «Cuenta como Sesión X» (§7.3): las sesiones de la etapa en curso del
   // programa activo. Sin programa o sin sesiones no hay nada que sustituir.
-  const activeProgram = isFree ? programs[activeProgramId] : null;
+  const activeProgram = isFree && !clientId ? programs[activeProgramId] : null;
   const stageDays = activeProgram?.stages?.length
     ? (activeProgram.stages[athleteProgress(activeProgram).currentStageIndex]?.days ?? [])
     : [];
@@ -216,7 +224,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   function saveBodyWeight() {
     const n = parseFloat(weightDraft.replace(',', '.'));
     if (!isNaN(n) && n > 0) {
-      setSessionFeedback(entry.id, { bodyWeight: Math.round(toKg(n) * 10) / 10 });
+      setSessionFeedback(entry.id, { bodyWeight: Math.round(toKg(n) * 10) / 10 }, clientId);
     }
   }
 
@@ -359,7 +367,9 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* Header */}
         <View style={styles.headerBlock}>
-          <Text style={styles.completedTag}>{t('recap.completed')}</Text>
+          <Text style={[styles.completedTag, clientName != null && { color: th.colors.blue }]}>
+            {clientName != null ? `${clientName.toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
+          </Text>
           <Text style={styles.sessionName}>
             {entry.sessionName ?? template?.name ?? ''}
           </Text>
@@ -376,7 +386,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                 key={v}
                 value={v}
                 active={entry.sessionRpe === v}
-                onPress={() => setSessionFeedback(entry.id, { sessionRpe: v })}
+                onPress={() => setSessionFeedback(entry.id, { sessionRpe: v }, clientId)}
               />
             ))}
           </View>
@@ -622,7 +632,9 @@ export default function SessionRecapScreen({ navigation, route }) {
         {/* Done */}
         <TouchableOpacity
           style={styles.doneBtn}
-          onPress={() => backToMain(navigation, { screen: 'Home' })}
+          // Al acabar el de un cliente se vuelve a su ficha, que sigue abierta
+          // en la pestaña de Clientes.
+          onPress={() => backToMain(navigation, { screen: clientId ? 'Clients' : 'Home' })}
           activeOpacity={0.85}
         >
           <Text style={styles.doneBtnText}>{t('recap.done')}</Text>

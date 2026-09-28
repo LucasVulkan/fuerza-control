@@ -28,6 +28,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import ClientSessions from '../components/ClientSessions';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
@@ -454,6 +455,12 @@ function AssignedProgramCard({
         onMore={() => setMenuOpen(true)}
       />
 
+      {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
+          hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda
+          ajustes a un móvil que aquí no hay. ── */}
+      {!client.syncLinked ? (
+        <ClientSessions client={client} program={program} days={currentDays} log={log} />
+      ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
       <View style={styles.apNext}>
@@ -471,7 +478,10 @@ function AssignedProgramCard({
           <Text style={[styles.apBtnText, { color: th.colors.accent }]}>{t('clients.prepare')}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.apNextHint}>{t('clients.nextSessionHint')}</Text>
+      {/* Con app: explica por qué aquí no se apunta (lo que se lee cuando un
+          cliente sin app se conecta y su EMPEZAR desaparece, §4.3). */}
+      <Text style={styles.apNextHint}>{t('clients.nextSessionHintLinked')}</Text>
+      </>)}
 
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
@@ -511,6 +521,7 @@ function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const hasLogged = useStore((s) => (s.clientLogs[client.id]?.length ?? 0) > 0);
   const connectClientToCloud = useStore((s) => s.connectClientToCloud);
   const reissueClientCode    = useStore((s) => s.reissueClientCode);
   const [copied, setCopied]         = useState(false);
@@ -598,7 +609,11 @@ function ClientCodeBlock({ client, showToast, onDismiss, flat }) {
   return (
     <View style={[styles.codeCard, flat && styles.codeCardFlat]}>
       <Text style={styles.codeTitle}>{t('clients.codeCard.title')}</Text>
-      <Text style={styles.codeExplain}>{t('clients.codeCard.explain', { name: client.name })}</Text>
+      {/* Con entrenos apuntados, el código es la puerta del traspaso (C20):
+          al conectarse recibe todo lo que le apuntaste. */}
+      <Text style={styles.codeExplain}>
+        {t(hasLogged ? 'clients.codeCard.explainLogged' : 'clients.codeCard.explain', { name: client.name })}
+      </Text>
       <View style={styles.codeRow}>
         <View style={styles.codeBox}>
           <Text style={styles.codeText}>{client.syncCode}</Text>
@@ -1439,7 +1454,7 @@ function CloudUpIcon({ size = 20, color }) {
 // The "···" menu on a client card: keeps the frequent action one tap on the card
 // and tucks the rest (next session, edit program, info) behind this sheet.
 
-function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
+function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -1451,6 +1466,14 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
         <View style={styles.infoSheetHandle} />
         <Text style={styles.infoSheetName}>{client.name}</Text>
 
+        {/* Sin app: entrenar con él es lo primero (trainer-logging.md §3.1). */}
+        {onStart && (
+          <TouchableOpacity style={styles.actionRow} onPress={run(onStart)} activeOpacity={0.7}>
+            <Text style={[styles.actionLabel, { color: th.colors.accent }]}>{startLabel}</Text>
+            <Text style={[styles.actionChevron, { color: th.colors.accent }]}>›</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
           <ChartIcon color={th.colors.muted} />
           <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
@@ -1461,11 +1484,14 @@ function ClientActionsSheet({ client, newSessionsCount = 0, onClose, onProgress,
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
-          <TargetIcon color={th.colors.blue} />
-          <Text style={[styles.actionLabel, { color: th.colors.blue }]}>{t('clients.actNextSession')}</Text>
-          <Text style={styles.actionChevron}>›</Text>
-        </TouchableOpacity>
+        {/* Preparar manda ajustes a su móvil: sin app no hay a quién. */}
+        {onNextSession && (
+          <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
+            <TargetIcon color={th.colors.blue} />
+            <Text style={[styles.actionLabel, { color: th.colors.blue }]}>{t('clients.actNextSession')}</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
           <PencilIcon color={th.colors.muted} />
@@ -1528,6 +1554,7 @@ function ClientListCard({
   client, activeProgram, log, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
+  inProgress = false, onContinue,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1588,7 +1615,11 @@ function ClientListCard({
 
   // Una sola acción a la derecha, por urgencia. El botón constante de "Progreso"
   // desaparece: sin nada urgente el hueco lo ocupa la fecha o "N sin revisar".
-  const cta = !activeProgram
+  // Un entreno suyo a medias (lo apuntaba yo, trainer-logging.md §3.7) va
+  // primero: es lo único de la lista que se está perdiendo ahora mismo.
+  const cta = inProgress
+    ? { label: t('clients.btnContinue'), bg: th.colors.accent, onPress: onContinue }
+    : !activeProgram
     ? { label: t('clients.btnProgramShort'), bg: th.colors.accent, onPress: onOpenEditor }
     : showDirty
       ? { label: t('clients.btnUploadChanges'), upload: true, bg: th.colors.blue, onPress: onUploadProgram }
@@ -1912,6 +1943,37 @@ export default function ClientsScreen() {
     });
     return out;
   }, [clients, programs, clientLogs]);
+
+  // ── Entreno de un cliente sin app (trainer-logging.md §3.7) ──
+  const activeForClient  = useStore((s) => s.activeSession.forClient);
+  const activeTemplateId = useStore((s) => s.activeSession.templateId);
+  const startSession     = useStore((s) => s.startSession);
+
+  // «Empezar sesión B» de la pulsación larga: la que toca, contra SU historial.
+  const actionsStart = (() => {
+    const c       = actionsClientId ? clients[actionsClientId] : null;
+    const program = c && !c.syncLinked ? programs[c.activeProgramId] : null;
+    if (!program) return null;
+    const days   = stageDaysAt(program, stageStatus(program, athleteProgress(program, c)).stageIdx);
+    const heroId = sessionPlan({
+      days: days.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
+      log:  clientLogs[c.id] ?? [],
+      t,
+    }).heroTemplateId;
+    if (!heroId) return null;
+    const go = () => startSession(heroId, { forClient: c.id });
+    return {
+      label:   t('clients.actStartSession', { label: getEffectiveTemplate(heroId)?.label ?? '' }),
+      onPress: () => {
+        if (activeForClient === c.id && activeTemplateId === heroId) { navigation.navigate('Workout'); return; }
+        if (!activeTemplateId) { go(); return; }
+        Alert.alert(t('workout.discardConfirm'), undefined, [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('workout.discardSession'), style: 'destructive', onPress: go },
+        ]);
+      },
+    };
+  })();
 
   // Unreviewed sessions per client (remote count minus what the trainer last saw).
   const unreviewedByClient = useMemo(() => {
@@ -3278,6 +3340,8 @@ export default function ClientsScreen() {
                   }}
                   onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}
                   onPlanStages={() => navigation.navigate('StagePlanner', { programId: client.activeProgramId })}
+                  inProgress={activeForClient === client.id}
+                  onContinue={() => navigation.navigate('Workout')}
                 />
                 {infoSheetClientId === client.id && (
                   <ClientInfoSheet
@@ -3298,9 +3362,13 @@ export default function ClientsScreen() {
         <ClientActionsSheet
           client={clients[actionsClientId]}
           newSessionsCount={getNewSessionsCount(actionsClientId)}
+          startLabel={actionsStart?.label}
+          onStart={actionsStart?.onPress}
           onClose={() => setActionsClientId(null)}
           onProgress={() => handleSelectClientProgress(actionsClientId)}
-          onNextSession={() => navigation.navigate('NextSession', { clientId: actionsClientId })}
+          onNextSession={clients[actionsClientId].syncLinked
+            ? () => navigation.navigate('NextSession', { clientId: actionsClientId })
+            : undefined}
           onEditProgram={() => {
             const c = clients[actionsClientId];
             if (c?.activeProgramId) setEditingProgram(c.activeProgramId);

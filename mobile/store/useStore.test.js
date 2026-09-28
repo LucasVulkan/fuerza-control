@@ -1837,3 +1837,95 @@ describe('"subir cambios" solo cuando hay cambios — qa-sep-conexion C17', () =
     expect(st().clients.cli_c17.programDirty).toBe(false);
   });
 });
+
+describe('el entrenador apunta por el cliente — trainer-logging.md C19', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
+      clients: { cli_1: { id: 'cli_1', name: 'Carmen' } },
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null, bodyWeight: 80 },
+    });
+  });
+
+  function programaDeCliente() {
+    const pid = useStore.getState().createProgramForClient('cli_1', 2, 'Fuerza 50+', 4);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+    return pid;
+  }
+  const prog = (pid) => useStore.getState().programs[pid];
+  function entrenar(templateId, opts) {
+    useStore.getState().startSession(templateId, opts);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '60', reps: '8', time: '', done: true }] } },
+    }));
+    return useStore.getState().saveSession();
+  }
+
+  it('la sesión va al historial del cliente y no al mío, y mueve SU etapa', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    expect(res.ok).toBe(true);
+    expect(useStore.getState().workoutLog).toHaveLength(0);
+    expect(useStore.getState().clientLogs.cli_1.map((e) => e.id)).toEqual([res.entryId]);
+    expect(prog(pid)).toMatchObject({ stageSessionsDone: 1, stageStartedOn: localDay() });
+    expect(useStore.getState().activeSession.forClient).toBeNull();
+  });
+
+  it('apuntar una pasada: su fecha, arranca la etapa ese día, duración estimada y sin descansos', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    const hace3 = Date.now() - 3 * 86400000;
+
+    useStore.getState().startSession(tid, { forClient: 'cli_1', loggedAt: hace3, logOnly: true });
+    useStore.getState().startRestTimer(90, 'Sentadilla');
+    expect(useStore.getState().ui.restTimer.active).toBe(false);
+
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '60', reps: '8', time: '', done: true }] } },
+    }));
+    const res = useStore.getState().saveSession();
+    const entry = useStore.getState().clientLogs.cli_1[0];
+
+    expect(res.ok).toBe(true);
+    expect(entry.timestamp).toBe(hace3);
+    expect(entry.duration).toBeGreaterThan(0);
+    expect(entry.duration % 60000).toBe(0);           // minutos enteros de la estimación
+    expect(prog(pid).stageStartedOn).toBe(localDay(hace3));
+  });
+
+  it('una sesión apuntada tarde queda ordenada por fecha en su historial', () => {
+    const pid = programaDeCliente();
+    const [a, b] = prog(pid).stages[0].days.map((d) => d.sessionTemplateId);
+    entrenar(a, { forClient: 'cli_1' });
+    entrenar(b, { forClient: 'cli_1', loggedAt: Date.now() - 2 * 86400000, logOnly: true });
+
+    expect(useStore.getState().clientLogs.cli_1.map((e) => e.sessionTemplateId)).toEqual([b, a]);
+  });
+
+  it('el RPE y el peso del recap van a la entrada del cliente y no tocan mi peso', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    useStore.getState().setSessionFeedback(res.entryId, { sessionRpe: 7, bodyWeight: 62 }, 'cli_1');
+
+    expect(useStore.getState().clientLogs.cli_1[0]).toMatchObject({ sessionRpe: 7, bodyWeight: 62 });
+    expect(useStore.getState().profile.bodyWeight).toBe(80);
+  });
+
+  it('un entreno mío sigue igual: mi historial, con reloj y descansos', () => {
+    const pid = useStore.getState().createEmptyProgram(1, 'Mío', 'program', 4);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+    useStore.getState().startSession(prog(pid).stages[0].days[0].sessionTemplateId);
+    useStore.getState().startRestTimer(90, 'Sentadilla');
+    expect(useStore.getState().ui.restTimer.active).toBe(true);
+    useStore.getState().stopRestTimer();
+  });
+});

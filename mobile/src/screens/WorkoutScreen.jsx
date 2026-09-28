@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
-import { useStore } from '../../store/useStore';
+import { useStore, ownerLogOf } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
 import { HEADER_RULE_H, HeaderRule } from '../components/ui/ScreenHeader';
@@ -103,10 +103,10 @@ function useElapsedText(startedAt) {
 // en WorkoutScreen) para que el tick de 1s sólo repinte este texto y no toda la
 // pantalla.
 
-function HeaderEyebrow({ startedAt, label, styles }) {
+function HeaderEyebrow({ startedAt, label, styles, style }) {
   const elapsed = useElapsedText(startedAt);
   return (
-    <Text style={styles.eyebrowText} numberOfLines={1}>
+    <Text style={[styles.eyebrowText, style]} numberOfLines={1}>
       {label}
       {elapsed ? <Text style={styles.eyebrowClock}>{` · ${elapsed}`}</Text> : null}
     </Text>
@@ -252,7 +252,13 @@ export default function WorkoutScreen() {
   const sessionTemplates   = useStore((s) => s.sessionTemplates);
   const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
   const customExercises    = useStore((s) => s.customExercises);
-  const workoutLog         = useStore((s) => s.workoutLog);
+  // El historial del dueño del entreno: el mío o el del cliente sin app para
+  // el que apunto (trainer-logging.md §3.3). De ahí salen los pesos de la
+  // última vez y la progresión.
+  const workoutLog         = useStore((s) => ownerLogOf(s));
+  const clientName         = useStore((s) => (
+    s.activeSession.forClient ? s.clients[s.activeSession.forClient]?.name ?? '' : null
+  ));
   const clientSync         = useStore((s) => s.clientSync);
   const restTimer          = useStore((s) => s.ui.restTimer);
 
@@ -461,6 +467,14 @@ export default function WorkoutScreen() {
   // (free-sessions.md §6.3). Se renombra en el editor, no aquí.
   const isFreeTpl       = !isFree && !!template && !template.programId;
   const sessionLabel    = (isFree || isFreeTpl) ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label: template?.label ?? '' });
+  // Entreno de un cliente: la ceja dice de quién es, en el azul del
+  // entrenador, y en modo registro también el día (§3.7).
+  const loggedDay       = activeSession.logOnly && activeSession.loggedAt
+    ? new Date(activeSession.loggedAt).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric' })
+    : null;
+  const eyebrowLabel    = clientName != null
+    ? [clientName, sessionLabel, loggedDay].filter(Boolean).join(' · ')
+    : sessionLabel;
   const titleText       = isFree
     ? (activeSession.freeSessionName ?? '')
     : (isFreeTpl ? (template.name || t('freeSession.templateUnnamed')) : (template?.name ?? ''));
@@ -477,11 +491,13 @@ export default function WorkoutScreen() {
   }
 
   function handleSave() {
+    // Se lee antes: guardar vacía la sesión en curso.
+    const clientId = activeSession.forClient ?? null;
     const result = saveSession();
     if (!result.ok) { showToast(result.error, 2200, 'error'); return; }
     // The recap IS the confirmation — replace so back can't return to the
     // (now empty) workout screen.
-    navigation.replace('SessionRecap', { entryId: result.entryId });
+    navigation.replace('SessionRecap', { entryId: result.entryId, clientId });
   }
 
   function handleDiscard() {
@@ -510,7 +526,13 @@ export default function WorkoutScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerMid}>
-            <HeaderEyebrow startedAt={activeSession.startedAt} label={sessionLabel} styles={styles} />
+            <HeaderEyebrow
+              // Modo registro: sin reloj, que no mediría nada (§3.4).
+              startedAt={activeSession.logOnly ? null : activeSession.startedAt}
+              label={eyebrowLabel}
+              styles={styles}
+              style={clientName != null && { color: th.colors.blue }}
+            />
             {isFree ? (
               <TextInput
                 style={styles.freeNameInputHeader}
