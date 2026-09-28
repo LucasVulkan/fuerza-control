@@ -3,7 +3,8 @@
 > Tema: conexión
 > En corto: Para clientes que no usan la app, el entrenador entrena con ellos desde su ficha o apunta después lo que hicieron; si el cliente se conecta más tarde, recibe todo lo apuntado.
 > Fase C19 · hecho · Entrenar y apuntar para un cliente sin conectar · §3
-> Fase C20 · pendiente · Traspaso al conectarse: el cliente recibe lo apuntado · §4
+> Fase C28 · pendiente · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
+> Fase C20 · pendiente · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
 > Fase C21 · pendiente · Compartir una sesión como texto · §5
 > Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
 >
@@ -23,6 +24,11 @@
 > [`docs/mockups/trainer-models.html`](../mockups/trainer-models.html).
 >
 > **Orden recomendado**: C19 → C21 → (grupos: C23, C25, C26) → C20 → C24 → C22.
+> **QA 28-sep**: con C19 en la mano salió que «conectado» no significaba lo
+> mismo en tres sitios y que el flujo de conexión no se entendía desde el lado
+> del entrenador. De ahí la **C28** (§4.0), que va **antes** que la C20: la C20
+> pasa a dispararse desde «Pasar a la app». Maqueta:
+> [`connection-states.html`](../mockups/connection-states.html).
 > La C22 va la última y **solo con una tabla de textos reales** de clientes (§6.1).
 >
 > **No depende** de [free-sessions.md](free-sessions.md), salvo en un detalle:
@@ -46,7 +52,8 @@ carga, ni adherencia.
 
 ## 2. Decisiones cerradas
 
-1. **Solo para clientes sin conectar** (`!client.syncLinked`, que se refresca en
+1. **Solo para clientes sin app** (desde la C28, `clientLink(client) === 'none'`:
+   sin código. Antes era `!client.syncLinked`, que se refresca en
    `useStore.js:3447`). Los conectados apuntan ellos: su progreso es suyo (regla
    de oro de stage-locks) y hoy los datos solo viajan del cliente al entrenador.
 2. **Si el cliente se conecta después, recibe todo lo apuntado**: historial y
@@ -238,7 +245,155 @@ los clientes.
 > **Probar en dispositivo.** Inicio se ve **idéntico** tras mover `TodayCard` y
 > `SessionRow` a `SessionList.jsx`.
 
-## 4. Fase C20 — Traspaso al conectarse
+## 4. Con app o sin app
+
+### 4.0 Fase C28 — Lo decide el entrenador, y el código solo existe si hace falta
+
+#### 4.0.1 El problema (QA 28-sep)
+
+- **Crear un cliente en modo nube ya crea su código** (`createClient`), lo
+  vaya a usar o no.
+- **Tres sitios deciden «conectado» de forma distinta**:
+  - la tarjeta de la lista: estás en la nube y el cliente tiene código
+    (`isConnected`, `ClientsScreen.jsx`, en el `renderItem` de la lista);
+  - el aviso de «Cambios sin enviar» y quién se marca pendiente: el cliente
+    tiene código (`pendingClients`, `markProgramDirtyForClients`);
+  - la ficha: el cliente ha canjeado el código (`syncLinked`).
+
+  Resultado: un cliente presencial sale «Cambios sin enviar» desde que se le
+  asigna un programa y con cada cambio, para siempre.
+- **El cliente no puede canjear el código sin un programa subido**:
+  `validateClientCode` lo rechaza con «El entrenador aún no ha subido ningún
+  programa». Subir antes de que entre sí hace falta, pero una vez, no a cada
+  cambio.
+- **La app se entera de que ha entrado tarde**: `refreshTrainerSlots` solo
+  corre al montar Clientes y al tirar para refrescar.
+
+#### 4.0.2 Decisiones (usuario, 28-sep)
+
+1. **Tres estados, calculados en un solo sitio.** `clientLink(client)` en
+   `src/utils/clientLink.js`, pura y con test:
+
+   | Estado | Cuándo | Qué hay |
+   |---|---|---|
+   | `'none'` — **sin app** | sin `syncSlotId` | le apuntas tú (C19) |
+   | `'invited'` — **invitado** | `syncSlotId` y `!syncLinked` | le diste el código y aún no ha entrado |
+   | `'linked'` — **con app** | `syncSlotId` y `syncLinked` | entrena con su app |
+
+   La lista, el aviso, la ficha y la pulsación larga lo leen de aquí. Se acaban
+   las tres definiciones.
+2. **El estado lo cambia el entrenador, no el cliente.** EMPEZAR y «Apuntar
+   sesión pasada» existen **solo en `'none'`**. En cuanto generas el código
+   desaparecen, aunque el cliente aún no lo haya canjeado: generar el código es
+   decidir que va a apuntar él.
+3. **El código solo existe si lo pides.** Al crear el cliente se elige (§4.0.3).
+   Pasar de uno a otro se hace en Info › Conexión (§4.0.5).
+4. **Invitado: sin aviso de cambios.** Todo se sube solo y en silencio: nadie lo
+   ve todavía, y así el código funciona en cuanto lo canjea. **Con app**: el
+   aviso de siempre, porque ahí los cambios llegan a una persona y tú decides
+   cuándo.
+5. **Sin opción marcada al crear.** Obliga a pensarlo una vez, y es la decisión
+   que luego explica todo lo demás.
+6. **Entrenador sin cuenta en la nube** (`trainerSync.mode` `'offline'` o
+   `null`): no se pregunta, todos los clientes son «sin app». En Info ›
+   Conexión, «Pasar a la app» abre primero la configuración de conexión
+   (`TrainerSyncModal`).
+7. **Sin migración.** Los clientes que ya tienen código sin canjear salen como
+   invitados; el que no vaya a usar la app se pasa a «sin app» con «Cancelar
+   invitación». `codeHintDismissed` y el botón «Entendido» desaparecen: un
+   cliente sin app ya no tiene código que esconder.
+
+#### 4.0.3 Crear un cliente
+
+La hoja de nuevo cliente (`showNewClient`, `ClientsScreen.jsx`) añade, bajo el
+nombre, **dos tarjetas de opción**. La elegida en `tint.accent10` con el título
+en acento y ✓, como las filas de cliente de la hoja de asignar plantilla:
+
+- **Entrena con la app** — «Le das un código y recibe sus programas en el móvil.»
+- **Le apuntas tú** — «Entrena contigo o por mensajes, y tú registras lo que hace.»
+
+Debajo, «Puedes cambiarlo cuando quieras desde Info». **CREAR** deshabilitado
+hasta elegir. `createClient(name, { withApp })`: solo con `withApp` se crea el
+slot (el código).
+
+#### 4.0.4 La ficha y la lista, por estado
+
+| | Sin app | Invitado | Con app |
+|---|---|---|---|
+| Arriba en Programa | — | **Tarjeta del código** (§4.0.6) | — |
+| Debajo del programa | SESIONES con EMPEZAR + Apuntar (C19) | Próxima sesión con Preparar | Próxima sesión con Preparar |
+| Aviso «Cambios sin enviar» | nunca | nunca (se sube solo) | sí |
+| Hueco derecho de la tarjeta | fecha | **«Esperando código»** en `mutedLight`, como «Pausado» | fecha / sin revisar |
+| Pulsación larga | Empezar sesión B | Próxima sesión | Próxima sesión |
+
+- **Subida silenciosa del invitado**: `markProgramDirtyForClients`, para un
+  invitado, llama a `uploadProgramToClient` en segundo plano en vez de marcar
+  el aviso. Si falla, queda `programDirty` (sin aviso) y se reintenta en el
+  siguiente `refreshTrainerSlots`. Lo mismo al asignarle un programa.
+- **Enterarse de que ha entrado**: `refreshTrainerSlots` también al enfocar la
+  pestaña Clientes (`useFocusEffect`) y al abrir la ficha de un invitado. Ya
+  tiene su propio cerrojo (`_refreshingSlots`).
+
+#### 4.0.5 Info › Conexión
+
+La sección que ya existe, con un cuerpo por estado:
+
+- **Sin app** — resumen «Sin app». Una línea («Le apuntas tú sus entrenos») y
+  **Pasar a la app**, que abre una hoja de confirmación que dice lo que va a
+  pasar:
+  1. Se genera su código.
+  2. Se sube su programa y los N entrenos que le apuntaste (C20).
+  3. Dejas de apuntarle: lo hará él desde su móvil.
+
+  **GENERAR CÓDIGO** → `connectClientToCloud` (ya existe) + subida (C20) → la
+  ficha pasa a invitado.
+- **Invitado** — resumen «Esperando código» en naranja. El código, Compartir y
+  Copiar (§4.0.6), «Generar código nuevo» y, terciario, **Cancelar
+  invitación**: confirma, borra el slot (`deleteClientSlot`, el código deja de
+  valer) y vuelve a «sin app».
+- **Con app** — resumen «Con app» en verde. «Entrena con su app: lo que haga te
+  llega solo» y «Generar código nuevo» (el `reissueClientCode` de siempre, que
+  echa al que estaba dentro). «Dejar de usar la app» queda fuera por ahora.
+
+#### 4.0.6 La tarjeta del código, al lenguaje actual
+
+La de hoy (`ClientCodeBlock`) se rehace de paso, y sale solo con el invitado:
+- Ceja «ESPERANDO A {NOMBRE}» en acento, y una línea: «Que descargue Forma Fit
+  e introduzca este código.»
+- El código grande (`textStyles.code`) en una caja `bg`, con **Copiar** al
+  lado.
+- **Compartir** (`Share` de React Native, sin dependencia nueva): «Descarga
+  Forma Fit e introduce el código ABCD-1234 para recibir tu programa.» La
+  invitación con enlace es la M04, y cuando llegue sustituye a este texto.
+- **Sin programa**: la línea dice «Asígnale un programa: el código funciona en
+  cuanto tenga uno», y Compartir espera. Es la regla del servidor, dicha donde
+  se ve.
+
+**De paso**, la hoja de «Nuevo programa» de la ficha (`NewProgramSheet`) pasa
+al lenguaje de la de Plantillas (`CreateSheet` de `ProgramScreen.jsx`:
+`DragSheet`, `NameField`, `StepField`). Sin maqueta: es copiar una anatomía que
+ya está cerrada.
+
+#### 4.0.7 Probar en dispositivo
+
+> **Probar en dispositivo.** Crear un cliente «Le apuntas tú», asignarle un
+> programa y editarlo: **no** sale «Cambios sin enviar» en ningún momento, y su
+> ficha tiene EMPEZAR. Info › Conexión dice «Sin app».
+
+> **Probar en dispositivo.** Crear un cliente «Entrena con la app» sin programa:
+> la tarjeta del código pide asignarle uno. Asignarlo: sin aviso de cambios, y
+> el código ya se puede canjear. La ficha no tiene EMPEZAR y la tarjeta de la
+> lista dice «Esperando código».
+
+> **Probar en dispositivo (dos móviles).** El cliente canjea el código con la
+> app del entrenador abierta en otra pestaña. Al volver a Clientes, su tarjeta
+> ya no dice «Esperando código», y un cambio en su programa sí saca el aviso.
+
+> **Probar en dispositivo.** Un cliente sin app → Pasar a la app → GENERAR
+> CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
+> vuelve EMPEZAR y el código viejo ya no sirve.
+
+### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 
 ### 4.1 Lo que ya existe
 
@@ -266,11 +421,10 @@ Lo que falta es que el entrenador suba lo apuntado.
 - Añade `source: 'trainer'` al payload, para que la hoja del cliente sepa de
   dónde viene (§4.3).
 
-Se llama en dos momentos:
-1. Al guardar una sesión registrada (§3), en segundo plano. Si falla, no avisa:
-   se reintenta en el siguiente.
-2. En `uploadProgramToClient` (`useStore.js:3183`), para que al dar el código
-   todo esté arriba aunque el paso 1 fallara.
+Se llama al **pasar a la app** (§4.0.5), justo después de generar el código.
+Desde la C28 un cliente con código ya no recibe entrenos apuntados, así que
+basta con esa vez. Si falla, se reintenta con la subida silenciosa del invitado
+(§4.0.4), que llama a esto antes de subir el programa.
 
 **Guarda contra pisar al cliente.** Si el cliente se conecta y el entrenador aún
 no lo sabe (`syncLinked` se refresca al tirar), una subida del entrenador podría
@@ -432,6 +586,7 @@ preguntar una vez.
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
 | C19 ✅ `6416dd9` | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso». COMPARTIR en las filas llega con la C21. Tests en `useStore.test.js` («el entrenador apunta por el cliente») | — | Pruebas de §3.8 |
-| C20 | §4: subir lo apuntado, guarda anti-pisado, hoja del cliente, pista en la ficha | C19 | Pruebas de §4.4, con dos móviles |
+| C28 | §4.0: `clientLink`, alta con dos opciones, subida silenciosa del invitado, Info › Conexión por estado, tarjeta del código y hoja de nuevo programa al lenguaje actual, refresco al enfocar | C19 | Pruebas de §4.0.7 |
+| C20 | §4: subir lo apuntado al pasar a la app, guarda anti-pisado, hoja del cliente, pista en la ficha | C19, C28 | Pruebas de §4.4, con dos móviles |
 | C21 | §5: `sessionToText` + COMPARTIR | C19 (las filas donde vive el botón) | Test de ida y vuelta |
 | C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |
