@@ -24,12 +24,12 @@ const estado = () => ({
 });
 
 describe('buildBackupPayload', () => {
-  it('lleva los nueve campos de datos y la cabecera del formato', () => {
+  it('lleva los diez campos de datos y la cabecera del formato', () => {
     const payload = buildBackupPayload(estado());
 
     expect(Object.keys(payload).sort()).toEqual([
       'appName', 'blockPresets', 'clientLogs', 'clients', 'customExercises',
-      'exportDate', 'exportType', 'profile', 'programs',
+      'exerciseAliases', 'exportDate', 'exportType', 'profile', 'programs',
       'sessionTemplates', 'tagRegistry', 'version', 'workoutLog',
     ]);
     expect(payload.version).toBe('4');

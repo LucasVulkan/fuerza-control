@@ -2278,6 +2278,28 @@
     "rounds_other": "{{count}} rondas",
     "howTo": "Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el peso x reps de cada serie (100x6 100x6 95x5). Deja vacío lo que no hiciste."
   },
+  "paste": {
+    "title": "Pegar entreno",
+    "eyebrow": "Lo que te devolvió",
+    "fromSheet": "Pegar texto",
+    "placeholder": "Pega aquí el texto que te devolvió el cliente",
+    "pasteBtn": "Pegar",
+    "who": "De quién",
+    "online": "{{name}} usa la app: sus entrenos los apunta él.",
+    "noClients": "No tienes clientes sin app.",
+    "noSessions": "{{name}} no tiene sesiones que apuntar.",
+    "review": "Lo que se ha entendido",
+    "empty": "Pega un texto para ver lo que se entiende.",
+    "notDone": "No lo hizo",
+    "unknown": "Sin reconocer",
+    "pick": "Elegir",
+    "pickTitle": "¿Qué ejercicio es?",
+    "added": "añadido",
+    "trimmed_one": "La sesión tiene {{count}} serie: se apunta esa",
+    "trimmed_other": "La sesión tiene {{count}} series: se apuntan esas",
+    "block": "Se apunta en el entreno",
+    "continue": "Continuar"
+  },
   "print": {
     "viewerTitle": "VISOR DEL PROGRAMA",
     "exportPdf": "↓ EXPORTAR PDF",

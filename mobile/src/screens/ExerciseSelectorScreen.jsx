@@ -64,6 +64,9 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     // 'SESIÓN A' en el entreno): el selector no sabe de dónde viene y sin ella
     // se pierde el hilo de qué estás editando. Sin ceja, sólo el título.
     eyebrow = null,
+    // Quien usa el modo de elegir uno (`blockPicker`) para otra cosa dice qué
+    // se elige: «Sustituir ejercicio» no vale para resolver un nombre pegado.
+    title: titleOverride = null,
   } = route.params ?? {};
 
   const language = useStore((s) => s.profile.language);
@@ -211,11 +214,11 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         onBack={() => navigation.goBack()}
         eyebrow={eyebrow}
         title={
-          multiSelect
+          titleOverride ?? (multiSelect
             ? (selectedIds.length
                 ? t('exerciseSelector.addedN', { count: selectedIds.length })
                 : t('exerciseSelector.titleAdd'))
-            : t('exerciseSelector.titleReplace')
+            : t('exerciseSelector.titleReplace'))
         }
         right={multiSelect ? (
           <TouchableOpacity

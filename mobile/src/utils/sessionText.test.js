@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sessionToText, SEP } from './sessionText';
+import { sessionToText, SEP, parseSessionText, readAnswer, parseRx, exerciseIndex } from './sessionText';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
@@ -81,5 +81,141 @@ describe('sessionToText', () => {
     );
     const back = text.split('\n').filter((l) => l.endsWith(':')).map((l) => index.get(norm(l.split(SEP)[0])));
     expect(back).toEqual(ids.map((id) => [id]));
+  });
+});
+
+describe('readAnswer (§6.2)', () => {
+  const rx = { sets: 4, reps: 6 };
+  const w  = (list) => list?.map((s) => [s.weight, s.reps, s.time, s.rpe]);
+
+  it('vacío es que no lo hizo; «ok» es la receta con el peso del texto', () => {
+    expect(readAnswer('', rx, 100)).toBeNull();
+    expect(readAnswer('  ', rx, 100)).toBeNull();
+    expect(w(readAnswer('ok', rx, 102.5))).toEqual(Array(4).fill([102.5, 6, '', '']));
+    expect(w(readAnswer('OK', { sets: 2, reps: null }, 60))).toEqual(Array(2).fill([60, '', '', '']));
+    // «ok» sin receta (texto a mano) no dice nada.
+    expect(readAnswer('ok', null)).toBeNull();
+  });
+
+  it('un número: ese peso en todas las series, con las reps de la receta', () => {
+    expect(w(readAnswer('105', rx, 100))).toEqual(Array(4).fill([105, 6, '', '']));
+    expect(w(readAnswer('105kg', rx))).toEqual(Array(4).fill([105, 6, '', '']));
+  });
+
+  it('una lista: una serie por elemento, AxB es peso × reps', () => {
+    expect(w(readAnswer('100x6 100x6 95x5', rx))).toEqual([[100, 6, '', ''], [100, 6, '', ''], [95, 5, '', '']]);
+    expect(w(readAnswer('100 x 6, 100 x 6', rx))).toEqual([[100, 6, '', ''], [100, 6, '', '']]);
+    expect(w(readAnswer('100 100 95', rx))).toEqual([[100, 6, '', ''], [100, 6, '', ''], [95, 6, '', '']]);
+    expect(w(readAnswer('100 100 95, la última me costó', rx)).length).toBe(3);
+  });
+
+  it('NxR suelto son series × reps; NxRxW y NxR W llevan peso', () => {
+    expect(w(readAnswer('3x10', null))).toEqual(Array(3).fill(['', 10, '', '']));
+    expect(w(readAnswer('4x6 100', null))).toEqual(Array(4).fill([100, 6, '', '']));
+    expect(w(readAnswer('4x6x100', null))).toEqual(Array(4).fill([100, 6, '', '']));
+    expect(w(readAnswer('4x6 @100kg', null))).toEqual(Array(4).fill([100, 6, '', '']));
+    // Con más de 10 delante ya es un peso, en todas las series de la receta.
+    expect(w(readAnswer('100x6', rx))).toEqual(Array(4).fill([100, 6, '', '']));
+  });
+
+  it('la coma solo separa con espacio: 102,5 es decimal', () => {
+    expect(w(readAnswer('102,5', rx))).toEqual(Array(4).fill([102.5, 6, '', '']));
+    expect(w(readAnswer('100, 95', rx))).toEqual([[100, 6, '', ''], [95, 6, '', '']]);
+  });
+
+  it('RPE: pegado a una serie es de esa serie; al final de la línea, de todas', () => {
+    expect(w(readAnswer('100x6@8 100x6 @8 95x5@9', rx)).map((s) => s[3])).toEqual(['8', '8', '9']);
+    expect(w(readAnswer('4x6 100 @8', null))).toEqual(Array(4).fill([100, 6, '', '8']));
+    expect(w(readAnswer('100 100 @7.5', rx)).map((s) => s[3])).toEqual(['7.5', '7.5']);
+  });
+
+  it('tiempo: con receta de tiempo los números son segundos', () => {
+    const rxT = { sets: 3, time: 40 };
+    expect(w(readAnswer('ok', rxT))).toEqual(Array(3).fill(['', '', 40, '']));
+    expect(w(readAnswer('40 35 30', rxT))).toEqual([['', '', 40, ''], ['', '', 35, ''], ['', '', 30, '']]);
+    expect(w(readAnswer("1' 45s", rxT))).toEqual([['', '', 60, ''], ['', '', 45, '']]);
+  });
+});
+
+describe('parseRx', () => {
+  it('lee las recetas que escribe sessionToText', () => {
+    expect(parseRx('4x6')).toEqual({ sets: 4, reps: 6 });
+    expect(parseRx('3x8-12')).toEqual({ sets: 3, reps: null });
+    expect(parseRx('3x10 c/p')).toEqual({ sets: 3, reps: 10 });
+    expect(parseRx('3x40s')).toEqual({ sets: 3, time: 40 });
+    expect(parseRx('3x20-40s')).toEqual({ sets: 3, time: null });
+    expect(parseRx('3 series')).toEqual({ sets: 3 });
+    expect(parseRx('102.5kg')).toBeNull();
+  });
+});
+
+describe('parseSessionText', () => {
+  it('cabecera, líneas nuestras, a mano, notas e instrucciones', () => {
+    const { header, lines } = parseSessionText([
+      '*Ana García · Sesión C · Pierna fuerza*',
+      'Sentadilla con barra · 4x6 · 102.5kg: 105',
+      'Sentadilla búlgara · 3x10 c/p:',
+      "AMRAP 12' · 10 Burpee: 5+3",
+      'press banca 80 80 75',
+      'me costó mucho hoy',
+      '',
+      es.sessionText.howTo,
+    ].join('\n'));
+    expect(header).toEqual(['Ana García', 'Sesión C', 'Pierna fuerza']);
+    expect(lines.map((l) => (l.ignored ? null : [l.name, l.answer]))).toEqual([
+      ['Sentadilla con barra', '105'],
+      ['Sentadilla búlgara', ''],
+      ["AMRAP 12'", '5+3'],
+      ['press banca', '80 80 75'],
+      null,
+      null,
+    ]);
+    expect(lines[0]).toMatchObject({ rx: { sets: 4, reps: 6 }, hint: 102.5, block: false });
+    expect(lines[2].block).toBe(true);
+  });
+
+  it('un for time se contesta con «12:30»: parte por el primer «:»', () => {
+    const { lines } = parseSessionText('For time 3 rondas · 10 Burpee: 12:30');
+    expect(lines[0]).toMatchObject({ block: true, answer: '12:30' });
+  });
+
+  it('sin cabecera: la primera línea con números ya es un ejercicio', () => {
+    const { header, lines } = parseSessionText('sentadilla 100 100 95\nbanca 60x8, 60x8');
+    expect(header).toBeNull();
+    expect(lines.map((l) => l.name)).toEqual(['sentadilla', 'banca']);
+  });
+});
+
+describe('ida y vuelta completa', () => {
+  it('lo que sale de sessionToText, con «ok» detrás, se lee entero y cada línea da su ejercicio', () => {
+    const template = {
+      label: 'C', name: 'Pierna fuerza',
+      exercises: [
+        { exerciseId: 'squat_barbell', sets: 4, minReps: 6, maxReps: 6 },
+        { exerciseId: 'bulgarian_split_squat', sets: 3, minReps: 10, maxReps: 10 },
+        { exerciseId: 'plank', sets: 3, inputType: 'time', minTime: 40, maxTime: 40, progressionModel: 'time_progression' },
+      ],
+    };
+    const last = { squat_barbell: { sets: sets(100, 6, 4) } };
+    const text = sessionToText(template, LIB, t, {
+      language: 'es', clientName: 'Ana García', lastExercise: (ex) => last[ex.exerciseId] ?? null,
+    }).split('\n').map((l) => (l.endsWith(':') ? `${l} ok` : l)).join('\n');
+
+    const { header, lines } = parseSessionText(text);
+    expect(header).toEqual(['Ana García', 'Sesión C', 'Pierna fuerza']);
+    const find = exerciseIndex(LIB, {}, template.exercises.map((e) => e.exerciseId));
+    const read = lines.filter((l) => !l.ignored);
+    expect(read.map((l) => find(l.name))).toEqual(['squat_barbell', 'bulgarian_split_squat', 'plank']);
+    expect(read.map((l) => readAnswer(l.answer, l.rx, l.hint).length)).toEqual([4, 3, 3]);
+    expect(readAnswer(read[0].answer, read[0].rx, read[0].hint)[0]).toMatchObject({ reps: 6 });
+    expect(read[0].hint).toBeGreaterThan(100);
+    expect(lines.filter((l) => l.ignored)).toHaveLength(1); // las instrucciones
+  });
+
+  it('los alias del entrenador resuelven lo escrito a mano', () => {
+    const find = exerciseIndex(LIB, { banca: 'squat_barbell', fantasma: 'no_existe' });
+    expect(find('Banca')).toBe('squat_barbell');
+    expect(find('fantasma')).toBeNull();
+    expect(find('SENTADILLA CON BARRA')).toBe('squat_barbell');
   });
 });

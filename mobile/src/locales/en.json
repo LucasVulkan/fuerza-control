@@ -2278,6 +2278,28 @@
     "rounds_other": "{{count}} rounds",
     "howTo": "Write what you did after each \":\": \"ok\" if it went as written, or the weight x reps of each set (100x6 100x6 95x5). Leave blank what you didn't do."
   },
+  "paste": {
+    "title": "Paste workout",
+    "eyebrow": "What they sent back",
+    "fromSheet": "Paste text",
+    "placeholder": "Paste the text your client sent back",
+    "pasteBtn": "Paste",
+    "who": "Whose",
+    "online": "{{name}} uses the app: they log their own workouts.",
+    "noClients": "You have no clients without the app.",
+    "noSessions": "{{name}} has no sessions to log.",
+    "review": "What was understood",
+    "empty": "Paste a text to see what's understood.",
+    "notDone": "Didn't do it",
+    "unknown": "Not recognized",
+    "pick": "Choose",
+    "pickTitle": "Which exercise is it?",
+    "added": "added",
+    "trimmed_one": "The session has {{count}} set: that one is logged",
+    "trimmed_other": "The session has {{count}} sets: those are logged",
+    "block": "Logged in the workout",
+    "continue": "Continue"
+  },
   "print": {
     "viewerTitle": "PROGRAM VIEWER",
     "exportPdf": "↓ EXPORT PDF",

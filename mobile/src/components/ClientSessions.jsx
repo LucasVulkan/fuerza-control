@@ -28,10 +28,9 @@ import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionToText } from '../utils/sessionText';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { useWeightUnit } from '../hooks/useWeightUnit';
+import { useLastDays } from '../hooks/useLastDays';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-
-const DAY_MS = 86400000;
 
 function PencilGlyph({ color }) {
   return (
@@ -80,7 +79,7 @@ function useClientStart(client) {
  * hoy sacados de SU historial, a la hoja de compartir del sistema — que ya
  * trae WhatsApp y «Copiar».
  */
-function useShareSession(program, log, allExercises) {
+function useShareSession(program, log, allExercises, clientName) {
   const { t, i18n } = useTranslation();
   const { fmt }     = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
@@ -90,6 +89,7 @@ function useShareSession(program, log, allExercises) {
     const message = sessionToText(template, allExercises, t, {
       language: i18n.language,
       fmtWeight: fmt,
+      clientName,
       lastExercise: (exConfig) => lastExerciseRef({
         workoutLog: log, program, templateId, exConfig, getTemplate: getEffectiveTemplate,
       }),
@@ -98,75 +98,78 @@ function useShareSession(program, log, allExercises) {
   };
 }
 
+/** Qué sesión: su letra y su nombre. `wrap` para cuando entran también las libres. */
+export function SessionChips({ sessions, selected, onSelect, wrap = false }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={[styles.chips, wrap && styles.chipsWrap]}>
+      {sessions.map((s) => {
+        const on = s.templateId === selected;
+        return (
+          <TouchableOpacity
+            key={s.templateId}
+            style={[styles.chip, styles.chipTall, wrap && styles.chipWrap, on && styles.chipOn]}
+            onPress={() => onSelect(s.templateId)}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+          >
+            {!!s.label && <Text style={[styles.chipNum, on && styles.chipTextOn]}>{s.label}</Text>}
+            <Text style={[styles.chipSub, on && styles.chipSubOn]} numberOfLines={1}>{s.name}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Cuándo: los 7 días de `useLastDays`. */
+export function DayChips({ days, selected, onSelect }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.chips}>
+      {days.map((d, i) => {
+        const on = i === selected;
+        return (
+          <TouchableOpacity
+            key={d.ts}
+            style={[styles.chip, on && styles.chipOn]}
+            onPress={() => onSelect(i)}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+          >
+            <Text style={[styles.chipTop, on && styles.chipTopOn]} numberOfLines={1}>{d.top.toUpperCase()}</Text>
+            <Text style={[styles.chipNum, on && styles.chipTextOn]}>{d.num}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 /**
  * Hoja «Apuntar sesión pasada» (§3.2): qué sesión y qué día, y se abre el
  * Workout en modo registro. Hoy también vale: lo que decide el modo es la
- * entrada, no la fecha.
+ * entrada, no la fecha. La otra salida es pegar el texto que te devolvió (§6.4).
  */
-function LogPastSheet({ visible, sessions, heroId, onClose, onLog }) {
-  const { t, i18n } = useTranslation();
+function LogPastSheet({ visible, sessions, heroId, onClose, onLog, onPaste }) {
+  const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const [tplId, setTplId] = useState(heroId);
   const [dayIdx, setDayIdx] = useState(0);
   // La hoja se monta al abrirse: «hoy» es el de ese momento.
-  const [now] = useState(() => Date.now());
-
-  // Hoy y los 6 anteriores, a la hora actual (la que lleva la entrada).
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now - i * DAY_MS);
-    return {
-      top: i === 0
-        ? t('dayCard.today')
-        : d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', ''),
-      num: d.getDate(),
-      ts:  d.getTime(),
-    };
-  }), [now, t, i18n.language]);
-
+  const days = useLastDays();
   const selected = tplId ?? heroId;
 
   return (
     <DragSheet visible={visible} onClose={onClose} title={t('clients.logPast.title')}>
       <View style={styles.sheetBody}>
         <Text style={styles.sheetLabel}>{t('clients.logPast.which').toUpperCase()}</Text>
-        <View style={styles.chips}>
-          {sessions.map((s) => {
-            const on = s.templateId === selected;
-            return (
-              <TouchableOpacity
-                key={s.templateId}
-                style={[styles.chip, styles.chipTall, on && styles.chipOn]}
-                onPress={() => setTplId(s.templateId)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-              >
-                <Text style={[styles.chipNum, on && styles.chipTextOn]}>{s.label}</Text>
-                <Text style={[styles.chipSub, on && styles.chipSubOn]} numberOfLines={1}>{s.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <SessionChips sessions={sessions} selected={selected} onSelect={setTplId} />
 
         <Text style={styles.sheetLabel}>{t('clients.logPast.when').toUpperCase()}</Text>
-        <View style={styles.chips}>
-          {days.map((d, i) => {
-            const on = i === dayIdx;
-            return (
-              <TouchableOpacity
-                key={d.ts}
-                style={[styles.chip, on && styles.chipOn]}
-                onPress={() => setDayIdx(i)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-              >
-                <Text style={[styles.chipTop, on && styles.chipTopOn]} numberOfLines={1}>{d.top.toUpperCase()}</Text>
-                <Text style={[styles.chipNum, on && styles.chipTextOn]}>{d.num}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <DayChips days={days} selected={dayIdx} onSelect={setDayIdx} />
 
         <Text style={styles.sheetHint}>{t('clients.logPast.hint')}</Text>
 
@@ -178,6 +181,9 @@ function LogPastSheet({ visible, sessions, heroId, onClose, onLog }) {
         >
           <Text style={styles.ctaText}>{t('clients.logPast.btn')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.pasteBtn} onPress={onPaste} activeOpacity={0.75} accessibilityRole="button">
+          <Text style={styles.pasteBtnText}>{t('paste.fromSheet')}</Text>
+        </TouchableOpacity>
       </View>
     </DragSheet>
   );
@@ -188,6 +194,7 @@ export default function ClientSessions({ client, program, days, log }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
+  const navigation = useNavigation();
   const [openId,  setOpenId]  = useState(null);
   const [logPast, setLogPast] = useState(false);
 
@@ -205,7 +212,7 @@ export default function ClientSessions({ client, program, days, log }) {
     .filter((d) => d.template)
     .map((d) => ({ ...d, label: d.template.label ?? '', name: d.template.name ?? '' }));
   const byId = new Map(sessions.map((d) => [d.templateId, d]));
-  const share = useShareSession(program, log, allExercises);
+  const share = useShareSession(program, log, allExercises, client.name);
 
   const plan = sessionPlan({
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
@@ -306,6 +313,7 @@ export default function ClientSessions({ client, program, days, log }) {
           heroId={plan.heroTemplateId}
           onClose={() => setLogPast(false)}
           onLog={(templateId, ts) => { setLogPast(false); logAt(templateId, ts); }}
+          onPaste={() => { setLogPast(false); navigation.navigate('PasteWorkout', { clientId: client.id }); }}
         />
       )}
     </View>
@@ -335,7 +343,7 @@ export function ClientFreeSessions({ client, canStart, log }) {
     [exerciseLibrary, customExercises],
   );
   const { activeId, start } = useClientStart(client);
-  const share = useShareSession(null, log, allExercises);
+  const share = useShareSession(null, log, allExercises, client.name);
 
   const all     = Object.values(sessionTemplates).filter((tpl) => !tpl.programId);
   const his     = all.filter((tpl) => tpl.owner === client.id);
@@ -482,6 +490,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
   },
   chipTall:   { paddingVertical: spacing.sm2, paddingHorizontal: spacing.xs2 },
+  chipsWrap:  { flexWrap: 'wrap' },
+  chipWrap:   { flex: 0, flexBasis: '22%', flexGrow: 1 },
   chipOn:     { backgroundColor: th.colors.accent },
   chipTop:    { ...textStyles.label, color: th.colors.mutedLight },
   chipTopOn:  { color: th.colors.onAccent },
@@ -497,4 +507,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:       spacing.md,
   },
   ctaText: { ...textStyles.button, color: th.colors.onAccent },
+  // La otra salida de la hoja: secundaria, sin caja.
+  pasteBtn:     { alignItems: 'center', paddingVertical: spacing.md },
+  pasteBtnText: { ...textStyles.button, color: th.colors.accent },
 });

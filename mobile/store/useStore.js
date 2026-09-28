@@ -38,6 +38,7 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
+import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
@@ -438,6 +439,9 @@ export const useStore = create(
 
       clients: {},
       tagRegistry: [],   // [{ id, name }] — global tag list
+      // { 'banca': 'bench_press_barbell' } — cómo llama cada entrenador a sus
+      // ejercicios en un texto pegado (trainer-logging.md §6.3). Clave normalizada.
+      exerciseAliases: {},
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
       // { [programId]: 'YYYY-MM-DD' } — el aviso de fin de etapa no se enseña
@@ -1299,6 +1303,13 @@ export const useStore = create(
        * libres dentro (`_buildProgramJson`): tocar una de ellas es tocar lo
        * enviado. Sin programa no hay nada que enviar todavía.
        */
+      /** Guarda cómo llama el entrenador a un ejercicio (§6.3). */
+      setExerciseAlias: (name, exerciseId) => {
+        const key = normName(name);
+        if (!key || !exerciseId) return;
+        set((s) => ({ exerciseAliases: { ...(s.exerciseAliases ?? {}), [key]: exerciseId } }));
+      },
+
       markClientDirty: (clientId) => {
         const programId = get().clients[clientId]?.activeProgramId;
         if (programId) get().markProgramDirtyForClients(programId);
@@ -1912,17 +1923,29 @@ export const useStore = create(
        * historial. `loggedAt` + `logOnly`: «Apuntar sesión pasada», sin reloj ni
        * descansos (trainer-logging.md §3.3-3.4).
        */
-      startSession: (templateId, { forClient = null, loggedAt = null, logOnly = false } = {}) => {
+      /**
+       * `prefill` (un texto pegado, trainer-logging.md §6.4): `{ setsState, adHoc }`
+       * con las series ya leídas. Las de la sesión van a su sitio, recortadas o
+       * completadas a sus series (el Workout no admite más); el resto entra como
+       * ejercicios añadidos.
+       */
+      startSession: (templateId, { forClient = null, loggedAt = null, logOnly = false, prefill = null } = {}) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
+        const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
         const setsState = {};
         template.exercises.forEach(({ exerciseId, sets }) => {
-          setsState[exerciseId] = Array.from({ length: sets }, () => ({
-            weight: '', reps: '', time: '', done: false,
-          }));
+          const given = prefill?.setsState?.[exerciseId] ?? [];
+          setsState[exerciseId] = Array.from({ length: sets }, (_, i) => given[i] ?? emptySet());
         });
+        const adHocExercises = (prefill?.adHoc ?? [])
+          .filter((a) => !setsState[a.exerciseId])
+          .map((a) => ({ exerciseId: a.exerciseId, setsState: a.setsState }));
         set({
-          activeSession: { ...INITIAL_ACTIVE_SESSION, templateId, setsState, startedAt: Date.now(), forClient, loggedAt, logOnly },
+          activeSession: {
+            ...INITIAL_ACTIVE_SESSION, templateId, setsState, adHocExercises,
+            startedAt: Date.now(), forClient, loggedAt, logOnly,
+          },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
@@ -3107,6 +3130,11 @@ export const useStore = create(
             // Las etiquetas son de los clientes, así que entran con ellos. Sin
             // esto la ficha restaurada muestra `tag_a1b2c3d4` en vez del nombre.
             // Fusión por `id`: la copia local gana, que es la que el usuario ve.
+            // Los alias del entrenador: fusión por clave, la copia local gana.
+            if (data.exerciseAliases) {
+              updates.exerciseAliases = { ...data.exerciseAliases, ...(s.exerciseAliases ?? {}) };
+            }
+
             const incomingTags = data.tagRegistry ?? [];
             if (incomingTags.length) {
               const known = new Set((s.tagRegistry ?? []).map((tg) => tg.id));
@@ -4456,6 +4484,7 @@ export const useStore = create(
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,
         tagRegistry: state.tagRegistry,
+        exerciseAliases: state.exerciseAliases,
         driveBackup: state.driveBackup,
         trainerSync: state.trainerSync,
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts

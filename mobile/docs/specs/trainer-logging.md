@@ -6,9 +6,9 @@
 > Fase C28 · hecho · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
 > Fase C20 · hecho · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
 > Fase C21 · hecho · Compartir una sesión como texto · §5
-> Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
+> Fase C22 · hecho · Pegar un texto y que la app lo entienda (sin IA) · §6
 >
-> Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de una sesión de
+> Estado: **implementada entera** (28-sep-2026); spec cerrada el 26-sep. Sale de una sesión de
 > diseño Opus + usuario sobre los modelos de entrenador que la app no cubre
 > (cliente offline, clases colectivas). La otra mitad es
 > [group-classes.md](group-classes.md). Escrita después de leer el código; cada
@@ -30,7 +30,8 @@
 > del entrenador. De ahí la **C28** (§4.0), que va **antes** que la C20: la C20
 > pasa a dispararse desde «Pasar a la app». Maqueta:
 > [`connection-states.html`](../mockups/connection-states.html).
-> La C22 va la última y **solo con una tabla de textos reales** de clientes (§6.1).
+> La C22 se hizo el 28-sep sin la tabla de textos reales: el texto que vuelve es
+> el de la C21, y los reales que fallen entran como tests (§6.1).
 >
 > **No depende** de [free-sessions.md](free-sessions.md), salvo en un detalle:
 > si esa spec ya está hecha, registrar una sesión libre para un cliente sale
@@ -513,7 +514,7 @@ WhatsApp **y «Copiar»**, así que no hace falta un botón de copiar aparte.
 ### 5.2 El texto
 
 ```
-Sesión C · Pierna fuerza
+Ana García · Sesión C · Pierna fuerza
 Sentadilla con barra · 4x6 · 102.5kg:
 Peso muerto rumano (barra) · 3x8-12 · 60kg:
 Sentadilla búlgara · 3x10 c/p:
@@ -549,10 +550,11 @@ Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el 
   lo dirá (`3 series @8`) y las instrucciones añadirán «@8 detrás de la
   serie para el RPE». El cliente ya lo puede escribir hoy: la C22 lo lee
   (§6.2).
-- **La cabecera** (`Sesión C · nombre`, o solo el nombre en una libre) deja a la
-  C22 preseleccionar la sesión en «Apuntar sesión pasada».
+- **La cabecera** lleva **el nombre del cliente** (desde su ficha; en el
+  editor no hay cliente) y `Sesión C · nombre`, o solo el nombre en una libre.
+  Con ella, pegar en Clientes marca solo el cliente y la sesión (§6.4).
 
-`sessionToText(template, allExercises, t, { language, fmtWeight, lastExercise })`
+`sessionToText(template, allExercises, t, { language, fmtWeight, lastExercise, clientName })`
 vive en `src/utils/sessionText.js`, donde irá también el lector de §6.
 
 ### 5.3 Test
@@ -589,85 +591,137 @@ que es donde nace el lector.
 
 ## 6. Fase C22 — Pegar un texto y que la app lo entienda
 
-### 6.1 Antes de escribir código: textos reales
+> **Revisada el 28-sep al implementarla.** Dos cambios de la sesión con el
+> usuario: el texto compartido lleva **el nombre del cliente** en la cabecera,
+> y se puede pegar **desde la lista de Clientes** sin entrar en la ficha: si el
+> nombre está tal cual, el cliente sale solo. El botón ocupa el hueco del €
+> (Facturación global), que se retira: estaba abandonada y sin plan. La
+> facturación de cada cliente sigue en su Info.
 
-La tabla de tests **se escribe con mensajes reales** de clientes, no con los
-que imaginamos. Mínimo 20, pedidos a entrenadores que trabajen por WhatsApp. La
-forma real suele ser «sentadilla 100 100 95, la última me costó», y el formato
-de §6.2 se ajusta a lo que salga. **Sin esa tabla, la C22 no empieza.**
+### 6.1 Textos reales
+
+La puerta de «sin 20 textos reales no se empieza» se retira: desde la C21 el
+texto que vuelve es **el nuestro con números detrás de los dos puntos**, y ese
+formato lo pone la app. Los textos a mano («sentadilla 100 100 95, la última
+me costó») se leen con las formas de §6.2 y los alias de §6.3. **Cada texto
+real que no se entienda entra en `sessionText.test.js` como caso** y se ajusta
+el lector: la tabla crece con el uso, no antes.
 
 ### 6.2 Formato
 
-Dos entradas:
-- **El texto de la app (§5.2)**: se parte por el **último `:`**. Lo de delante
-  se sabe (nombre hasta el primer ` · `, receta); lo de detrás es lo que hizo.
-  Vacío = no lo hizo; `ok` / `✓` / `sí` = tal cual, con el peso del texto; un
-  solo número = ese peso en todas las series con las reps de la receta (con
-  un rango, hay que dar las reps).
-- **Un texto escrito a mano**: una línea por ejercicio, `<nombre> <series>`.
+Una línea a la vez. La primera, si no lleva dos puntos y tiene ` · ` o ningún
+número, es la **cabecera**: `Ana García · Sesión C · Pierna fuerza`.
 
-Las formas de `<series>`:
+- **El texto de la app (§5.2)**: se parte por el **primer `:`** (no el último:
+  un for time se contesta `12:30`). Lo de delante se sabe: nombre hasta el
+  primer ` · `, la receta (`parseRx`) y el peso que llevaba. Lo de detrás es
+  lo que hizo.
+- **Un texto escrito a mano**: `<nombre> <series>`; el nombre acaba en el
+  primer número.
+
+Lo de detrás (`readAnswer`):
 
 | Escrito | Se entiende como |
 |---|---|
+| (vacío) | No lo hizo |
+| `ok` · `✓` · `sí` · `hecho` · `👍` | La receta tal cual, con el peso del texto. Con un rango (`3x8-12`) las reps quedan en blanco en el Workout |
+| `105` · `105kg` | Ese peso en todas las series de la receta, con sus reps |
+| `100 100 95` | Una serie por número: peso, con las reps de la receta |
+| `100x6 100x6 95x5` · `100 x 6, 100 x 6` | Una serie por elemento: peso × reps |
 | `4x6 100` · `4x6x100` · `4x6 @100kg` | 4 series de 6 a 100 |
-| `100x8, 100x8, 95x7` (lista separada por comas) | Una serie por elemento: peso × reps |
-| `3x10` sin peso | 3 series de 10, sin peso |
-| `3x40s` · `3x1'` | 3 series por tiempo |
-| `100x6@8` · `100x6 @8` (pegado a una serie) | RPE 8 en **esa** serie (el set ya guarda `rpe` por serie) |
-| `4x6 100 @8` (al final de la línea) | RPE 8 en todas |
+| `3x10` sin peso | 3 series de 10 |
+| `100x6` suelto, con receta | Más de 10 delante ya es un peso: 100 × 6 en todas las series |
+| `40 35 30` con receta de tiempo · `40s` · `1'` | Segundos por serie |
+| `100x6@8` · `100x6 @8 95x5` | RPE 8 en **esa** serie (el set guarda `rpe` por serie) |
+| `4x6 100 @8` · `100 100 @8` (al final) | RPE 8 en todas |
 | `kg` / `lb` | Se ignoran; se asume la unidad del usuario |
 | `102,5` · `102.5` | Decimal. **La coma solo separa si lleva espacio detrás** (`100, 95`) |
+| Palabras sueltas («la última me costó») | Se ignoran; los números de la línea valen |
 
-**Regla de la ambigüedad:** `NxR` suelto son series × reps; en una lista, cada
-`AxB` es peso × reps. Es la convención habitual y está escrita en la hoja
-(§6.4).
+**Regla de la ambigüedad:** `NxR` suelto (N ≤ 10) son series × reps; en una
+lista, cada `AxB` es peso × reps.
 
-Líneas que no encajan (títulos, notas, líneas vacías): se ignoran y se
-enseñan tachadas en la revisión, para que se vea que no se han perdido.
+Líneas que no encajan (títulos, notas, las instrucciones de §5.2): se enseñan
+tachadas en la revisión, para que se vea que no se han perdido.
 
-`parseSessionText(text)` es pura y con tests: la tabla de §6.1 como casos
-entrada → salida, más la ida y vuelta de §5.
+**Bloques** (AMRAP, EMOM, for time): se reconocen y la revisión dice «Se apunta
+en el entreno». Su resultado **no** se rellena todavía: se pone en el Workout.
+
+`parseSessionText`, `readAnswer`, `parseRx` y `exerciseIndex` viven en
+`src/utils/sessionText.js`, puras y con tests (`sessionText.test.js`): la tabla
+de arriba como casos, y la **ida y vuelta completa** (lo que sale de
+`sessionToText`, con «ok» detrás, se lee entero y cada línea da su ejercicio).
 
 ### 6.3 Los nombres
 
 La biblioteca tiene 182 ejercicios con `name` y `nameEn` y **sin sinónimos**
-(`src/data/exerciseLibrary.js`). Orden de búsqueda para cada nombre:
-1. Coincidencia exacta, sin tildes ni mayúsculas, con `name` / `nameEn` de la
-   biblioteca y de los ejercicios propios.
-2. **Alias aprendidos del entrenador**: `exerciseAliases: { 'banca':
-   'bench_press_barbell' }`, persistido y en el backup.
-3. Si no hay coincidencia, se deja «sin reconocer».
+(`src/data/exerciseLibrary.js`). `exerciseIndex` busca cada nombre, sin tildes,
+mayúsculas ni el formato de WhatsApp, en este orden:
+1. Los ejercicios de la sesión elegida (en los dos idiomas).
+2. La biblioteca y los ejercicios propios.
+3. **Alias aprendidos del entrenador**: `exerciseAliases: { 'banca':
+   'bench_press_barbell' }`, en el store, persistido, en el backup completo y
+   restaurado con la sección de clientes (la copia local gana).
+4. Si no hay coincidencia, «Sin reconocer» con **ELEGIR**.
 
-La primera vez que el entrenador resuelve «banca» a mano, se guarda como alias.
-**No hay coincidencia aproximada** (distancia de edición…): «press banca» podría
-ser con barra o con mancuernas, y equivocarse en silencio es peor que
-preguntar una vez.
+ELEGIR abre el selector de ejercicios en su modo de elegir uno (el de los
+movimientos de un bloque, `blockPicker`, con título «¿Qué ejercicio es?») y lo
+elegido se guarda como alias (`setExerciseAlias`). **No hay coincidencia
+aproximada**: «press banca» podría ser con barra o con mancuernas, y
+equivocarse en silencio es peor que preguntar una vez.
 
 ### 6.4 Flujo
 
-1. En la hoja **Apuntar sesión pasada** (§3.2), la segunda salida **Pegar
-   texto**. Un texto siempre habla de algo que ya pasó, así que vive ahí y no
-   en un menú aparte. Qué sesión y cuándo se eligen igual; se añade un campo de
-   texto, que se rellena desde el portapapeles si hay algo.
-2. **Revisión**: una fila por línea con el ejercicio reconocido y lo entendido
-   («4 × 6 · 100 kg»). Las sin reconocer llevan ELEGIR, que abre el buscador de
-   ejercicios de siempre y guarda el alias.
-3. **CONTINUAR** abre el Workout en modo registro con todo relleno. Los
-   ejercicios que están en la sesión elegida van a sus series; los demás entran
-   como ejercicios añadidos (ad-hoc). Es la misma pantalla que en §3, con las
-   series ya puestas: **la revisión final es el propio Workout**, y el guardado
-   es `saveSession`, sin un camino nuevo.
+Pantalla **Pegar entreno** (`PasteWorkoutScreen`), con dos entradas:
+- **Clientes**, icono de portapapeles en la cabecera, donde estaba el €. Sin
+  cliente puesto.
+- **Ficha de un cliente sin app › Apuntar sesión pasada › Pegar texto**, la
+  segunda salida de la hoja. Con el cliente ya puesto.
+
+De arriba abajo:
+1. **El texto**, que se rellena solo con el portapapeles al entrar; PEGAR lo
+   vuelve a leer.
+2. **De quién** (solo desde Clientes): los clientes sin app. Si la cabecera
+   trae el nombre de uno **tal cual** (sin tildes ni mayúsculas), sale
+   marcado; si es de un cliente con app, lo dice («usa la app: sus entrenos
+   los apunta él») y no se marca.
+3. **Qué sesión**: las de su etapa y sus sesiones libres. Marcada la que diga
+   la cabecera («Sesión C» en cualquiera de los dos idiomas, o el nombre de la
+   sesión); si no, la que le toca. **Cuándo**: los 7 días de «Apuntar sesión
+   pasada», hoy marcado.
+4. **Lo que se ha entendido**: una fila por línea con el ejercicio y lo
+   entendido («4 × 6 · 100 kg», «No lo hizo»). «añadido» si no está en la
+   sesión. Si trae más series de las que tiene la sesión, lo avisa: el
+   Workout no admite más y se apuntan las de la sesión.
+5. **CONTINUAR** abre el Workout en modo registro con todo relleno
+   (`startSession(..., { prefill })`). Los ejercicios de la sesión van a sus
+   series; los demás entran como añadidos. Una serie con reps o tiempo entra
+   hecha; una sin (un «ok» con rango) entra abierta. **La revisión final es el
+   propio Workout**, y el guardado es `saveSession`, sin un camino nuevo. Con
+   otro entreno en curso, se confirma descartarlo, como EMPEZAR.
 
 ### 6.5 Probar en dispositivo
 
 **Probar C22**
 
-- [ ] Compartir una sesión como texto por WhatsApp,
-  añadir números como lo haría un cliente, copiarlo y pegarlo: todos los
-  ejercicios se reconocen y el Workout sale relleno.
-- [ ] Pegar un texto escrito a mano con «banca»: pide
-  elegir el ejercicio. En el segundo texto con «banca» ya no lo pide.
+- [ ] Ficha de un cliente sin app › compartir una sesión por WhatsApp: la
+  primera línea lleva su nombre («Ana García · Sesión C · …»).
+- [ ] Copiar ese texto, añadir números como lo haría un cliente (`ok`, `105`,
+  `100x6 100x6 95x5`, una vacía), copiarlo y en **Clientes** tocar el icono de
+  portapapeles: el texto ya está pegado, el cliente y la sesión salen
+  marcados, y cada fila dice lo entendido.
+- [ ] CONTINUAR: el Workout de ese cliente, en modo registro, con las series
+  rellenas como en la revisión; la vacía, sin hacer. Guardar: el entreno está
+  en su historial con el día elegido.
+- [ ] Borrar el nombre de la primera línea y pegar: no marca a nadie y pide
+  elegir el cliente.
+- [ ] Pegar un texto escrito a mano con «banca 80 80 75»: sale «Sin
+  reconocer» con ELEGIR. Elegir el ejercicio: la fila se reconoce. En el
+  siguiente texto con «banca» ya no lo pide.
+- [ ] Desde la ficha › Apuntar sesión pasada › **Pegar texto**: la misma
+  pantalla, sin «De quién».
+- [ ] La cabecera de Clientes ya no tiene el €; la facturación de un cliente
+  sigue en su Info.
 
 ## 7. Fuera de alcance
 
@@ -692,4 +746,4 @@ preguntar una vez.
 | C28 ✅ `a3fc21e` | §4.0: `clientLink` (con test), alta con dos opciones, subida silenciosa del invitado (un suscriptor del store), Info › Conexión por estado, tarjeta del código rehecha, caja «Sin programa activo» sin borde, refresco al enfocar. La hoja de nuevo programa ya usaba las piezas de Plantillas: solo cambió la caja vacía. Tests en `useStore.test.js` («con app o sin app») | C19 | Pruebas de §4.0.7 |
 | C20 ✅ `a3fc21e` | §4: `pushTrainerLogToSlot` al pasar a la app, guarda anti-pisado, preselección de fusionar en la hoja del cliente. Sin `source` ni número de entrenos (§4.2-4.3) | C19, C28 | Pruebas de §4.4, con dos móviles |
 | C21 ✅ | §5: `sessionToText` + icono de compartir en la ficha (al lado de EMPEZAR) y en las libres, y «Compartir como texto» en el ⋯ del editor. Formato revisado (§5 nota). Tests en `sessionText.test.js` | C19 (las filas donde vive el botón) | Ida y vuelta de nombres (§5.3) y pruebas de §5.4 |
-| C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |
+| C22 ✅ | §6: `parseSessionText` + `readAnswer` + `exerciseIndex` + alias (`exerciseAliases`, en el backup), pantalla **Pegar entreno** desde Clientes (en el hueco del €, fuera la facturación global) y desde «Apuntar sesión pasada», Workout relleno con `startSession({ prefill })`. El texto compartido lleva el nombre del cliente. Tests en `sessionText.test.js` y `useStore.test.js` | C19, C21 | Tests del lector y pruebas de §6.5 |

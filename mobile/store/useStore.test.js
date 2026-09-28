@@ -1922,6 +1922,33 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
     expect(useStore.getState().ui.restTimer.active).toBe(true);
     useStore.getState().stopRestTimer();
   });
+
+  it('un texto pegado (C22): las series a su sitio, ajustadas a la sesión, y lo demás como añadido', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    useStore.setState((s) => ({
+      sessionTemplates: { ...s.sessionTemplates, [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'squat', sets: 2 }] } },
+    }));
+    const set = (weight) => ({ weight, reps: '6', time: '', done: true });
+    useStore.getState().startSession(tid, {
+      forClient: 'cli_1', logOnly: true, loggedAt: 1,
+      prefill: {
+        setsState: { squat: [set('100'), set('100'), set('95')] },
+        adHoc: [{ exerciseId: 'squat', setsState: [set('1')] }, { exerciseId: 'plank', setsState: [set('')] }],
+      },
+    });
+    const a = useStore.getState().activeSession;
+    expect(a.setsState.squat.map((x) => x.weight)).toEqual(['100', '100']);
+    // Uno que ya está en la sesión no se duplica como añadido (fallo 15).
+    expect(a.adHocExercises.map((x) => x.exerciseId)).toEqual(['plank']);
+    expect(a).toMatchObject({ forClient: 'cli_1', logOnly: true });
+  });
+
+  it('los alias se guardan normalizados', () => {
+    useStore.setState({ exerciseAliases: {} });
+    useStore.getState().setExerciseAlias('  Bánca ', 'bench_press_barbell');
+    expect(useStore.getState().exerciseAliases).toEqual({ banca: 'bench_press_barbell' });
+  });
 });
 
 describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {

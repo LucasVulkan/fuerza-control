@@ -28,6 +28,7 @@ import StagePlannerScreen    from '../screens/StagePlannerScreen';
 import SessionRecapScreen    from '../screens/SessionRecapScreen';
 import NextSessionScreen      from '../screens/NextSessionScreen';
 import ExerciseSelectorScreen from '../screens/ExerciseSelectorScreen';
+import PasteWorkoutScreen from '../screens/PasteWorkoutScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
 import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
@@ -253,6 +254,11 @@ export default function RootNavigator() {
         <Stack.Screen
           name="ExerciseSelector"
           component={ExerciseSelectorScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="PasteWorkout"
+          component={PasteWorkoutScreen}
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen

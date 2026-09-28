@@ -4,7 +4,6 @@
  * Views (managed with useState, no nested navigator):
  *   'list'    → client list + search + status filter
  *   'detail'  → single client (4 tabs: programs, history, progress, info)
- *   'billing' → global billing summary
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -1251,164 +1250,6 @@ function GlobalAddBillingSheet({ clients, lang, lockedClientId, onClose }) {
   );
 }
 
-// ── Global billing view ────────────────────────────────────────────────────────
-
-function GlobalBillingView({ clients, onClose, onSelectClient }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t, i18n } = useTranslation();
-  const updateClientBillingStatus = useStore((s) => s.updateClientBillingStatus);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState('all');
-  const [showAdd,      setShowAdd]      = useState(false);
-
-  const lang = i18n.language?.startsWith('en') ? 'en' : 'es';
-
-  const allEntries = useMemo(() => {
-    const entries = [];
-    Object.values(clients ?? {}).forEach((client) => {
-      (client.billing ?? []).forEach((b) => {
-        entries.push({ ...b, clientId: client.id, clientName: client.name });
-      });
-    });
-    return entries.sort((a, b) => b.date.localeCompare(a.date));
-  }, [clients]);
-
-  const periodFiltered = useMemo(() => {
-    if (periodFilter === 'all') return allEntries;
-    const now = new Date();
-    const months = periodFilter === '1m' ? 1 : 3;
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
-    return allEntries.filter((e) => e.date >= cutoff);
-  }, [allEntries, periodFilter]);
-
-  const statusCounts = useMemo(() => ({
-    all:     periodFiltered.length,
-    pending: periodFiltered.filter((e) => e.status !== 'paid').length,
-    paid:    periodFiltered.filter((e) => e.status === 'paid').length,
-  }), [periodFiltered]);
-
-  const filtered = useMemo(() => {
-    if (statusFilter === 'all') return periodFiltered;
-    return periodFiltered.filter((e) => e.status === statusFilter);
-  }, [periodFiltered, statusFilter]);
-
-  // Las 3 tarjetas resumen el PERIODO, no el filtro de estado: ese filtro es
-  // justo lo que ellas desglosan, así que atarlas a él dejaba PENDIENTE en
-  // 0,00 € cada vez que se miraba "Pagado".
-  const total   = periodFiltered.reduce((a, b) => a + (b.amount ?? 0), 0);
-  const paid    = periodFiltered.filter((e) => e.status === 'paid').reduce((a, b) => a + (b.amount ?? 0), 0);
-  const pending = total - paid;
-
-  return (
-    <View style={{ flex: 1 }}>
-      {/* Cabecera: ‹ + título hero + ＋ (convención de Docs / Entrenador / Drive) */}
-      <View style={styles.billHeader}>
-        <TouchableOpacity style={styles.hdrIconBox} onPress={onClose} activeOpacity={0.7}>
-          <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
-            stroke={th.colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M15 18 9 12l6-6" />
-          </Svg>
-        </TouchableOpacity>
-        <Text style={styles.billHeaderTitle} numberOfLines={1}>{t('clients.globalBilling')}</Text>
-        <TouchableOpacity style={styles.tagAddBtn} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
-          <Text style={styles.tagAddBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showAdd && (
-        <GlobalAddBillingSheet clients={clients} lang={lang} onClose={() => setShowAdd(false)} />
-      )}
-
-      <ScrollView contentContainerStyle={styles.billBody} showsVerticalScrollIndicator={false}>
-
-        {/* Tarjetas resumen — mismo tratamiento que las de Progress (statTile),
-            con el valor a `itemTitle` en vez de `title`: caben más dígitos. */}
-        <View style={styles.billTilesRow}>
-          {[
-            { label: t('clients.billedLabel'),   value: total,   color: th.colors.text },
-            { label: t('clients.receivedLabel'), value: paid,    color: th.colors.green },
-            { label: t('clients.pendingLabel'),  value: pending, color: pending > 0 ? th.colors.orange : th.colors.mutedLight },
-          ].map(({ label, value, color }) => (
-            <View key={label} style={styles.billTile}>
-              <Text style={styles.billTileLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {label}
-              </Text>
-              <Text style={[styles.billTileValue, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {value.toFixed(2)}€
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Filtros — dos segmentados apilados. El contador va dentro del propio
-            label: la primitiva no pinta badges y no hay variante así en Figma. */}
-        <View style={styles.billFilters}>
-          <SegmentedControl
-            options={[
-              { id: 'all',     label: `${t('clients.filterAll')} · ${statusCounts.all}`     },
-              { id: 'pending', label: `${t('clients.billPending')} · ${statusCounts.pending}` },
-              { id: 'paid',    label: `${t('clients.statusPaid')} · ${statusCounts.paid}`   },
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
-          <SegmentedControl
-            options={[
-              { id: 'all', label: t('clients.periodAll')         },
-              { id: '1m',  label: t('clients.periodThisMonth')   },
-              { id: '3m',  label: t('clients.periodLast3Months') },
-            ]}
-            value={periodFilter}
-            onChange={setPeriodFilter}
-          />
-        </View>
-
-        {/* Entradas — 2 líneas: importe arriba con el nombre, pill abajo con el
-            concepto. Precio y estado en la misma línea competían entre sí. */}
-        {filtered.length === 0 ? (
-          <Text style={styles.billEmpty}>{t('clients.noBillingEntries')}</Text>
-        ) : (
-          <View style={styles.billList}>
-            {filtered.map((entry) => {
-              const isPaid = entry.status === 'paid';
-              const c      = isPaid ? th.colors.green : th.colors.orange;
-              return (
-                <TouchableOpacity
-                  key={entry.id}
-                  style={styles.billCard}
-                  onPress={() => onSelectClient(entry.clientId)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.billCardLine}>
-                    <Text style={styles.billCardName} numberOfLines={1}>{entry.clientName}</Text>
-                    <Text style={styles.billCardAmount}>{entry.amount?.toFixed(2)}€</Text>
-                  </View>
-                  <View style={styles.billCardLine}>
-                    <Text style={styles.billCardMeta} numberOfLines={1}>
-                      {entry.concept} · {formatBillDate(entry.date, lang)}
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.billPill, { backgroundColor: withOpacity(c, 0.12) }]}
-                      onPress={() => updateClientBillingStatus(entry.clientId, entry.id, isPaid ? 'pending' : 'paid')}
-                      activeOpacity={0.75}
-                      hitSlop={8}
-                    >
-                      <Text style={[styles.billPillText, { color: c }]}>
-                        {isPaid ? t('clients.statusPaid') : t('clients.billPending')}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-
 // ── Client info sheet (⋯ modal) ────────────────────────────────────────────────
 
 function ClientInfoSheet({ client, onClose, onConnectCloud }) {
@@ -1944,7 +1785,7 @@ export default function ClientsScreen() {
 
   // ── UI State ───────────────────────────────────────────────────────────────
   const [showPaywall,      setShowPaywall]      = useState(false);
-  const [view,             setView]             = useState('list'); // 'list' | 'detail' | 'billing'
+  const [view,             setView]             = useState('list'); // 'list' | 'detail'
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeTab,        setActiveTab]        = useState('programs');
 
@@ -2611,26 +2452,6 @@ export default function ClientsScreen() {
     );
   }
 
-  // ── Billing view ───────────────────────────────────────────────────────────
-
-  if (view === 'billing') {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AppHeader />
-        <GlobalBillingView
-          clients={clients}
-          onClose={() => setView('list')}
-          onSelectClient={(id) => {
-            setView('detail');
-            handleSelectClient(id);
-            setActiveTab('info');
-            setOpenSections({ status: false, personal: false, weight: false, billing: true, connection: false });
-          }}
-        />
-      </View>
-    );
-  }
-
   // ── Client detail ──────────────────────────────────────────────────────────
 
   if (view === 'detail' && selectedClient) {
@@ -3257,20 +3078,25 @@ export default function ClientsScreen() {
       {/* ── List header ── */}
       <View style={styles.listHeader}>
 
-        {/* Row 1: Title "CLIENTES N" · trainer tools (€ billing · cloud sync) · + Cliente */}
+        {/* Row 1: Title "CLIENTES N" · trainer tools (pegar entreno · cloud sync) · + Cliente */}
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
             CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{clientCounts.total}</Text>
           </Text>
           <View style={styles.hdrRightCluster}>
             <View style={styles.hdrIconGroup}>
-              {/* Billing (€) */}
-              <TouchableOpacity style={styles.hdrIconBox} onPress={() => setView('billing')} activeOpacity={0.7}>
-                {/* € dibujado, no el glifo: Figma pone aquí la "€" de Inter,
-                    pero al lado de la nube (icono de trazo) cantaba. Mismo
-                    tamaño y grosor que ella. */}
+              {/* Pegar un entreno (trainer-logging.md §6.4): el texto dice de
+                  quién es. Ocupa el hueco de la facturación global, retirada
+                  el 28-sep. Mismo tamaño y trazo que la nube. */}
+              <TouchableOpacity
+                style={styles.hdrIconBox}
+                onPress={() => navigation.navigate('PasteWorkout')}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('paste.title')}
+              >
                 <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M4 10h12M4 14h9M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" />
+                  <Path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM9 12h6M9 16h4" />
                 </Svg>
               </TouchableOpacity>
               {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
