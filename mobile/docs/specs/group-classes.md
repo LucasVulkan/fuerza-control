@@ -2,11 +2,16 @@
 
 > Tema: conexión
 > En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir la clase que toca en modo pizarra y apuntar «clase dada».
-> Fase C23 · pendiente · El grupo como tipo de cliente · §3
+> Fase C23 · aparcado · El grupo como tipo de cliente · §3
 > Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
-> Fase C25 · pendiente · Modo pizarra · §5
-> Fase C26 · pendiente · Clase dada · §6
+> Fase C25 · aparcado · Modo pizarra · §5
+> Fase C26 · aparcado · Clase dada · §6
 > Fase C27 · hecho · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
+>
+> **Aparcado el 28-sep-2026**: todo lo de grupos (C23, C25, C26) no es
+> prioritario. La C24 sigue pendiente por su parte de clientes (§4.4: que las
+> sesiones libres lleguen al móvil del cliente conectado); lo de grupos que
+> tiene (la fila de un grupo en §4.1, §4.5 segunda casilla) espera a la C23.
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de la misma
 > sesión de diseño que [trainer-logging.md](trainer-logging.md). Escrita después

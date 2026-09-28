@@ -23,7 +23,8 @@
 > sesión pasada» (§6.3). Maqueta de todo lo visual:
 > [`docs/mockups/trainer-models.html`](../mockups/trainer-models.html).
 >
-> **Orden recomendado**: C19 → C21 → (grupos: C23, C25, C26) → C20 → C24 → C22.
+> **Orden recomendado**: C19 → C21 → C20 → C24 → C22. Los grupos (C23, C25, C26,
+> [group-classes.md](group-classes.md)) están aparcados desde el 28-sep.
 > **QA 28-sep**: con C19 en la mano salió que «conectado» no significaba lo
 > mismo en tres sitios y que el flujo de conexión no se entendía desde el lado
 > del entrenador. De ahí la **C28** (§4.0), que va **antes** que la C20: la C20
