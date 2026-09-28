@@ -2734,7 +2734,9 @@ export default function ClientsScreen() {
                   archivedCount={previousPrograms.length}
                   onView={() => setPrintingProgram(activeProgram.id)}
                   onEdit={() => setEditingProgram(activeProgram.id)}
-                  onUpload={syncEnabled ? () => uploadProgram(activeProgram.id) : undefined}
+                  // Solo con app: al invitado se le sube solo, y durante esa
+                  // subida el aviso naranja asomaba (C28 §4.0.4).
+                  onUpload={syncEnabled && linkOf(selectedClient) === 'linked' ? () => uploadProgram(activeProgram.id) : undefined}
                   onPrescribe={() => navigation.navigate('NextSession', { clientId: selectedClientId })}
                   onShare={() => shareSpecificProgram(activeProgram.id, true)}
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
@@ -2750,14 +2752,12 @@ export default function ClientsScreen() {
                   onShowArchived={() => setTimeout(() => setShowPrevious(true), 250)}
                 />
               ) : (
+                // Un título y la acción principal, en acento. La pista de debajo
+                // repetía lo mismo que el título y que el botón.
                 <View style={styles.noActiveBox}>
                   <Text style={styles.noActiveTitle}>{t('clients.noActiveProgram')}</Text>
-                  <Text style={styles.noActiveSub}>
-                    {clientPrograms.length === 0 ? t('clients.noProgramsHint') : t('clients.noActiveProgramHint')}
-                  </Text>
-                  <TouchableOpacity style={[styles.apBtn, { marginTop: spacing.sm }]} onPress={() => setShowNewProgram(true)} activeOpacity={0.85}>
-                    <Text style={styles.apBtnGlyph}>+</Text>
-                    <Text style={styles.apBtnText}>{t('clients.menuNewProgram')}</Text>
+                  <TouchableOpacity style={styles.noActiveBtn} onPress={() => setShowNewProgram(true)} activeOpacity={0.85}>
+                    <Text style={styles.noActiveBtnText}>{t('clients.menuNewProgram')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -3768,7 +3768,8 @@ export default function ClientsScreen() {
                         <Text style={[styles.modeTitle, on && styles.templateRowNameOn]}>{t(`clients.newClientModal.mode_${id}`)}</Text>
                         <Text style={styles.modeSub}>{t(`clients.newClientModal.mode_${id}Sub`)}</Text>
                       </View>
-                      {on && <Text style={styles.clientCheck}>✓</Text>}
+                      {/* Hueco fijo: aparecer el ✓ no puede empujar el texto. */}
+                      <Text style={[styles.clientCheck, styles.modeCheck, !on && { opacity: 0 }]}>✓</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -4629,10 +4630,20 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         16,
     borderRadius:    th.radius.lg,
     backgroundColor: th.colors.surface,
-    gap:             spacing.xs,
+    alignItems:      'center',
+    gap:             spacing.md,
   },
   noActiveTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   noActiveSub:   { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight },
+  noActiveBtn: {
+    alignSelf:       'stretch',
+    height:          44,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  noActiveBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   // ── Previous (archived) programs ──
   archRow: {
@@ -5027,7 +5038,10 @@ const makeStyles = (th) => StyleSheet.create({
   templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
   // Las dos opciones del alta (C28): la fila de plantilla con icono y una
   // línea que explica la opción.
-  modeRow:   { alignItems: 'flex-start', gap: spacing.md, justifyContent: 'flex-start' },
+  // Borde transparente siempre: la elegida lo tiene en acento y, si solo
+  // ella lo llevara, el contenido saltaría 1 px al marcarla.
+  modeRow:   { alignItems: 'center', gap: spacing.md, justifyContent: 'flex-start', borderWidth: borders.thin, borderColor: 'transparent' },
+  modeCheck: { width: 14, textAlign: 'center' },
   modeTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   modeSub:   { ...textStyles.body, lineHeight: 19, color: th.colors.mutedLight },
   modeHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, marginLeft: spacing.xs2 },
