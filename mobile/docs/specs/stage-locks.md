@@ -2,14 +2,14 @@
 
 > Tema: conexión
 > En corto: El entrenador puede cerrar una etapa con candado: el cliente sigue entrenando la suya y no entra en la siguiente hasta que se la abran. Desde sep-2026 incluye que el programa del entrenador sea de solo lectura en el móvil del cliente.
-> Fase C07 · hecho · `stageWeeksCompleted` sustituye a `stageSessionsCompleted` (`0884d09`) · §3.2
-> Fase C08 · hecho · Blob `progress` en el historial; el entrenador lo espeja (`8d63d9a`) · §3.1
-> Fase C09 · hecho · Reglas de import + poda del modal de actualización (`e1a4d21`) · §6.3
-> Fase C10 · hecho · `stage.locked` + `isStageLocked` + guards en el store · §2
-> Fase C11 · hecho · UI cliente: candados en modal y editor (`43b9bab`) · §5
-> Fase C12 · hecho · UI entrenador: los tres estados del hero + desbloquear · §4
-> Fase C13 · hecho · Pull al volver a primer plano + línea de diff de desbloqueo · §6.1
-> Fase C14 · hecho · El programa del entrenador es de solo lectura en el móvil del cliente · §2.1
+> Fase C07 · terminado · `stageWeeksCompleted` sustituye a `stageSessionsCompleted` (`0884d09`) · §3.2
+> Fase C08 · terminado · Blob `progress` en el historial; el entrenador lo espeja (`8d63d9a`) · §3.1
+> Fase C09 · terminado · Reglas de import + poda del modal de actualización (`e1a4d21`) · §6.3
+> Fase C10 · terminado · `stage.locked` + `isStageLocked` + guards en el store · §2
+> Fase C11 · terminado · UI cliente: candados en modal y editor (`43b9bab`) · §5
+> Fase C12 · terminado · UI entrenador: los tres estados del hero + desbloquear · §4
+> Fase C13 · terminado · Pull al volver a primer plano + línea de diff de desbloqueo · §6.1
+> Fase C14 · terminado · El programa del entrenador es de solo lectura en el móvil del cliente · §2.1
 >
 > Estado: **✅ IMPLEMENTADA, en testeo en dispositivo** (jul 2026). Las 7 fases
 > están en `main`; ver la tabla de §7 para el commit de cada una.
@@ -137,7 +137,7 @@ workout como **sustitución puntual de esa sesión** —reflejada en el historia
 sin tocar el programa—, que es donde debió estar siempre: adaptar es del momento
 del entreno, no del plan.
 
-**Probar en dispositivo.** Cliente conectado: en Inicio no aparece "Editar" y sí
+**Probado en dispositivo.** Cliente conectado: en Inicio no aparece "Editar" y sí
 "Ver programa"; entrenar, avanzar de etapa y añadir un ejercicio ad-hoc siguen
 funcionando. Con un programa propio del mismo cliente, "Editar" vuelve a salir.
 

@@ -2,10 +2,10 @@
 
 > Tema: conexión
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 en la conexión entrenador↔cliente: el RPE, las sesiones libres y el cambio de etapa no llegaban al entrenador; el aviso "sin revisar" no se apagaba al mirar; "subir cambios" salía sin cambios; y "Preparar sesión" abría siempre la A.
-> Fase C15 · hecho · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
-> Fase C16 · hecho · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
-> Fase C17 · hecho · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
-> Fase C18 · hecho · "Preparar sesión" abre la que toca (bug 4) · §6
+> Fase C15 · terminado · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3
+> Fase C16 · terminado · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4
+> Fase C17 · terminado · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5
+> Fase C18 · terminado · "Preparar sesión" abre la que toca (bug 4) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (22-sep-2026). Diagnóstico hecho
 > contra el código; cada fase dice el origen con fichero y línea. Las cuatro son
@@ -224,7 +224,7 @@ pruebas de conexión se hacen siempre con dos dispositivos.
     `ui.restTimer.active === false`;
   - sin `clientSync.slotId` → nunca se llama.
 
-**Probar en dispositivo.** Con cliente y entrenador vinculados: (1) terminar una
+**Probado en dispositivo.** Con cliente y entrenador vinculados: (1) terminar una
 sesión en el cliente, poner RPE en el recap, esperar 3 s; en el entrenador tirar
 para refrescar el historial → la sesión tiene el RPE. (2) Guardar una sesión libre
 con el temporizador de descanso en marcha → el temporizador se para y la sesión
@@ -285,7 +285,7 @@ muestra la etapa nueva sin que el cliente haya entrenado.
 `remoteSessionsCount` previo de 3, `markHistoryViewed` deja
 `trainerSync.lastSeenSessionsCount[id] === 5`.
 
-**Probar en dispositivo.** (1) El cliente entrena. En el entrenador, entrar al
+**Probado en dispositivo.** (1) El cliente entrena. En el entrenador, entrar al
 cliente tocando la tarjeta (no el aviso), abrir Historial → volver a la lista y
 tirar para refrescar → el aviso "sin revisar" NO vuelve. (2) Con una sesión nueva,
 tocar el aviso "sin revisar" → abre la pestaña Historial ya con la sesión.
@@ -332,7 +332,7 @@ seguro, porque la acción compara en vez de marcar a ciegas.
 `programDirty === false`; tras `updateExerciseParams` → `true`; tras deshacer el
 cambio → `false`.
 
-**Probar en dispositivo.** Subir el programa a un cliente, abrir su editor, salir
+**Probado en dispositivo.** Subir el programa a un cliente, abrir su editor, salir
 con el check sin tocar nada → no aparece "subir cambios". Cambiar series de un
 ejercicio y salir → sí aparece. Añadir una etapa desde "Planificar etapas" de la
 ficha → aparece.
@@ -372,7 +372,7 @@ van en azul, como el objetivo del entrenador en el Workout del cliente. QA
 (23-sep): el resumen es una sola línea "A · nombre" a `heading` con la ayuda a
 `body`, y la nota va a `body` sobre `bg`, como las celdas.
 
-**Probar en dispositivo.** Cliente que ha hecho A y B del ciclo en curso: en el
+**Probado en dispositivo.** Cliente que ha hecho A y B del ciclo en curso: en el
 entrenador, "Preparar sesión" abre C, y la tarjeta del cliente dice que toca C.
 
 ## Fases

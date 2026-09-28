@@ -2,10 +2,10 @@
 
 > Tema: ui
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 que no son de conexión: atrás tras una sesión llevaba a una pantalla negra y el check del editor siempre iba a Sesiones; Progreso restaba kg de repeticiones; la gráfica de ejercicio pintaba un frame y saltaba; y la Barlow no salía en iPhone.
-> Fase U24 · hecho · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
-> Fase U25 · hecho · Progreso sin mezclar unidades (bug 7) · §4
-> Fase U26 · hecho · La gráfica de ejercicio entra sin salto (bug 9) · §5
-> Fase U27 · hecho · Barlow en iOS por su nombre PostScript (bug 3) · §6
+> Fase U24 · terminado · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3
+> Fase U25 · terminado · Progreso sin mezclar unidades (bug 7) · §4
+> Fase U26 · terminado · La gráfica de ejercicio entra sin salto (bug 9) · §5
+> Fase U27 · terminado · Barlow en iOS por su nombre PostScript (bug 3) · §6
 >
 > Estado: **spec cerrada, SIN implementar** (22-sep-2026). Fases independientes
 > entre sí. U24, U25 y U26 tienen el origen confirmado leyendo el código; **U27
@@ -97,7 +97,7 @@ Cuatro sitios apilan un `Main` duplicado:
    si no, `navigationRef.reset({ index: 0, routes: [{ name: 'Main', params }] })`.
    Para el resto de vistas, `navigate(screen, params, { pop: true })`.
 
-**Probar en dispositivo.** (1) Home → empezar sesión → guardar → Listo → atrás
+**Probado en dispositivo.** (1) Home → empezar sesión → guardar → Listo → atrás
 (botón de Android): la app sale, no enseña el recap ni una pantalla negra. (2)
 Igual pero descartando la sesión en vez de guardar. (3) Clientes → ficha →
 editar programa → entrar a una sesión → check: vuelve a Clientes. (4) Pestaña
@@ -192,7 +192,7 @@ y 230) y nadie navega a ella.
 - `linearRegressionPct` con base 0 → `null`; con 100 → 110 kg → 10.
 - `computeOverallImprovement` ignora los ejercicios con `null`.
 
-**Probar en dispositivo.** Registrar un puente de glúteo a 0 kg y en otra sesión
+**Probado en dispositivo.** Registrar un puente de glúteo a 0 kg y en otra sesión
 con 7,5 kg: el detalle del ejercicio dice +7,5 kg, la gráfica en KG tiene dos
 puntos, y Mejora global no se mueve de forma absurda.
 
@@ -226,7 +226,7 @@ Dos causas que se suman (en `MiniLineChart` de `ProgressTab.jsx`, ~l. 373):
 
 Confianza media: el diagnóstico sale de leer el código, no de verlo.
 
-**Probar en dispositivo.** Abrir el detalle de un ejercicio con >2 sesiones y
+**Probado en dispositivo.** Abrir el detalle de un ejercicio con >2 sesiones y
 cambiar entre KG / Reps / Vol / 1RM y entre periodos: cada cambio dibuja la
 línea de izquierda a derecha sin un frame previo con la gráfica completa. Si el
 salto persistiera **solo al abrir** el detalle, el siguiente sospechoso es que
@@ -275,7 +275,7 @@ Solo se puede verificar con un build nuevo de EAS instalado en iPhone
 comprobar `UIAppFonts` en el `Info.plist` del build y que el `.ttf` va dentro del
 `.ipa`.
 
-**Probar en dispositivo.** iPhone con build nuevo: la letra y el nombre de la
+**Probado en dispositivo.** iPhone con build nuevo: la letra y el nombre de la
 sesión de hoy en Home salen en Barlow Condensed cursiva, igual que en Android.
 
 ## Fases

@@ -48,7 +48,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
 - **`Fase <código> · <estado> · <título> · §<sección>`** — una línea por fase,
-  **al menos una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
+  **al menos una**. Estado: `pendiente` · `hecho` · `terminado` · `aparcado`
+  (ver *Pruebas en dispositivo*, abajo). Es la unidad de
   seguimiento: casi nada se implementa de una vez, así que una spec "a medias"
   no dice nada y "3 de 10 fases" sí.
   La **`§`** es la sección de este mismo documento que cuenta esa fase; la
@@ -58,8 +59,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 - **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
   detalle; la página no la pinta porque no cabe.
 
-**Ya no se escriben a mano `Progreso:` ni `Falta:`**: se derivan de las fases
-—todas hechas ⇒ cerrada, ninguna ⇒ sin empezar, si no a medias— porque eran dos
+**Ya no se escriben a mano `Progreso:` ni `Falta:`**: la página cuenta las
+fases de cada spec (terminadas · por probar · por hacer), porque eran dos
 campos que se desviaban solos.
 
 **Quién manda sobre el estado: la cabecera.** La tabla `## Fases` de dentro del
@@ -79,9 +80,47 @@ Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propi
 línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única sin
 `> Fase`: su unidad son los fallos.
 
-**Pruebas en dispositivo:** se marcan con `**Probar en dispositivo.**` seguido
-del qué, hasta la línea en blanco. La página las junta todas en una lista — es
-lo único que `vitest` no puede cubrir, porque los stubs del test son inertes.
+## Pruebas en dispositivo
+
+Es lo único que `vitest` no puede cubrir, porque los stubs del test son
+inertes. Cada fase lleva **su lista de casillas**, en cualquier sitio de la spec
+(lo normal: al final de su sección):
+
+```markdown
+**Probar C19**
+
+- [ ] Cliente sin conectar → EMPEZAR SESIÓN B: el Workout sale con los pesos
+  del cliente. Las líneas sangradas siguen siendo la misma casilla.
+- [x] Una que ya se probó
+```
+
+La página las numera `C19.1`, `C19.2`… para poder decir cuál falla. Lo que se
+ve en la página sale de la cabecera **y** de las casillas, sin nada más que
+mantener:
+
+| Cabecera | Casillas | En la página |
+|---|---|---|
+| `pendiente` | — (puede traerlas ya escritas) | **Por hacer** |
+| `hecho` | alguna `[ ]` | **Por probar** |
+| `hecho` | todas `[x]` | **Terminado** |
+| `terminado` | ninguna | **Terminado** |
+| `aparcado` | — | Por hacer, en gris |
+
+- **`hecho` sin lista falla.** Quien cierra una fase dice qué hay que probar.
+  Si no hay nada que probar a mano (un refactor, un cambio de datos, papeleo),
+  la fase va directamente a `terminado`.
+- **`terminado` con casillas sin marcar falla.** Una fase probada se queda en
+  `hecho` con todas marcadas: pasa sola a Terminado.
+- Las fases cerradas antes del 28-sep-2026 están en `terminado` por decisión del
+  usuario (se dieron por probadas). Sus bloques antiguos quedan como prosa
+  `**Probado en dispositivo.**` y la página ya no los lee; si un día hay que
+  repetir una, se convierte en casilla.
+
+**El usuario valida en el chat, no editando el documento.** Dice «C19 probada»
+→ se marcan `[x]` todas las de C19. Dice «C19.2 falla: sale la fecha de hoy» →
+la casilla se queda `[ ]` con la nota al final (`— ❌ 28-sep: sale la fecha de
+hoy`), se arregla, y la nota se quita cuando vuelva a probarla. En los dos
+casos, `npm run estado`.
 
 ## Cómo mantener esto al día
 
@@ -90,12 +129,15 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 
 ### Al cerrar una fase
 
-1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho`. Esto es lo
-   que manda: es lo que lee la página.
+1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho` (o a
+   `terminado` si no hay nada que probar a mano). Esto es lo que manda: es lo
+   que lee la página.
 2. En la **tabla `## Fases`** del documento, su fila recibe el commit y lo que
    haya que decir (`✅ 0884d09 — …`). Es el registro, no el estado.
-3. Si hace falta comprobarlo a mano en el móvil, se deja un bloque
-   `**Probar en dispositivo.** …` allí donde toque. La página los junta todos.
+3. Si está en `hecho`, su lista `**Probar <código>**` con las casillas de lo
+   que el usuario tiene que comprobar en el móvil (§ *Pruebas en dispositivo*).
+   Pruebas concretas, que se puedan dar por buenas o no: qué tocar y qué tiene
+   que pasar.
 4. `npm run estado`.
 
 ### Al añadir una fase o una spec nueva
@@ -122,8 +164,11 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 
 Tema desconocido · falta `En corto` o `Estado` · una spec sin fases · un código
 que no empieza por la letra de su tema · **dos specs con el mismo código** · un
-estado de fase que no es `hecho`/`pendiente`/`aparcado` · una `§` que apunta a
-un encabezado que no existe · un fallo de la auditoría sin `> En corto:`.
+estado de fase que no es `pendiente`/`hecho`/`terminado`/`aparcado` · una `§`
+que apunta a un encabezado que no existe · un fallo de la auditoría sin
+`> En corto:` · una fase `hecho` sin lista de pruebas · una `terminado` con
+casillas sin marcar · un `**Probar X**` sin casillas o de una fase que no es de
+esa spec · un `**Probar en dispositivo.**` del formato antiguo.
 
 Lo que **no** puede comprobar: que la palabra de la cabecera y el ✅ de la tabla
 digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.

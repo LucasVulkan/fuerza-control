@@ -2,11 +2,11 @@
 
 > Tema: programas
 > En corto: Limpieza del modelo de datos: cada programa tiene un dueño, las sesiones viven en un solo diccionario y desaparece el espejo de días que se desincronizaba.
-> Fase P07 · hecho · `owner` + `kind`: un dueño por programa, sin sesiones huérfanas · §6
-> Fase P08 · hecho · `sessions`: un solo diccionario de sesiones · §6
-> Fase P09 · hecho · Sin espejo: `program.days` deja de duplicar la etapa activa · §6
+> Fase P07 · terminado · `owner` + `kind`: un dueño por programa, sin sesiones huérfanas · §6
+> Fase P08 · terminado · `sessions`: un solo diccionario de sesiones · §6
+> Fase P09 · terminado · Sin espejo: `program.days` deja de duplicar la etapa activa · §6
 >
-> **Probar en dispositivo.** Un programa propio y uno de cliente abiertos en
+> **Probado en dispositivo.** Un programa propio y uno de cliente abiertos en
 > el editor y en la ficha: que ninguno cambia de dueño, que las sesiones se
 > ven donde tocan y que el historial del cliente sigue en su cajón.
 >

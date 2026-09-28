@@ -3,8 +3,8 @@
 > Tema: conexión
 > En corto: Para clientes que no usan la app, el entrenador entrena con ellos desde su ficha o apunta después lo que hicieron; si el cliente se conecta más tarde, recibe todo lo apuntado.
 > Fase C19 · hecho · Entrenar y apuntar para un cliente sin conectar · §3
-> Fase C28 · pendiente · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
-> Fase C20 · pendiente · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
+> Fase C28 · hecho · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
+> Fase C20 · hecho · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
 > Fase C21 · pendiente · Compartir una sesión como texto · §5
 > Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
 >
@@ -227,23 +227,22 @@ los clientes.
 
 ### 3.8 Probar en dispositivo
 
-> **Probar en dispositivo.** Cliente sin conectar con programa: la ficha enseña
-> SESIONES con la que toca en lima. EMPEZAR SESIÓN B → el Workout sale con los
-> pesos del **cliente**, no con los tuyos, y con reloj y descansos. Guardar: la
-> entrada aparece en el historial del cliente, sube su «N de M» y su etapa, y
-> **tu** historial no cambia.
+**Probar C19**
 
-> **Probar en dispositivo.** Apuntar sesión pasada → la A → hace 3 días. El
-> Workout no tiene reloj, y marcar series **no** lanza el descanso ni su
-> notificación. En el historial del cliente aparece en ese día, y la carga la
-> cuenta con la duración estimada.
-
-> **Probar en dispositivo.** Salir del Workout de un cliente a medias: Inicio
-> muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
-> puede continuar desde cualquiera de los dos.
-
-> **Probar en dispositivo.** Inicio se ve **idéntico** tras mover `TodayCard` y
-> `SessionRow` a `SessionList.jsx`.
+- [ ] Cliente sin conectar con programa: la ficha enseña
+  SESIONES con la que toca en lima. EMPEZAR SESIÓN B → el Workout sale con los
+  pesos del **cliente**, no con los tuyos, y con reloj y descansos. Guardar: la
+  entrada aparece en el historial del cliente, sube su «N de M» y su etapa, y
+  **tu** historial no cambia.
+- [ ] Apuntar sesión pasada → la A → hace 3 días. El
+  Workout no tiene reloj, y marcar series **no** lanza el descanso ni su
+  notificación. En el historial del cliente aparece en ese día, y la carga la
+  cuenta con la duración estimada.
+- [ ] Salir del Workout de un cliente a medias: Inicio
+  muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
+  puede continuar desde cualquiera de los dos.
+- [ ] Inicio se ve **idéntico** tras mover `TodayCard` y
+  `SessionRow` a `SessionList.jsx`.
 
 ## 4. Con app o sin app
 
@@ -376,22 +375,21 @@ ya está cerrada.
 
 #### 4.0.7 Probar en dispositivo
 
-> **Probar en dispositivo.** Crear un cliente «Le apuntas tú», asignarle un
-> programa y editarlo: **no** sale «Cambios sin enviar» en ningún momento, y su
-> ficha tiene EMPEZAR. Info › Conexión dice «Sin app».
+**Probar C28**
 
-> **Probar en dispositivo.** Crear un cliente «Entrena con la app» sin programa:
-> la tarjeta del código pide asignarle uno. Asignarlo: sin aviso de cambios, y
-> el código ya se puede canjear. La ficha no tiene EMPEZAR y la tarjeta de la
-> lista dice «Esperando código».
-
-> **Probar en dispositivo (dos móviles).** El cliente canjea el código con la
-> app del entrenador abierta en otra pestaña. Al volver a Clientes, su tarjeta
-> ya no dice «Esperando código», y un cambio en su programa sí saca el aviso.
-
-> **Probar en dispositivo.** Un cliente sin app → Pasar a la app → GENERAR
-> CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
-> vuelve EMPEZAR y el código viejo ya no sirve.
+- [ ] Crear un cliente «Le apuntas tú», asignarle un
+  programa y editarlo: **no** sale «Cambios sin enviar» en ningún momento, y su
+  ficha tiene EMPEZAR. Info › Conexión dice «Sin app».
+- [ ] Crear un cliente «Entrena con la app» sin programa:
+  la tarjeta del código pide asignarle uno. Asignarlo: sin aviso de cambios, y
+  el código ya se puede canjear. La ficha no tiene EMPEZAR y la tarjeta de la
+  lista dice «Esperando código».
+- [ ] (dos móviles) El cliente canjea el código con la
+  app del entrenador abierta en otra pestaña. Al volver a Clientes, su tarjeta
+  ya no dice «Esperando código», y un cambio en su programa sí saca el aviso.
+- [ ] Un cliente sin app → Pasar a la app → GENERAR
+  CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
+  vuelve EMPEZAR y el código viejo ya no sirve.
 
 ### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 
@@ -418,8 +416,15 @@ Lo que falta es que el entrenador suba lo apuntado.
 - Sube `clientLogs[clientId]`, sus ejercicios propios y
   `athleteProgress(program, client)` con `uploadHistory`, el mismo formato que
   sube un cliente.
-- Añade `source: 'trainer'` al payload, para que la hoja del cliente sepa de
-  dónde viene (§4.3).
+- **Implementado sin `source: 'trainer'`**: el cliente no puede leer el hueco
+  antes de canjearlo (lo único público es `program_name`, `is_linked`,
+  `history_updated_at` y `trainer_name`), así que la marca no llegaría a la hoja.
+  La hoja se guía por lo que sí ve (§4.3).
+- El progreso sube con el sello de activación del propio programa
+  (`progressBlob(program, program.stageActivatedAt)`), así que al restaurar
+  `mergeProgressOnImport` da por buena esa posición.
+- Tras subir, el entrenador marca esas entradas como vistas: son suyas y no
+  deben salir como «sin revisar».
 
 Se llama al **pasar a la app** (§4.0.5), justo después de generar el código.
 Desde la C28 un cliente con código ya no recibe entrenos apuntados, así que
@@ -436,10 +441,14 @@ entrenar con la app.
 
 ### 4.3 Lo que ve el cliente
 
-Si el historial remoto trae `source: 'trainer'`:
-- La hoja del código **preselecciona fusionar** (hoy preselecciona «Solo el
-  programa», `ClientCodeModal.jsx:55`).
-- El texto dice «Tu entrenador ha apuntado {n} entrenos tuyos».
+Si el hueco **tiene historial y nadie lo ha canjeado** (`hasRemoteHistory &&
+!alreadyLinked`), ese historial solo puede ser lo que apuntó el entrenador o la
+copia del propio cliente antes de reinstalar. En los dos casos fusionar es lo
+que se quiere:
+- La hoja del código **preselecciona fusionar** (antes, «Solo el programa»).
+- Encima, una línea: «Tu entrenador ya te ha apuntado entrenos: fusiona el
+  historial para verlos en el tuyo». **Sin el número**: saberlo exigiría
+  publicar más columnas del hueco (SQL), y no compensa.
 - El progreso se restaura siempre, como hoy. Lo fusiona `mergeProgressOnImport`,
   que ya prioriza una activación de etapa más reciente.
 
@@ -454,15 +463,19 @@ dice «Entrena con su app: lo que haga te llega solo» (clave nueva
 
 ### 4.4 Probar en dispositivo (dos móviles)
 
-> **Probar en dispositivo (dos móviles).** Entrenador: cliente sin conectar,
-> registrar 3 sesiones en días distintos. Dar el código. Cliente: canjear → la
-> hoja dice «Tu entrenador ha apuntado 3 entrenos» con fusionar marcado. Tras
-> conectar, el cliente ve las 3 en su historial, su etapa va por donde iba y su
-> Inicio marca las sesiones de esta semana.
+**Probar C20**
 
-> **Probar en dispositivo (dos móviles).** Tras la conexión, el cliente entrena
-> una sesión. El entrenador la recibe y **no** aparecen duplicadas las 3
-> anteriores. En la ficha ya no sale EMPEZAR y la pista explica por qué.
+- [ ] (dos móviles) Entrenador: cliente sin app, registrar 3 sesiones en días
+  distintos. Info › Conexión › Pasar a la app: la hoja dice «los 3 entrenos que
+  le apuntaste» → GENERAR CÓDIGO. Cliente: canjear → la hoja dice «Tu
+  entrenador ya te ha apuntado entrenos» con fusionar marcado. Tras conectar,
+  el cliente ve las 3 en su historial, su etapa va por donde iba y su Inicio
+  marca las sesiones de esta semana.
+- [ ] Tras «Pasar a la app», la tarjeta del cliente en la lista **no** dice
+  «3 sin revisar»: esas 3 son tuyas.
+- [ ] (dos móviles) Tras la conexión, el cliente entrena
+  una sesión. El entrenador la recibe y **no** aparecen duplicadas las 3
+  anteriores. En la ficha ya no sale EMPEZAR y la pista explica por qué.
 
 ## 5. Fase C21 — Compartir una sesión como texto
 
@@ -559,12 +572,13 @@ preguntar una vez.
 
 ### 6.5 Probar en dispositivo
 
-> **Probar en dispositivo.** Compartir una sesión como texto por WhatsApp,
-> añadir números como lo haría un cliente, copiarlo y pegarlo: todos los
-> ejercicios se reconocen y el Workout sale relleno.
+**Probar C22**
 
-> **Probar en dispositivo.** Pegar un texto escrito a mano con «banca»: pide
-> elegir el ejercicio. En el segundo texto con «banca» ya no lo pide.
+- [ ] Compartir una sesión como texto por WhatsApp,
+  añadir números como lo haría un cliente, copiarlo y pegarlo: todos los
+  ejercicios se reconocen y el Workout sale relleno.
+- [ ] Pegar un texto escrito a mano con «banca»: pide
+  elegir el ejercicio. En el segundo texto con «banca» ya no lo pide.
 
 ## 7. Fuera de alcance
 
@@ -586,7 +600,7 @@ preguntar una vez.
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
 | C19 ✅ `6416dd9` | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso». COMPARTIR en las filas llega con la C21. Tests en `useStore.test.js` («el entrenador apunta por el cliente») | — | Pruebas de §3.8 |
-| C28 | §4.0: `clientLink`, alta con dos opciones, subida silenciosa del invitado, Info › Conexión por estado, tarjeta del código y hoja de nuevo programa al lenguaje actual, refresco al enfocar | C19 | Pruebas de §4.0.7 |
-| C20 | §4: subir lo apuntado al pasar a la app, guarda anti-pisado, hoja del cliente, pista en la ficha | C19, C28 | Pruebas de §4.4, con dos móviles |
+| C28 ✅ `a3fc21e` | §4.0: `clientLink` (con test), alta con dos opciones, subida silenciosa del invitado (un suscriptor del store), Info › Conexión por estado, tarjeta del código rehecha, caja «Sin programa activo» sin borde, refresco al enfocar. La hoja de nuevo programa ya usaba las piezas de Plantillas: solo cambió la caja vacía. Tests en `useStore.test.js` («con app o sin app») | C19 | Pruebas de §4.0.7 |
+| C20 ✅ `a3fc21e` | §4: `pushTrainerLogToSlot` al pasar a la app, guarda anti-pisado, preselección de fusionar en la hoja del cliente. Sin `source` ni número de entrenos (§4.2-4.3) | C19, C28 | Pruebas de §4.4, con dos móviles |
 | C21 | §5: `sessionToText` + COMPARTIR | C19 (las filas donde vive el botón) | Test de ida y vuelta |
 | C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |

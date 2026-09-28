@@ -150,17 +150,17 @@ quiere.
 
 ### 3.4 Probar en dispositivo
 
-> **Probar en dispositivo.** Crear un grupo con el entrenador en modo nube: no
-> aparece código de conexión, la ficha tiene Programa · Clases · Info, y el grupo
-> sale en la sección GRUPOS de la lista, no en «requiere atención» aunque no
-> tenga clases.
+**Probar C23**
 
-> **Probar en dispositivo.** Entrenador sin grupos: la lista de clientes se ve
-> **idéntica** a antes (sin etiquetas de sección).
-
-> **Probar en dispositivo.** Grupo sin programa y con 3 sesiones libres (tras la
-> C24): la tarjeta dice «3 sesiones», sin aviso de programa, y **Pizarra** abre
-> la hoja para elegir clase. Dos toques hasta la pizarra.
+- [ ] Crear un grupo con el entrenador en modo nube: no
+  aparece código de conexión, la ficha tiene Programa · Clases · Info, y el grupo
+  sale en la sección GRUPOS de la lista, no en «requiere atención» aunque no
+  tenga clases.
+- [ ] Entrenador sin grupos: la lista de clientes se ve
+  **idéntica** a antes (sin etiquetas de sección).
+- [ ] Grupo sin programa y con 3 sesiones libres (tras la
+  C24): la tarjeta dice «3 sesiones», sin aviso de programa, y **Pizarra** abre
+  la hoja para elegir clase. Dos toques hasta la pizarra.
 
 ## 4. Fase C24 — Sesiones libres de un cliente o de un grupo
 
@@ -229,13 +229,14 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
 
 ### 4.5 Probar en dispositivo
 
-> **Probar en dispositivo (dos móviles).** El entrenador crea una sesión libre
-> para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
-> {entrenador}», sin EDITAR, y puede hacerla. El entrenador la borra y reenvía:
-> desaparece del móvil del cliente, y el historial del cliente la conserva.
+**Probar C24**
 
-> **Probar en dispositivo.** Crear una sesión libre para un grupo: aparece en su
-> ficha con PIZARRA y **no** en tu Inicio.
+- [ ] (dos móviles) El entrenador crea una sesión libre
+  para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
+  {entrenador}», sin EDITAR, y puede hacerla. El entrenador la borra y reenvía:
+  desaparece del móvil del cliente, y el historial del cliente la conserva.
+- [ ] Crear una sesión libre para un grupo: aparece en su
+  ficha con PIZARRA y **no** en tu Inicio.
 
 ### 4.6 Fase C27 — Plantillas de sesión
 
@@ -279,9 +280,11 @@ acción duplica con `owner: 'me'`):
 debajo, tus plantillas de sesión (misma forma que `NewProgramSheet`). Es la misma
 copia que Asignar.
 
-> **Probar en dispositivo.** Plantillas → Sesiones → + Plantilla: se abre el
-> editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
-> su ficha. Editar la del cliente no cambia la plantilla.
+**Probar C27**
+
+- [ ] Plantillas → Sesiones → + Plantilla: se abre el
+  editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
+  su ficha. Editar la del cliente no cambia la plantilla.
 
 ## 5. Fase C25 — Modo pizarra
 
@@ -356,10 +359,12 @@ que la pizarra habla como «lo que toca». Vertical siempre (decisión §2.3).
 
 ### 5.3 Probar en dispositivo
 
-> **Probar en dispositivo.** Desde la lista de clientes, Pizarra · B de un grupo
-> abre la clase que toca en un toque. Con un AMRAP, en el móvil y en una tablet,
-> a un metro: se lee sin acercarse, la pantalla no se apaga y el reloj del AMRAP
-> funciona.
+**Probar C25**
+
+- [ ] Desde la lista de clientes, Pizarra · B de un grupo
+  abre la clase que toca en un toque. Con un AMRAP, en el móvil y en una tablet,
+  a un metro: se lee sin acercarse, la pantalla no se apaga y el reloj del AMRAP
+  funciona.
 
 ## 6. Fase C26 — Clase dada
 
@@ -395,12 +400,13 @@ Al pulsar TERMINAR CLASE en la pizarra, o **Apuntar clase dada** en la ficha
 - **Los grupos no entran en la carga**: no tienen Progreso (§3.3), así que el
   panel de carga no se pinta. Ninguna otra pantalla lee el log de un grupo.
 
-**Probar en dispositivo.**
-> **Probar en dispositivo.** Grupo con programa A/B/C: dar la A desde la pizarra
-> y TERMINAR CLASE con 12 asistentes. En la ficha la siguiente pasa a ser la B,
-> la tarjeta de la lista dice «Pizarra · B» y «1/3 esta semana · 12 asist.», y la
-> pestaña Clases muestra la A de hoy. Apuntar desde la ficha una clase de ayer:
-> aparece en su día.
+**Probar C26**
+
+- [ ] Grupo con programa A/B/C: dar la A desde la pizarra
+  y TERMINAR CLASE con 12 asistentes. En la ficha la siguiente pasa a ser la B,
+  la tarjeta de la lista dice «Pizarra · B» y «1/3 esta semana · 12 asist.», y la
+  pestaña Clases muestra la A de hoy. Apuntar desde la ficha una clase de ayer:
+  aparece en su día.
 
 ## 7. Orden
 

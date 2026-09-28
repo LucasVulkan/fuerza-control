@@ -2,14 +2,14 @@
 
 > Tema: programas
 > En corto: En vez de inventar el programa ejercicio a ejercicio, se parte de plantillas reales que se adaptan a los días, el material y el tiempo de cada uno.
-> Fase P10 · hecho · Resolvedor de slots · §5.2
-> Fase P11 · hecho · Escalera de compresión + `DISCIPLINE_RULES` · §5.3
-> Fase P12 · hecho · Sesiones cortas: presupuesto sin calentamiento y superserie de opuestos · §5.3.1
-> Fase P13 · hecho · Normalizador de volumen + `volumeEmphasis` · §5.4
-> Fase P14 · hecho · Vincular lo repetido en el ciclo · §5.5
-> Fase P15 · hecho · `phases` → N etapas: las 11 plantillas duran 8-9 semanas · §6
-> Fase P16 · hecho · `rankArchetypes` + retirada del generador procedural · §7
-> Fase P17 · hecho · Onboarding de propuestas (se hizo aparte, ver O02) · §8
+> Fase P10 · terminado · Resolvedor de slots · §5.2
+> Fase P11 · terminado · Escalera de compresión + `DISCIPLINE_RULES` · §5.3
+> Fase P12 · terminado · Sesiones cortas: presupuesto sin calentamiento y superserie de opuestos · §5.3.1
+> Fase P13 · terminado · Normalizador de volumen + `volumeEmphasis` · §5.4
+> Fase P14 · terminado · Vincular lo repetido en el ciclo · §5.5
+> Fase P15 · terminado · `phases` → N etapas: las 11 plantillas duran 8-9 semanas · §6
+> Fase P16 · terminado · `rankArchetypes` + retirada del generador procedural · §7
+> Fase P17 · terminado · Onboarding de propuestas (se hizo aparte, ver O02) · §8
 > Fase P18 · pendiente · Reglas de integridad en el harness · §9
 > Fase P19 · pendiente · Catálogo: faltan Fuerza-3 intermedio y la tracción sin material · §11
 >

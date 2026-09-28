@@ -2,8 +2,8 @@
 
 > Tema: onboarding
 > En corto: El alta del usuario nuevo en tres preguntas y tres portadas, en vez del cuestionario largo. La revisión 1 se rechazó en QA porque no se parecía a la app; esta es la 2.
-> Fase O01 · hecho · Revisión 2: tres preguntas y tres portadas, con la UI de la app · §2
-> Fase O03 · hecho · Las cuatro pantallas que quedaban con la UI vieja · §14
+> Fase O01 · terminado · Revisión 2: tres preguntas y tres portadas, con la UI de la app · §2
+> Fase O03 · terminado · Las cuatro pantallas que quedaban con la UI vieja · §14
 >
 > Estado: **revisión 2 implementada** (ago 2026) y **O03 implementada** (3-sep-2026,
 > §14: setup, selector de modo, programa vacío y cargar plantilla), las dos
@@ -453,7 +453,7 @@ onboarding **web**. `grep -rn "<clave>" src/` antes de borrar cualquier cosa.
 - Actualizar la fila de **Onboarding** en `mobile/docs/UI-MIGRATION.md` §1 y su
   desglose: los tres componentes portados del web ya no existen.
 
-**Probar en dispositivo.** Los cinco caminos del selector, y el nuevo entero:
+**Probado en dispositivo.** Los cinco caminos del selector, y el nuevo entero:
 tres preguntas con auto-avance y vuelta atrás sin perder respuestas → elegir
 tarjeta → abrir la hoja y mover las tres secciones viendo cambiar los tres datos
 → desplegar el panel → «ver otro programa» → EMPEZAR y EDITAR.

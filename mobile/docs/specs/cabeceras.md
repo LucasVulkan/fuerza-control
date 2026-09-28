@@ -2,8 +2,8 @@
 
 > Tema: ui
 > En corto: La barra lima de las cabeceras estaba copiada cinco veces y se caía con nombres reales; pasa a un componente único sobre el fondo de la app, y de paso los dos últimos modales de Clientes pasan a hoja.
-> Fase U10 · hecho · Cabecera única, fuera de la banda accent, y las dos hojas que faltaban en Clientes · §2
-> Fase U11 · hecho · La cabecera pasa a barra: gris arriba, nombre debajo, regla segmentada · §6
+> Fase U10 · terminado · Cabecera única, fuera de la banda accent, y las dos hojas que faltaban en Clientes · §2
+> Fase U11 · terminado · La cabecera pasa a barra: gris arriba, nombre debajo, regla segmentada · §6
 >
 > Estado: **U10 implementada y PROBADA EN DISPOSITIVO** (4-sep-2026): tres
 > commits —`0ca9dd5` cabecera, `a0d49bc` Workout, `cd61d02` hojas de Clientes—
@@ -350,7 +350,7 @@ Una barra de **56** de alto, alineada a la izquierda:
 - **`ProgressRule` de WorkoutScreen**, que pasa a ser `HeaderRule`, y los tres
   puntos del onboarding con sus dos estilos.
 
-**Probar en dispositivo.** Las tres pantallas con datos reales: que el nombre
+**Probado en dispositivo.** Las tres pantallas con datos reales: que el nombre
 largo trunque y no empuje al icono de notas fuera, que la regla del onboarding
 avance al pasar de pregunta, y que el teclado del campo de peso siga dejando la
 fila activa visible en Workout (cambió `keyboardVerticalOffset`).

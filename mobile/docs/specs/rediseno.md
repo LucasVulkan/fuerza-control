@@ -2,13 +2,13 @@
 
 > Tema: ui
 > En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
-> Fase U01 · hecho · Borrar la app web y traer el motor dentro de `mobile/` · §2
-> Fase U02 · hecho · Sacar la sesión en curso del blob persistido · §3
+> Fase U01 · terminado · Borrar la app web y traer el motor dentro de `mobile/` · §2
+> Fase U02 · terminado · Sacar la sesión en curso del blob persistido · §3
 > Fase U03 · aparcado · Recortes de features: sólo se hizo el generador · §4
-> Fase U04 · hecho · Terminar la migración de Workout · §5
+> Fase U04 · terminado · Terminar la migración de Workout · §5
 > Fase U05 · aparcado · Publicar — no es de esta spec, ver §6 · §6
 >
-> **Probar en dispositivo.** Arrancar sobre datos ya existentes tras la
+> **Probado en dispositivo.** Arrancar sobre datos ya existentes tras la
 > mudanza a `mobile/` y comprobar que la sesión en curso sobrevive a cerrar y
 > reabrir la app, ahora que vive fuera del blob persistido.
 >
@@ -675,7 +675,7 @@ La auditoría también está cerrada: **26/26**
 ([auditoria-tecnica.md](auditoria-tecnica.md)), no 11 abiertos como decía esta
 sección.
 
-**Probar en dispositivo.** Las 5 partes de Workout, con la lista de estados de
+**Probado en dispositivo.** Las 5 partes de Workout, con la lista de estados de
 `workout-screen-migration.md` §12: serie activa/hecha/vacía, card
 auto-colapsando, dropset, superserie (A1/A2), calentamiento sin referencia,
 coach target, sesión libre, cada tipo de bloque (idle/running/finished), timer de

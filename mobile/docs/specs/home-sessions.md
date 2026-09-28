@@ -2,17 +2,17 @@
 
 > Tema: ui
 > En corto: El banner lima deja de ser del programa y pasa a ser la sesión que toca; el programa baja a una tarjeta que se comparte con la ficha de cliente, y las tres frases que dan por hecho que entrenas rotando salen de la pantalla a una función.
-> Fase U06 · hecho · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
-> Fase U07 · hecho · `ProgramCard` compartida con `ClientsScreen` · §4
-> Fase U08 · hecho · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
-> Fase U09 · hecho · Plantillas de sesión libre · §7
+> Fase U06 · terminado · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3
+> Fase U07 · terminado · `ProgramCard` compartida con `ClientsScreen` · §4
+> Fase U08 · terminado · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5
+> Fase U09 · terminado · Plantillas de sesión libre · §7
 >
-> **Probar en dispositivo.** El acento pasa a estar en pantalla todos los días
+> **Probado en dispositivo.** El acento pasa a estar en pantalla todos los días
 > (antes marcaba «programa activo», ahora «te toca entrenar»). Hay que mirar si
 > cansa con uso real y si el hero se distingue del bloque de programa a media
 > distancia. Es lo único de esta spec que no se puede decidir sobre el mock.
 >
-> **Probar en dispositivo.** Con el bloque de programa al final, el nombre del
+> **Probado en dispositivo.** Con el bloque de programa al final, el nombre del
 > programa deja de verse al abrir la app (hay que bajar ~500 px). Comprobar si
 > molesta en uso diario o si da igual porque ya sabes qué programa llevas.
 >
