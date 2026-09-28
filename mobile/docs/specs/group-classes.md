@@ -6,6 +6,7 @@
 > Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
 > Fase C25 · pendiente · Modo pizarra · §5
 > Fase C26 · pendiente · Clase dada · §6
+> Fase C27 · pendiente · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de la misma
 > sesión de diseño que [trainer-logging.md](trainer-logging.md). Escrita después
@@ -236,6 +237,48 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
 > **Probar en dispositivo.** Crear una sesión libre para un grupo: aparece en su
 > ficha con PIZARRA y **no** en tu Inicio.
 
+### 4.6 Fase C27 — Plantillas de sesión
+
+Idea del usuario (28-sep): asignar sesiones sueltas desde la pestaña
+**Plantillas**, igual que se asignan programas.
+
+**No hay modelo nuevo.** Las plantillas de sesión **son tus sesiones libres**
+(`owner === 'me'`, `programId: null`), las mismas que ya salen en Inicio y en
+«Mis sesiones libres». Lo que decide si una sale en tu Inicio es el interruptor
+«Mostrar en Inicio» (`onHome`, free-sessions §4.1) que ya tiene el editor. Una
+colección aparte duplicaría el concepto, y un entrenador que se hace su propia
+rutina de movilidad es la misma plantilla que manda a un cliente.
+
+**La pestaña** (`ProgramScreen.jsx`):
+- Bajo la cabecera, un `SegmentedControl` **Programas / Sesiones**. La cabecera
+  dice «PLANTILLAS · N» con el número del segmento, y **+ Plantilla** crea lo
+  del segmento.
+- **Sesiones**: una tarjeta por sesión libre mía, con el mismo `TemplateCard`
+  (nombre + 3 cifras: ejercicios, bloques y minutos, de `sessionStats`) y
+  **Asignar**. Orden: nombre.
+- **+ Plantilla** en Sesiones: `createFreeTemplate()` con `onHome: false`
+  (es para asignar, no para tu Inicio) → editor en modo libre.
+- **Tocar la tarjeta** → hoja: Editar, Duplicar, Eliminar
+  (`deleteFreeTemplate`). Duplicar = `createFreeTemplate(presetFromTemplate)`
+  con el sufijo « (copia)» de las plantillas de programa.
+
+**Asignar** (`assignFreeTemplate(templateId, clientId)`, store):
+- **Copia** la sesión con id nuevo y `owner: clientId`, como `cloneProgramFromTemplate`
+  copia un programa. Editar la del cliente no toca la plantilla, y al revés.
+- Hoja de asignar: la lista de clientes individuales de `AssignSheet` sin el
+  aviso de «reemplaza» (una sesión no sustituye a nada), sin campo de nombre, y
+  con **Asignar**. Tras asignar, toast y la hoja se cierra: no se abre el
+  editor, porque lo normal es mandarla tal cual.
+- Si el cliente está conectado, queda **pendiente de reenviar** (§4.2, firma).
+
+**Desde la ficha** (§4.1): «＋ Sesión libre» abre una hoja con **En blanco** y,
+debajo, tus plantillas de sesión (misma forma que `NewProgramSheet`). Es la misma
+copia que Asignar.
+
+> **Probar en dispositivo.** Plantillas → Sesiones → + Plantilla: se abre el
+> editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
+> su ficha. Editar la del cliente no cambia la plantilla.
+
 ## 5. Fase C25 — Modo pizarra
 
 ### 5.1 Desde dónde se abre
@@ -397,6 +440,11 @@ cuenta sesiones, no días).
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
 | C23 | §3: `kind: 'group'`, sin slot, sección GRUPOS con su tarjeta, ficha y hoja de alta | — | Pruebas de §3.4 |
-| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21, C23 | Pruebas de §4.5 (una con dos móviles) |
+| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21 (C23 solo para la parte de grupos) | Pruebas de §4.5 (una con dos móviles) |
 | C25 | §5: lista de sesiones del grupo con PIZARRA, `BoardScreen` con bloques y pantalla encendida, tras la ronda de maquetas | C23, lista de sesiones de C19 | Prueba de §5.3 |
 | C26 | §6: `logClass`, hoja de clase dada, pestaña Clases | C23, C25 | Prueba de §6 |
+| C27 | §4.6: segmentado Programas / Sesiones en Plantillas, `assignFreeTemplate`, hoja de «＋ Sesión libre» en la ficha | C24 (la sección de la ficha) | Prueba de §4.6 |
+
+**Orden de implementación acordado (28-sep)**: clientes individuales primero.
+C19 ([trainer-logging.md](trainer-logging.md)) → C24 **sin grupos** + C27. Los
+grupos (C23, C25, C26) después.
