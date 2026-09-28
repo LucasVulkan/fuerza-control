@@ -179,6 +179,14 @@ describe('textos reales', () => {
   });
 });
 
+describe('textos reales, la cabecera', () => {
+  it('QA 28-sep: el nombre del cliente en su propia línea no se come la de la sesión', () => {
+    const { header, lines } = parseSessionText('Ana García\nSesión A · Sesión A\nBurpee · 3 series: ok');
+    expect(header).toEqual(['Ana García', 'Sesión A', 'Sesión A']);
+    expect(lines.map((l) => l.name)).toEqual(['Burpee']);
+  });
+});
+
 describe('parseSessionText', () => {
   it('cabecera, líneas nuestras, a mano, notas e instrucciones', () => {
     const { header, lines } = parseSessionText([

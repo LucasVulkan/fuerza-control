@@ -611,8 +611,10 @@ pesos y `ok` con rango dejaba las reps en blanco.
 
 ### 6.2 Formato
 
-Una línea a la vez. La primera, si no lleva dos puntos y tiene ` · ` o ningún
-número, es la **cabecera**: `Ana García · Sesión C · Pierna fuerza`.
+Una línea a la vez. Las de antes del primer ejercicio que no llevan dos puntos
+y tienen ` · ` o ningún número son la **cabecera**: `Ana García · Sesión C ·
+Pierna fuerza`. Todas, no solo la primera: el nombre añadido a mano en su
+propia línea se comía la de la sesión (QA 28-sep).
 
 - **El texto de la app (§5.2)**: se parte por el **primer `:`** (no el último:
   un for time se contesta `12:30`). Lo de delante se sabe: nombre hasta el
@@ -690,7 +692,8 @@ De arriba abajo:
 3. **Qué sesión**: las de su etapa, con su letra; debajo, bajo «Sesiones
    libres», las suyas por su nombre («Sesión libre» si no tiene). Marcada la que diga
    la cabecera («Sesión C» en cualquiera de los dos idiomas, o el nombre de la
-   sesión); si no, la que le toca. **Cuándo**: los 7 días de «Apuntar sesión
+   sesión), que **manda**; si no la dice, la que más ejercicios comparte con
+   el texto; y solo si no, la que le toca. **Cuándo**: los 7 días de «Apuntar sesión
    pasada», hoy marcado.
 4. **Lo que se ha entendido**: una fila por línea con el ejercicio y lo
    entendido («4 × 6 · 100 kg», «No lo hizo»). «añadido» si no está en la

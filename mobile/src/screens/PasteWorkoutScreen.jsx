@@ -114,13 +114,24 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   const clientId = lockedClientId ?? pickedId ?? (named && !namedOnline ? named.id : null);
   const client   = clients[clientId] ?? null;
 
-  // ── Qué sesión ── La que diga la cabecera; si no, la que le toca.
+  // ── Qué sesión ── La que diga la cabecera, que manda; si no, la que se
+  // parezca al texto; si no, la que le toca.
   const sessions = useMemo(() => sessionsOf(client, programs, sessionTemplates, t('freeSession.templateUnnamed')), [client, programs, sessionTemplates, t]);
   const log = clientLogs[clientId] ?? [];
   const headerTpl = sessions.find((s) => s.label && labelKeys(s.label).some((k) => headerKeys.has(k)))
     ?? sessions.find((s) => s.name && headerKeys.has(normName(s.name)));
+  // Sin cabecera que la diga (texto a mano, o la borraron): la que más
+  // ejercicios comparte con el texto. Solo si no, la que le toca.
+  const findAny = useMemo(() => exerciseIndex(allExercises, exerciseAliases ?? {}), [allExercises, exerciseAliases]);
+  const textIds = new Set(parsed.lines.filter((l) => !l.ignored && !l.block).map((l) => findAny(l.name)).filter(Boolean));
+  let byExercises = null;
+  let most = 0;
+  sessions.forEach((s) => {
+    const n = (sessionTemplates[s.templateId]?.exercises ?? []).filter((e) => textIds.has(e.exerciseId)).length;
+    if (n > most) { most = n; byExercises = s.templateId; }
+  });
   const hero = sessionPlan({ days: sessions.filter((s) => s.label).map((s) => ({ templateId: s.templateId, label: s.label })), log, t }).heroTemplateId;
-  const tplId = [pickedTpl, headerTpl?.templateId, hero, sessions[0]?.templateId]
+  const tplId = [pickedTpl, headerTpl?.templateId, byExercises, hero, sessions[0]?.templateId]
     .find((id) => id && sessions.some((s) => s.templateId === id)) ?? null;
   const template = sessionTemplates[tplId] ?? null;
 

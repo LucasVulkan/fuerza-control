@@ -224,9 +224,12 @@ export function parseSessionText(text) {
     const clean = raw.replace(/[*_~]/g, '').trim();
     if (!clean) return;
     const colon = clean.indexOf(':');
-    // La cabecera: la primera línea, sin dos puntos, con ` · ` o sin números.
-    if (!header && !lines.length && colon < 0 && (clean.includes(SEP) || !/\d/.test(clean))) {
-      header = clean.split(SEP).map((x) => x.trim()).filter(Boolean);
+    // La cabecera: las líneas de antes del primer ejercicio, sin dos puntos y
+    // con ` · ` o sin números. Todas, no solo la primera: quien añade el nombre
+    // del cliente a mano lo pone en su propia línea (QA 28-sep), y la de
+    // «Sesión A» se quedaba fuera.
+    if (!lines.length && colon < 0 && (clean.includes(SEP) || !/\d/.test(clean))) {
+      header = [...(header ?? []), ...clean.split(SEP).map((x) => x.trim()).filter(Boolean)];
       return;
     }
     const ignored = { raw, ignored: true };
