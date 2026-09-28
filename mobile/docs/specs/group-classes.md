@@ -245,7 +245,7 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
   los entrenos que ya hizo con la anterior siguen en su historial.
 - [ ] (dos móviles) El entrenador la borra y reenvía: desaparece del móvil del
   cliente, y el historial del cliente la conserva.
-- [ ] Cliente con app **sin programa**: al asignarle una plantilla de sesión
+- [x] Cliente con app **sin programa**: al asignarle una plantilla de sesión
   (Plantillas › Sesiones) su fila dice «Necesita tener un programa asignado
   para recibir sesiones libres», y la hoja de «＋ Sesión libre» de su ficha lo
   dice arriba. Un cliente sin app o con programa no lo ve (§4.6).
