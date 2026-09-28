@@ -36,8 +36,9 @@ export function useEditorExit(navigation, templateId = null) {
     const st = useStore.getState();
     const tpl = templateId ? st.sessionTemplates[templateId] : null;
     if (tpl && !tpl.programId) {
-      // ponytail: el dueño siempre es 'me' hasta group-classes.md §4.2; ahí esto
-      // marcará a ESE cliente como pendiente de reenviar.
+      // La de un cliente viaja con su programa: queda pendiente de enviar
+      // (group-classes.md §4.2).
+      if ((tpl.owner ?? 'me') !== 'me') st.markClientDirty(tpl.owner);
       showToast(t('freeSession.toastSaved'), 2200, 'success');
       return;
     }

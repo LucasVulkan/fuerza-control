@@ -1,11 +1,14 @@
 /**
- * ClientSessions — la ficha de un cliente SIN app: sus sesiones como las vería
- * él en su Inicio, con EMPEZAR, y la puerta para apuntar lo que ya hizo
- * (docs/specs/trainer-logging.md §3.1-3.2).
+ * ClientSessions — la ficha de un cliente: sus sesiones y sus sesiones libres.
  *
- * El entrenador hace de su app, así que las piezas son las de Inicio
- * (`SessionList`), leídas contra el historial del cliente. La ficha de un
- * cliente conectado no usa esto: allí entrena él.
+ * `ClientSessions` es la de un cliente SIN app: sus sesiones como las vería él
+ * en su Inicio, con EMPEZAR, y la puerta para apuntar lo que ya hizo
+ * (docs/specs/trainer-logging.md §3.1-3.2). El entrenador hace de su app, así
+ * que las piezas son las de Inicio (`SessionList`), leídas contra el historial
+ * del cliente. La ficha de un cliente conectado no la usa: allí entrena él.
+ *
+ * `ClientFreeSessions` son sus sesiones libres, con y sin app
+ * (docs/specs/group-classes.md §4.1 y §4.6).
  */
 import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
@@ -16,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import DragSheet from './DragSheet';
+import { MenuRow } from './ui/MenuList';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
 import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
@@ -32,6 +36,40 @@ function PencilGlyph({ color }) {
       <Path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
     </Svg>
   );
+}
+
+function lastOfIn(log, templateId) {
+  for (let i = log.length - 1; i >= 0; i--) if (log[i].sessionTemplateId === templateId) return log[i];
+  return null;
+}
+
+/**
+ * Empezar o apuntar un entreno de este cliente. Descartar uno a medias se
+ * confirma, sea mío o de otro cliente; el suyo a medias se retoma.
+ */
+function useClientStart(client) {
+  const { t }         = useTranslation();
+  const navigation    = useNavigation();
+  const activeSession = useStore((s) => s.activeSession);
+  const startSession  = useStore((s) => s.startSession);
+
+  const guard = (fn) => {
+    if (!activeSession.templateId) { fn(); return; }
+    Alert.alert(t('workout.discardConfirm'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('workout.discardSession'), style: 'destructive', onPress: fn },
+    ]);
+  };
+  const mine = activeSession.forClient === client.id;
+  return {
+    activeSession,
+    activeId: mine ? activeSession.templateId : null,
+    start: (templateId) => {
+      if (mine && activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
+      guard(() => startSession(templateId, { forClient: client.id }));
+    },
+    logAt: (templateId, ts) => guard(() => startSession(templateId, { forClient: client.id, loggedAt: ts, logOnly: true })),
+  };
 }
 
 /**
@@ -120,16 +158,14 @@ function LogPastSheet({ visible, sessions, heroId, onClose, onLog }) {
 }
 
 export default function ClientSessions({ client, program, days, log }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const navigation = useNavigation();
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const [openId,  setOpenId]  = useState(null);
   const [logPast, setLogPast] = useState(false);
 
-  const activeSession        = useStore((s) => s.activeSession);
-  const startSession         = useStore((s) => s.startSession);
+  const { activeSession, activeId, start, logAt } = useClientStart(client);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -138,19 +174,11 @@ export default function ClientSessions({ client, program, days, log }) {
     [exerciseLibrary, customExercises],
   );
 
-  // El entreno en curso, solo si es de este cliente.
-  const mine     = activeSession.forClient === client.id;
-  const activeId = mine ? activeSession.templateId : null;
-
   const sessions = days
     .map((d) => ({ templateId: d.sessionTemplateId, template: getEffectiveTemplate(d.sessionTemplateId) }))
     .filter((d) => d.template)
     .map((d) => ({ ...d, label: d.template.label ?? '', name: d.template.name ?? '' }));
   const byId = new Map(sessions.map((d) => [d.templateId, d]));
-  const lastOf = (tid) => {
-    for (let i = log.length - 1; i >= 0; i--) if (log[i].sessionTemplateId === tid) return log[i];
-    return null;
-  };
 
   const plan = sessionPlan({
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
@@ -159,23 +187,6 @@ export default function ClientSessions({ client, program, days, log }) {
     t,
   });
 
-  // Descartar un entreno a medias se confirma, sea mío o de otro cliente.
-  const guard = (fn) => {
-    if (!activeSession.templateId) { fn(); return; }
-    Alert.alert(t('workout.discardConfirm'), undefined, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: fn },
-    ]);
-  };
-  const start = (templateId) => {
-    if (mine && activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
-    guard(() => startSession(templateId, { forClient: client.id }));
-  };
-  const logAt = (templateId, ts) => {
-    setLogPast(false);
-    guard(() => startSession(templateId, { forClient: client.id, loggedAt: ts, logOnly: true }));
-  };
-
   const heroMeta = (d) => {
     if (activeId === d.templateId) {
       const exs  = d.template.exercises ?? [];
@@ -183,7 +194,7 @@ export default function ClientSessions({ client, program, days, log }) {
       return t('home.heroMetaActive', { done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '' });
     }
     const stats = sessionStats(d.template, allExercises);
-    const rel   = relativeTime(lastOf(d.templateId)?.timestamp, t);
+    const rel   = relativeTime(lastOfIn(log, d.templateId)?.timestamp, t);
     return [
       t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
       rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
@@ -225,7 +236,7 @@ export default function ClientSessions({ client, program, days, log }) {
               </TodayCard>
             );
           }
-          const rel = relativeTime(lastOf(row.templateId)?.timestamp, t);
+          const rel = relativeTime(lastOfIn(log, row.templateId)?.timestamp, t);
           return (
             <SessionRow
               key={row.templateId}
@@ -265,16 +276,133 @@ export default function ClientSessions({ client, program, days, log }) {
           sessions={sessions}
           heroId={plan.heroTemplateId}
           onClose={() => setLogPast(false)}
-          onLog={logAt}
+          onLog={(templateId, ts) => { setLogPast(false); logAt(templateId, ts); }}
         />
       )}
     </View>
   );
 }
 
+/**
+ * Las sesiones libres de un cliente (group-classes.md §4.1, C24): las que le
+ * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
+ * con app le llegan con su programa y aquí solo se consultan y se editan.
+ */
+export function ClientFreeSessions({ client, log }) {
+  const { t }      = useTranslation();
+  const styles     = useThemedStyles(makeStyles);
+  const navigation = useNavigation();
+  const [openId, setOpenId] = useState(null);
+  const [sheet,  setSheet]  = useState(false);
+
+  const sessionTemplates   = useStore((s) => s.sessionTemplates);
+  const createFreeTemplate = useStore((s) => s.createFreeTemplate);
+  const copyFreeTemplate   = useStore((s) => s.copyFreeTemplate);
+  const showToast          = useStore((s) => s.showToast);
+  const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
+  const customExercises    = useStore((s) => s.customExercises);
+  const allExercises = useMemo(
+    () => ({ ...exerciseLibrary, ...customExercises }),
+    [exerciseLibrary, customExercises],
+  );
+  const { activeId, start } = useClientStart(client);
+
+  const all     = Object.values(sessionTemplates).filter((tpl) => !tpl.programId);
+  const his     = all.filter((tpl) => tpl.owner === client.id);
+  // Mis plantillas de sesión: mis sesiones libres (§4.6), sin las que me
+  // hubiera mandado a mí un entrenador.
+  const library = all.filter((tpl) => (tpl.owner ?? 'me') === 'me' && !tpl.fromTrainer)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const nameOf  = (tpl) => tpl.name || t('freeSession.templateUnnamed');
+  const edit    = (templateId) => navigation.navigate('SessionEditor', { templateId });
+  const metaOf  = (tpl) => [
+    t('freeSession.templateExercises', { count: tpl.exercises?.length ?? 0 }),
+    (tpl.blocks?.length ?? 0) > 0 ? t('freeSession.templateBlocks', { count: tpl.blocks.length }) : null,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <View style={styles.freeWrap}>
+      {his.length > 0 && (
+        <>
+          <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
+          <View style={styles.group}>
+            {his.map((tpl) => {
+              const open = openId === tpl.id;
+              const rel  = relativeTime(lastOfIn(log, tpl.id)?.timestamp, t);
+              return (
+                <SessionRow
+                  key={tpl.id}
+                  marker=""
+                  name={nameOf(tpl)}
+                  meta={rel
+                    ? rel.toLowerCase()
+                    : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
+                  done={false}
+                  open={open}
+                  cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
+                  onToggle={() => setOpenId(open ? null : tpl.id)}
+                  // Con app la entrena él: aquí no se empieza.
+                  onStart={client.syncLinked ? undefined : () => start(tpl.id)}
+                  onEdit={() => edit(tpl.id)}
+                  a11yLabel={`${t('freeSession.badge')}, ${nameOf(tpl)}`}
+                >
+                  <ExerciseLines template={tpl} allExercises={allExercises} />
+                </SessionRow>
+              );
+            })}
+          </View>
+        </>
+      )}
+
+      <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet(true)} activeOpacity={0.75} accessibilityRole="button">
+        <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
+      </TouchableOpacity>
+
+      {sheet && (
+        <DragSheet visible onClose={() => setSheet(false)} title={t('clients.freeSheet.title', { name: client.name })}>
+          <View style={styles.sheetGroup}>
+            <MenuRow
+              isFirst
+              isLast
+              label={t('clients.freeSheet.blank')}
+              sub={t('clients.freeSheet.blankDesc')}
+              subLines={0}
+              minHeight={62}
+              onPress={() => { setSheet(false); edit(createFreeTemplate(null, client.id)); }}
+            />
+          </View>
+          {library.length > 0 && (
+            <>
+              <Text style={styles.sheetLabel}>{t('clients.freeSheet.fromTemplate').toUpperCase()}</Text>
+              <View style={styles.sheetGroup}>
+                {library.map((tpl, i) => (
+                  <MenuRow
+                    key={tpl.id}
+                    isFirst={i === 0}
+                    isLast={i === library.length - 1}
+                    label={nameOf(tpl)}
+                    sub={metaOf(tpl)}
+                    minHeight={62}
+                    onPress={() => {
+                      setSheet(false);
+                      copyFreeTemplate(tpl.id, { owner: client.id });
+                      showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
+                    }}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+        </DragSheet>
+      )}
+    </View>
+  );
+}
+
 const makeStyles = (th) => StyleSheet.create({
-  wrap:  { marginTop: spacing.sm },
-  group: { gap: spacing.xs2 },
+  wrap:     { marginTop: spacing.sm },
+  freeWrap: { marginTop: spacing.lg },
+  group:    { gap: spacing.xs2 },
 
   // Secundario sólido, el mismo que «Editar programa» (`apBtn`): no es un
   // «＋» de crear algo, es la otra forma de apuntar.
@@ -290,9 +418,22 @@ const makeStyles = (th) => StyleSheet.create({
   },
   logPastText: { ...textStyles.button, color: th.colors.text },
 
-  // ── Hoja ──
+  // El «＋ Sesión libre» de Inicio: contorno lima, es crear algo.
+  freeBtn: {
+    paddingVertical:   spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius:      th.radius.md,
+    borderWidth:       0.5,
+    borderColor:       th.tint.accent50,
+    alignItems:        'center',
+    marginTop:         spacing.md,
+  },
+  freeBtnText: { ...textStyles.button, color: th.colors.accent },
+
+  // ── Hojas ──
+  sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },
   sheetBody:  { gap: spacing.sm, paddingBottom: spacing.sm },
-  sheetLabel: { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.sm },
+  sheetLabel: { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.sm, marginBottom: spacing.xs2 },
   sheetHint:  { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.sm },
   // Chips de `NumberChips`: mismo ancho, `surface`, activo en acento.
   chips: { flexDirection: 'row', gap: spacing.sm },

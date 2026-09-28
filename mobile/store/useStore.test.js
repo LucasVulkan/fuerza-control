@@ -1929,3 +1929,93 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
     useStore.getState().stopRestTimer();
   });
 });
+
+describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
+      clients: { cli_1: { id: 'cli_1', name: 'Marta' } },
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  function plantilla() {
+    const id = useStore.getState().createFreeTemplate({
+      name: 'Movilidad', exercises: [{ exerciseId: 'squat', sets: 2 }], blocks: [],
+    });
+    useStore.setState((s) => ({
+      sessionTemplates: { ...s.sessionTemplates, [id]: {
+        ...s.sessionTemplates[id], blocks: [{ id: 'blk_a', format: 'amrap', movements: [] }],
+      } },
+    }));
+    return id;
+  }
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('asignar copia: id nuevo, del cliente, fuera de Inicio, bloques con id propio, y la plantilla intacta', () => {
+    const src  = plantilla();
+    const copy = useStore.getState().copyFreeTemplate(src, { owner: 'cli_1' });
+
+    expect(copy).not.toBe(src);
+    expect(tpl(copy)).toMatchObject({ owner: 'cli_1', programId: null, onHome: false, name: tpl(src).name });
+    expect(tpl(copy).blocks[0].id).not.toBe('blk_a');
+    expect(tpl(src).owner).toBe('me');
+    expect(tpl(src).blocks[0].id).toBe('blk_a');
+  });
+
+  it('borrar el cliente se lleva sus sesiones libres y deja las mías', () => {
+    const src  = plantilla();
+    const copy = useStore.getState().copyFreeTemplate(src, { owner: 'cli_1' });
+
+    useStore.getState().deleteClient('cli_1');
+
+    expect(tpl(copy)).toBeUndefined();
+    expect(tpl(src)).toBeDefined();
+  });
+
+  it('viajan con su programa, y sin ninguna la firma no cambia', () => {
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Base', 4);
+    const payload = () => JSON.parse(useStore.getState()._buildProgramJson(pid).json);
+    const sigAntes = useStore.getState()._programSig(pid);
+    expect(payload().freeSessions).toBeUndefined();
+
+    const copy = useStore.getState().copyFreeTemplate(plantilla(), { owner: 'cli_1' });
+
+    expect(Object.keys(payload().freeSessions)).toEqual([copy]);
+    expect(useStore.getState()._programSig(pid)).not.toBe(sigAntes);
+  });
+
+  it('crear, asignar o borrar una suya lo deja pendiente de enviar', () => {
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Base', 4);
+    useStore.setState((s) => ({
+      clients: { cli_1: { ...s.clients.cli_1, activeProgramId: pid, syncSlotId: 'slot_1', programUploadedSig: s._programSig(pid) } },
+    }));
+    useStore.getState().markClientDirty('cli_1');
+    expect(useStore.getState().clients.cli_1.programDirty ?? false).toBe(false);
+
+    const copy = useStore.getState().copyFreeTemplate(plantilla(), { owner: 'cli_1' });
+    expect(useStore.getState().clients.cli_1.programDirty).toBe(true);
+
+    useStore.getState().deleteFreeTemplate(copy);
+    expect(useStore.getState().clients.cli_1.programDirty).toBe(false);
+  });
+
+  it('en el móvil del cliente: llegan como del entrenador, se sustituyen enteras y otro programa no las toca', () => {
+    const programa = { id: 'prog_t', owner: 'me', kind: 'program', name: 'Del entrenador',
+      stages: [{ id: 's', durationWeeks: 4, days: [] }] };
+    const libre = { id: 'tpl_x', owner: 'cli_9', programId: null, name: 'Core', exercises: [], blocks: [], trainerName: 'Lucas' };
+    const importar = (data) => useStore.getState().importData(
+      { sessionTemplates: {}, customExercises: {}, workoutLog: [], ...data }, { program: true, log: false }, { silent: true },
+    );
+
+    importar({ program: programa, freeSessions: { tpl_x: libre } });
+    expect(tpl('tpl_x')).toMatchObject({ owner: 'me', fromTrainer: true, onHome: true, trainerName: 'Lucas' });
+
+    importar({ program: { ...programa, id: 'prog_amigo' } });
+    expect(tpl('tpl_x')).toBeDefined();
+
+    importar({ program: programa });
+    expect(tpl('tpl_x')).toBeUndefined();
+  });
+});

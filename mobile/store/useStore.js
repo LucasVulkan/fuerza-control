@@ -707,11 +707,15 @@ export const useStore = create(
           });
           const clients    = { ...acc.clients };    delete clients[clientId];
           const clientLogs = { ...acc.clientLogs }; delete clientLogs[clientId];
+          // Sus sesiones libres no cuelgan de ningún programa: se van por `owner`.
+          const sessionTemplates = Object.fromEntries(
+            Object.entries(acc.sessionTemplates).filter(([, tpl]) => tpl.programId || tpl.owner !== clientId),
+          );
           // El `workoutLog` personal ya no se filtra aquí: las entradas de un
           // cliente viven en `clientLogs`, y las suyas se van con su bucket.
           return {
-            programs:         acc.programs,
-            sessionTemplates: acc.sessionTemplates,
+            programs: acc.programs,
+            sessionTemplates,
             clients, clientLogs,
           };
         });
@@ -1171,6 +1175,7 @@ export const useStore = create(
           id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
         });
         set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
+        if (owner !== 'me') get().markClientDirty(owner);
         return id;
       },
 
@@ -1249,6 +1254,42 @@ export const useStore = create(
         });
       },
 
+      /**
+       * Copia una sesión libre a otro dueño (group-classes.md §4.6): a un
+       * cliente al asignarla, o a mí al duplicarla. Copia y no referencia, como
+       * los programas: editar la del cliente no toca la plantilla. Los bloques
+       * estrenan id para que sus resultados no se comparen con los de la otra.
+       */
+      copyFreeTemplate: (templateId, { owner = 'me', name } = {}) => {
+        const src = get().sessionTemplates[templateId];
+        if (!src || src.programId) return null;
+        const id   = generateId('tpl');
+        const copy = JSON.parse(JSON.stringify(src));
+        delete copy.fromTrainer;
+        delete copy.trainerName;
+        const tpl = {
+          ...copy, id, owner,
+          ...(name != null ? { name } : {}),
+          blocks: (copy.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
+          // En Inicio solo lo mío, y una copia hecha en Plantillas es para
+          // asignar, no para entrenarla yo.
+          onHome: false,
+        };
+        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
+        if (owner !== 'me') get().markClientDirty(owner);
+        return id;
+      },
+
+      /**
+       * Lo que viaja a un cliente es su programa activo con sus sesiones
+       * libres dentro (`_buildProgramJson`): tocar una de ellas es tocar lo
+       * enviado. Sin programa no hay nada que enviar todavía.
+       */
+      markClientDirty: (clientId) => {
+        const programId = get().clients[clientId]?.activeProgramId;
+        if (programId) get().markProgramDirtyForClients(programId);
+      },
+
       setFreeTemplateOnHome: (templateId, onHome) => {
         const tpl = get().sessionTemplates[templateId];
         if (!tpl || tpl.programId) return;
@@ -1269,6 +1310,7 @@ export const useStore = create(
           delete sessionTemplates[templateId];
           return { sessionTemplates };
         });
+        if ((tpl.owner ?? 'me') !== 'me') get().markClientDirty(tpl.owner);
         return true;
       },
 
@@ -2752,8 +2794,17 @@ export const useStore = create(
         tplIds.forEach((id) => {
           if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
         });
+        // Las sesiones libres del cliente viajan con su programa, con el mismo
+        // id en los dos móviles (group-classes.md §4.4). Solo si hay alguna: con
+        // la clave vacía cambiaría la firma de todos los clientes ya enviados.
+        const freeSessions = program.owner !== 'me'
+          ? Object.fromEntries(Object.values(sessionTemplates)
+            .filter((tpl) => !tpl.programId && tpl.owner === program.owner)
+            .map((tpl) => [tpl.id, tpl]))
+          : {};
+        const hasFree = Object.keys(freeSessions).length > 0;
         const usedExIds = new Set(
-          Object.values(relTpl)
+          [...Object.values(relTpl), ...Object.values(freeSessions)]
             .flatMap((t) => [
               ...(t.exercises ?? []).map((e) => e.exerciseId),
               ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
@@ -2787,6 +2838,7 @@ export const useStore = create(
             // `data.programs`, y aquí va `data.program`).
             program: { ...program, owner: 'me', kind: 'program', status: 'active' },
             sessionTemplates: relTpl,
+            ...(hasFree ? { freeSessions } : {}),
             customExercises: relCustom,
             workoutLog: log,
           }, null, 2),
@@ -2909,6 +2961,25 @@ export const useStore = create(
           const needsTemplateData = sections.program || sections.clients || sections.templates;
           if (needsTemplateData) {
             updates.sessionTemplates = mergeFileSessions(s.sessionTemplates, data);
+          }
+          // Las sesiones libres que manda el entrenador (group-classes.md §4.4)
+          // se SUSTITUYEN enteras: las que borró desaparecen. Llegan como mías
+          // (`owner: 'me'`, igual que el programa) y marcadas `fromTrainer`,
+          // que es lo que les quita EDITAR. Sin la clave, solo se retiran si
+          // vienen del mismo programa: es que las borró todas; el programa de
+          // un amigo no se lleva las de tu entrenador.
+          if (sections.program && data.program) {
+            const incomingFree = data.freeSessions ?? null;
+            const fromProgram  = data.program.id;
+            const drop = (tpl) => tpl.fromTrainer && (incomingFree || tpl.fromProgramId === fromProgram);
+            const base = updates.sessionTemplates ?? s.sessionTemplates;
+            updates.sessionTemplates = {
+              ...Object.fromEntries(Object.entries(base).filter(([, tpl]) => !drop(tpl))),
+              ...Object.fromEntries(Object.values(incomingFree ?? {}).map((tpl) => [tpl.id, {
+                ...tpl, owner: 'me', programId: null, onHome: true,
+                fromTrainer: true, fromProgramId: fromProgram,
+              }])),
+            };
           }
           if (sections.program) {
             const personalPrograms = {};
@@ -3331,9 +3402,8 @@ export const useStore = create(
         const trainerName   = get().trainerSync.trainerName;
         if (trainerName?.trim()) {
           // Stamp trainerName into every session template so clients see attribution
-          Object.values(programData.sessionTemplates ?? {}).forEach((tpl) => {
-            tpl.trainerName = trainerName.trim();
-          });
+          [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
+            .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
         }
         await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null);
         // Clear pending-upload flag after successful push

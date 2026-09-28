@@ -676,6 +676,7 @@
     "btnStartSession": "START SESSION {{label}}",
     "btnContinueSession": "CONTINUE SESSION {{label}}",
     "clientRunning": "In progress: {{name}}'s session {{label}}",
+    "fromTrainer": "from {{name}}",
     "btnRepeatSession": "REPEAT SESSION {{label}}",
     "expand": "Show exercises",
     "collapse": "Hide exercises",
@@ -1923,6 +1924,13 @@
     "toastStageUnlocked": "{{name}} unlocked and sent",
     "prepare": "Prepare",
     "sessionFlag": "Up next",
+    "freeSheet": {
+      "title": "Session for {{name}}",
+      "blank": "Blank",
+      "blankDesc": "Opens the editor to build it for this client",
+      "fromTemplate": "From your templates",
+      "assigned": "Session assigned to {{name}}"
+    },
     "btnContinue": "Continue",
     "actStartSession": "Start session {{label}}",
     "logPast": {
@@ -2143,6 +2151,19 @@
     "proCta": "SEE PRO PLANS",
     "hideTab": "Hide tab",
     "copyNameSuffix": " (copy)",
+    "segPrograms": "Programs",
+    "segSessions": "Sessions",
+    "sessionsEmpty": "No session templates yet.\nBuild standalone sessions —mobility, a circuit, a class— and assign them to your clients.",
+    "statExercises_one": "exercise",
+    "statExercises_other": "exercises",
+    "statBlocks_one": "block",
+    "statBlocks_other": "blocks",
+    "statMinutes": "min",
+    "assignSession": {
+      "desc": "They get a copy: later changes to the template don't reach them.",
+      "noProgram": "Uses the app but has no program: it reaches them when you send one.",
+      "toast": "Session assigned to {{name}}"
+    },
     "newModal": {
       "title": "New template",
       "namePlaceholder": "Template name",

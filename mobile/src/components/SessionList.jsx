@@ -90,7 +90,7 @@ export function ExerciseLines({ template, allExercises }) {
  * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
  */
 export function SessionRow({
-  marker, name, meta, done, adapted, open,
+  marker, name, meta, done, adapted, by, open,
   cta, onToggle, onStart, onEdit, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
@@ -110,6 +110,8 @@ export function SessionRow({
         <Text style={[styles.sesGlyph, done && styles.sesGlyphDone]}>{marker}</Text>
         <Text style={[styles.sesName, done && styles.sesNameDone]} numberOfLines={1}>{name}</Text>
         {!!adapted && <Text style={styles.rowAdapted}>{t('home.adapted')}</Text>}
+        {/* «de Lucas»: una sesión que manda el entrenador. Azul = entrenador. */}
+        {!!by && <Text style={styles.rowAdapted} numberOfLines={1}>{t('home.fromTrainer', { name: by })}</Text>}
         <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
         {done && <CheckIcon size={14} color={LIMA} />}
       </TouchableOpacity>
@@ -127,6 +129,9 @@ export function SessionRow({
               que toca es otra. Con `onEdit` (sesiones libres, free-sessions.md
               §6.1) EDITAR va al lado, también secundario. */}
           <View style={styles.sesBtnRow}>
+            {/* Sin `onStart` la fila solo se consulta y se edita: la sesión libre
+                de un cliente con app la entrena él (group-classes.md §4.1). */}
+            {!!onStart && (
             <TouchableOpacity
               style={[styles.sesBtn, done && styles.sesBtnSecondary]}
               onPress={onStart}
@@ -137,9 +142,10 @@ export function SessionRow({
               <Text style={[styles.sesBtnText, done && styles.sesBtnTextSecondary]}>{cta}</Text>
               <HeroChevron color={done ? th.colors.text : th.colors.onAccent} />
             </TouchableOpacity>
+            )}
             {onEdit && (
               <TouchableOpacity
-                style={[styles.sesBtn, styles.sesBtnSecondary, styles.sesBtnEdit]}
+                style={[styles.sesBtn, styles.sesBtnSecondary, onStart && styles.sesBtnEdit, !onStart && styles.sesBtnAlone]}
                 onPress={onEdit}
                 activeOpacity={0.75}
                 accessibilityRole="button"
@@ -338,6 +344,7 @@ const makeStyles = (th) => StyleSheet.create({
   sesBtnTextSecondary: { color: th.colors.text },
   // EDITAR: lo justo para su palabra, que EMPEZAR es lo principal.
   sesBtnEdit:          { flex: 0, justifyContent: 'center' },
+  sesBtnAlone:         { justifyContent: 'center' },
 
   // ── La que toca hoy ─────────────────────────────────────────────────
   // La única pieza en color de la pantalla, así que dentro el acento es el

@@ -28,7 +28,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import ClientSessions from '../components/ClientSessions';
+import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
@@ -2658,6 +2658,10 @@ export default function ClientsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {/* Sus sesiones libres, con y sin programa: una rutina suelta no
+                  necesita uno (group-classes.md §4.1, C24). */}
+              <ClientFreeSessions client={selectedClient} log={clientBaseLog} />
 
               {/* Programas anteriores — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}

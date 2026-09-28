@@ -676,6 +676,7 @@
     "btnStartSession": "EMPEZAR SESIÓN {{label}}",
     "btnContinueSession": "CONTINUAR SESIÓN {{label}}",
     "clientRunning": "En curso: sesión {{label}} de {{name}}",
+    "fromTrainer": "de {{name}}",
     "btnRepeatSession": "REPETIR SESIÓN {{label}}",
     "expand": "Ver ejercicios",
     "collapse": "Ocultar ejercicios",
@@ -1923,6 +1924,13 @@
     "toastStageUnlocked": "{{name}} desbloqueada y enviada",
     "prepare": "Preparar",
     "sessionFlag": "Le toca",
+    "freeSheet": {
+      "title": "Sesión libre para {{name}}",
+      "blank": "En blanco",
+      "blankDesc": "Se abre el editor y la preparas para este cliente",
+      "fromTemplate": "Desde tus plantillas",
+      "assigned": "Sesión asignada a {{name}}"
+    },
     "btnContinue": "Continuar",
     "actStartSession": "Empezar sesión {{label}}",
     "logPast": {
@@ -2143,6 +2151,19 @@
     "proCta": "VER PLANES PRO",
     "hideTab": "Ocultar tab",
     "copyNameSuffix": " (copia)",
+    "segPrograms": "Programas",
+    "segSessions": "Sesiones",
+    "sessionsEmpty": "Sin plantillas de sesión todavía.\nCrea sesiones sueltas —movilidad, un circuito, una clase— y asígnalas a tus clientes.",
+    "statExercises_one": "ejercicio",
+    "statExercises_other": "ejercicios",
+    "statBlocks_one": "bloque",
+    "statBlocks_other": "bloques",
+    "statMinutes": "min",
+    "assignSession": {
+      "desc": "Se le crea una copia: lo que cambies después en la plantilla no le llega.",
+      "noProgram": "Tiene app y no tiene programa: le llegará cuando le envíes uno.",
+      "toast": "Sesión asignada a {{name}}"
+    },
     "newModal": {
       "title": "Nueva plantilla",
       "namePlaceholder": "Nombre de la plantilla",

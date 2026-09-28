@@ -449,7 +449,10 @@ export default function HomeScreen() {
                       cta={startCta(t, '', { active, done: false })}
                       onToggle={() => setOpenId(open ? null : tpl.id)}
                       onStart={() => requestStart(tpl.id)}
-                      onEdit={() => editFree(tpl.id)}
+                      // Las que manda el entrenador no se editan: si quieres
+                      // una tuya, la haces con «Crear» (group-classes.md §4.4).
+                      onEdit={tpl.fromTrainer ? undefined : () => editFree(tpl.id)}
+                      by={tpl.fromTrainer ? (tpl.trainerName || clientSync.trainerName || '') : null}
                       a11yLabel={`${t('freeSession.badge')}, ${name}`}
                     >
                       <ExerciseLines template={tpl} allExercises={allExercises} />
@@ -531,7 +534,7 @@ export default function HomeScreen() {
                   sub={freeMeta(tpl)}
                   minHeight={62}
                   onPress={() => { setFreeList(false); requestStart(tpl.id); }}
-                  control={(
+                  control={tpl.fromTrainer ? null : (
                     <TouchableOpacity
                       onPress={() => { setFreeList(false); editFree(tpl.id); }}
                       hitSlop={10}

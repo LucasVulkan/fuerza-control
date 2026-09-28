@@ -14,6 +14,10 @@
  *  · Cabecera calcada de Clientes (`PLANTILLAS · N` + `+ Plantilla` a 42), sin
  *    buscador: Figma no lo dibuja aquí y con pocas plantillas sería ruido.
  *
+ * Segmentado Programas / Sesiones (group-classes.md §4.6, C27): las plantillas
+ * de sesión SON mis sesiones libres; aquí se crean (sin salir en mi Inicio), se
+ * duplican y se asignan a un cliente, que recibe una copia.
+ *
  * Los tres modales propios (crear, menú contextual, asignar) y los dos
  * `Alert.alert` pasan a `DragSheet`, que es el único bottom-sheet de la app.
  * El aviso de "este cliente ya tiene programa activo" era un Alert DESPUÉS de
@@ -33,6 +37,8 @@ import SheetRow from '../components/ui/SheetRow';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import { ToggleRow } from '../components/ui/EditorRows';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import { sessionStats } from '../utils/sessionStats';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
@@ -61,22 +67,18 @@ function Stat({ value, label }) {
   );
 }
 
-function TemplateCard({ program, onAssign, onMenu }) {
+function TemplateCard({ name, stats, onAssign, onMenu }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const s      = templateStats(program);
-  const more   = s.open ? '+' : '';
 
   return (
     <View style={styles.card}>
       {/* Sin botón de `···`: pulsar la tarjeta ES el menú (QA). Un control menos
           y un área de toque enorme para lo que antes era una caja de 26 px. */}
       <TouchableOpacity style={styles.cardBody} onPress={onMenu} activeOpacity={0.75}>
-        <Text style={styles.cardName} numberOfLines={2}>{program.name}</Text>
+        <Text style={styles.cardName} numberOfLines={2}>{name}</Text>
         <View style={styles.statsRow}>
-          <Stat value={String(s.stages)} label={t('templates.statStages',   { count: s.stages })} />
-          <Stat value={`${s.weeks}${more}`}    label={t('templates.statWeeks',   { count: s.weeks })} />
-          <Stat value={`${s.sessions}${more}`} label={t('templates.statSessions', { count: s.sessions })} />
+          {stats.map((st) => <Stat key={st.label} value={st.value} label={st.label} />)}
         </View>
       </TouchableOpacity>
 
@@ -273,6 +275,71 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
   );
 }
 
+// ── Hoja de asignar una sesión (C27) ───────────────────────────────────────────
+
+/**
+ * Como `AssignSheet` sin nombre ni aviso de reemplazo: una sesión no sustituye
+ * a nada. El cliente recibe una copia.
+ */
+function AssignSessionSheet({ template, clients, onAssign, onClose }) {
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const clientList = useMemo(
+    () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
+    [clients]
+  );
+  const [clientId, setClientId] = useState('');
+
+  return (
+    <DragSheet visible onClose={onClose} title={t('templates.assignModal.title')} action={{ label: t('common.cancel'), onPress: onClose }}>
+      <View style={styles.sheetBody}>
+        <View>
+          <Text style={styles.assignName}>{template.name || t('freeSession.templateUnnamed')}</Text>
+          <Text style={styles.sheetHint}>{t('templates.assignSession.desc')}</Text>
+        </View>
+        {clientList.length === 0 ? (
+          <Text style={styles.sheetEmpty}>{t('templates.assignModal.noClients')}</Text>
+        ) : (
+          <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.clientList}>
+              {clientList.map((c) => {
+                const active = clientId === c.id;
+                // Con app, la sesión viaja con su programa: sin programa no le llega.
+                const noRoute = c.syncLinked && !c.activeProgramId;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.clientRow, active && styles.clientRowActive]}
+                    onPress={() => setClientId(c.id)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+                      <Text style={[styles.clientName, active && { color: th.colors.accent }]} numberOfLines={1}>{c.name}</Text>
+                      {noRoute && (
+                        <Text style={styles.clientReplaces} numberOfLines={2}>{t('templates.assignSession.noProgram')}</Text>
+                      )}
+                    </View>
+                    {active && <Text style={styles.clientCheck}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        )}
+        <TouchableOpacity
+          style={[styles.cta, !clientId && styles.ctaDisabled]}
+          onPress={() => clientId && onAssign(clientId)}
+          disabled={!clientId}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.ctaText, !clientId && styles.ctaTextDisabled]}>{t('templates.assignModal.assignBtn')}</Text>
+        </TouchableOpacity>
+      </View>
+    </DragSheet>
+  );
+}
+
 // ── Hoja de confirmación de borrado ────────────────────────────────────────────
 
 function ConfirmDeleteSheet({ visible, onClose, onConfirm }) {
@@ -312,6 +379,11 @@ export default function ProgramScreen() {
   const [assignTarget, setAssignTarget] = useState(null); // programId a asignar
   const [deleteTarget, setDeleteTarget] = useState(null); // programId a borrar
   const [showPaywall,  setShowPaywall]  = useState(false);
+  // Programas / Sesiones. Sin persistir: es un vistazo, no un ajuste.
+  const [seg,          setSeg]          = useState('programs');
+  const [sesMenu,      setSesMenu]      = useState(null); // templateId
+  const [sesAssign,    setSesAssign]    = useState(null); // templateId
+  const [sesDelete,    setSesDelete]    = useState(null); // templateId
 
   const profile    = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
@@ -328,8 +400,49 @@ export default function ProgramScreen() {
   const exportSpecificProgram    = useStore((s) => s.exportSpecificProgram);
   const shareSpecificProgram     = useStore((s) => s.shareSpecificProgram);
   const showToast                = useStore((s) => s.showToast);
+  const sessionTemplates         = useStore((s) => s.sessionTemplates);
+  const createFreeTemplate       = useStore((s) => s.createFreeTemplate);
+  const setFreeTemplateOnHome    = useStore((s) => s.setFreeTemplateOnHome);
+  const copyFreeTemplate         = useStore((s) => s.copyFreeTemplate);
+  const deleteFreeTemplate       = useStore((s) => s.deleteFreeTemplate);
+  const exerciseLibrary          = useStore((s) => s.exerciseLibrary);
+  const customExercises          = useStore((s) => s.customExercises);
 
   const templateList = useMemo(() => templatesOf(programs), [programs]);
+  // Plantillas de sesión = mis sesiones libres (§4.6), sin las que me mandara
+  // un entrenador a mí.
+  const sessionList = useMemo(() => Object.values(sessionTemplates)
+    .filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me' && !tpl.fromTrainer)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [sessionTemplates]);
+  const allExercises = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
+  const isSessions   = seg === 'sessions';
+  const sesName      = (tpl) => tpl?.name || t('freeSession.templateUnnamed');
+
+  function programCardStats(program) {
+    const s    = templateStats(program);
+    const more = s.open ? '+' : '';
+    return [
+      { value: String(s.stages),       label: t('templates.statStages',   { count: s.stages }) },
+      { value: `${s.weeks}${more}`,    label: t('templates.statWeeks',    { count: s.weeks }) },
+      { value: `${s.sessions}${more}`, label: t('templates.statSessions', { count: s.sessions }) },
+    ];
+  }
+  function sessionCardStats(tpl) {
+    const st     = sessionStats(tpl, allExercises);
+    const blocks = tpl.blocks?.length ?? 0;
+    return [
+      { value: String(st.exercises), label: t('templates.statExercises', { count: st.exercises }) },
+      ...(blocks > 0 ? [{ value: String(blocks), label: t('templates.statBlocks', { count: blocks }) }] : []),
+      { value: `~${st.minutes}`,     label: t('templates.statMinutes') },
+    ];
+  }
+
+  // + Plantilla en Sesiones: al editor, y fuera de mi Inicio — es para asignar.
+  function handleCreateSession() {
+    const id = createFreeTemplate();
+    setFreeTemplateOnHome(id, false);
+    navigation.navigate('SessionEditor', { templateId: id });
+  }
 
   function handleCreate(name, numSessions, durationWeeks) {
     const newId = createEmptyProgram(numSessions, name, 'template', durationWeeks);
@@ -399,15 +512,50 @@ export default function ProgramScreen() {
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
             {t('templates.title').toUpperCase()} <Text style={styles.listTitleDot}>·</Text>{' '}
-            <Text style={styles.listTitleCount}>{templateList.length}</Text>
+            <Text style={styles.listTitleCount}>{isSessions ? sessionList.length : templateList.length}</Text>
           </Text>
-          <TouchableOpacity style={styles.hdrNewBtn} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.hdrNewBtn}
+            onPress={() => (isSessions ? handleCreateSession() : setShowCreate(true))}
+            activeOpacity={0.85}
+          >
             <Text style={styles.hdrNewBtnText}>{t('templates.newBtn')}</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.segWrap}>
+          <SegmentedControl
+            options={[
+              { id: 'programs', label: t('templates.segPrograms') },
+              { id: 'sessions', label: t('templates.segSessions') },
+            ]}
+            value={seg}
+            onChange={setSeg}
+          />
+        </View>
       </View>
 
-      {templateList.length === 0 ? (
+      {isSessions ? (
+        sessionList.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyBody}>{t('templates.sessionsEmpty')}</Text>
+            <TouchableOpacity style={styles.cta} onPress={handleCreateSession} activeOpacity={0.85}>
+              <Text style={styles.ctaText}>{t('templates.newModal.createBtn')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+            {sessionList.map((tpl) => (
+              <TemplateCard
+                key={tpl.id}
+                name={sesName(tpl)}
+                stats={sessionCardStats(tpl)}
+                onAssign={() => setSesAssign(tpl.id)}
+                onMenu={() => setSesMenu(tpl.id)}
+              />
+            ))}
+          </ScrollView>
+        )
+      ) : templateList.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>{t('templates.title')}</Text>
           <Text style={styles.emptyBody}>{t('templates.empty')}</Text>
@@ -420,7 +568,8 @@ export default function ProgramScreen() {
           {templateList.map((program) => (
             <TemplateCard
               key={program.id}
-              program={program}
+              name={program.name}
+              stats={programCardStats(program)}
               onAssign={() => setAssignTarget(program.id)}
               onMenu={() => setMenuTarget(program.id)}
             />
@@ -487,6 +636,55 @@ export default function ProgramScreen() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => handleDelete(deleteTarget)}
       />
+
+      {/* ── Plantillas de sesión (C27) ── */}
+      <DragSheet
+        visible={!!sesMenu}
+        onClose={() => setSesMenu(null)}
+        title={sesName(sessionTemplates[sesMenu])}
+      >
+        <View style={styles.sheetRows}>
+          <SheetRow
+            label={t('templates.actionEdit')}
+            onPress={() => { const id = sesMenu; setSesMenu(null); navigation.navigate('SessionEditor', { templateId: id }); }}
+          />
+          <SheetRow
+            label={t('templates.contextDuplicate')}
+            onPress={() => {
+              copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix') });
+              setSesMenu(null);
+              showToast(t('templates.toastDuplicated'), 2200, 'success');
+            }}
+          />
+          <SheetRow
+            danger
+            label={t('templates.contextDelete')}
+            onPress={() => { setSesDelete(sesMenu); setSesMenu(null); }}
+          />
+        </View>
+      </DragSheet>
+
+      {sesAssign && sessionTemplates[sesAssign] && (
+        <AssignSessionSheet
+          template={sessionTemplates[sesAssign]}
+          clients={clients}
+          onClose={() => setSesAssign(null)}
+          onAssign={(clientId) => {
+            copyFreeTemplate(sesAssign, { owner: clientId });
+            setSesAssign(null);
+            showToast(t('templates.assignSession.toast', { name: clients[clientId]?.name ?? '' }), 2200, 'success');
+          }}
+        />
+      )}
+
+      <ConfirmDeleteSheet
+        visible={!!sesDelete}
+        onClose={() => setSesDelete(null)}
+        onConfirm={() => {
+          if (!deleteFreeTemplate(sesDelete)) showToast(t('freeSession.deleteActive'), 2600, 'error');
+          else showToast(t('templates.toastDeleted'), 2200, 'neutral');
+        }}
+      />
     </View>
   );
 }
@@ -519,6 +717,7 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'center',
   },
   hdrNewBtnText: { ...textStyles.button, color: th.colors.onAccent },
+  segWrap:       { paddingHorizontal: spacing.lg, marginTop: spacing.xs2 },
 
   // ── Lista ──
   list: {
