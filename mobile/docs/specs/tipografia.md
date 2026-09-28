@@ -2,17 +2,17 @@
 
 > Tema: ui
 > En corto: La app tenía 177 combinaciones distintas de cuerpo × peso × tracking repartidas por 47 ficheros; ahora tiene una escala de ocho pasos, catorce papeles con nombre y tres reglas, y el bold vuelve a significar algo porque ya no está en todas partes.
-> Fase U17 · hecho · Los papeles: `textStyles` se rehace y `typography` se retira · §4
-> Fase U18 · hecho · Las pantallas: los 170 `fontSize` a pelo caen sobre los papeles · §5
-> Fase U19 · hecho · El suelo de legibilidad y los dos pesos que sobraban · §6
-> Fase U20 · hecho · La anatomía nombre + meta, una sola para toda la app · §9
+> Fase U17 · terminado · Los papeles: `textStyles` se rehace y `typography` se retira · §4
+> Fase U18 · terminado · Las pantallas: los 170 `fontSize` a pelo caen sobre los papeles · §5
+> Fase U19 · terminado · El suelo de legibilidad y los dos pesos que sobraban · §6
+> Fase U20 · terminado · La anatomía nombre + meta, una sola para toda la app · §9
 >
 > Estado: **las cuatro fases implementadas** (sep 2026), en la rama
 > `feat/tipografia-jerarquia`. Sale de una auditoría del uso real de tipografía
 > en `mobile/src` pedida por el usuario: «ahora mismo es una cacofonía de textos
 > diferentes».
 >
-> **Probar en dispositivo.** Son ~85 sitios que cambian de cuerpo de verdad (el
+> **Probado en dispositivo.** Son ~85 sitios que cambian de cuerpo de verdad (el
 > resto sólo cambia de token a token). El riesgo está concentrado en las cajas
 > medidas al píxel donde el texto SUBE: la tira de días del calendario de
 > Historial (celda de 30 px, número de 10 → 12), la tab bar (9 → 11), los ejes de

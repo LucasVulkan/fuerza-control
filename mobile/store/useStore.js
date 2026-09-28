@@ -38,8 +38,11 @@ import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForU
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
+import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
+import { sessionStats } from '../src/utils/sessionStats';
+import { clientLink } from '../src/utils/clientLink';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -242,7 +245,22 @@ const INITIAL_ACTIVE_SESSION = {
   freeSessionName: '',
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
+  // Entreno de un cliente sin app, apuntado por el entrenador (trainer-logging.md §3.3).
+  forClient: null,     // id del cliente dueño del entreno; null = mío
+  loggedAt:  null,     // ms del día elegido en «Apuntar sesión pasada»; null = ahora
+  logOnly:   false,    // modo registro: sin reloj ni descansos (§3.4)
 };
+
+const EMPTY_LOG = [];
+
+/**
+ * El historial del dueño del entreno en curso: el mío o el de un cliente.
+ * Una referencia estable cuando el cliente aún no tiene historial, para que un
+ * selector de Zustand no devuelva un array nuevo en cada render.
+ */
+export function ownerLogOf(state, clientId = state.activeSession.forClient) {
+  return clientId ? (state.clientLogs[clientId] ?? EMPTY_LOG) : state.workoutLog;
+}
 
 /**
  * Bloques de acondicionamiento de la sesión en curso. La sesión libre no tiene
@@ -421,6 +439,9 @@ export const useStore = create(
 
       clients: {},
       tagRegistry: [],   // [{ id, name }] — global tag list
+      // { 'banca': 'bench_press_barbell' } — cómo llama cada entrenador a sus
+      // ejercicios en un texto pegado (trainer-logging.md §6.3). Clave normalizada.
+      exerciseAliases: {},
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
       // { [programId]: 'YYYY-MM-DD' } — el aviso de fin de etapa no se enseña
@@ -611,7 +632,13 @@ export const useStore = create(
       // CLIENTS (PRO)
       // ══════════════════════════════════════════════════════════════════════
 
-      createClient: async (name) => {
+      /**
+       * `withApp`: el cliente va a entrenar con la app, así que se le crea el
+       * código. Sin él no se crea nada en el servidor: le apuntas tú, y un
+       * cliente sin código no se queda «pendiente de enviar» para siempre
+       * (trainer-logging.md §4.0).
+       */
+      createClient: async (name, { withApp = false } = {}) => {
         const id = generateId('client');
         const clientBase = {
           id, name: name.trim(),
@@ -625,9 +652,9 @@ export const useStore = create(
 
         set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
 
-        // If trainer is in connected mode, create the Supabase slot
+        // Solo con app, y solo si el entrenador está en la nube.
         const { trainerSync } = get();
-        if (trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
+        if (withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
           try {
             const { slotId, clientCode } = await createClientSlot(trainerSync.userId, name.trim());
             set((s) => ({
@@ -691,11 +718,15 @@ export const useStore = create(
           });
           const clients    = { ...acc.clients };    delete clients[clientId];
           const clientLogs = { ...acc.clientLogs }; delete clientLogs[clientId];
+          // Sus sesiones libres no cuelgan de ningún programa: se van por `owner`.
+          const sessionTemplates = Object.fromEntries(
+            Object.entries(acc.sessionTemplates).filter(([, tpl]) => tpl.programId || tpl.owner !== clientId),
+          );
           // El `workoutLog` personal ya no se filtra aquí: las entradas de un
           // cliente viven en `clientLogs`, y las suyas se van con su bucket.
           return {
-            programs:         acc.programs,
-            sessionTemplates: acc.sessionTemplates,
+            programs: acc.programs,
+            sessionTemplates,
             clients, clientLogs,
           };
         });
@@ -1148,13 +1179,20 @@ export const useStore = create(
       // Una sesión libre es un `sessionTemplate` con `programId: null`: todo lo
       // que edita plantillas (ejercicios, bloques, nombre) le vale tal cual.
 
-      /** Crea una sesión libre, vacía o desde un plan (`presetFromEntry`). */
-      createFreeTemplate: (plan = null, owner = 'me') => {
+      /**
+       * Crea una sesión libre, vacía o desde un plan (`presetFromEntry`).
+       * `asTemplate`: es una plantilla de sesión de la pestaña Plantillas
+       * (`kind: 'template'`, como las de programa), no una sesión mía: no sale
+       * en Inicio ni se entrena, solo se asigna (group-classes.md §4.6).
+       */
+      createFreeTemplate: (plan = null, owner = 'me', { asTemplate = false } = {}) => {
         const id = generateId('tpl');
-        const tpl = freeTemplateFromPreset(plan, {
+        const base = freeTemplateFromPreset(plan, {
           id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
         });
+        const tpl = asTemplate ? { ...base, kind: 'template', onHome: false } : base;
         set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
+        if (owner !== 'me') get().markClientDirty(owner);
         return id;
       },
 
@@ -1233,10 +1271,48 @@ export const useStore = create(
         });
       },
 
-      setFreeTemplateOnHome: (templateId, onHome) => {
-        const tpl = get().sessionTemplates[templateId];
-        if (!tpl || tpl.programId) return;
-        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...tpl, onHome } } }));
+      /**
+       * Copia una sesión libre (group-classes.md §4.6): asignar una plantilla a
+       * un cliente o a mí, o duplicarla dentro de Plantillas (`asTemplate`).
+       * Copia y no referencia, como los programas: adaptar la tuya o la del
+       * cliente no toca la plantilla. Los bloques estrenan id para que sus
+       * resultados no se comparen con los de la otra.
+       */
+      copyFreeTemplate: (templateId, { owner = 'me', name, asTemplate = false } = {}) => {
+        const src = get().sessionTemplates[templateId];
+        if (!src || src.programId) return null;
+        const id   = generateId('tpl');
+        const copy = JSON.parse(JSON.stringify(src));
+        delete copy.fromTrainer;
+        delete copy.trainerName;
+        delete copy.kind;
+        const tpl = {
+          ...copy, id, owner,
+          ...(name != null ? { name } : {}),
+          blocks: (copy.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
+          // Asignada a mí, a Inicio; una plantilla o la de un cliente, no.
+          ...(asTemplate ? { kind: 'template', onHome: false } : { onHome: owner === 'me' }),
+        };
+        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [id]: tpl } }));
+        if (owner !== 'me') get().markClientDirty(owner);
+        return id;
+      },
+
+      /**
+       * Lo que viaja a un cliente es su programa activo con sus sesiones
+       * libres dentro (`_buildProgramJson`): tocar una de ellas es tocar lo
+       * enviado. Sin programa no hay nada que enviar todavía.
+       */
+      /** Guarda cómo llama el entrenador a un ejercicio (§6.3). */
+      setExerciseAlias: (name, exerciseId) => {
+        const key = normName(name);
+        if (!key || !exerciseId) return;
+        set((s) => ({ exerciseAliases: { ...(s.exerciseAliases ?? {}), [key]: exerciseId } }));
+      },
+
+      markClientDirty: (clientId) => {
+        const programId = get().clients[clientId]?.activeProgramId;
+        if (programId) get().markProgramDirtyForClients(programId);
       },
 
       /**
@@ -1253,6 +1329,7 @@ export const useStore = create(
           delete sessionTemplates[templateId];
           return { sessionTemplates };
         });
+        if ((tpl.owner ?? 'me') !== 'me') get().markClientDirty(tpl.owner);
         return true;
       },
 
@@ -1841,17 +1918,34 @@ export const useStore = create(
       // ACTIVE SESSION
       // ══════════════════════════════════════════════════════════════════════
 
-      startSession: (templateId) => {
+      /**
+       * `forClient`: el entreno es de un cliente sin app y se guarda en su
+       * historial. `loggedAt` + `logOnly`: «Apuntar sesión pasada», sin reloj ni
+       * descansos (trainer-logging.md §3.3-3.4).
+       */
+      /**
+       * `prefill` (un texto pegado, trainer-logging.md §6.4): `{ setsState, adHoc }`
+       * con las series ya leídas. Las de la sesión van a su sitio, recortadas o
+       * completadas a sus series (el Workout no admite más); el resto entra como
+       * ejercicios añadidos.
+       */
+      startSession: (templateId, { forClient = null, loggedAt = null, logOnly = false, prefill = null } = {}) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
+        const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
         const setsState = {};
         template.exercises.forEach(({ exerciseId, sets }) => {
-          setsState[exerciseId] = Array.from({ length: sets }, () => ({
-            weight: '', reps: '', time: '', done: false,
-          }));
+          const given = prefill?.setsState?.[exerciseId] ?? [];
+          setsState[exerciseId] = Array.from({ length: sets }, (_, i) => given[i] ?? emptySet());
         });
+        const adHocExercises = (prefill?.adHoc ?? [])
+          .filter((a) => !setsState[a.exerciseId])
+          .map((a) => ({ exerciseId: a.exerciseId, setsState: a.setsState }));
         set({
-          activeSession: { templateId, setsState, startedAt: Date.now(), notes: '', exerciseNotes: {}, adHocExercises: [], freeSessionName: '', blockState: {} },
+          activeSession: {
+            ...INITIAL_ACTIVE_SESSION, templateId, setsState, adHocExercises,
+            startedAt: Date.now(), forClient, loggedAt, logOnly,
+          },
           ui: { ...get().ui, view: 'workout' },
         });
         get().navigate('workout');
@@ -2224,8 +2318,13 @@ export const useStore = create(
       },
 
       saveSession: () => {
-        const { activeSession, getEffectiveTemplate, workoutLog, programs } = get();
+        const { activeSession, getEffectiveTemplate, programs, clients } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
+        // De quién es el entreno (trainer-logging.md §3.3): se lee y se escribe
+        // en su historial. Un cliente sin app no toca mi `workoutLog`.
+        const forClient  = activeSession.forClient ?? null;
+        const workoutLog = ownerLogOf(get(), forClient);
+        const savedAt    = activeSession.loggedAt ?? Date.now();
 
         // Lo que toca después de guardar, en las dos ramas. El envío al
         // entrenador ya no va aquí: lo dispara el cambio de `workoutLog`
@@ -2330,7 +2429,9 @@ export const useStore = create(
         }
 
         // Tag the entry if the trainer had prescribed targets for this session.
-        const wasAdapted = !!get().clientSync.pendingOverrides?.[activeSession.templateId];
+        // Solo en mi móvil de cliente: una prescripción no es para el entreno
+        // que apunta un entrenador.
+        const wasAdapted = !forClient && !!get().clientSync.pendingOverrides?.[activeSession.templateId];
 
         // Sesión libre guardada (free-sessions.md §4.2): la entrada lo dice
         // ella misma, porque en el móvil del entrenador la plantilla no existe.
@@ -2341,8 +2442,13 @@ export const useStore = create(
           sessionTemplateId: activeSession.templateId,
           sessionName: isFreeTpl ? (template.name?.trim() || null) : template.name,
           ...(isFreeTpl ? { free: true } : {}),
-          timestamp: Date.now(),
-          duration: activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
+          timestamp: savedAt,
+          // En modo registro el reloj no mide nada: la duración estimada de la
+          // sesión, que es la que usa la carga interna. ponytail: estimada, no
+          // medida; si la carga de estos clientes sale rara, pedirla en el recap.
+          duration: activeSession.logOnly
+            ? sessionStats(template, get().getEffectiveLibrary()).minutes * 60000
+            : activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
           bodyWeight: null,
           // Full planned volume of the template — skipped exercises drop out of
@@ -2373,19 +2479,24 @@ export const useStore = create(
         const ownerProgram = ownerProgramId ? programs[ownerProgramId] : null;
         let stageUpdate = null;
         if (ownerProgram?.stages?.length > 0) {
-          const progress = athleteProgress(ownerProgram);
+          // Con cliente: el progreso que se ve en su ficha. Sin app no tiene
+          // blob, así que es el del propio programa, que es donde se escribe.
+          const progress = athleteProgress(ownerProgram, forClient ? clients[forClient] : null);
           const inCurrentStage = (ownerProgram.stages[progress.currentStageIndex]?.days ?? [])
             .some((d) => d.sessionTemplateId === activeSession.templateId);
-          const patch = recordSession(progress, { inCurrentStage, today: localDay() });
+          // Una sesión apuntada tarde arranca la etapa el día que se entrenó.
+          const patch = recordSession(progress, { inCurrentStage, today: localDay(savedAt) });
           if (inCurrentStage) stageUpdate = { programId: ownerProgramId, patch };
         }
 
         set((s) => ({
-          workoutLog: [...s.workoutLog, logEntry],
+          ...(forClient
+            // Ordenado por fecha: una sesión apuntada tarde cae en su día.
+            ? { clientLogs: { ...s.clientLogs, [forClient]: mergeClientLog(s.clientLogs[forClient], [logEntry]) } }
+            : { workoutLog: [...s.workoutLog, logEntry], ui: { ...s.ui, homeTab: 'session' } }),
           activeSession: INITIAL_ACTIVE_SESSION,
-          ui: { ...s.ui, homeTab: 'session' },
           // Consume the trainer's one-off prescription for this session, if any.
-          ...(s.clientSync.pendingOverrides?.[activeSession.templateId] ? {
+          ...(!forClient && s.clientSync.pendingOverrides?.[activeSession.templateId] ? {
             clientSync: {
               ...s.clientSync,
               pendingOverrides: consumeOverride(s.clientSync.pendingOverrides, activeSession.templateId),
@@ -2428,19 +2539,27 @@ export const useStore = create(
        * Both are optional and patched independently — passing only one leaves
        * the other untouched.
        */
-      setSessionFeedback: (logId, { sessionRpe, bodyWeight } = {}) =>
-        set((state) => ({
-          workoutLog: state.workoutLog.map((e) => (
+      setSessionFeedback: (logId, { sessionRpe, bodyWeight } = {}, clientId = null) =>
+        set((state) => {
+          const patch = (e) => (
             e.id !== logId ? e : {
               ...e,
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
             }
-          )),
-          ...(bodyWeight !== undefined && bodyWeight !== null
-            ? { profile: { ...state.profile, bodyWeight } }
-            : {}),
-        })),
+          );
+          // El recap del entreno de un cliente escribe en SU entrada, y su peso
+          // no es el mío: `profile.bodyWeight` no se toca.
+          if (clientId) {
+            return { clientLogs: { ...state.clientLogs, [clientId]: (state.clientLogs[clientId] ?? []).map(patch) } };
+          }
+          return {
+            workoutLog: state.workoutLog.map(patch),
+            ...(bodyWeight !== undefined && bodyWeight !== null
+              ? { profile: { ...state.profile, bodyWeight } }
+              : {}),
+          };
+        }),
 
       /**
        * Borrado en bloque del historial personal. Destructivo y sin deshacer —
@@ -2509,6 +2628,9 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       startRestTimer: (seconds, exerciseName) => {
+        // Modo registro: apuntar lo que ya pasó no descansa. Una sola guarda
+        // aquí cubre las series, el calentamiento y cualquier llamada futura.
+        if (get().activeSession.logOnly) return;
         // Clean up any previous timer
         const { _restInterval, _appStateSub } = get();
         if (_restInterval) clearInterval(_restInterval);
@@ -2703,8 +2825,17 @@ export const useStore = create(
         tplIds.forEach((id) => {
           if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
         });
+        // Las sesiones libres del cliente viajan con su programa, con el mismo
+        // id en los dos móviles (group-classes.md §4.4). Solo si hay alguna: con
+        // la clave vacía cambiaría la firma de todos los clientes ya enviados.
+        const freeSessions = program.owner !== 'me'
+          ? Object.fromEntries(Object.values(sessionTemplates)
+            .filter((tpl) => !tpl.programId && tpl.owner === program.owner)
+            .map((tpl) => [tpl.id, tpl]))
+          : {};
+        const hasFree = Object.keys(freeSessions).length > 0;
         const usedExIds = new Set(
-          Object.values(relTpl)
+          [...Object.values(relTpl), ...Object.values(freeSessions)]
             .flatMap((t) => [
               ...(t.exercises ?? []).map((e) => e.exerciseId),
               ...(t.blocks ?? []).flatMap((b) => (b.movements ?? []).map((m) => m.exerciseId)),
@@ -2738,6 +2869,7 @@ export const useStore = create(
             // `data.programs`, y aquí va `data.program`).
             program: { ...program, owner: 'me', kind: 'program', status: 'active' },
             sessionTemplates: relTpl,
+            ...(hasFree ? { freeSessions } : {}),
             customExercises: relCustom,
             workoutLog: log,
           }, null, 2),
@@ -2861,6 +2993,25 @@ export const useStore = create(
           if (needsTemplateData) {
             updates.sessionTemplates = mergeFileSessions(s.sessionTemplates, data);
           }
+          // Las sesiones libres que manda el entrenador (group-classes.md §4.4)
+          // se SUSTITUYEN enteras: las que borró desaparecen. Llegan como mías
+          // (`owner: 'me'`, igual que el programa) y marcadas `fromTrainer`,
+          // que es lo que les quita EDITAR. Sin la clave, solo se retiran si
+          // vienen del mismo programa: es que las borró todas; el programa de
+          // un amigo no se lleva las de tu entrenador.
+          if (sections.program && data.program) {
+            const incomingFree = data.freeSessions ?? null;
+            const fromProgram  = data.program.id;
+            const drop = (tpl) => tpl.fromTrainer && (incomingFree || tpl.fromProgramId === fromProgram);
+            const base = updates.sessionTemplates ?? s.sessionTemplates;
+            updates.sessionTemplates = {
+              ...Object.fromEntries(Object.entries(base).filter(([, tpl]) => !drop(tpl))),
+              ...Object.fromEntries(Object.values(incomingFree ?? {}).map((tpl) => [tpl.id, {
+                ...tpl, owner: 'me', programId: null, onHome: true,
+                fromTrainer: true, fromProgramId: fromProgram,
+              }])),
+            };
+          }
           if (sections.program) {
             const personalPrograms = {};
             Object.entries(allFilePrograms).forEach(([id, p]) => {
@@ -2979,6 +3130,11 @@ export const useStore = create(
             // Las etiquetas son de los clientes, así que entran con ellos. Sin
             // esto la ficha restaurada muestra `tag_a1b2c3d4` en vez del nombre.
             // Fusión por `id`: la copia local gana, que es la que el usuario ve.
+            // Los alias del entrenador: fusión por clave, la copia local gana.
+            if (data.exerciseAliases) {
+              updates.exerciseAliases = { ...data.exerciseAliases, ...(s.exerciseAliases ?? {}) };
+            }
+
             const incomingTags = data.tagRegistry ?? [];
             if (incomingTags.length) {
               const known = new Set((s.tagRegistry ?? []).map((tg) => tg.id));
@@ -3267,6 +3423,85 @@ export const useStore = create(
         }));
       },
 
+      /**
+       * «Pasar a la app» (C28 §4.0.5): se genera el código, se sube lo que se le
+       * apuntó (C20) y su programa, para que el código funcione en cuanto lo
+       * canjee. Desde aquí es invitado: EMPEZAR desaparece de su ficha.
+       */
+      moveClientToApp: async (clientId) => {
+        await get().connectClientToCloud(clientId);
+        // Lo de después es de lo que ya tiene código: si falla, la subida
+        // silenciosa del invitado lo reintenta.
+        try {
+          await get().pushTrainerLogToSlot(clientId);
+          const programId = get().clients[clientId]?.activeProgramId;
+          if (programId) await get().uploadProgramToClient(clientId, programId);
+        } catch (err) {
+          console.warn('[moveClientToApp]', err.message);
+        }
+      },
+
+      /**
+       * «Cancelar invitación» (C28 §4.0.5): el código deja de valer y el
+       * cliente vuelve a «sin app». Lo que haya en el hueco se va con él.
+       */
+      cancelClientInvitation: async (clientId) => {
+        const client = get().clients[clientId];
+        if (!client?.syncSlotId || client.syncLinked) return;
+        await _ensureTrainerSession(get().trainerSync);
+        await deleteClientSlot(client.syncSlotId);
+        set((s) => ({
+          clients: {
+            ...s.clients,
+            [clientId]: {
+              ...s.clients[clientId],
+              syncSlotId: null, syncCode: null, syncLinked: false,
+              programDirty: false, overridesDirty: false, programUploadedSig: null,
+              remoteSessionsCount: 0,
+            },
+          },
+        }));
+      },
+
+      /**
+       * C20: sube al hueco lo que el entrenador le apuntó (historial, ejercicios
+       * propios y progreso de etapa), en el mismo formato que sube un cliente.
+       * Al canjear el código, la hoja preselecciona fusionarlo.
+       *
+       * Guarda contra pisar al cliente: antes se relee el hueco, y si ya lo ha
+       * canjeado no se sube nada (lo que manda desde entonces es su móvil).
+       * Queda una ventana de segundos entre leer y escribir, en la que el
+       * cliente aún no ha podido entrenar con la app.
+       */
+      pushTrainerLogToSlot: async (clientId) => {
+        const { clients, trainerSync, clientLogs, customExercises, programs } = get();
+        const client = clients[clientId];
+        if (!client?.syncSlotId || client.syncLinked) return false;
+        await _ensureTrainerSession(trainerSync);
+        const slot = (await getTrainerSlots(trainerSync.userId)).find((x) => x.id === client.syncSlotId);
+        if (slot?.client_id) {
+          set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
+          return false;
+        }
+        const entries = clientLogs[clientId] ?? [];
+        const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
+        const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
+        const program = programs[client.activeProgramId];
+        // El sello de activación es el del propio programa: así, al restaurar,
+        // `mergeProgressOnImport` da por buena esta posición.
+        const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
+        await uploadHistory(client.syncSlotId, entries, custom, progress);
+        // Son mis propios entrenos: no cuentan como «sin revisar».
+        set((s) => ({
+          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], remoteSessionsCount: entries.length } },
+          trainerSync: {
+            ...s.trainerSync,
+            lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
+          },
+        }));
+        return true;
+      },
+
       uploadProgramToClient: async (clientId, programId) => {
         const { clients, trainerSync } = get();
         const client = clients[clientId];
@@ -3282,9 +3517,8 @@ export const useStore = create(
         const trainerName   = get().trainerSync.trainerName;
         if (trainerName?.trim()) {
           // Stamp trainerName into every session template so clients see attribution
-          Object.values(programData.sessionTemplates ?? {}).forEach((tpl) => {
-            tpl.trainerName = trainerName.trim();
-          });
+          [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
+            .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
         }
         await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null);
         // Clear pending-upload flag after successful push
@@ -4250,6 +4484,7 @@ export const useStore = create(
         sessionTemplates: state.sessionTemplates,
         clients:     state.clients,
         tagRegistry: state.tagRegistry,
+        exerciseAliases: state.exerciseAliases,
         driveBackup: state.driveBackup,
         trainerSync: state.trainerSync,
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
@@ -4523,6 +4758,38 @@ useStore.subscribe((s, prev) => {
   uploadTimer = setTimeout(() => {
     useStore.getState().uploadHistoryToTrainer().catch(() => {});
   }, UPLOAD_DEBOUNCE_MS);
+});
+
+// El invitado (C28 §4.0.4) no tiene aviso de cambios: lo que quede pendiente se
+// le sube solo, venga de donde venga (asignar, editar, sesiones libres,
+// prescribir). Un solo suscriptor en vez de una llamada en cada acción. Si falla,
+// el flag se queda y el siguiente cambio de `clients` —el refresco de los huecos
+// al volver a Clientes— lo reintenta.
+const INVITED_DEBOUNCE_MS = 1500;
+const invitedTimers = {};
+const invitedInFlight = new Set();
+useStore.subscribe((s, prev) => {
+  if (s.clients === prev.clients || !s._hasHydrated) return;
+  Object.values(s.clients).forEach((c) => {
+    if (clientLink(c, s.trainerSync) !== 'invited') return;
+    if (!(c.programDirty && c.activeProgramId) && !c.overridesDirty) return;
+    if (invitedInFlight.has(c.id)) return;
+    clearTimeout(invitedTimers[c.id]);
+    invitedTimers[c.id] = setTimeout(async () => {
+      const st = useStore.getState();
+      const cur = st.clients[c.id];
+      if (!cur || clientLink(cur, st.trainerSync) !== 'invited') return;
+      invitedInFlight.add(c.id);
+      try {
+        if (cur.programDirty && cur.activeProgramId) await st.uploadProgramToClient(c.id, cur.activeProgramId);
+        if (cur.overridesDirty) await st.sendOverrides(c.id);
+      } catch {
+        // Silencioso: se reintenta con el siguiente cambio.
+      } finally {
+        invitedInFlight.delete(c.id);
+      }
+    }, INVITED_DEBOUNCE_MS);
+  });
 });
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────

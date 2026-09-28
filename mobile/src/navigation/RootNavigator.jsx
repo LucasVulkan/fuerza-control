@@ -28,12 +28,14 @@ import StagePlannerScreen    from '../screens/StagePlannerScreen';
 import SessionRecapScreen    from '../screens/SessionRecapScreen';
 import NextSessionScreen      from '../screens/NextSessionScreen';
 import ExerciseSelectorScreen from '../screens/ExerciseSelectorScreen';
+import PasteWorkoutScreen from '../screens/PasteWorkoutScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
 import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
 import ExternalImportModal   from '../components/ExternalImportModal';
+import { clientLink } from '../utils/clientLink';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -73,7 +75,7 @@ function MainTabs() {
     return !!program && stageBannerDue(program, athleteProgress(program), s.stageBannerSnooze?.[program.id]);
   });
   const pendingClients = useStore((s) =>
-    Object.values(s.clients ?? {}).filter((c) => c.syncSlotId && (c.programDirty || c.overridesDirty)).length
+    Object.values(s.clients ?? {}).filter((c) => clientLink(c, s.trainerSync) === 'linked' && (c.programDirty || c.overridesDirty)).length
   );
   return (
     <Tab.Navigator
@@ -252,6 +254,11 @@ export default function RootNavigator() {
         <Stack.Screen
           name="ExerciseSelector"
           component={ExerciseSelectorScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="PasteWorkout"
+          component={PasteWorkoutScreen}
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen

@@ -2,13 +2,13 @@
 
 > Tema: programas
 > En corto: La app deja de contar «ciclos» (vueltas completas a todas las sesiones) y pasa a contar semanas de calendario: entrenos por semana, etapas de N semanas y, al acabar una, una comprobación de si se entrenó lo que tocaba que propone alargarla.
-> Fase P36 · hecho · Modelo puro: semanas, estado de etapa, sesión que toca · §4
-> Fase P37 · hecho · Store, migración y sincronización cliente ↔ entrenador · §5
-> Fase P38 · hecho · Pantallas del atleta · §6
-> Fase P39 · hecho · Pantallas del entrenador · §7
-> Fase P40 · hecho · Onboarding, Documentación, volumen semanal y textos · §8
+> Fase P36 · terminado · Modelo puro: semanas, estado de etapa, sesión que toca · §4
+> Fase P37 · terminado · Store, migración y sincronización cliente ↔ entrenador · §5
+> Fase P38 · terminado · Pantallas del atleta · §6
+> Fase P39 · terminado · Pantallas del entrenador · §7
+> Fase P40 · terminado · Onboarding, Documentación, volumen semanal y textos · §8
 >
-> Estado: **✅ IMPLEMENTADA y fusionada a `main`** (P36-P40, merge `f7016d0`, 25-sep-2026). Las pruebas en los dos móviles son los bloques «Probar en dispositivo» de §5.4, §6.5, §7.1 y §8.5. Sustituye
+> Estado: **✅ IMPLEMENTADA y fusionada a `main`** (P36-P40, merge `f7016d0`, 25-sep-2026). Las pruebas en los dos móviles son los bloques «Probado en dispositivo» de §5.4, §6.5, §7.1 y §8.5. Sustituye
 > la regla de progreso de [stage-locks.md](stage-locks.md) §0.6 y §3.2 (un ciclo =
 > una vuelta a las sesiones distintas) y la regla del hero de
 > [home-sessions.md](home-sessions.md) / `sessionPlan`. **Todo lo demás de
@@ -416,7 +416,7 @@ fromLegacyProgress(p, stageDaysCount, today):
 `durationWeeks` se queda con el número que tenga: los ciclos pasan a leerse como
 semanas, que es lo que el usuario quería decir al ponerlos.
 
-**Probar en dispositivo.** Con los dos móviles actualizados: el cliente entrena una
+**Probado en dispositivo.** Con los dos móviles actualizados: el cliente entrena una
 sesión y el entrenador ve «Semana 1 de 4 · 1/12» en la tarjeta y en la ficha. El
 cliente borra esa sesión: en los dos sigue 1/12. El entrenador activa la etapa 2 y
 la envía: el cliente pasa a «sin empezar», entrena, y los dos ven la semana 1 de la
@@ -541,7 +541,7 @@ antigüedad. Estructura de la lista sin cambios
 - La hoja de documentación que abre «SEMANA» en la tarjeta sigue siendo la
   sección `cycle` del glosario: su contenido se reescribe en la P40.
 
-**Probar en dispositivo.** Con un programa propio (sin entrenador), servido desde
+**Probado en dispositivo.** Con un programa propio (sin entrenador), servido desde
 el worktree de la rama: la Home dice «N de M esta semana» y marca solo lo hecho
 esta semana; la sesión que toca es la que más tiempo llevas sin hacer. En la
 tarjeta de Programa: «SEMANA 01» tras la primera sesión, «Semana 1 de 4 · 1 de 12
@@ -605,7 +605,7 @@ con `stageWeeksCompleted`; su punto 4 ya dice `stageStatus(...).ended && isLast`
   semana», `onboarding.sessionsPerCycle` → «Sesiones por semana» (también lo lee
   la hoja de crear programa). La hoja deja de pintar `editor.cyclesExplain`.
 
-**Probar en dispositivo.** Los dos móviles con la rama. Es la prueba de §5.4 más
+**Probado en dispositivo.** Los dos móviles con la rama. Es la prueba de §5.4 más
 lo que pinta el entrenador: tras la primera sesión del cliente, su tarjeta en
 Clientes dice «SEMANA 01», «1/3 esta semana» y ritmo en ses/sem; la ficha, «Semana
 1 de 4 · 1 de 12 sesiones» y la sesión que le toca es la que más tiempo lleva sin
@@ -705,7 +705,7 @@ histórica a `CycleDots` en el onboarding.
 Fallo previo encontrado de paso, NO arreglado aquí: `t('common.error')` en el
 onboarding no existe en ningún idioma (ya faltaba en `main`).
 
-**Probar en dispositivo.** Onboarding: elegir 4 días y abrir una propuesta de 3
+**Probado en dispositivo.** Onboarding: elegir 4 días y abrir una propuesta de 3
 sesiones → la tarjeta avisa «Son 3 sesiones por semana, menos que los 4 días…».
 La vista previa ya no enseña «Cómo se reparte». Documentación: la sección
 «Semana» existe y la de «Ciclo» no; en la tarjeta de programa, pulsar «SEMANA»

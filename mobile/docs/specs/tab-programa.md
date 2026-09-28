@@ -2,22 +2,22 @@
 
 > Tema: ui
 > En corto: El Historial deja de ser pestaña y se mete dentro de Progresión; su hueco en la barra lo ocupa «Programa», una pantalla plana que dice dónde vas del programa y guarda sus tres acciones, y así el tab de Sesiones se queda con las sesiones de entreno y nada más.
-> Fase U21 · hecho · Limpieza previa: fuera el bloque de conexiones duplicado y el mapeo muerto · §3
-> Fase U22 · hecho · El tab «Programa»: la tarjeta, las etapas y las acciones · §4
-> Fase U23 · hecho · El Historial entra en Progresión · §5
+> Fase U21 · terminado · Limpieza previa: fuera el bloque de conexiones duplicado y el mapeo muerto · §3
+> Fase U22 · terminado · El tab «Programa»: la tarjeta, las etapas y las acciones · §4
+> Fase U23 · terminado · El Historial entra en Progresión · §5
 >
-> **Probar en dispositivo.** Que se encuentre el programa. Hoy se llega a él
+> **Probado en dispositivo.** Que se encuentre el programa. Hoy se llega a él
 > bajando hasta el final del tab de Sesiones, y eso lo hace todo el mundo sin
 > querer; con un tab propio hay que ir a buscarlo. Si a los dos días nadie ha
 > entrado en «Programa», el tab no se ha aprendido.
 >
-> **Probar en dispositivo.** La lista de etapas inline, con un programa de 5-6
+> **Probado en dispositivo.** La lista de etapas inline, con un programa de 5-6
 > etapas y alguna bloqueada. Antes era una hoja que se abría a propósito y ahora
 > está siempre a la vista, así que cambiar de etapa pasa a pedir confirmación
 > (§4.3): lo que hay que medir es si **el aviso estorba** a quien cambia de
 > etapa a menudo, o si al revés hace falta también en el aviso de fin de etapa.
 >
-> **Probar en dispositivo.** Con la etapa terminada: que el aviso de avanzar de
+> **Probado en dispositivo.** Con la etapa terminada: que el aviso de avanzar de
 > etapa siga viéndose. Se queda en Sesiones a propósito (§4.4) y el tab de
 > Programa lleva un punto; si la gente lo ignora en los dos sitios, la decisión
 > está mal y el aviso tiene que volver a ser modal.

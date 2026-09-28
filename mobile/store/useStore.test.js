@@ -1582,12 +1582,6 @@ describe('sesiones libres — free-sessions.md T19', () => {
     expect(saved).toMatchObject({ sessionTemplateId: '__free__', free: true });
   });
 
-  it('mostrar en Inicio solo se aplica a sesiones libres', () => {
-    const id = useStore.getState().createFreeTemplate();
-    useStore.getState().setFreeTemplateOnHome(id, false);
-    expect(tpl(id).onHome).toBe(false);
-  });
-
   it('borrar: nunca la sesión en curso; el historial se queda', () => {
     const id = useStore.getState().saveEntryAsFreeTemplate('log_f1');
     useStore.getState().startSession(id);
@@ -1835,5 +1829,329 @@ describe('"subir cambios" solo cuando hay cambios — qa-sep-conexion C17', () =
     st().updateExerciseParams('tpl_c17', 'squat', { sets: 3 });
     st().markProgramDirtyForClients('prog_c17');
     expect(st().clients.cli_c17.programDirty).toBe(false);
+  });
+});
+
+describe('el entrenador apunta por el cliente — trainer-logging.md C19', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
+      clients: { cli_1: { id: 'cli_1', name: 'Carmen' } },
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null, bodyWeight: 80 },
+    });
+  });
+
+  function programaDeCliente() {
+    const pid = useStore.getState().createProgramForClient('cli_1', 2, 'Fuerza 50+', 4);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+    return pid;
+  }
+  const prog = (pid) => useStore.getState().programs[pid];
+  function entrenar(templateId, opts) {
+    useStore.getState().startSession(templateId, opts);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '60', reps: '8', time: '', done: true }] } },
+    }));
+    return useStore.getState().saveSession();
+  }
+
+  it('la sesión va al historial del cliente y no al mío, y mueve SU etapa', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    expect(res.ok).toBe(true);
+    expect(useStore.getState().workoutLog).toHaveLength(0);
+    expect(useStore.getState().clientLogs.cli_1.map((e) => e.id)).toEqual([res.entryId]);
+    expect(prog(pid)).toMatchObject({ stageSessionsDone: 1, stageStartedOn: localDay() });
+    expect(useStore.getState().activeSession.forClient).toBeNull();
+  });
+
+  it('apuntar una pasada: su fecha, arranca la etapa ese día, duración estimada y sin descansos', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    const hace3 = Date.now() - 3 * 86400000;
+
+    useStore.getState().startSession(tid, { forClient: 'cli_1', loggedAt: hace3, logOnly: true });
+    useStore.getState().startRestTimer(90, 'Sentadilla');
+    expect(useStore.getState().ui.restTimer.active).toBe(false);
+
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: [{ weight: '60', reps: '8', time: '', done: true }] } },
+    }));
+    const res = useStore.getState().saveSession();
+    const entry = useStore.getState().clientLogs.cli_1[0];
+
+    expect(res.ok).toBe(true);
+    expect(entry.timestamp).toBe(hace3);
+    expect(entry.duration).toBeGreaterThan(0);
+    expect(entry.duration % 60000).toBe(0);           // minutos enteros de la estimación
+    expect(prog(pid).stageStartedOn).toBe(localDay(hace3));
+  });
+
+  it('una sesión apuntada tarde queda ordenada por fecha en su historial', () => {
+    const pid = programaDeCliente();
+    const [a, b] = prog(pid).stages[0].days.map((d) => d.sessionTemplateId);
+    entrenar(a, { forClient: 'cli_1' });
+    entrenar(b, { forClient: 'cli_1', loggedAt: Date.now() - 2 * 86400000, logOnly: true });
+
+    expect(useStore.getState().clientLogs.cli_1.map((e) => e.sessionTemplateId)).toEqual([b, a]);
+  });
+
+  it('el RPE y el peso del recap van a la entrada del cliente y no tocan mi peso', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    useStore.getState().setSessionFeedback(res.entryId, { sessionRpe: 7, bodyWeight: 62 }, 'cli_1');
+
+    expect(useStore.getState().clientLogs.cli_1[0]).toMatchObject({ sessionRpe: 7, bodyWeight: 62 });
+    expect(useStore.getState().profile.bodyWeight).toBe(80);
+  });
+
+  it('un entreno mío sigue igual: mi historial, con reloj y descansos', () => {
+    const pid = useStore.getState().createEmptyProgram(1, 'Mío', 'program', 4);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 1 }] }])),
+    }));
+    useStore.getState().startSession(prog(pid).stages[0].days[0].sessionTemplateId);
+    useStore.getState().startRestTimer(90, 'Sentadilla');
+    expect(useStore.getState().ui.restTimer.active).toBe(true);
+    useStore.getState().stopRestTimer();
+  });
+
+  it('un texto pegado (C22): las series a su sitio, ajustadas a la sesión, y lo demás como añadido', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    useStore.setState((s) => ({
+      sessionTemplates: { ...s.sessionTemplates, [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'squat', sets: 2 }] } },
+    }));
+    const set = (weight) => ({ weight, reps: '6', time: '', done: true });
+    useStore.getState().startSession(tid, {
+      forClient: 'cli_1', logOnly: true, loggedAt: 1,
+      prefill: {
+        setsState: { squat: [set('100'), set('100'), set('95')] },
+        adHoc: [{ exerciseId: 'squat', setsState: [set('1')] }, { exerciseId: 'plank', setsState: [set('')] }],
+      },
+    });
+    const a = useStore.getState().activeSession;
+    expect(a.setsState.squat.map((x) => x.weight)).toEqual(['100', '100']);
+    // Uno que ya está en la sesión no se duplica como añadido (fallo 15).
+    expect(a.adHocExercises.map((x) => x.exerciseId)).toEqual(['plank']);
+    expect(a).toMatchObject({ forClient: 'cli_1', logOnly: true });
+  });
+
+  it('los alias se guardan normalizados', () => {
+    useStore.setState({ exerciseAliases: {} });
+    useStore.getState().setExerciseAlias('  Bánca ', 'bench_press_barbell');
+    expect(useStore.getState().exerciseAliases).toEqual({ banca: 'bench_press_barbell' });
+  });
+});
+
+describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
+      clients: { cli_1: { id: 'cli_1', name: 'Marta' } },
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+      profile: { ...useStore.getState().profile, activeProgramId: null },
+    });
+  });
+
+  function plantilla() {
+    const id = useStore.getState().createFreeTemplate({
+      name: 'Movilidad', exercises: [{ exerciseId: 'squat', sets: 2 }], blocks: [],
+    });
+    useStore.setState((s) => ({
+      sessionTemplates: { ...s.sessionTemplates, [id]: {
+        ...s.sessionTemplates[id], blocks: [{ id: 'blk_a', format: 'amrap', movements: [] }],
+      } },
+    }));
+    return id;
+  }
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('asignar copia: id nuevo, del cliente, fuera de Inicio, bloques con id propio, y la plantilla intacta', () => {
+    const src  = plantilla();
+    const copy = useStore.getState().copyFreeTemplate(src, { owner: 'cli_1' });
+
+    expect(copy).not.toBe(src);
+    expect(tpl(copy)).toMatchObject({ owner: 'cli_1', programId: null, onHome: false, name: tpl(src).name });
+    expect(tpl(copy).blocks[0].id).not.toBe('blk_a');
+    expect(tpl(src).owner).toBe('me');
+    expect(tpl(src).blocks[0].id).toBe('blk_a');
+  });
+
+  it('borrar el cliente se lleva sus sesiones libres y deja las mías', () => {
+    const src  = plantilla();
+    const copy = useStore.getState().copyFreeTemplate(src, { owner: 'cli_1' });
+
+    useStore.getState().deleteClient('cli_1');
+
+    expect(tpl(copy)).toBeUndefined();
+    expect(tpl(src)).toBeDefined();
+  });
+
+  it('viajan con su programa, y sin ninguna la firma no cambia', () => {
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Base', 4);
+    const payload = () => JSON.parse(useStore.getState()._buildProgramJson(pid).json);
+    const sigAntes = useStore.getState()._programSig(pid);
+    expect(payload().freeSessions).toBeUndefined();
+
+    const copy = useStore.getState().copyFreeTemplate(plantilla(), { owner: 'cli_1' });
+
+    expect(Object.keys(payload().freeSessions)).toEqual([copy]);
+    expect(useStore.getState()._programSig(pid)).not.toBe(sigAntes);
+  });
+
+  it('crear, asignar o borrar una suya lo deja pendiente de enviar', () => {
+    const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Base', 4);
+    useStore.setState((s) => ({
+      clients: { cli_1: { ...s.clients.cli_1, activeProgramId: pid, syncSlotId: 'slot_1', programUploadedSig: s._programSig(pid) } },
+    }));
+    useStore.getState().markClientDirty('cli_1');
+    expect(useStore.getState().clients.cli_1.programDirty ?? false).toBe(false);
+
+    const copy = useStore.getState().copyFreeTemplate(plantilla(), { owner: 'cli_1' });
+    expect(useStore.getState().clients.cli_1.programDirty).toBe(true);
+
+    useStore.getState().deleteFreeTemplate(copy);
+    expect(useStore.getState().clients.cli_1.programDirty).toBe(false);
+  });
+
+  it('en el móvil del cliente: llegan como del entrenador, se sustituyen enteras y otro programa no las toca', () => {
+    const programa = { id: 'prog_t', owner: 'me', kind: 'program', name: 'Del entrenador',
+      stages: [{ id: 's', durationWeeks: 4, days: [] }] };
+    const libre = { id: 'tpl_x', owner: 'cli_9', programId: null, name: 'Core', exercises: [], blocks: [], trainerName: 'Lucas' };
+    const importar = (data) => useStore.getState().importData(
+      { sessionTemplates: {}, customExercises: {}, workoutLog: [], ...data }, { program: true, log: false }, { silent: true },
+    );
+
+    importar({ program: programa, freeSessions: { tpl_x: libre } });
+    expect(tpl('tpl_x')).toMatchObject({ owner: 'me', fromTrainer: true, onHome: true, trainerName: 'Lucas' });
+
+    importar({ program: { ...programa, id: 'prog_amigo' } });
+    expect(tpl('tpl_x')).toBeDefined();
+
+    importar({ program: programa });
+    expect(tpl('tpl_x')).toBeUndefined();
+  });
+});
+
+describe('con app o sin app — trainer-logging.md C28 y C20', () => {
+  const cloud = { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: 'code', code: null };
+
+  beforeEach(() => {
+    Object.values(syncMock).forEach((fn) => fn.mockReset?.());
+    syncMock.createClientSlot.mockResolvedValue({ slotId: 'slot_1', clientCode: 'K7QM-4XPA' });
+    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: null }]);
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [], clients: {},
+      trainerSync: cloud, _hasHydrated: true,
+    });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const cli = (id) => useStore.getState().clients[id];
+
+  it('crear un cliente sin elegir la app no crea código; con la app, sí', async () => {
+    const sinApp = await useStore.getState().createClient('Carmen');
+    expect(syncMock.createClientSlot).not.toHaveBeenCalled();
+    expect(cli(sinApp).syncSlotId).toBeNull();
+
+    const conApp = await useStore.getState().createClient('Marta', { withApp: true });
+    expect(cli(conApp)).toMatchObject({ syncSlotId: 'slot_1', syncCode: 'K7QM-4XPA' });
+  });
+
+  it('pasar a la app: código, lo apuntado arriba (sin contar como «sin revisar») y su programa', async () => {
+    const id = await useStore.getState().createClient('Carmen');
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+    useStore.setState((s) => ({
+      clients: { ...s.clients, [id]: { ...s.clients[id], activeProgramId: pid } },
+      clientLogs: { [id]: [{ id: 'log_1', sessionTemplateId: 'x', timestamp: 1, exercises: [] }] },
+    }));
+
+    await useStore.getState().moveClientToApp(id);
+
+    expect(cli(id).syncSlotId).toBe('slot_1');
+    const [slotId, entries, , progress] = syncMock.uploadHistory.mock.calls[0];
+    expect(slotId).toBe('slot_1');
+    expect(entries.map((e) => e.id)).toEqual(['log_1']);
+    expect(progress.programId).toBe(pid);
+    expect(useStore.getState().trainerSync.lastSeenSessionsCount[id]).toBe(1);
+    expect(syncMock.uploadProgram).toHaveBeenCalledWith('slot_1', expect.anything(), null);
+  });
+
+  it('no pisa al cliente: si ya canjeó el código, no sube lo apuntado', async () => {
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: 'u_marta' }]);
+
+    expect(await useStore.getState().pushTrainerLogToSlot(id)).toBe(false);
+    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
+    expect(cli(id).syncLinked).toBe(true);
+  });
+
+  it('cancelar la invitación borra el código y lo devuelve a sin app', async () => {
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+
+    await useStore.getState().cancelClientInvitation(id);
+
+    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1');
+    expect(cli(id)).toMatchObject({ syncSlotId: null, syncCode: null, syncLinked: false });
+  });
+
+  it('al invitado se le sube solo lo que quede pendiente', async () => {
+    vi.useFakeTimers();
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+
+    useStore.getState().setClientActiveProgram(id, pid);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(syncMock.uploadProgram).toHaveBeenCalledTimes(1);
+    expect(cli(id).programDirty).toBe(false);
+  });
+
+  it('al que tiene app, no: ahí el aviso decide', async () => {
+    vi.useFakeTimers();
+    const id = await useStore.getState().createClient('Pablo', { withApp: true });
+    useStore.setState((s) => ({ clients: { ...s.clients, [id]: { ...s.clients[id], syncLinked: true } } }));
+    const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
+
+    useStore.getState().setClientActiveProgram(id, pid);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(syncMock.uploadProgram).not.toHaveBeenCalled();
+    expect(cli(id).programDirty).toBe(true);
+  });
+});
+
+describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.6', () => {
+  beforeEach(() => {
+    useStore.setState({ sessionTemplates: {}, clients: {}, programs: {} });
+  });
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('una plantilla no es una sesión mía: no sale en Inicio', () => {
+    const id = useStore.getState().createFreeTemplate(null, 'me', { asTemplate: true });
+    expect(tpl(id)).toMatchObject({ kind: 'template', onHome: false, owner: 'me' });
+  });
+
+  it('asignármela me da una copia mía en Inicio y la plantilla no cambia', () => {
+    const src  = useStore.getState().createFreeTemplate({ name: 'Movilidad', exercises: [], blocks: [] }, 'me', { asTemplate: true });
+    const mine = useStore.getState().copyFreeTemplate(src, { owner: 'me' });
+
+    expect(tpl(mine).kind).toBeUndefined();
+    expect(tpl(mine)).toMatchObject({ owner: 'me', onHome: true, name: 'Movilidad' });
+    expect(tpl(src).kind).toBe('template');
+  });
+
+  it('duplicarla en Plantillas da otra plantilla', () => {
+    const src = useStore.getState().createFreeTemplate(null, 'me', { asTemplate: true });
+    const dup = useStore.getState().copyFreeTemplate(src, { name: 'Copia', asTemplate: true });
+    expect(tpl(dup)).toMatchObject({ kind: 'template', onHome: false, name: 'Copia' });
   });
 });

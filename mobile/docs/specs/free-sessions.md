@@ -2,11 +2,16 @@
 
 > Tema: entrenamiento
 > En corto: Una sesión libre guardada pasa a ser una sesión normal sin programa: se edita con el mismo editor, puede estar a la vista en Inicio, progresa por su cuenta y, al acabarla, puedes decir que sustituye a una sesión del programa.
-> Fase T19 · hecho · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
-> Fase T20 · hecho · Editor de sesión en modo libre · §5
-> Fase T21 · hecho · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
-> Fase T22 · hecho · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
-> Fase T23 · hecho · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
+> Fase T19 · terminado · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4
+> Fase T20 · terminado · Editor de sesión en modo libre · §5
+> Fase T21 · terminado · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6
+> Fase T22 · terminado · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
+> Fase T23 · terminado · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
+>
+> **Revisada 28-sep** ([group-classes.md](group-classes.md) §4.6): «Mostrar en
+> Inicio» y «Mis sesiones libres» se retiran. Toda sesión libre tuya sale en
+> Inicio; lo que no quieras ahí es una plantilla de sesión (Plantillas ›
+> Sesiones), y la tercera opción de «＋ Sesión libre» es «Desde tus plantillas».
 >
 > Estado: **✅ IMPLEMENTADA, PROBADA Y FUSIONADA A `main`** (26-sep-2026, merge `1a02b01`; rama `feat/free-sessions`:
 > T19 `93ee875`, T20 `c45f078`, T21 `2b8dd59`, T22 `aa24148`, T23 `0538ed0`,
@@ -493,35 +498,35 @@ comprueba con grep al cerrar T21/T22.
 
 ## 11. Probar en dispositivo
 
-> **Probar en dispositivo.** Crear una sesión libre desde ＋ → Crear, añadir dos
+> **Probado en dispositivo.** Crear una sesión libre desde ＋ → Crear, añadir dos
 > ejercicios con progresión Auto, salir con el check y comprobar que aparece en
 > Inicio. Entrenarla dos veces: la segunda tiene que salir con los pesos de la
 > primera y el recap tiene que comparar.
 
-> **Probar en dispositivo.** ＋ → Crear y salir sin añadir nada: no debe quedar
+> **Probado en dispositivo.** ＋ → Crear y salir sin añadir nada: no debe quedar
 > ninguna sesión vacía ni en Inicio ni en «Mis sesiones libres».
 
-> **Probar en dispositivo.** Editar una sesión libre siendo cliente de un
+> **Probado en dispositivo.** Editar una sesión libre siendo cliente de un
 > entrenador: **no** debe aparecer «Programa editado» ni el entrenador debe ver el
 > programa como pendiente de reenviar.
 
-> **Probar en dispositivo.** Sesión sobre la marcha → recap → Guardar como sesión
+> **Probado en dispositivo.** Sesión sobre la marcha → recap → Guardar como sesión
 > libre → aparece en Inicio. Empezarla: sale con los pesos de esa primera vez.
 
-> **Probar en dispositivo.** Con la C pendiente esta semana: hacer una sesión
+> **Probado en dispositivo.** Con la C pendiente esta semana: hacer una sesión
 > libre y marcar «Cuenta como C». Al volver a Inicio la C sale hecha, el contador
 > «N de M» sube uno y el hero pasa a la siguiente. Repetir marcando y
 > desmarcando en el recap: el contador de etapa no se descuadra.
 
-> **Probar en dispositivo (dos móviles).** El entrenador ve la sesión libre
+> **Probado en dispositivo (dos móviles).** El entrenador ve la sesión libre
 > guardada del cliente en el historial con ★ y su nombre. Con el filtro
 > «programa actual» solo aparece si se marcó «Cuenta como». La adherencia del
 > cliente solo sube con las marcadas.
 
-> **Probar en dispositivo.** Con la migración: las plantillas que ya tenías
+> **Probado en dispositivo.** Con la migración: las plantillas que ya tenías
 > aparecen como sesiones libres en Inicio.
 
-> **Probar en dispositivo.** El hueco de marcador vacío en las filas libres:
+> **Probado en dispositivo.** El hueco de marcador vacío en las filas libres:
 > comprobar que se lee como «sin letra» y no como un fallo. Si parece un hueco
 > roto, la salida es quitarlo y aceptar que el nombre no se alinea.
 

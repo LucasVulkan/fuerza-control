@@ -2,8 +2,8 @@
 
 > Tema: programas
 > En corto: El motor que convierte las respuestas del onboarding en un programa. Se validó con 21.600 combinaciones de respuestas.
-> Fase P04 · hecho · Fase A — arquitectura del generador (`606ccdf`) · §4
-> Fase P05 · hecho · Fase B — correcciones del stress-test de 21.600 combos (`eff1666`) · §5
+> Fase P04 · terminado · Fase A — arquitectura del generador (`606ccdf`) · §4
+> Fase P05 · terminado · Fase B — correcciones del stress-test de 21.600 combos (`eff1666`) · §5
 > Fase P06 · aparcado · Fase C — arquetipos: sustituida por program-templates (P10-P19) · §6
 >
 > Estado: **documento histórico desde sep-2026.** El motor que describe

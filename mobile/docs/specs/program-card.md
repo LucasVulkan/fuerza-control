@@ -2,16 +2,16 @@
 
 > Tema: ui
 > En corto: La tarjeta «Tu programa» de la Home deja de llevar botones: se pulsa el nombre para ver el programa y la etapa para elegirla, y todas las acciones (editar, archivar) se mudan al visualizador, que pasa a ser la pantalla del programa.
-> Fase U14 · hecho · La tarjeta: una superficie, dos zonas pulsables, progreso en dos niveles · §3
-> Fase U15 · hecho · El visualizador hereda las acciones y el selector compartido · §4
+> Fase U14 · terminado · La tarjeta: una superficie, dos zonas pulsables, progreso en dos niveles · §3
+> Fase U15 · terminado · El visualizador hereda las acciones y el selector compartido · §4
 >
-> **Probar en dispositivo.** Las dos zonas pulsables de la tarjeta. Lo que hay
+> **Probado en dispositivo.** Las dos zonas pulsables de la tarjeta. Lo que hay
 > que mirar es si se **aprende** que son dos sitios distintos: cada una se tiñe
 > de `surface2` por su cuenta al pulsarla, y esa es toda la pista. Si al pulsar
 > la etapa la gente espera abrir el programa, la separación no se lee y hay que
 > darle otra señal.
 >
-> **Probar en dispositivo.** La barra de etapas con un programa real de 5-6
+> **Probado en dispositivo.** La barra de etapas con un programa real de 5-6
 > etapas de duración desigual. Sobre la maqueta los tramos se distinguen; con
 > una etapa de 2 ciclos junto a una de 6, el tramo corto puede quedarse en nada.
 >

@@ -44,6 +44,7 @@ export function buildBackupPayload(state = {}) {
     // aquí. Sin el registro, un backup restaurado devuelve clientes etiquetados
     // con códigos sin nombre (fallo 25).
     tagRegistry:      state.tagRegistry ?? [],
+    exerciseAliases:  state.exerciseAliases ?? {},
   };
 }
 

@@ -48,7 +48,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
 - **`Fase <código> · <estado> · <título> · §<sección>`** — una línea por fase,
-  **al menos una**. Estado: `hecho` · `pendiente` · `aparcado`. Es la unidad de
+  **al menos una**. Estado: `pendiente` · `hecho` · `terminado` · `aparcado`
+  (ver *Pruebas en dispositivo*, abajo). Es la unidad de
   seguimiento: casi nada se implementa de una vez, así que una spec "a medias"
   no dice nada y "3 de 10 fases" sí.
   La **`§`** es la sección de este mismo documento que cuenta esa fase; la
@@ -58,8 +59,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 - **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
   detalle; la página no la pinta porque no cabe.
 
-**Ya no se escriben a mano `Progreso:` ni `Falta:`**: se derivan de las fases
-—todas hechas ⇒ cerrada, ninguna ⇒ sin empezar, si no a medias— porque eran dos
+**Ya no se escriben a mano `Progreso:` ni `Falta:`**: la página cuenta las
+fases de cada spec (terminadas · por probar · por hacer), porque eran dos
 campos que se desviaban solos.
 
 **Quién manda sobre el estado: la cabecera.** La tabla `## Fases` de dentro del
@@ -79,9 +80,47 @@ Dentro de [auditoria-tecnica.md](auditoria-tecnica.md) cada fallo lleva su propi
 línea `> En corto:` justo bajo el título, por lo mismo. Esa spec es la única sin
 `> Fase`: su unidad son los fallos.
 
-**Pruebas en dispositivo:** se marcan con `**Probar en dispositivo.**` seguido
-del qué, hasta la línea en blanco. La página las junta todas en una lista — es
-lo único que `vitest` no puede cubrir, porque los stubs del test son inertes.
+## Pruebas en dispositivo
+
+Es lo único que `vitest` no puede cubrir, porque los stubs del test son
+inertes. Cada fase lleva **su lista de casillas**, en cualquier sitio de la spec
+(lo normal: al final de su sección):
+
+```markdown
+**Probar C19**
+
+- [ ] Cliente sin conectar → EMPEZAR SESIÓN B: el Workout sale con los pesos
+  del cliente. Las líneas sangradas siguen siendo la misma casilla.
+- [x] Una que ya se probó
+```
+
+La página las numera `C19.1`, `C19.2`… para poder decir cuál falla. Lo que se
+ve en la página sale de la cabecera **y** de las casillas, sin nada más que
+mantener:
+
+| Cabecera | Casillas | En la página |
+|---|---|---|
+| `pendiente` | — (puede traerlas ya escritas) | **Por hacer** |
+| `hecho` | alguna `[ ]` | **Por probar** |
+| `hecho` | todas `[x]` | **Terminado** |
+| `terminado` | ninguna | **Terminado** |
+| `aparcado` | — | Por hacer, en gris |
+
+- **`hecho` sin lista falla.** Quien cierra una fase dice qué hay que probar.
+  Si no hay nada que probar a mano (un refactor, un cambio de datos, papeleo),
+  la fase va directamente a `terminado`.
+- **`terminado` con casillas sin marcar falla.** Una fase probada se queda en
+  `hecho` con todas marcadas: pasa sola a Terminado.
+- Las fases cerradas antes del 28-sep-2026 están en `terminado` por decisión del
+  usuario (se dieron por probadas). Sus bloques antiguos quedan como prosa
+  `**Probado en dispositivo.**` y la página ya no los lee; si un día hay que
+  repetir una, se convierte en casilla.
+
+**El usuario valida en el chat, no editando el documento.** Dice «C19 probada»
+→ se marcan `[x]` todas las de C19. Dice «C19.2 falla: sale la fecha de hoy» →
+la casilla se queda `[ ]` con la nota al final (`— ❌ 28-sep: sale la fecha de
+hoy`), se arregla, y la nota se quita cuando vuelva a probarla. En los dos
+casos, `npm run estado`.
 
 ## Cómo mantener esto al día
 
@@ -90,12 +129,15 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 
 ### Al cerrar una fase
 
-1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho`. Esto es lo
-   que manda: es lo que lee la página.
+1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho` (o a
+   `terminado` si no hay nada que probar a mano). Esto es lo que manda: es lo
+   que lee la página.
 2. En la **tabla `## Fases`** del documento, su fila recibe el commit y lo que
    haya que decir (`✅ 0884d09 — …`). Es el registro, no el estado.
-3. Si hace falta comprobarlo a mano en el móvil, se deja un bloque
-   `**Probar en dispositivo.** …` allí donde toque. La página los junta todos.
+3. Si está en `hecho`, su lista `**Probar <código>**` con las casillas de lo
+   que el usuario tiene que comprobar en el móvil (§ *Pruebas en dispositivo*).
+   Pruebas concretas, que se puedan dar por buenas o no: qué tocar y qué tiene
+   que pasar.
 4. `npm run estado`.
 
 ### Al añadir una fase o una spec nueva
@@ -122,8 +164,11 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 
 Tema desconocido · falta `En corto` o `Estado` · una spec sin fases · un código
 que no empieza por la letra de su tema · **dos specs con el mismo código** · un
-estado de fase que no es `hecho`/`pendiente`/`aparcado` · una `§` que apunta a
-un encabezado que no existe · un fallo de la auditoría sin `> En corto:`.
+estado de fase que no es `pendiente`/`hecho`/`terminado`/`aparcado` · una `§`
+que apunta a un encabezado que no existe · un fallo de la auditoría sin
+`> En corto:` · una fase `hecho` sin lista de pruebas · una `terminado` con
+casillas sin marcar · un `**Probar X**` sin casillas o de una fase que no es de
+esa spec · un `**Probar en dispositivo.**` del formato antiguo.
 
 Lo que **no** puede comprobar: que la palabra de la cabecera y el ✅ de la tabla
 digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
@@ -155,7 +200,7 @@ digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
 | [onboarding-simple.md](onboarding-simple.md) — Onboarding simple (3 preguntas) | **revisión 2 implementada** (ago 2026), pendiente de prueba en dispositivo. La revisión 1 se implementó y el QA la rechazó: el recorrido bien, la UI no se parecía a la app | 🟡 | **Tres preguntas y tres portadas**: nivel → qué buscas → días → propuestas → tu programa. Tiempo, material y limitaciones dejan de preguntarse: son **una fila que abre una hoja** con tres secciones, y el programa de debajo se repinta al tocarlas. La causa del rechazo, medida: `OptionCard`, `OnboardingStep` y `OnboardingProgress` eran **puertos literales del onboarding web** que no se usan en ninguna otra pantalla — **se borran**, y cada pieza nueva se cita con fichero y línea de la pantalla migrada de la que se copia. Lleva **dos cambios de motor**: `reduceForBeginner` pasa a reportar lo que quita, y el recorte por tiempo se calcula con nombres. Mockup aprobado. Sólo móvil |
 | [client-triage.md](client-triage.md) — Triaje de clientes (P3) | spec cerrada, SIN implementar (ago 2026). 2 fases: 1 "bloque terminado" · 2 "estancado" | 🟢/🟡 | DOS banderas, alcance cerrado — el resto están descartadas con motivo en §5. El mecanismo de pills ya existe en `ClientsScreen`; esto cuelga dos de él. La bandera 1 cierra el bucle con el planificador: avisa de que un bloque acabó, así no hay que programar todas las etapas por adelantado |
 | [weeks-model.md](weeks-model.md) — De ciclos a semanas | **implementada y fusionada a main** (25-sep-2026, `f7016d0`); pruebas en dispositivo en sus bloques «Probar en dispositivo». 5 fases: P36 modelo puro · P37 store y sincronización · P38 atleta · P39 entrenador · P40 onboarding, docs y textos | 🟡 | El «ciclo» (vuelta a todas las sesiones) sale de la app: **las sesiones de cada etapa son sus entrenos por semana** (sin dato aparte), etapas en semanas naturales desde la **primera sesión** de la etapa, y al acabar se comprueba lo entrenado y se **propone alargar** si falta al menos una semana. El hero pasa a ser la sesión que más tiempo llevas sin hacer. El progreso sigue siendo un contador del cliente que el entrenador espeja (§3.1 tiene la tabla de qué se guarda, dónde y quién lo escribe). Sustituye stage-locks §0.6/§3.2 y desbloquea la fase 6 de training-load |
-| [trainer-logging.md](trainer-logging.md) — El entrenador apunta por el cliente | spec cerrada, SIN implementar (26-sep-2026). 4 fases: C19 registrar · C20 traspaso al conectarse · C21 compartir como texto · C22 pegar texto | 🟡 | Para clientes **sin conectar**: el entrenador abre la sesión del cliente en el Workout de siempre y lo guardado va a su historial y a su etapa, con fecha de hasta 7 días atrás. Si el cliente se conecta después, **recibe todo lo apuntado** por el mismo camino que ya usa «reinstalar recupera» (sin SQL nuevo). El texto se entiende **sin IA**: formato cerrado, alias aprendidos por entrenador y el Workout relleno como revisión final. Los conectados apuntan ellos |
+| [trainer-logging.md](trainer-logging.md) — El entrenador apunta por el cliente | implementada entera (28-sep-2026), con C28 añadida. Fases: C19 registrar · C20 traspaso al conectarse · C21 compartir como texto · C22 pegar texto | 🟡 | Para clientes **sin conectar**: el entrenador abre la sesión del cliente en el Workout de siempre y lo guardado va a su historial y a su etapa, con fecha de hasta 7 días atrás. Si el cliente se conecta después, **recibe todo lo apuntado** por el mismo camino que ya usa «reinstalar recupera» (sin SQL nuevo). El texto se entiende **sin IA**: formato cerrado, alias aprendidos por entrenador y el Workout relleno como revisión final. Los conectados apuntan ellos |
 | [group-classes.md](group-classes.md) — Clases y sesiones asignadas | spec cerrada, SIN implementar (26-sep-2026). 4 fases: C23 grupo · C24 sesiones libres de clientes/grupos · C25 pizarra · C26 clase dada | 🟡 | Un **grupo es un cliente de otro tipo** (sin slot, sin Progreso, fuera de la adherencia). Las sesiones libres pasan a poder ser de un cliente o grupo y **llegan al móvil del cliente conectado**, de solo lectura y en azul. La **pizarra** abre cualquier sesión para darla, vertical y con el reloj de los bloques; en un grupo se cierra con «clase dada», que alimenta la rotación de clases. Depende de free-sessions T19-T21 solo para la C24 |
 | [free-sessions.md](free-sessions.md) — Sesiones libres de verdad | **implementada, probada y fusionada a main** (26-sep-2026, merge `1a02b01`). 5 fases: T19 modelo · T20 editor · T21 Inicio · T22 recap · T23 quién cuenta qué | 🟡 | La sesión libre guardada deja de ser una copia congelada (`freeSessionPresets`) y pasa a ser un `sessionTemplate` sin programa: editor, progresión, Workout y recap salen gratis. **La carga cuenta siempre**; que cuente como día del programa es una sustitución explícita en el recap («Cuenta como Sesión C»), no un sí/no. El entrenador las ve todas, pero solo las sustituciones cuentan para la adherencia. Dos trampas que la spec cierra: `useEditorExit` marcaría el programa activo al editar una libre, y `clientLogs` dejaría de subir las libres guardadas sin avisar |
 | [stage-planner.md](stage-planner.md) — Planificador de etapas | **fases 0-4 implementadas** (ago 2026); pendientes la 5 (recap consciente de la descarga) y la 6 (rediseño del planificador, §14) | 🟡 | la etapa pasa de ser una copia a ser una regla. Vacía buena parte de la fase C del generador: 1 arquetipo × escalera = programa periodizado |

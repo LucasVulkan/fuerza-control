@@ -2,10 +2,16 @@
 
 > Tema: conexión
 > En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir la clase que toca en modo pizarra y apuntar «clase dada».
-> Fase C23 · pendiente · El grupo como tipo de cliente · §3
-> Fase C24 · pendiente · Sesiones libres de un cliente o de un grupo · §4
-> Fase C25 · pendiente · Modo pizarra · §5
-> Fase C26 · pendiente · Clase dada · §6
+> Fase C23 · aparcado · El grupo como tipo de cliente · §3
+> Fase C24 · hecho · Sesiones libres de un cliente (la parte de grupos, aparcada) · §4
+> Fase C25 · aparcado · Modo pizarra · §5
+> Fase C26 · aparcado · Clase dada · §6
+> Fase C27 · hecho · Plantillas de sesión en la pestaña Plantillas y asignarlas a un cliente · §4.6
+>
+> **Aparcado el 28-sep-2026**: todo lo de grupos (C23, C25, C26) no es
+> prioritario. La C24 está hecha en su parte de clientes (`a3f84da`: ficha,
+> firma, borrado, subida y bajada, sin EDITAR en el móvil del cliente); lo de
+> grupos que tiene (la fila de un grupo en §4.1) espera a la C23.
 >
 > Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de la misma
 > sesión de diseño que [trainer-logging.md](trainer-logging.md). Escrita después
@@ -149,17 +155,17 @@ quiere.
 
 ### 3.4 Probar en dispositivo
 
-> **Probar en dispositivo.** Crear un grupo con el entrenador en modo nube: no
-> aparece código de conexión, la ficha tiene Programa · Clases · Info, y el grupo
-> sale en la sección GRUPOS de la lista, no en «requiere atención» aunque no
-> tenga clases.
+**Probar C23**
 
-> **Probar en dispositivo.** Entrenador sin grupos: la lista de clientes se ve
-> **idéntica** a antes (sin etiquetas de sección).
-
-> **Probar en dispositivo.** Grupo sin programa y con 3 sesiones libres (tras la
-> C24): la tarjeta dice «3 sesiones», sin aviso de programa, y **Pizarra** abre
-> la hoja para elegir clase. Dos toques hasta la pizarra.
+- [ ] Crear un grupo con el entrenador en modo nube: no
+  aparece código de conexión, la ficha tiene Programa · Clases · Info, y el grupo
+  sale en la sección GRUPOS de la lista, no en «requiere atención» aunque no
+  tenga clases.
+- [ ] Entrenador sin grupos: la lista de clientes se ve
+  **idéntica** a antes (sin etiquetas de sección).
+- [ ] Grupo sin programa y con 3 sesiones libres (tras la
+  C24): la tarjeta dice «3 sesiones», sin aviso de programa, y **Pizarra** abre
+  la hoja para elegir clase. Dos toques hasta la pizarra.
 
 ## 4. Fase C24 — Sesiones libres de un cliente o de un grupo
 
@@ -228,13 +234,103 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
 
 ### 4.5 Probar en dispositivo
 
-> **Probar en dispositivo (dos móviles).** El entrenador crea una sesión libre
-> para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
-> {entrenador}», sin EDITAR, y puede hacerla. El entrenador la borra y reenvía:
-> desaparece del móvil del cliente, y el historial del cliente la conserva.
+**Probar C24**
 
-> **Probar en dispositivo.** Crear una sesión libre para un grupo: aparece en su
-> ficha con PIZARRA y **no** en tu Inicio.
+- [ ] (dos móviles) El entrenador crea una sesión libre
+  para un cliente conectado y reenvía. El cliente la ve en Inicio con «de
+  {entrenador}», sin EDITAR, y puede hacerla.
+- [ ] (dos móviles) El entrenador **edita** esa sesión (cambia series o añade
+  un ejercicio): al salir del editor, la tarjeta del cliente queda pendiente
+  de reenviar. Reenvía: el cliente ve la versión nueva al volver a la app, y
+  los entrenos que ya hizo con la anterior siguen en su historial.
+- [ ] (dos móviles) El entrenador la borra y reenvía: desaparece del móvil del
+  cliente, y el historial del cliente la conserva.
+- [x] Cliente con app **sin programa**: al asignarle una plantilla de sesión
+  (Plantillas › Sesiones) su fila dice «Necesita tener un programa asignado
+  para recibir sesiones libres», y la hoja de «＋ Sesión libre» de su ficha lo
+  dice arriba. Un cliente sin app o con programa no lo ve (§4.6).
+
+Aparcada con los grupos: crear una sesión libre para un grupo, que aparezca en
+su ficha con PIZARRA y **no** en tu Inicio.
+
+### 4.6 Fase C27 — Plantillas de sesión
+
+Idea del usuario (28-sep): asignar sesiones sueltas desde la pestaña
+**Plantillas**, igual que se asignan programas.
+
+**Una plantilla de sesión no es una sesión tuya** (QA 28-sep, cambia la primera
+versión). Es una sesión libre con `kind: 'template'`, la misma marca que las
+plantillas de programa. Al principio eran la misma cosa que tus sesiones libres,
+y eso tenía un problema: si te asignabas una plantilla y la adaptabas para ti,
+cambiabas la plantilla. Ahora:
+- Las plantillas viven solo en Plantillas › Sesiones. No salen en tu Inicio ni
+  en «Mis sesiones libres», no se entrenan y su editor no lleva «Mostrar en
+  Inicio» (la ceja dice «Plantilla de sesión»).
+- Para entrenarla, te la asignas: la hoja de asignar tiene **Tú** el primero,
+  con el mismo gesto que un cliente. Recibes una copia en tu Inicio y la
+  adaptas sin tocar la plantilla.
+- **Toda sesión libre tuya sale en Inicio** (QA 28-sep). «Mostrar en Inicio» y
+  la lista «Mis sesiones libres» existían para tener sesiones guardadas fuera de
+  Inicio, y eso ya lo resuelven las plantillas: o es una plantilla, o está
+  asignada (a ti o a un cliente). Se retiran los dos; quitar solo la lista
+  habría dejado inaccesibles las que estaban ocultas. Para sacar una de Inicio,
+  se borra desde su editor.
+- En la hoja de «＋ Sesión libre» de Inicio, la tercera opción pasa a ser
+  **Desde tus plantillas**, igual que en la ficha de un cliente: tocar una te
+  copia la sesión a Inicio. Sin plantillas (sin PRO, o sin haber hecho ninguna)
+  no sale.
+- Las plantillas creadas antes de este cambio (sin `kind`) aparecen ahora como
+  sesiones tuyas en Inicio (sin migración).
+
+**La pestaña** (`ProgramScreen.jsx`):
+- Bajo la cabecera, un `SegmentedControl` **Programas / Sesiones**. La cabecera
+  dice «PLANTILLAS · N» con el número del segmento, y **+ Plantilla** crea lo
+  del segmento.
+- **Sesiones**: una tarjeta por plantilla de sesión, con el mismo `TemplateCard`
+  (nombre + 3 cifras: ejercicios, bloques y minutos, de `sessionStats`) y
+  **Asignar**. Orden: nombre.
+- **+ Plantilla** en Sesiones: `createFreeTemplate(null, 'me', { asTemplate: true })`
+  → editor en modo libre.
+- **Tocar la tarjeta** → hoja: Editar, Duplicar, Eliminar
+  (`deleteFreeTemplate`). Duplicar = `copyFreeTemplate(id, { asTemplate: true })`
+  con el sufijo « (copia)» de las plantillas de programa.
+
+**Asignar** (`copyFreeTemplate(templateId, { owner: clientId })`, store; la misma
+acción duplica con `owner: 'me'`):
+- **Copia** la sesión con id nuevo y `owner: clientId`, como `cloneProgramFromTemplate`
+  copia un programa. Editar la del cliente no toca la plantilla, y al revés.
+- Hoja de asignar: la lista de clientes individuales de `AssignSheet` sin el
+  aviso de «reemplaza» (una sesión no sustituye a nada), sin campo de nombre, y
+  con **Asignar**. **Selección múltiple** (QA 28-sep): tocar marca, volver a
+  tocar desmarca, y el botón dice «Asignar a 3». Cada cliente recibe su copia.
+  Tras asignar, toast y la hoja se cierra: no se abre el editor, porque lo
+  normal es mandarla tal cual.
+- Si el cliente está conectado, queda **pendiente de reenviar** (§4.2, firma).
+- **Límite conocido**: las sesiones libres viajan dentro del programa, así que a
+  un cliente con app **sin programa** no le llegan hasta que tenga uno. Lo
+  avisan, con el mismo texto («Necesita tener un programa asignado para recibir
+  sesiones libres»), la hoja de asignar en su fila y la hoja de «＋ Sesión
+  libre» de su ficha, arriba. «Con app» es `clientLink !== 'none'`: también un
+  invitado que aún no ha canjeado el código.
+
+**Desde la ficha** (§4.1): «＋ Sesión libre» abre una hoja con **En blanco** y,
+debajo, tus plantillas de sesión (misma forma que `NewProgramSheet`). Es la misma
+copia que Asignar.
+
+**Probar C27**
+
+- [x] Plantillas → Sesiones → + Plantilla: se abre el
+  editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
+  su ficha. Editar la del cliente no cambia la plantilla.
+- [x] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
+  el botón dice «Asignar a 2», y la sesión aparece en la ficha de esos dos y no
+  en la del desmarcado.
+- [x] Una plantilla de sesión no sale en tu Inicio y su editor dice «Plantilla de
+  sesión». Asignártela (Tú, arriba del todo): la copia sale en tu Inicio;
+  cambiarle un ejercicio no cambia la plantilla.
+- [x] Inicio › ＋ Sesión libre: la tercera opción es «Desde tus plantillas (N)».
+  Tocar una plantilla la añade a tu Inicio. El editor de una sesión tuya ya no
+  tiene «Mostrar en Inicio».
 
 ## 5. Fase C25 — Modo pizarra
 
@@ -309,10 +405,12 @@ que la pizarra habla como «lo que toca». Vertical siempre (decisión §2.3).
 
 ### 5.3 Probar en dispositivo
 
-> **Probar en dispositivo.** Desde la lista de clientes, Pizarra · B de un grupo
-> abre la clase que toca en un toque. Con un AMRAP, en el móvil y en una tablet,
-> a un metro: se lee sin acercarse, la pantalla no se apaga y el reloj del AMRAP
-> funciona.
+**Probar C25**
+
+- [ ] Desde la lista de clientes, Pizarra · B de un grupo
+  abre la clase que toca en un toque. Con un AMRAP, en el móvil y en una tablet,
+  a un metro: se lee sin acercarse, la pantalla no se apaga y el reloj del AMRAP
+  funciona.
 
 ## 6. Fase C26 — Clase dada
 
@@ -348,12 +446,13 @@ Al pulsar TERMINAR CLASE en la pizarra, o **Apuntar clase dada** en la ficha
 - **Los grupos no entran en la carga**: no tienen Progreso (§3.3), así que el
   panel de carga no se pinta. Ninguna otra pantalla lee el log de un grupo.
 
-**Probar en dispositivo.**
-> **Probar en dispositivo.** Grupo con programa A/B/C: dar la A desde la pizarra
-> y TERMINAR CLASE con 12 asistentes. En la ficha la siguiente pasa a ser la B,
-> la tarjeta de la lista dice «Pizarra · B» y «1/3 esta semana · 12 asist.», y la
-> pestaña Clases muestra la A de hoy. Apuntar desde la ficha una clase de ayer:
-> aparece en su día.
+**Probar C26**
+
+- [ ] Grupo con programa A/B/C: dar la A desde la pizarra
+  y TERMINAR CLASE con 12 asistentes. En la ficha la siguiente pasa a ser la B,
+  la tarjeta de la lista dice «Pizarra · B» y «1/3 esta semana · 12 asist.», y la
+  pestaña Clases muestra la A de hoy. Apuntar desde la ficha una clase de ayer:
+  aparece en su día.
 
 ## 7. Orden
 
@@ -397,6 +496,11 @@ cuenta sesiones, no días).
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
 | C23 | §3: `kind: 'group'`, sin slot, sección GRUPOS con su tarjeta, ficha y hoja de alta | — | Pruebas de §3.4 |
-| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada | free-sessions T19-T21, C23 | Pruebas de §4.5 (una con dos móviles) |
+| C24 | §4: sesiones libres con dueño cliente, firma, borrado, subida y bajada. **Parte individual ✅ `a3f84da`** (ficha, firma, borrado, subida y bajada; tests en `useStore.test.js`). Falta la de grupos (filas con PIZARRA), que va con la C23/C25 | free-sessions T19-T21 (C23 solo para la parte de grupos) | Pruebas de §4.5 (una con dos móviles) |
 | C25 | §5: lista de sesiones del grupo con PIZARRA, `BoardScreen` con bloques y pantalla encendida, tras la ronda de maquetas | C23, lista de sesiones de C19 | Prueba de §5.3 |
 | C26 | §6: `logClass`, hoja de clase dada, pestaña Clases | C23, C25 | Prueba de §6 |
+| C27 ✅ `a3f84da` | §4.6: segmentado Programas / Sesiones en Plantillas, asignar (`copyFreeTemplate`), hoja de «＋ Sesión libre» en la ficha | C24 (la sección de la ficha) | Prueba de §4.6 |
+
+**Orden de implementación acordado (28-sep)**: clientes individuales primero.
+C19 ([trainer-logging.md](trainer-logging.md)) → C24 **sin grupos** + C27. Los
+grupos (C23, C25, C26) después.

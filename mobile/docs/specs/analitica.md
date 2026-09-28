@@ -191,10 +191,12 @@ useEffect(() => { track('app_open'); }, []);
 contar cada vuelta desde segundo plano multiplica las filas y no cambia ninguna
 respuesta.
 
-**Probar en dispositivo.** Arrancar la app dos veces y comprobar en el panel de
-Supabase que hay dos filas `app_open` con el **mismo** `device`. Que sea el mismo
-es lo que se está probando: si cambia, `AsyncStorage` no está persistiendo y toda
-la retención sería mentira.
+**Probar A01**
+
+- [ ] Arrancar la app dos veces y comprobar en el panel de
+  Supabase que hay dos filas `app_open` con el **mismo** `device`. Que sea el mismo
+  es lo que se está probando: si cambia, `AsyncStorage` no está persistiendo y toda
+  la retención sería mentira.
 
 ## 5. Fase A02 — Los eventos del recorrido
 
@@ -248,11 +250,13 @@ desde plantillas es literalmente la pregunta de [monetizacion.md](monetizacion.m
 **Sin i18n.** Ningún evento pinta nada. Los valores de `props` son enums en
 inglés y no se traducen: son claves de datos, no texto.
 
-**Probar en dispositivo.** Recorrido completo desde cero: instalar, abrir,
-`Nuevo programa` → automático → las tres preguntas → EMPEZAR, y entrenar una
-sesión. En la tabla tienen que quedar, en orden y con el mismo `device`:
-`app_open`, `onboarding_start` con `primera: true`, `mode_selected`, tres
-`onboarding_step`, `onboarding_done` y `workout_finished`.
+**Probar A02**
+
+- [ ] Recorrido completo desde cero: instalar, abrir,
+  `Nuevo programa` → automático → las tres preguntas → EMPEZAR, y entrenar una
+  sesión. En la tabla tienen que quedar, en orden y con el mismo `device`:
+  `app_open`, `onboarding_start` con `primera: true`, `mode_selected`, tres
+  `onboarding_step`, `onboarding_done` y `workout_finished`.
 
 ## 6. Fase A03 — Pulso mensual
 
@@ -349,10 +353,12 @@ en un mes no tiene progreso que reportar.
 `buildPulse` es pura y se prueba con un estado de mentira: con `workoutLog`
 vacío devuelve `mejora_pct: null` y `sesiones: 0` sin lanzar.
 
-**Probar en dispositivo.** Con `npm run seed` (que genera historial), borrar
-`fc_pulse` y arrancar: una fila `progress_pulse` con `mejora_pct` **igual al
-número de la tarjeta MEJORA** de Progreso. Si no coinciden, el pulso está
-midiendo otra cosa que la pantalla.
+**Probar A03**
+
+- [ ] Con `npm run seed` (que genera historial), borrar
+  `fc_pulse` y arrancar: una fila `progress_pulse` con `mejora_pct` **igual al
+  número de la tarjeta MEJORA** de Progreso. Si no coinciden, el pulso está
+  midiendo otra cosa que la pantalla.
 
 ## 7. Fase A04 — Privacidad
 

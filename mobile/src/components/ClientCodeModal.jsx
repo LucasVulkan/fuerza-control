@@ -179,6 +179,10 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     try {
       const info = await validateClientCode(code);
       setSlotInfo(info);
+      // Un hueco que nadie ha canjeado y ya tiene historial es lo que te
+      // apuntó tu entrenador (o tu copia de antes de reinstalar): fusionar es
+      // lo que quieres casi siempre (trainer-logging.md §4.3, C20).
+      setHistoryMode(info.hasRemoteHistory && !info.alreadyLinked ? 'merge' : 'program');
       setStep('confirm');
     } catch (err) {
       setError(errorText(err));
@@ -359,6 +363,9 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
           )}
 
           {/* La elección de historial solo existe si hay algo en la nube. */}
+          {slotInfo.hasRemoteHistory && !slotInfo.alreadyLinked && (
+            <Text style={styles.bulletText}>{t('trainer.codeHistoryFromTrainer')}</Text>
+          )}
           {slotInfo.hasRemoteHistory && (
             <Section title={t('trainer.codeHistoryLabel')}>
               {['program', 'merge'].map((mode) => (

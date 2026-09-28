@@ -2,16 +2,16 @@
 
 > Tema: ui
 > En corto: Las sesiones dejan de ser «un hero + una lista» y pasan a ser una única lista de filas plegables; la que toca hoy es una de ellas, en lima, con la letra grande y su botón puesto, y todas se abren al tocarlas para enseñar los ejercicios.
-> Fase U12 · hecho · Cimientos: tokens de texto y `targetLabel()` extraído · §4
-> Fase U13 · hecho · La lista plegable: filas, tarjeta de hoy, desplegable y botones · §5
+> Fase U12 · terminado · Cimientos: tokens de texto y `targetLabel()` extraído · §4
+> Fase U13 · terminado · La lista plegable: filas, tarjeta de hoy, desplegable y botones · §5
 >
-> **Probar en dispositivo.** La mancha de lima crece al desplegar la sesión de
+> **Probado en dispositivo.** La mancha de lima crece al desplegar la sesión de
 > hoy (~150 px cerrada → ~320 px abierta con siete ejercicios). En pantalla de
 > ordenador se ve bien; con brillo alto y en la mano puede ser mucha. Si molesta,
 > la salida está escrita: la caja negra del desplegable pasa a ocupar también el
 > pie (§9.2), sin tocar nada más.
 >
-> **Probar en dispositivo.** El acordeón cierra la tarjeta abierta al abrir otra.
+> **Probado en dispositivo.** El acordeón cierra la tarjeta abierta al abrir otra.
 > Con la de hoy abierta y la lista larga, comprobar que al cerrarla la pantalla
 > no da un salto brusco — es lo único de la animación que no se puede juzgar
 > sobre la maqueta.

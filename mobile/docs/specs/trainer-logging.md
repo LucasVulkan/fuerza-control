@@ -2,12 +2,13 @@
 
 > Tema: conexión
 > En corto: Para clientes que no usan la app, el entrenador entrena con ellos desde su ficha o apunta después lo que hicieron; si el cliente se conecta más tarde, recibe todo lo apuntado.
-> Fase C19 · pendiente · Entrenar y apuntar para un cliente sin conectar · §3
-> Fase C20 · pendiente · Traspaso al conectarse: el cliente recibe lo apuntado · §4
-> Fase C21 · pendiente · Compartir una sesión como texto · §5
-> Fase C22 · pendiente · Pegar un texto y que la app lo entienda (sin IA) · §6
+> Fase C19 · hecho · Entrenar y apuntar para un cliente sin conectar · §3
+> Fase C28 · hecho · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0
+> Fase C20 · hecho · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4
+> Fase C21 · hecho · Compartir una sesión como texto · §5
+> Fase C22 · hecho · Pegar un texto y que la app lo entienda (sin IA) · §6
 >
-> Estado: **spec cerrada, SIN implementar** (26-sep-2026). Sale de una sesión de
+> Estado: **implementada entera** (28-sep-2026); spec cerrada el 26-sep. Sale de una sesión de
 > diseño Opus + usuario sobre los modelos de entrenador que la app no cubre
 > (cliente offline, clases colectivas). La otra mitad es
 > [group-classes.md](group-classes.md). Escrita después de leer el código; cada
@@ -22,8 +23,15 @@
 > sesión pasada» (§6.3). Maqueta de todo lo visual:
 > [`docs/mockups/trainer-models.html`](../mockups/trainer-models.html).
 >
-> **Orden recomendado**: C19 → C21 → (grupos: C23, C25, C26) → C20 → C24 → C22.
-> La C22 va la última y **solo con una tabla de textos reales** de clientes (§6.1).
+> **Orden recomendado**: C19 → C21 → C20 → C24 → C22. Los grupos (C23, C25, C26,
+> [group-classes.md](group-classes.md)) están aparcados desde el 28-sep.
+> **QA 28-sep**: con C19 en la mano salió que «conectado» no significaba lo
+> mismo en tres sitios y que el flujo de conexión no se entendía desde el lado
+> del entrenador. De ahí la **C28** (§4.0), que va **antes** que la C20: la C20
+> pasa a dispararse desde «Pasar a la app». Maqueta:
+> [`connection-states.html`](../mockups/connection-states.html).
+> La C22 se hizo el 28-sep sin la tabla de textos reales: el texto que vuelve es
+> el de la C21, y los reales que fallen entran como tests (§6.1).
 >
 > **No depende** de [free-sessions.md](free-sessions.md), salvo en un detalle:
 > si esa spec ya está hecha, registrar una sesión libre para un cliente sale
@@ -46,7 +54,8 @@ carga, ni adherencia.
 
 ## 2. Decisiones cerradas
 
-1. **Solo para clientes sin conectar** (`!client.syncLinked`, que se refresca en
+1. **Solo para clientes sin app** (desde la C28, `clientLink(client) === 'none'`:
+   sin código. Antes era `!client.syncLinked`, que se refresca en
    `useStore.js:3447`). Los conectados apuntan ellos: su progreso es suyo (regla
    de oro de stage-locks) y hoy los datos solo viajan del cliente al entrenador.
 2. **Si el cliente se conecta después, recibe todo lo apuntado**: historial y
@@ -90,7 +99,9 @@ abajo:
    - La ceja de la tarjeta lima dice «Le toca» (clave nueva), no «Mi entreno de
      hoy».
    - Abierta, cada fila lleva además **COMPARTIR** como secundario (C21, §5). En
-     la tarjeta lima, COMPARTIR va dentro del desplegable, bajo los ejercicios.
+     la tarjeta lima, COMPARTIR va **al lado de EMPEZAR**, siempre a la vista
+     (revisado en la C21: a un cliente sin app la sesión se le manda tanto
+     como se entrena con él).
 4. **Apuntar sesión pasada**: botón de contorno bajo la lista, el mismo
    tratamiento que «+ Sesión libre» de Inicio (`freeSessionBtn`). Abre la hoja
    de §3.2.
@@ -220,25 +231,180 @@ los clientes.
 
 ### 3.8 Probar en dispositivo
 
-> **Probar en dispositivo.** Cliente sin conectar con programa: la ficha enseña
-> SESIONES con la que toca en lima. EMPEZAR SESIÓN B → el Workout sale con los
-> pesos del **cliente**, no con los tuyos, y con reloj y descansos. Guardar: la
-> entrada aparece en el historial del cliente, sube su «N de M» y su etapa, y
-> **tu** historial no cambia.
+**Probar C19**
 
-> **Probar en dispositivo.** Apuntar sesión pasada → la A → hace 3 días. El
-> Workout no tiene reloj, y marcar series **no** lanza el descanso ni su
-> notificación. En el historial del cliente aparece en ese día, y la carga la
-> cuenta con la duración estimada.
+- [x] Cliente sin conectar con programa: la ficha enseña
+  SESIONES con la que toca en lima. EMPEZAR SESIÓN B → el Workout sale con los
+  pesos del **cliente**, no con los tuyos, y con reloj y descansos. Guardar: la
+  entrada aparece en el historial del cliente, sube su «N de M» y su etapa, y
+  **tu** historial no cambia.
+- [x] Apuntar sesión pasada → la A → hace 3 días. El
+  Workout no tiene reloj, y marcar series **no** lanza el descanso ni su
+  notificación. En el historial del cliente aparece en ese día, y la carga la
+  cuenta con la duración estimada.
+- [x] Salir del Workout de un cliente a medias: Inicio
+  muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
+  puede continuar desde cualquiera de los dos.
+- [x] Tu propia pestaña Inicio sigue igual que antes (es una comprobación de que
+  no se ha roto nada: las piezas de su lista se movieron a un fichero compartido
+  para reutilizarlas en la ficha). La tarjeta lima de la sesión que toca, las
+  filas que se despliegan con sus ejercicios, EMPEZAR / REPETIR / CONTINUAR, y
+  las sesiones libres con EMPEZAR y EDITAR se ven y funcionan como siempre.
 
-> **Probar en dispositivo.** Salir del Workout de un cliente a medias: Inicio
-> muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
-> puede continuar desde cualquiera de los dos.
+## 4. Con app o sin app
 
-> **Probar en dispositivo.** Inicio se ve **idéntico** tras mover `TodayCard` y
-> `SessionRow` a `SessionList.jsx`.
+### 4.0 Fase C28 — Lo decide el entrenador, y el código solo existe si hace falta
 
-## 4. Fase C20 — Traspaso al conectarse
+#### 4.0.1 El problema (QA 28-sep)
+
+- **Crear un cliente en modo nube ya crea su código** (`createClient`), lo
+  vaya a usar o no.
+- **Tres sitios deciden «conectado» de forma distinta**:
+  - la tarjeta de la lista: estás en la nube y el cliente tiene código
+    (`isConnected`, `ClientsScreen.jsx`, en el `renderItem` de la lista);
+  - el aviso de «Cambios sin enviar» y quién se marca pendiente: el cliente
+    tiene código (`pendingClients`, `markProgramDirtyForClients`);
+  - la ficha: el cliente ha canjeado el código (`syncLinked`).
+
+  Resultado: un cliente presencial sale «Cambios sin enviar» desde que se le
+  asigna un programa y con cada cambio, para siempre.
+- **El cliente no puede canjear el código sin un programa subido**:
+  `validateClientCode` lo rechaza con «El entrenador aún no ha subido ningún
+  programa». Subir antes de que entre sí hace falta, pero una vez, no a cada
+  cambio.
+- **La app se entera de que ha entrado tarde**: `refreshTrainerSlots` solo
+  corre al montar Clientes y al tirar para refrescar.
+
+#### 4.0.2 Decisiones (usuario, 28-sep)
+
+1. **Tres estados, calculados en un solo sitio.** `clientLink(client)` en
+   `src/utils/clientLink.js`, pura y con test:
+
+   | Estado | Cuándo | Qué hay |
+   |---|---|---|
+   | `'none'` — **sin app** | sin `syncSlotId` | le apuntas tú (C19) |
+   | `'invited'` — **invitado** | `syncSlotId` y `!syncLinked` | le diste el código y aún no ha entrado |
+   | `'linked'` — **con app** | `syncSlotId` y `syncLinked` | entrena con su app |
+
+   La lista, el aviso, la ficha y la pulsación larga lo leen de aquí. Se acaban
+   las tres definiciones.
+2. **El estado lo cambia el entrenador, no el cliente.** EMPEZAR y «Apuntar
+   sesión pasada» existen **solo en `'none'`**. En cuanto generas el código
+   desaparecen, aunque el cliente aún no lo haya canjeado: generar el código es
+   decidir que va a apuntar él.
+3. **El código solo existe si lo pides.** Al crear el cliente se elige (§4.0.3).
+   Pasar de uno a otro se hace en Info › Conexión (§4.0.5).
+4. **Invitado: sin aviso de cambios.** Todo se sube solo y en silencio: nadie lo
+   ve todavía, y así el código funciona en cuanto lo canjea. **Con app**: el
+   aviso de siempre, porque ahí los cambios llegan a una persona y tú decides
+   cuándo.
+5. **Sin opción marcada al crear.** Obliga a pensarlo una vez, y es la decisión
+   que luego explica todo lo demás.
+6. **Entrenador sin cuenta en la nube** (`trainerSync.mode` `'offline'` o
+   `null`): no se pregunta, todos los clientes son «sin app». En Info ›
+   Conexión, «Pasar a la app» abre primero la configuración de conexión
+   (`TrainerSyncModal`).
+7. **Sin migración.** Los clientes que ya tienen código sin canjear salen como
+   invitados; el que no vaya a usar la app se pasa a «sin app» con «Cancelar
+   invitación». `codeHintDismissed` y el botón «Entendido» desaparecen: un
+   cliente sin app ya no tiene código que esconder.
+
+#### 4.0.3 Crear un cliente
+
+La hoja de nuevo cliente (`showNewClient`, `ClientsScreen.jsx`) añade, bajo el
+nombre, **dos tarjetas de opción**. La elegida en `tint.accent10` con el título
+en acento y ✓, como las filas de cliente de la hoja de asignar plantilla:
+
+- **Entrena con la app** — «Le das un código y recibe sus programas en el móvil.»
+- **Le apuntas tú** — «Entrena contigo o por mensajes, y tú registras lo que hace.»
+
+Debajo, «Puedes cambiarlo cuando quieras desde Info». **CREAR** deshabilitado
+hasta elegir. `createClient(name, { withApp })`: solo con `withApp` se crea el
+slot (el código).
+
+#### 4.0.4 La ficha y la lista, por estado
+
+| | Sin app | Invitado | Con app |
+|---|---|---|---|
+| Arriba en Programa | — | **Tarjeta del código** (§4.0.6) | — |
+| Debajo del programa | SESIONES con EMPEZAR + Apuntar (C19) | Próxima sesión con Preparar | Próxima sesión con Preparar |
+| Aviso «Cambios sin enviar» | nunca | nunca (se sube solo) | sí |
+| Hueco derecho de la tarjeta | fecha | **«Esperando código»** en `mutedLight`, como «Pausado» | fecha / sin revisar |
+| Pulsación larga | Empezar sesión B | Próxima sesión | Próxima sesión |
+
+- **Con app, un icono junto al nombre** en la tarjeta de la lista (un móvil de
+  trazo, 14 px, `mutedLight`, apoyado en la línea base del nombre). Solo en ese estado: sin app es lo normal para un
+  presencial, y el invitado ya lo dice «Esperando código». Gris y no azul: en
+  la lista el azul es «cambios sin enviar» (decisión del usuario, 28-sep).
+- **Subida silenciosa del invitado**: `markProgramDirtyForClients`, para un
+  invitado, llama a `uploadProgramToClient` en segundo plano en vez de marcar
+  el aviso. Si falla, queda `programDirty` (sin aviso) y se reintenta en el
+  siguiente `refreshTrainerSlots`. Lo mismo al asignarle un programa.
+- **Enterarse de que ha entrado**: `refreshTrainerSlots` también al enfocar la
+  pestaña Clientes (`useFocusEffect`) y al abrir la ficha de un invitado. Ya
+  tiene su propio cerrojo (`_refreshingSlots`).
+
+#### 4.0.5 Info › Conexión
+
+La sección que ya existe, con un cuerpo por estado:
+
+- **Sin app** — resumen «Sin app». Una línea («Le apuntas tú sus entrenos») y
+  **Pasar a la app**, que abre una hoja de confirmación que dice lo que va a
+  pasar:
+  1. Se genera su código.
+  2. Se sube su programa y los N entrenos que le apuntaste (C20).
+  3. Dejas de apuntarle: lo hará él desde su móvil.
+
+  **GENERAR CÓDIGO** → `connectClientToCloud` (ya existe) + subida (C20) → la
+  ficha pasa a invitado.
+- **Invitado** — resumen «Esperando código» en naranja. El código, Compartir y
+  Copiar (§4.0.6), «Generar código nuevo» y, terciario, **Cancelar
+  invitación**: confirma, borra el slot (`deleteClientSlot`, el código deja de
+  valer) y vuelve a «sin app».
+- **Con app** — resumen «Con app» en verde. «Entrena con su app: lo que haga te
+  llega solo» y «Generar código nuevo» (el `reissueClientCode` de siempre, que
+  echa al que estaba dentro). «Dejar de usar la app» queda fuera por ahora.
+
+#### 4.0.6 La tarjeta del código, al lenguaje actual
+
+La de hoy (`ClientCodeBlock`) se rehace de paso, y sale solo con el invitado:
+- Ceja «ESPERANDO A {NOMBRE}» en acento, y una línea: «Que descargue Forma Fit
+  e introduzca este código.»
+- El código grande (`textStyles.code`) en una caja `bg`, con **Copiar** al
+  lado.
+- **Compartir** (`Share` de React Native, sin dependencia nueva): «Descarga
+  Forma Fit e introduce el código ABCD-1234 para recibir tu programa.» La
+  invitación con enlace es la M04, y cuando llegue sustituye a este texto.
+- **Sin programa**: la línea dice «Asígnale un programa: el código funciona en
+  cuanto tenga uno», y Compartir espera. Es la regla del servidor, dicha donde
+  se ve.
+
+**De paso**, la hoja de «Nuevo programa» de la ficha (`NewProgramSheet`) pasa
+al lenguaje de la de Plantillas (`CreateSheet` de `ProgramScreen.jsx`:
+`DragSheet`, `NameField`, `StepField`). Sin maqueta: es copiar una anatomía que
+ya está cerrada.
+
+#### 4.0.7 Probar en dispositivo
+
+**Probar C28**
+
+- [x] Crear un cliente «Le apuntas tú», asignarle un
+  programa y editarlo: **no** sale «Cambios sin enviar» en ningún momento, y su
+  ficha tiene EMPEZAR. Info › Conexión dice «Sin app».
+- [x] Crear un cliente «Entrena con la app» sin programa:
+  la tarjeta del código pide asignarle uno. Asignarlo: sin aviso de cambios, y
+  el código ya se puede canjear. La ficha no tiene EMPEZAR y la tarjeta de la
+  lista dice «Esperando código».
+- [ ] (dos móviles) El cliente canjea el código con la
+  app del entrenador abierta en otra pestaña. Al volver a Clientes, su tarjeta
+  ya no dice «Esperando código», y un cambio en su programa sí saca el aviso.
+- [x] Un cliente sin app → Pasar a la app → GENERAR
+  CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
+  vuelve EMPEZAR y el código viejo ya no sirve.
+- [x] En la lista, solo los clientes con app llevan el icono del móvil junto al
+  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve.
+
+### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 
 ### 4.1 Lo que ya existe
 
@@ -263,14 +429,20 @@ Lo que falta es que el entrenador suba lo apuntado.
 - Sube `clientLogs[clientId]`, sus ejercicios propios y
   `athleteProgress(program, client)` con `uploadHistory`, el mismo formato que
   sube un cliente.
-- Añade `source: 'trainer'` al payload, para que la hoja del cliente sepa de
-  dónde viene (§4.3).
+- **Implementado sin `source: 'trainer'`**: el cliente no puede leer el hueco
+  antes de canjearlo (lo único público es `program_name`, `is_linked`,
+  `history_updated_at` y `trainer_name`), así que la marca no llegaría a la hoja.
+  La hoja se guía por lo que sí ve (§4.3).
+- El progreso sube con el sello de activación del propio programa
+  (`progressBlob(program, program.stageActivatedAt)`), así que al restaurar
+  `mergeProgressOnImport` da por buena esa posición.
+- Tras subir, el entrenador marca esas entradas como vistas: son suyas y no
+  deben salir como «sin revisar».
 
-Se llama en dos momentos:
-1. Al guardar una sesión registrada (§3), en segundo plano. Si falla, no avisa:
-   se reintenta en el siguiente.
-2. En `uploadProgramToClient` (`useStore.js:3183`), para que al dar el código
-   todo esté arriba aunque el paso 1 fallara.
+Se llama al **pasar a la app** (§4.0.5), justo después de generar el código.
+Desde la C28 un cliente con código ya no recibe entrenos apuntados, así que
+basta con esa vez. Si falla, se reintenta con la subida silenciosa del invitado
+(§4.0.4), que llama a esto antes de subir el programa.
 
 **Guarda contra pisar al cliente.** Si el cliente se conecta y el entrenador aún
 no lo sabe (`syncLinked` se refresca al tirar), una subida del entrenador podría
@@ -282,10 +454,14 @@ entrenar con la app.
 
 ### 4.3 Lo que ve el cliente
 
-Si el historial remoto trae `source: 'trainer'`:
-- La hoja del código **preselecciona fusionar** (hoy preselecciona «Solo el
-  programa», `ClientCodeModal.jsx:55`).
-- El texto dice «Tu entrenador ha apuntado {n} entrenos tuyos».
+Si el hueco **tiene historial y nadie lo ha canjeado** (`hasRemoteHistory &&
+!alreadyLinked`), ese historial solo puede ser lo que apuntó el entrenador o la
+copia del propio cliente antes de reinstalar. En los dos casos fusionar es lo
+que se quiere:
+- La hoja del código **preselecciona fusionar** (antes, «Solo el programa»).
+- Encima, una línea: «Tu entrenador ya te ha apuntado entrenos: fusiona el
+  historial para verlos en el tuyo». **Sin el número**: saberlo exigiría
+  publicar más columnas del hueco (SQL), y no compensa.
 - El progreso se restaura siempre, como hoy. Lo fusiona `mergeProgressOnImport`,
   que ya prioriza una activación de etapa más reciente.
 
@@ -300,117 +476,262 @@ dice «Entrena con su app: lo que haga te llega solo» (clave nueva
 
 ### 4.4 Probar en dispositivo (dos móviles)
 
-> **Probar en dispositivo (dos móviles).** Entrenador: cliente sin conectar,
-> registrar 3 sesiones en días distintos. Dar el código. Cliente: canjear → la
-> hoja dice «Tu entrenador ha apuntado 3 entrenos» con fusionar marcado. Tras
-> conectar, el cliente ve las 3 en su historial, su etapa va por donde iba y su
-> Inicio marca las sesiones de esta semana.
+**Probar C20**
 
-> **Probar en dispositivo (dos móviles).** Tras la conexión, el cliente entrena
-> una sesión. El entrenador la recibe y **no** aparecen duplicadas las 3
-> anteriores. En la ficha ya no sale EMPEZAR y la pista explica por qué.
+- [ ] (dos móviles) Entrenador: cliente sin app, registrar 3 sesiones en días
+  distintos. Info › Conexión › Pasar a la app: la hoja dice «los 3 entrenos que
+  le apuntaste» → GENERAR CÓDIGO. Cliente: canjear → la hoja dice «Tu
+  entrenador ya te ha apuntado entrenos» con fusionar marcado. Tras conectar,
+  el cliente ve las 3 en su historial, su etapa va por donde iba y su Inicio
+  marca las sesiones de esta semana.
+- [ ] Tras «Pasar a la app», la tarjeta del cliente en la lista **no** dice
+  «3 sin revisar»: esas 3 son tuyas.
+- [ ] (dos móviles) Tras la conexión, el cliente entrena
+  una sesión. El entrenador la recibe y **no** aparecen duplicadas las 3
+  anteriores. En la ficha ya no sale EMPEZAR y la pista explica por qué.
 
 ## 5. Fase C21 — Compartir una sesión como texto
 
-**Dónde**: botón **COMPARTIR** en las filas de sesión abiertas de la ficha (§3.1,
-y las de un grupo en [group-classes.md](group-classes.md) §5), y en el menú ⋯ del
-editor de sesión. Abre la hoja de compartir del sistema (`Share` de React
-Native, sin dependencia nueva). Sirve para los tres casos: al cliente que no usa
-la app, al grupo de WhatsApp de una clase, y a un conectado si lo pide.
+> **Revisada el 28-sep al implementarla.** El primer formato
+> (`Sentadilla 4x6 · última 100`) se entendía, pero no dejaba claro dónde
+> escribir, mezclaba lo que manda la app con lo que contesta el cliente
+> (`4x6 100`: ¿receta o resultado?) y un nombre con números («Extensión de
+> espalda 45°») rompía el corte. Lo de abajo sustituye a ese formato.
 
-El texto:
+### 5.1 Dónde
+
+Un icono de compartir (la caja con la flecha) que abre la hoja de compartir del
+sistema (`Share` de React Native, sin dependencia nueva). Esa hoja ya trae
+WhatsApp **y «Copiar»**, así que no hace falta un botón de copiar aparte.
+
+| Sitio | Con pesos |
+|---|---|
+| Ficha de un cliente sin app: **al lado de EMPEZAR** en la tarjeta lima, y junto al botón de la fila al abrirla | Sí, del historial del cliente |
+| Sesiones libres de un cliente (con o sin app), en la fila abierta | Sí |
+| Editor de sesión, menú ⋯ › **Compartir como texto**: cualquier sesión (programa, libre, plantilla) | No: ahí no se sabe para quién es |
+| Grupo ([group-classes.md](group-classes.md) §5, C25) | No, y **sin la línea de instrucciones**: nadie la devuelve. Esa opción la añade la C25 |
+
+### 5.2 El texto
 
 ```
-Sesión C · Pierna fuerza
-Sentadilla 4x6
-Peso muerto rumano 3x8
-Zancada búlgara 3x10
-Plancha 3x40s
+Ana García · Sesión C · Pierna fuerza
+Sentadilla con barra · 4x6 · 102.5kg:
+Peso muerto rumano (barra) · 3x8-12 · 60kg:
+Sentadilla búlgara · 3x10 c/p:
+Plancha · 3x40s:
+Burpee · 3 series:
+AMRAP 12' · 10 Wall ball, 200 m Remo:
+
+Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el peso x reps de cada serie (100x6 100x6 95x5). Deja vacío lo que no hiciste.
 ```
 
-- Una línea por ejercicio: nombre en el idioma de la app + series × objetivo
-  (`targetLabel` en modo compacto, `prescription.js:18`).
-- Los bloques salen con su formato: `AMRAP 12' — 10 wall balls, 10 burpees`.
-- Si el cliente tiene pesos de la última vez, se añaden: `Sentadilla 4x6 · última 100`.
-  En un grupo no (no hay pesos individuales).
+- **Cada línea es `nombre · receta[ · peso]:`.** Los dos puntos del final marcan
+  dónde escribe el cliente. Lo que va delante lo puso la app; lo que va detrás
+  es la respuesta, sin ambigüedad.
+- **El nombre acaba en el primer ` · `**, no «hasta el primer número». Los
+  nombres llevan números y paréntesis.
+- **La receta va con caracteres de teclado** (`x`, `-`, `s`): es lo que el
+  cliente escribe al devolverla. Sale de `targetLabel` compacto
+  (`prescription.js`) con `×`→`x` y `–`→`-`, más el «c/p» que el compacto quita.
+  Un submáximo sale como `3 series`, porque «submáx» fuera de la app no se
+  entiende.
+- **El peso es el de hoy**: `suggestedWeight` de `getProgression`
+  (`progression.js`) y, si no hay, el último, con `lastExerciseRef` sobre el
+  historial del cliente (el mismo que usa el Workout). Así «ok» es una
+  respuesta completa. En la unidad del usuario (`useWeightUnit().fmt`).
+- **Bloques**: `[nombre · ]AMRAP 12'` / `EMOM 10x1'` / `For time 3 rondas`, y
+  sus movimientos separados por comas. En el orden de `sessionSlots`, el mismo
+  del Workout.
+- **La línea de instrucciones** hace que el mensaje se explique solo
+  (`sessionText.howTo`). No encaja con ningún ejercicio, así que el lector la
+  ignora.
+- **RPE (pendiente, fuera de la C21).** Hoy una sesión no puede pedir un RPE:
+  el submáximo sale como `3 series`. Cuando el submáximo pida RPE, la receta
+  lo dirá (`3 series @8`) y las instrucciones añadirán «@8 detrás de la
+  serie para el RPE». El cliente ya lo puede escribir hoy: la C22 lo lee
+  (§6.2).
+- **La cabecera** lleva **el nombre del cliente** (desde su ficha; en el
+  editor no hay cliente) y `Sesión C · nombre`, o solo el nombre en una libre.
+  Con ella, pegar en Clientes marca solo el cliente y la sesión (§6.4).
 
-La utilidad pura `sessionToText(template, lib, t)` vive en
-`src/utils/sessionText.js`, junto al lector de §6. **Test de ida y vuelta:**
-lo que produce `sessionToText`, con números añadidos, lo entiende `parseSessionText`.
+`sessionToText(template, allExercises, t, { language, fmtWeight, lastExercise, clientName })`
+vive en `src/utils/sessionText.js`, donde irá también el lector de §6.
 
-Es lo que hace fiable la C22: el cliente devuelve **el mismo texto con sus
-números**, así que los nombres coinciden al 100 %.
+### 5.3 Test
+
+`sessionText.test.js`: el formato línea a línea, el peso de hoy, y la **ida y
+vuelta de nombres**. Una sesión con los 182 ejercicios de la biblioteca, en los
+dos idiomas: el nombre de cada línea, cortado en el primer ` · `, encuentra por
+coincidencia exacta (sin tildes ni mayúsculas) **su** ejercicio y ningún otro.
+Eso es lo que hace fiable la C22: el cliente devuelve el mismo texto con sus
+números. Un nombre repetido en la biblioteca hace fallar este test.
+
+La ida y vuelta completa (texto → `parseSessionText` → series) pasa a la C22,
+que es donde nace el lector.
+
+### 5.4 Probar en dispositivo
+
+**Probar C21**
+
+- [x] Ficha de un cliente sin app con programa: en la tarjeta lima, al lado de
+  EMPEZAR, el icono de compartir abre la hoja del sistema. En WhatsApp llega
+  el texto de §5.2 con la cabecera, una línea por ejercicio acabada en «:» y
+  las instrucciones al final.
+- [x] Una fila cerrada, al abrirla: el icono sale junto a EMPEZAR/REPETIR y
+  comparte ESA sesión, no la que toca.
+- [x] Con entrenos apuntados a ese cliente, las líneas llevan su peso de hoy
+  (el mismo que propone el Workout al empezar), no el tuyo.
+- [x] Una sesión con un bloque AMRAP o EMOM: la línea del bloque lleva el
+  formato y los movimientos, en el mismo orden que en el Workout.
+- [x] Editor de sesión › ⋯ › **Compartir como texto**: el mismo texto sin pesos.
+  Vale en una sesión de programa, en una libre y en una plantilla.
+- [x] Una sesión libre de un cliente (Sesiones libres de la ficha): la fila
+  abierta tiene EMPEZAR (o solo EDITAR si tiene app), EDITAR y el icono.
+- [x] Con la app en inglés, los nombres y las instrucciones salen en inglés.
 
 ## 6. Fase C22 — Pegar un texto y que la app lo entienda
 
-### 6.1 Antes de escribir código: textos reales
+> **Revisada el 28-sep al implementarla.** Dos cambios de la sesión con el
+> usuario: el texto compartido lleva **el nombre del cliente** en la cabecera,
+> y se puede pegar **desde la lista de Clientes** sin entrar en la ficha: si el
+> nombre está tal cual, el cliente sale solo. El botón ocupa el hueco del €
+> (Facturación global), que se retira: estaba abandonada y sin plan. La
+> facturación de cada cliente sigue en su Info.
 
-La tabla de tests **se escribe con mensajes reales** de clientes, no con los
-que imaginamos. Mínimo 20, pedidos a entrenadores que trabajen por WhatsApp. La
-forma real suele ser «sentadilla 100 100 95, la última me costó», y el formato
-de §6.2 se ajusta a lo que salga. **Sin esa tabla, la C22 no empieza.**
+### 6.1 Textos reales
+
+La puerta de «sin 20 textos reales no se empieza» se retira: desde la C21 el
+texto que vuelve es **el nuestro con números detrás de los dos puntos**, y ese
+formato lo pone la app. Los textos a mano («sentadilla 100 100 95, la última
+me costó») se leen con las formas de §6.2 y los alias de §6.3. **Cada texto
+real que no se entienda entra en `sessionText.test.js` como caso** y se ajusta
+el lector: la tabla crece con el uso, no antes. El primero (QA 28-sep) sacó
+tres fallos: `16kgx11` perdía la serie, un tiempo con rango se leía como
+pesos y `ok` con rango dejaba las reps en blanco.
 
 ### 6.2 Formato
 
-Una línea por ejercicio: `<nombre> <series>`. Las formas de `<series>`:
+Una línea a la vez. Las de antes del primer ejercicio que no llevan dos puntos
+y tienen ` · ` o ningún número son la **cabecera**: `Ana García · Sesión C ·
+Pierna fuerza`. Todas, no solo la primera: el nombre añadido a mano en su
+propia línea se comía la de la sesión (QA 28-sep).
+
+- **El texto de la app (§5.2)**: se parte por el **primer `:`** (no el último:
+  un for time se contesta `12:30`). Lo de delante se sabe: nombre hasta el
+  primer ` · `, la receta (`parseRx`) y el peso que llevaba. Lo de detrás es
+  lo que hizo.
+- **Un texto escrito a mano**: `<nombre> <series>`; el nombre acaba en el
+  primer número.
+
+Lo de detrás (`readAnswer`):
 
 | Escrito | Se entiende como |
 |---|---|
+| (vacío) | No lo hizo |
+| `ok` · `✓` · `sí` · `hecho` · `👍` | La receta tal cual, con el peso del texto. **Con un rango vale el de abajo**: `ok` en un `3x12-15` son 12 (QA 28-sep). Lo de arriba es lo que hace subir de peso, y eso lo tiene que escribir el cliente. Igual en tiempo |
+| `105` · `105kg` | Ese peso en todas las series de la receta, con sus reps |
+| `100 100 95` | Una serie por número: peso, con las reps de la receta (con rango, las de abajo) |
+| `100x6 100x6 95x5` · `100 x 6, 100 x 6` | Una serie por elemento: peso × reps |
+| `80 70 60x13` · `80 70 60 x13` · `80/70/60 x 13` (pesos y unas reps al final) | Esas reps en todas: 80×13, 70×13, 60×13, pegadas o no (QA 28-sep: es lo natural) |
 | `4x6 100` · `4x6x100` · `4x6 @100kg` | 4 series de 6 a 100 |
-| `100x8, 100x8, 95x7` (lista separada por comas) | Una serie por elemento: peso × reps |
-| `3x10` sin peso | 3 series de 10, sin peso |
-| `3x40s` · `3x1'` | 3 series por tiempo |
-| `... @8` al final | RPE 8 |
-| `kg` / `lb` | Se ignoran; se asume la unidad del usuario |
+| `3x10` sin peso | 3 series de 10 |
+| `100x6` suelto, con receta | Más de 10 delante ya es un peso: 100 × 6 en todas las series |
+| `40 35 30` con receta de tiempo (también con rango, `3x3-15s`) · `40s` · `1'` | Segundos por serie |
+| `100x6@8` · `100x6 @8 95x5` | RPE 8 en **esa** serie (el set guarda `rpe` por serie) |
+| `4x6 100 @8` · `100 100 @8` (al final) | RPE 8 en todas |
+| `kg` / `lb` | Se ignoran, también pegados a la serie (`16kgx11`); se asume la unidad del usuario |
+| `102,5` · `102.5` | Decimal. **La coma solo separa si lleva espacio detrás** (`100, 95`) |
+| Palabras sueltas («la última me costó») | Se ignoran; los números de la línea valen |
 
-**Regla de la ambigüedad:** `NxR` suelto son series × reps; en una lista, cada
-`AxB` es peso × reps. Es la convención habitual y está escrita en la hoja
-(§6.4).
+**Regla de la ambigüedad:** `NxR` suelto (N ≤ 10) son series × reps; en una
+lista, cada `AxB` es peso × reps.
 
-Líneas que no encajan (títulos, notas, líneas vacías): se ignoran y se
-enseñan tachadas en la revisión, para que se vea que no se han perdido.
+Líneas que no encajan (títulos, notas, las instrucciones de §5.2): se enseñan
+tachadas en la revisión, para que se vea que no se han perdido.
 
-`parseSessionText(text)` es pura y con tests: la tabla de §6.1 como casos
-entrada → salida, más la ida y vuelta de §5.
+**Bloques** (AMRAP, EMOM, for time): se reconocen y la revisión dice «Se apunta
+en el entreno». Su resultado **no** se rellena todavía: se pone en el Workout.
+
+`parseSessionText`, `readAnswer`, `parseRx` y `exerciseIndex` viven en
+`src/utils/sessionText.js`, puras y con tests (`sessionText.test.js`): la tabla
+de arriba como casos, y la **ida y vuelta completa** (lo que sale de
+`sessionToText`, con «ok» detrás, se lee entero y cada línea da su ejercicio).
 
 ### 6.3 Los nombres
 
 La biblioteca tiene 182 ejercicios con `name` y `nameEn` y **sin sinónimos**
-(`src/data/exerciseLibrary.js`). Orden de búsqueda para cada nombre:
-1. Coincidencia exacta, sin tildes ni mayúsculas, con `name` / `nameEn` de la
-   biblioteca y de los ejercicios propios.
-2. **Alias aprendidos del entrenador**: `exerciseAliases: { 'banca':
-   'bench_press_barbell' }`, persistido y en el backup.
-3. Si no hay coincidencia, se deja «sin reconocer».
+(`src/data/exerciseLibrary.js`). `exerciseIndex` busca cada nombre, sin tildes,
+mayúsculas ni el formato de WhatsApp, en este orden:
+1. Los ejercicios de la sesión elegida (en los dos idiomas).
+2. La biblioteca y los ejercicios propios.
+3. **Alias aprendidos del entrenador**: `exerciseAliases: { 'banca':
+   'bench_press_barbell' }`, en el store, persistido, en el backup completo y
+   restaurado con la sección de clientes (la copia local gana).
+4. Si no hay coincidencia, «Sin reconocer» con **ELEGIR**.
 
-La primera vez que el entrenador resuelve «banca» a mano, se guarda como alias.
-**No hay coincidencia aproximada** (distancia de edición…): «press banca» podría
-ser con barra o con mancuernas, y equivocarse en silencio es peor que
-preguntar una vez.
+ELEGIR abre el selector de ejercicios en su modo de elegir uno (el de los
+movimientos de un bloque, `blockPicker`, con título «¿Qué ejercicio es?»)
+**con lo que escribió el cliente ya en el buscador** (`search`): «banca» enseña
+de entrada los press de banca. Lo elegido se guarda como alias
+(`setExerciseAlias`). **No hay coincidencia
+aproximada**: «press banca» podría ser con barra o con mancuernas, y
+equivocarse en silencio es peor que preguntar una vez.
 
 ### 6.4 Flujo
 
-1. En la hoja **Apuntar sesión pasada** (§3.2), la segunda salida **Pegar
-   texto**. Un texto siempre habla de algo que ya pasó, así que vive ahí y no
-   en un menú aparte. Qué sesión y cuándo se eligen igual; se añade un campo de
-   texto, que se rellena desde el portapapeles si hay algo.
-2. **Revisión**: una fila por línea con el ejercicio reconocido y lo entendido
-   («4 × 6 · 100 kg»). Las sin reconocer llevan ELEGIR, que abre el buscador de
-   ejercicios de siempre y guarda el alias.
-3. **CONTINUAR** abre el Workout en modo registro con todo relleno. Los
-   ejercicios que están en la sesión elegida van a sus series; los demás entran
-   como ejercicios añadidos (ad-hoc). Es la misma pantalla que en §3, con las
-   series ya puestas: **la revisión final es el propio Workout**, y el guardado
-   es `saveSession`, sin un camino nuevo.
+Pantalla **Pegar entreno** (`PasteWorkoutScreen`), con dos entradas:
+- **Clientes**, icono de portapapeles en la cabecera, donde estaba el €. Sin
+  cliente puesto.
+- **Ficha de un cliente sin app › Apuntar sesión pasada › Pegar texto**, la
+  segunda salida de la hoja. Con el cliente ya puesto.
+
+De arriba abajo:
+1. **El texto**, que se rellena solo con el portapapeles al entrar; PEGAR lo
+   vuelve a leer.
+2. **De quién** (solo desde Clientes): los clientes sin app. Si la cabecera
+   trae el nombre de uno **tal cual** (sin tildes ni mayúsculas), sale
+   marcado; si es de un cliente con app, lo dice («usa la app: sus entrenos
+   los apunta él») y no se marca.
+3. **Qué sesión**: las de su etapa, con su letra; debajo, bajo «Sesiones
+   libres», las suyas por su nombre («Sesión libre» si no tiene). Marcada la que diga
+   la cabecera («Sesión C» en cualquiera de los dos idiomas, o el nombre de la
+   sesión), que **manda**; si no la dice, la que más ejercicios comparte con
+   el texto; y solo si no, la que le toca. **Cuándo**: los 7 días de «Apuntar sesión
+   pasada», hoy marcado.
+4. **Lo que se ha entendido**: una fila por línea con el ejercicio y lo
+   entendido («4 × 6 · 100 kg», «No lo hizo»). «añadido» si no está en la
+   sesión. Si trae más series de las que tiene la sesión, lo avisa: el
+   Workout no admite más y se apuntan las de la sesión.
+5. **CONTINUAR** abre el Workout en modo registro con todo relleno
+   (`startSession(..., { prefill })`). Los ejercicios de la sesión van a sus
+   series; los demás entran como añadidos. Una serie con reps o tiempo entra
+   hecha; una sin (un «ok» con rango) entra abierta. **La revisión final es el
+   propio Workout**, y el guardado es `saveSession`, sin un camino nuevo. Con
+   otro entreno en curso, se confirma descartarlo, como EMPEZAR.
 
 ### 6.5 Probar en dispositivo
 
-> **Probar en dispositivo.** Compartir una sesión como texto por WhatsApp,
-> añadir números como lo haría un cliente, copiarlo y pegarlo: todos los
-> ejercicios se reconocen y el Workout sale relleno.
+**Probar C22**
 
-> **Probar en dispositivo.** Pegar un texto escrito a mano con «banca»: pide
-> elegir el ejercicio. En el segundo texto con «banca» ya no lo pide.
+- [x] Ficha de un cliente sin app › compartir una sesión por WhatsApp: la
+  primera línea lleva su nombre («Ana García · Sesión C · …»).
+- [x] Copiar ese texto, añadir números como lo haría un cliente (`ok`, `105`,
+  `100x6 100x6 95x5`, una vacía), copiarlo y en **Clientes** tocar el icono de
+  portapapeles: el texto ya está pegado, el cliente y la sesión salen
+  marcados, y cada fila dice lo entendido.
+- [x] CONTINUAR: el Workout de ese cliente, en modo registro, con las series
+  rellenas como en la revisión; la vacía, sin hacer. Guardar: el entreno está
+  en su historial con el día elegido.
+- [x] Borrar el nombre de la primera línea y pegar: no marca a nadie y pide
+  elegir el cliente.
+- [x] Pegar un texto escrito a mano con «banca 80 80 75»: sale «Sin
+  reconocer» con ELEGIR. ELEGIR abre el buscador con «banca» ya escrito.
+  Elegir el ejercicio: la fila se reconoce. En el
+  siguiente texto con «banca» ya no lo pide.
+- [x] Desde la ficha › Apuntar sesión pasada › **Pegar texto**: la misma
+  pantalla, sin «De quién».
+- [x] La cabecera de Clientes ya no tiene el €; la facturación de un cliente
+  sigue en su Info.
 
 ## 7. Fuera de alcance
 
@@ -431,7 +752,8 @@ preguntar una vez.
 
 | Fase | Qué | Depende de | Aceptación |
 |---|---|---|---|
-| C19 | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso» | — | Pruebas de §3.8 |
-| C20 | §4: subir lo apuntado, guarda anti-pisado, hoja del cliente, pista en la ficha | C19 | Pruebas de §4.4, con dos móviles |
-| C21 | §5: `sessionToText` + COMPARTIR | C19 (las filas donde vive el botón) | Test de ida y vuelta |
-| C22 | §6: tabla de textos reales, `parseSessionText` + alias + revisión → Workout | C19, C21 | Tests del lector y pruebas de §6.5 |
+| C19 ✅ `6416dd9` | §3: ficha con lista de sesiones, EMPEZAR, hoja de sesión pasada, modo registro, dueño, fecha y avisos de «en curso». COMPARTIR en las filas llega con la C21. Tests en `useStore.test.js` («el entrenador apunta por el cliente») | — | Pruebas de §3.8 |
+| C28 ✅ `a3fc21e` | §4.0: `clientLink` (con test), alta con dos opciones, subida silenciosa del invitado (un suscriptor del store), Info › Conexión por estado, tarjeta del código rehecha, caja «Sin programa activo» sin borde, refresco al enfocar. La hoja de nuevo programa ya usaba las piezas de Plantillas: solo cambió la caja vacía. Tests en `useStore.test.js` («con app o sin app») | C19 | Pruebas de §4.0.7 |
+| C20 ✅ `a3fc21e` | §4: `pushTrainerLogToSlot` al pasar a la app, guarda anti-pisado, preselección de fusionar en la hoja del cliente. Sin `source` ni número de entrenos (§4.2-4.3) | C19, C28 | Pruebas de §4.4, con dos móviles |
+| C21 ✅ | §5: `sessionToText` + icono de compartir en la ficha (al lado de EMPEZAR) y en las libres, y «Compartir como texto» en el ⋯ del editor. Formato revisado (§5 nota). Tests en `sessionText.test.js` | C19 (las filas donde vive el botón) | Ida y vuelta de nombres (§5.3) y pruebas de §5.4 |
+| C22 ✅ | §6: `parseSessionText` + `readAnswer` + `exerciseIndex` + alias (`exerciseAliases`, en el backup), pantalla **Pegar entreno** desde Clientes (en el hueco del €, fuera la facturación global) y desde «Apuntar sesión pasada», Workout relleno con `startSession({ prefill })`. El texto compartido lleva el nombre del cliente. Tests en `sessionText.test.js` y `useStore.test.js` | C19, C21 | Tests del lector y pruebas de §6.5 |

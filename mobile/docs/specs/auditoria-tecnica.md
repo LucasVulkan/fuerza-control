@@ -237,7 +237,7 @@ Dos desviaciones respecto al arreglo propuesto arriba:
    `finally`) — cierto en ambas plataformas por cola serie, pero no garantizado
    por contrato.
 
-**Probar en dispositivo.** `AsyncStorage.setItem('fc_tracker_v1', '{"state":{')` y relanzar: debe abrir en Setup, no quedarse en blanco.
+**Probado en dispositivo.** `AsyncStorage.setItem('fc_tracker_v1', '{"state":{')` y relanzar: debe abrir en Setup, no quedarse en blanco.
 
 **Test.** `store/useStore.test.js`, tres casos sobre el callback que devuelve
 `onRehydrateStorage()`: invocado como `(undefined, error)` marca `_hasHydrated`;
@@ -471,7 +471,7 @@ no se nota porque la tarea no sube nunca; con el 3 arreglado, sí.
 paso el store se entera de lo que subió la tarea. `deleteDriveBackups` borra la
 config antes de rescribirla, porque ahí se quiere justo lo contrario.
 
-**Probar en dispositivo.** Frecuencia diaria, esperar, y comprobar que aparece el archivo en Drive. Es lo que confirma que AsyncStorage funciona dentro del background fetch.
+**Probado en dispositivo.** Frecuencia diaria, esperar, y comprobar que aparece el archivo en Drive. Es lo que confirma que AsyncStorage funciona dentro del background fetch.
 
 **Riesgo asumido:** que AsyncStorage esté disponible dentro del contexto de
 background fetch. La tarea ya usa SecureStore ahí, que es un módulo nativo de la
@@ -1087,7 +1087,7 @@ dentro de `{__DEV__ && …}` (`AppHeader.jsx:526`), y `showProTabs = isPro ||
 !proTabsHidden` deja las pestañas visibles igual — el muro está dentro de cada
 pantalla, no en la barra.
 
-**Probar en dispositivo.** Build de iOS con la clave puesta: comprar, cerrar y reabrir (sigue Pro), y "restaurar compras" en instalación limpia.
+**Probado en dispositivo.** Build de iOS con la clave puesta: comprar, cerrar y reabrir (sigue Pro), y "restaurar compras" en instalación limpia.
 
 **Queda tuyo, y sin ello iOS no puede vender:** rellenar `RC_IOS_API_KEY` con la
 Public SDK key de RevenueCat. Con el guard, iOS ya no regala Pro; pero hasta que
@@ -1267,7 +1267,7 @@ local a una interacción concreta, y las dos pantallas conservan su modal para
 **Sin test**: es montaje de navegación, y lo que se arregla —cuántas instancias
 reaccionan al mismo archivo— depende de qué pestañas haya visitado el usuario.
 
-**Probar en dispositivo.** Recorrer Inicio → Historial → Clientes y abrir un `.fitdata` desde el explorador: debe salir **un** diálogo, no uno por pestaña visitada. Y repetirlo durante el onboarding, donde antes lo atendía la copia de esa pantalla.
+**Probado en dispositivo.** Recorrer Inicio → Historial → Clientes y abrir un `.fitdata` desde el explorador: debe salir **un** diálogo, no uno por pestaña visitada. Y repetirlo durante el onboarding, donde antes lo atendía la copia de esa pantalla.
 
 **Lo que sigue abierto:** el reloj. Los seis `setInterval` de `AppHeader`, uno
 por instancia montada, siguen ahí. No se toca porque es otra cosa y es
@@ -1406,7 +1406,7 @@ Dos cosas más que el diagnóstico daba por buenas y ya no lo eran:
 **Tests.** `store/useStore.test.js`, tres casos: la foto acotada, la foto nula
 sin programa y la invalidación al importar con el editor abierto.
 
-**Probar en dispositivo.** Cliente conectado con un programa propio abierto en el
+**Probado en dispositivo.** Cliente conectado con un programa propio abierto en el
 editor: minimizar, aceptar la actualización del entrenador al volver, y salir del
 editor. La actualización debe seguir aplicada y no debe volver a ofrecerse.
 
@@ -1499,7 +1499,7 @@ reintenta entero y lo que se meta ahí debe ser repetible.
 bueno. Ahora lanza como el resto, que es lo que hace que `deleteAllBackups`
 pueda informar.
 
-**Probar en dispositivo.** Conectar Drive, esperar más de una hora, abrir "Copias": deben salir las copias en vez de "no hay ninguna".
+**Probado en dispositivo.** Conectar Drive, esperar más de una hora, abrir "Copias": deben salir las copias en vez de "no hay ninguna".
 
 **Test.** `src/services/driveService.test.js`, 9 casos con `fetch` sustituido:
 separador distinto en cada subida, separador que no colisiona con una nota que
@@ -1697,7 +1697,7 @@ llegar en un `.fitdata`.
 **Tests.** `store/useStore.test.js`: añadir dos veces el mismo ejercicio no lo
 duplica; sustituir por uno que ya está en la sesión, tampoco.
 
-**Probar en dispositivo.** En el selector de ejercicios, los que ya están en la
+**Probado en dispositivo.** En el selector de ejercicios, los que ya están en la
 sesión no deben aparecer en la lista — ni al añadir ni al sustituir. En el picker
 de un bloque de acondicionamiento sí deben seguir apareciendo.
 
@@ -2203,7 +2203,7 @@ estado a medias que lee la tarea de fondo devuelve `[]` en las dos nuevas.
 `useStore.test.js`: cada una entra por su sección, sin duplicar ni pisar lo
 local, y ninguna entra sin ella.
 
-**Probar en dispositivo.** Etiquetar dos clientes y guardar un preset de bloque →
+**Probado en dispositivo.** Etiquetar dos clientes y guardar un preset de bloque →
 exportar backup completo → borrar datos → importar con todas las secciones. Las
 etiquetas deben volver con su nombre y el preset debe estar.
 

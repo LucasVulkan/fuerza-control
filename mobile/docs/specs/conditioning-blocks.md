@@ -2,9 +2,9 @@
 
 > Tema: entrenamiento
 > En corto: Metcons dentro de una sesión —AMRAP, EMOM, for time— como capa aparte de los ejercicios de fuerza: se editan, se guardan como preset, se corren con cronómetro y se puntúan.
-> Fase T01 · hecho · Datos y utils: `conditioningBlocks.js`, acciones de editor, presets · §3
-> Fase T02 · hecho · Editor: sección BLOQUES en SessionEditorScreen y picker de movimientos · §6
-> Fase T03 · hecho · Runtime: `ConditioningBlockCard`, cronómetro y kill-recovery · §4
+> Fase T01 · terminado · Datos y utils: `conditioningBlocks.js`, acciones de editor, presets · §3
+> Fase T02 · terminado · Editor: sección BLOQUES en SessionEditorScreen y picker de movimientos · §6
+> Fase T03 · terminado · Runtime: `ConditioningBlockCard`, cronómetro y kill-recovery · §4
 > Fase T04 · hecho · Persistencia, recap e historial: `entry.blocks`, sección Bloques del recap y línea por bloque en `SessionCard` · §7
 >
 > Estado: **spec cerrada, lista para implementar**. Mockups aprobados por el usuario

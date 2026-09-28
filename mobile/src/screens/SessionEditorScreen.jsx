@@ -16,7 +16,7 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
@@ -36,8 +36,9 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
-import { ToggleRow } from '../components/ui/EditorRows';
 import { defaultBlock } from '../utils/conditioningBlocks';
+import { sessionToText } from '../utils/sessionText';
+import { useWeightUnit } from '../hooks/useWeightUnit';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -210,7 +211,8 @@ function EditorRow({
 
 export default function SessionEditorScreen({ navigation, route }) {
   const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { fmt: fmtWeight } = useWeightUnit();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
@@ -234,7 +236,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
   const reorderBlocks         = useStore((s) => s.reorderBlocks);
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
-  const setFreeTemplateOnHome = useStore((s) => s.setFreeTemplateOnHome);
   const deleteFreeTemplate    = useStore((s) => s.deleteFreeTemplate);
   const activeTemplateId      = useStore((s) => s.activeSession.templateId);
   const { done }              = useEditorExit(navigation, templateId);
@@ -250,6 +251,8 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Sesión libre (free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
+  // Plantilla de sesión (group-classes.md §4.6): lo dice la ceja.
+  const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
   // añadir nada, no puede quedar una sesión vacía en Inicio. Solo al desmontar
@@ -437,7 +440,7 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
+        eyebrow={isTpl ? t('templates.sessionEyebrow') : isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
         renaming={editingName}
         draft={nameValue}
@@ -471,20 +474,6 @@ export default function SessionEditorScreen({ navigation, route }) {
             value={templateId}
             onChange={switchSession}
           />
-        )}
-
-        {/* ── Mostrar en Inicio: la única opción de una sesión libre, a la vista
-            y no dentro del menú (free-sessions.md §5). Solo en las mías: la de
-            un cliente no sale en mi Inicio. ── */}
-        {isFree && template.owner === 'me' && (
-          <View style={styles.homeToggle}>
-            <ToggleRow
-              label={t('freeSession.showOnHome')}
-              hint={t('freeSession.showOnHomeHint')}
-              value={template.onHome !== false}
-              onChange={(v) => setFreeTemplateOnHome(templateId, v)}
-            />
-          </View>
         )}
 
         {/* ── Resumen (208:1936) ── */}
@@ -569,6 +558,16 @@ export default function SessionEditorScreen({ navigation, route }) {
           <SheetRow
             label={t('editor.renameOption')}
             onPress={startEditName}
+          />
+          {/* Sin pesos: aquí no se sabe para quién es (trainer-logging.md §5). */}
+          <SheetRow
+            label={t('sessionText.menu')}
+            onPress={() => {
+              setMenuOpen(false);
+              Share.share({
+                message: sessionToText(template, allExercises, t, { language: i18n.language, fmtWeight }),
+              }).catch(() => {});
+            }}
           />
           {isFree && (
             <SheetRow
@@ -738,7 +737,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
-  homeToggle: { borderRadius: th.radius.md, overflow: 'hidden' },
   summaryCard: {
     backgroundColor:   th.tint.accent10,
     borderRadius:      th.radius.md,

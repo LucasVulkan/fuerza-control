@@ -2,7 +2,7 @@
 
 > Tema: onboarding
 > En corto: Tras las tres preguntas, en vez de generar un programa a ciegas, se le enseñan al usuario las plantillas que le encajan ordenadas por ajuste, y elige.
-> Fase O02 · hecho · Lista de plantillas propuestas tras las tres preguntas · §1
+> Fase O02 · terminado · Lista de plantillas propuestas tras las tres preguntas · §1
 >
 > Estado: **implementada** (ago 2026). Es la **fase 6** de
 > [program-templates.md](program-templates.md) §8, extraída a documento propio
@@ -477,7 +477,7 @@ desaparecieron pero sus títulos y subtítulos los reusa el paso de ajuste.
   sobre el ranking, `normalizeOnboardingAnswers` es idempotente y no pierde
   campos, y el `onboardingSnapshot` conserva todas las respuestas incluida la
   `distribution` de la plantilla elegida.
-**Probar en dispositivo.** Los cuatro modos (auto, manual, plantilla propia, importar) y la conexión con entrenador siguen funcionando; y el camino nuevo entero: elegir una candidata, "ver otro programa", volver de la lista a las preguntas sin perder ninguna respuesta, y EMPEZAR y EDITAR desde el preview — que es donde por fin se guarda el programa.
+**Probado en dispositivo.** Los cuatro modos (auto, manual, plantilla propia, importar) y la conexión con entrenador siguen funcionando; y el camino nuevo entero: elegir una candidata, "ver otro programa", volver de la lista a las preguntas sin perder ninguna respuesta, y EMPEZAR y EDITAR desde el preview — que es donde por fin se guarda el programa.
 
 ---
 

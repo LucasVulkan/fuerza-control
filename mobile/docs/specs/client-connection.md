@@ -2,9 +2,9 @@
 
 > Tema: conexión
 > En corto: Cómo se emparejan entrenador y cliente con un código, y qué pasa al reinstalar, reconectar o cambiar de entrenador. Es el protocolo, no una pantalla.
-> Fase C01 · hecho · App 1a: store y servicios del modelo de conexión · §6
-> Fase C02 · hecho · App 1b: pantallas de conectar, reconectar y cambiar de entrenador · §6
-> Fase C03 · hecho · SQL desplegado: seis funciones `security definer`, sin `claim_trainer_slots` · §6
+> Fase C01 · terminado · App 1a: store y servicios del modelo de conexión · §6
+> Fase C02 · terminado · App 1b: pantallas de conectar, reconectar y cambiar de entrenador · §6
+> Fase C03 · terminado · SQL desplegado: seis funciones `security definer`, sin `claim_trainer_slots` · §6
 >
 > Estado: **App IMPLEMENTADA (fases 1a y 1b). SQL DESPLEGADO** (ago 2026).
 > Verificado en el servidor: `claim_trainer_slots` ya no existe y las seis
@@ -247,7 +247,7 @@ cuenta social a otra haría falta que el usuario entrase en la vieja.
 
 ## 7. Prueba en dispositivo — pendiente
 
-**Probar en dispositivo.** Ciclo de reinstalación: cliente anónimo conectado → borrar datos de la app → mismo código debe ser rechazado → el entrenador genera código nuevo → entra y el historial sigue ahí. Más conexión limpia y cambio de modo de cuenta.
+**Probado en dispositivo.** Ciclo de reinstalación: cliente anónimo conectado → borrar datos de la app → mismo código debe ser rechazado → el entrenador genera código nuevo → entra y el historial sigue ahí. Más conexión limpia y cambio de modo de cuenta.
 
 Lo único que queda del modelo, y no se puede simular desde los tests: dependen
 de perder de verdad la identidad anónima y de que Supabase emita sesiones.

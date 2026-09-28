@@ -40,6 +40,11 @@ spec o añadir un fallo.
 está hecho— leyéndolo todo de las specs, y **falla** si la cabecera de alguna no
 cuadra. Ejecútalo después de tocar cualquier documento de `docs/specs/`.
 
+**Al cerrar una fase con pruebas a mano** va a `hecho` con su lista `**Probar
+<código>**` de casillas; si no hay nada que probar, a `terminado`. Cuando el
+usuario dice «C19 probada» o «C19.2 falla: …», se marca o se anota la casilla en
+la spec y `npm run estado` (README §*Pruebas en dispositivo*).
+
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before writing any code.
