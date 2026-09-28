@@ -2199,7 +2199,7 @@
       "desc": "Se le crea una copia: lo que cambies después en la plantilla no le llega.",
       "noProgram": "Tiene app y no tiene programa: le llegará cuando le envíes uno.",
       "me": "Tú",
-      "meSub": "Una copia en tu Inicio, para adaptarla sin tocar la plantilla.",
+      "meSub": "Se añade una copia a tus sesiones libres.",
       "meToast": "ti",
       "btnMany": "Asignar a {{count}}",
       "toastMany": "Sesión asignada a {{count}} clientes",

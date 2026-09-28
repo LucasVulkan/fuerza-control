@@ -2199,7 +2199,7 @@
       "desc": "They get a copy: later changes to the template don't reach them.",
       "noProgram": "Uses the app but has no program: it reaches them when you send one.",
       "me": "You",
-      "meSub": "A copy on your Home, to adapt without touching the template.",
+      "meSub": "A copy is added to your free sessions.",
       "meToast": "you",
       "btnMany": "Assign to {{count}}",
       "toastMany": "Session assigned to {{count}} clients",

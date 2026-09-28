@@ -307,10 +307,10 @@ copia que Asignar.
 - [x] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
   el botón dice «Asignar a 2», y la sesión aparece en la ficha de esos dos y no
   en la del desmarcado.
-- [ ] Una plantilla de sesión no sale en tu Inicio y su editor dice «Plantilla de
+- [x] Una plantilla de sesión no sale en tu Inicio y su editor dice «Plantilla de
   sesión». Asignártela (Tú, arriba del todo): la copia sale en tu Inicio;
   cambiarle un ejercicio no cambia la plantilla.
-- [ ] Inicio › ＋ Sesión libre: la tercera opción es «Desde tus plantillas (N)».
+- [x] Inicio › ＋ Sesión libre: la tercera opción es «Desde tus plantillas (N)».
   Tocar una plantilla la añade a tu Inicio. El editor de una sesión tuya ya no
   tiene «Mostrar en Inicio».
 
