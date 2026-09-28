@@ -96,7 +96,7 @@ export default function HomeScreen() {
   const styles     = useThemedStyles(makeStyles);
 
   const [freeSheet,   setFreeSheet]   = useState(false);
-  const [freeList,    setFreeList]    = useState(false);
+  const [tplList,     setTplList]     = useState(false);
   // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
   // recuerda al volver — es una preferencia de un segundo, no un ajuste.
   const [openId,      setOpenId]      = useState(null);
@@ -112,6 +112,8 @@ export default function HomeScreen() {
   const startSession         = useStore((s) => s.startSession);
   const startFreeSession     = useStore((s) => s.startFreeSession);
   const createFreeTemplate   = useStore((s) => s.createFreeTemplate);
+  const copyFreeTemplate     = useStore((s) => s.copyFreeTemplate);
+  const showToast            = useStore((s) => s.showToast);
   const clientSync           = useStore((s) => s.clientSync);
   const advanceStage         = useStore((s) => s.advanceStage);
   const extendStage          = useStore((s) => s.extendStage);
@@ -162,7 +164,13 @@ export default function HomeScreen() {
   // `Object.values` conserva el orden de alta, que es el de la lista.
   // Sin las plantillas de sesión: esas viven en Plantillas y se asignan (§4.6).
   const myFree   = Object.values(sessionTemplates).filter((tpl) => !tpl.programId && (tpl.owner ?? 'me') === 'me' && tpl.kind !== 'template');
-  const homeFree = myFree.filter((tpl) => tpl.onHome !== false);
+  // Toda sesión mía sale en Inicio (QA 28-sep): lo que no quieres aquí es una
+  // plantilla, y las plantillas viven en Plantillas.
+  const homeFree = myFree;
+  // Las plantillas de sesión, para llevarte una copia (group-classes.md §4.6).
+  const templates = Object.values(sessionTemplates)
+    .filter((tpl) => !tpl.programId && tpl.kind === 'template')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const freeName = (tpl) => tpl.name || t('freeSession.templateUnnamed');
   const editFree = (templateId) => navigation.navigate('SessionEditor', { templateId });
 
@@ -494,7 +502,7 @@ export default function HomeScreen() {
               onPress={() => { setFreeSheet(false); startFree(); }}
             />
             <MenuRow
-              isLast={myFree.length === 0}
+              isLast={templates.length === 0}
               label={t('freeSession.create')}
               sub={t('freeSession.createDesc')}
               subLines={0}
@@ -504,52 +512,45 @@ export default function HomeScreen() {
                 editFree(createFreeTemplate());
               }}
             />
-            {myFree.length > 0 && (
+            {/* Como en la ficha de un cliente: te llevas una copia a Inicio y
+                la adaptas sin tocar la plantilla. Sin plantillas (sin PRO, o sin
+                haber hecho ninguna) no sale. */}
+            {templates.length > 0 && (
               <MenuRow
                 isLast
-                label={t('freeSession.mine', { count: myFree.length })}
-                sub={t('freeSession.mineDesc')}
+                label={t('freeSession.fromTemplates', { count: templates.length })}
+                sub={t('freeSession.fromTemplatesDesc')}
                 subLines={0}
                 minHeight={62}
-                onPress={() => { setFreeSheet(false); setFreeList(true); }}
+                onPress={() => { setFreeSheet(false); setTplList(true); }}
               />
             )}
           </View>
         </DragSheet>
       )}
 
-      {/* Todas las mías, primero las de Inicio. Es el único camino al editor
-          de las que no están en Inicio; borrar va en el editor, donde se ve lo
-          que se borra. */}
-      {freeList && (() => {
-        const list = [...homeFree, ...myFree.filter((tpl) => tpl.onHome === false)];
-        return (
-          <DragSheet visible onClose={() => setFreeList(false)} title={t('freeSession.mineTitle')}>
-            <View style={styles.sheetGroup}>
-              {list.map((tpl, i) => (
-                <MenuRow
-                  key={tpl.id}
-                  isFirst={i === 0}
-                  isLast={i === list.length - 1}
-                  label={freeName(tpl)}
-                  sub={freeMeta(tpl)}
-                  minHeight={62}
-                  onPress={() => { setFreeList(false); requestStart(tpl.id); }}
-                  control={tpl.fromTrainer ? null : (
-                    <TouchableOpacity
-                      onPress={() => { setFreeList(false); editFree(tpl.id); }}
-                      hitSlop={10}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.freeTplEdit}>{t('home.edit').toUpperCase()}</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              ))}
-            </View>
-          </DragSheet>
-        );
-      })()}
+      {/* Tus plantillas de sesión: tocar una la copia a tu Inicio. */}
+      {tplList && (
+        <DragSheet visible onClose={() => setTplList(false)} title={t('freeSession.templatesTitle')}>
+          <View style={styles.sheetGroup}>
+            {templates.map((tpl, i) => (
+              <MenuRow
+                key={tpl.id}
+                isFirst={i === 0}
+                isLast={i === templates.length - 1}
+                label={freeName(tpl)}
+                sub={freeMeta(tpl)}
+                minHeight={62}
+                onPress={() => {
+                  setTplList(false);
+                  copyFreeTemplate(tpl.id, { owner: 'me' });
+                  showToast(t('freeSession.addedToHome'), 2200, 'success');
+                }}
+              />
+            ))}
+          </View>
+        </DragSheet>
+      )}
     </View>
   );
 }
@@ -702,7 +703,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },
-  freeTplEdit:    { ...textStyles.labelStrong, color: th.colors.accent },
   // Ancho de un check: reserva el hueco de la derecha para que los nombres de
   // etapa terminen todos en la misma vertical, con o sin icono.
   rowControlSpacer: { width: 16 },

@@ -1304,12 +1304,6 @@ export const useStore = create(
         if (programId) get().markProgramDirtyForClients(programId);
       },
 
-      setFreeTemplateOnHome: (templateId, onHome) => {
-        const tpl = get().sessionTemplates[templateId];
-        if (!tpl || tpl.programId) return;
-        set((s) => ({ sessionTemplates: { ...s.sessionTemplates, [templateId]: { ...tpl, onHome } } }));
-      },
-
       /**
        * Borra una sesión libre. Nunca la que está en curso. El historial no se
        * toca: sus entradas llevan `sessionName` y `free`, que es todo lo que

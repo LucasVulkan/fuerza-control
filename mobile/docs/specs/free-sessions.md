@@ -8,6 +8,11 @@
 > Fase T22 · terminado · Recap: guardar, añadir ejercicios y «Cuenta como sesión X» · §7
 > Fase T23 · terminado · Quién cuenta qué: sesión que toca, adherencia, Progreso y entrenador · §8
 >
+> **Revisada 28-sep** ([group-classes.md](group-classes.md) §4.6): «Mostrar en
+> Inicio» y «Mis sesiones libres» se retiran. Toda sesión libre tuya sale en
+> Inicio; lo que no quieras ahí es una plantilla de sesión (Plantillas ›
+> Sesiones), y la tercera opción de «＋ Sesión libre» es «Desde tus plantillas».
+>
 > Estado: **✅ IMPLEMENTADA, PROBADA Y FUSIONADA A `main`** (26-sep-2026, merge `1a02b01`; rama `feat/free-sessions`:
 > T19 `93ee875`, T20 `c45f078`, T21 `2b8dd59`, T22 `aa24148`, T23 `0538ed0`,
 > más los arreglos de QA `c8a64ab`, `2b31670`, `dd35d6b` y `35a7137`). QA en

@@ -36,7 +36,6 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
-import { ToggleRow } from '../components/ui/EditorRows';
 import { defaultBlock } from '../utils/conditioningBlocks';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -234,7 +233,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const removeBlockFromSession = useStore((s) => s.removeBlockFromSession);
   const reorderBlocks         = useStore((s) => s.reorderBlocks);
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
-  const setFreeTemplateOnHome = useStore((s) => s.setFreeTemplateOnHome);
   const deleteFreeTemplate    = useStore((s) => s.deleteFreeTemplate);
   const activeTemplateId      = useStore((s) => s.activeSession.templateId);
   const { done }              = useEditorExit(navigation, templateId);
@@ -250,8 +248,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Sesión libre (free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
-  // Plantilla de sesión (§4.6): no sale en Inicio, así que no lleva el
-  // interruptor; para entrenarla uno se la asigna.
+  // Plantilla de sesión (group-classes.md §4.6): lo dice la ceja.
   const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
@@ -474,20 +471,6 @@ export default function SessionEditorScreen({ navigation, route }) {
             value={templateId}
             onChange={switchSession}
           />
-        )}
-
-        {/* ── Mostrar en Inicio: la única opción de una sesión libre, a la vista
-            y no dentro del menú (free-sessions.md §5). Solo en las mías: la de
-            un cliente no sale en mi Inicio. ── */}
-        {isFree && template.owner === 'me' && !isTpl && (
-          <View style={styles.homeToggle}>
-            <ToggleRow
-              label={t('freeSession.showOnHome')}
-              hint={t('freeSession.showOnHomeHint')}
-              value={template.onHome !== false}
-              onChange={(v) => setFreeTemplateOnHome(templateId, v)}
-            />
-          </View>
         )}
 
         {/* ── Resumen (208:1936) ── */}
@@ -741,7 +724,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
-  homeToggle: { borderRadius: th.radius.md, overflow: 'hidden' },
   summaryCard: {
     backgroundColor:   th.tint.accent10,
     borderRadius:      th.radius.md,

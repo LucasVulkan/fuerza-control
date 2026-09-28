@@ -254,9 +254,18 @@ cambiabas la plantilla. Ahora:
 - Para entrenarla, te la asignas: la hoja de asignar tiene **Tú** el primero,
   con el mismo gesto que un cliente. Recibes una copia en tu Inicio y la
   adaptas sin tocar la plantilla.
-- Tus sesiones libres de siempre no cambian (Inicio, «Mis sesiones libres» y su
-  interruptor). Las que se crearon desde Plantillas antes de este cambio quedan
-  como sesiones tuyas fuera de Inicio (sin migración).
+- **Toda sesión libre tuya sale en Inicio** (QA 28-sep). «Mostrar en Inicio» y
+  la lista «Mis sesiones libres» existían para tener sesiones guardadas fuera de
+  Inicio, y eso ya lo resuelven las plantillas: o es una plantilla, o está
+  asignada (a ti o a un cliente). Se retiran los dos; quitar solo la lista
+  habría dejado inaccesibles las que estaban ocultas. Para sacar una de Inicio,
+  se borra desde su editor.
+- En la hoja de «＋ Sesión libre» de Inicio, la tercera opción pasa a ser
+  **Desde tus plantillas**, igual que en la ficha de un cliente: tocar una te
+  copia la sesión a Inicio. Sin plantillas (sin PRO, o sin haber hecho ninguna)
+  no sale.
+- Las plantillas creadas antes de este cambio (sin `kind`) aparecen ahora como
+  sesiones tuyas en Inicio (sin migración).
 
 **La pestaña** (`ProgramScreen.jsx`):
 - Bajo la cabecera, un `SegmentedControl` **Programas / Sesiones**. La cabecera
@@ -298,9 +307,12 @@ copia que Asignar.
 - [x] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
   el botón dice «Asignar a 2», y la sesión aparece en la ficha de esos dos y no
   en la del desmarcado.
-- [ ] Una plantilla de sesión no sale en tu Inicio ni en «Mis sesiones libres», y
-  su editor no tiene «Mostrar en Inicio». Asignártela (Tú, arriba del todo): la
-  copia sale en tu Inicio; cambiarle un ejercicio no cambia la plantilla.
+- [ ] Una plantilla de sesión no sale en tu Inicio y su editor dice «Plantilla de
+  sesión». Asignártela (Tú, arriba del todo): la copia sale en tu Inicio;
+  cambiarle un ejercicio no cambia la plantilla.
+- [ ] Inicio › ＋ Sesión libre: la tercera opción es «Desde tus plantillas (N)».
+  Tocar una plantilla la añade a tu Inicio. El editor de una sesión tuya ya no
+  tiene «Mostrar en Inicio».
 
 ## 5. Fase C25 — Modo pizarra
 

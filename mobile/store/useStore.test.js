@@ -1582,12 +1582,6 @@ describe('sesiones libres — free-sessions.md T19', () => {
     expect(saved).toMatchObject({ sessionTemplateId: '__free__', free: true });
   });
 
-  it('mostrar en Inicio solo se aplica a sesiones libres', () => {
-    const id = useStore.getState().createFreeTemplate();
-    useStore.getState().setFreeTemplateOnHome(id, false);
-    expect(tpl(id).onHome).toBe(false);
-  });
-
   it('borrar: nunca la sesión en curso; el historial se queda', () => {
     const id = useStore.getState().saveEntryAsFreeTemplate('log_f1');
     useStore.getState().startSession(id);
