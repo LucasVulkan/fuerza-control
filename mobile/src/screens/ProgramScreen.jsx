@@ -279,7 +279,9 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
 
 /**
  * Como `AssignSheet` sin nombre ni aviso de reemplazo: una sesión no sustituye
- * a nada. El cliente recibe una copia.
+ * a nada. Varios clientes a la vez (QA 28-sep): la misma rutina de movilidad va
+ * a medio listado. Tocar marca y volver a tocar desmarca; cada uno recibe su
+ * copia.
  */
 function AssignSessionSheet({ template, clients, onAssign, onClose }) {
   const { t }  = useTranslation();
@@ -289,7 +291,12 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
   );
-  const [clientId, setClientId] = useState('');
+  const [picked, setPicked] = useState(() => new Set());
+  const toggle = (id) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   return (
     <DragSheet visible onClose={onClose} title={t('templates.assignModal.title')} action={{ label: t('common.cancel'), onPress: onClose }}>
@@ -304,15 +311,17 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
           <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
             <View style={styles.clientList}>
               {clientList.map((c) => {
-                const active = clientId === c.id;
+                const active = picked.has(c.id);
                 // Con app, la sesión viaja con su programa: sin programa no le llega.
                 const noRoute = c.syncLinked && !c.activeProgramId;
                 return (
                   <TouchableOpacity
                     key={c.id}
                     style={[styles.clientRow, active && styles.clientRowActive]}
-                    onPress={() => setClientId(c.id)}
+                    onPress={() => toggle(c.id)}
                     activeOpacity={0.75}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: active }}
                   >
                     <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
                       <Text style={[styles.clientName, active && { color: th.colors.accent }]} numberOfLines={1}>{c.name}</Text>
@@ -328,12 +337,16 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
           </ScrollView>
         )}
         <TouchableOpacity
-          style={[styles.cta, !clientId && styles.ctaDisabled]}
-          onPress={() => clientId && onAssign(clientId)}
-          disabled={!clientId}
+          style={[styles.cta, picked.size === 0 && styles.ctaDisabled]}
+          onPress={() => picked.size > 0 && onAssign([...picked])}
+          disabled={picked.size === 0}
           activeOpacity={0.85}
         >
-          <Text style={[styles.ctaText, !clientId && styles.ctaTextDisabled]}>{t('templates.assignModal.assignBtn')}</Text>
+          <Text style={[styles.ctaText, picked.size === 0 && styles.ctaTextDisabled]}>
+            {picked.size > 1
+              ? t('templates.assignSession.btnMany', { count: picked.size })
+              : t('templates.assignModal.assignBtn')}
+          </Text>
         </TouchableOpacity>
       </View>
     </DragSheet>
@@ -669,10 +682,12 @@ export default function ProgramScreen() {
           template={sessionTemplates[sesAssign]}
           clients={clients}
           onClose={() => setSesAssign(null)}
-          onAssign={(clientId) => {
-            copyFreeTemplate(sesAssign, { owner: clientId });
+          onAssign={(clientIds) => {
+            clientIds.forEach((clientId) => copyFreeTemplate(sesAssign, { owner: clientId }));
             setSesAssign(null);
-            showToast(t('templates.assignSession.toast', { name: clients[clientId]?.name ?? '' }), 2200, 'success');
+            showToast(clientIds.length === 1
+              ? t('templates.assignSession.toast', { name: clients[clientIds[0]]?.name ?? '' })
+              : t('templates.assignSession.toastMany', { count: clientIds.length }), 2200, 'success');
           }}
         />
       )}

@@ -2198,6 +2198,8 @@
     "assignSession": {
       "desc": "Se le crea una copia: lo que cambies después en la plantilla no le llega.",
       "noProgram": "Tiene app y no tiene programa: le llegará cuando le envíes uno.",
+      "btnMany": "Asignar a {{count}}",
+      "toastMany": "Sesión asignada a {{count}} clientes",
       "toast": "Sesión asignada a {{name}}"
     },
     "newModal": {

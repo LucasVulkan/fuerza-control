@@ -269,8 +269,10 @@ acción duplica con `owner: 'me'`):
   copia un programa. Editar la del cliente no toca la plantilla, y al revés.
 - Hoja de asignar: la lista de clientes individuales de `AssignSheet` sin el
   aviso de «reemplaza» (una sesión no sustituye a nada), sin campo de nombre, y
-  con **Asignar**. Tras asignar, toast y la hoja se cierra: no se abre el
-  editor, porque lo normal es mandarla tal cual.
+  con **Asignar**. **Selección múltiple** (QA 28-sep): tocar marca, volver a
+  tocar desmarca, y el botón dice «Asignar a 3». Cada cliente recibe su copia.
+  Tras asignar, toast y la hoja se cierra: no se abre el editor, porque lo
+  normal es mandarla tal cual.
 - Si el cliente está conectado, queda **pendiente de reenviar** (§4.2, firma).
 - **Límite conocido**: las sesiones libres viajan dentro del programa, así que a
   un cliente con app **sin programa** no le llegan hasta que tenga uno. La hoja
@@ -282,9 +284,12 @@ copia que Asignar.
 
 **Probar C27**
 
-- [ ] Plantillas → Sesiones → + Plantilla: se abre el
+- [x] Plantillas → Sesiones → + Plantilla: se abre el
   editor y la sesión **no** sale en tu Inicio. Asignarla a un cliente: aparece en
   su ficha. Editar la del cliente no cambia la plantilla.
+- [ ] Asignar una sesión marcando 3 clientes (y desmarcando uno por el camino):
+  el botón dice «Asignar a 2», y la sesión aparece en la ficha de esos dos y no
+  en la del desmarcado.
 
 ## 5. Fase C25 — Modo pizarra
 

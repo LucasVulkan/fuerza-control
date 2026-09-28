@@ -2198,6 +2198,8 @@
     "assignSession": {
       "desc": "They get a copy: later changes to the template don't reach them.",
       "noProgram": "Uses the app but has no program: it reaches them when you send one.",
+      "btnMany": "Assign to {{count}}",
+      "toastMany": "Session assigned to {{count}} clients",
       "toast": "Session assigned to {{name}}"
     },
     "newModal": {
