@@ -632,6 +632,7 @@ Lo de detrás (`readAnswer`):
 | `105` · `105kg` | Ese peso en todas las series de la receta, con sus reps |
 | `100 100 95` | Una serie por número: peso, con las reps de la receta (con rango, las de abajo) |
 | `100x6 100x6 95x5` · `100 x 6, 100 x 6` | Una serie por elemento: peso × reps |
+| `80 70 60 x13` · `80/70/60 x 13` (reps **separadas** tras una lista de pesos) | Esas reps en todas: 80×13, 70×13, 60×13 (QA 28-sep). Pegadas (`100 100 95x5`) son solo de la última |
 | `4x6 100` · `4x6x100` · `4x6 @100kg` | 4 series de 6 a 100 |
 | `3x10` sin peso | 3 series de 10 |
 | `100x6` suelto, con receta | Más de 10 delante ya es un peso: 100 × 6 en todas las series |
