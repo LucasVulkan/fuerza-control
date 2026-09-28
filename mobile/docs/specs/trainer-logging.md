@@ -326,7 +326,7 @@ slot (el código).
 | Pulsación larga | Empezar sesión B | Próxima sesión | Próxima sesión |
 
 - **Con app, un icono junto al nombre** en la tarjeta de la lista (un móvil de
-  trazo, 12 px, `mutedLight`). Solo en ese estado: sin app es lo normal para un
+  trazo, 14 px, `mutedLight`, apoyado en la línea base del nombre). Solo en ese estado: sin app es lo normal para un
   presencial, y el invitado ya lo dice «Esperando código». Gris y no azul: en
   la lista el azul es «cambios sin enviar» (decisión del usuario, 28-sep).
 - **Subida silenciosa del invitado**: `markProgramDirtyForClients`, para un

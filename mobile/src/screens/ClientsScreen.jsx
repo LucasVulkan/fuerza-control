@@ -1732,8 +1732,8 @@ function ClientListCard({
         <View style={styles.cNameWrap}>
           <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
           {linked && (
-            <View accessible accessibilityLabel={t('clients.info.link_linked')}>
-              <Svg viewBox="0 0 24 24" width={12} height={12} fill="none"
+            <View style={styles.cAppIcon} accessible accessibilityLabel={t('clients.info.link_linked')}>
+              <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
                 stroke={th.colors.mutedLight} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                 <Path d="M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM11 18h2" />
               </Svg>
@@ -4240,9 +4240,13 @@ const makeStyles = (th) => StyleSheet.create({
     flex:          1,
     minWidth:      0,
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'flex-end',
     gap:           spacing.sm,
   },
+  // Apoyado en la línea base del nombre, no en el fondo de su caja: la Inter a
+  // 16 deja ~4 px de descendente bajo la base, y el trazo del icono ya trae
+  // ~1.5 px de aire abajo en su caja de 24 → 3 px sin token.
+  cAppIcon: { marginBottom: 3 },
   cName: {
     ...textStyles.itemTitleQuiet,
     color:      th.colors.text,
