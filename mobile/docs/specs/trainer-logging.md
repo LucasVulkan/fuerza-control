@@ -394,8 +394,8 @@ ya está cerrada.
 - [x] Un cliente sin app → Pasar a la app → GENERAR
   CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
   vuelve EMPEZAR y el código viejo ya no sirve.
-- [ ] En la lista, solo los clientes con app llevan el icono del móvil junto al
-  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve. — ❌ 28-sep: el icono sale por debajo de las letras
+- [x] En la lista, solo los clientes con app llevan el icono del móvil junto al
+  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve.
 
 ### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 
