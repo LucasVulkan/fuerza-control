@@ -241,7 +241,7 @@ los clientes.
 - [x] Salir del Workout de un cliente a medias: Inicio
   muestra «En curso: sesión de …», su tarjeta en Clientes dice Continuar, y se
   puede continuar desde cualquiera de los dos.
-- [ ] Tu propia pestaña Inicio sigue igual que antes (es una comprobación de que
+- [x] Tu propia pestaña Inicio sigue igual que antes (es una comprobación de que
   no se ha roto nada: las piezas de su lista se movieron a un fichero compartido
   para reutilizarlas en la ficha). La tarjeta lima de la sesión que toca, las
   filas que se despliegan con sus ejercicios, EMPEZAR / REPETIR / CONTINUAR, y
